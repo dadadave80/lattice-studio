@@ -1,13 +1,16 @@
 import type { Arg, Project } from "@lattice-studio/core";
 import { createElement, Suspense } from "react";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
   commandRef, doc, getAnalysis, history, inspectorViewComponent, runCommand, session, useSession, type InspectorView,
 } from "@/contracts";
 import { bufferedServices, fakeChainService, renderWithStudio } from "../../../test/harness";
+import { resetInitUi } from "./init-ui-store";
 import { InitEditor } from "./InitEditor";
 import { kitchenCatalog, kitchenRecipe, projectFor, SAFE, SOME_CODE, stepsRecipe, templateRecipe, TOKEN } from "./test-support";
+
+afterEach(resetInitUi);
 
 /** What S5c's inspector frame does: render whatever is registered for the session's view. */
 function InspectorHost() {
