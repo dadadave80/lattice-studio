@@ -30,7 +30,7 @@ const store = createStore<{ status: CatalogStatus }>(() => ({ status: { status: 
 
 /** Where catalogs are served: `/catalog/` under the app's base. */
 export function catalogBase(): string {
-  const base = import.meta.env?.BASE_URL ?? "/";
+  const base = import.meta.env.BASE_URL ?? "/";
   return `${base.endsWith("/") ? base : `${base}/`}catalog/`;
 }
 
