@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
-  contentSecurityPolicy, cspHash, cspMismatch, cspOf, formatJson, inlineAttributeProblems, inlineHashes, injectCspMeta,
-  metaCspOf, vercelConfig,
+  E2E_CONNECT_SOURCE, contentSecurityPolicy, cspHash, cspMismatch, cspOf, formatJson, inlineAttributeProblems,
+  inlineHashes, injectCspMeta, metaCspOf, vercelConfig,
 } from "./headers.ts";
-import { secureHtml, vercelJsonTarget } from "./csp.ts";
+import { isE2EBuild, secureHtml, vercelJsonTarget } from "./csp.ts";
+import { e2eGuard } from "../vite.config.ts";
 
 const sha = (text: string) => `sha256-${createHash("sha256").update(text).digest("base64")}`;
 
@@ -50,6 +51,44 @@ describe("contentSecurityPolicy", () => {
     const csp = contentSecurityPolicy({ scripts: [], styles: [] }, { frameAncestors: false });
     expect(csp).not.toContain("frame-ancestors");
     expect(csp).toContain("script-src 'self'; style-src 'self';");
+  });
+});
+
+describe("the end-to-end build's connect-src (Q0)", () => {
+  const connectSrc = (csp: string) => csp.split("; ").find((d) => d.startsWith("connect-src"));
+  const PRODUCTION = "connect-src 'self' https: wss:";
+
+  test("is the end-to-end build only in --mode e2e with the flag set", () => {
+    expect(isE2EBuild({ mode: "e2e" }, "1")).toBe(true);
+    expect(isE2EBuild({ mode: "e2e" }, undefined)).toBe(false);
+    expect(isE2EBuild({ mode: "e2e" }, "")).toBe(false);
+    expect(isE2EBuild({ mode: "production" }, "1")).toBe(false);
+    expect(isE2EBuild({ mode: "ipfs" }, "1")).toBe(false);
+  });
+
+  test("adds the loopback Anvil origin to the end-to-end build", () => {
+    expect(connectSrc(secureHtml(PAGE, "vercel", { e2e: true }).csp)).toBe(`${PRODUCTION} ${E2E_CONNECT_SOURCE}`);
+    expect(E2E_CONNECT_SOURCE).toBe("http://127.0.0.1:*");
+  });
+
+  test("production and IPFS builds don't get it, whatever the environment holds", () => {
+    const before = process.env.VITE_STUDIO_E2E;
+    process.env.VITE_STUDIO_E2E = "1";
+    try {
+      expect(connectSrc(secureHtml(PAGE, "vercel").csp)).toBe(PRODUCTION);
+      expect(connectSrc(secureHtml(PAGE, "ipfs").csp)).toBe(PRODUCTION);
+      expect(metaCspOf(secureHtml(PAGE, "ipfs").html)).not.toContain("127.0.0.1");
+      expect(contentSecurityPolicy({ scripts: [], styles: [] }, { frameAncestors: true })).not.toContain("127.0.0.1");
+    } finally {
+      if (before === undefined) delete process.env.VITE_STUDIO_E2E;
+      else process.env.VITE_STUDIO_E2E = before;
+    }
+  });
+
+  test("the flag can't reach a production or IPFS build: the config's guard refuses it", () => {
+    expect(() => e2eGuard("production", "build", "1")).toThrow(/--mode e2e/);
+    expect(() => e2eGuard("ipfs", "build", "1")).toThrow(/--mode e2e/);
+    expect(() => e2eGuard("e2e", "build", "1")).not.toThrow();
   });
 });
 

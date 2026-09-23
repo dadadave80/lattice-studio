@@ -93,6 +93,8 @@ export type CommandArgsMap = {
   "project.deleteForGood": { id: string };
   // S8a
   "chain.select": { chainId: number };
+  /** A connector id from the chain service (EIP-6963 rdns, "mock" in e2e); none opens the chooser. CCR from S8a/S8b. */
+  "wallet.connect": { connector?: string };
   // S8b
   "deploy.open": { chainId?: number };
   "deploy.usePath": { path: DeployPath };

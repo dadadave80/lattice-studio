@@ -14,13 +14,18 @@
  * vite-plugin-pwa writes `sw.js` (in `closeBundle`), so the precached `index.html` is the final one.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
-import type { ConfigEnv, Plugin, PluginOption, ResolvedConfig } from "vite";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { loadEnv, type ConfigEnv, type Plugin, type PluginOption, type ResolvedConfig } from "vite";
+import { isE2EFlag } from "../src/contracts/e2e-flag.ts";
 import {
   contentSecurityPolicy, formatJson, inlineAttributeProblems, inlineHashes, injectCspMeta, securityHeaders,
   vercelConfig,
 } from "./headers.ts";
 import { buildVariant, isTestMode, type BuildVariant } from "./variant.ts";
+
+/** `apps/studio/`, where the mode's `.env` files live. */
+const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Where the release build writes `vercel.json`: `1` for the app's own, else a path; null for none. */
 export function vercelJsonTarget(value: string | undefined, appDir: string, cwd: string): string | null {
@@ -29,8 +34,23 @@ export function vercelJsonTarget(value: string | undefined, appDir: string, cwd:
   return isAbsolute(value) ? value : resolve(cwd, value);
 }
 
+/**
+ * Whether this is the end-to-end build (contracts §5.5): `--mode e2e` with `VITE_STUDIO_E2E` set. Only then does
+ * `connect-src` also allow the loopback Anvil nodes the end-to-end tests start (Q0). `vite.config.ts`'s guard
+ * refuses the flag in any other build mode, and this checks the mode as well.
+ */
+export function isE2EBuild(env: Pick<ConfigEnv, "mode">, flag: string | undefined): boolean {
+  return env.mode === "e2e" && isE2EFlag(flag);
+}
+
+export type SecureOptions = {
+  /** The end-to-end build (`isE2EBuild`). Default false. */
+  e2e?: boolean;
+};
+
 /** What the build does to a finished `index.html`: the policy, and the page to write back (IPFS only). */
-export function secureHtml(html: string, variant: BuildVariant): { csp: string; html: string } {
+export function secureHtml(html: string, variant: BuildVariant, options: SecureOptions = {}): { csp: string; html: string } {
+  const e2e = options.e2e ?? false;
   const problems = inlineAttributeProblems(html);
   if (problems.length) {
     throw new Error(
@@ -40,15 +60,17 @@ export function secureHtml(html: string, variant: BuildVariant): { csp: string; 
   }
   const hashes = inlineHashes(html);
   if (variant === "ipfs") {
-    const csp = contentSecurityPolicy(hashes, { frameAncestors: false });
+    const csp = contentSecurityPolicy(hashes, { frameAncestors: false, e2e });
     return { csp, html: injectCspMeta(html, csp) };
   }
-  return { csp: contentSecurityPolicy(hashes, { frameAncestors: true }), html };
+  return { csp: contentSecurityPolicy(hashes, { frameAncestors: true, e2e }), html };
 }
 
 export function studioCsp(env: ConfigEnv): PluginOption[] {
   if (isTestMode(env)) return [];
   const variant = buildVariant(env);
+  // The flag as the config reads it: `.env` files for the mode, then the process (Vite's loadEnv covers both).
+  const e2e = isE2EBuild(env, loadEnv(env.mode, APP_DIR, "VITE_").VITE_STUDIO_E2E);
   let config: ResolvedConfig | undefined;
   const outDir = () => (config ? resolve(config.root, config.build.outDir) : resolve("dist"));
 
@@ -64,7 +86,7 @@ export function studioCsp(env: ConfigEnv): PluginOption[] {
       handler() {
         const file = join(outDir(), "index.html");
         if (!existsSync(file)) return;
-        const built = secureHtml(readFileSync(file, "utf8"), variant);
+        const built = secureHtml(readFileSync(file, "utf8"), variant, { e2e });
         if (variant === "ipfs") {
           writeFileSync(file, built.html);
           return;
@@ -80,7 +102,7 @@ export function studioCsp(env: ConfigEnv): PluginOption[] {
       server.middlewares.use((_req, res, next) => {
         const file = join(outDir(), "index.html");
         if (existsSync(file)) {
-          const { csp } = secureHtml(readFileSync(file, "utf8"), variant);
+          const { csp } = secureHtml(readFileSync(file, "utf8"), variant, { e2e });
           const headers = variant === "ipfs" ? [] : securityHeaders(csp);
           for (const { key, value } of headers) res.setHeader(key, value);
         }

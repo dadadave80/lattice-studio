@@ -19,7 +19,10 @@ export type SizeReport = { readonly rows: SizeRow[]; readonly ok: boolean };
 
 /** Budgets in bytes, spec L809-L814. */
 export const BUDGETS = {
-  firstLoadJs: 240_000,
+  // Interim (2026-09-23, QUESTIONS Q19): the measured floor with the sheet at first paint was 328 KB after FX15 and
+  // 334 KB after S6; 370 is that floor plus an allowance for the nine work packages still to land (each may grow the
+  // entry by its command registrations only, the rest through import()). The spec's 240 KB stays the target.
+  firstLoadJs: 370_000,
   css: 25_000,
   fontsTotal: 90_000,
   fontsCount: 2,

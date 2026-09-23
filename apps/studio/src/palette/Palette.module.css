@@ -1,0 +1,199 @@
+/*
+ * The ⌘K palette (board 10, IR L162-L168): 560 px wide, a mono query line with the Esc hint, small-caps group
+ * heads, rows with the accent left rule when active. A low scrim sits behind it and nowhere else.
+ * Full width under 768 px.
+ */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: color-mix(in oklab, var(--lx-sunken) 48%, transparent);
+  transition: opacity 120ms ease-out;
+}
+
+.backdrop[data-starting-style],
+.backdrop[data-ending-style] {
+  opacity: 0;
+}
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--lx-space-12) var(--lx-space-4) var(--lx-space-4);
+}
+
+.popup {
+  composes: surface from "../ui/shared/controls.module.css";
+  display: flex;
+  flex-direction: column;
+  /* 560 px (spec L360). */
+  inline-size: min(100%, calc(var(--lx-space-8) * 17 + var(--lx-space-4)));
+  /* About sixteen rows; the list scrolls inside. */
+  max-block-size: min(100%, calc(var(--lx-space-12) * 11));
+  border-color: var(--lx-border-strong);
+  outline: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  opacity: 0;
+}
+
+.query {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--lx-space-2);
+  min-block-size: var(--lx-space-12);
+  padding-inline: var(--lx-space-4);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  font: var(--lx-font-code);
+  letter-spacing: var(--lx-tracking-code);
+}
+
+.prompt {
+  flex: none;
+  color: var(--lx-text-muted);
+}
+
+.input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  min-block-size: var(--lx-space-8);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lx-text);
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+/* The input is the palette's only focus: it keeps a visible ring (spec L771). */
+.input:focus-visible {
+  outline: var(--lx-stroke-heavy) solid var(--lx-border-focus);
+  outline-offset: var(--lx-stroke-heavy);
+}
+
+.input::placeholder {
+  color: var(--lx-text-faint);
+}
+
+.hint {
+  flex: none;
+}
+
+.list {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: var(--lx-space-6);
+}
+
+.group + .group {
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.groupLabel {
+  composes: label from "../ui/shared/controls.module.css";
+  display: flex;
+  align-items: center;
+  min-block-size: var(--lx-space-6);
+  padding-inline: calc(var(--lx-space-3) + var(--lx-stroke-heavy));
+}
+
+.item {
+  composes: item from "../ui/shared/controls.module.css";
+  justify-content: space-between;
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.item[data-highlighted] .title {
+  font-weight: 600;
+}
+
+.main {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.note,
+.reason {
+  color: var(--lx-text-muted);
+}
+
+.meta {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--lx-space-2);
+  max-inline-size: 50%;
+  color: var(--lx-text-muted);
+}
+
+.category {
+  font: var(--lx-font-body-sm);
+}
+
+.syntax {
+  overflow: hidden;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty:not(:empty) {
+  padding: var(--lx-space-3) var(--lx-space-4);
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text-muted);
+}
+
+@media (width < 768px) {
+  .viewport {
+    padding: 0;
+  }
+
+  .popup {
+    inline-size: 100%;
+    block-size: 100%;
+    max-block-size: none;
+    border: 0;
+  }
+
+  .category {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .backdrop {
+    background: transparent;
+  }
+
+  .popup {
+    border: var(--lx-stroke-hair) solid CanvasText;
+  }
+
+  .note,
+  .reason,
+  .meta,
+  .syntax {
+    color: GrayText;
+  }
+
+  .item[data-highlighted] .note,
+  .item[data-highlighted] .reason,
+  .item[data-highlighted] .meta,
+  .item[data-highlighted] .syntax {
+    color: HighlightText;
+  }
+}

@@ -4,6 +4,7 @@
  */
 import type { ProblemCode } from "@lattice-studio/core";
 import { renameProject } from "@lattice-studio/core";
+import { EVERYWHERE } from "@/commands";
 import { command, doc, getAnalysis, session, type CommandArgsOf, type KeyContext } from "@/contracts";
 import { studioState } from "../runtime";
 import { disabled, edit, guard, isString, OK, sayNote } from "./shared";
@@ -12,10 +13,11 @@ type AckArgs = CommandArgsOf<"ack.set">;
 type RenameArgs = CommandArgsOf<"project.rename">;
 
 /**
- * Undo and redo are live everywhere except text fields, which keep native text undo (IR L11): the console's
- * command line and the palette's search are text too.
+ * Undo and redo are live everywhere but text fields, which keep native text undo (IR L11): the console's
+ * command line and the palette's search are text too, so "text" is the only context left out. Derived from
+ * `EVERYWHERE` rather than hand-listed, so a new context is never missed (FX13).
  */
-const EVERYWHERE_BUT_TEXT: KeyContext[] = ["global", "sheet", "card-rows", "tree", "list", "menu", "dialog"];
+const EVERYWHERE_BUT_TEXT: KeyContext[] = EVERYWHERE.filter((c) => c !== "text");
 
 export const NOTHING_TO_UNDO = "Nothing to undo";
 export const NOTHING_TO_REDO = "Nothing to redo";

@@ -4,7 +4,7 @@
  * never showed through `setShellToastDrop`; until S10 registers, K2's default holds toasts and replays them
  * into S10's service.
  */
-import { createToasts } from "@/ui";
+import { createToasts } from "@/ui/overlays/toasts";
 import type { DroppedToast, ToastDropReason } from "@/ui/overlays/toasts";
 
 type DropHandler = (toast: DroppedToast, reason: ToastDropReason) => void;

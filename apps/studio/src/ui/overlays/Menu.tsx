@@ -34,7 +34,14 @@ export function Menu({ trigger, label, children, side = "bottom", align = "start
       <BaseMenu.Trigger render={trigger} />
       <BaseMenu.Portal>
         <BaseMenu.Positioner className={styles.positioner} side={side} align={align} sideOffset={4} collisionPadding={8}>
-          <BaseMenu.Popup className={styles.popup} aria-label={label} {...{ [KEY_CONTEXT_ATTRIBUTE]: "menu" }}>
+          <BaseMenu.Popup
+            className={styles.popup}
+            aria-label={label}
+            // Base UI names the popup after the active trigger by default (`aria-labelledby`), which wins over
+            // `aria-label` in the accessible-name computation; clear it so `label` always names the menu.
+            aria-labelledby={undefined}
+            {...{ [KEY_CONTEXT_ATTRIBUTE]: "menu" }}
+          >
             {children}
           </BaseMenu.Popup>
         </BaseMenu.Positioner>

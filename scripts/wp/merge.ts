@@ -15,7 +15,7 @@
 // Exit codes: 0 landed, reverted or check passed · 2 usage, repo state, a busy lock or a failed revert · 3 out of scope
 //             4 dependencies · 5 merge conflict · 6 a gate failed · 7 dev moved while the gates ran (run it again)
 //             130 interrupted
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   repoPaths, loadPlan, findWp, currentBranch, branchExists, git, gitOut, run, runAsync, worktrees, mergeCommit, mergeSubject,
@@ -159,6 +159,9 @@ async function land(): Promise<void> {
       const dirs = testDirs([...touched], "browser");
       if (!dirs.length) { console.log("browser: skipped (no app code changed)"); continue; }
       full = [...full, ...dirs];
+      // A cold dependency cache: with a stale one, a dependency the branch is first to import is optimized
+      // mid-run and Vite reloads the page with a second React (S6's merge). Cold, Vite optimizes before it serves.
+      rmSync(join(integ, "apps/studio/node_modules", `.vite-vitest-${GATE_PORT_BASE + 1}`), { recursive: true, force: true });
     }
     if (g === "e2e") {
       const dirs = testDirs([...touched], "e2e");

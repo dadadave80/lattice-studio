@@ -1,6 +1,6 @@
 import type { Hex4 } from "@lattice-studio/core";
 import { layoutMetrics, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
-import { cx } from "@/ui";
+import { cx } from "@/ui/shared/cx";
 import { useStore, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import { memo, useEffect, useMemo, useRef } from "react";
 import { cardAnalysis, cardView, describeCard, sameCardAnalysis, wordNeighbours, type CardAnalysis } from "./card-model";

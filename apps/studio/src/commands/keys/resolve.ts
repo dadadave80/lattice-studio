@@ -43,6 +43,15 @@ export function specLive(
 
 const ZOOM_KEYS = new Set(["+", "=", "-", "_", "0"]);
 const ZOOM_CODES = new Set(["Equal", "Minus", "Digit0", "NumpadAdd", "NumpadSubtract", "Numpad0"]);
+/** Mod+W/T/N/Q: the browser handles the tab or window before Studio's JavaScript ever runs. */
+const CHROME_REASONS: Record<string, "closeTab" | "newTab" | "newWindow" | "quit"> = {
+  w: "closeTab", t: "newTab", n: "newWindow", q: "quit",
+};
+/** Mod+R/P: deliverable, but taking them would block the browser's own reload and print. */
+const BLOCKS_REASONS: Record<string, "reload" | "print"> = { r: "reload", p: "print" };
+
+/** Why `spec` can't be a shortcut (FX13 item f). */
+export type ReservedReason = "zoom" | "find" | "address" | "tab" | "closeTab" | "newTab" | "newWindow" | "quit" | "reload" | "print";
 
 /**
  * ⌘/Ctrl with +, − or 0 stays browser zoom, which low-vision users rely on; ⌘/Ctrl F stays browser find;
@@ -60,8 +69,8 @@ export function reservedByBrowser(event: KeyInput, platform: Platform): boolean 
   return foreign && (event.code === "KeyF" || event.code === "KeyL");
 }
 
-/** Why `chord` can't be a shortcut, or null. */
-function reservedChordReason(chord: Chord, platform: Platform): "zoom" | "find" | "address" | "tab" | null {
+/** Why `chord` can't be a shortcut on `platform` specifically, or null. */
+function reservedChordReason(chord: Chord, platform: Platform): ReservedReason | null {
   const primary = platform === "mac" ? chord.meta : chord.ctrl;
   if (chord.key === "Tab") return "tab";
   if (!primary || chord.alt) return null;
@@ -69,14 +78,23 @@ function reservedChordReason(chord: Chord, platform: Platform): "zoom" | "find" 
   if (chord.shift) return null;
   if (chord.key === "f" || chord.code === "KeyF") return "find";
   if (chord.key === "l" || chord.code === "KeyL") return "address";
+  const chrome = chord.key ? CHROME_REASONS[chord.key] : undefined;
+  if (chrome) return chrome;
+  const blocks = chord.key ? BLOCKS_REASONS[chord.key] : undefined;
+  if (blocks) return blocks;
   return null;
 }
 
+/** Why `spec` is kept for the browser or for moving focus on `platform` specifically, or null when it's free there. */
+export function reservedOn(spec: KeySpec, platform: Platform): ReservedReason | null {
+  const chord = chordOf(spec, platform);
+  return chord ? reservedChordReason(chord, platform) : null;
+}
+
 /** Why `spec` is kept for the browser or for moving focus on some platform, or null when it's free to bind. */
-export function reservedReason(spec: KeySpec): "zoom" | "find" | "address" | "tab" | null {
+export function reservedReason(spec: KeySpec): ReservedReason | null {
   for (const platform of ["mac", "other"] as const) {
-    const chord = chordOf(spec, platform);
-    const reason = chord ? reservedChordReason(chord, platform) : null;
+    const reason = reservedOn(spec, platform);
     if (reason) return reason;
   }
   return null;

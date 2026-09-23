@@ -65,6 +65,17 @@ describe("matching on real layouts", () => {
     expect(matchSpec("/", press(".", "Slash"), "other")).toBeNull();
     // Option on macOS types other characters: the letter's position still counts.
     expect(matchSpec("Alt+t", press("†", "KeyT", { altKey: true }), "mac")).toBe("position");
+    // Option+E is a dead key on a US Mac: it still falls back to position.
+    expect(matchSpec("Alt+e", press("Dead", "KeyE", { altKey: true }), "mac")).toBe("position");
+    // On a German Mac, Option+L types @ (still ASCII): position still counts (FX13 item g).
+    expect(matchSpec("Alt+l", press("@", "KeyL", { altKey: true }), "mac")).toBe("position");
+  });
+
+  test("AltGr on \"other\" is Ctrl+Alt together: it composes a character, never a position match (FX13 item h)", () => {
+    // A German keyboard's AltGr+E types €, which isn't Ctrl+Alt+E.
+    expect(matchSpec("Ctrl+Alt+e", press("€", "KeyE", { ctrlKey: true, altKey: true }), "other")).toBeNull();
+    // On macOS there's no AltGr, so Ctrl+Alt+E still falls back to position as usual.
+    expect(matchSpec("Ctrl+Alt+e", press("€", "KeyE", { ctrlKey: true, altKey: true }), "mac")).toBe("position");
   });
 
   test("zoom in accepts =, + and the keypad +", () => {
@@ -110,6 +121,21 @@ describe("recording a keypress", () => {
     expect(specFromEvent(press("Dead", "Quote"), "mac")).toBeNull();
   });
 
+  test("Option+E/I/N/U are dead keys on a US Mac: recorded by position too (FX13 item g)", () => {
+    expect(specFromEvent(press("Dead", "KeyE", { altKey: true }), "mac")).toBe("Alt+e");
+    expect(specFromEvent(press("Dead", "KeyI", { altKey: true }), "mac")).toBe("Alt+i");
+    expect(specFromEvent(press("Dead", "KeyN", { altKey: true }), "mac")).toBe("Alt+n");
+    expect(specFromEvent(press("Dead", "KeyU", { altKey: true }), "mac")).toBe("Alt+u");
+    // A dead key on a physical key that isn't a letter still can't be recorded.
+    expect(specFromEvent(press("Dead", "Quote", { altKey: true }), "mac")).toBeNull();
+  });
+
+  test("AltGr on \"other\" composes a character: recorded by it, not by the letter's position (CR1)", () => {
+    // A Polish keyboard's AltGr+Z types ż; recording it by KeyZ's position would save "Mod+Alt+z", which
+    // matchChord (FX13 item h) refuses forever since it never falls back to position for AltGr.
+    expect(specFromEvent(press("ż", "KeyZ", { ctrlKey: true, altKey: true }), "other")).toBe("Mod+Alt+ż");
+  });
+
   test("a recorded spec matches the keypress it came from", () => {
     const events = [
       press("K", "KeyK", { metaKey: true, shiftKey: true }),
@@ -123,5 +149,10 @@ describe("recording a keypress", () => {
       expect(spec).not.toBeNull();
       expect(matchSpec(spec ?? "", event, "mac")).not.toBeNull();
     }
+    // AltGr on "other" (CR1): the recorded spec must still match the keypress it came from.
+    const altGr = press("ż", "KeyZ", { ctrlKey: true, altKey: true });
+    const recorded = specFromEvent(altGr, "other");
+    expect(recorded).not.toBeNull();
+    expect(matchSpec(recorded ?? "", altGr, "other")).not.toBeNull();
   });
 });

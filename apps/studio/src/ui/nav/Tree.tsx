@@ -382,6 +382,7 @@ export function Tree({
         key={row.id}
         label={itemMenuLabel?.(row.node) ?? `${row.node.label} actions`}
         items={hasMenu ? menu : null}
+        disabled={!hasMenu}
         open={hasMenu && menuFor === row.id}
         onOpenChange={(open) => {
           if (open && hasMenu) setMenuFor(row.id);

@@ -2,7 +2,7 @@ import type { Analysis, Problem } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
-import { doc, emptyAnalysis, provideAnalysis, provideServices, session } from "@/contracts";
+import { doc, emptyAnalysis, isPlaceholder, provideAnalysis, provideServices, session } from "@/contracts";
 import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio } from "../../test/harness";
 import { App } from "./App";
 
@@ -57,10 +57,11 @@ describe("routes", () => {
     expect(document.getElementById("shell-sheet")?.firstElementChild).toBe(sheet);
   });
 
-  test("#/settings runs Settings, which says it isn't built yet", async () => {
+  test("#/settings runs Settings: its dialog opens, or, until S10 builds it, it says so", async () => {
     go("#/settings");
     await renderWithStudio(<App />);
-    await expect.poll(lastLine).toBe("Not built yet · WP-S10");
+    if (isPlaceholder("settings.open")) await expect.poll(lastLine).toBe("Not built yet · WP-S10");
+    else await expect.poll(() => session.get().dialogs.map((d) => d.id)).toContain("settings");
   });
 
   test("a share link goes to openShareLink whole, and stays in the address", async () => {
@@ -73,9 +74,12 @@ describe("routes", () => {
   });
 
   test("until S13 provides it, the default says a share link can't open yet", async () => {
+    const placeholder = "Opening a shared link: Not built yet · WP-S13";
     go("#s=1.abc");
     await renderWithStudio(<App />);
-    await expect.poll(lastLine).toBe("Opening a shared link: Not built yet · WP-S13");
+    // S13 ships link opening with its commands: while they're placeholders, K2's default answers the route.
+    if (isPlaceholder("link.confirmAddresses")) await expect.poll(lastLine).toBe(placeholder);
+    else await expect.poll(() => bufferedServices().log.some((l) => l.text === placeholder)).toBe(false);
   });
 
   test("#open= is v2", async () => {
@@ -94,7 +98,8 @@ describe("routes", () => {
     go("#/__ui");
     await renderWithStudio(<App />);
     await expect.element(page.getByRole("region", { name: "Title bar", exact: true })).not.toBeInTheDocument();
-    await expect.poll(() => document.querySelectorAll("section, h1, h2").length).toBeGreaterThan(0);
+    // The gallery is a lazy chunk the dev server compiles on first request.
+    await expect.poll(() => document.querySelectorAll("section, h1, h2").length, { timeout: 10_000 }).toBeGreaterThan(0);
   });
 });
 

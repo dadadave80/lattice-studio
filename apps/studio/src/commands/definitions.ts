@@ -4,10 +4,14 @@ import { runEscape } from "./escape";
 import { WHEREVER_SINGLE_KEYS } from "./keys/resolve";
 
 /**
- * Esc runs the Esc stack wherever no modal dialog, menu, list or palette has focus (those close themselves)
- * and nobody is typing (a field keeps Esc to revert).
+ * Esc runs the Esc stack everywhere but a modal dialog, the palette and a text field (which keeps Esc to
+ * revert). A dialog or the palette closes itself on Esc: Base UI's `useDismiss` calls `preventDefault` before
+ * the dispatcher's window listener ever sees the event, and `handleKeyDown` skips one that's already
+ * defaultPrevented. "list" and "menu" popups close themselves the same way, so including them here changes
+ * nothing there; it's what lets the stack still reach a list or menu region that isn't a dismissible popup
+ * (IR L17: everywhere, in that order).
  */
-const ESCAPE_CONTEXTS: KeyContext[] = ["global", "sheet", "card-rows", "tree", "console"];
+const ESCAPE_CONTEXTS: KeyContext[] = ["global", "sheet", "card-rows", "tree", "list", "menu", "console"];
 
 export const NOTHING_TO_CLOSE = "Nothing to close.";
 export const DIALOG_OPEN = "A dialog is open. Close it to see the shortcuts.";
