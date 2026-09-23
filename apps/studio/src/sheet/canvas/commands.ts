@@ -73,7 +73,7 @@ function zoomed(ctx: CommandContext, zoom: number): void {
 
 const toolSelect = command({
   id: "tool.select",
-  title: () => "Select tool",
+  title: () => "Select",
   category: "Sheet",
   keys: ["v"],
   keyContext: [...SHEET],
@@ -91,7 +91,7 @@ const toolSelect = command({
 
 const toolHand = command({
   id: "tool.hand",
-  title: () => "Hand tool",
+  title: () => "Hand",
   category: "Sheet",
   keys: ["h"],
   keyContext: [...SHEET],
