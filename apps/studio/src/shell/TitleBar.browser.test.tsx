@@ -120,7 +120,7 @@ describe("the App menu", () => {
   test("lists the spec's items, each on its command", async () => {
     await renderWithStudio(<Shell />);
     await bar().getByRole("button", { name: "Lattice Studio" }).click();
-    const menu = page.getByRole("menu", { name: "Lattice Studio" });
+    const menu = page.getByRole("menu", { name: "App menu" });
     await expect.element(menu).toBeVisible();
     const items = [
       "Projects", "New project", "Open…", "Save a copy…", "Open diamond…", "Settings", "Keyboard shortcuts", "Help",
@@ -139,9 +139,9 @@ describe("the App menu", () => {
   test("app.menu opens it from anywhere", async () => {
     await renderWithStudio(<Shell />);
     await runCommand(commandRef("app.menu"), "palette");
-    await expect.element(page.getByRole("menu", { name: "Lattice Studio" })).toBeVisible();
+    await expect.element(page.getByRole("menu", { name: "App menu" })).toBeVisible();
     await userEvent.keyboard("{Escape}");
-    await expect.element(page.getByRole("menu", { name: "Lattice Studio" })).not.toBeInTheDocument();
+    await expect.element(page.getByRole("menu", { name: "App menu" })).not.toBeInTheDocument();
   });
 });
 

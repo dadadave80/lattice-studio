@@ -74,9 +74,12 @@ describe("routes", () => {
   });
 
   test("until S13 provides it, the default says a share link can't open yet", async () => {
+    const placeholder = "Opening a shared link: Not built yet · WP-S13";
     go("#s=1.abc");
     await renderWithStudio(<App />);
-    await expect.poll(lastLine).toBe("Opening a shared link: Not built yet · WP-S13");
+    // S13 ships link opening with its commands: while they're placeholders, K2's default answers the route.
+    if (isPlaceholder("link.confirmAddresses")) await expect.poll(lastLine).toBe(placeholder);
+    else await expect.poll(() => bufferedServices().log.some((l) => l.text === placeholder)).toBe(false);
   });
 
   test("#open= is v2", async () => {
