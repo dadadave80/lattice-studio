@@ -95,6 +95,16 @@ export async function startNode(options: NodeOptions): Promise<Node> {
   };
 }
 
+/** Runs `fn` with the node answering as chain `chainId`, then puts its own chain id back. */
+export async function withChainId<T>(node: Node, chainId: number, fn: () => Promise<T>): Promise<T> {
+  await node.rpc("anvil_setChainId", [chainId]);
+  try {
+    return await fn();
+  } finally {
+    await node.rpc("anvil_setChainId", [node.chainId]);
+  }
+}
+
 /** Sends from an unlocked account and waits for the receipt; throws when the transaction reverts. */
 export async function send(node: Node, tx: { from?: Address; to: Address; data: Hex; gas?: bigint }) {
   const hash = await node.client.sendTransaction({
@@ -102,7 +112,8 @@ export async function send(node: Node, tx: { from?: Address; to: Address; data: 
     to: tx.to,
     data: tx.data,
     ...(tx.gas === undefined ? {} : { gas: tx.gas }),
-    chain: node.client.chain,
+    // The node may have switched chain id (anvil_setChainId); it signs for whatever it is now.
+    chain: null,
   });
   const receipt = await node.client.waitForTransactionReceipt({ hash, timeout: 60_000 });
   if (receipt.status !== "success") throw new Error(`transaction ${hash} to ${tx.to} reverted`);
