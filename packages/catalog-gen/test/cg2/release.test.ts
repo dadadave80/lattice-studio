@@ -4,15 +4,22 @@
  * real Anvil in milliseconds. The real Lattice is `real-build.test.ts`'s.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { type AbiItem, arachnidAddress, type Hex, sharedSalt } from "@lattice-studio/core";
 import { encodeAbiParameters, keccak256, stringToHex, toHex, zeroAddress } from "viem";
 import { REGISTRY_OWNER_PLACEHOLDER } from "../../src/addressing";
-import { type AnvilHandle, getCode, startAnvil } from "../../src/anvil";
+import { type AnvilHandle, getCode, startAnvil, studioEnv } from "../../src/anvil";
 import { libraryPlaceholder } from "../../src/artifacts";
-import { proxyRelease, type ReleaseData, releaseData, releaseReport } from "../../src/release";
+import {
+  buildLattice,
+  mainLatticeDir,
+  proxyRelease,
+  type ReleaseData,
+  releaseData,
+  releaseReport,
+} from "../../src/release";
 
 const hex = (n: number): string => n.toString(16).padStart(2, "0");
 
@@ -23,7 +30,14 @@ function creation(runtime: string): string {
   return `0x60${hex(length)}600c60003960${hex(length)}6000f3${runtime}`;
 }
 
-type Fixture = { file: string; contract: string; runtime: string; abi?: AbiItem[]; links?: Record<string, number[]> };
+type Fixture = {
+  file: string;
+  contract: string;
+  runtime: string;
+  abi?: AbiItem[];
+  links?: Record<string, number[]>;
+  evmVersion?: string;
+};
 
 async function writeArtifact(outDir: string, f: Fixture): Promise<void> {
   const sourcePath = f.file;
@@ -38,7 +52,7 @@ async function writeArtifact(outDir: string, f: Fixture): Promise<void> {
     language: "Solidity",
     settings: {
       compilationTarget: { [sourcePath]: f.contract },
-      evmVersion: "osaka",
+      evmVersion: f.evmVersion ?? "osaka",
       libraries: {},
       metadata: { bytecodeHash: "ipfs" },
       optimizer: { enabled: true, runs: 1_000_000 },
@@ -76,6 +90,13 @@ const FIXTURES: Fixture[] = [
   { file: "src/Lattice.sol", contract: "Lattice", runtime: "06" },
 ];
 
+const INVENTORY = `library FacetInventory {
+    function inventory() internal pure returns (string[] memory, string[] memory) {
+        string[2] memory names = ["ERC20", "Semaphore"];
+        string[2] memory paths = ["src/tokens/ERC20/ERC20.sol:ERC20", "src/privacy/semaphore/Semaphore.sol:Semaphore"];
+    }
+}`;
+
 let root = "";
 let anvil: AnvilHandle | undefined;
 let data: ReleaseData | undefined;
@@ -87,6 +108,8 @@ describe.skipIf(ANVIL === null)(`releaseData on a synthetic checkout${ANVIL ? ""
     for (const f of FIXTURES) await writeArtifact(join(root, "out"), f);
     await mkdir(join(root, "src"), { recursive: true });
     await writeFile(join(root, "src", "LatticeVersion.sol"), 'string internal constant VERSION = "9.8.7";');
+    await mkdir(join(root, "script", "lib"), { recursive: true });
+    await writeFile(join(root, "script", "lib", "FacetInventory.sol"), INVENTORY);
     const started = await startAnvil();
     if (!started.ok) throw new Error(started.error);
     anvil = started.value;
@@ -108,6 +131,7 @@ describe.skipIf(ANVIL === null)(`releaseData on a synthetic checkout${ANVIL ? ""
 
   test("reads the version from LatticeVersion.sol and records the placeholder owner", () => {
     expect(data?.version).toBe("9.8.7");
+    expect(data?.compiler).toEqual({ version: "0.8.36+commit.fixture", evmVersion: "osaka" });
     expect(data?.registryOwner).toBe(REGISTRY_OWNER_PLACEHOLDER);
     expect(data?.deployer.address).toBe("0x4e59b44847b379578588920cA78FbF26c0B4956C");
   });
@@ -201,6 +225,42 @@ describe.skipIf(ANVIL === null)(`releaseData on a synthetic checkout${ANVIL ? ""
     if (!missing.ok) expect(missing.error).toStartWith("Nope: no artifact for Nope.sol:Nope");
   });
 
+  test("an unreadable facet inventory is an error for any name but the registry and factory", async () => {
+    if (!anvil) throw new Error("no anvil");
+    const bare = await mkdtemp(join(tmpdir(), "cg2-noinv-"));
+    try {
+      for (const f of FIXTURES) await writeArtifact(join(bare, "out"), f);
+      const missing = await releaseData(bare, anvil, ["LatticeRegistry", "ERC20"], { version: "9.8.7" });
+      expect(missing).toEqual({
+        ok: false,
+        error: `ERC20: can't look it up in the facet inventory: ${join(bare, "script/lib/FacetInventory.sol")} doesn't exist.`,
+      });
+      const core = await releaseData(bare, anvil, ["LatticeRegistry"], { version: "9.8.7" });
+      expect(core.ok && core.value.contracts[0]?.address).toBe(byName("LatticeRegistry").address);
+    } finally {
+      await rm(bare, { recursive: true, force: true });
+    }
+  });
+
+  test("contracts built for different EVM versions are refused, not mixed", async () => {
+    if (!anvil) throw new Error("no anvil");
+    await writeArtifact(join(root, "out"), { file: "src/Odd.sol", contract: "Odd", runtime: "08", evmVersion: "cancun" });
+    const res = await releaseData(root, anvil, ["ERC20", "Odd"]);
+    expect(res).toEqual({
+      ok: false,
+      error: "Odd was built with solc 0.8.36+commit.fixture for cancun, ERC20 with 0.8.36+commit.fixture for osaka. Build clean.",
+    });
+  });
+
+  test("a list where everything is per-deployment has nothing to release", async () => {
+    if (!anvil) throw new Error("no anvil");
+    const res = await releaseData(root, anvil, ["AccountInit"]);
+    expect(res).toEqual({
+      ok: false,
+      error: "nothing to release among 1 contract(s). AccountInit takes constructor arguments (address a0), so it's deployed per use.",
+    });
+  });
+
   test("an explicit artifact reference wins over name lookup", async () => {
     if (!anvil) throw new Error("no anvil");
     const res = await releaseData(root, anvil, [
@@ -221,6 +281,44 @@ describe.skipIf(ANVIL === null)(`releaseData on a synthetic checkout${ANVIL ? ""
     }
     expect(lines[4]).toEndWith("provisional (links PoseidonT3)");
     expect(lines[7]).toBe("skipped AccountInit: AccountInit takes constructor arguments (address a0), so it's deployed per use.");
+  });
+});
+
+describe("buildLattice", () => {
+  let dir = "";
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), "cg2-build-"));
+    await mkdir(join(dir, "main", "lattice"), { recursive: true });
+    await symlink(join(dir, "main", "lattice"), join(dir, "link"));
+  });
+  afterAll(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  test("refuses the main checkout's lattice/, through a symlink too, without running forge", async () => {
+    const main = join(dir, "main", "lattice");
+    for (const target of [main, join(dir, "link"), `${main}/`]) {
+      expect(await buildLattice(target, { mainCheckout: main, forge: join(dir, "no-forge") })).toEqual({
+        ok: false,
+        error: `${target} is the main checkout's read-only lattice/, so it isn't built here. Build your own checkout.`,
+      });
+    }
+  });
+
+  test("by default the main checkout is $STUDIO_MAIN/lattice", () => {
+    const repoRoot = join(import.meta.dir, "..", "..", "..", "..");
+    expect(mainLatticeDir()).toBe(join(studioEnv("STUDIO_MAIN", repoRoot) ?? repoRoot, "lattice"));
+  });
+
+  test("builds any other checkout, and the main one only when allowed", async () => {
+    const main = join(dir, "main", "lattice");
+    const noForge = join(dir, "no-forge");
+    const other = await buildLattice(join(dir, "other"), { mainCheckout: main, forge: noForge });
+    expect(other.ok).toBe(false);
+    if (!other.ok) expect(other.error).toStartWith(`${noForge} build didn't start`);
+    const allowed = await buildLattice(main, { mainCheckout: main, allowMainCheckout: true, forge: noForge });
+    expect(allowed.ok).toBe(false);
+    if (!allowed.ok) expect(allowed.error).toStartWith(`${noForge} build didn't start`);
   });
 });
 
@@ -262,6 +360,7 @@ describe("proxyRelease on a synthetic build", () => {
     expect(res.value.initCodeHash).toBe(keccak256(creation("06") as Hex));
     expect(Object.keys(res.value.standardJson.sources)).toEqual(["src/Lattice.sol"]);
     expect(res.value.buildInfo).toBe(join("out", "build-info", "a.json"));
+    expect(res.value.compiler).toEqual({ version: "0.8.36+commit.fixture", evmVersion: "osaka" });
   });
 
   test("two build-info files that compiled it: build clean", async () => {

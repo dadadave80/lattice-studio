@@ -11,6 +11,7 @@ import {
   pruneStandardJson,
   REGISTRY_OWNER_PLACEHOLDER,
   releaseConstructorArgs,
+  toLibraryItem,
   toSharedContract,
   withConstructorArgs,
 } from "../../src/addressing";
@@ -129,16 +130,45 @@ describe("predictShared", () => {
     expect(predictShared("PoseidonT3", "0.2.0", code).salt).toBe(keccak256(stringToHex("lattice.PoseidonT3.0.2.0")));
   });
 
-  test("toSharedContract keeps the catalog fields only", () => {
+  test("toSharedContract keeps the catalog fields only when nothing is provisional", () => {
     const a = predictShared("ERC20", "0.2.0", code);
     const ref = { path: "code/ERC20.creation.hex", bytes: 30, hash: keccak256("0x00") };
-    expect(toSharedContract({ ...a, codehash: keccak256("0x2a") }, ref)).toEqual({
+    const shared = toSharedContract({ ...a, codehash: keccak256("0x2a") }, ref);
+    expect(shared).toEqual({
       salt: a.salt,
       version: "0.2.0",
       address: a.address,
       codehash: keccak256("0x2a"),
       initCodeHash: a.initCodeHash,
       creationCode: ref,
+    });
+    expect("dependsOn" in shared || "provisional" in shared).toBe(false);
+  });
+
+  test("toSharedContract carries dependsOn and provisional through", () => {
+    const a = predictShared("Semaphore", "0.2.0", code);
+    const ref = { path: "code/Semaphore.creation.hex", bytes: 30, hash: keccak256("0x00") };
+    const dependsOn = ["PoseidonT3"];
+    const shared = toSharedContract({ ...a, codehash: keccak256("0x2a"), dependsOn, provisional: "Links PoseidonT3." }, ref);
+    expect(shared).toMatchObject({ address: a.address, dependsOn: ["PoseidonT3"], provisional: "Links PoseidonT3." });
+    expect(shared.dependsOn).not.toBe(dependsOn);
+    expect("dependsOn" in toSharedContract({ ...a, codehash: keccak256("0x2a"), dependsOn: [] }, ref)).toBe(false);
+  });
+
+  test("toLibraryItem builds a Catalog.libraries item", () => {
+    const lib = predictShared("PoseidonT3", "0.2.0", code);
+    const ref = { path: "code/PoseidonT3.creation.hex", bytes: 30, hash: keccak256("0x00") };
+    expect(toLibraryItem({ ...lib, codehash: keccak256("0x05"), provisional: "Studio releases it." }, ref)).toEqual({
+      name: "PoseidonT3",
+      release: {
+        salt: lib.salt,
+        version: "0.2.0",
+        address: lib.address,
+        codehash: keccak256("0x05"),
+        initCodeHash: lib.initCodeHash,
+        creationCode: ref,
+        provisional: "Studio releases it.",
+      },
     });
   });
 });

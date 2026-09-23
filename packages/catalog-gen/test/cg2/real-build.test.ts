@@ -1,8 +1,9 @@
 /**
  * Integration: release data for the pinned Lattice, built with FOUNDRY_PROFILE=ci, on two real Anvils with
  * different chain ids. Runs when forge and anvil are installed and this run owns a Lattice checkout (CG1's
- * gate); skipped otherwise. The build is incremental; when the build info doesn't hold one consistent compile of
- * the proxy, it builds clean and reads again, which takes minutes.
+ * gate); skipped otherwise. The build is incremental. When the build info doesn't hold one consistent compile of
+ * the proxy, the test fails with proxyRelease's "build clean" message, unless CG2_CLEAN_BUILD=1 lets it run
+ * `forge clean` and rebuild (about 2 minutes).
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -28,7 +29,11 @@ import { realBuildGate } from "../cg1/real-build-gate";
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..", "..");
 const gate = realBuildGate((name) => studioEnv(name, REPO_ROOT), REPO_ROOT, (bin) => Bun.which(bin));
 const LATTICE = gate.latticeDir;
-const BUILD_TIMEOUT_MS = 30 * 60_000;
+/** Under the merge gate's 1200 s limit for the whole test run (scripts/wp/merge.ts). */
+const BUILD_TIMEOUT_MS = 15 * 60_000;
+/** Opt-in: when the build info splits the proxy's compile, `forge clean` and rebuild (about 2 minutes). */
+const CLEAN_FLAG = "CG2_CLEAN_BUILD";
+const CLEAN_ON_SPLIT = studioEnv(CLEAN_FLAG, REPO_ROOT) === "1";
 
 /** Stateless inits resolved by name (CG4 passes the full list), and one with constructor arguments. */
 const INITS = ["ERC20Init", "MultiInit", "DiamondIntrospectionInit", "AccountInit"];
@@ -54,12 +59,12 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     const built = await buildLattice(LATTICE);
     if (!built.ok) throw new Error(built.error);
     let p = await proxyRelease(LATTICE);
-    if (!p.ok) {
+    if (!p.ok && CLEAN_ON_SPLIT) {
       const clean = await buildLattice(LATTICE, { clean: true });
       if (!clean.ok) throw new Error(clean.error);
       p = await proxyRelease(LATTICE);
-      if (!p.ok) throw new Error(p.error);
     }
+    if (!p.ok) throw new Error(`${p.error} (or rerun with ${CLEAN_FLAG}=1 to let this test build clean, about 2 minutes)`);
     proxy = p.value;
 
     const inventory = await readInventory(LATTICE);
@@ -93,6 +98,10 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
 
   test("version 0.2.0 from LatticeVersion.sol; every facet, the registry, the factory and the stateless inits", () => {
     expect(first?.version).toBe("0.2.0");
+    // Lattice pins no evm_version, so this is Foundry's default for solc 0.8.36: a change moves every address.
+    expect(first?.compiler.evmVersion).toBe("osaka");
+    expect(first?.compiler.version).toStartWith("0.8.36+commit.");
+    expect(proxy?.compiler).toEqual(first?.compiler as ReleaseData["compiler"]);
     expect(first?.contracts).toHaveLength(targets.length - 1);
     expect(first?.skipped.map((s) => s.name)).toEqual(["AccountInit"]);
     expect(first?.skipped[0]?.reason).toContain("so it's deployed per use");

@@ -15,8 +15,9 @@
  * proxy's metadata lists. Build clean first (`buildLattice(dir, { clean: true })`): incremental builds split
  * build info across files, and the proxy's sources must all be in one.
  */
+import { realpathSync } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import {
   ARACHNID_PROXY,
   ARACHNID_PROXY_CODEHASH,
@@ -32,6 +33,8 @@ import {
 } from "@lattice-studio/core";
 import { concat, encodeFunctionData, getAddress, keccak256, parseAbi, size, slice, stringToHex, zeroAddress } from "viem";
 import {
+  type Compiler,
+  compilerOf,
   constructorInputs,
   describeInputs,
   FACTORY,
@@ -49,7 +52,7 @@ import {
   type StandardJsonInput,
   withConstructorArgs,
 } from "./addressing";
-import { type AnvilHandle, deployViaArachnid, ethCall, getCode } from "./anvil";
+import { type AnvilHandle, deployViaArachnid, ethCall, getCode, studioEnv } from "./anvil";
 import { type Artifact, type ArtifactRef, findArtifact, linkBytecode } from "./artifacts";
 import { entryRef, readInventory } from "./inventory";
 
@@ -84,6 +87,8 @@ export type ReleaseEntry = SharedAddressing & {
 /** Release data for a list of contracts. */
 export type ReleaseData = {
   version: string;
+  /** The compiler every released contract was built with, from the artifacts' metadata. */
+  compiler: Compiler;
   deployer: { address: Address; codehash: Hex };
   /** The registry's initial owner, part of its init code (HANDOFF D6 placeholder unless given). */
   registryOwner: Address;
@@ -141,7 +146,10 @@ async function deployChecked(anvil: AnvilHandle, a: SharedAddressing): Promise<R
   }
 }
 
-/** Resolves names to artifact references: the registry and factory, then the facet inventory, then `<Name>.sol`. */
+/**
+ * Resolves names to artifact references: the registry and factory, then the facet inventory, then `<Name>.sol`
+ * (inits). An inventory that can't be read is an error for any other name, not a silent fallback.
+ */
 async function resolveTargets(
   latticeDir: string,
   targets: readonly ReleaseTarget[],
@@ -164,7 +172,8 @@ async function resolveTargets(
     }
     if (inventory === undefined) {
       const entries = await readInventory(latticeDir);
-      inventory = new Map(entries.ok ? entries.value.map((e) => [e.name, entryRef(e)]) : []);
+      if (!entries.ok) return err(`${name}: can't look it up in the facet inventory: ${entries.error}`);
+      inventory = new Map(entries.value.map((e) => [e.name, entryRef(e)]));
     }
     out.push({ name, ref: inventory.get(name) ?? { file: `${name}.sol`, contract: name } });
   }
@@ -227,7 +236,17 @@ export async function releaseData(
 
   const libraries = new Map<string, ReleaseEntry>();
   const libraryNames = new Map<string, string>();
+  let compiler: (Compiler & { from: string }) | undefined;
   const release = async (name: string, artifact: Artifact, args: Hex | undefined): Promise<Result<ReleaseEntry, string>> => {
+    const built = compilerOf(artifact.metadata, name);
+    if (!built.ok) return built;
+    if (compiler === undefined) compiler = { ...built.value, from: name };
+    else if (compiler.version !== built.value.version || compiler.evmVersion !== built.value.evmVersion) {
+      return err(
+        `${name} was built with solc ${built.value.version} for ${built.value.evmVersion}, ` +
+          `${compiler.from} with ${compiler.version} for ${compiler.evmVersion}. Build clean.`,
+      );
+    }
     const keys = linkedLibraries(artifact.bytecode.linkReferences);
     const links: Record<string, Address> = {};
     for (const key of keys) {
@@ -306,8 +325,13 @@ export async function releaseData(
     done.set(name, entry.value);
   }
 
+  if (compiler === undefined) {
+    const why = skipped.map((s) => s.reason).join(" ");
+    return err(`nothing to release among ${names.length} contract(s).${why ? ` ${why}` : ""}`);
+  }
   return ok({
     version,
+    compiler: { version: compiler.version, evmVersion: compiler.evmVersion },
     deployer: { address: ARACHNID_PROXY, codehash: deployerCodehash },
     registryOwner: getAddress(registryOwner),
     contracts: names.flatMap((n) => done.get(n) ?? []),
@@ -333,6 +357,8 @@ export type ProxyRelease = {
   standardJson: StandardJsonInput;
   /** The build-info file it came from, relative to the checkout. */
   buildInfo: string;
+  /** The solc version and EVM version from the proxy's metadata, which Sourcify needs beside the standard JSON. */
+  compiler: Compiler;
 };
 
 type BuildInfoFile = {
@@ -358,6 +384,8 @@ export async function proxyRelease(latticeDir: string): Promise<Result<ProxyRele
     return err("Lattice links libraries; the factory deploys it as `type(Lattice).creationCode` with none.");
   }
   const creationCode = creation.value;
+  const compiler = compilerOf(artifact.metadata, "Lattice");
+  if (!compiler.ok) return compiler;
 
   const infoDir = join(outDir, "build-info");
   let files: string[];
@@ -405,6 +433,7 @@ export async function proxyRelease(latticeDir: string): Promise<Result<ProxyRele
     initCodeHash: keccak256(creationCode),
     standardJson: match.standardJson,
     buildInfo: join("out", "build-info", match.file),
+    compiler: compiler.value,
   });
 }
 
@@ -455,14 +484,49 @@ export function releaseReport(data: ReleaseData, proxy?: ProxyRelease): string {
   });
 }
 
+const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
+
+/** A path with symlinks resolved; a path that doesn't exist yet is only made absolute. */
+function canonicalPath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
+}
+
+/**
+ * The main checkout's `lattice/`, which is read-only (contracts §2): `$STUDIO_MAIN/lattice` (claim.ts sets
+ * STUDIO_MAIN in every worktree's `.env.local`), else this checkout's own `lattice/`.
+ */
+export function mainLatticeDir(): string {
+  return join(studioEnv("STUDIO_MAIN", REPO_ROOT) ?? REPO_ROOT, "lattice");
+}
+
+export type BuildOptions = {
+  /** `forge clean` first, so build info comes out in one file. */
+  clean?: boolean;
+  /** The forge binary (default `forge` on PATH). */
+  forge?: string;
+  /** The read-only checkout to refuse; defaults to `mainLatticeDir()`. */
+  mainCheckout?: string;
+  /**
+   * Build even the main checkout's `lattice/`. Only for a checkout that owns its submodule outright, such as a
+   * fresh CI clone; never in a local session, where other agents read it.
+   */
+  allowMainCheckout?: boolean;
+};
+
 /**
  * Builds a Lattice checkout with the ci profile (build info and storage layouts), after `forge clean` when
- * `clean` is set. Never run it on the main checkout's read-only `lattice/`.
+ * `clean` is set. Refuses the main checkout's read-only `lattice/` (symlinks resolved) unless told otherwise:
+ * building there writes `out/` and `cache/` other agents read.
  */
-export async function buildLattice(
-  latticeDir: string,
-  options: { clean?: boolean; forge?: string } = {},
-): Promise<Result<void, string>> {
+export async function buildLattice(latticeDir: string, options: BuildOptions = {}): Promise<Result<void, string>> {
+  const main = options.mainCheckout ?? mainLatticeDir();
+  if (!options.allowMainCheckout && canonicalPath(latticeDir) === canonicalPath(main)) {
+    return err(`${latticeDir} is the main checkout's read-only lattice/, so it isn't built here. Build your own checkout.`);
+  }
   const forge = options.forge ?? "forge";
   const env = { ...process.env, FOUNDRY_PROFILE: "ci" };
   const steps = options.clean ? [["clean"], ["build"]] : [["build"]];

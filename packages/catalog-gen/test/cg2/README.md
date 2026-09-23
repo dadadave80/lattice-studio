@@ -13,8 +13,12 @@ Lattice dev `f4a32c8`, `VERSION` 0.2.0. Every address is provisional until the 0
 - **Codehash**: `keccak256(eth_getCode)` after deploying through Arachnid's proxy on Anvil. Each deployment is simulated first, and the proxy must return the predicted address.
 - **Proxy**: the init-code hash is `keccak256(type(Lattice).creationCode)`, which `checkProxyInitCodeHash` confirms against a deployed factory's `predict`. The standard JSON is pruned from the one build-info file that compiled this very creation code, down to the sources the metadata lists, with each source checked against the metadata's hash. If none or several files qualify, run `buildLattice(dir, { clean: true })`.
 
+- **Compiler**: `ReleaseData.compiler` and `ProxyRelease.compiler` hold the solc version and EVM version from the metadata, which Sourcify needs. Contracts built with different ones are refused. Lattice pins no `evm_version`, so the value is Foundry's default ("osaka" for solc 0.8.36). The real-build test asserts it, because a change there would move every address.
+- **Catalog entries**: `toSharedContract(entry, ref)` carries `dependsOn` and `provisional` through. `toLibraryItem(entry, ref)` builds a `Catalog.libraries` item.
+- **Building**: `buildLattice` refuses the main checkout's read-only `lattice/`, which is `$STUDIO_MAIN/lattice`, with symlinks resolved. A fresh CI clone that owns its submodule passes `allowMainCheckout: true`.
+
 ## Tests
 
 - `addressing.test.ts`: the pure rules.
 - `release.test.ts`: hand-assembled contracts on a real Anvil (ordering, constructor arguments, linking, skipping, reuse).
-- `real-build.test.ts`: the pinned Lattice on two Anvils with different chain ids. Every prediction must equal the deployment, and both runs must give identical data. solc 0.8.36 must recompile the proxy's standard JSON to its creation code. The test also prints the report: one line per contract with its salt, address and codehash.
+- `real-build.test.ts`: the pinned Lattice on two Anvils with different chain ids. Every prediction must equal the deployment, and both runs must give identical data. solc 0.8.36 must recompile the proxy's standard JSON to its creation code. The test also prints the report: one line per contract with its salt, address and codehash. If the build info splits the proxy's compile, the test fails with the "build clean" message. Set `CG2_CLEAN_BUILD=1` to let it run `forge clean` and rebuild instead, which takes about 2 minutes.

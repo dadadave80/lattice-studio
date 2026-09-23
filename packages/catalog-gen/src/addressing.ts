@@ -144,15 +144,21 @@ export function predictShared(name: string, version: string, creationCode: Hex):
   return { name, salt, version, initCodeHash, address: arachnidAddress(salt, initCodeHash), creationCode };
 }
 
+/** What `toSharedContract` reads from a release entry: the addressing, the codehash and the optional flags. */
+export type SharedContractSource = Pick<SharedAddressing, "salt" | "version" | "address" | "initCodeHash"> & {
+  codehash: Hex;
+  /** Shared contracts (linked libraries) that must be on the chain first. */
+  dependsOn?: string[];
+  /** Why the address isn't final yet. */
+  provisional?: string;
+};
+
 /**
  * The catalog's `SharedContract` for an addressed, deployed contract, once CG7 has written its creation code
- * to a file and made the `ShardRef`.
+ * to a file and made the `ShardRef`. `dependsOn` and `provisional` are carried through when present.
  */
-export function toSharedContract(
-  entry: Pick<SharedAddressing, "salt" | "version" | "address" | "initCodeHash"> & { codehash: Hex },
-  creationCode: ShardRef,
-): SharedContract {
-  return {
+export function toSharedContract(entry: SharedContractSource, creationCode: ShardRef): SharedContract {
+  const shared: SharedContract = {
     salt: entry.salt,
     version: entry.version,
     address: entry.address,
@@ -160,6 +166,31 @@ export function toSharedContract(
     initCodeHash: entry.initCodeHash,
     creationCode,
   };
+  if (entry.dependsOn !== undefined && entry.dependsOn.length > 0) shared.dependsOn = [...entry.dependsOn];
+  if (entry.provisional !== undefined) shared.provisional = entry.provisional;
+  return shared;
+}
+
+/** One `Catalog.libraries` item for a released library (PoseidonT3): its name and its `SharedContract`. */
+export function toLibraryItem(
+  entry: SharedContractSource & { name: string },
+  creationCode: ShardRef,
+): { name: string; release: SharedContract } {
+  return { name: entry.name, release: toSharedContract(entry, creationCode) };
+}
+
+/**
+ * The compiler a contract was built with, as its metadata records it: "0.8.36+commit.…" and the EVM version.
+ * Sourcify needs both beside the standard JSON. Lattice pins no `evm_version`, so the EVM version is Foundry's
+ * default for the solc in use, and a change there moves every address.
+ */
+export type Compiler = { version: string; evmVersion: string };
+
+/** The compiler from solc metadata; an error when the metadata doesn't name the EVM version. */
+export function compilerOf(metadata: SolcMetadata, name: string): Result<Compiler, string> {
+  const evmVersion = metadata.settings.evmVersion;
+  if (evmVersion === undefined || evmVersion === "") return err(`${name}: its metadata names no evmVersion.`);
+  return ok({ version: metadata.compiler.version, evmVersion });
 }
 
 /** Solidity standard JSON input (the fields Sourcify reads). */
