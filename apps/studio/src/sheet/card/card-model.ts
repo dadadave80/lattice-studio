@@ -321,6 +321,24 @@ export function describeCard(view: Pick<CardView, "connections">, selected: bool
   return view.connections ? `${view.connections} ${selection}` : selection;
 }
 
+/**
+ * The facets whose placement changes this card's words: what it needs, what needs it, and those dependents'
+ * other options (a dependent met by an earlier option isn't "needed by" here). The card reads `recipe.facets`
+ * filtered to these, so placing an unrelated facet doesn't re-render it.
+ */
+export function wordNeighbours(facet: Facet | undefined, facets: readonly Facet[]): Set<string> {
+  if (!facet) return new Set();
+  const out = new Set(facet.requires.flatMap((r) => r.anyOf));
+  for (const other of facets) {
+    for (const r of other.requires) {
+      if (!r.anyOf.includes(facet.name)) continue;
+      out.add(other.name);
+      for (const option of r.anyOf) out.add(option);
+    }
+  }
+  return out;
+}
+
 export type CardInputs = {
   facet: Facet;
   catalog: Catalog;

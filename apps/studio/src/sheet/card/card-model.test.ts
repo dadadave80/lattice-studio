@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { Analysis, Catalog, Hex4, Problem, Recipe } from "@lattice-studio/core";
 import { analyze, cardSize, contestedSelectors } from "@lattice-studio/core";
-import { loadFixtureCatalog, makeRecipe } from "@lattice-studio/core/testing";
+import { loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe } from "@lattice-studio/core/testing";
 import { layoutMetrics } from "@/contracts/layout-metrics";
 import {
-  cardAnalysis, cardView, describeCard, footerText, pinView, sameCardAnalysis, visibleRows, type CardView, type PinView,
+  cardAnalysis, cardView, describeCard, footerText, pinView, sameCardAnalysis, visibleRows, wordNeighbours, type CardView,
+  type PinView,
 } from "./card-model";
 
 const loaded = loadFixtureCatalog();
@@ -243,6 +244,24 @@ describe("accessible name and description (spec L745-L746)", () => {
     const recipe = recipeOf(["ERC4626", "VaultCore"]);
     expect(view("VaultCore", recipe).connections).toMatch(/^Needs ERC4626[;.]/);
     expect(view("ERC4626", recipe).connections).toMatch(/^Needed by VaultCore[;.]/);
+  });
+
+  test("'needed by' follows the first placed option, as the trace does", () => {
+    const a = makeFacet({ name: "A", selectors: ["a()"] });
+    const b = makeFacet({ name: "B", selectors: ["b()"] });
+    const x = makeFacet({ name: "X", selectors: ["x()"], requires: [{ anyOf: ["A", "B"], strength: "hard", reason: "r" }] });
+    const small = makeCatalog({ facets: [a, b, x] });
+    const words = (f: typeof a) => {
+      const recipe = makeRecipe({ facets: ["A", "B", "X"] }, small);
+      const placed = recipe.facets.filter((n) => wordNeighbours(f, small.facets).has(n));
+      return cardView({
+        facet: f, catalog: small, slice: cardAnalysis(analyze(recipe, small), f), excluded: new Set(), placed,
+        pins: "left", expanded: false, compact: false, metrics: layoutMetrics,
+      }).connections;
+    };
+    expect(words(a)).toMatch(/^Needed by X[;.]/);
+    expect(words(b)).not.toContain("Needed by");
+    expect(words(x)).toMatch(/^Needs A[;.]/);
   });
 
   test("a card with nothing to say states only the selection", () => {

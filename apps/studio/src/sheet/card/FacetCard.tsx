@@ -1,9 +1,9 @@
-import type { Facet, Hex4 } from "@lattice-studio/core";
+import type { Hex4 } from "@lattice-studio/core";
 import { layoutMetrics, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
 import { cx } from "@/ui";
 import { useStore, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import { memo, useEffect, useMemo } from "react";
-import { cardAnalysis, cardView, describeCard, sameCardAnalysis, type CardAnalysis } from "./card-model";
+import { cardAnalysis, cardView, describeCard, sameCardAnalysis, wordNeighbours, type CardAnalysis } from "./card-model";
 import { CardHandles } from "./CardHandles";
 import { CardMarks } from "./CardMarks";
 import styles from "./FacetCard.module.css";
@@ -14,14 +14,6 @@ import { PinRow } from "./PinRow";
 import { TickStrip } from "./TickStrip";
 
 const NO_SLICE: CardAnalysis = { routes: {}, problems: [], contested: [], key: "" };
-
-/** Facets whose placement changes this card's words: what it needs, and what needs it. */
-function neighbours(facet: Facet | undefined, facets: readonly Facet[]): Set<string> {
-  if (!facet) return new Set();
-  const out = new Set(facet.requires.flatMap((r) => r.anyOf));
-  for (const other of facets) if (other.requires.some((r) => r.anyOf.includes(facet.name))) out.add(other.name);
-  return out;
-}
 
 /**
  * A placed facet on the sheet (IR L103-L105, spec L745, L824-L825): header (name, source path, init badge,
@@ -37,7 +29,7 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
   const catalog = useCatalog();
   const facet = useMemo(() => catalog?.facets.find((f) => f.name === name), [catalog, name]);
   const own = useMemo(() => new Set<string>(facet?.selectors.map((s) => s.hex) ?? []), [facet]);
-  const near = useMemo(() => neighbours(facet, catalog?.facets ?? []), [facet, catalog]);
+  const near = useMemo(() => wordNeighbours(facet, catalog?.facets ?? []), [facet, catalog]);
 
   const pins = useDocument((s) => s.project.layout[name]?.pins ?? "left");
   const expanded = useDocument((s) => s.project.layout[name]?.expanded === true);
