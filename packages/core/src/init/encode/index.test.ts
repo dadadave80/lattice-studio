@@ -268,6 +268,10 @@ describe.skipIf(!fixture.ok)("decodeInit", () => {
         ],
       },
     });
+    // Text that spells a reference's address isn't a reference.
+    const named = encodeInit({ kind: "steps", steps: [stepView(spec("ERC20Init"), "steps[0]", 0, { name_: DIAMOND, symbol_: "D" })] }, catalog(), refs);
+    const namedBack = named.ok ? decodeInit(named.value.data, catalog(), refs) : named;
+    expect(namedBack.ok && namedBack.value.steps[0]?.fromRef).toEqual({});
     // Without refs nothing is marked.
     const bare = decodeInit(encoded.value.data, catalog());
     expect(bare.ok && bare.value.steps.map((s) => s.fromRef)).toEqual([{}, {}, {}]);

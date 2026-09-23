@@ -3,7 +3,7 @@
  * step's revert data raw, with no step index, so every MultiInit step keeps its target for C6 to attribute
  * a revert. A bundle's calldata carries no target: the diamond's `initialize` holds it.
  */
-import { decodeFunctionData, type AbiFunction } from "viem";
+import { type AbiFunction, type AbiParameter, decodeFunctionData } from "viem";
 import type { DecodeInitFn } from "../../model/api";
 import type { Catalog, InitSpec } from "../../model/catalog";
 import type { Refs } from "../../model/chain";
@@ -25,14 +25,21 @@ function matches(catalog: Catalog, selector: Hex, keep: (spec: InitSpec) => bool
   return found;
 }
 
-function markRefs(value: Arg, path: string, refs: Refs, out: Record<string, RefName>): void {
-  if (typeof value === "string") {
+/** Marks address arguments that equal a resolved reference; text that happens to spell the address isn't one. */
+function markRefs(param: AbiParameter, value: Arg, path: string, refs: Refs, out: Record<string, RefName>): void {
+  const array = /^(.*)\[\d*\]$/.exec(param.type);
+  if (array && Array.isArray(value)) {
+    const element = { ...param, type: array[1] ?? "" } as AbiParameter;
+    for (const [i, item] of value.entries()) markRefs(element, item, `${path}[${i}]`, refs, out);
+  } else if (param.type === "tuple" && "components" in param && typeof value === "object" && !Array.isArray(value)) {
+    for (const component of param.components) {
+      const name = component.name ?? "";
+      const item = (value as Record<string, Arg>)[name];
+      if (item !== undefined) markRefs(component, item, `${path}.${name}`, refs, out);
+    }
+  } else if (param.type === "address" && typeof value === "string") {
     if (refs.self !== undefined && sameAddress(value, refs.self)) out[path] = "self";
     else if (refs.deployer !== undefined && sameAddress(value, refs.deployer)) out[path] = "deployer";
-  } else if (Array.isArray(value)) {
-    for (const [i, item] of value.entries()) markRefs(item, `${path}[${i}]`, refs, out);
-  } else if (typeof value === "object" && value !== null) {
-    for (const [key, item] of Object.entries(value)) markRefs(item, `${path}.${key}`, refs, out);
   }
 }
 
@@ -53,7 +60,7 @@ function decodeCall(data: Hex, match: Match | undefined, refs: Refs, target?: Ad
     const name = param.name ?? String(i);
     const value = fromAbiValue(param, values[i]);
     args[name] = value;
-    markRefs(value, name, refs, fromRef);
+    markRefs(param, value, name, refs, fromRef);
   }
   return ok({ ...base, spec: match.spec.name, fn: match.spec.fn, args, fromRef });
 }
