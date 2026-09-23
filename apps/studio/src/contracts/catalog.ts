@@ -10,7 +10,7 @@
  * "Lattice" for the proxy.
  */
 import type { Catalog, CatalogManifest, FacetDetail, Hex, Result, ShardRef, SharedContract } from "@lattice-studio/core";
-import { findProtoKey, isHex, validateCatalog, validateFacetDetail } from "@lattice-studio/core";
+import { findProtoKey, isHex } from "@lattice-studio/core";
 import { useSyncExternalStore } from "react";
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
@@ -113,6 +113,7 @@ function minimalLoader(): CatalogLoader {
       return { ok: false, error: `${name}'s shard isn't valid JSON.` };
     }
     if (findProtoKey(json) !== null) return { ok: false, error: `${name}'s shard doesn't match the shard schema.` };
+    const { validateFacetDetail } = await import("@lattice-studio/core/schema");
     const parsed = validateFacetDetail(json);
     return parsed.ok ? parsed : { ok: false, error: `${name}'s shard doesn't match the shard schema.` };
   };
@@ -145,6 +146,7 @@ function minimalLoader(): CatalogLoader {
       fetch(url)
         .then(async (response) => {
           if (!response.ok) throw new Error(`${entry.id}/index.json answered ${response.status}.`);
+          const { validateCatalog } = await import("@lattice-studio/core/schema");
           const parsed = validateCatalog(await response.json());
           if (!parsed.ok) throw new Error(`${entry.id}/index.json doesn't match the catalog schema.`);
           setCatalogStatus({ status: "ready", id: entry.id, catalog: parsed.value, manifest: manifest.value });
