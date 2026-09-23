@@ -1,10 +1,11 @@
 import { Toast, type ToastManager } from "@base-ui/react/toast";
+import { useEffect } from "react";
 import { runCommand, useRegion } from "@/contracts";
 import { Button } from "../buttons/Button";
 import { IconButton } from "../buttons/IconButton";
 import { Icon } from "../icons/Icon";
 import { cx } from "../shared/cx";
-import type { ToastData } from "./toasts";
+import { attachRegion, type ToastData } from "./toasts";
 import styles from "./Toast.module.css";
 
 export type ToastRegionProps = {
@@ -54,6 +55,9 @@ export function ToastRegion({ manager }: ToastRegionProps) {
   // option to turn that off. The app's F6 cycling (S9) listens in the capture phase and stops propagation, so
   // Base UI's listener never sees an F6 the app handled.
   const { ref: regionRef, className: regionClassName, ...region } = useRegion("toasts");
+  // After the provider's own effect (a child's effects run first), so it already listens when the toasts
+  // behind `manager` re-deliver an error or release what waited.
+  useEffect(() => attachRegion(manager), [manager]);
   return (
     <Toast.Provider toastManager={manager} limit={1}>
       <Toast.Portal>

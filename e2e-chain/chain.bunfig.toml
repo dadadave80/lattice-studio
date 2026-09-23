@@ -1,2 +1,5 @@
 # Chain tests (WP-Q5). Run with `bun run test:chain`; the root bunfig keeps them out of `bun test`.
+# Each file starts its own local Anvil node (harness/node.ts) and stops it in afterAll. Hooks and tests that run
+# forge set their own, longer timeouts.
 [test]
+timeout = 120000

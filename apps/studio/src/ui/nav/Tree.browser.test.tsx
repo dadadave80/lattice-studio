@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { KEY_CONTEXT_ATTRIBUTE } from "@/contracts";
@@ -337,6 +337,77 @@ describe("Tree item menus", () => {
     await userEvent.keyboard("{Shift>}{F10}{/Shift}");
     expect(document.querySelector('[role="menu"]')).toBeNull();
     expect(focusedId()).toBe("pausable");
+  });
+
+  test("a disabled item with a menu: right click and Shift+F10 open it, and hover still shows the reason", async () => {
+    await renderWithStudio(<Harness expanded={["erc20"]} {...withMenu()} />);
+    const disabled = item("totalSupply()");
+    await disabled.click({ button: "right", force: true });
+    await expect.element(page.getByRole("menu", { name: "totalSupply() actions" })).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(menu()).not.toBeInTheDocument();
+    await expect.element(disabled).toHaveFocus();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    await expect.element(page.getByRole("menu", { name: "totalSupply() actions" })).toBeVisible();
+    await expect.element(page.getByRole("menuitem", { name: "Move to…" })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(disabled).toHaveFocus();
+    await expect.element(disabled).toHaveAccessibleDescription("Served by GovernedVault");
+    await page.getByRole("button", { name: "Before" }).click();
+    await disabled.hover();
+    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent).toBe("Served by GovernedVault");
+  });
+
+  /** A tree whose ERC20 item's menu the test turns on and off (a rerender, not a remount). */
+  function toggledMenu(initial: boolean) {
+    const control = { set: (_on: boolean) => {} };
+    function Toggled() {
+      const [on, setOn] = useState(initial);
+      useEffect(() => {
+        control.set = setOn;
+      }, []);
+      return (
+        <Harness
+          itemMenu={(node) => (on || node.id !== "erc20" ? <MenuItem label="Open source" onSelect={() => {}} /> : null)}
+          itemProps={() => ({ "data-menu-on": on })}
+        />
+      );
+    }
+    const turn = async (on: boolean) => {
+      control.set(on);
+      await expect.element(item("ERC20")).toHaveAttribute("data-menu-on", String(on));
+    };
+    return { Toggled, turn };
+  }
+
+  test("a focused item keeps its element and focus when its menu appears or goes", async () => {
+    const { Toggled, turn } = toggledMenu(false);
+    await renderWithStudio(<Toggled />);
+    await item("ERC20").click();
+    const before = item("ERC20").element();
+    await expect.element(item("ERC20")).toHaveFocus();
+    await turn(true);
+    expect(item("ERC20").element()).toBe(before);
+    await expect.element(item("ERC20")).toHaveFocus();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    await expect.element(page.getByRole("menu", { name: "ERC20 actions" })).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(item("ERC20")).toHaveFocus();
+    await turn(false);
+    expect(item("ERC20").element()).toBe(before);
+    await expect.element(item("ERC20")).toHaveFocus();
+  });
+
+  test("a menu whose item loses it while open closes, and doesn't reopen when the menu comes back", async () => {
+    const { Toggled, turn } = toggledMenu(true);
+    await renderWithStudio(<Toggled />);
+    await item("ERC20").click({ button: "right" });
+    await expect.element(page.getByRole("menu", { name: "ERC20 actions" })).toBeVisible();
+    await turn(false);
+    await expect.element(menu()).not.toBeInTheDocument();
+    await turn(true);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 
   test("virtualized rows keep their place with a menu", async () => {
