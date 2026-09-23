@@ -41,7 +41,8 @@ function pinAnchor(
  * The sheet's connections (spec L480, L823): one dependency trace per met requirement and one 2 px tie per pair
  * of contenders for each unresolved collision, never one edge per selector.
  *
- * - A dependency trace runs from the dependent's header to the first placed facet in the requirement's `anyOf`,
+ * - A dependency trace runs, for each hard requirement (a convention, DEP-02, draws none), from the dependent's
+ *   header to the first placed facet in the requirement's `anyOf`,
  *   leaving from the sides that face each other, labelled "needs ERC4626" at its longest segment's midpoint.
  * - A tie runs between the contested selector's pin rows, on each card's pin side, one lane per selector so a
  *   pair's ties don't coincide. Three or more contenders are chained in catalog order (A–B, B–C).
@@ -61,6 +62,7 @@ export const routeTraces: RouteTracesFn = ({ layout, sizes, recipe, catalog, ana
     const from = rectOf(layout, sizes, name, metrics);
     if (!facet || !from || !onSheet(name)) continue;
     facet.requires.forEach((requirement, lane) => {
+      if (requirement.strength !== "hard") return;
       const provider = requirement.anyOf.find((option) => option !== name && onSheet(option));
       const to = provider === undefined ? null : rectOf(layout, sizes, provider, metrics);
       if (provider === undefined || !to) return;

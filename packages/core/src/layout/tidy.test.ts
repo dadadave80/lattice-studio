@@ -5,7 +5,7 @@ import type { Analysis } from "../model/analysis";
 import type { Catalog } from "../model/catalog";
 import type { Layout, LayoutMetrics, Sizes } from "../model/layout";
 import type { Project } from "../model/project";
-import { makeCatalog, makeProject, makeRecipe } from "../testing/builders";
+import { makeCatalog, makeFacet, makeProject, makeRecipe } from "../testing/builders";
 import { sel } from "../testing/ids";
 import { collisions, contestedByFacet } from "./rows";
 import { cardSize } from "./size";
@@ -85,6 +85,21 @@ describe("tidy", () => {
   test("an empty sheet stays empty", () => {
     const project = projectOn(catalog, []);
     expect(tidy(project, catalog, analysisWith(), metrics)).toBe(project.layout);
+  });
+
+  test("a convention (DEP-02) doesn't make a provider: only hard requirements set bands", () => {
+    const c = makeCatalog({
+      facets: [
+        makeFacet({ name: "Cut", selectors: ["cut()"], requires: [{ anyOf: ["Stop"], strength: "convention", reason: "usually ships with" }] }),
+        makeFacet({ name: "Vault", selectors: ["vault()"], requires: [{ anyOf: ["Stop"], strength: "hard", reason: "needs" }] }),
+        facetWith("Stop", 2, 10),
+      ],
+    });
+    const out = tidy(projectOn(c, ["Cut", "Vault", "Stop"]), c, analysisWith(), metrics);
+    // Cut and Stop share band 0 (catalog order); Vault, a hard dependent, is band 1.
+    expect(out["Cut"]).toMatchObject({ x: 96, y: 96 });
+    expect(out["Stop"]?.x).toBe(96);
+    expect(out["Vault"]).toMatchObject({ x: 96 + 304, y: 96 });
   });
 
   test("a dependency cycle still tidies, deterministically", () => {

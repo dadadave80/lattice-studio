@@ -41,8 +41,8 @@ export function contestedByFacet(list: readonly Collision[]): Map<string, Hex4[]
 }
 
 /**
- * Padding above and below a card's pin rows: one grid step each, as the board draws it (`PINS_PAD 8`,
- * Composer-Final). `LayoutMetrics` has no length for it yet, so it borrows `grid` (see C9's CCR).
+ * Padding above and below a card's pin rows: `metrics.grid` by design, one grid step each, as the board draws
+ * it (`PINS_PAD 8`, Composer-Final).
  */
 export function pinsPad(metrics: LayoutMetrics): number {
   return metrics.grid;

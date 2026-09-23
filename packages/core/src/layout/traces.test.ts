@@ -4,7 +4,7 @@ import { layoutSizes } from "../../../tokens/dist/tokens";
 import type { Analysis } from "../model/analysis";
 import type { Catalog } from "../model/catalog";
 import type { Layout, LayoutMetrics, Point, Rect, Sizes, Trace } from "../model/layout";
-import { makeCatalog, makeProject, makeRecipe } from "../testing/builders";
+import { makeCatalog, makeFacet, makeProject, makeRecipe } from "../testing/builders";
 import { sel } from "../testing/ids";
 import { clearOf } from "./geometry";
 import { collisions, contestedByFacet } from "./rows";
@@ -58,6 +58,25 @@ describe("dependency traces", () => {
       mid: { x: 364, y: 120 },
       label: "needs Prov",
     });
+  });
+
+  test("a convention (DEP-02) draws no trace; only hard requirements do", () => {
+    const c = makeCatalog({
+      facets: [
+        makeFacet({
+          name: "Cut",
+          selectors: ["cut()"],
+          requires: [
+            { anyOf: ["Stop"], strength: "convention", reason: "usually ships with" },
+            { anyOf: ["Core"], strength: "hard", reason: "needs" },
+          ],
+        }),
+        facetWith("Stop", 2, 10),
+        facetWith("Core", 2, 20),
+      ],
+    });
+    const layout: Layout = { Stop: { x: 96, y: 96, pins: "right" }, Core: { x: 96, y: 400, pins: "right" }, Cut: { x: 400, y: 96, pins: "right" } };
+    expect(route(c, layout).map((t) => t.id)).toEqual(["needs:Cut:Core"]);
   });
 
   test("falls back to the next placed option; none placed, no trace", () => {

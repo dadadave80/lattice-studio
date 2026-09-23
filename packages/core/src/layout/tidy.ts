@@ -32,7 +32,7 @@ function catalogOrder(catalog: Catalog): (a: string, b: string) => number {
 
 /**
  * Each card's band: 0 with no placed provider, else one more than its deepest placed provider (every placed
- * option of every `requires` entry counts as a provider). A dependency cycle is cut where the walk re-enters it.
+ * option of every hard `requires` entry counts as a provider; conventions don't). A dependency cycle is cut where the walk re-enters it.
  */
 function bands(names: readonly string[], facets: ReadonlyMap<string, Facet>): Map<string, number> {
   const inSet = new Set(names);
@@ -45,6 +45,7 @@ function bands(names: readonly string[], facets: ReadonlyMap<string, Facet>): Ma
     visiting.add(name);
     let d = 0;
     for (const r of facets.get(name)?.requires ?? []) {
+      if (r.strength !== "hard") continue;
       for (const provider of r.anyOf) {
         if (provider === name || !inSet.has(provider)) continue;
         d = Math.max(d, depth(provider) + 1);
