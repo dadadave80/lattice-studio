@@ -1,0 +1,52 @@
+.gallery {
+  min-block-size: 100%;
+  padding: var(--lx-space-8);
+  background: var(--lx-ground);
+  color: var(--lx-text);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-12);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-4);
+}
+
+.title {
+  font: var(--lx-font-title);
+  letter-spacing: var(--lx-tracking-title);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-6);
+  padding-block-start: var(--lx-space-6);
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.sectionTitle {
+  font: var(--lx-font-heading);
+  letter-spacing: var(--lx-tracking-heading);
+}
+
+.specimen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+}
+
+.specimenLabel {
+  composes: label from "../shared/controls.module.css";
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lx-space-4);
+}

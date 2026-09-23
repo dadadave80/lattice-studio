@@ -1,0 +1,128 @@
+/*
+ * Shared control styles. Compose them from a primitive's own module:
+ *   .field { composes: control from "../shared/controls.module.css"; }
+ * Tokens only (contracts §5.4): colors, type, space and strokes are var(--lx-*); lengths are tokens or
+ * calc() over tokens. Square corners, lines instead of shadows (design-system-rules.md).
+ * Focus rings come from global.css (:focus-visible, 2 px border-focus, offset 2 px); never remove them.
+ */
+
+/* Every pointer target is at least 24 x 24 CSS px (spec L770, WCAG 2.5.8). */
+.target {
+  min-inline-size: var(--lx-space-6);
+  min-block-size: var(--lx-space-6);
+}
+
+/* Something a person types in or picks from: outlined in `border` at `stroke-hair`, on the well. */
+.control {
+  composes: target;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  min-block-size: var(--lx-space-8);
+  padding-block: 0;
+  padding-inline: var(--lx-space-3);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  border-radius: var(--lx-radius);
+  background: var(--lx-ground-well);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.control:hover:not([aria-disabled="true"], [data-disabled]) {
+  border-color: var(--lx-border-strong);
+}
+
+.control[aria-invalid="true"],
+.control[data-invalid] {
+  border-color: var(--lx-accent);
+  border-width: var(--lx-stroke-heavy);
+}
+
+.control[aria-disabled="true"],
+.control[data-disabled] {
+  color: var(--lx-text-faint);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+/* Machine-produced values (addresses, hashes, amounts) are JetBrains Mono. */
+.mono {
+  font: var(--lx-font-code);
+  letter-spacing: var(--lx-tracking-code);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* The small-caps `label` style: eyebrows, column heads and field labels, never a sentence. */
+.label {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+/* Help under a field. */
+.description {
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text-muted);
+}
+
+/* What's wrong with a field: a word or icon beside it, never color alone. */
+.error {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lx-space-1);
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text);
+}
+
+/* A floating surface (menu, popover, tooltip, select list, dialog): raised, outlined, no shadow. */
+.surface {
+  background: var(--lx-raised);
+  color: var(--lx-text);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  border-radius: var(--lx-radius);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+/* A row in a menu or list: 28 px tall, highlighted rows take the accent edge. */
+.item {
+  composes: target;
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-3);
+  min-block-size: calc(var(--lx-space-6) + var(--lx-space-1));
+  padding-block: 0;
+  padding-inline: var(--lx-space-3);
+  border-inline-start: var(--lx-stroke-heavy) solid transparent;
+  color: var(--lx-text);
+  cursor: default;
+  user-select: none;
+  outline: none;
+}
+
+.item[data-highlighted] {
+  background: var(--lx-accent-soft);
+  border-inline-start-color: var(--lx-accent);
+}
+
+.item[aria-disabled="true"],
+.item[data-disabled] {
+  color: var(--lx-text-faint);
+}
+
+@media (forced-colors: active) {
+  .control[aria-disabled="true"],
+  .control[data-disabled],
+  .item[aria-disabled="true"],
+  .item[data-disabled] {
+    color: GrayText;
+  }
+
+  .item[data-highlighted] {
+    background: Highlight;
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+}

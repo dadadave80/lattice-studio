@@ -1,0 +1,37 @@
+.icon {
+  flex: none;
+  inline-size: var(--lx-space-4);
+  block-size: var(--lx-space-4);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.small {
+  inline-size: var(--lx-space-3);
+  block-size: var(--lx-space-3);
+}
+
+.large {
+  inline-size: var(--lx-space-6);
+  block-size: var(--lx-space-6);
+}
+
+@media (prefers-contrast: more) {
+  .icon {
+    stroke-width: 2;
+  }
+}
+
+@media (forced-colors: active) {
+  .icon {
+    stroke: CanvasText;
+  }
+
+  /* Inside a highlighted or pressed control the icon follows the control's forced ink. */
+  :where([data-highlighted], [aria-pressed="true"], [aria-current]) > .icon {
+    stroke: currentColor;
+  }
+}
