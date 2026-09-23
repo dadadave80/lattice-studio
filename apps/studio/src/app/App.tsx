@@ -24,8 +24,9 @@ const ToastRegion = lazyNamed(() => import("@/ui/overlays/ToastRegion"), "ToastR
 
 /**
  * The app: "Skip to sheet" first in Tab order (spec L743), the shell, then what floats over it: the dialog
- * stack, the toast region with its manager from the first render, and the palette, tour and banner host
- * (each renders nothing until it has something to show). The router applies the location's route.
+ * stack and the toast region (each in its own chunk; the toast manager exists from the first render), and the
+ * palette, tour and banner host (each renders nothing until it has something to show). The router applies the
+ * location's route.
  */
 export function App() {
   const route = useRoute();
