@@ -5,6 +5,7 @@
 import type { Catalog, ExportFile, Hex4, Project } from "@lattice-studio/core";
 import { blankDiamond, loadTemplate } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
+import { vi } from "vitest";
 import { command, type Command } from "@/contracts";
 import { fixtureCatalog, onCleanup, overrideCommands } from "../../../test/harness";
 import { clearCommandHistory } from "./command-line";
@@ -44,6 +45,20 @@ export function captureDownloads(): ExportFile[] {
   const files: ExportFile[] = [];
   onCleanup(setDownloader((file) => void files.push(file)));
   return files;
+}
+
+/**
+ * Waits for the drawer's body (its own chunk, which the open drawer requests once it has painted) to render: on
+ * a cold Vite cache the first request compiles the chunk, which can take seconds. It doesn't request the chunk
+ * itself, so a test that awaits it proves the drawer did.
+ */
+export async function awaitConsoleBody(): Promise<void> {
+  await vi.waitFor(
+    () => {
+      if (!document.querySelector("[role='log'][aria-label='Log']")) throw new Error("The console body hasn't rendered.");
+    },
+    { timeout: 10_000 },
+  );
 }
 
 /** An empty log and history before each test. */

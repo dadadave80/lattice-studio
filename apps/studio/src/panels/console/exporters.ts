@@ -1,42 +1,36 @@
 /**
- * The exporters' lazy boundary (spec L822): each exporter is its own chunk, loaded on first use. Everything in
- * the entry chunk reaches an exporter only through `loadExporter`. `loadedExporters()` says which have loaded,
- * so tests can prove none loads before it's used.
+ * The exporters' lazy boundary (spec L822): the exporters are one chunk (`exporters/index.ts`), loaded on the
+ * first export. Everything else reaches an exporter only through `loadExporter`. `loadedExporters()` says which
+ * exporters have been asked for, so tests can prove none loads before it's used.
  */
-type Loaders = {
-  foundry: () => Promise<typeof import("./exporters/foundry")>;
-  brief: () => Promise<typeof import("./exporters/brief")>;
-  recipe: () => Promise<typeof import("./exporters/recipe-json")>;
-  safe: () => Promise<typeof import("./exporters/safe")>;
+type Exporters = typeof import("./exporters/index");
+
+const PICK = {
+  foundry: (m: Exporters) => ({ foundryScript: m.foundryScript }),
+  brief: (m: Exporters) => ({ agentBrief: m.agentBrief }),
+  recipe: (m: Exporters) => ({ recipeJson: m.recipeJson }),
+  safe: (m: Exporters) => ({ safeBatch: m.safeBatch }),
 };
 
-export type ExporterKind = keyof Loaders;
+export type ExporterKind = keyof typeof PICK;
 
-type Module<K extends ExporterKind> = Awaited<ReturnType<Loaders[K]>>;
-
-const LOADERS: Loaders = {
-  foundry: () => import("./exporters/foundry"),
-  brief: () => import("./exporters/brief"),
-  recipe: () => import("./exporters/recipe-json"),
-  safe: () => import("./exporters/safe"),
-};
+type Module<K extends ExporterKind> = ReturnType<(typeof PICK)[K]>;
 
 const loaded = new Set<ExporterKind>();
 
 export function loadExporter<K extends ExporterKind>(kind: K): Promise<Module<K>> {
-  const load = LOADERS[kind] as () => Promise<Module<K>>;
-  return load().then((module) => {
+  return import("./exporters/index").then((module) => {
     loaded.add(kind);
-    return module;
+    return PICK[kind](module) as Module<K>;
   });
 }
 
-/** The exporters loaded so far, in the order they first loaded. */
+/** The exporters asked for so far, in the order they were first asked for. */
 export function loadedExporters(): ExporterKind[] {
   return [...loaded];
 }
 
-/** @internal Tests: forget which exporters loaded (the modules stay cached by the browser). */
+/** @internal Tests: forget which exporters were asked for (the chunk stays cached by the browser). */
 export function resetLoadedExporters(): void {
   loaded.clear();
 }
