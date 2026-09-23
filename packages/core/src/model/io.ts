@@ -1,4 +1,4 @@
-import type { Analysis } from "./analysis";
+import type { Analysis, AnalysisContext } from "./analysis";
 import type { Catalog } from "./catalog";
 import type { ChainState, DeployPath, Scope } from "./chain";
 import type { Address, Hex } from "./hex";
@@ -75,6 +75,13 @@ export type SafeBatchArgs = {
   scope: Scope;
   path: DeployPath;
   now: number;
+  /** Heads the batch's description like every export (spec L508); CCR from C7c. */
+  studioVersion: string;
+  /**
+   * The project's addresses and argument sources that AUTH-02 and LINK-01 need, so the export gate refuses
+   * every blocker (spec L517, L565); CCR from C7c. Without it those two checks can't fire here.
+   */
+  context?: Pick<AnalysisContext, "known" | "unconfirmed" | "knownFrom" | "unconfirmedFrom">;
   /** Registry records for whole-facet `RecipeEntry` cuts. */
   chain?: ChainState;
   /**
