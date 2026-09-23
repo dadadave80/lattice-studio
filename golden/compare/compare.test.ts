@@ -1,12 +1,11 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { err } from "@lattice-studio/core";
-import { loadFixtureCatalog } from "@lattice-studio/core/testing";
+import { dirname, join } from "node:path";
+import { analyze, planInit, type Catalog, type PlanEntry } from "@lattice-studio/core";
 import { serialize, type RoutingFile } from "../lib/report.ts";
-import { type StudioSide, diffStudio, studioSide } from "./compare.ts";
-import { loadGolden } from "./load.ts";
+import { type StudioSide, diffStudio, sideOf, studioSide } from "./compare.ts";
+import { type GoldenCase, type GoldenSetup, REPO_ROOT, loadGolden, readCatalog } from "./load.ts";
 
 const expected: RoutingFile = {
   recipe: "ERC20",
@@ -113,38 +112,90 @@ describe("diffStudio", () => {
   });
 });
 
-const fixture = loadFixtureCatalog();
+const FIXTURES = join(REPO_ROOT, "fixtures", "catalog");
+const fixture = readCatalog(FIXTURES);
+const fixtureCatalog = fixture.state === "ok" ? fixture.catalog : undefined;
+const noFixture = fixtureCatalog === undefined;
 const dirs: string[] = [];
 function tempDir(files: Record<string, string>): string {
   const dir = mkdtempSync(join(tmpdir(), "gt1b-"));
   dirs.push(dir);
-  for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, name), text);
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(dir, name)), { recursive: true });
+    writeFileSync(join(dir, name), text);
+  }
   return dir;
 }
 afterAll(() => {
   for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
 });
 
-describe("loadGolden", () => {
-  test("skips, saying why, when the catalog isn't built", () => {
-    const setup = loadGolden(err("catalog/manifest.json doesn't exist yet"));
-    expect(setup).toEqual({ ready: false, skip: "the real catalog isn't built (catalog/manifest.json doesn't exist yet). Run bun run catalog." });
+function ready(setup: GoldenSetup): Extract<GoldenSetup, { ready: true }> {
+  if (!setup.ready) throw new Error("error" in setup ? setup.error : setup.skip);
+  return setup;
+}
+
+/** A copy of the fixture catalog folder whose default index is replaced by `index`. */
+function catalogCopy(index: string): string {
+  const manifest = readFileSync(join(FIXTURES, "manifest.json"), "utf8");
+  return tempDir({ "manifest.json": manifest, "fixture/index.json": index });
+}
+
+describe("readCatalog", () => {
+  test("a folder without manifest.json is missing, not broken", () => {
+    const state = readCatalog(tempDir({}));
+    expect(state.state).toBe("missing");
+    if (state.state === "missing") expect(state.reason).toMatch(/manifest\.json doesn't exist\. Run bun run catalog\.$/);
   });
 
-  test.skipIf(!fixture.ok)("skips, saying why, when there are no expected files", () => {
+  test("a corrupted index is broken", () => {
+    const state = readCatalog(catalogCopy("{ corrupted"));
+    expect(state.state).toBe("broken");
+    if (state.state === "broken") expect(state.error).toMatch(/fixture\/index\.json isn't valid JSON/);
+  });
+
+  test("an index that isn't a catalog is broken", () => {
+    const state = readCatalog(catalogCopy("{}"));
+    expect(state.state).toBe("broken");
+  });
+
+  test("a manifest without its default index is broken", () => {
+    const state = readCatalog(tempDir({ "manifest.json": readFileSync(join(FIXTURES, "manifest.json"), "utf8") }));
+    expect(state.state).toBe("broken");
+    if (state.state === "broken") expect(state.error).toMatch(/fixture\/index\.json doesn't exist, though .*manifest\.json names it/);
+  });
+
+  test.skipIf(noFixture)("an intact catalog loads", () => {
+    expect(fixture.state).toBe("ok");
+  });
+});
+
+describe("loadGolden", () => {
+  test("skips, saying why, only when the catalog isn't built", () => {
+    const setup = loadGolden({ state: "missing", reason: "catalog/manifest.json doesn't exist. Run bun run catalog." });
+    expect(setup).toEqual({ ready: false, skip: "the real catalog isn't built: catalog/manifest.json doesn't exist. Run bun run catalog." });
+  });
+
+  test("a broken catalog is an error, not a skip", () => {
+    const setup = loadGolden(readCatalog(catalogCopy("{ corrupted")));
+    expect(setup.ready).toBe(false);
+    expect("error" in setup && setup.error).toMatch(/^the real catalog doesn't load: .*isn't valid JSON/);
+    expect("skip" in setup).toBe(false);
+  });
+
+  test.skipIf(noFixture)("skips, saying why, when there are no expected files", () => {
     const setup = loadGolden(fixture, tempDir({}));
     expect(setup.ready).toBe(false);
-    if (!setup.ready) expect(setup.skip).toContain("has no *.routing.json files. Run bun run golden --update to record them.");
+    expect("skip" in setup && setup.skip).toContain("has no *.routing.json files. Run bun run golden --update to record them.");
   });
 
-  test.skipIf(!fixture.ok)("fails a v1 recipe without an expected file, a file without a v1 recipe and an unreadable file", () => {
+  test.skipIf(noFixture)("fails a v1 recipe without an expected file, a file without a v1 recipe and an unreadable file", () => {
     const dir = tempDir({
       "ERC20.routing.json": serialize(expected),
       "GovernedVault.routing.json": "{ not json",
       "Account.routing.json": serialize({ ...expected, recipe: "Account" }),
     });
-    const setup = loadGolden(fixture, dir);
-    if (!setup.ready) throw new Error(setup.skip);
+    const setup = ready(loadGolden(fixture, dir));
     expect(setup.cases.map((c) => c.name)).toEqual(["ERC20"]);
     expect(setup.problems).toHaveLength(3);
     expect(setup.problems[0]).toMatch(/GovernedVault\.routing\.json isn't valid JSON/);
@@ -152,27 +203,70 @@ describe("loadGolden", () => {
     expect(setup.problems[2]).toMatch(/Account\.routing\.json names Account, which isn't a v1 recipe in catalog fixture\./);
   });
 
-  test.skipIf(!fixture.ok)("loads each template the way the app does, with the live catalog hash", () => {
-    if (!fixture.ok) return;
-    const setup = loadGolden(fixture, tempDir({ "ERC20.routing.json": serialize(expected) }));
-    if (!setup.ready) throw new Error(setup.skip);
+  test.skipIf(noFixture)("loads each template the way the app does, with the live catalog hash", () => {
+    const setup = ready(loadGolden(fixture, tempDir({ "ERC20.routing.json": serialize(expected) })));
     const erc20 = setup.cases[0];
-    expect(erc20?.recipe.catalog.hash).toBe(fixture.value.hash);
+    expect(erc20?.recipe.catalog.hash).toBe(setup.catalog.hash);
     expect(erc20?.template.script).toBe(erc20?.expected.script ?? "");
   });
 });
 
-describe.skipIf(!fixture.ok)("studioSide on the fixture catalog", () => {
-  test("reads routing, signatures and the init calls off analyze and planInit", () => {
-    if (!fixture.ok) return;
-    const setup = loadGolden(fixture, tempDir({ "ERC20.routing.json": serialize(expected) }));
-    if (!setup.ready) throw new Error(setup.skip);
+describe("run.ts", () => {
+  test("exits 1, saying why, on a catalog that's there but corrupted", () => {
+    const run = Bun.spawnSync(["bun", join(import.meta.dir, "run.ts")], {
+      env: { ...process.env, STUDIO_GOLDEN_CATALOG: catalogCopy("{ corrupted") },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(run.exitCode).toBe(1);
+    expect(run.stderr.toString()).toMatch(/Studio's plan couldn't be compared: the real catalog doesn't load: .*isn't valid JSON/);
+  });
+
+  test("exits 0, saying why, when there's no catalog to compare", () => {
+    const run = Bun.spawnSync(["bun", join(import.meta.dir, "run.ts")], {
+      env: { ...process.env, STUDIO_GOLDEN_CATALOG: tempDir({}) },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(run.exitCode).toBe(0);
+    expect(run.stdout.toString()).toMatch(/Studio's plan wasn't compared: the real catalog isn't built/);
+  });
+});
+
+describe.skipIf(noFixture)("studioSide on the fixture catalog", () => {
+  function erc20Case(): { c: GoldenCase; catalog: Catalog } {
+    const setup = ready(loadGolden(fixture, tempDir({ "ERC20.routing.json": serialize(expected) })));
     const c = setup.cases[0];
     if (c === undefined) throw new Error("no ERC20 case");
-    const side = studioSide(c.template, c.recipe, fixture.value);
+    return { c, catalog: setup.catalog };
+  }
+
+  test("reads routing, signatures and the init calls off analyze and planInit", () => {
+    const { c, catalog } = erc20Case();
+    const side = studioSide(c.template, c.recipe, catalog);
     expect(side.inconsistencies).toEqual([]);
     expect(side.routing["0xa9059cbb"]).toBe("ERC20");
     expect(side.signatures["0xa9059cbb"]).toBe("transfer(address,uint256)");
     expect(side.init.steps.map((s) => s.init)).toEqual(["ERC20Init", "DiamondIntrospectionInit"]);
+  });
+
+  test("a cut plan that adds a facet twice, or one selector in two entries, is inconsistent", () => {
+    const { c, catalog } = erc20Case();
+    const analysis = structuredClone(analyze(c.recipe, catalog));
+    const erc20 = analysis.plan.find((entry) => entry.facet === "ERC20");
+    const loupe = analysis.plan.find((entry) => entry.facet === "DiamondLoupeFacet");
+    if (erc20 === undefined || loupe === undefined) throw new Error("the fixture ERC20 plan lacks ERC20 or the loupe");
+    const plan: PlanEntry[] = [
+      ...analysis.plan,
+      { ...erc20, selectors: [] },
+      { ...loupe, facet: "Receive", selectors: ["0xa9059cbb"] },
+    ];
+    const side = sideOf(c.template, { ...analysis, plan }, planInit(c.recipe, catalog), catalog);
+    expect(side.inconsistencies).toEqual([
+      "the cut plan adds ERC20 more than once",
+      "the cut plan adds Receive more than once",
+      "0xa9059cbb: the cut plan adds it twice (ERC20, then Receive)",
+    ]);
+    expect(diffStudio(expected, side)).toContain("Studio: the cut plan adds ERC20 more than once");
   });
 });

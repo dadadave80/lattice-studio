@@ -2,7 +2,7 @@
 // diamond receives for a recipe, and a readable per-selector diff against golden/expected/<Recipe>.routing.json,
 // which records what Lattice's own deploy script builds. Pure: the caller loads the catalog and the files.
 
-import { analyze, planInit, type Catalog, type Recipe, type RecipeTemplate } from "@lattice-studio/core";
+import { analyze, planInit, type Analysis, type Catalog, type InitPlan, type Recipe, type RecipeTemplate } from "@lattice-studio/core";
 import type { InitKind, RoutingFile } from "../lib/report.ts";
 
 /** What Studio plans for one recipe, in the expected file's terms. */
@@ -25,7 +25,11 @@ const NOT_ROUTED = "(not routed)";
 
 /** Runs `analyze` and C4a's `planInit` on a recipe and reads off the routing, the cut plan and the init calls. */
 export function studioSide(template: RecipeTemplate, recipe: Recipe, catalog: Catalog): StudioSide {
-  const analysis = analyze(recipe, catalog);
+  return sideOf(template, analyze(recipe, catalog), planInit(recipe, catalog), catalog);
+}
+
+/** `studioSide` from an analysis and an init plan already in hand (tests pass synthetic ones). */
+export function sideOf(template: RecipeTemplate, analysis: Analysis, plan: InitPlan, catalog: Catalog): StudioSide {
   const inconsistencies: string[] = [];
   const signatureOf = new Map<string, string>();
   for (const facet of catalog.facets) {
@@ -43,16 +47,29 @@ export function studioSide(template: RecipeTemplate, recipe: Recipe, catalog: Ca
     else signatures[key] = signature;
   }
 
-  // The cut plan is what the diamond receives: it must route exactly what the analysis routes.
+  // The cut plan is what the diamond receives: one Add per facet, each selector in one Add, routing exactly
+  // what the analysis routes.
   const planned = new Map<string, string>();
-  for (const entry of analysis.plan) for (const s of entry.selectors) planned.set(s.toLowerCase(), entry.facet);
+  const facetsSeen = new Set<string>();
+  for (const entry of analysis.plan) {
+    if (facetsSeen.has(entry.facet)) inconsistencies.push(`the cut plan adds ${entry.facet} more than once`);
+    facetsSeen.add(entry.facet);
+    for (const s of entry.selectors) {
+      const key = s.toLowerCase();
+      const earlier = planned.get(key);
+      if (earlier !== undefined) {
+        inconsistencies.push(`${key}: the cut plan adds it twice (${earlier}, then ${entry.facet})`);
+        continue;
+      }
+      planned.set(key, entry.facet);
+    }
+  }
   for (const selector of union(Object.keys(routing), [...planned.keys()])) {
     const routed = routing[selector] ?? NOT_ROUTED;
     const cut = planned.get(selector) ?? NOT_ROUTED;
     if (routed !== cut) inconsistencies.push(`${selector}: the analysis routes it to ${routed}, the cut plan to ${cut}`);
   }
 
-  const plan = planInit(recipe, catalog);
   const steps = plan.steps.map((step) => ({ init: step.contract, signature: step.fn }));
   const multiInit = catalog.inits.find((spec) => spec.name === "MultiInit")?.release?.address;
   const target = analysis.init?.target;

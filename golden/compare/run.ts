@@ -2,11 +2,11 @@
 // `bun run golden` runs this after the routing check: Studio's plan for each v1 recipe against
 // golden/expected/<Recipe>.routing.json. The same comparison runs under `bun test` (golden/compare.test.ts).
 // `--update` changes nothing here: the expected files record Lattice's side, and Studio's side is never recorded.
-// Exit codes: 0 all match or nothing to compare (skipped, with the reason), 1 drift, 2 bad arguments.
+// Exit codes: 0 all match or nothing to compare (no catalog/manifest.json or no expected files: skipped, with the
+// reason), 1 drift or a catalog that's there but doesn't load, 2 bad arguments.
 
-import { loadBuiltCatalog } from "@lattice-studio/core/testing";
 import { diffStudio, studioSide } from "./compare.ts";
-import { loadGolden } from "./load.ts";
+import { loadGolden, readCatalog } from "./load.ts";
 
 const unknown = process.argv.slice(2).filter((a) => a !== "--update");
 if (unknown.length > 0) {
@@ -14,8 +14,14 @@ if (unknown.length > 0) {
   process.exit(2);
 }
 
-const setup = loadGolden(loadBuiltCatalog());
+// STUDIO_GOLDEN_CATALOG points at another catalog folder (the tests use a broken copy); the default is catalog/.
+const catalogDir = process.env["STUDIO_GOLDEN_CATALOG"];
+const setup = loadGolden(catalogDir === undefined || catalogDir === "" ? readCatalog() : readCatalog(catalogDir));
 if (!setup.ready) {
+  if ("error" in setup) {
+    console.error(`golden: Studio's plan couldn't be compared: ${setup.error}`);
+    process.exit(1);
+  }
   console.log(`golden: Studio's plan wasn't compared: ${setup.skip}`);
   process.exit(0);
 }
