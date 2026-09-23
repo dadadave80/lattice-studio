@@ -3,7 +3,13 @@ import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { renderWithStudio } from "../../../test/harness";
 import { Button } from "../buttons/Button";
+import { Checkbox } from "../fields/Checkbox";
+import { Select } from "../fields/Select";
+import { Switch } from "../fields/Switch";
+import { ToggleButton } from "../fields/ToggleButton";
 import { Tabs } from "../nav/Tabs";
+import { Toolbar } from "../nav/Toolbar";
+import { ToolbarButton } from "../nav/ToolbarButton";
 import { Tree } from "../nav/Tree";
 import { Menu } from "../overlays/Menu";
 import { MenuItem } from "../overlays/MenuItem";
@@ -101,6 +107,32 @@ describe("a reason coming or going keeps the control and its focus", () => {
     await userEvent.tab();
     await new Promise((resolve) => setTimeout(resolve, 700));
     expect(document.querySelector("[data-tooltip]")).toBeNull();
+  });
+
+  test("fields and toolbar buttons", async () => {
+    const { Flipped, set } = flippable((reason) => (
+      <>
+        <Checkbox label="Keep immutable" disabledReason={reason} />
+        <Switch label="Single-key shortcuts" disabledReason={reason} />
+        <ToggleButton icon="undo" label="Show pins" disabledReason={reason} />
+        <Select label="Network" options={[{ value: "anvil", label: "Anvil" }]} defaultValue="anvil" disabledReason={reason} />
+        <Toolbar label="Sheet tools">
+          <ToolbarButton icon="undo" label="Tidy layout" disabledReason={reason} />
+        </Toolbar>
+      </>
+    ));
+    await renderWithStudio(<Flipped />);
+    const controls = [
+      () => page.getByRole("checkbox", { name: "Keep immutable" }),
+      () => page.getByRole("switch", { name: "Single-key shortcuts" }),
+      () => page.getByRole("button", { name: "Show pins" }),
+      () => page.getByRole("combobox", { name: "Network" }),
+      () => page.getByRole("button", { name: "Tidy layout" }),
+    ];
+    for (const control of controls) {
+      (control().element() as HTMLElement).focus();
+      await expectFocusKept(control, set);
+    }
   });
 
   test("a menu's trigger button, which opens the menu again once enabled", async () => {
