@@ -1,0 +1,20 @@
+/* The deploy's progress (Flow 12 steps 5-9): one status line over its details and actions. Tokens only. */
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  padding: var(--lx-space-3);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+}
+
+.status {
+  display: block;
+  margin: 0;
+  font: var(--lx-font-subheading);
+  letter-spacing: var(--lx-tracking-subheading);
+  color: var(--lx-text);
+}
+
+.timer {
+  font-variant-numeric: tabular-nums;
+}
