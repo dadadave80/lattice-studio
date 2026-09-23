@@ -244,12 +244,22 @@ describe("Catalog availability filter", () => {
     window.dispatchEvent(new Event("online"));
   });
 
-  test("no chain selected: disabled, so the toggle is never a silent no-op", async () => {
+  test("no chain selected: disabled with S8a's one-label reason, so the toggle is never a silent no-op", async () => {
     await renderWithStudio(<CatalogPanel />);
     await expect.element(page.getByRole("checkbox")).toHaveAttribute("aria-disabled", "true");
+    await expect.element(page.getByRole("checkbox")).toHaveAccessibleDescription("Choose a chain first.");
   });
 
-  test("a probed chain: an unavailable facet gets a chip, a matching one gets the verified mark, and the filter narrows the tree", async () => {
+  test("a chain is selected but not probed yet: named from the picker's synchronous list, not left generic", async () => {
+    const chain = fakeChainService();
+    await renderWithStudio(<CatalogPanel />, { session: { chainId: CHAIN_ID }, chain });
+    await expect.element(page.getByRole("checkbox", { name: "Available on Sepolia" })).toHaveAttribute("aria-disabled", "true");
+    await expect
+      .element(page.getByRole("checkbox", { name: "Available on Sepolia" }))
+      .toHaveAccessibleDescription("Checking Sepolia…");
+  });
+
+  test("a probed chain: an unavailable facet gets a chip, a matching one gets the release-codehash mark, and the filter narrows the tree", async () => {
     const catalog = fixtureCatalog();
     const healthy = healthyChainState(CHAIN_ID, "Sepolia", catalog);
     const chain = fakeChainService({
@@ -260,7 +270,9 @@ describe("Catalog availability filter", () => {
     await renderWithStudio(<CatalogPanel />, { session: { chainId: CHAIN_ID }, chain });
     await expect.element(page.getByRole("checkbox", { name: "Available on Sepolia" })).not.toHaveAttribute("aria-disabled");
     await typeQuery("erc4626");
-    await expect.poll(() => row("ERC4626")?.querySelector('[aria-label="Verified"]')).not.toBeNull();
+    await expect
+      .poll(() => row("ERC4626")?.querySelector('[aria-label="Code matches the release"]'))
+      .not.toBeNull();
     await replaceQuery("erc20");
     await expect.poll(() => row("ERC20")?.textContent).toContain("Not on Sepolia");
     await userEvent.click(page.getByRole("checkbox", { name: "Available on Sepolia" }));

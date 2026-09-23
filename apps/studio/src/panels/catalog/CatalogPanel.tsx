@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerE
 import { retryCatalog } from "@/catalog";
 import {
   announce, chainService, isPlaceholder, runCommand, session, startCatalogDrag, useCatalogStatus, useDocument, useOnline,
-  useSession, type ChainReadiness,
+  useSession, type ChainInfo, type ChainReadiness,
 } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { Checkbox, TextField } from "@/ui/fields";
@@ -25,6 +25,12 @@ import styles from "./CatalogPanel.module.css";
 const LATTICE_REPO = "https://github.com/dadadave80/lattice";
 
 const PLACEHOLDER_ROWS = 6;
+
+/**
+ * S8a's `CHOOSE_A_CHAIN` (`chain/infra/copy.ts`), one label everywhere (spec L674). Kept as a literal: that
+ * module is behind the lazy chain boundary (contracts §5.2 `chainService`), and this panel isn't.
+ */
+const CHOOSE_A_CHAIN = "Choose a chain first.";
 
 function githubUrl(commit: string, facet: Facet): string {
   return `${LATTICE_REPO}/blob/${commit}/${facet.source}`;
@@ -60,6 +66,25 @@ function useChainReadiness(chainId: number | null): ChainReadiness | null {
   return entry && entry.chainId === chainId ? entry.readiness : null;
 }
 
+/** The chain picker's list (id and display name), synchronous once the chain module loads: no probe needed. */
+function useKnownChains(): readonly ChainInfo[] {
+  const [chains, setChains] = useState<readonly ChainInfo[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    chainService()
+      .then((service) => {
+        if (!cancelled) setChains(service.chains());
+      })
+      .catch(() => {
+        // Not built yet, or the chunk failed to load: no chains to name.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return chains;
+}
+
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
@@ -71,6 +96,7 @@ export function CatalogPanel() {
   const online = useOnline();
   const chainId = useSession((s) => s.chainId);
   const readiness = useChainReadiness(chainId);
+  const knownChains = useKnownChains();
 
   const [query, setQuery] = useState("");
   const [manualExpanded, setManualExpanded] = useState<string[]>([]);
@@ -94,16 +120,18 @@ export function CatalogPanel() {
     [catalog, placedSet],
   );
   const availability = useMemo(() => (catalog ? chainAvailability(catalog, readiness) : null), [catalog, readiness]);
-  const chainName = readiness?.status === "ready" ? readiness.state.name : null;
+  // The picker names a chain synchronously; the probed state (once ready) is the same name, just confirmed.
+  const chainName =
+    readiness?.status === "ready" ? readiness.state.name : (knownChains.find((c) => c.id === chainId)?.name ?? null);
 
   const filterReason = !online
     ? "Chain checks need a connection."
     : chainId === null
-      ? "Select a chain first."
+      ? CHOOSE_A_CHAIN
       : readiness?.status === "error"
         ? readiness.reason
         : availability === null
-          ? "Checking chain…"
+          ? `Checking ${chainName ?? "chain"}…`
           : undefined;
 
   const { nodes, matchCount, matchedAreaIds } = useMemo(() => {

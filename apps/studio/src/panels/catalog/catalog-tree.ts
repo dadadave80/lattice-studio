@@ -80,12 +80,12 @@ export function buildCatalogNodes(catalog: Catalog, query: string, include?: (fa
     if (list) list.push(facet);
     else byArea.set(facet.area, [facet]);
   }
-  const areas = [...byArea.keys()].sort((a, b) => AREA_LABELS[a].localeCompare(AREA_LABELS[b]));
+  const areas = [...byArea.keys()].sort((a, b) => AREA_LABELS[a].localeCompare(AREA_LABELS[b], "en"));
   const nodes: TreeNode[] = areas.map((area) => ({
     id: areaNodeId(area),
     label: AREA_LABELS[area],
     children: [...(byArea.get(area) ?? [])]
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) => a.name.localeCompare(b.name, "en"))
       .map((facet) => ({ id: facet.name, label: facet.name })),
   }));
   return { nodes, matchCount, matchedAreaIds: areas.map(areaNodeId) };

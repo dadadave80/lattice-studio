@@ -52,7 +52,9 @@ export function FacetRow({ facet, placed, availability, chainName }: FacetRowPro
           {availability && !availability.available ? (
             <span className={styles.chip}>{`Not on ${chainName ?? "chain"}`}</span>
           ) : null}
-          {availability?.verified ? <Icon name="verified" label="Verified" size="small" className={styles.verified} /> : null}
+          {availability?.verified ? (
+            <Icon name="verified" label="Code matches the release" size="small" className={styles.verified} />
+          ) : null}
         </span>
       ) : null}
     </span>
