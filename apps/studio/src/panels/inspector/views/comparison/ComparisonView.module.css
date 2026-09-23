@@ -1,0 +1,53 @@
+/* The Comparison view: the plan beside the diamond's facets(), differences marked in words and the accent. */
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--lx-space-3);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  min-width: 0;
+}
+
+.difference {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  padding-left: var(--lx-space-2);
+  border-left: var(--lx-stroke-heavy) solid var(--lx-accent);
+}
+
+.mark {
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  font-weight: 600;
+  color: var(--lx-accent-strong);
+}
+
+.selectors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  align-items: flex-start;
+}
+
+/* "facets()" is a function name: keep its case. */
+.codeLabel {
+  text-transform: none;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
