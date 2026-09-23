@@ -7,9 +7,9 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { type AbiItem, arachnidAddress, type Hex, sharedSalt } from "@lattice-studio/core";
+import { type AbiItem, arachnidAddress, canonicalJson, type Hex, sharedSalt } from "@lattice-studio/core";
 import { encodeAbiParameters, keccak256, stringToHex, toHex, zeroAddress } from "viem";
-import { REGISTRY_OWNER_PLACEHOLDER } from "../../src/addressing";
+import { REGISTRY_OWNER_PLACEHOLDER, STANDARD_OUTPUT_SELECTION } from "../../src/addressing";
 import { type AnvilHandle, getCode, startAnvil, studioEnv } from "../../src/anvil";
 import { libraryPlaceholder } from "../../src/artifacts";
 import {
@@ -363,17 +363,62 @@ describe("proxyRelease on a synthetic build", () => {
     expect(res.value.compiler).toEqual({ version: "0.8.36+commit.fixture", evmVersion: "osaka" });
   });
 
-  test("two build-info files that compiled it: build clean", async () => {
-    await writeFile(join(dir, "out", "build-info", "c.json"), JSON.stringify(buildInfo(creation("06").slice(2))));
+  test("an incremental build's second build-info file agrees once pruned, so either serves", async () => {
+    const alone = await proxyRelease(dir);
+    if (!alone.ok) throw new Error(alone.error);
+    // The same compile of Lattice, scoped differently: other unrelated sources, another outputSelection, keys
+    // in another order.
+    const scoped = buildInfo(creation("06").slice(2));
+    const incremental = {
+      ...scoped,
+      input: {
+        ...scoped.input,
+        sources: { "test/Harness.t.sol": { content: "contract Harness {}" }, "src/Lattice.sol": { content: source } },
+        settings: {
+          libraries: {},
+          outputSelection: { "*": { "": ["ast"], "*": ["abi", "evm.bytecode.object", "storageLayout"] } },
+          metadata: { bytecodeHash: "ipfs" },
+          evmVersion: "osaka",
+          optimizer: { runs: 1_000_000, enabled: true },
+        },
+      },
+    };
+    await writeFile(join(dir, "out", "build-info", "c.json"), JSON.stringify(incremental));
     const res = await proxyRelease(dir);
-    expect(res).toEqual({
+    expect(res).toEqual(alone);
+    if (res.ok) {
+      const settings = res.value.standardJson.settings;
+      expect(JSON.stringify(settings)).toBe(canonicalJson(settings));
+      expect(res.value.standardJson.settings.outputSelection).toEqual(STANDARD_OUTPUT_SELECTION);
+    }
+  });
+
+  test("two build-info files that compiled it but disagree on a setting: build clean, naming it", async () => {
+    const other = buildInfo(creation("06").slice(2));
+    const remapped = { ...other, input: { ...other.input, settings: { ...other.input.settings, remappings: ["x/=lib/x/"] } } };
+    await writeFile(join(dir, "out", "build-info", "c.json"), JSON.stringify(remapped));
+    expect(await proxyRelease(dir)).toEqual({
       ok: false,
-      error: "2 build-info files compiled Lattice (a.json, c.json). Build clean: forge clean, then FOUNDRY_PROFILE=ci forge build.",
+      error:
+        "a.json and c.json both compiled this Lattice but give different standard JSON (settings.remappings). " +
+        "Build clean: forge clean, then FOUNDRY_PROFILE=ci forge build.",
     });
   });
 
-  test("build info from another compile of Lattice doesn't count", async () => {
+  test("a build-info file that compiled it with settings the metadata contradicts: build clean", async () => {
+    const other = buildInfo(creation("06").slice(2));
+    const cancun = { ...other, input: { ...other.input, settings: { ...other.input.settings, evmVersion: "cancun" } } };
+    await writeFile(join(dir, "out", "build-info", "c.json"), JSON.stringify(cancun));
+    const res = await proxyRelease(dir);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error).toStartWith('c.json compiled this Lattice, but build settings differ from the metadata: evmVersion: build info "cancun"');
+      expect(res.error).toEndWith("Build clean: forge clean, then FOUNDRY_PROFILE=ci forge build.");
+    }
     await rm(join(dir, "out", "build-info", "c.json"));
+  });
+
+  test("build info from another compile of Lattice doesn't count", async () => {
     await writeFile(join(dir, "out", "build-info", "a.json"), JSON.stringify(buildInfo(creation("07").slice(2))));
     const res = await proxyRelease(dir);
     expect(res.ok).toBe(false);

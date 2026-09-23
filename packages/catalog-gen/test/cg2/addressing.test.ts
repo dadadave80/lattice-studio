@@ -11,6 +11,8 @@ import {
   pruneStandardJson,
   REGISTRY_OWNER_PLACEHOLDER,
   releaseConstructorArgs,
+  STANDARD_OUTPUT_SELECTION,
+  standardJsonDifferences,
   toLibraryItem,
   toSharedContract,
   withConstructorArgs,
@@ -220,15 +222,27 @@ describe("pruneStandardJson", () => {
     output: { abi: [], userdoc: {}, devdoc: {} },
   });
 
-  test("keeps exactly the metadata's sources, in its order, and the build's settings", () => {
-    expect(pruneStandardJson(input, metadata())).toEqual({
+  test("keeps exactly the metadata's sources, in its order, and the build's settings with outputSelection normalized", () => {
+    const res = pruneStandardJson(input, metadata());
+    expect(res).toEqual({
       ok: true,
       value: {
         language: "Solidity",
         sources: { "src/Dep.sol": { content: "library Dep {}" }, "src/Lattice.sol": { content: "contract Lattice {}" } },
-        settings,
+        settings: { ...settings, outputSelection: STANDARD_OUTPUT_SELECTION },
       },
     });
+    if (res.ok) expect(Object.keys(res.value.settings)).toEqual(Object.keys(settings).sort());
+  });
+
+  test("standardJsonDifferences names what differs, and nothing for the same compile", () => {
+    const a = pruneStandardJson(input, metadata());
+    const b = pruneStandardJson({ ...input, settings: { ...settings, outputSelection: {}, remappings: ["x/=y/"] } }, metadata());
+    if (!a.ok || !b.ok) throw new Error("prune failed");
+    expect(standardJsonDifferences(a.value, a.value)).toEqual([]);
+    expect(standardJsonDifferences(a.value, b.value)).toEqual(["settings.remappings"]);
+    const moved = { ...a.value, sources: { ...a.value.sources, "src/Dep.sol": { content: "library Dep { }" } } };
+    expect(standardJsonDifferences(a.value, moved)).toEqual(["sources.src/Dep.sol"]);
   });
 
   test("refuses a missing source or one whose content the metadata didn't hash", () => {

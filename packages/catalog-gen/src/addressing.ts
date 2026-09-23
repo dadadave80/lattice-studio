@@ -24,6 +24,7 @@ import {
   type AbiItem,
   type Address,
   arachnidAddress,
+  canonicalJson,
   err,
   type Hex,
   ok,
@@ -211,7 +212,8 @@ export type BuildInfoInput = {
  * The standard JSON input for one contract, pruned from a build's input to the sources its metadata lists
  * (the ones its metadata hash covers, so recompiling reproduces the bytecode). Every source must be present
  * with the content the metadata hashed; settings are the build's own, and must agree with the metadata on the
- * settings that change bytecode.
+ * settings that change bytecode. `outputSelection` is replaced by `STANDARD_OUTPUT_SELECTION` and settings keys
+ * are sorted, so the same compile read from two build-info files gives byte-identical output.
  */
 export function pruneStandardJson(input: BuildInfoInput, metadata: SolcMetadata): Result<StandardJsonInput, string> {
   if (input.language !== metadata.language) {
@@ -241,7 +243,36 @@ export function pruneStandardJson(input: BuildInfoInput, metadata: SolcMetadata)
     mismatch("libraries", s.libraries ?? {}, m.libraries ?? {}),
   ].filter((p): p is string => p !== undefined);
   if (problems.length > 0) return err(`build settings differ from the metadata: ${problems.join("; ")}.`);
-  return ok({ language: input.language, sources, settings: s });
+  // outputSelection only picks what solc reports, never the bytecode; builds differ in it, so it's normalized.
+  // Keys are sorted, so two builds with the same settings give byte-identical standard JSON.
+  const settings = JSON.parse(canonicalJson({ ...s, outputSelection: STANDARD_OUTPUT_SELECTION })) as Record<string, unknown>;
+  return ok({ language: input.language, sources, settings });
+}
+
+/** The outputSelection every pruned standard JSON carries: enough for Sourcify and for a bytecode check. */
+export const STANDARD_OUTPUT_SELECTION = {
+  "*": { "*": ["abi", "evm.bytecode.object", "evm.deployedBytecode.object", "metadata"] },
+} as const;
+
+/**
+ * What differs between two standard JSON inputs, for an error message: the language, source paths or contents,
+ * and settings keys. Empty when they're byte-identical as canonical JSON.
+ */
+export function standardJsonDifferences(a: StandardJsonInput, b: StandardJsonInput): string[] {
+  const out: string[] = [];
+  if (a.language !== b.language) out.push("language");
+  const paths = [...new Set([...Object.keys(a.sources), ...Object.keys(b.sources)])].sort();
+  for (const p of paths) {
+    if (a.sources[p]?.content !== b.sources[p]?.content) out.push(`sources.${p}`);
+  }
+  if (out.length === 0 && canonicalJson(Object.keys(a.sources)) !== canonicalJson(Object.keys(b.sources))) {
+    out.push("source order");
+  }
+  const keys = [...new Set([...Object.keys(a.settings), ...Object.keys(b.settings)])].sort();
+  for (const k of keys) {
+    if (canonicalJson(a.settings[k] ?? null) !== canonicalJson(b.settings[k] ?? null)) out.push(`settings.${k}`);
+  }
+  return out;
 }
 
 /** One row of the release report. */

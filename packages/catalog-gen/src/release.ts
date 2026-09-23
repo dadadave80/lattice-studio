@@ -12,8 +12,9 @@
  *
  * `proxyRelease(latticeDir)` gives the proxy's creation code, init-code hash (the factory's
  * `proxyInitCodeHash`) and standard JSON input for Sourcify, pruned from the build info to the sources the
- * proxy's metadata lists. Build clean first (`buildLattice(dir, { clean: true })`): incremental builds split
- * build info across files, and the proxy's sources must all be in one.
+ * proxy's metadata lists. An incremental build may leave several build-info files that compiled the proxy; they
+ * must agree once pruned, and then any one serves. Only when they genuinely differ is a clean build needed
+ * (`buildLattice(dir, { clean: true })`).
  */
 import { realpathSync } from "node:fs";
 import { readdir } from "node:fs/promises";
@@ -46,6 +47,7 @@ import {
   predictShared,
   pruneStandardJson,
   REGISTRY,
+  standardJsonDifferences,
   REGISTRY_OWNER_PLACEHOLDER,
   releaseConstructorArgs,
   type SharedAddressing,
@@ -355,7 +357,7 @@ export type ProxyRelease = {
   initCodeHash: Hex;
   /** Standard JSON input for Sourcify, pruned to the sources the proxy's metadata lists. */
   standardJson: StandardJsonInput;
-  /** The build-info file it came from, relative to the checkout. */
+  /** The build-info file it came from, relative to the checkout (the first by name when several agree). */
   buildInfo: string;
   /** The solc version and EVM version from the proxy's metadata, which Sourcify needs beside the standard JSON. */
   compiler: Compiler;
@@ -410,18 +412,27 @@ export async function proxyRelease(latticeDir: string): Promise<Result<ProxyRele
       problems.push(`${file} compiled a different Lattice than out/ holds.`);
       continue;
     }
+    // It compiled this very creation code, so its input must agree with the metadata; if not, it can't be trusted.
     const pruned = pruneStandardJson(info.input, artifact.metadata);
     if (!pruned.ok) {
-      problems.push(`${file}: ${pruned.error}`);
-      continue;
+      return err(`${file} compiled this Lattice, but ${pruned.error} Build clean: forge clean, then FOUNDRY_PROFILE=ci forge build.`);
     }
     matches.push({ file, standardJson: pruned.value });
   }
   const clean = "Build clean: forge clean, then FOUNDRY_PROFILE=ci forge build.";
-  if (matches.length > 1) {
-    return err(`${matches.length} build-info files compiled Lattice (${matches.map((m) => m.file).join(", ")}). ${clean}`);
-  }
   const match = matches[0];
+  // An incremental build leaves several build-info files that compiled the same Lattice. They agree once
+  // pruned (the same sources, checked against the metadata, and the same settings), so any one of them serves.
+  for (const other of matches.slice(1)) {
+    if (match === undefined) break;
+    const differences = standardJsonDifferences(match.standardJson, other.standardJson);
+    if (differences.length > 0) {
+      return err(
+        `${match.file} and ${other.file} both compiled this Lattice but give different standard JSON ` +
+          `(${differences.join(", ")}). ${clean}`,
+      );
+    }
+  }
   if (match === undefined) {
     const why = problems.length > 0 ? ` ${problems.join(" ")}` : "";
     return err(`no build-info file in ${infoDir} compiled this Lattice.${why} ${clean}`);
