@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import type { Catalog, Recipe } from "@lattice-studio/core";
+import type { Catalog, Recipe, Route } from "@lattice-studio/core";
 import { analyze, blankDiamond, loadTemplate, planInit } from "@lattice-studio/core";
 import { loadFixtureCatalog } from "@lattice-studio/core/testing";
 import { placeholderFixLabel } from "./fix-labels";
 import {
   buildStructure, codeRuns, facetId, facetOfId, focusAfterRemove, INIT_ID, moveTarget, plainText, PROBLEMS_ID,
-  selectorView, type StructureMeta,
+  selectorId, tooltipText, type StructureMeta,
 } from "./structure-model";
 
 const loaded = loadFixtureCatalog();
@@ -97,43 +97,60 @@ describe("buildStructure", () => {
   });
 });
 
-describe("selectorView", () => {
-  const erc20 = catalog.facets.find((f) => f.name === "ERC20");
-  const transfer = erc20?.selectors.find((s) => s.signature.startsWith("transfer("));
+describe("selector rows are the card's pins (S4a's pinView)", () => {
+  const recipe = template("ERC20");
+  const transfer = catalog.facets.find((f) => f.name === "ERC20")?.selectors.find((s) => s.signature.startsWith("transfer("));
   if (!transfer) throw new Error("ERC20 has no transfer");
+  const hex = transfer.hex;
+
+  /** The ERC20 template's transfer row, with its route replaced (or removed) and optionally excluded. */
+  function pin(route: Route | null, excluded = false) {
+    const analysis = analyze(recipe, catalog);
+    const routing = { ...analysis.routing };
+    if (route === null) delete routing[hex];
+    else routing[hex] = route;
+    const s = buildStructure({
+      recipe: excluded ? { ...recipe, exclude: [hex] } : recipe,
+      catalog, analysis: { ...analysis, routing }, plan: planInit(recipe, catalog),
+    });
+    return meta(s.meta, selectorId("ERC20", hex), "selector").view;
+  }
 
   test("routed here: Space leaves it out of the diamond", () => {
-    const view = selectorView({ facet: "ERC20", selector: transfer, route: { owner: "ERC20", contenders: ["ERC20"], via: "only" }, excluded: false, catalog });
+    const view = pin({ owner: "ERC20", contenders: ["ERC20"], via: "only" });
     expect(view.state).toBe("routed");
-    expect(view.label).toBe(`${transfer.signature} ${transfer.hex}, routes here`);
-    expect(view.action).toEqual({ id: "selector.exclude", args: { selector: transfer.hex } });
-    expect(view.tooltip).toBe(`\`${transfer.signature}\`: routes here. Click to leave it out of the diamond.`);
+    expect(view.label).toBe(`${transfer.signature} ${hex}, routes here`);
+    expect(view.action).toEqual({ id: "selector.exclude", args: { selector: hex } });
   });
 
   test("not in the diamond: Space brings it back, routed here", () => {
-    const view = selectorView({ facet: "ERC20", selector: transfer, route: undefined, excluded: true, catalog });
-    expect(view.state).toBe("excluded");
-    expect(view.action).toEqual({ id: "selector.include", args: { selector: transfer.hex, facet: "ERC20" } });
+    expect(pin({ owner: "ERC20", contenders: ["ERC20"], via: "only" }, true).action)
+      .toEqual({ id: "selector.include", args: { selector: hex, facet: "ERC20" } });
   });
 
   test("served by another facet: Space routes it here instead", () => {
-    const view = selectorView({ facet: "ERC20", selector: transfer, route: { owner: "Other", contenders: ["ERC20", "Other"], via: "chosen" }, excluded: false, catalog });
-    expect(view).toMatchObject({ state: "elsewhere", mark: "→ Other", tooltip: "Served by Other. Click to route here instead." });
-    expect(view.action).toEqual({ id: "selector.route", args: { selector: transfer.hex, facet: "ERC20" } });
+    const view = pin({ owner: "Other", contenders: ["ERC20", "Other"], via: "chosen" });
+    expect(view).toMatchObject({ state: "elsewhere", mark: "→ Other" });
+    expect(view.action).toEqual({ id: "selector.route", args: { selector: hex, facet: "ERC20" } });
   });
 
-  test("a seam offers no route and says why", () => {
-    const view = selectorView({ facet: "ERC20", selector: transfer, route: { owner: "GovernedVault", contenders: ["ERC20", "GovernedVault"], via: "seam" }, excluded: false, catalog });
-    expect(view.state).toBe("seam");
-    expect(view.action).toBeNull();
-    expect(view.tooltip).toMatch(/^Seam: stays on GovernedVault because its version .+\.$/);
+  test("a seam offers no route and says why, with the card's mark", () => {
+    const view = pin({ owner: "GovernedVault", contenders: ["ERC20", "GovernedVault"], via: "seam" });
+    expect(view).toMatchObject({ state: "seam", mark: "Seam: stays on GovernedVault", action: null });
+    expect(tooltipText(view.tooltip)).toMatch(/^Seam: stays on GovernedVault because its version .+\.$/);
   });
 
-  test("contested: Space routes it here; owner by default: Space routes it to the one rival", () => {
-    const contested = selectorView({ facet: "ERC20", selector: transfer, route: { contenders: ["ERC20", "B"], via: "chosen" }, excluded: false, catalog });
-    expect(contested).toMatchObject({ state: "contested", label: `${transfer.signature} ${transfer.hex}, contested with B` });
-    const byDefault = selectorView({ facet: "ERC20", selector: transfer, route: { owner: "ERC20", contenders: ["ERC20", "B"], via: "default" }, excluded: false, catalog });
-    expect(byDefault.action).toEqual({ id: "selector.route", args: { selector: transfer.hex, facet: "B" } });
+  test("no route yet: not checked, no action, not contested", () => {
+    const view = pin(null);
+    expect(view).toMatchObject({ state: "unchecked", action: null });
+    expect(tooltipText(view.tooltip)).toBe("Not checked yet.");
+  });
+
+  test("owner by default: two contenders route to the other; three or more open the owner choice (contracts §6)", () => {
+    expect(pin({ owner: "ERC20", contenders: ["ERC20", "B"], via: "default" }).action)
+      .toEqual({ id: "selector.route", args: { selector: hex, facet: "B" } });
+    expect(pin({ owner: "ERC20", contenders: ["ERC20", "B", "C"], via: "default" }).action)
+      .toEqual({ id: "collision.choosePerSelector", args: { selectors: [hex] } });
   });
 });
 
@@ -175,9 +192,9 @@ describe("helpers", () => {
       { code: true, text: "lattice.storage.ERC20" },
       { code: false, text: " with ERC20." },
     ]);
-    expect(placeholderFixLabel("INIT-01", { id: "init.focusField", args: { path: "bundle.p.asset" } })).toBe("Edit field");
+    expect(placeholderFixLabel("INIT-01", { id: "init.focusField", args: { path: "bundle.p.asset" } })).toBeUndefined();
     expect(placeholderFixLabel("SEL-03", { id: "inspector.focusSelectors", args: { facet: "X" } })).toBe("Route a selector…");
-    expect(placeholderFixLabel("AUTH-01", { id: "authority.chooseMechanism", args: { preset: "safe" } })).toBe("Use a Safe…");
+    expect(placeholderFixLabel("NET-05", { id: "deploy.newSalt" })).toBe("Use a new salt");
     expect(placeholderFixLabel("SEL-01", { id: "selector.route" })).toBeUndefined();
   });
 });

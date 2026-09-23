@@ -7,6 +7,7 @@ const STATE_WORD: Partial<Record<string, string>> = {
   excluded: "not in the diamond",
   contested: "contested",
   default: "owner by default",
+  unchecked: "not checked yet",
 };
 
 /**

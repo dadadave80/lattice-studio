@@ -5,7 +5,7 @@
  */
 import type { CommandRef, Recipe } from "@lattice-studio/core";
 import { announce, isPlaceholder, log, runCommand, session, type CommandSource } from "@/contracts";
-import { moveTarget, type StructureMeta } from "./structure-model";
+import { moveTarget, tooltipText, type StructureMeta } from "./structure-model";
 
 /** Says a key that changed nothing, in the console and the status region. */
 export function say(text: string): void {
@@ -63,14 +63,15 @@ export function activate(meta: StructureMeta, source: CommandSource): boolean {
 }
 
 /**
- * Space. A selector does what its pin's click does (Flow 6); a seam offers no route and says why. Facets keep
- * the tree's own Space (toggle selection); branches toggle. Returns whether Space was taken.
+ * Space. A selector does what its pin's click does (Flow 6); a seam, or a selector not checked yet, says why
+ * it does nothing. Facets keep the tree's own Space (toggle selection); branches toggle. Returns whether Space
+ * was taken.
  */
 export function pressSpace(meta: StructureMeta): boolean {
   switch (meta.kind) {
     case "selector":
       if (meta.view.action) run(meta.view.action, "keys");
-      else say(meta.view.tooltip);
+      else say(tooltipText(meta.view.tooltip));
       return true;
     case "facet":
     case "problems":

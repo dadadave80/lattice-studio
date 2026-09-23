@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { command, doc, history, session } from "@/contracts";
 import { axeViolations } from "@/ui/testing/axe";
-import { bufferedServices, fixtureCatalog, overrideCommands, renderWithStudio } from "../../../test/harness";
+import { bufferedServices, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio } from "../../../test/harness";
 import { StructurePanel } from "./StructurePanel";
 
 const catalog = fixtureCatalog();
@@ -112,11 +112,18 @@ describe("Structure tree: facets", () => {
 
   test("a selection made on the sheet shows in the tree and takes its Tab stop (sync to the tree)", async () => {
     await renderTree(template("GovernedVault"));
+    // Focus is elsewhere (on the sheet, say): the tree moves its Tab stop but never takes focus.
+    const outside = document.createElement("button");
+    outside.textContent = "Outside";
+    document.body.append(outside);
+    onCleanup(() => outside.remove());
+    outside.focus();
     session.set({ selection: ["Governor", "Votes"] });
     await expect.element(page.getByRole("treeitem", { name: /^Governor, / })).toHaveAttribute("aria-selected", "true");
     await expect.element(page.getByRole("treeitem", { name: /^Votes, / })).toHaveAttribute("aria-selected", "true");
     await expect.element(page.getByRole("treeitem", { name: /^ERC20, / })).toHaveAttribute("aria-selected", "false");
     await expect.poll(() => row("facet:Votes").tabIndex).toBe(0);
+    expect(document.activeElement).toBe(outside);
     session.set({ selection: [] });
     await expect.element(page.getByRole("treeitem", { name: /^Votes, / })).toHaveAttribute("aria-selected", "false");
   });
