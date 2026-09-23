@@ -1,7 +1,7 @@
 import { Panel, useStoreApi, type ReactFlowState } from "@xyflow/react";
 import { useEffect, useState } from "react";
 import { commandRef, layoutMetrics } from "@/contracts";
-import { CommandButton } from "@/ui";
+import { CommandButton } from "@/ui/buttons/CommandButton";
 import styles from "./Sheet.module.css";
 
 /** How long every card has to be off-screen before Back to content shows (spec L484). */

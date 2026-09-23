@@ -11,7 +11,7 @@ import { expect, test } from "vitest";
 import { setCardPosition } from "@lattice-studio/core";
 import { doc, provideSheetInteractions } from "@/contracts";
 import { onCleanup, renderWithStudio } from "../../../test/harness";
-import { Sheet } from "./Sheet";
+import { SheetCanvas as Sheet } from "./SheetCanvas";
 import { cardNode, cardScreenRect, drawn, settled, sheetProject } from "./testing/sheet-harness";
 
 /** React commit time per move, in ms (Profiler `actualDuration`, summed). */

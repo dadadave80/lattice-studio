@@ -35,7 +35,8 @@
  *
  * Anything floating over the sheet outside a React Flow `Panel` carries `SHEET_FLOAT_ATTRIBUTE`.
  */
-export { edgeTypes, nodeTypes, Sheet } from "./Sheet";
+export { edgeTypes, nodeTypes } from "./flow-types";
+export { Sheet } from "./Sheet";
 export {
   cardInView, ensureElementVisible, ensureVisible, fitCards, locateCard, moveViewport, panSheet,
   SHEET_FLOAT_ATTRIBUTE, sheetSize, sheetViewport, storeSheetViewport, zoomSheet,

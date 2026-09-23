@@ -1,6 +1,6 @@
 import { Background, BackgroundVariant, useStore } from "@xyflow/react";
 import { layoutMetrics } from "@/contracts";
-import { cx } from "@/ui";
+import { cx } from "@/ui/shared/cx";
 import styles from "./Sheet.module.css";
 import { gridGap } from "./viewport-math";
 
