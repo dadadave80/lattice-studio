@@ -1,25 +1,18 @@
-// WP-C5c replaces this file with its real tests: until it lands, every function here is a stub.
 import { expect, test } from "bun:test";
+import { ARACHNID_PROXY, CREATEX } from "../address";
 import { API_OWNERS, type ApiName } from "../model/api";
-import { NotImplemented } from "../model/wp";
 import * as mod from "./index";
 
-const stubs = Object.entries(mod).filter(([, value]) => typeof value === "function");
-
-test("the module exports its stubs", () => {
-  expect(stubs.length).toBeGreaterThan(0);
+test("every C5c function is exported and built", () => {
+  const owned = (Object.keys(API_OWNERS) as ApiName[]).filter((name) => API_OWNERS[name] === "C5c");
+  expect(owned.sort()).toEqual(["buildDiamondDeploy", "buildMissingDeploys", "calldataHash", "gasShare"]);
+  for (const name of owned) expect(typeof (mod as Record<string, unknown>)[name]).toBe("function");
+  expect(() => mod.gasShare(1n, 2n)).not.toThrow();
+  expect(() => mod.calldataHash("0x")).not.toThrow();
 });
 
-test.each(stubs)("%s throws NotImplemented naming WP-C5c", (name, fn) => {
-  expect(API_OWNERS[name as ApiName]).toBe("C5c");
-  let caught: unknown;
-  try {
-    (fn as (...args: unknown[]) => unknown)();
-  } catch (error) {
-    caught = error;
-  }
-  expect(caught).toBeInstanceOf(NotImplemented);
-  expect((caught as NotImplemented).wp).toBe("C5c");
-  expect((caught as NotImplemented).fn).toBe(name);
-  expect((caught as NotImplemented).message).toBe("Not built yet · WP-C5c");
+test("deploy reuses the address module's constants instead of redefining them", () => {
+  expect(Object.keys(mod)).not.toContain("ARACHNID_PROXY");
+  expect(Object.keys(mod)).not.toContain("CREATEX");
+  expect([ARACHNID_PROXY, CREATEX]).not.toContain(mod.MULTICALL3);
 });
