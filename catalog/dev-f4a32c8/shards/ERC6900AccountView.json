@@ -1,0 +1,104 @@
+{
+  "name": "ERC6900AccountView",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getExecutionData",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct ExecutionDataView",
+          "components": [
+            {
+              "name": "module",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "skipRuntimeValidation",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "allowGlobalValidation",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "executionHooks",
+              "type": "bytes25[]",
+              "internalType": "HookConfig[]"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getValidationData",
+      "inputs": [
+        {
+          "name": "validationFunction",
+          "type": "bytes24",
+          "internalType": "ModuleEntity"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct ValidationDataView",
+          "components": [
+            {
+              "name": "validationFlags",
+              "type": "uint8",
+              "internalType": "ValidationFlags"
+            },
+            {
+              "name": "validationHooks",
+              "type": "bytes25[]",
+              "internalType": "HookConfig[]"
+            },
+            {
+              "name": "executionHooks",
+              "type": "bytes25[]",
+              "internalType": "HookConfig[]"
+            },
+            {
+              "name": "selectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x757c8a26": {
+        "dev": "For a native function the returned `module` is the account address."
+      }
+    },
+    "notice": "ERC-6900 account-introspection facet (the \"loupe\"): `getExecutionData` reports the install state of an execution selector (module + validation flags + execution hooks; a native facet selector reports the account itself as the implementer), and `getValidationData` reports a validation function's flags, validation/execution hooks, and permitted selectors.",
+    "dev": "Stateless delegator — logic/storage live in {ERC6900ModuleManagerLib}. Part of the ERC-6900 account blueprint (an alternative to the ERC-7579 `DiamondLoupe`)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/erc6900/ERC6900AccountView.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/accounts/erc6900/ERC6900AccountView.sol"
+  }
+}

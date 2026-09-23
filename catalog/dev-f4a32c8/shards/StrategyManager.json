@@ -1,0 +1,443 @@
+{
+  "name": "StrategyManager",
+  "abi": [
+    {
+      "type": "function",
+      "name": "addStrategy",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "targetBps",
+          "type": "uint16",
+          "internalType": "uint16"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getStrategies",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getStrategyTarget",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "targetBps",
+          "type": "uint16",
+          "internalType": "uint16"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "harvest",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "rebalance",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "reentrancyGuardEntered",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "removeStrategy",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setVault",
+      "inputs": [
+        {
+          "name": "_vault",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "totalAllocated",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "totalTargetBps",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "updateStrategyTarget",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "newBps",
+          "type": "uint16",
+          "internalType": "uint16"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "vault",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "Harvested",
+      "inputs": [
+        {
+          "name": "totalAllocated",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Rebalanced",
+      "inputs": [],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "StrategyAdded",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "targetBps",
+          "type": "uint16",
+          "indexed": false,
+          "internalType": "uint16"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "StrategyRemoved",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "StrategyTargetUpdated",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "oldBps",
+          "type": "uint16",
+          "indexed": false,
+          "internalType": "uint16"
+        },
+        {
+          "name": "newBps",
+          "type": "uint16",
+          "indexed": false,
+          "internalType": "uint16"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "VaultSet",
+      "inputs": [
+        {
+          "name": "vault",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StrategyManagerAssetMismatch",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StrategyManagerInvalidAllocation",
+      "inputs": [
+        {
+          "name": "totalBps",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StrategyManagerInvalidStrategy",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StrategyManagerStrategyAlreadyAdded",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StrategyManagerStrategyNotFound",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StrategyManagerStrategyStillAllocated",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "balance",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StrategyManagerTooManyStrategies",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StrategyManagerVaultNotSet",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StrategyManagerWithdrawShortfall",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "requested",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "actual",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xd11f519c": {
+        "notice": "Registers a new strategy with a target allocation. Admin-only.",
+        "params": {
+          "strategy": "Address of the strategy to register.",
+          "targetBps": "Target allocation in basis points (0–10 000)."
+        }
+      },
+      "0xb49a60bb": {
+        "notice": "Returns the list of all registered strategy addresses."
+      },
+      "0x89355a28": {
+        "notice": "Returns the target allocation in basis points for a given strategy.",
+        "params": {
+          "strategy": "Strategy address to query."
+        }
+      },
+      "0x4641257d": {
+        "notice": "Snapshots the current allocated balance across all strategies and emits Harvested.",
+        "dev": "Anyone can call; does not move funds. Useful for off-chain indexers."
+      },
+      "0x7d7c2a1c": {
+        "notice": "Rebalances the vault's asset distribution to match strategy target allocations.",
+        "dev": "Pushes or recalls assets to/from strategies. Anyone can call."
+      },
+      "0xd2c725e0": {
+        "notice": "Returns true while a `rebalance()` is in progress (the reentrancy guard is held).",
+        "dev": "Consumed by VaultCore to reject share-price-sensitive operations (deposit/mint/ withdraw/redeem) mid-rebalance, defeating read-only reentrancy via a strategy callback. Deliberately NOT part of IStrategyManager, so the interface's ERC-165 id is unchanged."
+      },
+      "0x175188e8": {
+        "notice": "Removes a registered strategy. Admin-only.",
+        "params": {
+          "strategy": "Address of the strategy to remove."
+        }
+      },
+      "0x6817031b": {
+        "notice": "Sets the vault address. Admin-only (DEFAULT_ADMIN_ROLE).",
+        "params": {
+          "_vault": "Address of the ERC-4626 vault this manager serves."
+        }
+      },
+      "0x45f7f249": {
+        "notice": "Returns the sum of `IStrategy.totalAssetsManaged()` across all registered strategies.",
+        "dev": "Trust assumption: strategies are trusted to report accurate balances."
+      },
+      "0x5e02d602": {
+        "notice": "Returns the current sum of all registered strategy target allocations in basis points."
+      },
+      "0x8420bd02": {
+        "notice": "Updates the target allocation for a registered strategy. Admin-only.",
+        "params": {
+          "newBps": "New target allocation in basis points.",
+          "strategy": "Address of the registered strategy."
+        }
+      },
+      "0xfbfa77cf": {
+        "notice": "Returns the address of the associated vault."
+      }
+    },
+    "notice": "Diamond facet managing yield strategy allocations for a single ERC-4626 vault.",
+    "dev": "All logic lives in StrategyManagerLib. This contract is a pure delegator. Initialization order in the consumer's Diamond initializer: 1. AccessControlLib.__AccessControl_init(admin) 2. StrategyManagerLib.__StrategyManager_init() 3. (Optional) StrategyManagerLib._setVault(vault) The StrategyManager must be configured as the vault's strategy manager via `IVaultCore.setStrategyManager(address(this))` before calling `rebalance()`. `allocateToStrategy` is guarded by `_checkManager()` which checks the caller address, not any role — granting DEFAULT_ADMIN_ROLE is neither necessary nor sufficient."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/defi/StrategyManager.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/defi/StrategyManager.sol"
+  }
+}

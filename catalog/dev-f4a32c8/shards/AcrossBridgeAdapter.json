@@ -1,0 +1,361 @@
+{
+  "name": "AcrossBridgeAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "deposit",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IAcrossBridgeAdapter.DepositParams",
+          "components": [
+            {
+              "name": "recipient",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "outputToken",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "inputToken",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "inputAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "outputAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "destinationChainId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "exclusiveRelayer",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "quoteTimestamp",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "fillDeadline",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "exclusivityParameter",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "message",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "handleV3AcrossMessage",
+      "inputs": [
+        {
+          "name": "tokenSent",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "relayer",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "message",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "spokePool",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "AcrossDepositSent",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "destinationChainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "inputToken",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "inputAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "outputToken",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "outputAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "AcrossMessageReceived",
+      "inputs": [
+        {
+          "name": "tokenSent",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "relayer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "message",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AcrossChainReferenceTooLong",
+      "inputs": [
+        {
+          "name": "length",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AcrossDestinationMismatch",
+      "inputs": [
+        {
+          "name": "declaredChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "givenChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AcrossNotSpokePool",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AcrossSameChainDeposit",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AcrossZeroAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AcrossZeroAmount",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AcrossZeroOutputToken",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AdapterSafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BridgeAmountMismatch",
+      "inputs": [
+        {
+          "name": "requested",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "received",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BridgeTransferFailed",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressEmpty",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressInvalidEvmWidth",
+      "inputs": [
+        {
+          "name": "length",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressTooLong",
+      "inputs": [
+        {
+          "name": "length",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xd3948fec": {
+        "notice": "Escrows `params.inputAmount` of `params.inputToken` (pulled from `msg.sender`) as an Across v3 deposit intent toward the ERC-7930 `params.recipient` on `params.destinationChainId`.",
+        "dev": "REFUND SAFETY: the deposit's `depositor` is always `msg.sender` (the calling user) — NEVER the diamond — because Across refunds an expired unfilled deposit ON THIS CHAIN to `depositor`, and `depositor` alone may speed up the deposit. NOT payable: ERC-20 inputs only in v1 (the SpokePool requires `msg.value == 0` for non-wrapped-native inputs; native ETH users wrap first). Approves the SpokePool for EXACTLY `inputAmount`, then resets the allowance to 0."
+      },
+      "0x3a5be8cb": {
+        "notice": "SpokePool-invoked fill-time delivery hook (see the vendored {AcrossMessageHandler}): reverts {AcrossNotSpokePool} unless called by the configured SpokePool, then emits {AcrossMessageReceived}. NOTHING else in v1 — no handler registry; the diamond itself is the recipient and other facets manage the received funds.",
+        "dev": "OPTIMISTIC: fills are relayer-pushed and NOT yet UMA-finalized when this runs — treat received funds / message content as reversible-until-finalized. Never routed into OpenBridge (no M-of-N confirmation, no `receiveId`)."
+      },
+      "0xafdac3d6": {
+        "notice": "The LOCAL chain's canonical Across v3 SpokePool (set once at init, no admin surface)."
+      }
+    },
+    "notice": "Across v3 intent/optimistic token-bridge facet: `deposit` escrows the input token on this chain toward an ERC-7930 recipient (a relayer fronts the output token on the destination and is later reimbursed via UMA optimistic settlement); `handleV3AcrossMessage` is the SpokePool-authenticated fill-time delivery hook. Across is an INTENT bridge with NO guaranteed fill — an unfilled deposit past `fillDeadline` is refunded ON THIS CHAIN to the depositor (always the calling user). It is NOT an ERC-7786 message gateway (no `receiveId`, no source attribution) and NOT burn/mint — this facet is deliberately not an `IERC7786GatewaySource` and never routes through OpenBridge.",
+    "dev": "Stateless delegator — logic/storage live in {AcrossBridgeAdapterLib}. The outbound deposit is `nonReentrant` with strict CEI and exact-amount approval hygiene and is NOT payable (ERC-20 inputs only in v1; native ETH users wrap first). Inbound fills are relayer-pushed and optimistic — NOT yet UMA-finalized when the hook runs (treat received funds/messages as reversible-until-finalized)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/across/AcrossBridgeAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/across/AcrossBridgeAdapter.sol"
+  }
+}

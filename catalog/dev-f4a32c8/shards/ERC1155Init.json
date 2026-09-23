@@ -1,0 +1,26 @@
+{
+  "name": "ERC1155Init",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "uri_",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for a base ERC-1155 diamond — seeds the URI template (and registers IERC1155 + IERC1155MetadataURI via ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; the `__ERC1155_init` guard passes because the window is already open). Companion to the {ERC20Init} pattern — a first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/tokens/ERC1155/ERC1155Init.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC1155/ERC1155Init.sol"
+  }
+}

@@ -1,0 +1,515 @@
+{
+  "name": "ERC7786OpenBridge",
+  "abi": [
+    {
+      "type": "function",
+      "name": "addGateway",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getGateways",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getRemoteBridge",
+      "inputs": [
+        {
+          "name": "chain",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getThreshold",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "minDirectCoverage",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "receiveMessage",
+      "inputs": [
+        {
+          "name": "receiveId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "sender",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "registerRemoteBridge",
+      "inputs": [
+        {
+          "name": "bridge",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "removeGateway",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "sendMessage",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "attributes",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "setMinDirectCoverage",
+      "inputs": [
+        {
+          "name": "minDirectCoverage_",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setThreshold",
+      "inputs": [
+        {
+          "name": "threshold",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "supportsAttribute",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "event",
+      "name": "ExecutionFailed",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ExecutionSuccess",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "GatewayAdded",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "GatewayRemoved",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MessageSent",
+      "inputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "sender",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "attributes",
+          "type": "bytes[]",
+          "indexed": false,
+          "internalType": "bytes[]"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MinDirectCoverageUpdated",
+      "inputs": [
+        {
+          "name": "minDirectCoverage",
+          "type": "uint8",
+          "indexed": false,
+          "internalType": "uint8"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OutboxDetails",
+      "inputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "outbox",
+          "type": "bytes32[]",
+          "indexed": false,
+          "internalType": "bytes32[]"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Received",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "gateway",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemoteBridge",
+      "inputs": [
+        {
+          "name": "bridge",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ThresholdUpdated",
+      "inputs": [
+        {
+          "name": "threshold",
+          "type": "uint8",
+          "indexed": false,
+          "internalType": "uint8"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressEmptyReferenceAndAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidCrosschainSender",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidExecutionReturnValue",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OpenBridgeInsufficientCoverage",
+      "inputs": [
+        {
+          "name": "have",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "want",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RemoteBridgeAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chain",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SafeCastOverflowedUintDowncast",
+      "inputs": [
+        {
+          "name": "bits",
+          "type": "uint8",
+          "internalType": "uint8"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ThresholdViolation",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedAttribute",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedNativeTransfer",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xc62c2f15": {
+        "notice": "The minimum DIRECT registry coverage `sendMessage` requires of a destination (0 = disabled)."
+      },
+      "0x2432ef26": {
+        "dev": "Endpoint for receiving cross-chain message. This function may be called directly by the gateway."
+      },
+      "0x7e1c8ae5": {
+        "notice": "Registers the matching OpenBridge on a remote chain (full ERC-7930 interoperable address)."
+      },
+      "0xcdfe7f5c": {
+        "dev": "Endpoint for creating a new message. If the message requires further (gateway specific) processing before it can be sent to the destination chain, then a non-zero `sendId` must be returned. Otherwise, the message MUST be sent and this function must return 0. * MUST emit a {MessageSent} event. If any of the `attributes` is not supported, this function SHOULD revert with an {UnsupportedAttribute} error. Other errors SHOULD revert with errors not specified in ERC-7786."
+      },
+      "0x10360b6b": {
+        "notice": "Sets the M-of-N coverage-awareness knob: when non-zero, `sendMessage` hard-refuses destinations whose DIRECT gateway coverage in the {IChainRegistry} is below `minDirectCoverage_` (set 2+ to refuse M=1 routes; 0 — the default — disables the check and preserves prior behavior)."
+      },
+      "0xdc680a0f": {
+        "dev": "Getter to check whether an attribute is supported or not."
+      }
+    },
+    "notice": "N-of-M ERC-7786 aggregator facet: `sendMessage` fans a message out across M gateways, and `receiveMessage` delivers to the recipient once N independent gateways have attested it. It is both an `IERC7786GatewaySource` (send) and an `IERC7786Recipient` (the gateways deliver to it).",
+    "dev": "Stateless delegator — logic/storage live in {ERC7786OpenBridgeLib}. OZ's `Ownable` → AccessControl and `EnumerableSet`/state → ERC-7201 storage. (Pausable/sweep from upstream are omitted.)"
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/ERC7786OpenBridge.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/ERC7786OpenBridge.sol"
+  }
+}

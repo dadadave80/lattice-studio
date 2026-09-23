@@ -1,0 +1,80 @@
+{
+  "name": "StarknetGatewayAdapterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "starknetCore",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "expectedChainReference",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "StarknetEmptyChainReference",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StarknetZeroAddress",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x378dfd8e": {
+        "notice": "Runs the access-control + reentrancy-guard + Starknet-adapter initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+          "expectedChainReference": "The ERC-7930 chain reference this adapter accepts (UTF-8 chain-id string, e.g. `SN_MAIN` = `0x534e5f4d41494e`).",
+          "starknetCore": "The Starknet core (`StarknetMessaging`) contract on this chain."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a Starknet L1 <-> L2 connector diamond — seeds AccessControl (so the L2 handler / trusted-sender setters are `DEFAULT_ADMIN_ROLE`-gated), the reentrancy guard (the send/cancel/consume paths are `nonReentrant`), and wires the Starknet core + expected ERC-7930 chain reference (registering the IStarknetGatewayAdapter interface via ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Reverts `StarknetZeroAddress` on a zero core, `StarknetEmptyChainReference` on an empty chain reference."
+  },
+  "source": {
+    "path": "src/crosschain/starknet/StarknetGatewayAdapterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/starknet/StarknetGatewayAdapterInit.sol"
+  }
+}

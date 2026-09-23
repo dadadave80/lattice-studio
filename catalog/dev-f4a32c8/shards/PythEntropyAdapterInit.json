@@ -1,0 +1,58 @@
+{
+  "name": "PythEntropyAdapterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x19ab453c": {
+        "notice": "Runs the entropy + access-control module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the entropy config + request setters)."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a Pyth Entropy randomness diamond — seeds AccessControl so the entropy config + request setters are admin-gated, and registers the IPythEntropyAdapter interface (ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to the {ERC2981Init} pattern — a first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/oracles/pyth/PythEntropyAdapterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/pyth/PythEntropyAdapterInit.sol"
+  }
+}

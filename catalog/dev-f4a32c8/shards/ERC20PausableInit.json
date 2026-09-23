@@ -1,0 +1,51 @@
+{
+  "name": "ERC20PausableInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-20 Pausable extension recipe — registers the IPausable interface (ERC-165 — the only init the pausable module needs; `_paused` is the zero default) and grants `admin_` the DEFAULT_ADMIN_ROLE that gates `pause()`/`unpause()`. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC20Init}; it must NOT open its own pre/postInitializer. Because the base {ERC20} facet moves tokens via {ERC20Lib} directly, the {ERC20Pausable} facet replaces the public `transfer`/`transferFrom` with pause-gated variants (see {DeployERC20Pausable})."
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20PausableInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC20/ERC20PausableInit.sol"
+  }
+}

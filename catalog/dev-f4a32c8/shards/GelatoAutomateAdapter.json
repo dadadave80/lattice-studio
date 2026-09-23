@@ -1,0 +1,277 @@
+{
+  "name": "GelatoAutomateAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "cancelTask",
+      "inputs": [
+        {
+          "name": "taskId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "createTask",
+      "inputs": [
+        {
+          "name": "execAddress",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "execDataOrSelector",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "moduleData",
+          "type": "tuple",
+          "internalType": "struct IGelatoAutomate.ModuleData",
+          "components": [
+            {
+              "name": "modules",
+              "type": "uint8[]",
+              "internalType": "enum IGelatoAutomate.Module[]"
+            },
+            {
+              "name": "args",
+              "type": "bytes[]",
+              "internalType": "bytes[]"
+            }
+          ]
+        },
+        {
+          "name": "feeToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "taskId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getConfig",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "automate",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "dedicatedMsgSender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isTask",
+      "inputs": [
+        {
+          "name": "taskId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setConfig",
+      "inputs": [
+        {
+          "name": "automate",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "dedicatedMsgSender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "GelatoAutomateConfigSet",
+      "inputs": [
+        {
+          "name": "automate",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "dedicatedMsgSender",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "TaskCancelled",
+      "inputs": [
+        {
+          "name": "taskId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "TaskCreated",
+      "inputs": [
+        {
+          "name": "taskId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "execAddress",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GelatoAutomateInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "GelatoAutomateNotConfigured",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "GelatoAutomateOnlyDedicatedMsgSender",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GelatoAutomateTaskExists",
+      "inputs": [
+        {
+          "name": "taskId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GelatoAutomateTaskNotFound",
+      "inputs": [
+        {
+          "name": "taskId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xee8ca3b5": {
+        "notice": "Cancels and untracks a Gelato Automate task.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. Reverts `GelatoAutomateTaskNotFound` if untracked.",
+        "params": {
+          "taskId": "The task to cancel."
+        }
+      },
+      "0x3323b467": {
+        "notice": "Creates and tracks a Gelato Automate task.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "execAddress": "The contract Gelato will call when the task runs.",
+          "execDataOrSelector": "The calldata (or selector) to run.",
+          "feeToken": "The fee token (address(0) for native; off-chain via 1Balance otherwise).",
+          "moduleData": "The modules configuring how/when the task triggers."
+        }
+      },
+      "0xc3f909d4": {
+        "notice": "Returns the current Automate configuration."
+      },
+      "0x0d04218f": {
+        "notice": "Returns whether `taskId` is tracked by this adapter.",
+        "params": {
+          "taskId": "The task ID to query."
+        }
+      },
+      "0xb602024b": {
+        "notice": "Sets or replaces the Automate configuration.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. Reverts `GelatoAutomateInvalidConfig` on a zero field.",
+        "params": {
+          "automate": "The Gelato Automate contract.",
+          "dedicatedMsgSender": "The dedicated msg.sender Gelato execs through (derived off-chain via the OpsProxyFactory for this diamond)."
+        }
+      }
+    },
+    "notice": "Diamond facet for Gelato Automate (Web3 Functions) task management.",
+    "dev": "Stateless delegator — all logic and storage live in GelatoAutomateAdapterLib. This facet handles the create/track/cancel layer only. Gelato executes a created task through a task-creator-specific dedicated msg.sender; consumer exec entrypoints must gate on it via the library's `requireDedicatedMsgSender` guard."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/gelato/GelatoAutomateAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/gelato/GelatoAutomateAdapter.sol"
+  }
+}

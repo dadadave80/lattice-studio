@@ -1,0 +1,251 @@
+{
+  "name": "InvariantChecker",
+  "abi": [
+    {
+      "type": "function",
+      "name": "checkInvariant",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "checkInvariants",
+      "inputs": [
+        {
+          "name": "keys",
+          "type": "bytes32[]",
+          "internalType": "bytes32[]"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getInvariant",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerInvariant",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "unregisterInvariant",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "InvariantRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "target",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "indexed": false,
+          "internalType": "bytes4"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "InvariantUnregistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "InvariantViolated",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "returnData",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvariantCheckFailed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvariantInvalidTarget",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvariantNotRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvariantViolatedError",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x165d31f6": {
+        "notice": "Performs the staticcall check for `key` and reverts on violation or call failure.",
+        "dev": "Reverts with `InvariantNotRegistered` if the key is unregistered. Reverts with `InvariantViolatedError` if the call returns false. Reverts with `InvariantCheckFailed` if the staticcall reverts.",
+        "params": {
+          "key": "The invariant key to check."
+        }
+      },
+      "0x2e8019f1": {
+        "notice": "Checks multiple invariants in order, reverting on the first failure.",
+        "params": {
+          "keys": "The array of invariant keys to check sequentially."
+        }
+      },
+      "0x0b0ab5fe": {
+        "notice": "Returns the target address and function selector registered for `key`.",
+        "params": {
+          "key": "The invariant key to query."
+        }
+      },
+      "0x848a35dd": {
+        "notice": "Registers or updates an invariant.",
+        "dev": "Requires DEFAULT_ADMIN_ROLE. Reverts if `target == address(0)`. Emits `InvariantRegistered`.",
+        "params": {
+          "key": "The invariant key.",
+          "selector": "The function selector to invoke (must return a bool).",
+          "target": "The contract address to call (must not be address(0))."
+        }
+      },
+      "0x93bee676": {
+        "notice": "Removes a registered invariant.",
+        "dev": "Requires DEFAULT_ADMIN_ROLE. Reverts with `InvariantNotRegistered` if key is not registered. Emits `InvariantUnregistered`.",
+        "params": {
+          "key": "The invariant key to remove."
+        }
+      }
+    },
+    "notice": "Thin Diamond facet that exposes a registry of named on-chain invariants.",
+    "dev": "All logic lives in {InvariantCheckerLib}. This contract is stateless and forwards every call to the library. Inherit this in your Diamond facet to add invariant checking. Opt-in safety facet. Lattice ships no default invariants because it ships no protocol of its own — the checker is a generic primitive that consumers wire to *their* invariants. The pattern is: 1. Expose a `bool`-returning `view` on your protocol (e.g. `isSolvent()` returning `backing >= liabilities`). 2. Governance (`DEFAULT_ADMIN_ROLE`) calls {registerInvariant} with a key, the target contract, and that view's selector. 3. Gate sensitive operations on {checkInvariant} / {checkInvariants}; they `staticcall` the registered view and revert (`InvariantViolatedError`) if it returns `false`, or (`InvariantCheckFailed`) if the call itself reverts. The check tracks live state — it is not a one-shot latch — so the gate re-opens once the invariant holds again. See `test/unit/InvariantCheckerUsageTest.t.sol` for the canonical worked example (a solvency invariant: registration, happy path, violation path, batch)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/security/InvariantChecker.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/security/InvariantChecker.sol"
+  }
+}

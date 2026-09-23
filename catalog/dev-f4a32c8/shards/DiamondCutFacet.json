@@ -1,0 +1,223 @@
+{
+  "name": "DiamondCutFacet",
+  "abi": [
+    {
+      "type": "function",
+      "name": "diamondCut",
+      "inputs": [
+        {
+          "name": "_diamondCut",
+          "type": "tuple[]",
+          "internalType": "struct FacetCut[]",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "_init",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_calldata",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "event",
+      "name": "DiamondCut",
+      "inputs": [
+        {
+          "name": "diamondCut",
+          "type": "tuple[]",
+          "indexed": false,
+          "internalType": "struct FacetCut[]",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "init",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "CannotAddFunctionToDiamondThatAlreadyExists",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotAddSelectorsToZeroAddress",
+      "inputs": [
+        {
+          "name": "selectors",
+          "type": "bytes4[]",
+          "internalType": "bytes4[]"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotAddThisAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "CannotRemoveFunctionThatDoesNotExist",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotRemoveImmutableFunction",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotReplaceFunctionWithTheSameFunctionFromTheSameFacet",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InitializeDiamondCutReverted",
+      "inputs": [
+        {
+          "name": "initAddress",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NoBytecodeAtAddress",
+      "inputs": [
+        {
+          "name": "contractAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NoSelectorsGivenToAdd",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NoSelectorsProvidedForFacetCut",
+      "inputs": [
+        {
+          "name": "facetAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RemoveFacetAddressMustBeZeroAddress",
+      "inputs": [
+        {
+          "name": "facetAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x1f931c1c": {
+        "notice": "Add/replace/remove any number of functions and optionally execute a function with delegatecall",
+        "params": {
+          "_calldata": "A function call, including function selector and arguments _calldata is executed with delegatecall on _init",
+          "_diamondCut": "Contains the facet addresses and function selectors",
+          "_init": "The address of the contract or facet to execute _calldata"
+        }
+      }
+    },
+    "notice": "Simple single owner and multiroles authorization mixin.",
+    "dev": "Note: Remember to add the loupe functions from DiamondLoupeFacet to the diamond. The loupe functions are required by the EIP2535 Diamonds standard."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/facets/DiamondCutFacet.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/facets/DiamondCutFacet.sol"
+  }
+}

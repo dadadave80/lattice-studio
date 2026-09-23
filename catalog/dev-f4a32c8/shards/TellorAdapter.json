@@ -1,0 +1,332 @@
+{
+  "name": "TellorAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getDataBefore",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "queryId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "disputeBuffer",
+          "type": "uint48",
+          "internalType": "uint48"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "answerWad",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "queryId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "disputeBuffer",
+          "type": "uint48",
+          "internalType": "uint48"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setTellor",
+      "inputs": [
+        {
+          "name": "tellor_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "tellor",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "unregisterFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "FeedRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "queryId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "disputeBuffer",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "FeedUnregistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "TellorContractSet",
+      "inputs": [
+        {
+          "name": "tellor",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TellorContractIsZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TellorContractNotSet",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TellorFeedNotRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TellorInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TellorNoData",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TellorStaleData",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xd196aaee": {
+        "notice": "Returns the raw Tellor value bytes and report timestamp read with the feed's dispute buffer.",
+        "dev": "Provider-native reader (mirrors {ITellor.getDataBefore}); keeps this adapter's ERC-165 id distinct from other read adapters that share the {latestAnswer} selector.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x280aebcf": {
+        "notice": "Returns a feed's configuration.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x084d4783": {
+        "notice": "Returns the latest price for `key`, normalized to 18 decimals (WAD). Selector matches {IPriceOracleReader.latestAnswer}. Reverts on missing / stale / future data.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x249fb496": {
+        "notice": "Registers a Tellor feed under `key`. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "disputeBuffer": "Seconds subtracted from `block.timestamp` when reading (0 = no buffer).",
+          "key": "The arbitrary feed identifier.",
+          "maxStaleness": "Maximum age (seconds); must be non-zero.",
+          "queryId": "The Tellor query id (non-zero)."
+        }
+      },
+      "0x3b88e4ad": {
+        "notice": "Sets the Tellor contract. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "tellor_": "The Tellor contract (non-zero)."
+        }
+      },
+      "0x1959ad5b": {
+        "notice": "Returns the Tellor contract address."
+      },
+      "0x2a589908": {
+        "notice": "Removes a registered feed. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "The feed identifier to remove."
+        }
+      }
+    },
+    "notice": "Diamond facet exposing the dispute-based Tellor oracle with per-feed dispute-buffer + staleness configuration and WAD-normalized answers. Shares the {IPriceOracleReader} read surface with the other Lattice oracle adapters.",
+    "dev": "Stateless delegator — all logic and storage live in {TellorAdapterLib}. Consumers inherit this contract and add AccessControl + an initializer. Reads use Tellor's `getDataBefore` at a dispute buffer offset so disputed values are removed first."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/tellor/TellorAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/tellor/TellorAdapter.sol"
+  }
+}

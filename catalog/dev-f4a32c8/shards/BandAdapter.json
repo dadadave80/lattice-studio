@@ -1,0 +1,342 @@
+{
+  "name": "BandAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "base",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "quote",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getReferenceData",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "rate",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "lastUpdatedBase",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "lastUpdatedQuote",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "answerWad",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "base",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "quote",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setReference",
+      "inputs": [
+        {
+          "name": "reference_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "stdReference",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "unregisterFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "FeedRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "base",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        },
+        {
+          "name": "quote",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "FeedUnregistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ReferenceSet",
+      "inputs": [
+        {
+          "name": "stdReference",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BandFeedNotRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BandInvalidAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "rate",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BandInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "BandReferenceIsZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "BandReferenceNotSet",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "BandStaleData",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "lastUpdated",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x280aebcf": {
+        "notice": "Returns a feed's configuration.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x182400b9": {
+        "notice": "Returns the validated raw Band reference data for `key`, in Band's native types.",
+        "dev": "Provider-native reader (mirrors {IStdReference.getReferenceData}); keeps this adapter's ERC-165 id distinct from other read adapters that share the {latestAnswer} selector.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x084d4783": {
+        "notice": "Returns the latest rate for `key`, normalized to 18 decimals (WAD). Selector matches {IPriceOracleReader.latestAnswer}. Reverts on stale / future / zero rate.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0xcf3f0bd3": {
+        "notice": "Registers a Band feed under `key`. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "base": "The base symbol (non-empty, e.g. `\"ETH\"`).",
+          "key": "The arbitrary feed identifier.",
+          "maxStaleness": "Maximum age (seconds); must be non-zero.",
+          "quote": "The quote symbol (non-empty, e.g. `\"USD\"`)."
+        }
+      },
+      "0x34bdf2c4": {
+        "notice": "Sets the StdReference contract. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "reference_": "The StdReference contract (non-zero)."
+        }
+      },
+      "0x02664b2f": {
+        "notice": "Returns the StdReference contract address."
+      },
+      "0x2a589908": {
+        "notice": "Removes a registered feed. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "The feed identifier to remove."
+        }
+      }
+    },
+    "notice": "Diamond facet that reads Band Protocol reference data through the single global StdReference contract with per-feed staleness configuration and WAD-normalized answers. Shares the {IPriceOracleReader} read surface with the other Lattice oracle adapters.",
+    "dev": "Stateless delegator — all logic and storage live in {BandAdapterLib}. Consumers inherit this contract and add AccessControl + an initializer."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/band/BandAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/band/BandAdapter.sol"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "MarketplaceZoneInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the Seaport {MarketplaceZone} recipe — grants `admin_` the DEFAULT_ADMIN_ROLE that gates `setPaused`/`setRoyaltyRequired` and the `MARKETPLACE_BLOCKED_ROLE` grants, then registers the Seaport `ZoneInterface` via ERC-165. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; the `__*_init` guards pass because the window is already open)."
+  },
+  "source": {
+    "path": "src/tokens/MarketplaceZoneInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/MarketplaceZoneInit.sol"
+  }
+}
