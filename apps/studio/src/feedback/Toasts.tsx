@@ -1,4 +1,4 @@
-import { BannerHost } from "./BannerHost";
+import { BannerHostChunk } from "./BannerHostChunk";
 
 /**
  * @deprecated Compatibility alias for `App.tsx`'s current `<Toasts />` mount, which belongs in the overlays
@@ -7,5 +7,5 @@ import { BannerHost } from "./BannerHost";
  * exactly `BannerHost` under the old name, so nothing floats twice and nothing is silently missing.
  */
 export function Toasts() {
-  return <BannerHost />;
+  return <BannerHostChunk />;
 }
