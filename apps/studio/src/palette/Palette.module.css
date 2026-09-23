@@ -32,7 +32,8 @@
   flex-direction: column;
   /* 560 px (spec L360). */
   inline-size: min(100%, calc(var(--lx-space-8) * 17 + var(--lx-space-4)));
-  max-block-size: 100%;
+  /* About sixteen rows; the list scrolls inside. */
+  max-block-size: min(100%, calc(var(--lx-space-12) * 11));
   border-color: var(--lx-border-strong);
   outline: 0;
   transition: opacity 120ms ease-out;
@@ -164,6 +165,7 @@
   .popup {
     inline-size: 100%;
     block-size: 100%;
+    max-block-size: none;
     border: 0;
   }
 
