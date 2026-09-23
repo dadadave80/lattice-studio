@@ -67,6 +67,14 @@ function sheetElement(): HTMLElement {
   return el;
 }
 
+/**
+ * The sheet for axe, with target-size on everywhere but the card rows: pin rows stay 20 px for density, and
+ * their 24 px equivalents are the inspector's Selectors rows (spec L770, the 2.5.8 "equivalent" exception).
+ */
+function sheetContext() {
+  return { include: [sheetElement()], exclude: [...document.querySelectorAll<HTMLElement>("[data-card-row]")] };
+}
+
 function card(facet: string): HTMLElement {
   const el = document.querySelector<HTMLElement>(`[data-facet="${facet}"]`);
   if (!el) throw new Error(`No card for ${facet}.`);
@@ -144,13 +152,12 @@ describe.each(["shop", "draft"] as const)("%s", (theme) => {
 
   test("axe finds nothing on the gallery", async () => {
     await gallery(theme);
-    // Pin rows stay 20 px for density; their 24 px equivalents are the inspector's Selectors rows (spec L770).
-    expect(await axeViolations(sheetElement(), { rules: { "target-size": { enabled: false } } })).toEqual([]);
+    expect(await axeViolations(sheetContext())).toEqual([]);
   });
 
   test("axe finds nothing on the gallery with forced colors", async () => {
     await gallery(theme);
     await emulateForcedColors(true);
-    expect(await axeViolations(sheetElement(), { forced: true, rules: { "target-size": { enabled: false } } })).toEqual([]);
+    expect(await axeViolations(sheetContext(), { forced: true })).toEqual([]);
   });
 });

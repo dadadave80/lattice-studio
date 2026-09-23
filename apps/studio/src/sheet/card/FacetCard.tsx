@@ -2,7 +2,7 @@ import type { Hex4 } from "@lattice-studio/core";
 import { layoutMetrics, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
 import { cx } from "@/ui";
 import { useStore, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
-import { memo, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import { cardAnalysis, cardView, describeCard, sameCardAnalysis, wordNeighbours, type CardAnalysis } from "./card-model";
 import { CardHandles } from "./CardHandles";
 import { CardMarks } from "./CardMarks";
@@ -14,6 +14,14 @@ import { PinRow } from "./PinRow";
 import { TickStrip } from "./TickStrip";
 
 const NO_SLICE: CardAnalysis = { routes: {}, problems: [], contested: [], key: "" };
+
+/**
+ * React Flow hands a node new props on every drag frame (position, dragging). The card reads only `id` (and
+ * the store), so it re-renders only when its id changes or its own store reads do.
+ */
+function sameNode(a: NodeProps<FacetNode>, b: NodeProps<FacetNode>): boolean {
+  return a.id === b.id && a.selected === b.selected;
+}
 
 /**
  * A placed facet on the sheet (IR L103-L105, spec L745, L824-L825): header (name, source path, init badge,
@@ -37,7 +45,6 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
   const placedKey = useDocument((s) => s.project.recipe.facets.filter((f) => near.has(f)).join(","));
   const slice = useAnalysis((a) => (facet ? cardAnalysis(a, facet) : NO_SLICE), sameCardAnalysis);
   const selected = useSession((s) => s.selection.includes(name));
-  const readOnly = useSession((s) => s.readOnly);
   const compact = useStore((s) => s.transform[2] < layoutMetrics.compactZoom);
   const mark = useInitMark(name);
 
@@ -56,12 +63,15 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
     });
   }, [facet, catalog, slice, excludedKey, placedKey, pins, expanded, compact]);
 
-  const rowKey = view ? view.rows.map((p) => p.selector).join(",") : "";
+  const rowSelectors = useMemo(() => view?.rows.map((p) => p.selector) ?? [], [view]);
+  const handleKey = `${rowSelectors.join(",")}|${pins}|${compact}`;
   const updateNodeInternals = useUpdateNodeInternals();
+  const measured = useRef<string | null>(null);
   useEffect(() => {
-    // Handles moved or changed: React Flow re-reads their bounds (spec L825).
-    updateNodeInternals(name);
-  }, [updateNodeInternals, name, rowKey, pins, compact]);
+    // Handles moved or changed: React Flow re-reads their bounds (spec L825). It measures on mount by itself.
+    if (measured.current !== null && measured.current !== handleKey) updateNodeInternals(name);
+    measured.current = handleKey;
+  }, [updateNodeInternals, name, handleKey]);
 
   if (!view) {
     const size = { width: layoutMetrics.cardWidth, height: layoutMetrics.headerHeight + layoutMetrics.footerHeight };
@@ -75,7 +85,9 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
           <div className={styles.header}>
             <span className={styles.title}>{name}</span>
           </div>
-          <div className={styles.footer}>{catalog ? "Not in this catalog" : "Loading"}</div>
+          <div className={styles.footer}>
+            <span className={styles.footerText}>{catalog ? "Not in this catalog" : "Loading"}</span>
+          </div>
         </div>
       </div>
     );
@@ -114,18 +126,20 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
           <>
             <div className={styles.rows} data-keyctx="card-rows">
               {view.rows.map((pin) => (
-                <PinRow key={pin.selector} pin={pin} readOnly={readOnly} side={view.pins} />
+                <PinRow key={pin.selector} pin={pin} side={view.pins} />
               ))}
               {showMore ? (
-                <MoreButton facet={name} expanded={view.expanded} hidden={view.hidden} readOnly={readOnly} side={view.pins} />
+                <MoreButton facet={name} expanded={view.expanded} hidden={view.hidden} side={view.pins} />
               ) : null}
             </div>
-            <div className={styles.footer}>{view.footer}</div>
+            <div className={styles.footer}>
+              <span className={styles.footerText} title={view.footer}>{view.footer}</span>
+            </div>
           </>
         )}
       </div>
       <CardMarks selected={selected} />
-      <CardHandles rows={view.rows.map((p) => p.selector)} side={view.pins} compact={compact} metrics={layoutMetrics} />
+      <CardHandles rows={rowSelectors} side={view.pins} compact={compact} metrics={layoutMetrics} />
     </div>
   );
-});
+}, sameNode);

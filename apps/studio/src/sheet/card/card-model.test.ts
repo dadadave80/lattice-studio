@@ -4,8 +4,8 @@ import { analyze, cardSize, contestedSelectors } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe } from "@lattice-studio/core/testing";
 import { layoutMetrics } from "@/contracts/layout-metrics";
 import {
-  cardAnalysis, cardView, describeCard, footerText, pinView, sameCardAnalysis, visibleRows, wordNeighbours, type CardView,
-  type PinView,
+  cardAnalysis, cardBorder, cardView, describeCard, footerText, pinView, sameCardAnalysis, visibleRows, wordNeighbours,
+  type CardAnalysis, type CardView, type PinView,
 } from "./card-model";
 
 const loaded = loadFixtureCatalog();
@@ -109,13 +109,23 @@ describe("pin states and what a click does (Flow 6)", () => {
     const onErc20 = pin(view("ERC20", gallery), "transfer");
     expect(onErc20.state).toBe("seam");
     expect(onErc20.here).toBe(false);
-    expect(onErc20.mark).toBe("stays on GovernedVault");
+    expect(onErc20.mark).toBe("Seam: stays on GovernedVault");
     expect(onErc20.tooltip.text).toBe("Seam: stays on GovernedVault because its version moves vote checkpoints with balances.");
     expect(onErc20.action).toBeNull();
     const onVault = pin(view("GovernedVault", gallery), "transfer");
     expect(onVault.here).toBe(true);
-    expect(onVault.mark).toBe("0xa9059cbb");
+    expect(onVault.mark).toBe("Seam: stays on GovernedVault");
     expect(onVault.action).toBeNull();
+  });
+
+  test("no route yet (the checks haven't run): unchecked, and a click has nothing to do", () => {
+    const loading = pinView({
+      facet: "ERC20", selector: { hex: "0xdd62ed3e", signature: "allowance(address,address)" }, route: undefined,
+      excluded: false, catalog,
+    });
+    expect(loading.state).toBe("unchecked");
+    expect(loading.tooltip.text).toBe("Not checked yet.");
+    expect(loading.action).toBeNull();
   });
 
   test("contested: hatched, names the rival, and a click routes it here", () => {
@@ -145,6 +155,25 @@ describe("borders", () => {
 
   test("information alone draws the default border", () => {
     expect(view("ERC20Votes", gallery).border).toBe("default");
+  });
+
+  /** A slice holding one problem anchored on facet "A". */
+  function anchored(code: Problem["code"], severity: Problem["severity"], where: Problem["where"]): CardAnalysis {
+    const problem: Problem = { id: code, code, severity, where, params: {}, message: "", fixes: [] };
+    return { routes: {}, problems: [problem], contested: [], key: code };
+  }
+
+  test("facets fighting over something (STO-01, CORE-03, DEP-03) are conflicts", () => {
+    for (const code of ["STO-01", "CORE-03", "DEP-03", "SEM-01"] as const) {
+      expect([code, cardBorder(anchored(code, "blocker", [{ kind: "facet", facet: "A" }]), "A")]).toEqual([code, "conflict"]);
+    }
+  });
+
+  test("every other blocker or warning on the card (INIT-04, SEL-04) is a caution", () => {
+    expect(cardBorder(anchored("INIT-04", "blocker", [{ kind: "facet", facet: "A" }]), "A")).toBe("caution");
+    expect(cardBorder(anchored("SEL-04", "blocker", [{ kind: "selector", selector: "0x0ef22643", facet: "A" }]), "A")).toBe("caution");
+    expect(cardBorder(anchored("STO-02", "info", [{ kind: "facet", facet: "A" }]), "A")).toBe("default");
+    expect(cardBorder(anchored("STO-01", "blocker", [{ kind: "facet", facet: "B" }]), "A")).toBe("default");
   });
 });
 

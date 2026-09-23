@@ -5,7 +5,14 @@
  *   card reads everything else itself through narrow selectors (spec L825), so `data` can stay empty.
  * - `facetNodeA11y(facet)`: spread onto the node. React Flow's wrapper is the focusable element (S9), so the
  *   group role, "facet card" and the name and description the card renders (spec L745) go on it by reference.
- *   They never change for a facet, so the node object doesn't have to change when the card's words do.
+ *   They never change for a facet, so the node object doesn't have to change when the card's words do. When
+ *   S4b adds its own wrapper attributes (roving `tabIndex`), merge them rather than replace:
+ *   `{ ...a11y, domAttributes: { ...a11y.domAttributes, tabIndex } }`.
+ * - Pointer contract (for S4e): a click on a pin row or on "+ n more"/Collapse runs its command and stops
+ *   propagation, so it never reaches the node's click and never changes the selection (IR L47). A press there
+ *   can't start a card drag (`nodrag`), but the rows don't carry `nopan`, so a Hand-tool or middle drag that
+ *   starts on a pin still pans. Double-click and context menu events pass through to the node and the sheet,
+ *   and each row carries `data-card-row` and `data-selector` (the pin's hex) for S4e's pin menu and roving focus.
  * - Handles: `pinHandleId(selector)` on each drawn pin row, on the card's pin side, and
  *   `dependencyHandleId(side)` at the header's middle on both sides, where C9's `routeTraces` anchors
  *   dependency traces. Each id exists as a source and as a target handle.

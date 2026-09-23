@@ -4,9 +4,9 @@
  */
 import { cardSize, contestedSelectors, type Hex4, type Project } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
-import { page, userEvent } from "vitest/browser";
-import { doc, getAnalysis, history, layoutMetrics, session, useSession } from "@/contracts";
-import { fixtureCatalog, renderWithStudio } from "../../../test/harness";
+import { cdp, page, userEvent } from "vitest/browser";
+import { doc, getAnalysis, getCommand, history, layoutMetrics, session, useSession } from "@/contracts";
+import { fixtureCatalog, overrideCommands, renderWithStudio } from "../../../test/harness";
 import { cardNameId } from "./node";
 import { CardSheet } from "./testing/CardSheet";
 import { cardProject, GALLERY_FACETS } from "./testing/projects";
@@ -141,7 +141,8 @@ describe("what a pin does (Flow 6, IR L47, L104)", () => {
     const before = doc.get().recipe;
     await userEvent.click(transfer, { force: true });
     expect(doc.get().recipe).toBe(before);
-    expect(transfer.textContent).toContain("stays on GovernedVault");
+    expect(transfer.textContent).toContain("Seam: stays on GovernedVault");
+    expect(transfer.querySelector('[data-icon="lock"]')).not.toBeNull();
   });
 
   test("read-only: every pin says why and changes nothing", async () => {
@@ -155,6 +156,57 @@ describe("what a pin does (Flow 6, IR L47, L104)", () => {
   });
 });
 
+describe("disabled commands (spec L661)", () => {
+  test("a pin whose command can't run is disabled with the command's reason, and a click changes nothing", async () => {
+    await sheet(gallery());
+    const reason = "Not built yet · WP-S5c";
+    const real = getCommand("selector.exclude");
+    overrideCommands([{ ...real, enabled: () => ({ ok: false, reason }) }]);
+    const allowance = row("ERC20", "0xdd62ed3e");
+    await expect.poll(() => allowance.getAttribute("aria-disabled")).toBe("true");
+    await expect
+      .element(page.getByRole("button", { name: "allowance(address,address) 0xdd62ed3e, routes here" }))
+      .toHaveAccessibleDescription(new RegExp(reason));
+    await userEvent.click(allowance, { force: true });
+    expect(doc.get().recipe.exclude).not.toContain("0xdd62ed3e");
+  });
+});
+
+describe("the footer (IR L103)", () => {
+  test("a namespace too long for the card ends in an ellipsis and keeps the whole string", async () => {
+    await sheet(gallery());
+    const footer = card("ERC20").querySelector<HTMLElement>("[title]");
+    expect(footer?.title).toBe("erc7201:lattice.storage.ERC20");
+    expect(footer?.textContent).toBe("erc7201:lattice.storage.ERC20");
+    if (!footer) throw new Error("No footer.");
+    // 29 characters of 13 px mono don't fit 208 px: the span clips with an ellipsis rather than mid-name.
+    expect(footer.scrollWidth).toBeGreaterThan(footer.clientWidth);
+    expect(getComputedStyle(footer).textOverflow).toBe("ellipsis");
+    expect(getComputedStyle(footer).overflow).toBe("hidden");
+    expect(footer.getBoundingClientRect().right).toBeLessThanOrEqual(card("ERC20").getBoundingClientRect().right);
+  });
+});
+
+describe("more contrast (spec L785)", () => {
+  test("meaningful strokes are never thinner than the 2 px hairline", async () => {
+    await cdp().send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-contrast", value: "more" }] });
+    try {
+      await renderWithStudio(<CardSheet />, { project: gallery(), session: { selection: ["ERC20Votes"] } });
+      await expect.poll(() => document.querySelectorAll("[data-facet]").length).toBe(GALLERY_FACETS.length);
+      expect(matchMedia("(prefers-contrast: more)").matches).toBe(true);
+      const width = (facet: string) => parseFloat(getComputedStyle(card(facet), "::after").borderTopWidth);
+      expect(width("Receive")).toBe(2);
+      expect(width("ERC20Votes")).toBeGreaterThanOrEqual(width("Receive"));
+      expect(width("VaultCore")).toBeGreaterThanOrEqual(width("Receive"));
+      const tick = row("ERC20", "0xdd62ed3e").querySelector<HTMLElement>("[class*='tick']");
+      if (!tick) throw new Error("No tick.");
+      expect(parseFloat(getComputedStyle(tick).borderTopWidth)).toBeGreaterThanOrEqual(2);
+    } finally {
+      await cdp().send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-contrast", value: "no-preference" }] });
+    }
+  });
+});
+
 describe("+ n more and Collapse (spec L479)", () => {
   test("a card over 9 selectors shows 6 rows, its contested ones kept, and + n more", async () => {
     await sheet(gallery());
@@ -163,6 +215,10 @@ describe("+ n more and Collapse (spec L479)", () => {
     expect(row("HyperlaneGatewayAdapter", "0xcdfe7f5c").dataset.state).toBe("contested");
     const more = page.getByRole("button", { name: "+ 6 more" });
     await expect.element(more).toHaveAttribute("aria-expanded", "false");
+    // 20 px on the grid, a 24 px hit area (spec L770).
+    const box = more.element().getBoundingClientRect();
+    const hit = getComputedStyle(more.element(), "::before");
+    expect(box.height + parseFloat(hit.bottom) * -1).toBeGreaterThanOrEqual(24);
     expect(card("ERC20").querySelector("[aria-expanded]")).toBeNull();
   });
 
@@ -239,7 +295,9 @@ describe("compact below 40% zoom (spec L481)", () => {
     expect(hyperlane.dataset.compact).toBe("");
     expect(hyperlane.querySelectorAll("[data-selector]")).toHaveLength(0);
     expect(hyperlane.querySelectorAll('[data-state="contested"]')).toHaveLength(2);
-    expect(hyperlane.textContent).toContain("0/12 selectors");
+    const header = hyperlane.querySelector<HTMLElement>("[class*='path']");
+    // 10 of its 12 route here; the 2 contested with Axelar don't yet.
+    expect(header?.textContent).toBe("10/12 selectors");
     expect(hyperlane.style.height).toBe(`${layoutMetrics.headerHeight + layoutMetrics.rowHeight}px`);
     expect(hyperlane.querySelector('.react-flow__handle[data-handleid="0xcdfe7f5c"]')).not.toBeNull();
   });

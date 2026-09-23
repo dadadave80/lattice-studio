@@ -11,9 +11,10 @@ import { commandRef } from "@/contracts/command-args";
 
 /**
  * A pin row's state (IR L104): routed here (cut accent), not in the diamond (hollow, grey, struck), served by
- * another facet ("→ GovernedVault"), contested (hatched), owner by default (dot), seam (lock).
+ * another facet ("→ GovernedVault"), contested (hatched), owner by default (dot), seam (lock). `unchecked`: the
+ * analysis has no route for it yet (the catalog or the checks are still loading), so a click has nothing to do.
  */
-export type PinState = "routed" | "excluded" | "elsewhere" | "contested" | "default" | "seam";
+export type PinState = "routed" | "excluded" | "elsewhere" | "contested" | "default" | "seam" | "unchecked";
 
 /** A tooltip line: an optional leading code span (a signature), then text. Never literal backticks. */
 export type TooltipCopy = { code?: string; text: string };
@@ -28,7 +29,7 @@ export type PinView = {
   here: boolean;
   /** Who serves it when that isn't obvious from `state`: elsewhere, seam, default. */
   owner?: string;
-  /** The short text after the name: the hex, "→ GovernedVault" or "stays on GovernedVault". */
+  /** The short text after the name: the hex, "→ GovernedVault" or "Seam: stays on GovernedVault". */
   mark: string;
   /** What a click does (Flow 6). */
   tooltip: TooltipCopy;
@@ -173,20 +174,29 @@ export function pinView({ facet, selector, route, excluded, catalog }: PinInputs
       action: commandRef("selector.include", { selector: hex, facet }),
     };
   }
-  const owner = route?.owner;
-  if (route?.via === "seam" && owner !== undefined) {
+  if (route === undefined) {
+    return {
+      ...base, state: "unchecked", here: false, mark: hex,
+      tooltip: { text: "Not checked yet." },
+      label: described("not checked yet"),
+      action: null,
+    };
+  }
+  const owner = route.owner;
+  if (route.via === "seam" && owner !== undefined) {
     const reason = seamReason(catalog, hex, owner);
     const why = reason ? ` because its version ${reason}` : "";
     const here = owner === facet;
     return {
-      ...base, state: "seam", here, owner, mark: here ? hex : `stays on ${owner}`,
+      ...base, state: "seam", here, owner, mark: `Seam: stays on ${owner}`,
       tooltip: { text: `Seam: stays on ${owner}${why}.` },
       label: described(`seam: stays on ${owner}`),
       action: null,
     };
   }
   if (owner === undefined) {
-    const others = (route?.contenders ?? []).filter((c) => c !== facet);
+    // Not excluded and no owner: a choice still to make (SEL-01, or one family's CORE-03/DEP-03).
+    const others = route.contenders.filter((c) => c !== facet);
     const rivals = others.length > 0 ? `Collides with ${joinWith(others, "and")}. ` : "";
     return {
       ...base, state: "contested", here: false, mark: hex,
@@ -203,7 +213,7 @@ export function pinView({ facet, selector, route, excluded, catalog }: PinInputs
       action: commandRef("selector.route", { selector: hex, facet }),
     };
   }
-  if (route?.via === "default") {
+  if (route.via === "default") {
     // "Click to change": with one rival, the change is routing to it; with more, the owner menu in the
     // inspector's Selectors list chooses among them (spec L303, L437).
     const others = route.contenders.filter((c) => c !== facet);
