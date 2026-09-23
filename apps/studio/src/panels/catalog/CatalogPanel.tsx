@@ -11,10 +11,14 @@ import {
   useSession, type ChainInfo, type ChainReadiness,
 } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
-import { Checkbox, TextField } from "@/ui/fields";
+import { Checkbox } from "@/ui/fields/Checkbox";
+import { TextField } from "@/ui/fields/TextField";
 import { Icon } from "@/ui/icons/Icon";
-import { Tree, type TreeItemProps, type TreeNode } from "@/ui/nav";
-import { MenuCommandItem, MenuItem, MenuSeparator } from "@/ui/overlays";
+import { Tree, type TreeItemProps } from "@/ui/nav/Tree";
+import type { TreeNode } from "@/ui/nav/tree-model";
+import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
+import { MenuItem } from "@/ui/overlays/MenuItem";
+import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
 import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
 import { AreaRow, FacetRow } from "./CatalogRow";
 import { areaOfNodeId, buildCatalogNodes, chainAvailability, isAreaNodeId, placedCountByArea } from "./catalog-tree";

@@ -4,7 +4,7 @@
  * the one on screen, without disturbing it.
  */
 import type { Catalog, CatalogManifest, Hex, Result } from "@lattice-studio/core";
-import { err, ok, validateCatalog, validateCatalogManifest } from "@lattice-studio/core";
+import { err, ok } from "@lattice-studio/core";
 import { catalogBase } from "@/contracts";
 
 export type ManifestEntry = CatalogManifest["catalogs"][number];
@@ -14,6 +14,8 @@ export async function fetchManifest(): Promise<Result<CatalogManifest, string>> 
   try {
     const response = await fetch(`${catalogBase()}manifest.json`);
     if (!response.ok) return err(`manifest.json answered ${response.status}.`);
+    // Validation stays out of first load (FX15): the schema chunk arrives with the fetch.
+    const { validateCatalogManifest } = await import("@lattice-studio/core/schema");
     const parsed = validateCatalogManifest(await response.json());
     return parsed.ok ? parsed : err("manifest.json doesn't match the manifest schema.");
   } catch (error) {
@@ -55,6 +57,7 @@ export async function loadCatalogById(entry: ManifestEntry): Promise<Result<Cata
   try {
     const response = await fetch(`${entryDir(entry)}index.json`);
     if (!response.ok) return err(`${entry.id}/index.json answered ${response.status}.`);
+    const { validateCatalog } = await import("@lattice-studio/core/schema");
     const parsed = validateCatalog(await response.json());
     if (!parsed.ok) return err(`${entry.id}/index.json doesn't match the catalog schema.`);
     byId.set(entry.id, parsed.value);

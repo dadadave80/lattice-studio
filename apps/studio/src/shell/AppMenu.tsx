@@ -1,7 +1,13 @@
 import type { CommandRef } from "@lattice-studio/core";
 import { useEffect } from "react";
 import { commandRef } from "@/contracts";
-import { Button, cx, Menu, MenuCommandItem, MenuItem, MenuSeparator, VisuallyHidden } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
+import { Menu } from "@/ui/overlays/Menu";
+import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
+import { MenuItem } from "@/ui/overlays/MenuItem";
+import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
+import { cx } from "@/ui/shared/cx";
+import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
 import { retainAppMenu, setAppMenuOpen, useAppMenuOpen } from "./app-menu-state";
 import styles from "./TitleBar.module.css";
 

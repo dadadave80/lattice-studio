@@ -1,5 +1,6 @@
 import { commandRef, isPlaceholder, runCommand, useCommandState, useSession } from "@/contracts";
-import { MenuRadioGroup, MenuRadioItem } from "@/ui";
+import { MenuRadioGroup } from "@/ui/overlays/MenuRadioGroup";
+import { MenuRadioItem } from "@/ui/overlays/MenuRadioItem";
 
 const SELECT = commandRef("tool.select");
 const HAND = commandRef("tool.hand");

@@ -1,7 +1,7 @@
 import type { ThemeId } from "@lattice-studio/tokens";
 import { commandRef, resolveTheme, runCommand, useCommandState, useSettings } from "@/contracts";
 import { useMediaQuery } from "@/a11y";
-import { SegmentedToggle } from "@/ui";
+import { SegmentedToggle } from "@/ui/fields/SegmentedToggle";
 
 const OPTIONS = [
   { value: "shop", label: "Shop" },

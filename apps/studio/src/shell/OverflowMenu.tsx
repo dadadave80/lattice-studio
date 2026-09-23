@@ -1,6 +1,11 @@
 import type { CommandRef } from "@lattice-studio/core";
 import { commandRef, useSaveStatus } from "@/contracts";
-import { IconButton, Menu, MenuCommandItem, MenuItem, MenuSeparator, Submenu } from "@/ui";
+import { IconButton } from "@/ui/buttons/IconButton";
+import { Menu } from "@/ui/overlays/Menu";
+import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
+import { MenuItem } from "@/ui/overlays/MenuItem";
+import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
+import { Submenu } from "@/ui/overlays/Submenu";
 import { useNeedsFillIn } from "./fill-in";
 import { ThemeMenuGroup } from "./ThemeMenuGroup";
 import { TitledMenuItem } from "./TitledMenuItem";

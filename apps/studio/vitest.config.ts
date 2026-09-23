@@ -31,7 +31,7 @@ export default defineConfig(async (env) => {
         "react", "react/jsx-dev-runtime", "react-dom/client", "zustand", "zustand/vanilla",
         "vitest-browser-react", "@xyflow/react", "viem", "zod", "fflate", "fast-check", "idb", "workbox-window",
         ...["csp-provider", "button", "tooltip", "toggle", "toggle-group", "switch", "checkbox", "radio", "radio-group",
-          "select", "input", "menu", "context-menu", "popover", "dialog", "toast", "tabs", "toolbar"]
+          "select", "input", "menu", "context-menu", "popover", "dialog", "toast", "tabs", "toolbar", "autocomplete"]
           .map((part) => `@base-ui/react/${part}`),
       ],
     },

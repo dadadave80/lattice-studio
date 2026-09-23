@@ -139,9 +139,3 @@
   inline-size: auto;
   border-inline: 0;
 }
-
-.fillIn {
-  flex: none;
-  padding: var(--lx-space-2) var(--lx-space-3);
-  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
-}
