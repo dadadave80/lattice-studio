@@ -7,7 +7,7 @@ import { ConsolePanel } from "./ConsolePanel";
 import { startKeepLog } from "./keep-log";
 import { flushLogPersistence, LOG_STORAGE_KEY, logEntries, type LogStorage } from "./log-store";
 import { EMPTY_LOG, JUMP_TO_LATEST } from "./LogView";
-import { erc20Project, recordLocate, resetConsole } from "./test-support";
+import { awaitConsoleBody, erc20Project, recordLocate, resetConsole } from "./test-support";
 
 beforeEach(() => resetConsole());
 
@@ -22,10 +22,12 @@ async function hasText(locator: { element(): Element }, text: string): Promise<v
 }
 
 async function renderConsole(options: { theme?: "shop" | "draft" } = {}) {
-  return renderWithStudio(<div style={{ height: "400px", display: "flex" }}><ConsolePanel /></div>, {
+  const rendered = await renderWithStudio(<div style={{ height: "400px", display: "flex" }}><ConsolePanel /></div>, {
     project: erc20Project(),
     ...(options.theme ? { theme: options.theme } : {}),
   });
+  await awaitConsoleBody();
+  return rendered;
 }
 
 function seedLines() {

@@ -7,7 +7,7 @@ import { Select } from "@/ui/fields/Select";
 import { TextField } from "@/ui/fields/TextField";
 import { Dialog } from "@/ui/overlays/Dialog";
 import { Banner } from "@/ui/status/Banner";
-import { exportFailed, exportSafe } from "./actions";
+import { loadConsoleBody } from "./load-body";
 import { pickerChains } from "@/chain/infra/chains";
 import styles from "./SafeBatchDialog.module.css";
 
@@ -43,6 +43,12 @@ export function SafeBatchDialog({ entry, top }: DialogComponentProps<"safe-batch
     }
     setAddressError(null);
     setBusy(true);
+    // The export runs in the console body's chunk; one that can't load is the PWA's to report (spec L831).
+    const body = await loadConsoleBody().catch((error: unknown) => {
+      setBusy(false);
+      throw error;
+    });
+    const { exportFailed, exportSafe } = body;
     const done = await exportSafe(toChecksum(typed as Address), chainId);
     setBusy(false);
     if (done.ok) {

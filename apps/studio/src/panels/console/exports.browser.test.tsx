@@ -15,14 +15,14 @@ import { ConsolePanel } from "./ConsolePanel";
 import { downloadFile } from "./download";
 import { logEntries } from "./log-store";
 import { DOWNLOAD_BATCH, NOT_AN_ADDRESS, SAFE_ADDRESS_LABEL } from "./SafeBatchDialog";
-import { captureDownloads, collisionProject, erc20Project, resetConsole } from "./test-support";
+import { awaitConsoleBody, captureDownloads, collisionProject, erc20Project, resetConsole } from "./test-support";
 
 beforeEach(() => resetConsole());
 
 const SAFE = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F" as const;
 
 async function renderConsole(project = erc20Project(), theme: "shop" | "draft" = "shop", chainId: number | null = null) {
-  return renderWithStudio(
+  const rendered = await renderWithStudio(
     <>
       <div style={{ height: "600px", display: "flex" }}>
         <ConsolePanel />
@@ -31,6 +31,8 @@ async function renderConsole(project = erc20Project(), theme: "shop" | "draft" =
     </>,
     { project, theme, session: { chainId } },
   );
+  await awaitConsoleBody();
+  return rendered;
 }
 
 const exportMenu = () => page.getByRole("button", { name: "Export", exact: true });
