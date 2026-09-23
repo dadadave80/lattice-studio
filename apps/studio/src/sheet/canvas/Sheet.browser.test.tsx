@@ -4,6 +4,7 @@ import {
   commandState, doc, provideServices, runCommand, session, settings, type ProjectsService, type Viewport,
 } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
+import { focusCard } from "@/a11y/focus";
 import { runConsoleLine } from "@/commands/console/router";
 import { installShortcuts } from "@/commands/keys/dispatcher";
 import { onCleanup } from "../../../test/harness";
@@ -450,5 +451,33 @@ describe("locate, Back to content, minimap, auto-pan", () => {
       const r = cardScreenRect(stop.dataset.id ?? "");
       return r.x >= 0 && r.right <= SHEET_WIDTH && r.y >= 0 && r.bottom <= SHEET_HEIGHT;
     }).toBe(true);
+  });
+
+  test("the card S9 focuses after undo or redo comes into view, even when the undo was clicked", async () => {
+    const project = sheetProject(4);
+    await renderSheet({ project });
+    session.set((s) => ({ viewports: { ...s.viewports, [project.id]: { x: 6000, y: 6000, zoom: 1 } } }));
+    await expect.poll(() => drawnViewport().x).toBe(6000);
+    const name = Object.keys(project.layout)[2] ?? "";
+    expect(await focusCard(name)).toBe(true);
+    await expect.poll(() => {
+      const r = cardScreenRect(name);
+      return r.x >= 0 && r.right <= SHEET_WIDTH && r.y >= 0 && r.bottom <= SHEET_HEIGHT;
+    }).toBe(true);
+  });
+
+  test("sheet.locate with a selector centers that pin's row", async () => {
+    const project = sheetProject(8, { columns: 4 });
+    await renderSheet({ project });
+    const name = Object.keys(project.layout).at(-1) ?? "";
+    const pins = [...cardNode(name).querySelectorAll<HTMLElement>("[data-selector]")];
+    const pin = pins.at(-1);
+    const selector = pin?.dataset.selector;
+    if (!pin || !selector) throw new Error(`${name} draws no pin rows.`);
+    await runCommand({ id: "sheet.locate", args: { facet: name, selector } }, "api");
+    await drawn();
+    const sheet = flowElement().getBoundingClientRect();
+    const row = pin.getBoundingClientRect();
+    expect(Math.abs(row.top + row.height / 2 - sheet.top - SHEET_HEIGHT / 2)).toBeLessThan(4);
   });
 });
