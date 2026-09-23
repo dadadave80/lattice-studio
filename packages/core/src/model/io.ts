@@ -75,6 +75,8 @@ export type SafeBatchArgs = {
   scope: Scope;
   path: DeployPath;
   now: number;
+  /** Heads the batch's description like every export (spec L508); CCR from C7c. */
+  studioVersion: string;
   /** Registry records for whole-facet `RecipeEntry` cuts. */
   chain?: ChainState;
   /**
