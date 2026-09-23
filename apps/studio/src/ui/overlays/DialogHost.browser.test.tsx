@@ -19,7 +19,28 @@ function TestSettings({ entry, top }: DialogComponentProps<"settings">) {
       footer={<Button onClick={() => closeDialog("settings")}>Close</Button>}
     >
       <Button>Appearance</Button>
-      <Button onClick={() => openDialog("clear-data")}>Clear data…</Button>
+      <Button onClick={() => openDialog("browse-recipes")}>Clear data…</Button>
+    </Dialog>
+  );
+}
+
+// A stand-in for whatever dialog Settings opens over itself, on an id nobody's registered a real component
+// for yet ("browse-recipes"): the stacking tests below are about DialogHost's own mechanics (inert lower
+// dialog, focus trap, Esc and scrim behavior), independent of what a real "Clear data" dialog looks like once
+// its owner lands (S7b already has: apps/studio/src/projects/dialogs/ClearDataDialogPanel.tsx).
+function TestClearData({ entry, top }: DialogComponentProps<"browse-recipes">) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) closeDialog(entry.id);
+      }}
+      title="Clear data"
+      lossless
+      top={top}
+      footer={<Button onClick={() => closeDialog("browse-recipes")}>Close</Button>}
+    >
+      <p>Everything this deletes.</p>
     </Dialog>
   );
 }
@@ -66,6 +87,7 @@ describe("DialogHost", () => {
 
   test("stacks: the lower dialog stays mounted but inert; closing the top returns focus into it", async () => {
     onCleanup(registerDialog("settings", TestSettings));
+    onCleanup(registerDialog("browse-recipes", TestClearData));
     await renderWithStudio(<App />);
     await page.getByRole("button", { name: "Open settings" }).click();
     const clearButton = page.getByRole("button", { name: "Clear data…" });
@@ -106,6 +128,7 @@ describe("DialogHost", () => {
 
   test("a scrim click on the stack closes only the top lossless dialog", async () => {
     onCleanup(registerDialog("settings", TestSettings));
+    onCleanup(registerDialog("browse-recipes", TestClearData));
     await renderWithStudio(<App />);
     await page.getByRole("button", { name: "Open settings" }).click();
     await page.getByRole("button", { name: "Clear data…" }).click();

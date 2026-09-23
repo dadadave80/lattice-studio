@@ -342,9 +342,13 @@ describe("Tree item menus", () => {
   test("a right click on a row without a menu isn't prevented: the browser's own menu can show", async () => {
     await renderWithStudio(<Harness {...withMenu()} />);
     let prevented: boolean | undefined;
-    document.addEventListener("contextmenu", (event) => {
-      prevented = event.defaultPrevented;
-    });
+    document.addEventListener(
+      "contextmenu",
+      (event) => {
+        prevented = event.defaultPrevented;
+      },
+      { once: true },
+    );
     await item("Pausable").click({ button: "right" });
     expect(prevented).toBe(false);
     expect(document.querySelector('[role="menu"]')).toBeNull();
