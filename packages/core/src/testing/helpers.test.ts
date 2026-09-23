@@ -44,10 +44,16 @@ describe("rules", () => {
     expect(fitText("kept", undefined)).toBe("kept");
   });
 
-  test("hostileKey never draws the literal \"$ref\" or \"__proto__\"", () => {
-    for (const key of fc.sample(hostileKey(), { seed: 4, numRuns: 500 })) {
+  test("hostileKey never draws the literal \"$ref\"; PROTOTYPE_KEYS are drawn by default, excluded only when asked", () => {
+    const withDefaults = fc.sample(hostileKey(), { seed: 4, numRuns: 500 });
+    for (const key of withDefaults) expect(key).not.toBe("$ref");
+    expect(withDefaults).toEqual(expect.arrayContaining(["__proto__", "constructor", "prototype"]));
+
+    for (const key of fc.sample(hostileKey(8, { prototypeKeys: false }), { seed: 4, numRuns: 500 })) {
       expect(key).not.toBe("$ref");
       expect(key).not.toBe("__proto__");
+      expect(key).not.toBe("constructor");
+      expect(key).not.toBe("prototype");
     }
   });
 });
@@ -101,6 +107,13 @@ describe("shape", () => {
     const text = "# <Title>\n\nSee `<code>` here.\n\n```html\n<script>\n```\n\nAnd `` ` `` a lone backtick span.";
     expect(markdownProse(text)).toBe("# <Title>\n\nSee  here.\n\n\nAnd  a lone backtick span.");
     expect(markdownProse("plain")).toBe("plain");
+  });
+
+  test("markdownProse doesn't pair a backslash-escaped backtick with a later real span, so a stray < between them stays visible", () => {
+    const text = "x\\`<leak `real` y";
+    const prose = markdownProse(text);
+    expect(prose).toContain("<leak");
+    expect(prose).not.toContain("real");
   });
 
   test("overlappingPairs ignores touching edges", () => {
