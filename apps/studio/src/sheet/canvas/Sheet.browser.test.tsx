@@ -10,7 +10,8 @@ import { installShortcuts } from "@/commands/keys/dispatcher";
 import { fixtureCatalog, onCleanup } from "../../../test/harness";
 import { cardProject } from "../card/testing/projects";
 import { BACK_TO_CONTENT_DELAY_MS } from "./BackToContent";
-import { ensureVisible, sheetViewport } from "./sheet-view";
+import { ZOOM_RANGE } from "./commands";
+import { ensureVisible, panSheet, sheetViewport, storeSheetViewport } from "./sheet-view";
 import {
   cardNode, cardScreenRect, drag, drawn, drawnViewport, emptyProject, flowElement, key, paneElement, renderSheet, settled,
   SHEET_HEIGHT, SHEET_WIDTH, sheetProject, storedViewport, wheel,
@@ -114,6 +115,19 @@ describe("the sheet", () => {
     expect(drawnViewport()).toEqual({ x: 0, y: 0, zoom: 1 });
   });
 
+  test("a stored zoom out of range is drawn, and stored again, inside 10-200%", async () => {
+    const project = sheetProject(4);
+    const saved = storedViewports(new Map([[project.id, { x: -100, y: -50, zoom: 5 }]]));
+    await renderSheet({ project });
+    expect(drawnViewport().zoom).toBe(MAX_ZOOM);
+    expect(storedViewport()?.zoom).toBe(MAX_ZOOM);
+    expect(saved.get(project.id)?.zoom).toBe(MAX_ZOOM);
+
+    session.set((s) => ({ viewports: { ...s.viewports, [project.id]: { x: 0, y: 0, zoom: 0.01 } } }));
+    await expect.poll(() => drawnViewport().zoom).toBe(MIN_ZOOM);
+    await expect.poll(() => storedViewport()?.zoom).toBe(MIN_ZOOM);
+  });
+
   test("a viewport stored from elsewhere is followed", async () => {
     await renderSheet({ project: sheetProject(3) });
     session.set((s) => ({ viewports: { ...s.viewports, [doc.get().id]: { x: -120, y: -40, zoom: 0.5 } } }));
@@ -179,8 +193,37 @@ describe("pan", () => {
     await drag(card, { x: r.x + 20, y: r.y + 10 }, { x: 70, y: 35 });
     await expect.poll(() => drawnViewport().x).toBeCloseTo(start.x + 70, 0);
     expect(doc.get().layout[card.dataset.id ?? ""]).toEqual(project.layout[card.dataset.id ?? ""]);
+    // Middle and right drags keep panning under the Hand tool.
+    for (const button of [1, 2]) {
+      const before = drawnViewport();
+      await drag(paneElement(), { x: 900, y: 600 }, { x: -40, y: -20 }, button);
+      await expect.poll(() => drawnViewport().x).toBeCloseTo(before.x - 40, 0);
+    }
     await runCommand({ id: "tool.select" }, "keys");
     expect(session.get().tool).toBe("select");
+  });
+
+  test("panSheet with store: false moves the sheet but writes the session only when told", async () => {
+    const saved = storedViewports();
+    const project = sheetProject(4);
+    await renderSheet({ project });
+    const before = storedViewport();
+    const writes: unknown[] = [];
+    onCleanup(session.subscribe((state, previous) => {
+      if (state.viewports !== previous.viewports) writes.push(state.viewports[project.id]);
+    }));
+    for (let i = 0; i < 10; i++) {
+      panSheet(-5, 0, { store: false });
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(drawnViewport().x).toBeCloseTo((before?.x ?? 0) - 50, 0);
+    expect(writes).toEqual([]);
+    expect(storedViewport()).toEqual(before);
+    const end = storeSheetViewport();
+    expect(writes).toHaveLength(1);
+    expect(storedViewport()).toEqual(end);
+    expect(saved.get(project.id)).toEqual(end);
   });
 
   test("Space held, then drag, pans; letting go ends it", async () => {
@@ -226,8 +269,10 @@ describe("zoom", () => {
       expect(storedViewport()?.zoom).toBeCloseTo(zoom);
     }
     expect(commandState({ id: "sheet.zoomIn" })).toMatchObject({ ok: false, reason: "Already at 200%" });
-    await runCommand({ id: "sheet.zoomTo", args: { zoom: 7 } }, "palette");
-    expect((await drawn()).zoom).toBe(MAX_ZOOM);
+    expect(await runCommand({ id: "sheet.zoomTo", args: { zoom: 7 } }, "palette")).toEqual({ ok: false, reason: ZOOM_RANGE });
+    expect(await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.05 } }, "palette")).toEqual({ ok: false, reason: ZOOM_RANGE });
+    expect(await runCommand({ id: "sheet.zoomTo", args: { zoom: 2 } }, "palette")).toEqual({ ok: false, reason: "Already at 200%" });
+    expect(drawnViewport().zoom).toBe(MAX_ZOOM);
     for (let i = 0; i < 6; i++) wheel({ deltaY: -400, ctrlKey: true });
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(drawnViewport().zoom).toBeLessThanOrEqual(MAX_ZOOM + 1e-6);
@@ -287,8 +332,10 @@ describe("zoom", () => {
     await renderSheet({ project: emptyProject("e") });
     expect(commandState({ id: "sheet.zoomFit" })).toMatchObject({ ok: false, reason: "The sheet is empty" });
     expect(commandState({ id: "sheet.zoomSelection" })).toMatchObject({ ok: false, reason: "Select a card first" });
-    await runCommand({ id: "sheet.zoom100" }, "keys");
-    expect(bufferedServices().log.at(-1)?.text).toBe("Already at 100%.");
+    expect(await runCommand({ id: "sheet.zoom100" }, "keys")).toEqual({ ok: false, reason: "Already at 100%" });
+    expect(bufferedServices().log.at(-1)?.text).toBe("Already at 100%");
+    await runCommand({ id: "tool.select" }, "keys");
+    expect(bufferedServices().log.at(-1)?.text).toBe("The Select tool is already on");
   });
 
   test("the console: zoom 75, zoom fit, zoom selection and fit", async () => {
@@ -298,7 +345,7 @@ describe("zoom", () => {
     expect((await drawn()).zoom).toBeCloseTo(0.75);
     expect(bufferedServices().log.at(-1)?.text).toBe("Zoom 75%.");
     await runConsoleLine("zoom 500");
-    expect(bufferedServices().log.at(-1)?.text).toBe("Type a percent from 10 to 200, fit or selection.");
+    expect(bufferedServices().log.at(-1)?.text).toBe(ZOOM_RANGE);
     await runConsoleLine("zoom fit");
     expect(bufferedServices().log.at(-1)?.text).toMatch(/^Fit 4 cards · \d+%\.$/);
     session.set({ selection: [Object.keys(project.layout)[0] ?? ""] });
@@ -354,7 +401,8 @@ describe("locate, Back to content, minimap, auto-pan", () => {
     await drawn();
     await runCommand({ id: "sheet.locate", args: { facet: Object.keys(project.layout)[0] ?? "" } }, "api");
     expect((await drawn()).zoom).toBeCloseTo(1.5);
-    expect(commandState({ id: "sheet.locate", args: { facet: "Nope" } })).toMatchObject({ ok: false, reason: "Nope isn't on the sheet." });
+    expect(commandState({ id: "sheet.locate", args: { facet: "Nope" } })).toMatchObject({ ok: false, reason: "Nope isn't on the sheet" });
+    expect(commandState({ id: "sheet.locate", args: {} })).toMatchObject({ ok: false, reason: "Name a facet to locate" });
   });
 
   test("Back to content appears after 1 s with every card off-screen, and fits the view", async () => {

@@ -37,8 +37,8 @@ export type SheetHandle = {
   /** The sheet's size in px; zero while it's hidden (a pane switcher tab, `display: none`). */
   size(): Size;
   element(): HTMLElement | null;
-  /** Moves React Flow's viewport, gliding for `duration` ms. */
-  setViewport(viewport: Viewport, duration: number): void;
+  /** Moves React Flow's viewport, gliding for `duration` ms; `stored` false keeps its move end out of the session. */
+  setViewport(viewport: Viewport, duration: number, stored: boolean): void;
   /** How far below its card's top a pin row's center sits, when React Flow has measured the row. */
   pinY(facet: string, selector: Hex4): number | null;
 };
@@ -98,13 +98,32 @@ export function storeViewport(projectId: string, viewport: Viewport): void {
   saveViewport(projectId, viewport);
 }
 
+export type MoveOptions = {
+  /** False jumps even with full motion. */
+  animate?: boolean;
+  /**
+   * False moves the mounted sheet without writing the session or saving, and jumps: for moves made every frame
+   * (S4e's edge auto-scroll), which call `storeSheetViewport()` once when they end. Without a mounted sheet
+   * nothing moves.
+   */
+  store?: boolean;
+};
+
 /** Moves the view: glides on the mounted sheet (jumps with reduced motion) and stores the result. */
-export function moveViewport(viewport: Viewport, options: { animate?: boolean } = {}): Viewport {
+export function moveViewport(viewport: Viewport, options: MoveOptions = {}): Viewport {
   const next = { x: viewport.x, y: viewport.y, zoom: clampZoom(viewport.zoom) };
+  const store = options.store !== false;
   const handle = mounted();
-  if (handle) handle.setViewport(next, options.animate === false || reducedMotion() ? 0 : GLIDE_MS);
-  storeViewport(doc.get().id, next);
+  if (handle) handle.setViewport(next, options.animate === false || !store || reducedMotion() ? 0 : GLIDE_MS, store);
+  if (store) storeViewport(doc.get().id, next);
   return next;
+}
+
+/** Stores the view as it is now: the end of a run of `store: false` moves. */
+export function storeSheetViewport(): Viewport {
+  const now = sheetViewport();
+  storeViewport(doc.get().id, now);
+  return now;
 }
 
 function sizes() {
@@ -125,10 +144,10 @@ export function zoomSheet(zoom: number, at?: Point): Viewport {
   return moveViewport(zoomAt(sheetViewport(), zoom, at ?? { x: size.width / 2, y: size.height / 2 }));
 }
 
-/** Pans by screen px. */
-export function panSheet(dx: number, dy: number): Viewport {
+/** Pans by screen px. `store: false` for per-frame panning, then `storeSheetViewport()` once at the end. */
+export function panSheet(dx: number, dy: number, options: MoveOptions = {}): Viewport {
   const v = sheetViewport();
-  return moveViewport({ x: v.x + dx, y: v.y + dy, zoom: v.zoom });
+  return moveViewport({ x: v.x + dx, y: v.y + dy, zoom: v.zoom }, options);
 }
 
 /**
@@ -181,7 +200,7 @@ export function floatingRects(sheet: HTMLElement): Rect[] {
 }
 
 /** Pans so a rect on screen (relative to the sheet) lies inside it and clear of every floating element. */
-function clearOnScreen(target: Rect, options: { animate?: boolean }): boolean {
+function clearOnScreen(target: Rect, options: MoveOptions): boolean {
   const viewport = sheetViewport();
   const size = sheetSize();
   const sheet = mounted()?.element() ?? null;
@@ -196,7 +215,7 @@ function clearOnScreen(target: Rect, options: { animate?: boolean }): boolean {
  * Pans so `facet`'s card lies inside the sheet and clear of every floating element (spec L771, 2.4.11), using
  * its token-computed size (spec L824). True when the view moved.
  */
-export function ensureVisible(facet: string, options: { animate?: boolean } = {}): boolean {
+export function ensureVisible(facet: string, options: MoveOptions = {}): boolean {
   const rect = cardRect(doc.get().layout, sizes(), facet);
   if (!rect) return false;
   return clearOnScreen(toScreen(rect, sheetViewport()), options);
@@ -206,7 +225,7 @@ export function ensureVisible(facet: string, options: { animate?: boolean } = {}
  * Pans so an element inside a card (a pin row with keyboard focus) is clear of the floating UI, without
  * jumping back to the top of a card taller than the sheet. True when the view moved.
  */
-export function ensureElementVisible(element: Element, options: { animate?: boolean } = {}): boolean {
+export function ensureElementVisible(element: Element, options: MoveOptions = {}): boolean {
   const sheet = mounted()?.element();
   if (!sheet) return false;
   const box = sheet.getBoundingClientRect();

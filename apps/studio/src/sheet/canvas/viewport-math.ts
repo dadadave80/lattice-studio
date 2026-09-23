@@ -53,6 +53,18 @@ export function zoomAt(viewport: Viewport, zoom: number, at: Point): Viewport {
   return { x: at.x - sheet.x * next, y: at.y - sheet.y * next, zoom: next };
 }
 
+/**
+ * `viewport` with its zoom inside 10-200%, keeping what's at the center of a sheet of `size` in place. React
+ * Flow's `setViewport` doesn't enforce the zoom range, so every viewport from storage or the session passes
+ * through here before it's drawn.
+ */
+export function clampViewport(viewport: Viewport, size: Size): Viewport {
+  const zoom = clampZoom(viewport.zoom);
+  if (zoom === viewport.zoom) return viewport;
+  if (!(viewport.zoom > 0)) return { x: viewport.x, y: viewport.y, zoom };
+  return zoomAt(viewport, zoom, { x: size.width / 2, y: size.height / 2 });
+}
+
 /** The viewport that shows the sheet point `point` at the center of a sheet of `size`, at `zoom`. */
 export function centerOn(point: Point, size: Size, zoom: number): Viewport {
   const z = clampZoom(zoom);

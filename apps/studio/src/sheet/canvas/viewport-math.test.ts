@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  centerOn, clampZoom, clearOf, fitRect, gridGap, intersects, isViewport, MAX_ZOOM, MIN_ZOOM, percent, sameViewport, toScreen,
+  centerOn, clampViewport, clampZoom, clearOf, fitRect, gridGap, intersects, isViewport, MAX_ZOOM, MIN_ZOOM, percent, sameViewport, toScreen,
   visibleRect, zoomAt, zoomStep, ZOOM_STOPS,
 } from "./viewport-math";
 
@@ -39,6 +39,19 @@ describe("viewports", () => {
     expect(sheetAfter.x).toBeCloseTo(sheetBefore.x);
     expect(sheetAfter.y).toBeCloseTo(sheetBefore.y);
     expect(zoomAt(before, 9, at).zoom).toBe(MAX_ZOOM);
+  });
+
+  test("clampViewport brings a stored zoom back into range around the sheet's center", () => {
+    const size = { width: 800, height: 600 };
+    const ok = { x: 10, y: 20, zoom: 1.5 };
+    expect(clampViewport(ok, size)).toBe(ok);
+    const wild = { x: -1000, y: -800, zoom: 5 };
+    const clamped = clampViewport(wild, size);
+    expect(clamped.zoom).toBe(MAX_ZOOM);
+    const centerBefore = { x: (400 - wild.x) / wild.zoom, y: (300 - wild.y) / wild.zoom };
+    expect((400 - clamped.x) / clamped.zoom).toBeCloseTo(centerBefore.x);
+    expect((300 - clamped.y) / clamped.zoom).toBeCloseTo(centerBefore.y);
+    expect(clampViewport({ x: 0, y: 0, zoom: 0.01 }, size).zoom).toBe(MIN_ZOOM);
   });
 
   test("centerOn puts the point in the middle", () => {

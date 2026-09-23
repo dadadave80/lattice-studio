@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { doc, getAnalysis, getCatalog, loadViewport, session, useDocument, type Viewport } from "@/contracts";
 import { cardSizes, cardsBounds } from "./geometry";
 import { attachSheet, sheetSize, storeViewport } from "./sheet-view";
-import { FIT_MAX_ZOOM, fitRect, isViewport, sameViewport } from "./viewport-math";
+import { clampViewport, FIT_MAX_ZOOM, fitRect, isViewport, sameViewport } from "./viewport-math";
 
 const START: Viewport = { x: 0, y: 0, zoom: 1 };
 
@@ -44,6 +44,8 @@ export function useViewportSync(wrapper: RefObject<HTMLElement | null>): Viewpor
   const known = useRef<Viewport | null>(null);
   /** A glide's target and when it lands, so reads during the glide see where it's going. */
   const gliding = useRef<{ to: Viewport; until: number } | null>(null);
+  /** True after an unstored move (`store: false`), until the next stored one: its move end isn't stored either. */
+  const quiet = useRef(false);
 
   useEffect(() => {
     const live = (): Viewport => {
@@ -57,8 +59,9 @@ export function useViewportSync(wrapper: RefObject<HTMLElement | null>): Viewpor
       },
       size: () => ({ width: wrapper.current?.clientWidth ?? 0, height: wrapper.current?.clientHeight ?? 0 }),
       element: () => wrapper.current,
-      setViewport: (viewport, duration) => {
+      setViewport: (viewport, duration, stored) => {
         known.current = viewport;
+        quiet.current = !stored;
         gliding.current = duration > 0 ? { to: viewport, until: performance.now() + duration } : null;
         void flow.setViewport(viewport, { duration });
       },
@@ -72,9 +75,11 @@ export function useViewportSync(wrapper: RefObject<HTMLElement | null>): Viewpor
   useEffect(() => {
     let cancelled = false;
     active.current = null;
-    const apply = (viewport: Viewport) => {
+    const apply = (wanted: Viewport) => {
       if (cancelled) return;
+      const viewport = clampViewport(wanted, sheetSize());
       known.current = viewport;
+      quiet.current = false;
       gliding.current = null;
       void flow.setViewport(viewport);
       active.current = projectId;
@@ -98,19 +103,25 @@ export function useViewportSync(wrapper: RefObject<HTMLElement | null>): Viewpor
       session.subscribe((state, previous) => {
         if (state.viewports === previous.viewports) return;
         const id = active.current;
-        const next = id === null ? undefined : state.viewports[id];
-        if (!next || (known.current && sameViewport(next, known.current))) return;
+        const stored = id === null ? undefined : state.viewports[id];
+        if (!stored || (known.current && sameViewport(stored, known.current))) return;
+        const next = clampViewport(stored, sheetSize());
         known.current = next;
         gliding.current = null;
+        quiet.current = false;
         void flow.setViewport(next);
+        if (id !== null && next !== stored) storeViewport(id, next);
       }),
     [flow],
   );
 
   const onMoveEnd = useCallback<OnMove>(
-    (_event, viewport) => {
+    (event, viewport) => {
       const id = active.current;
       if (id === null) return;
+      // The end of an unstored move (S4e's edge auto-scroll): the session is written once, at drag end.
+      if (event === null && quiet.current) return;
+      quiet.current = false;
       const [x, y, zoom] = store.getState().transform;
       // A late end from before a newer move: the view has already gone elsewhere.
       if (!sameViewport(viewport, { x, y, zoom })) return;

@@ -44,7 +44,18 @@ export function BackToContent() {
         setShown(false);
       }
     };
-    const unsubscribe = store.subscribe(check);
+    // Rescan only when the view, the sheet's size or the number of cards changes, never on a drag frame.
+    const unsubscribe = store.subscribe((state, previous) => {
+      if (
+        state.transform === previous.transform &&
+        state.width === previous.width &&
+        state.height === previous.height &&
+        state.nodes.length === previous.nodes.length
+      ) {
+        return;
+      }
+      check(state);
+    });
     if (everyCardOffscreen(store.getState())) timer = setTimeout(() => setShown(true), BACK_TO_CONTENT_DELAY_MS);
     return () => {
       unsubscribe();

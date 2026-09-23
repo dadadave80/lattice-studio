@@ -1,25 +1,43 @@
 /**
  * S4b's commands (contracts §5.3): the tools, every zoom, Locate, Back to content and the minimap (Flow 8,
  * IR L28-L30). They move the project's viewport through `sheet-view.ts`, so they work whether or not the
- * sheet is showing. Each says what it did: announced, and logged too when typed in the console; a command
- * another module runs (`api`, after Tidy or a recipe load) stays quiet, since that module narrates.
+ * sheet is showing.
+ *
+ * Every command says what it did or why it didn't (contracts §6). Why it can't is its `enabled()` reason
+ * (no period, like every disabled reason: "Already at 200%"), which `runCommand` logs and announces; a no-op
+ * found while running (a tool that's already on) is said the same way. What it did is a sentence with a
+ * period ("Zoom 75%."), announced, and logged too when typed in the console; a command another module runs
+ * (`api`, after Tidy or a recipe load) says only why it didn't, since that module narrates what happened.
  */
 import type { Hex4, Result } from "@lattice-studio/core";
 import {
   announce, command, defineCommands, log, settings, session, type CommandArgsOf, type CommandContext, type Enablement,
 } from "@/contracts";
 import { focusCard } from "@/a11y/focus";
-import { fitCards, locateCard, sheetViewport, zoomSheet } from "./sheet-view";
-import { clampZoom, MAX_ZOOM, MIN_ZOOM, percent, zoomStep } from "./viewport-math";
 import { tabStopOf } from "./nodes";
+import { fitCards, locateCard, sheetViewport, zoomSheet } from "./sheet-view";
+import { MAX_ZOOM, MIN_ZOOM, percent, zoomStep } from "./viewport-math";
 
 type ZoomToArgs = CommandArgsOf<"sheet.zoomTo">;
 type LocateArgs = CommandArgsOf<"sheet.locate">;
 
 const SHEET = ["sheet"] as const;
 const OK: Enablement = { ok: true };
+const EPSILON = 1e-3;
+
 export const EMPTY_SHEET = "The sheet is empty";
 export const NO_SELECTION = "Select a card first";
+/** Why a zoom was refused, for `zoom <percent>` and `sheet.zoomTo` alike. */
+export const ZOOM_RANGE = "Zoom takes a percent from 10 to 200";
+export const NAME_A_FACET = "Name a facet to locate";
+
+function refuse(reason: string): Enablement {
+  return { ok: false, reason };
+}
+
+export function alreadyAt(zoom: number): string {
+  return `Already at ${percent(zoom)}`;
+}
 
 /** Says what a command did: announced; also logged when typed in the console; silent for `api` callers. */
 function say(ctx: CommandContext, text: string): void {
@@ -28,14 +46,18 @@ function say(ctx: CommandContext, text: string): void {
   announce(text, { merge: "sheet-view" });
 }
 
-/** A no-op, said the same way a disabled command's reason is: logged and announced. */
-function sayNote(text: string): void {
-  log({ tag: "Note", text });
-  announce(text);
+/** Says why a command that passed `enabled()` still did nothing, the way `runCommand` says a reason. */
+function sayReason(reason: string): void {
+  log({ tag: "Note", text: reason });
+  announce(reason);
 }
 
 function storedZoom(ctx: CommandContext): number {
   return ctx.session.viewports[ctx.project.id]?.zoom ?? 1;
+}
+
+function same(a: number, b: number): boolean {
+  return Math.abs(a - b) < EPSILON;
 }
 
 function hasCards(ctx: CommandContext): boolean {
@@ -47,24 +69,30 @@ function placedSelection(ctx: CommandContext): string[] {
 }
 
 function noArgs(argv: string[]): Result<Record<string, never>, string> {
-  return argv.length === 0 ? { ok: true, value: {} } : { ok: false, error: `Unexpected “${argv.join(" ")}”.` };
+  return argv.length === 0 ? { ok: true, value: {} } : { ok: false, error: `Unexpected “${argv.join(" ")}”` };
+}
+
+function inRange(zoom: unknown): zoom is number {
+  return typeof zoom === "number" && Number.isFinite(zoom) && zoom >= MIN_ZOOM - EPSILON && zoom <= MAX_ZOOM + EPSILON;
 }
 
 /** "75" or "75%" is 0.75; 10-200% only. */
 export function parseZoom(argv: string[]): Result<ZoomToArgs, string> {
   const [word, ...rest] = argv;
-  const usage = "Type a percent from 10 to 200, fit or selection.";
-  if (word === undefined || rest.length) return { ok: false, error: usage };
+  if (word === undefined || rest.length) return { ok: false, error: ZOOM_RANGE };
   const match = /^(\d+(?:\.\d+)?)%?$/.exec(word);
-  const value = match ? Number(match[1]) : Number.NaN;
-  if (!Number.isFinite(value) || value < MIN_ZOOM * 100 || value > MAX_ZOOM * 100) return { ok: false, error: usage };
-  return { ok: true, value: { zoom: value / 100 } };
+  const zoom = match ? Number(match[1]) / 100 : Number.NaN;
+  return inRange(zoom) ? { ok: true, value: { zoom } } : { ok: false, error: ZOOM_RANGE };
+}
+
+/** Refuses a zoom the view is already at. */
+function zoomEnabled(ctx: CommandContext, zoom: number): Enablement {
+  return same(storedZoom(ctx), zoom) ? refuse(alreadyAt(zoom)) : OK;
 }
 
 function zoomed(ctx: CommandContext, zoom: number): void {
-  const before = sheetViewport().zoom;
-  if (Math.abs(before - zoom) < 1e-3) {
-    if (ctx.source !== "api") sayNote(`Already at ${percent(zoom)}.`);
+  if (same(sheetViewport().zoom, zoom)) {
+    sayReason(alreadyAt(zoom));
     return;
   }
   zoomSheet(zoom);
@@ -78,10 +106,11 @@ const toolSelect = command({
   keys: ["v"],
   keyContext: [...SHEET],
   palette: true,
+  // Enabled while it's on too: the tool strip and the Tools menu show the tool in use as pressed, not disabled.
   enabled: () => OK,
   run(ctx) {
     if (ctx.session.tool === "select") {
-      if (ctx.source !== "api") sayNote("The Select tool is already on.");
+      sayReason("The Select tool is already on");
       return;
     }
     session.set({ tool: "select" });
@@ -96,10 +125,11 @@ const toolHand = command({
   keys: ["h"],
   keyContext: [...SHEET],
   palette: true,
+  // Enabled while it's on too: the tool strip and the Tools menu show the tool in use as pressed, not disabled.
   enabled: () => OK,
   run(ctx) {
     if (ctx.session.tool === "hand") {
-      if (ctx.source !== "api") sayNote("The Hand tool is already on.");
+      sayReason("The Hand tool is already on");
       return;
     }
     session.set({ tool: "hand" });
@@ -114,7 +144,7 @@ const zoomIn = command({
   keys: ["=", "+"],
   keyContext: [...SHEET],
   palette: true,
-  enabled: (ctx) => (storedZoom(ctx) < MAX_ZOOM - 1e-3 ? OK : { ok: false, reason: `Already at ${percent(MAX_ZOOM)}` }),
+  enabled: (ctx) => (storedZoom(ctx) < MAX_ZOOM - EPSILON ? OK : refuse(alreadyAt(MAX_ZOOM))),
   run: (ctx) => zoomed(ctx, zoomStep(sheetViewport().zoom, 1)),
 });
 
@@ -125,7 +155,7 @@ const zoomOut = command({
   keys: ["-"],
   keyContext: [...SHEET],
   palette: true,
-  enabled: (ctx) => (storedZoom(ctx) > MIN_ZOOM + 1e-3 ? OK : { ok: false, reason: `Already at ${percent(MIN_ZOOM)}` }),
+  enabled: (ctx) => (storedZoom(ctx) > MIN_ZOOM + EPSILON ? OK : refuse(alreadyAt(MIN_ZOOM))),
   run: (ctx) => zoomed(ctx, zoomStep(sheetViewport().zoom, -1)),
 });
 
@@ -136,13 +166,13 @@ const zoom100 = command({
   keys: ["Shift+[Digit0]"],
   keyContext: [...SHEET],
   palette: true,
-  enabled: () => OK,
+  enabled: (ctx) => zoomEnabled(ctx, 1),
   run: (ctx) => zoomed(ctx, 1),
 });
 
 const zoomTo = command<ZoomToArgs>({
   id: "sheet.zoomTo",
-  title: ({ zoom }) => `Zoom to ${percent(clampZoom(zoom))}`,
+  title: ({ zoom }) => (inRange(zoom) ? `Zoom to ${percent(zoom)}` : "Zoom to"),
   category: "Sheet",
   bindings: [
     { name: "50", keys: [], args: { zoom: 0.5 }, palette: true },
@@ -150,9 +180,8 @@ const zoomTo = command<ZoomToArgs>({
   ],
   keyContext: [...SHEET],
   console: { verb: "zoom", syntax: "zoom <percent>", parse: parseZoom },
-  enabled: (_ctx, { zoom }) =>
-    typeof zoom === "number" && Number.isFinite(zoom) && zoom > 0 ? OK : { ok: false, reason: "Zoom takes a percent from 10 to 200" },
-  run: (ctx, { zoom }) => zoomed(ctx, clampZoom(zoom)),
+  enabled: (ctx, { zoom }) => (inRange(zoom) ? zoomEnabled(ctx, zoom) : refuse(ZOOM_RANGE)),
+  run: (ctx, { zoom }) => zoomed(ctx, zoom),
 });
 
 function fit(ctx: CommandContext): void {
@@ -169,7 +198,7 @@ const zoomFit = command({
   keyContext: [...SHEET],
   palette: true,
   console: { verb: "fit", syntax: "fit", parse: noArgs },
-  enabled: (ctx) => (hasCards(ctx) ? OK : { ok: false, reason: EMPTY_SHEET }),
+  enabled: (ctx) => (hasCards(ctx) ? OK : refuse(EMPTY_SHEET)),
   run: fit,
 });
 
@@ -181,7 +210,7 @@ const zoomSelection = command({
   keyContext: [...SHEET],
   palette: true,
   console: { verb: "zoom", sub: "selection", syntax: "zoom selection", parse: noArgs },
-  enabled: (ctx) => (placedSelection(ctx).length ? OK : { ok: false, reason: NO_SELECTION }),
+  enabled: (ctx) => (placedSelection(ctx).length ? OK : refuse(NO_SELECTION)),
   run(ctx) {
     const names = placedSelection(ctx);
     const viewport = fitCards(names);
@@ -191,10 +220,12 @@ const zoomSelection = command({
 
 const locate = command<LocateArgs>({
   id: "sheet.locate",
-  title: ({ facet }) => `Locate ${facet}`,
+  title: ({ facet }) => (typeof facet === "string" ? `Locate ${facet}` : "Locate"),
   category: "Sheet",
-  enabled: (ctx, { facet }) =>
-    typeof facet === "string" && ctx.project.layout[facet] ? OK : { ok: false, reason: `${String(facet)} isn't on the sheet.` },
+  enabled(ctx, { facet }) {
+    if (typeof facet !== "string" || facet === "") return refuse(NAME_A_FACET);
+    return ctx.project.layout[facet] ? OK : refuse(`${facet} isn't on the sheet`);
+  },
   run(ctx, { facet, selector }) {
     if (locateCard(facet, selector as Hex4 | undefined)) say(ctx, `Located ${facet}.`);
   },
@@ -206,7 +237,7 @@ const backToContent = command({
   title: () => "Back to content",
   category: "Sheet",
   console: { verb: "zoom", sub: "fit", syntax: "zoom fit", parse: noArgs },
-  enabled: (ctx) => (hasCards(ctx) ? OK : { ok: false, reason: EMPTY_SHEET }),
+  enabled: (ctx) => (hasCards(ctx) ? OK : refuse(EMPTY_SHEET)),
   run(ctx) {
     const hadFocus = Boolean(document.activeElement?.closest("[data-back-to-content]"));
     fit(ctx);

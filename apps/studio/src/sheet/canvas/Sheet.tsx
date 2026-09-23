@@ -1,6 +1,6 @@
 import "@xyflow/react/dist/base.css";
 import { ReactFlow, ReactFlowProvider, type NodeChange, type OnMove } from "@xyflow/react";
-import { lazy, Suspense, useMemo, useRef, useState, type FocusEvent, type RefObject } from "react";
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type RefObject } from "react";
 import {
   KEY_CONTEXT_ATTRIBUTE, sheetEdgeTypes, sheetLayers, sheetNodeTypes, useDocument, useSession, useSettings,
   useSheetInteractions,
@@ -9,6 +9,7 @@ import { BackToContent } from "./BackToContent";
 import { nodeBuilder, tabStopOf, type Measured } from "./nodes";
 import { cardInView, ensureElementVisible, ensureVisible } from "./sheet-view";
 import { SheetGrid } from "./SheetGrid";
+import { usePaneContextMenu, type PaneMenuHandler } from "./use-pane-context-menu";
 import { useSpacePan } from "./use-space-pan";
 import { useViewportSync } from "./use-viewport-sync";
 import { MAX_ZOOM, MIN_ZOOM } from "./viewport-math";
@@ -24,8 +25,12 @@ export const edgeTypes = sheetEdgeTypes();
 /** The minimap is off by default (PA L67), so it's its own chunk. */
 const Minimap = lazy(() => import("./Minimap").then((m) => ({ default: m.Minimap })));
 
-/** With the Select tool, a left drag belongs to cards and the marquee: middle and right drags pan (IR L52). */
+/**
+ * With the Select tool, a left drag belongs to cards and the marquee: middle and right drags pan (IR L52). With
+ * the Hand tool or Space held, every button pans (`true` would mean left and middle only).
+ */
 const PAN_BUTTONS_SELECT = [1, 2];
+const PAN_BUTTONS_HAND = [0, 1, 2];
 const PRO_OPTIONS = { hideAttribution: true };
 const KEY_CONTEXT = { [KEY_CONTEXT_ATTRIBUTE]: "sheet" };
 
@@ -79,7 +84,12 @@ function sameMeasured(a: Measured | undefined, b: Measured): boolean {
 type SheetFlowProps = { wrapper: RefObject<HTMLDivElement | null>; hand: boolean };
 
 function SheetFlow({ wrapper, hand }: SheetFlowProps) {
-  const interactions = useSheetInteractions();
+  const { onPaneContextMenu, ...interactions } = useSheetInteractions();
+  const paneMenu = useRef<PaneMenuHandler | undefined>(undefined);
+  useLayoutEffect(() => {
+    paneMenu.current = onPaneContextMenu;
+  });
+  usePaneContextMenu(wrapper, paneMenu);
   const layout = useDocument((s) => s.project.layout);
   const selection = useSession((s) => s.selection);
   const focus = useSession((s) => s.focus);
@@ -89,7 +99,7 @@ function SheetFlow({ wrapper, hand }: SheetFlowProps) {
   const [build] = useState(() => nodeBuilder());
   const { initial, restoring, onMoveEnd } = useViewportSync(wrapper);
 
-  const tabStop = tabStopOf(layout, focus, selection);
+  const tabStop = useMemo(() => tabStopOf(layout, focus, selection), [layout, focus, selection]);
   const nodes = useMemo(() => build({ layout, selection, tabStop, measured }), [build, layout, selection, tabStop, measured]);
 
   const theirNodesChange = interactions.onNodesChange;
@@ -133,7 +143,7 @@ function SheetFlow({ wrapper, hand }: SheetFlowProps) {
       panOnScroll={panOnScroll}
       zoomOnScroll={!panOnScroll}
       zoomOnPinch
-      panOnDrag={hand ? true : PAN_BUTTONS_SELECT}
+      panOnDrag={hand ? PAN_BUTTONS_HAND : PAN_BUTTONS_SELECT}
       {...(hand ? { nodesDraggable: false, selectionOnDrag: false } : {})}
       nodesConnectable={false}
       edgesFocusable={false}

@@ -1,7 +1,9 @@
 /**
- * 30 cards, dragged (spec L813, L823-L825): the sheet rebuilds only the node that moved, React Flow keeps every
- * other card's measurements, and each move commits well inside a frame budget. The real budget is Q4's
- * benchmark on a production build; this is the smoke test against regressions in a dev build.
+ * 30 cards, dragged (spec L823-L825): the sheet rebuilds only the node that moved and nothing remounts. A
+ * regression smoke test, not spec L816's number: it runs a dev build in headless Chromium with no edges, and
+ * measures two things only, the React Profiler's commit time per move (no layout or paint) and the main-thread
+ * time from dispatching a move until its work has run (still without paint). Spec L816's Interaction to Next
+ * Paint at 30 cards, 450 handles and 30 edges is Q4's benchmark on a production build.
  */
 import type { NodeChange } from "@xyflow/react";
 import { Profiler, type ProfilerOnRenderCallback } from "react";
@@ -12,8 +14,10 @@ import { onCleanup, renderWithStudio } from "../../../test/harness";
 import { Sheet } from "./Sheet";
 import { cardNode, cardScreenRect, drawn, settled, sheetProject } from "./testing/sheet-harness";
 
-/** React commit time per pointer move, in ms: one frame, generous for a dev build in headless Chromium. */
+/** React commit time per move, in ms (Profiler `actualDuration`, summed). */
 const MOVE_COMMIT_BUDGET_MS = 16;
+/** Main-thread time per move, dispatch to settled, in ms: the dev-build bound that catches a regression. */
+const MOVE_WALL_BUDGET_MS = 20;
 const MOVES = 30;
 
 /** A stand-in for S4e's drag: one undo step per drag, the document updated on every move. */
@@ -63,19 +67,23 @@ test("dragging one of 30 cards stays under budget and re-renders only what moved
   const from = { clientX: flow.left + start.x + 40, clientY: flow.top + start.y + 16 };
   const base = { bubbles: true, cancelable: true, view: window, button: 0 };
   node.dispatchEvent(new MouseEvent("mousedown", { ...base, ...from, buttons: 1 }));
-  const began = performance.now();
+  const walls: number[] = [];
   for (let i = 1; i <= MOVES; i++) {
+    const t0 = performance.now();
     window.dispatchEvent(new MouseEvent("mousemove", { ...base, buttons: 1, clientX: from.clientX + i * 8, clientY: from.clientY + i * 4 }));
+    // React's scheduled render runs before a zero timeout does; the frame wait after it is pacing, not work.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    walls.push(performance.now() - t0);
     await new Promise((resolve) => requestAnimationFrame(resolve));
   }
   window.dispatchEvent(new MouseEvent("mouseup", { ...base, buttons: 0, clientX: from.clientX + MOVES * 8, clientY: from.clientY + MOVES * 4 }));
-  const elapsed = performance.now() - began;
 
   await expect.poll(() => doc.get().layout[name]?.x).toBeGreaterThan((project.layout[name]?.x ?? 0) + 100);
   expect(doc.state().canUndo).toBe(true);
   const perMove = commits.reduce((sum, ms) => sum + ms, 0) / MOVES;
-  expect(elapsed / MOVES).toBeLessThan(100);
+  const wall = walls.reduce((sum, ms) => sum + ms, 0) / MOVES;
   expect(perMove).toBeLessThan(MOVE_COMMIT_BUDGET_MS);
+  expect(wall).toBeLessThan(MOVE_WALL_BUDGET_MS);
   // Every other card is the same element: nothing remounted.
   expect(names.slice(1).map((n) => cardNode(n))).toEqual(others);
 });
