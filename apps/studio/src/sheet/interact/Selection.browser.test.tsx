@@ -3,9 +3,10 @@
  * Shift adding, ⌘A, a click on empty sheet and Esc clearing; each change announced (spec L745).
  */
 import { describe, expect, test } from "vitest";
-import { commandState, session } from "@/contracts";
+import { commandState, onCommandRun, session } from "@/contracts";
+import { onCleanup } from "../../../test/harness";
 import {
-  announced, clickCard, marquee, position, press, releaseMarquee, renderInteractSheet, selection, sheetProject,
+  announced, cardNode, clickCard, marquee, position, press, releaseMarquee, renderInteractSheet, selection, sheetProject,
 } from "./testing/interact-harness";
 
 const ID = "selection";
@@ -33,6 +34,23 @@ describe("clicking cards", () => {
     expect(selection()).toEqual([b, c]);
     clickCard(c);
     expect(selection()).toEqual([c]);
+  });
+
+  test("the card grid is one Tab stop, and it follows the card last clicked", async () => {
+    const project = await sheet();
+    const [, b] = project.recipe.facets as [string, string];
+    clickCard(b);
+    await expect.poll(() => [...document.querySelectorAll<HTMLElement>(".react-flow__node")].filter((n) => n.tabIndex === 0).map((n) => n.dataset.id)).toEqual([b]);
+  });
+
+  test("a double-click opens the card in the inspector with its Selectors list", async () => {
+    const project = await sheet();
+    const [a] = project.recipe.facets as [string];
+    const ran: string[] = [];
+    onCleanup(onCommandRun((ref) => void ran.push(ref.id)));
+    cardNode(a).dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true, view: window, detail: 2 }));
+    await expect.poll(() => ran).toContain("inspector.focusSelectors");
+    expect(session.get().panes.inspector.view).toMatchObject({ kind: "facet", facet: a, focus: "selectors" });
   });
 
   test("the card's description states it, and its wrapper carries the selection", async () => {
