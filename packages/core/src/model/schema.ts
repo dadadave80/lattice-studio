@@ -37,9 +37,12 @@ function describe(value: unknown): string {
   }
 }
 
+/** The message for an absent required field. */
+const MISSING = "is missing.";
+
 /** An error function for a schema: "is missing." or `is <value>; expected <what>.` */
 function expected(what: string): (issue: { input?: unknown }) => string {
-  return (issue) => (issue.input === undefined ? "is missing." : `is ${describe(issue.input)}; expected ${what}.`);
+  return (issue) => (issue.input === undefined ? MISSING : `is ${describe(issue.input)}; expected ${what}.`);
 }
 
 const EXPECTED_TYPE: Record<string, string> = {
@@ -63,7 +66,7 @@ function joinOr(items: readonly string[]): string {
 
 /** Per-parse messages for issues whose schema sets none. */
 const issueMessage: z.core.$ZodErrorMap = (issue) => {
-  if (issue.input === undefined && issue.code === "invalid_type") return "is missing.";
+  if (issue.input === undefined) return MISSING;
   switch (issue.code) {
     case "invalid_type":
       return `is ${describe(issue.input)}; expected ${EXPECTED_TYPE[issue.expected] ?? issue.expected}.`;
@@ -110,16 +113,27 @@ function branchDepth(branch: readonly z.core.$ZodIssue[]): number {
   return depth;
 }
 
+/**
+ * Issues that only say the value has the wrong shape for this branch (a field it lacks, a key it has):
+ * on a tie in depth, the branch with fewer of them is the one the input meant.
+ */
+function branchMisfit(branch: readonly z.core.$ZodIssue[]): number {
+  return branch.filter((issue) => issue.message === MISSING || issue.code === "unrecognized_keys").length;
+}
+
 function flatten(issue: z.core.$ZodIssue, base: readonly PropertyKey[]): { path: PropertyKey[]; message: string }[] {
   const path = [...base, ...issue.path];
   if (issue.code === "invalid_union" && issue.errors.length > 0) {
     let best: readonly z.core.$ZodIssue[] = [];
     let bestDepth = 0;
+    let bestMisfit = Number.POSITIVE_INFINITY;
     for (const branch of issue.errors) {
       const depth = branchDepth(branch);
-      if (depth > bestDepth) {
+      const misfit = branchMisfit(branch);
+      if (depth > bestDepth || (depth === bestDepth && depth > 0 && misfit < bestMisfit)) {
         best = branch;
         bestDepth = depth;
+        bestMisfit = misfit;
       }
     }
     if (bestDepth > 0) return best.flatMap((inner) => flatten(inner, path));
@@ -212,7 +226,7 @@ const RecipeInitSchema = z.discriminatedUnion(
         const kind: unknown = (input as Record<string, unknown>)["kind"];
         return `has kind ${kind === undefined ? "missing" : describe(kind)}; expected "bundle", "steps" or "none".`;
       }
-      return input === undefined ? "is missing." : `is ${describe(input)}; expected an object with a kind.`;
+      return input === undefined ? MISSING : `is ${describe(input)}; expected an object with a kind.`;
     },
   },
 );
@@ -221,7 +235,7 @@ const RecipeInitSchema = z.discriminatedUnion(
 const SchemaVersionSchema = z.literal(1, {
   error: (issue) => {
     const input: unknown = issue.input;
-    if (input === undefined) return "is missing.";
+    if (input === undefined) return MISSING;
     if (typeof input === "number" && Number.isInteger(input) && input > 1) {
       return `is ${input}: this file needs Studio schema v${input}. This Studio reads v1.`;
     }

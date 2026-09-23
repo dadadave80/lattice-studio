@@ -51,8 +51,8 @@ export function toChecksum(address: string): Address {
 }
 
 /** Lowercases hex (selectors, hashes, data). */
-export function toLowerHex<T extends Hex>(value: T): T {
-  return value.toLowerCase() as T;
+export function toLowerHex(value: Hex): Hex {
+  return value.toLowerCase() as Hex;
 }
 
 /** Case-insensitive address comparison. */
