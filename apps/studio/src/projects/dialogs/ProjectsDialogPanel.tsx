@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { closeDialog, type DialogComponentProps } from "@/contracts";
+import { useEffect, useRef, useState } from "react";
+import { chainService, closeDialog, type DialogComponentProps } from "@/contracts";
 import { persistence, subscribeProjects, type ProjectSummary, type TrashSummary } from "@/persist";
 import { Button, Dialog, Tabs, TabPanel } from "@/ui";
+import { registerListFocus } from "./list-focus";
 import { ProjectRow } from "./ProjectRow";
 import styles from "./ProjectsDialogPanel.module.css";
 import { TrashRow } from "./TrashRow";
@@ -13,6 +14,23 @@ export function ProjectsDialogPanel({ entry, top }: DialogComponentProps<"projec
   const [tab, setTab] = useState<Tab>(entry.props.tab ?? "recent");
   const [recent, setRecent] = useState<ProjectSummary[] | null>(null);
   const [trash, setTrash] = useState<TrashSummary[] | null>(null);
+  const recentRef = useRef<HTMLDivElement>(null);
+  const trashRef = useRef<HTMLDivElement>(null);
+  const [chainNames, setChainNames] = useState<Map<number, string> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    chainService()
+      .then((service) => {
+        if (!cancelled) setChainNames(new Map(service.chains().map((c) => [c.id, c.name])));
+      })
+      .catch(() => {
+        // Not built yet, or it failed to load: status chips fall back to "Chain <id>".
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,6 +47,17 @@ export function ProjectsDialogPanel({ entry, top }: DialogComponentProps<"projec
     return () => {
       cancelled = true;
       stop();
+    };
+  }, []);
+
+  // A row a command removed (Delete, Restore, Delete for good) hands focus back here, never the body.
+  useEffect(() => {
+    const stops = [
+      registerListFocus("recent", () => recentRef.current?.focus()),
+      registerListFocus("deleted", () => trashRef.current?.focus()),
+    ];
+    return () => {
+      for (const stop of stops) stop();
     };
   }, []);
 
@@ -56,30 +85,34 @@ export function ProjectsDialogPanel({ entry, top }: DialogComponentProps<"projec
         ]}
       >
         <TabPanel value="recent">
-          {recent === null ? (
-            <p className={styles.empty}>Loading…</p>
-          ) : recent.length === 0 ? (
-            <p className={styles.empty}>No projects yet.</p>
-          ) : (
-            <ul className={styles.list}>
-              {recent.map((row) => (
-                <ProjectRow key={row.id} summary={row} onClose={close} />
-              ))}
-            </ul>
-          )}
+          <div ref={recentRef} tabIndex={-1} className={styles.listContainer}>
+            {recent === null ? (
+              <p className={styles.empty}>Loading…</p>
+            ) : recent.length === 0 ? (
+              <p className={styles.empty}>No projects yet.</p>
+            ) : (
+              <ul className={styles.list}>
+                {recent.map((row) => (
+                  <ProjectRow key={row.id} summary={row} onClose={close} {...(chainNames ? { chainNames } : {})} />
+                ))}
+              </ul>
+            )}
+          </div>
         </TabPanel>
         <TabPanel value="deleted">
-          {trash === null ? (
-            <p className={styles.empty}>Loading…</p>
-          ) : trash.length === 0 ? (
-            <p className={styles.empty}>Nothing in Recently deleted.</p>
-          ) : (
-            <ul className={styles.list}>
-              {trash.map((row) => (
-                <TrashRow key={row.id} summary={row} />
-              ))}
-            </ul>
-          )}
+          <div ref={trashRef} tabIndex={-1} className={styles.listContainer}>
+            {trash === null ? (
+              <p className={styles.empty}>Loading…</p>
+            ) : trash.length === 0 ? (
+              <p className={styles.empty}>Nothing in Recently deleted.</p>
+            ) : (
+              <ul className={styles.list}>
+                {trash.map((row) => (
+                  <TrashRow key={row.id} summary={row} />
+                ))}
+              </ul>
+            )}
+          </div>
         </TabPanel>
       </Tabs>
     </Dialog>

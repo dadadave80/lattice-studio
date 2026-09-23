@@ -2,6 +2,7 @@ import { formatTime, plural } from "@lattice-studio/core";
 import { openDialog } from "@/contracts";
 import type { TrashSummary } from "@/persist";
 import { Button, Tooltip } from "@/ui";
+import { focusList } from "./list-focus";
 import styles from "./TrashRow.module.css";
 
 export type TrashRowProps = { summary: TrashSummary };
@@ -26,14 +27,21 @@ export function TrashRow({ summary }: TrashRowProps) {
         <Button
           size="small"
           icon="restore"
+          aria-label={`Restore ${name}`}
           onClick={async () => {
             const { restoreProject } = await import("../actions");
             await restoreProject(id);
+            focusList("deleted");
           }}
         >
           Restore
         </Button>
-        <Button size="small" icon="trash" onClick={() => openDialog("delete-for-good", { projectId: id })}>
+        <Button
+          size="small"
+          icon="trash"
+          aria-label={`Delete ${name} for good`}
+          onClick={() => openDialog("delete-for-good", { projectId: id })}
+        >
           Delete for good
         </Button>
       </span>

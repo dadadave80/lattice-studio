@@ -1,0 +1,16 @@
+/* The inline failure a Delete for good or Clear data confirmation shows when the action itself fails
+ * (spec L733: no silent no-op on an irreversible action). Severity is the icon, never color alone. */
+.error {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lx-space-1);
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text);
+  margin-block-start: var(--lx-space-2);
+}
+
+.errorIcon {
+  flex: none;
+  inline-size: 1em;
+  block-size: 1em;
+}

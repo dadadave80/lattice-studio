@@ -16,20 +16,22 @@ function stem(filename: string): string {
   return base || "Untitled";
 }
 
+/** Every issue reaches the console; only the first becomes a toast (toasts show one at a time, spec L733). */
 function reportIssues(filename: string, issues: readonly ParseIssue[]): void {
   const lines = issues.length > 0 ? issues.map(formatParseIssue) : [`${filename}: Studio couldn't read this file.`];
-  for (const text of lines) {
-    sayError(text);
-    toast({ text, kind: "error" });
-  }
+  for (const text of lines) sayError(text);
+  const [first] = lines;
+  if (first) toast({ text: first, kind: "error" });
 }
 
 function unknownFieldsLine(unknownFields: readonly string[]): void {
   if (unknownFields.length > 0) sayNote(`Studio kept ${plural(unknownFields.length, "field")} it doesn't recognize.`);
 }
 
+/** No genuine "last saved" time for a file that just landed here: the count alone (spec L708 covers reopening
+ * a stored project, not an import). */
 function openedLine(name: string, facetCount: number): void {
-  sayNote(`Opened ${name} · ${plural(facetCount, "facet")} · saved just now.`);
+  sayNote(`Opened ${name} · ${plural(facetCount, "facet")}.`);
 }
 
 /** Parses and opens `text` (named `filename`) as a new project. Never throws. */

@@ -23,9 +23,14 @@ export type OpenFilePickerOptions = {
   types?: { description: string; accept: Record<string, string[]> }[];
 };
 
+export type FsDirectoryHandle = {
+  getFileHandle(name: string, options?: { create?: boolean }): Promise<FsFileHandle>;
+};
+
 export type FsWindow = {
   showSaveFilePicker?(options?: SaveFilePickerOptions): Promise<FsFileHandle>;
   showOpenFilePicker?(options?: OpenFilePickerOptions): Promise<FsFileHandle[]>;
+  showDirectoryPicker?(): Promise<FsDirectoryHandle>;
 };
 
 /** The ambient `window`, narrowed to the handful of File System Access members this module calls. */

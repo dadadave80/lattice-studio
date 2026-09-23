@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { runCommand } from "@/contracts";
 import { persistence, type ProjectSummary } from "@/persist";
 import { Button, StatusChip, TextField, Tooltip } from "@/ui";
+import { focusList } from "./list-focus";
 import { projectRowStatus } from "../status";
 import styles from "./ProjectRow.module.css";
 
@@ -10,15 +11,18 @@ export type ProjectRowProps = {
   summary: ProjectSummary;
   /** Closes the Projects dialog after a row's project opens (spec L502: "click opens"). */
   onClose: () => void;
+  /** From the chain service, once `ProjectsDialogPanel` has loaded it; undefined until then. */
+  chainNames?: ReadonlyMap<number, string>;
 };
 
 /** One row of the Recent tab: name, status chip, last saved; Rename, Duplicate, Export, Delete. */
-export function ProjectRow({ summary, onClose }: ProjectRowProps) {
+export function ProjectRow({ summary, onClose, chainNames }: ProjectRowProps) {
   const { id, project } = summary;
   const [deployments, setDeployments] = useState<readonly Deployment[]>([]);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(project.name);
   const renameRef = useRef<HTMLInputElement>(null);
+  const nameButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,7 +43,7 @@ export function ProjectRow({ summary, onClose }: ProjectRowProps) {
     if (renaming) renameRef.current?.focus();
   }, [renaming]);
 
-  const status = projectRowStatus(project, deployments);
+  const status = projectRowStatus(project, deployments, chainNames);
   const saved = formatTime(new Date(summary.savedAt).toISOString(), new Date().toISOString());
 
   const open = async () => {
@@ -47,9 +51,15 @@ export function ProjectRow({ summary, onClose }: ProjectRowProps) {
     if (result.ok) onClose();
   };
 
+  /** Closes the field and returns focus to the row's own name button: never the body (spec's focus rules). */
+  const stopRenaming = () => {
+    setRenaming(false);
+    nameButtonRef.current?.focus();
+  };
+
   const submitRename = async () => {
     const trimmed = name.trim();
-    setRenaming(false);
+    stopRenaming();
     if (trimmed === "" || trimmed === project.name) {
       setName(project.name);
       return;
@@ -57,6 +67,11 @@ export function ProjectRow({ summary, onClose }: ProjectRowProps) {
     const { renameStoredProject } = await import("../actions");
     const result = await renameStoredProject(id, trimmed);
     if (!result.ok) setName(project.name);
+  };
+
+  const cancelRename = () => {
+    setName(project.name);
+    stopRenaming();
   };
 
   return (
@@ -73,13 +88,14 @@ export function ProjectRow({ summary, onClose }: ProjectRowProps) {
               event.preventDefault();
               void submitRename();
             } else if (event.key === "Escape") {
-              setName(project.name);
-              setRenaming(false);
+              // Esc here cancels the rename; it must not also reach the dialog's own Esc-to-close.
+              event.stopPropagation();
+              cancelRename();
             }
           }}
         />
       ) : (
-        <button type="button" className={styles.name} onClick={() => void open()}>
+        <button ref={nameButtonRef} type="button" className={styles.name} onClick={() => void open()}>
           {project.name}
         </button>
       )}
@@ -88,12 +104,13 @@ export function ProjectRow({ summary, onClose }: ProjectRowProps) {
         <span className={styles.saved}>saved {saved.text}</span>
       </Tooltip>
       <span className={styles.actions}>
-        <Button size="small" onClick={() => setRenaming(true)}>
+        <Button size="small" aria-label={`Rename ${project.name}`} onClick={() => setRenaming(true)}>
           Rename
         </Button>
         <Button
           size="small"
           icon="copy"
+          aria-label={`Duplicate ${project.name}`}
           onClick={async () => {
             const { duplicateProject } = await import("../actions");
             await duplicateProject(id);
@@ -104,6 +121,7 @@ export function ProjectRow({ summary, onClose }: ProjectRowProps) {
         <Button
           size="small"
           icon="export"
+          aria-label={`Export ${project.name}`}
           onClick={async () => {
             const { exportStoredProject } = await import("../actions");
             await exportStoredProject(id);
@@ -114,9 +132,11 @@ export function ProjectRow({ summary, onClose }: ProjectRowProps) {
         <Button
           size="small"
           icon="trash"
+          aria-label={`Delete ${project.name}`}
           onClick={async () => {
             const { deleteProject } = await import("../actions");
             await deleteProject(id);
+            focusList("recent");
           }}
         >
           Delete

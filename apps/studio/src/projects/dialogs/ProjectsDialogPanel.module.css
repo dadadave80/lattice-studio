@@ -1,3 +1,8 @@
+/* Focus lands here (tabIndex -1) after a row it held is gone: Delete, Restore, Delete for good. */
+.listContainer {
+  outline-offset: var(--lx-space-1);
+}
+
 .list {
   display: flex;
   flex-direction: column;

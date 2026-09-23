@@ -6,6 +6,34 @@
 import type { ExportFile } from "@lattice-studio/core";
 import { fsWindow, isAbort, type FsFileHandle } from "./fs-types";
 
+export type SaveAllOutcome = { ok: true; via: "directory" | "downloads" } | { ok: false; cancelled: true };
+
+/**
+ * Export all and Clear data's Export first (spec L637): with the File System Access API, one directory pick
+ * writes every file straight to disk, no download prompts. Elsewhere it falls back to a download per file,
+ * which Chromium treats as multiple downloads and may ask to allow.
+ */
+export async function saveAllTo(files: readonly ExportFile[]): Promise<SaveAllOutcome> {
+  const w = fsWindow();
+  if (w?.showDirectoryPicker) {
+    try {
+      const dir = await w.showDirectoryPicker();
+      for (const file of files) {
+        const handle = await dir.getFileHandle(file.filename, { create: true });
+        const writable = await handle.createWritable();
+        await writable.write(file.text);
+        await writable.close();
+      }
+      return { ok: true, via: "directory" };
+    } catch (error) {
+      if (isAbort(error)) return { ok: false, cancelled: true };
+      // Falls back to downloads for the same reasons as the save and open paths.
+    }
+  }
+  files.forEach((file, i) => setTimeout(() => downloadFile(file), i * 150));
+  return { ok: true, via: "downloads" };
+}
+
 const handles = new Map<string, FsFileHandle>();
 
 /** The file `projectId` is linked to, if any (⌘S writes it directly). */
@@ -48,8 +76,10 @@ export async function saveProjectAs(projectId: string, file: ExportFile): Promis
   if (w?.showSaveFilePicker) {
     try {
       const handle = await w.showSaveFilePicker({
+        // A two-part extension like ".lattice.json" throws in Chromium's `accept`; the suggested name still
+        // carries it in full, so the picker still offers "vault.lattice.json" as the default.
         suggestedName: file.filename,
-        types: [{ description: "Lattice Studio project", accept: { "application/json": [".lattice.json"] } }],
+        types: [{ description: "Lattice Studio project", accept: { "application/json": [".json"] } }],
       });
       const writable = await handle.createWritable();
       await writable.write(file.text);
@@ -116,13 +146,9 @@ function pickWithInput(): Promise<PickedFile | null> {
       },
       { once: true },
     );
-    // No native "cancel" event when a person dismisses the dialog without choosing: the tab regains focus
-    // right after, so a delayed check catches it without racing a real, slower `change`.
-    window.addEventListener(
-      "focus",
-      () => setTimeout(() => done(null), 500),
-      { once: true },
-    );
+    // Modern browsers fire "cancel" on the input itself when the native picker closes with nothing chosen;
+    // "change" always fires first when a file was chosen, so `settled` already guards the ordering.
+    input.addEventListener("cancel", () => done(null), { once: true });
     document.body.appendChild(input);
     input.click();
   });

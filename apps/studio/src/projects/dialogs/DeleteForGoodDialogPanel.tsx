@@ -2,7 +2,9 @@ import { plural } from "@lattice-studio/core";
 import { useEffect, useRef, useState } from "react";
 import { closeDialog, type DialogComponentProps } from "@/contracts";
 import { persistence, type RecordCounts } from "@/persist";
-import { Button, Dialog } from "@/ui";
+import { Button, Dialog, Icon } from "@/ui";
+import errorStyles from "./confirm-error.module.css";
+import { focusList } from "./list-focus";
 
 /** "This deletes the only record of 2 deployed addresses." (spec L502); nothing deployed: no such record to lose. */
 function countsLine(counts: RecordCounts | null): string {
@@ -15,6 +17,7 @@ export function DeleteForGoodDialogPanel({ entry, top }: DialogComponentProps<"d
   const [counts, setCounts] = useState<RecordCounts | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -42,11 +45,19 @@ export function DeleteForGoodDialogPanel({ entry, top }: DialogComponentProps<"d
 
   const deleteForGood = async () => {
     setBusy(true);
+    setError(null);
     const { deleteProjectForGood } = await import("../actions");
     const result = await deleteProjectForGood(projectId);
     setBusy(false);
-    if (result.ok) close();
+    if (result.ok) {
+      close();
+      focusList("deleted");
+    } else {
+      setError(result.error);
+    }
   };
+
+  const counting = counts === null;
 
   return (
     <Dialog
@@ -64,11 +75,22 @@ export function DeleteForGoodDialogPanel({ entry, top }: DialogComponentProps<"d
           <Button ref={cancelRef} onClick={close}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={() => void deleteForGood()} disabledReason={busy ? "Deleting…" : null}>
+          <Button
+            variant="primary"
+            onClick={() => void deleteForGood()}
+            disabledReason={busy ? "Deleting…" : counting ? "Counting records…" : null}
+          >
             Delete for good
           </Button>
         </>
       }
-    />
+    >
+      {error ? (
+        <p className={errorStyles.error} role="alert">
+          <Icon name="error" className={errorStyles.errorIcon} />
+          <span>{error}</span>
+        </p>
+      ) : null}
+    </Dialog>
   );
 }
