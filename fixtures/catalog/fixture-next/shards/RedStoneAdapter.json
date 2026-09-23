@@ -1,0 +1,112 @@
+{
+  "name": "RedStoneAdapter",
+  "abi": [
+    {
+      "name": "getFeed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "adapter"
+        },
+        {
+          "type": "bytes32",
+          "name": "dataFeedId"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ]
+    },
+    {
+      "name": "getValueForDataFeed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "value"
+        },
+        {
+          "type": "uint256",
+          "name": "timestamp"
+        }
+      ]
+    },
+    {
+      "name": "latestAnswer",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int256",
+          "name": "answerWad"
+        }
+      ]
+    },
+    {
+      "name": "registerFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "address",
+          "name": "adapter"
+        },
+        {
+          "type": "bytes32",
+          "name": "dataFeedId"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "unregisterFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet that reads RedStone Push price feeds from their on-chain PriceFeedsAdapter with per-feed staleness configuration and WAD-normalized answers.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/redstone/RedStoneAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/redstone/RedStoneAdapter.sol"
+  }
+}

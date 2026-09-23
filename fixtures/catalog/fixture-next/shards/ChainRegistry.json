@@ -1,0 +1,413 @@
+{
+  "name": "ChainRegistry",
+  "abi": [
+    {
+      "name": "addEvmChain",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "uint64"
+                },
+                {
+                  "type": "address"
+                },
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "bool"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "uint32"
+                },
+                {
+                  "type": "bytes32"
+                },
+                {
+                  "type": "uint128"
+                },
+                {
+                  "type": "uint128"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "uint16"
+                },
+                {
+                  "type": "address"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "bytes"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "address"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "address"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "uint32"
+                },
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "uint32"
+                },
+                {
+                  "type": "bytes32"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "uint32"
+                },
+                {
+                  "type": "bytes32"
+                },
+                {
+                  "type": "uint256"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "uint32"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "uint64"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "address[]"
+                },
+                {
+                  "type": "bool[]"
+                }
+              ]
+            }
+          ],
+          "name": "cfg"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "chainInfoOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "chainKey"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes2",
+          "name": "chainType"
+        },
+        {
+          "type": "bytes",
+          "name": "chainReference"
+        },
+        {
+          "type": "uint256",
+          "name": "evmChainId"
+        }
+      ]
+    },
+    {
+      "name": "chainKeyEvm",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "chainKeyOf",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes2",
+          "name": "chainType"
+        },
+        {
+          "type": "bytes",
+          "name": "chainReference"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "coverageOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "chainKey"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "directCoverageOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "chainKey"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "gatewaysOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "chainKey"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address[]"
+        }
+      ]
+    },
+    {
+      "name": "isRegistered",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "chainKey"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "nativeIdsOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "chainKey"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerChain",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes2",
+          "name": "chainType"
+        },
+        {
+          "type": "bytes",
+          "name": "chainReference"
+        },
+        {
+          "type": "uint256",
+          "name": "evmChainId"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setGatewayCoverage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "chainKey"
+        },
+        {
+          "type": "address",
+          "name": "gateway"
+        },
+        {
+          "type": "bool",
+          "name": "covered"
+        },
+        {
+          "type": "bool",
+          "name": "hubRouted"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setNativeIds",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "chainKey"
+        },
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint64"
+            },
+            {
+              "type": "uint32"
+            },
+            {
+              "type": "uint16"
+            },
+            {
+              "type": "uint32"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "uint32"
+            }
+          ],
+          "name": "ids"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Chain-registry facet: a generic registry of chain identities keyed by the ERC-7930 chain key, per-chain native bridge-ecosystem ids, gateway coverage awareness ",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/ChainRegistry.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/ChainRegistry.sol"
+  }
+}

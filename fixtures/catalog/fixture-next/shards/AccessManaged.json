@@ -1,0 +1,59 @@
+{
+  "name": "AccessManaged",
+  "abi": [
+    {
+      "name": "authority",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "isConsumingScheduledOp",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes4"
+        }
+      ]
+    },
+    {
+      "name": "setAuthority",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "newAuthority"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setConsumingScheduledOp",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bool",
+          "name": "consuming"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet for contracts gated by an external AccessManager.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/access/AccessManaged.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/access/AccessManaged.sol"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "name": "ERC2981",
+  "abi": [
+    {
+      "name": "deleteDefaultRoyalty",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "resetTokenRoyalty",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "tokenId"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "royaltyInfo",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "tokenId"
+        },
+        {
+          "type": "uint256",
+          "name": "salePrice"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        },
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "setDefaultRoyalty",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "receiver"
+        },
+        {
+          "type": "uint96",
+          "name": "feeNumerator"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setTokenRoyalty",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "tokenId"
+        },
+        {
+          "type": "address",
+          "name": "receiver"
+        },
+        {
+          "type": "uint96",
+          "name": "feeNumerator"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet for the ERC-2981 NFT Royalty Standard.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC2981/ERC2981.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC2981/ERC2981.sol"
+  }
+}

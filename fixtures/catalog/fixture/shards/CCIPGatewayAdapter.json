@@ -1,0 +1,365 @@
+{
+  "name": "CCIPGatewayAdapter",
+  "abi": [
+    {
+      "name": "ccipReceive",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "uint64"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "address"
+                },
+                {
+                  "type": "uint256"
+                }
+              ]
+            }
+          ],
+          "name": "message"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "configureCCV",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "address[]",
+          "name": "requiredCCVs"
+        },
+        {
+          "type": "address[]",
+          "name": "optionalCCVs"
+        },
+        {
+          "type": "uint8",
+          "name": "optionalThreshold"
+        },
+        {
+          "type": "bytes4",
+          "name": "allowedFinalityConfig"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "configureDestination",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "uint256",
+          "name": "gasLimit"
+        },
+        {
+          "type": "bool",
+          "name": "allowOutOfOrderExecution"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "feeToken",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "getAllowOutOfOrderExecution",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "getCCVConfig",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address[]",
+          "name": "requiredCCVs"
+        },
+        {
+          "type": "address[]",
+          "name": "optionalCCVs"
+        },
+        {
+          "type": "uint8",
+          "name": "optionalThreshold"
+        },
+        {
+          "type": "bytes4",
+          "name": "allowedFinalityConfig"
+        }
+      ]
+    },
+    {
+      "name": "getCCVsAndFinalityConfig",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "sourceChainSelector"
+        },
+        {
+          "type": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address[]",
+          "name": "requiredCCVs"
+        },
+        {
+          "type": "address[]",
+          "name": "optionalCCVs"
+        },
+        {
+          "type": "uint8",
+          "name": "optionalThreshold"
+        },
+        {
+          "type": "bytes4",
+          "name": "allowedFinalityConfig"
+        }
+      ]
+    },
+    {
+      "name": "getChainId",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getChainSelector",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint64"
+        }
+      ]
+    },
+    {
+      "name": "getDestinationGasLimit",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getRemoteGateway",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "quoteFee",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "registerChainSelector",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "uint64",
+          "name": "selector"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerRemoteGateway",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "address",
+          "name": "remote"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "router",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "sendMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes[]",
+          "name": "attributes"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "setFeeToken",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "feeToken_"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "supportsAttribute",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-7786 cross-chain gateway facet over Chainlink CCIP.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/chainlink/CCIPGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/chainlink/CCIPGatewayAdapter.sol"
+  }
+}

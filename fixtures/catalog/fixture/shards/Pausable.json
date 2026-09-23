@@ -1,0 +1,38 @@
+{
+  "name": "Pausable",
+  "abi": [
+    {
+      "name": "pause",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "paused",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "unpause",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Thin Diamond facet that exposes pause/unpause lifecycle control.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/security/Pausable.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/security/Pausable.sol"
+  }
+}

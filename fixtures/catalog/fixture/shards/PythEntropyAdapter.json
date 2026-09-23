@@ -1,0 +1,108 @@
+{
+  "name": "PythEntropyAdapter",
+  "abi": [
+    {
+      "name": "entropyCallback",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "sequence"
+        },
+        {
+          "type": "address",
+          "name": "provider"
+        },
+        {
+          "type": "bytes32",
+          "name": "randomNumber"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getConfig",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "getFee",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getUserKey",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "sequenceNumber"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "requestRandomNumber",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "userKey"
+        },
+        {
+          "type": "bytes32",
+          "name": "userRandomNumber"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint64",
+          "name": "sequenceNumber"
+        }
+      ]
+    },
+    {
+      "name": "setConfig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "address"
+            }
+          ],
+          "name": "config"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet for Pyth Entropy on-demand (commit/reveal) randomness.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/pyth/PythEntropyAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/pyth/PythEntropyAdapter.sol"
+  }
+}

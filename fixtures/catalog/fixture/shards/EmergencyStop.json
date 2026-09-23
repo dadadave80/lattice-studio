@@ -1,0 +1,94 @@
+{
+  "name": "EmergencyStop",
+  "abi": [
+    {
+      "name": "addGuardian",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "guardian"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "emergencyResume",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "emergencyStop",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "reason"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "isGuardian",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "isStopped",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "removeGuardian",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "guardian"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "stoppedReason",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Thin Diamond facet that exposes multi-guardian emergency stop functionality.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/security/EmergencyStop.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/security/EmergencyStop.sol"
+  }
+}

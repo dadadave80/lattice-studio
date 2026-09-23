@@ -1,0 +1,155 @@
+{
+  "name": "StrategyManager",
+  "abi": [
+    {
+      "name": "addStrategy",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "strategy"
+        },
+        {
+          "type": "uint16",
+          "name": "targetBps"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getStrategies",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address[]"
+        }
+      ]
+    },
+    {
+      "name": "getStrategyTarget",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "strategy"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint16",
+          "name": "targetBps"
+        }
+      ]
+    },
+    {
+      "name": "harvest",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "rebalance",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "reentrancyGuardEntered",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "removeStrategy",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "strategy"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setVault",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "_vault"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "totalAllocated",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "totalTargetBps",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "updateStrategyTarget",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "strategy"
+        },
+        {
+          "type": "uint16",
+          "name": "newBps"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "vault",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet managing yield strategy allocations for a single ERC-4626 vault.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/defi/StrategyManager.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/defi/StrategyManager.sol"
+  }
+}

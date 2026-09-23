@@ -1,0 +1,46 @@
+{
+  "name": "ERC7821Executor",
+  "abi": [
+    {
+      "name": "execute",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "mode"
+        },
+        {
+          "type": "bytes",
+          "name": "executionData"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "supportsExecutionMode",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "mode"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool",
+          "name": "result"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-7821 minimal batch executor facet.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/accounts/erc7579/ERC7821Executor.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/accounts/erc7579/ERC7821Executor.sol"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "ERC165Facet",
+  "abi": [
+    {
+      "name": "supportsInterface",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "_interfaceId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet that implements the ERC-165 standard interface detection",
+    "functions": {}
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/facets/ERC165Facet.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/facets/ERC165Facet.sol"
+  }
+}

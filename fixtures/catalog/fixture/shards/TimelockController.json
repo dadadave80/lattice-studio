@@ -1,0 +1,357 @@
+{
+  "name": "TimelockController",
+  "abi": [
+    {
+      "name": "CANCELLER_ROLE",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "EXECUTOR_ROLE",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "PROPOSER_ROLE",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "cancel",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "id"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "execute",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes32",
+          "name": "predecessor"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "executeBatch",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "address[]",
+          "name": "targets"
+        },
+        {
+          "type": "uint256[]",
+          "name": "values"
+        },
+        {
+          "type": "bytes[]",
+          "name": "payloads"
+        },
+        {
+          "type": "bytes32",
+          "name": "predecessor"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getMinDelay",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getOperationState",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "id"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getTimestamp",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "hashOperation",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        },
+        {
+          "type": "bytes32",
+          "name": "predecessor"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "hashOperationBatch",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "address[]",
+          "name": "targets"
+        },
+        {
+          "type": "uint256[]",
+          "name": "values"
+        },
+        {
+          "type": "bytes[]",
+          "name": "payloads"
+        },
+        {
+          "type": "bytes32",
+          "name": "predecessor"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "isOperation",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "isOperationDone",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "isOperationPending",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "isOperationReady",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "schedule",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        },
+        {
+          "type": "bytes32",
+          "name": "predecessor"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        },
+        {
+          "type": "uint256",
+          "name": "delay"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "scheduleBatch",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address[]",
+          "name": "targets"
+        },
+        {
+          "type": "uint256[]",
+          "name": "values"
+        },
+        {
+          "type": "bytes[]",
+          "name": "payloads"
+        },
+        {
+          "type": "bytes32",
+          "name": "predecessor"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        },
+        {
+          "type": "uint256",
+          "name": "delay"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "updateDelay",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "newDelay"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "A Diamond-compatible facet that schedules and executes governance actions after a minimum delay.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/governance/TimelockController.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/governance/TimelockController.sol"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "ERC6900AccountView",
+  "abi": [
+    {
+      "name": "getExecutionData",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getValidationData",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes24",
+          "name": "validationFunction"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-6900 account-introspection facet (the \"loupe\"): `getExecutionData` reports the install state of an execution selector (module + validation flags + execution",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/accounts/erc6900/ERC6900AccountView.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/accounts/erc6900/ERC6900AccountView.sol"
+  }
+}

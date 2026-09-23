@@ -1,25 +1,29 @@
-// WP-C8 replaces this file with its real tests: until it lands, every function here is a stub.
 import { expect, test } from "bun:test";
-import { API_OWNERS, type ApiName } from "../model/api";
-import { NotImplemented } from "../model/wp";
-import * as mod from "./index";
+import { API_OWNERS } from "../model/api";
+import * as core from "../index";
+import * as share from "./index";
+import { catalog, tokenWithAdmin } from "./test-support";
 
-const stubs = Object.entries(mod).filter(([, value]) => typeof value === "function");
+/** Beyond C8's API: the provenance helpers S1 and S7a use, and the limits the app shows. */
+const EXTRAS = ["SHARE_MAX_BYTES", "SHARE_VERSION", "SHARE_WARN_LENGTH", "argProvenance", "unconfirmedPaths"];
 
-test("the module exports its stubs", () => {
-  expect(stubs.length).toBeGreaterThan(0);
+test("the barrel exports exactly C8's API and the deliberate extras", () => {
+  const owned = Object.entries(API_OWNERS).filter(([, wp]) => wp === "C8").map(([name]) => name);
+  expect(owned.toSorted()).toEqual(["decodeShareLink", "encodeShareLink", "importFile"]);
+  expect(Object.keys(share).toSorted()).toEqual([...owned, ...EXTRAS].toSorted());
 });
 
-test.each(stubs)("%s throws NotImplemented naming WP-C8", (name, fn) => {
-  expect(API_OWNERS[name as ApiName]).toBe("C8");
-  let caught: unknown;
-  try {
-    (fn as (...args: unknown[]) => unknown)();
-  } catch (error) {
-    caught = error;
-  }
-  expect(caught).toBeInstanceOf(NotImplemented);
-  expect((caught as NotImplemented).wp).toBe("C8");
-  expect((caught as NotImplemented).fn).toBe(name);
-  expect((caught as NotImplemented).message).toBe("Not built yet · WP-C8");
+test("the package root re-exports them", () => {
+  expect(core.encodeShareLink).toBe(share.encodeShareLink);
+  expect(core.decodeShareLink).toBe(share.decodeShareLink);
+  expect(core.importFile).toBe(share.importFile);
+  expect(core.argProvenance).toBe(share.argProvenance);
+  expect(core.unconfirmedPaths).toBe(share.unconfirmedPaths);
+  expect(core.SHARE_WARN_LENGTH).toBe(2000);
+});
+
+test("they are built: a link opens and a file imports", () => {
+  const link = share.encodeShareLink(tokenWithAdmin());
+  expect(share.decodeShareLink(link.fragment, [catalog]).ok).toBe(true);
+  expect(share.importFile(JSON.stringify(tokenWithAdmin()), "recipe.json", [catalog]).ok).toBe(true);
 });

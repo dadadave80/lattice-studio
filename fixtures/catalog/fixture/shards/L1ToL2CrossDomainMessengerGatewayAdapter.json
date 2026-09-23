@@ -1,0 +1,149 @@
+{
+  "name": "L1ToL2CrossDomainMessengerGatewayAdapter",
+  "abi": [
+    {
+      "name": "counterpartAdapter",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "counterpartChainId",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "messenger",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "minGasLimit",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "receiveCrossChainMessage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "sender"
+        },
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "uint256",
+          "name": "nonce"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "sendMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes[]",
+          "name": "attributes"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "setCounterpart",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "address",
+          "name": "adapter"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setMinGasLimit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint32",
+          "name": "newMinGasLimit"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "supportsAttribute",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-7786 cross-chain gateway facet over the canonical OP Stack L1<->L2 `CrossDomainMessenger` predeploy.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol"
+  }
+}

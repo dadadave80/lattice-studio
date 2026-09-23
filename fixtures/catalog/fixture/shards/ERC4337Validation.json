@@ -1,0 +1,90 @@
+{
+  "name": "ERC4337Validation",
+  "abi": [
+    {
+      "name": "entryPoint",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "setEntryPoint",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "entryPoint_"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "validateUserOp",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes"
+            }
+          ],
+          "name": "userOp"
+        },
+        {
+          "type": "bytes32",
+          "name": "userOpHash"
+        },
+        {
+          "type": "uint256",
+          "name": "missingAccountFunds"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "validationData"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-4337 validation facet — makes the Diamond a smart account drivable by a configured EntryPoint.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/accounts/ERC4337Validation.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/accounts/ERC4337Validation.sol"
+  }
+}

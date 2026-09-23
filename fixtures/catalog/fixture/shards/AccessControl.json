@@ -1,0 +1,97 @@
+{
+  "name": "AccessControl",
+  "abi": [
+    {
+      "name": "getRoleAdmin",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "grantRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        },
+        {
+          "type": "address",
+          "name": "_account"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "hasRole",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        },
+        {
+          "type": "address",
+          "name": "_account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "renounceRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        },
+        {
+          "type": "address",
+          "name": "_callerConfirmation"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "revokeRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        },
+        {
+          "type": "address",
+          "name": "_account"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "AccessControl is a contract module that allows children to implement role-based access control mechanisms.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/access/AccessControl.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/access/AccessControl.sol"
+  }
+}

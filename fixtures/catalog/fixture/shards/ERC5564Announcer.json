@@ -1,0 +1,37 @@
+{
+  "name": "ERC5564Announcer",
+  "abi": [
+    {
+      "name": "announce",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "schemeId"
+        },
+        {
+          "type": "address",
+          "name": "stealthAddress"
+        },
+        {
+          "type": "bytes",
+          "name": "ephemeralPubKey"
+        },
+        {
+          "type": "bytes",
+          "name": "metadata"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet implementing the ERC-5564 stealth-address announcer.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/privacy/ERC5564Announcer.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/ERC5564Announcer.sol"
+  }
+}

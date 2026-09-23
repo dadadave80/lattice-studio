@@ -1,0 +1,226 @@
+{
+  "name": "GovernedVault",
+  "abi": [
+    {
+      "name": "CLOCK_MODE",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "ballotNonce",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "voter"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "castVoteBySig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "proposalId"
+        },
+        {
+          "type": "uint8",
+          "name": "support"
+        },
+        {
+          "type": "address",
+          "name": "voter"
+        },
+        {
+          "type": "bytes",
+          "name": "signature"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "clock",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint48"
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "assets"
+        },
+        {
+          "type": "address",
+          "name": "receiver"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "shares"
+        }
+      ]
+    },
+    {
+      "name": "mint",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "shares"
+        },
+        {
+          "type": "address",
+          "name": "receiver"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "assets"
+        }
+      ]
+    },
+    {
+      "name": "name",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "redeem",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "shares"
+        },
+        {
+          "type": "address",
+          "name": "receiver"
+        },
+        {
+          "type": "address",
+          "name": "owner"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "assets"
+        }
+      ]
+    },
+    {
+      "name": "transfer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "transferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "from"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "assets"
+        },
+        {
+          "type": "address",
+          "name": "receiver"
+        },
+        {
+          "type": "address",
+          "name": "owner"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "shares"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "The RECONCILIATION facet of the self-governed ERC-4626 vault.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/defi/GovernedVault.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/defi/GovernedVault.sol"
+  }
+}

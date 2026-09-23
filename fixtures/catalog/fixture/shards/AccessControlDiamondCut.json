@@ -1,0 +1,44 @@
+{
+  "name": "AccessControlDiamondCut",
+  "abi": [
+    {
+      "name": "diamondCut",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint8"
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "_diamondCut"
+        },
+        {
+          "type": "address",
+          "name": "_init"
+        },
+        {
+          "type": "bytes",
+          "name": "_calldata"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet exposing the EIP-2535 `diamondCut` function at the canonical selector `0x1f931c1c`, gated behind EmergencyStop + `DEFAULT_ADMIN_ROLE`.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/governance/AccessControlDiamondCut.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/governance/AccessControlDiamondCut.sol"
+  }
+}

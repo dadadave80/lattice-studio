@@ -1,0 +1,147 @@
+{
+  "name": "Votes",
+  "abi": [
+    {
+      "name": "CLOCK_MODE",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "clock",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint48"
+        }
+      ]
+    },
+    {
+      "name": "delegate",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "delegatee"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "delegateBySig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "delegatee"
+        },
+        {
+          "type": "uint256",
+          "name": "nonce"
+        },
+        {
+          "type": "uint256",
+          "name": "expiry"
+        },
+        {
+          "type": "uint8",
+          "name": "v"
+        },
+        {
+          "type": "bytes32",
+          "name": "r"
+        },
+        {
+          "type": "bytes32",
+          "name": "s"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "delegates",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "getPastTotalSupply",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "timepoint"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getPastVotes",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        },
+        {
+          "type": "uint256",
+          "name": "timepoint"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getVotes",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet implementing ERC-5805 delegation + ERC-6372 clock.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/governance/Votes.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/governance/Votes.sol"
+  }
+}

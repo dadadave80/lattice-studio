@@ -1,0 +1,268 @@
+{
+  "name": "ConstantProduct",
+  "abi": [
+    {
+      "name": "addLiquidity",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "amount0Desired"
+        },
+        {
+          "type": "uint256",
+          "name": "amount1Desired"
+        },
+        {
+          "type": "uint256",
+          "name": "amount0Min"
+        },
+        {
+          "type": "uint256",
+          "name": "amount1Min"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "amount0"
+        },
+        {
+          "type": "uint256",
+          "name": "amount1"
+        },
+        {
+          "type": "uint256",
+          "name": "liquidity"
+        }
+      ]
+    },
+    {
+      "name": "feeBps",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint16"
+        }
+      ]
+    },
+    {
+      "name": "getAmountIn",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "amountOut"
+        },
+        {
+          "type": "uint256",
+          "name": "reserveIn"
+        },
+        {
+          "type": "uint256",
+          "name": "reserveOut"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getAmountOut",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "amountIn"
+        },
+        {
+          "type": "uint256",
+          "name": "reserveIn"
+        },
+        {
+          "type": "uint256",
+          "name": "reserveOut"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getReserves",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "reserve0"
+        },
+        {
+          "type": "uint256",
+          "name": "reserve1"
+        },
+        {
+          "type": "uint32",
+          "name": "blockTimestampLast"
+        }
+      ]
+    },
+    {
+      "name": "lpBalanceOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "quote",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "amountA"
+        },
+        {
+          "type": "uint256",
+          "name": "reserveA"
+        },
+        {
+          "type": "uint256",
+          "name": "reserveB"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "removeLiquidity",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "liquidity"
+        },
+        {
+          "type": "uint256",
+          "name": "amount0Min"
+        },
+        {
+          "type": "uint256",
+          "name": "amount1Min"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "amount0"
+        },
+        {
+          "type": "uint256",
+          "name": "amount1"
+        }
+      ]
+    },
+    {
+      "name": "swapExactTokensForTokens",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "amountIn"
+        },
+        {
+          "type": "uint256",
+          "name": "amountOutMin"
+        },
+        {
+          "type": "bool",
+          "name": "zeroForOne"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "amountOut"
+        }
+      ]
+    },
+    {
+      "name": "token0",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "token1",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "totalLpSupply",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet for a Uniswap V2-style constant-product AMM.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/amm/ConstantProduct.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/amm/ConstantProduct.sol"
+  }
+}

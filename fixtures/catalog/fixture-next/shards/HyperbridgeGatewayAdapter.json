@@ -1,0 +1,521 @@
+{
+  "name": "HyperbridgeGatewayAdapter",
+  "abi": [
+    {
+      "name": "chainIdOfStateMachine",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "stateMachineId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "configureDestinationTimeout",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "uint64",
+          "name": "timeout"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "hyperbridgeDestTimeoutOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint64"
+        }
+      ]
+    },
+    {
+      "name": "hyperbridgeFeeToken",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "hyperbridgeRemoteModuleOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "ismpHost",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "onAccept",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "uint64"
+                },
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "uint64"
+                },
+                {
+                  "type": "bytes"
+                }
+              ]
+            },
+            {
+              "type": "address"
+            }
+          ],
+          "name": "incoming"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "onGetResponse",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "tuple",
+                  "components": [
+                    {
+                      "type": "bytes"
+                    },
+                    {
+                      "type": "bytes"
+                    },
+                    {
+                      "type": "uint64"
+                    },
+                    {
+                      "type": "address"
+                    },
+                    {
+                      "type": "uint64"
+                    },
+                    {
+                      "type": "bytes[]"
+                    },
+                    {
+                      "type": "uint64"
+                    },
+                    {
+                      "type": "bytes"
+                    }
+                  ]
+                },
+                {
+                  "type": "tuple[]",
+                  "components": [
+                    {
+                      "type": "bytes"
+                    },
+                    {
+                      "type": "bytes"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "address"
+            }
+          ]
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "onGetTimeout",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "uint64"
+            },
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint64"
+            },
+            {
+              "type": "bytes[]"
+            },
+            {
+              "type": "uint64"
+            },
+            {
+              "type": "bytes"
+            }
+          ]
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "onPostRequestTimeout",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "uint64"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "uint64"
+            },
+            {
+              "type": "bytes"
+            }
+          ],
+          "name": "request"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "onPostResponse",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "tuple",
+                  "components": [
+                    {
+                      "type": "bytes"
+                    },
+                    {
+                      "type": "bytes"
+                    },
+                    {
+                      "type": "uint64"
+                    },
+                    {
+                      "type": "bytes"
+                    },
+                    {
+                      "type": "bytes"
+                    },
+                    {
+                      "type": "uint64"
+                    },
+                    {
+                      "type": "bytes"
+                    }
+                  ]
+                },
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "uint64"
+                }
+              ]
+            },
+            {
+              "type": "address"
+            }
+          ]
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "onPostResponseTimeout",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "uint64"
+                },
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "bytes"
+                },
+                {
+                  "type": "uint64"
+                },
+                {
+                  "type": "bytes"
+                }
+              ]
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "uint64"
+            }
+          ]
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "quoteDispatchFee",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "uint256",
+          "name": "relayerFee"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "registerRemoteModule",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "bytes",
+          "name": "module"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerStateMachine",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerStateMachineRaw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "bytes",
+          "name": "stateMachineId"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "sendMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes[]",
+          "name": "attributes"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "sendMessageWithFee",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "uint256",
+          "name": "relayerFee"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "stateMachineIdOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "supportsAttribute",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-7786 cross-chain gateway facet over Hyperbridge's ISMP (proof-verified interop: consensus + state proofs aggregated on a Polkadot-secured coprocessor, deliv",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/hyperbridge/HyperbridgeGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/hyperbridge/HyperbridgeGatewayAdapter.sol"
+  }
+}

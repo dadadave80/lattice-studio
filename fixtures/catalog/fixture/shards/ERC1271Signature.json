@@ -1,0 +1,33 @@
+{
+  "name": "ERC1271Signature",
+  "abi": [
+    {
+      "name": "isValidSignature",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "hash"
+        },
+        {
+          "type": "bytes",
+          "name": "signature"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes4"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-1271 contract-signature facet.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/accounts/ERC1271Signature.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/accounts/ERC1271Signature.sol"
+  }
+}
