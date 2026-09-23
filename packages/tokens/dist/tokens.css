@@ -42,10 +42,10 @@
   --lx-ground-well: #0A0B0D;
   --lx-panel: #131417;
   --lx-raised: #181A1E;
-  --lx-sunken: #1C1E22;
+  --lx-sunken: #0A0B0D;
   --lx-text: #E9E7E1;
   --lx-text-muted: #9A9DA4;
-  --lx-text-faint: #80848b;
+  --lx-text-faint: #80848B;
   --lx-border: #6B6F77;
   --lx-border-subtle: rgba(233,231,225,.12);
   --lx-border-strong: #E9E7E1;
@@ -64,7 +64,7 @@
   --lx-ground-well: #E7E3D8;
   --lx-panel: #F7F5EF;
   --lx-raised: #FBFAF5;
-  --lx-sunken: #D2CDBF;
+  --lx-sunken: #E7E3D8;
   --lx-text: #16150F;
   --lx-text-muted: #3C3931;
   --lx-text-faint: #635E52;
@@ -89,6 +89,7 @@
     --lx-border-focus: Highlight;
     --lx-accent: Highlight;
     --lx-accent-line: Highlight;
+    --lx-on-accent: HighlightText;
     --lx-dot: transparent;
   }
   :root[data-theme="draft"] {
@@ -98,6 +99,7 @@
     --lx-border-focus: Highlight;
     --lx-accent: Highlight;
     --lx-accent-line: Highlight;
+    --lx-on-accent: HighlightText;
     --lx-dot: transparent;
   }
 }
@@ -108,8 +110,10 @@
   }
   :root[data-theme="shop"] {
     --lx-border: var(--lx-border-strong);
+    --lx-border-subtle: var(--lx-border);
   }
   :root[data-theme="draft"] {
     --lx-border: var(--lx-border-strong);
+    --lx-border-subtle: var(--lx-border);
   }
 }

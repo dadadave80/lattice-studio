@@ -27,7 +27,7 @@ const ROLE_ORDER: readonly (keyof ThemeRoles)[] = [
   "hatch",
 ];
 
-function kebab(name: string): string {
+export function kebab(name: string): string {
   return name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
@@ -68,6 +68,7 @@ function forcedColorsBlock(): string {
     --lx-border-focus: Highlight;
     --lx-accent: Highlight;
     --lx-accent-line: Highlight;
+    --lx-on-accent: HighlightText;
     --lx-dot: transparent;
   }`,
   ).join("\n");
@@ -80,6 +81,7 @@ function moreContrastBlock(): string {
   const perTheme = THEMES.map(
     (theme) => `  :root[data-theme="${theme}"] {
     --lx-border: var(--lx-border-strong);
+    --lx-border-subtle: var(--lx-border);
   }`,
   ).join("\n");
   return `@media (prefers-contrast: more) {

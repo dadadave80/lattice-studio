@@ -15,14 +15,20 @@ function renderThemeColors(): string {
   return `export const themeColors: Record<ThemeId, ThemeColors> = {\n${entries.join("\n")}\n};`;
 }
 
+// Plain `as const` object literals, not `Record<string, T>`: under
+// `exactOptionalPropertyTypes`/`noUncheckedIndexedAccess` (contracts §6) a
+// `Record<string, T>` index signature would type every lookup as
+// `T | undefined`, even for a key every consumer knows exists (e.g.
+// `spacing["space-4"]`). Literal keys keep them exact.
+
 function renderTypeScale(styles: readonly TypeStyle[]): string {
   const entries = styles.map((style) => `  ${jsonLiteral(style.name)}: ${jsonLiteral(style)} satisfies TypeStyle,`);
-  return `export const typeScale: Record<string, TypeStyle> = {\n${entries.join("\n")}\n};`;
+  return `export const typeScale = {\n${entries.join("\n")}\n} as const;`;
 }
 
 function renderSpacing(json: TokensJson): string {
   const entries = json.spacing.map((step) => `  ${jsonLiteral(step.name)}: ${jsonLiteral(step.value)},`);
-  return `export const spacing: Record<string, string> = {\n${entries.join("\n")}\n};`;
+  return `export const spacing = {\n${entries.join("\n")}\n} as const;`;
 }
 
 export function renderTokensTs(json: TokensJson): string {

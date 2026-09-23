@@ -2,14 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { compositeOver, contrastRatio } from "./color-math.ts";
 import { THEMES, themeRoles, type ThemeRoles } from "./roles.ts";
 
-// The brief's "Done when" names exactly two backgrounds for the 4.5:1 text
-// floor: "every text role on every ground and panel". `ground-well`,
-// `raised` and `sunken` still get the softer 3:1 floor below (this
-// package's role table adds them beyond design/tokens.json's own two
-// documented backgrounds, and the Final composer never sets extended text
-// on them — e.g. its `.seg-btn-on` puts `text`, not `accent`, on `sunken`).
+// The brief's "Done when" names "every ground and panel"; this role table
+// has five background roles (ground, ground-well, panel, raised, sunken),
+// and every text role clears 4.5:1 against all five, so all five get the
+// strict floor.
 const ALL_BACKGROUNDS: readonly (keyof ThemeRoles)[] = ["ground", "groundWell", "panel", "raised", "sunken"];
-const AA_TEXT_BACKGROUNDS: readonly (keyof ThemeRoles)[] = ["ground", "panel"];
 const TEXT_ROLES: readonly (keyof ThemeRoles)[] = ["text", "textMuted", "textFaint"];
 
 function isRgba(value: string): boolean {
@@ -32,11 +29,11 @@ function toHex(value: string): string {
   return `#${hex(r)}${hex(g)}${hex(b)}`;
 }
 
-describe("contrast · text roles vs ground and panel (>= 4.5:1)", () => {
+describe("contrast · text roles vs every ground and panel (>= 4.5:1)", () => {
   for (const theme of THEMES) {
     const roles = themeRoles(theme);
     for (const textRole of TEXT_ROLES) {
-      for (const groundRole of AA_TEXT_BACKGROUNDS) {
+      for (const groundRole of ALL_BACKGROUNDS) {
         test(`${theme}: ${textRole} on ${groundRole}`, () => {
           const ratio = contrastRatio(roles[textRole], roles[groundRole]);
           expect(ratio).toBeGreaterThanOrEqual(4.5);
@@ -46,28 +43,13 @@ describe("contrast · text roles vs ground and panel (>= 4.5:1)", () => {
   }
 });
 
-describe("contrast · text roles vs every background (>= 3:1, the floor for a meaningful element)", () => {
+describe("contrast · accent as text/border-focus (>= 4.5:1 as text, >= 3:1 as the focus ring, on every ground and panel)", () => {
   for (const theme of THEMES) {
     const roles = themeRoles(theme);
-    for (const textRole of TEXT_ROLES) {
-      for (const groundRole of ALL_BACKGROUNDS) {
-        test(`${theme}: ${textRole} on ${groundRole}`, () => {
-          expect(contrastRatio(roles[textRole], roles[groundRole])).toBeGreaterThanOrEqual(3);
-        });
-      }
-    }
-  }
-});
-
-describe("contrast · accent as text/border-focus (>= 4.5:1 on ground+panel, >= 3:1 as a line everywhere)", () => {
-  for (const theme of THEMES) {
-    const roles = themeRoles(theme);
-    for (const groundRole of AA_TEXT_BACKGROUNDS) {
+    for (const groundRole of ALL_BACKGROUNDS) {
       test(`${theme}: accent on ${groundRole}`, () => {
         expect(contrastRatio(roles.accent, roles[groundRole])).toBeGreaterThanOrEqual(4.5);
       });
-    }
-    for (const groundRole of ALL_BACKGROUNDS) {
       test(`${theme}: border-focus on ${groundRole} (focus ring, >= 3:1)`, () => {
         expect(contrastRatio(roles.borderFocus, roles[groundRole])).toBeGreaterThanOrEqual(3);
       });

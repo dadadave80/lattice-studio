@@ -3,6 +3,7 @@
 // reconciliation (neutrals.ts) stay visible in one place, as the brief asks.
 
 import { D3_ACCENT_BY_THEME } from "./brand.ts";
+import { kebab } from "./render-css.ts";
 import { themeRoles, type ThemeRoles } from "./roles.ts";
 
 const COMPOSER_VAR: Record<keyof ThemeRoles, string> = {
@@ -10,7 +11,7 @@ const COMPOSER_VAR: Record<keyof ThemeRoles, string> = {
   groundWell: "--sunken",
   panel: "--panel",
   raised: "--raised",
-  sunken: "--tone-2",
+  sunken: "--sunken (composer draws one recessed surface; ground-well and sunken share it)",
   text: "--ink",
   textMuted: "--ink-2",
   textFaint: "--ink-3 (Shop nudged toward --ink-2 for AA)",
@@ -52,8 +53,10 @@ const ROLE_ORDER: readonly (keyof ThemeRoles)[] = [
 function roleTable(): string {
   const shop = themeRoles("shop");
   const draft = themeRoles("draft");
-  const rows = ROLE_ORDER.map((role) => `| ${role} | \`${COMPOSER_VAR[role]}\` | \`${shop[role]}\` | \`${draft[role]}\` |`);
-  return `| DS role | Final composer variable | Shop value | Draft value |
+  const rows = ROLE_ORDER.map(
+    (role) => `| \`--lx-${kebab(role)}\` | \`${COMPOSER_VAR[role]}\` | \`${shop[role]}\` | \`${draft[role]}\` |`,
+  );
+  return `| DS role (\`tokens.css\`) | Final composer variable | Shop value | Draft value |
 | --- | --- | --- | --- |
 ${rows.join("\n")}`;
 }
@@ -94,6 +97,22 @@ ${roleTable()}
 decorative only (dividers, card edges), never the sole edge of a control,
 per \`design/design-system-rules.md\` and the spec's color rule
 (L768-L787).
+
+\`themeColors.*.hatch\` (in \`dist/tokens.ts\`) is a CSS \`background-image\`
+value that references \`var(--lx-accent-soft)\`; it only resolves inside
+\`tokens.css\`, not as a plain color in TypeScript.
+
+### Porting composer CSS
+
+The Final composer (\`design/prototype/Composer-Final.dc.html\`) uses a few
+variables this package doesn't expose as roles. When porting its CSS:
+
+| Composer var | Use instead |
+| --- | --- |
+| \`--rule\` | \`--lx-border-subtle\` for a structural divider, \`--lx-border\` for a control outline (never reaches 3:1 on its own) |
+| \`--ink-4\` | \`--lx-text-muted\` (\`design/design-system-rules.md\` L25: \`label\` is always \`text-muted\`; \`--ink-4\` never reaches 4.5:1) |
+| \`--tone-2\`, \`--tone-3\` | \`--lx-raised\` (composer already uses \`raised\` for hover) |
+| \`--grain\` | none; the design system has no elevation beyond lines |
 
 ## Type, spacing, radius, stroke
 

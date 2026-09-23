@@ -5,12 +5,18 @@
 //
 // Composer var -> role, and why:
 //   field      -> ground        panel   -> panel        raised -> raised
-//   sunken     -> ground-well   (code blocks, input wells: composer paints
-//                                the search input and the cut-plan footer
-//                                on `sunken`)
-//   tone-2     -> sunken        (the role named "sunken": a recessed,
-//                                pressed-looking surface for hover/selected
-//                                controls, one step deeper than ground-well)
+//   sunken     -> ground-well,  (code blocks, input wells: composer paints
+//                  and sunken    the search input and the cut-plan footer
+//                                on `sunken`. The role list also names a
+//                                plain "sunken" role; the composer draws
+//                                only one recessed surface, so both roles
+//                                take its value. `--lx-raised` covers the
+//                                other candidate composer gave a name to
+//                                (`tone-2`): composer already uses `raised`
+//                                for hover, and `.ibtn:hover`/`.seg-btn-on`
+//                                read fine on it. `tone-2` and `tone-3`
+//                                aren't exposed as roles; `tone-3` is only
+//                                ever the scrollbar thumb in the prototype.)
 //   ink        -> text          ink-2   -> text-muted
 //   ink-3      -> text-faint    (Draft's ink-3 already clears 4.5:1 on every
 //                                ground; Shop's does not (3.46-3.91:1), so
@@ -25,15 +31,23 @@
 //   (none)     -> border-strong (design/tokens.json's own `border` role is
 //                                full strength, {text}; composer has no
 //                                fourth border tier, so this reuses `text`
-//                                for edges that need more than `border`)
+//                                for edges that need more than `border`.
+//                                Porting composer CSS: `--rule` (composer's
+//                                own structural divider) never reaches 3:1
+//                                against any ground (1.65-2.70:1 flattened)
+//                                so it cannot serve any border role here;
+//                                use `--lx-border-subtle` for a structural
+//                                divider or `--lx-border` for a control
+//                                outline.)
 //   accent     -> border-focus  (design/design-system-rules.md: focus is
 //                                `border-focus`, which is `text-accent`)
-//   ink-4, tone-3, rule, grain: not exposed as roles. `rule` never reaches
-//     3:1 (1.65-2.70:1 flattened) so it cannot serve `border`; `ink-4`
-//     never reaches 4.5:1 (1.81-3.48:1) so it cannot serve a text role;
-//     `grain` is a background texture the design system's "no elevation"
-//     rule doesn't call for and the brief's role list omits; `tone-3` is
-//     only ever used for the scrollbar thumb in the prototype.
+//   ink-4: not exposed as a role. It never reaches 4.5:1 (1.81-3.48:1), so
+//     it cannot serve a text role even though the prototype uses it for
+//     eyebrow/label text; design/design-system-rules.md's own rule is that
+//     `label` is always `text-muted` (L25), which is what this reconciles
+//     to. `grain` (a background texture): the design system's "no
+//     elevation" rule doesn't call for one and the brief's role list omits
+//     it; drop it when porting composer CSS.
 
 import { contrastRatio, mix } from "./color-math.ts";
 import type { ThemeId } from "./brand.ts";
@@ -58,7 +72,6 @@ interface ComposerNeutrals {
   readonly panel: string;
   readonly raised: string;
   readonly sunken: string;
-  readonly tone2: string;
   readonly ink: string;
   readonly ink2: string;
   readonly ink3: string;
@@ -72,7 +85,6 @@ const SHOP: ComposerNeutrals = {
   panel: "#131417",
   raised: "#181A1E",
   sunken: "#0A0B0D",
-  tone2: "#1C1E22",
   ink: "#E9E7E1",
   ink2: "#9A9DA4",
   ink3: "#6B6F77",
@@ -86,7 +98,6 @@ const DRAFT: ComposerNeutrals = {
   panel: "#F7F5EF",
   raised: "#FBFAF5",
   sunken: "#E7E3D8",
-  tone2: "#D2CDBF",
   ink: "#16150F",
   ink2: "#3C3931",
   ink3: "#635E52",
@@ -121,7 +132,7 @@ function fromComposer(n: ComposerNeutrals, textFaint: string): NeutralPalette {
     groundWell: n.sunken,
     panel: n.panel,
     raised: n.raised,
-    sunken: n.tone2,
+    sunken: n.sunken,
     text: n.ink,
     textMuted: n.ink2,
     textFaint,

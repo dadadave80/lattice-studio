@@ -4,7 +4,7 @@
   "colors": {
     "editor.background": "#0A0B0D",
     "editor.foreground": "#E9E7E1",
-    "editorLineNumber.foreground": "#80848b",
+    "editorLineNumber.foreground": "#80848B",
     "editorLineNumber.activeForeground": "#9A9DA4",
     "editorCursor.foreground": "#FF5A1F",
     "editor.selectionBackground": "rgba(255,90,31,.12)"
@@ -16,7 +16,7 @@
         "punctuation.definition.comment"
       ],
       "settings": {
-        "foreground": "#80848b",
+        "foreground": "#80848B",
         "fontStyle": "italic"
       }
     },

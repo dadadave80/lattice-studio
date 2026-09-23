@@ -17,7 +17,8 @@ export function hexToRgb(hex: string): Rgb {
 }
 
 export function rgbToHex({ r, g, b }: Rgb): string {
-  const toHex = (channel: number): string => Math.round(channel).toString(16).padStart(2, "0");
+  const toHex = (channel: number): string =>
+    Math.round(channel).toString(16).padStart(2, "0").toUpperCase();
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 

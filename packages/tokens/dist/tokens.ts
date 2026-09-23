@@ -25,8 +25,8 @@ export interface ThemeColors {
 }
 
 export const themeColors: Record<ThemeId, ThemeColors> = {
-  shop: {"ground":"#0C0D0F","groundWell":"#0A0B0D","panel":"#131417","raised":"#181A1E","sunken":"#1C1E22","text":"#E9E7E1","textMuted":"#9A9DA4","textFaint":"#80848b","border":"#6B6F77","borderSubtle":"rgba(233,231,225,.12)","borderStrong":"#E9E7E1","borderFocus":"#FF5A1F","accent":"#FF5A1F","accentStrong":"#FF7A45","onAccent":"#0C0D0F","accentSoft":"rgba(255,90,31,.12)","accentLine":"rgba(255,90,31,.45)","dot":"rgba(233,231,225,.06)","hatch":"repeating-linear-gradient(45deg, var(--lx-accent-soft) 0 5px, transparent 5px 10px)"} satisfies ThemeColors,
-  draft: {"ground":"#F3F1E9","groundWell":"#E7E3D8","panel":"#F7F5EF","raised":"#FBFAF5","sunken":"#D2CDBF","text":"#16150F","textMuted":"#3C3931","textFaint":"#635E52","border":"#3C3931","borderSubtle":"rgba(22,21,15,.22)","borderStrong":"#16150F","borderFocus":"#1F4FE0","accent":"#1F4FE0","accentStrong":"#173FBE","onAccent":"#F7F5EF","accentSoft":"rgba(31,79,224,.10)","accentLine":"rgba(31,79,224,.40)","dot":"rgba(22,21,15,.10)","hatch":"repeating-linear-gradient(45deg, var(--lx-accent-soft) 0 5px, transparent 5px 10px)"} satisfies ThemeColors,
+  shop: {"ground":"#0C0D0F","groundWell":"#0A0B0D","panel":"#131417","raised":"#181A1E","sunken":"#0A0B0D","text":"#E9E7E1","textMuted":"#9A9DA4","textFaint":"#80848B","border":"#6B6F77","borderSubtle":"rgba(233,231,225,.12)","borderStrong":"#E9E7E1","borderFocus":"#FF5A1F","accent":"#FF5A1F","accentStrong":"#FF7A45","onAccent":"#0C0D0F","accentSoft":"rgba(255,90,31,.12)","accentLine":"rgba(255,90,31,.45)","dot":"rgba(233,231,225,.06)","hatch":"repeating-linear-gradient(45deg, var(--lx-accent-soft) 0 5px, transparent 5px 10px)"} satisfies ThemeColors,
+  draft: {"ground":"#F3F1E9","groundWell":"#E7E3D8","panel":"#F7F5EF","raised":"#FBFAF5","sunken":"#E7E3D8","text":"#16150F","textMuted":"#3C3931","textFaint":"#635E52","border":"#3C3931","borderSubtle":"rgba(22,21,15,.22)","borderStrong":"#16150F","borderFocus":"#1F4FE0","accent":"#1F4FE0","accentStrong":"#173FBE","onAccent":"#F7F5EF","accentSoft":"rgba(31,79,224,.10)","accentLine":"rgba(31,79,224,.40)","dot":"rgba(22,21,15,.10)","hatch":"repeating-linear-gradient(45deg, var(--lx-accent-soft) 0 5px, transparent 5px 10px)"} satisfies ThemeColors,
 };
 
 export interface TypeStyle {
@@ -38,7 +38,7 @@ export interface TypeStyle {
   readonly letterSpacing: string;
 }
 
-export const typeScale: Record<string, TypeStyle> = {
+export const typeScale = {
   "display": {"name":"display","family":"sans","fontSize":"40px","lineHeight":"44px","fontWeight":600,"letterSpacing":"-0.01em"} satisfies TypeStyle,
   "title": {"name":"title","family":"sans","fontSize":"28px","lineHeight":"32px","fontWeight":600,"letterSpacing":"-0.01em"} satisfies TypeStyle,
   "heading": {"name":"heading","family":"sans","fontSize":"20px","lineHeight":"28px","fontWeight":600,"letterSpacing":"-0.01em"} satisfies TypeStyle,
@@ -48,11 +48,11 @@ export const typeScale: Record<string, TypeStyle> = {
   "label": {"name":"label","family":"sans","fontSize":"12px","lineHeight":"16px","fontWeight":600,"letterSpacing":"0.106em"} satisfies TypeStyle,
   "code": {"name":"code","family":"mono","fontSize":"14px","lineHeight":"20px","fontWeight":400,"letterSpacing":"0"} satisfies TypeStyle,
   "code-sm": {"name":"code-sm","family":"mono","fontSize":"13px","lineHeight":"20px","fontWeight":400,"letterSpacing":"0"} satisfies TypeStyle,
-};
+} as const;
 
 export const fontFamilies = {"sans":"Inter, system-ui, sans-serif","mono":"\"JetBrains Mono\", ui-monospace, \"SF Mono\", Menlo, monospace"} as const;
 
-export const spacing: Record<string, string> = {
+export const spacing = {
   "space-1": "4px",
   "space-2": "8px",
   "space-3": "12px",
@@ -60,7 +60,7 @@ export const spacing: Record<string, string> = {
   "space-6": "24px",
   "space-8": "32px",
   "space-12": "48px",
-};
+} as const;
 
 export const radiusNone = "0px" as const;
 export const strokeHair = "1px" as const;
