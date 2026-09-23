@@ -24,7 +24,8 @@ export const SAFE_BATCH_MIME = "application/json";
  * The Builder checks neither the chain nor the Safe on import, and a checksum mismatch is only a warning, so
  * `meta.name` and `meta.description` name the Safe, the chain and the predicted address. The file follows the
  * Builder's own model: `chainId` a string, `createdAt` the injected `now` in milliseconds, `value` a string, and
- * `meta.checksum` computed as the Builder computes it. The same inputs give the same bytes.
+ * `meta.checksum` computed as the Builder computes it. The description is headed with the Studio version, the
+ * recipe hash and the catalog tag like every export (spec L508). The same inputs give the same bytes.
  *
  * Errors (never throws for these): a Safe that isn't an address, a bad chain id, `now` or entropy, blockers
  * the Safe's own context finds, an init C4b can't encode (its errors pass through, including
@@ -86,16 +87,17 @@ export const exportSafeBatch: ExportSafeBatchFn = (args) => {
 
   const { tx } = deploy.value;
   const text = describe({
-    label: recipe.name?.trim() || "the diamond",
+    label: plainText(recipe.name ?? "", "the diamond"),
     safe: toChecksum(safe),
     chainId,
-    chainName: chain?.name,
+    chainName: chain === undefined ? undefined : plainText(chain.name, `Chain ${chainId}`),
     scope,
     path,
     to: toChecksum(tx.to),
     self,
     recipeHash: analysis.recipeHash,
-    tag: catalog.lattice.tag,
+    tag: plainText(catalog.lattice.tag, "unknown"),
+    studioVersion: plainText(args.studioVersion, "unknown"),
   });
   const file = withChecksum({
     version: "1.0",
@@ -136,6 +138,7 @@ type Described = {
   self: Address;
   recipeHash: Hex;
   tag: string;
+  studioVersion: string;
 };
 
 /**
@@ -152,13 +155,27 @@ function describe(d: Described): { name: string; description: string } {
       : "from another Safe it would deploy with references built for this Safe";
   const name = `Deploy ${d.label} to ${d.self} · Safe ${d.safe} · ${chainShort}`;
   const description = [
+    `Lattice Studio ${d.studioVersion} · recipe ${d.recipeHash} · Lattice ${d.tag}`,
     `Deploys ${d.label} to ${d.self} on ${chain}, from Safe ${d.safe}, through ${via}.`,
     `The salt starts with this Safe's address and "This diamond" resolves to ${d.self}.`,
     `Import it only into Safe ${d.safe} on ${chainShort}: the Transaction Builder checks neither the Safe nor the chain, and ${elsewhere}.`,
-    `Recipe ${d.recipeHash} · Lattice ${d.tag}.`,
     `Leaves out deploying missing shared contracts: use Deploy missing contracts… in Studio, or Lattice's DeployRelease at ${d.tag}, which any account may run.`,
   ].join("\n");
   return { name, description };
+}
+
+/**
+ * Text that came from a person or a file (the recipe's name, the chain's name, the catalog tag, the Studio
+ * version) as one plain line: control, format and line-separator characters (newlines, tabs, bidi overrides,
+ * zero-width marks) can't reorder or break the meta the signers read. JSON.stringify escapes the rest.
+ */
+export function plainText(value: string, fallback: string): string {
+  const text = value
+    .replace(/[\p{Cf}]/gu, "")
+    .replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text === "" ? fallback : text;
 }
 
 /** The recipe's name as a file name: letters, digits, dots, dashes and underscores; "diamond" when empty. */

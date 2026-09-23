@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { decodeFunctionData, keccak256, stringToHex } from "viem";
 import { buildSalt, CREATEX, createxPredict, factoryPredict } from "../../address";
 import { CREATEX_ABI, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI } from "../../deploy";
+import { normalizeRecipe, recipeHash } from "../../canonical";
 import { lintCopy } from "../../format";
 import { decodeInit, UNSUPPORTED_IN_V1 } from "../../init/encode";
 import type { Catalog } from "../../model/catalog";
@@ -12,7 +13,7 @@ import type { Arg, Recipe } from "../../model/recipe";
 import { loadTemplate } from "../../plan";
 import { loadFixtureCatalog } from "../../testing";
 import { batchChecksum, hasValidChecksum, serializeForChecksum, withChecksum, type BatchFile } from "./checksum";
-import { exportSafeBatch } from "./index";
+import { exportSafeBatch, plainText } from "./index";
 
 const SAFE: Address = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"; // Anvil account 2, standing in for a Safe
 const OTHER: Address = "0x90F79bf6EB2c4f870365E785982E1f101E93b906"; // Anvil account 3
@@ -20,6 +21,7 @@ const ASSET: Address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 const ENTROPY: Hex = "0x0102030405060708090a0b";
 const NOW = 1_790_000_000_000;
 const SEPOLIA = 11155111;
+const STUDIO = "1.0.0-test";
 
 const fixture = loadFixtureCatalog();
 if (!fixture.ok) throw new Error(fixture.error);
@@ -64,7 +66,7 @@ function sepolia(over: Partial<ChainState> = {}): ChainState {
 function args(over: Partial<SafeBatchArgs> = {}): SafeBatchArgs {
   return {
     recipe: safeDiamondCut(), catalog, safe: SAFE, chainId: SEPOLIA, entropy: ENTROPY,
-    scope: "every-chain", path: "factory", now: NOW, chain: sepolia(), ...over,
+    scope: "every-chain", path: "factory", now: NOW, chain: sepolia(), studioVersion: STUDIO, ...over,
   };
 }
 
@@ -228,13 +230,35 @@ describe("exportSafeBatch", () => {
     expect(exported().file.meta.description).not.toContain("on another chain");
   });
 
-  test("the meta states the recipe hash, the catalog tag and what it leaves out, in Studio's voice", () => {
+  test("the description is headed with the Studio version, recipe hash and catalog tag, and says what it leaves out", () => {
     const { file } = exported();
     const description = file.meta.description ?? "";
-    expect(description).toMatch(/Recipe 0x[0-9a-f]{64} · Lattice fixture\./);
+    const [head] = description.split("\n");
+    expect(head).toMatch(/^Lattice Studio 1\.0\.0-test · recipe 0x[0-9a-f]{64} · Lattice fixture$/);
+    expect(head).toContain(recipeHash(normalizeRecipe(safeDiamondCut(), catalog)));
     expect(description).toContain("Leaves out deploying missing shared contracts");
     expect(lintCopy(description)).toEqual([]);
     expect(lintCopy(file.meta.name)).toEqual([]);
+    expect(exported({ studioVersion: "1.0.1" }).text).not.toBe(exported().text);
+  });
+
+  test("names from a person or a file reach the meta as one plain line", () => {
+    const hostile = "Vault\n‮evil​\t\u0000name end";
+    const recipe = { ...safeDiamondCut(), name: hostile };
+    const { file, text } = exported({
+      recipe,
+      chain: sepolia({ name: "Sepo\r\nlia‮" }),
+      studioVersion: "1.0.0\u0007beta",
+    });
+    const fields = [file.meta.name, ...(file.meta.description ?? "").split("\n")];
+    for (const field of fields) expect(field).not.toMatch(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u);
+    expect(file.meta.name).toContain("Deploy Vault evil name end to ");
+    expect(file.meta.name).toContain("· Sepo lia");
+    expect(file.meta.description).toStartWith("Lattice Studio 1.0.0 beta · ");
+    expect(file.meta.description?.split("\n")).toHaveLength(5);
+    expect(hasValidChecksum(file)).toBe(true);
+    expect(JSON.parse(text)).toEqual(file);
+    expect(plainText("​\n", "fallback")).toBe("fallback");
   });
 
   test("CreateX: one call from the Safe to CreateX with the Safe-prefixed raw salt", () => {
