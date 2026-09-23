@@ -62,6 +62,23 @@ describe("unconfirmedPaths", () => {
     expect(unconfirmedPaths(tokenWithAdmin(ADMIN.toLowerCase()), null)).toEqual(["steps[0].admin"]);
   });
 
+  test("a tuple written as a positional list can't be matched to components, so every address in it counts", () => {
+    const positional = makeRecipe(
+      {
+        init: {
+          kind: "steps",
+          steps: [{ spec: "GuardInit", args: { guardians: [], keeper: [ADMIN, "keeper"] } }],
+        },
+      },
+      catalog,
+    );
+    expect(unconfirmedPaths(positional, catalog)).toEqual(["steps[0].keeper[0]"]);
+    // A list under a plain address parameter is the same: nothing says what its items grant.
+    const listed = makeRecipe({ init: { kind: "steps", steps: [{ spec: "ERC20Init", args: { name: [ADMIN], symbol: "T" } }] } }, catalog);
+    expect(unconfirmedPaths(listed, catalog)).toEqual(["steps[0].name[0]"]);
+    expect(argLeaves(positional, catalog).every((leaf) => leaf.param === undefined)).toBe(true);
+  });
+
   test("text that isn't an address isn't one", () => {
     expect(unconfirmedPaths(tokenWithAdmin("alice.eth"), catalog)).toEqual([]);
     expect(unconfirmedPaths(tokenWithAdmin(`${ADMIN}0`), catalog)).toEqual([]);

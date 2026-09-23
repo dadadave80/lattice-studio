@@ -47,10 +47,10 @@ describe("recipe.json", () => {
   });
 
   test("empty files and files that aren't JSON say so", () => {
-    expect(refused("", "recipe.json")).toEqual(["recipe.json: This file is empty."]);
-    expect(refused(" \n\t", "recipe.json")).toEqual(["recipe.json: This file is empty."]);
-    expect(refused("{\"schemaVersion\": 1,", "recipe.json")).toEqual(["recipe.json: This file isn't valid JSON."]);
-    expect(refused("\u0089PNG\r\n", "diagram.png")).toEqual(["diagram.png: This file isn't valid JSON."]);
+    expect(refused("", "recipe.json")).toEqual(["recipe.json: This file is empty. Choose a .lattice.json or recipe.json file."]);
+    expect(refused(" \n\t", "recipe.json")).toEqual(["recipe.json: This file is empty. Choose a .lattice.json or recipe.json file."]);
+    expect(refused("{\"schemaVersion\": 1,", "recipe.json")).toEqual(["recipe.json: This file isn't valid JSON. Choose a .lattice.json or recipe.json file."]);
+    expect(refused("\u0089PNG\r\n", "diagram.png")).toEqual(["diagram.png: This file isn't valid JSON. Choose a .lattice.json or recipe.json file."]);
   });
 
   test("a recipe pinned to a catalog this build doesn't bundle opens with every literal address unconfirmed", () => {
@@ -88,6 +88,10 @@ describe(".lattice.json", () => {
   test("content decides the kind; the name only breaks a tie", () => {
     expect(opened(json(projectFile()), "recipe.json").kind).toBe("project");
     expect(opened(json(tokenWithAdmin()), "odd.lattice.json").kind).toBe("recipe");
+    // A recipe may keep an unknown `project` field (spec L289); without `deployments` it's still a recipe.
+    const keeping = opened(json({ ...tokenWithAdmin(), project: { note: "kept" } }), "recipe.json");
+    expect(keeping.kind).toBe("recipe");
+    expect(keeping.unknownFields).toEqual(["project"]);
     expect(refused(json({}), "broken.lattice.json")).toEqual([
       "broken.lattice.json: project is missing.",
       "broken.lattice.json: deployments is missing.",

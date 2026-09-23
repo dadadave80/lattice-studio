@@ -7,8 +7,11 @@ import { err, ok, type Result } from "../model/result";
  */
 const INFLATE_CHUNK = 256;
 
-/** Inflates raw deflate, refusing (never truncating) output past `cap` bytes. */
-export function inflateCapped(data: Uint8Array, cap: number): Result<Uint8Array, "over" | "short" | string> {
+/**
+ * Inflates raw deflate, refusing (never truncating) output past `cap` bytes. `short`: the input ends before
+ * the final block; `damaged`: it isn't deflate data.
+ */
+export function inflateCapped(data: Uint8Array, cap: number): Result<Uint8Array, "over" | "short" | "damaged"> {
   if (data.length === 0) return err("short");
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -24,7 +27,7 @@ export function inflateCapped(data: Uint8Array, cap: number): Result<Uint8Array,
   } catch (error) {
     const code = (error as { code?: unknown }).code;
     if (code === 0) return err("short");
-    return err(error instanceof Error ? error.message : String(error));
+    return err("damaged");
   }
   const out = new Uint8Array(total);
   let offset = 0;

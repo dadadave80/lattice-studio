@@ -14,25 +14,26 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * A `.lattice.json` project file holds `project`; a `recipe.json` holds the recipe's own fields. Content
- * decides; the name decides only when the content is neither (an object with no `project`, `schemaVersion`
- * or `facets`), so a broken project file gets project-file errors.
+ * A `.lattice.json` project file holds `project` and `deployments`; a `recipe.json` holds the recipe's own
+ * fields, and may keep an unknown `project` field (spec L289), so `project` alone doesn't make a project file.
+ * Content decides; the name decides only when the content is neither (no `project` with `deployments`, no
+ * `schemaVersion` or `facets`), so a broken project file gets project-file errors.
  */
 function isProjectFile(json: unknown, filename: string): boolean {
   if (!isObject(json)) return false;
-  if (Object.hasOwn(json, "project")) return true;
+  if (Object.hasOwn(json, "project") && Object.hasOwn(json, "deployments")) return true;
   if (Object.hasOwn(json, "schemaVersion") || Object.hasOwn(json, "facets")) return false;
   return /\.lattice\.json$/i.test(filename);
 }
 
 function read(text: string, filename: string, catalogs: readonly Catalog[]): Result<ImportedFile, ParseIssue[]> {
   const body = text.replace(/^﻿/, "");
-  if (body.trim() === "") return fail(filename, "This file is empty.");
+  if (body.trim() === "") return fail(filename, "This file is empty. Choose a .lattice.json or recipe.json file.");
   let json: unknown;
   try {
     json = JSON.parse(body);
   } catch {
-    return fail(filename, "This file isn't valid JSON.");
+    return fail(filename, "This file isn't valid JSON. Choose a .lattice.json or recipe.json file.");
   }
   const opts: ParseOptions = { catalogs, source: "file", filename };
   if (isProjectFile(json, filename)) {
@@ -68,6 +69,6 @@ export const importFile: ImportFileFn = (text, filename, catalogs) => {
     return read(text, filename, catalogs);
   } catch (error) {
     const reason = error instanceof RangeError ? "it nests too deeply" : "Studio couldn't read it";
-    return fail(filename, `This file can't be opened: ${reason}.`);
+    return fail(filename, `This file can't be opened: ${reason}. Choose another file.`);
   }
 };

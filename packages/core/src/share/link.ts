@@ -21,8 +21,11 @@ export const SHARE_MAX_BYTES = 256 * 1024;
 /**
  * `#s=1.<base64url(deflate-raw(recipe))>`: the canonical recipe without `$schema`, deflated at level 9
  * (spec L291). Pass the recipe as the project stores it (normalized): decoding normalizes, so the round trip
- * is the identity only for normalized input. `length` counts the fragment, `#s=1.` included; the app adds
- * its own origin when it reports the whole link's length.
+ * is the identity only for normalized input.
+ *
+ * `length` and `tooLong` count the fragment only, `#s=1.` included: core doesn't know the origin. The app
+ * (S13) computes the 2,000-character warning and "Link copied · 732 characters" from the full string it puts
+ * on the clipboard, origin included (spec L291, L502); these two fields are a lower bound for that.
  */
 export const encodeShareLink: EncodeShareLinkFn = (recipe) => {
   const { $schema: _schema, ...payload } = recipe;
@@ -43,19 +46,19 @@ function payloadOf(fragment: string): Result<Uint8Array, ParseIssue[]> {
   const hash = text.indexOf("#");
   const body = hash === -1 ? text : text.slice(hash + 1);
   const match = /^s=([^.]*)\.([\s\S]*)$/.exec(body);
-  if (match === null) return fail(`This isn't a Studio share link: it should start with #s=${SHARE_VERSION}.`);
+  if (match === null) return fail(`This isn't a Studio share link: it should start with #s=${SHARE_VERSION}. Copy the whole link again.`);
   const version = match[1] ?? "";
   const data = match[2] ?? "";
-  if (!/^[0-9]+$/.test(version)) return fail(`This link's format version is ‘${version}’; expected ${SHARE_VERSION}.`);
+  if (!/^[0-9]+$/.test(version)) return fail(`This link's format version is ‘${version}’; this Studio reads v${SHARE_VERSION}. Ask for the link again.`);
   const needs = Number(version);
-  if (needs > SHARE_VERSION) return fail(`This link needs Studio share format v${needs}. This Studio reads v${SHARE_VERSION}.`);
-  if (needs < SHARE_VERSION) return fail(`This link's format version is ${needs}; share formats start at v${SHARE_VERSION}.`);
-  if (data === "") return fail(`This link has no recipe after #s=${SHARE_VERSION}.`);
+  if (needs > SHARE_VERSION) return fail(`This link needs Studio share format v${needs}. This Studio reads v${SHARE_VERSION}. Open it in the latest Studio.`);
+  if (needs < SHARE_VERSION) return fail(`This link's format version is ${needs}; share formats start at v${SHARE_VERSION}. Ask for the link again.`);
+  if (data === "") return fail(`This link has no recipe after #s=${SHARE_VERSION}. Copy the whole link again.`);
   const decoded = decodeBase64url(data);
   if (decoded.ok) return decoded;
   if (decoded.error.kind === "length") return fail(CUT_SHORT);
   const { char, position } = decoded.error;
-  return fail(`This link is damaged: ‘${char}’ at character ${position} of its recipe can't appear in a share link.`);
+  return fail(`This link is damaged: ‘${char}’ at character ${position} of its recipe can't appear in a share link. Copy the whole link again.`);
 }
 
 /** UTF-8 that survives a decode and re-encode unchanged; malformed bytes would come back as U+FFFD. */
@@ -73,18 +76,18 @@ function decode(fragment: string, catalogs: Parameters<typeof decodeShareLink>[1
   const inflated = inflateCapped(payload.value, SHARE_MAX_BYTES);
   if (!inflated.ok) {
     if (inflated.error === "over") {
-      return fail(`This link's recipe is over ${SHARE_MAX_BYTES / 1024} KB once decompressed, far more than any recipe needs, so Studio didn't open it.`);
+      return fail(`This link's recipe is over ${SHARE_MAX_BYTES / 1024} KB once decompressed, far more than any recipe needs, so Studio didn't open it. Ask for a recipe file instead.`);
     }
     if (inflated.error === "short") return fail(CUT_SHORT);
-    return fail(`This link is damaged: its recipe doesn't decompress (${inflated.error}).`);
+    return fail("This link is damaged: its recipe doesn't decompress. Ask for the link again.");
   }
   const text = utf8(inflated.value);
-  if (text === null) return fail("This link is damaged: its recipe isn't UTF-8 text.");
+  if (text === null) return fail("This link is damaged: its recipe isn't UTF-8 text. Ask for the link again.");
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch {
-    return fail("This link is damaged: its recipe isn't valid JSON.");
+    return fail("This link is damaged: its recipe isn't valid JSON. Ask for the link again.");
   }
   const parsed = parseRecipe(json, { catalogs, source: "link" });
   if (!parsed.ok) return parsed;
@@ -103,6 +106,6 @@ export const decodeShareLink: DecodeShareLinkFn = (fragment, catalogs) => {
     return decode(fragment, catalogs);
   } catch (error) {
     const reason = error instanceof RangeError ? "it nests too deeply" : "Studio couldn't read it";
-    return fail(`This link's recipe can't be opened: ${reason}.`);
+    return fail(`This link's recipe can't be opened: ${reason}. Ask for a recipe file instead.`);
   }
 };

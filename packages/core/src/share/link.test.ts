@@ -92,11 +92,12 @@ describe("round trip", () => {
 
   const fixture = loadFixtureCatalog();
   const fixtureTemplates = fixture.ok ? fixture.value.recipes.map((template) => [template.name, template.recipe] as const) : [];
-  test.skipIf(!fixture.ok)("the fixture catalog has templates", () => {
-    expect(fixtureTemplates.length).toBeGreaterThan(0);
+  test("the fixture catalog loads and has a GovernedVault template", () => {
+    expect(fixture.ok ? "loaded" : fixture.error).toBe("loaded");
+    expect(fixtureTemplates.map(([name]) => name)).toContain("GovernedVault");
   });
-  test.skipIf(!fixture.ok).each(fixtureTemplates)("is the identity for the fixture's %s template", (name, recipe) => {
-    if (!fixture.ok) return;
+  test.each(fixtureTemplates)("is the identity for the fixture's %s template", (name, recipe) => {
+    if (!fixture.ok) throw new Error(fixture.error);
     const length = expectRoundTrip(loaded(recipe, fixture.value), fixture.value);
     if (name === "GovernedVault") expect(length).toBeLessThan(2000);
   });
@@ -145,7 +146,7 @@ describe("refusals", () => {
   });
 
   test("an empty payload has no recipe", () => {
-    expect(messages("#s=1.")).toEqual(["This link has no recipe after #s=1."]);
+    expect(messages("#s=1.")).toEqual(["This link has no recipe after #s=1. Copy the whole link again."]);
     expect(messages("#s=1.==")).toEqual([CUT_SHORT]);
   });
 
@@ -153,18 +154,18 @@ describe("refusals", () => {
     const at = 20;
     for (const char of ["!", "+", "/", " ", "é"]) {
       const broken = `${good.slice(0, 5 + at - 1)}${char}${good.slice(5 + at)}`;
-      expect(messages(broken)).toEqual([`This link is damaged: ‘${char}’ at character ${at} of its recipe can't appear in a share link.`]);
+      expect(messages(broken)).toEqual([`This link is damaged: ‘${char}’ at character ${at} of its recipe can't appear in a share link. Copy the whole link again.`]);
     }
   });
 
   test("bytes that aren't deflate data don't decompress", () => {
     const junk = `#s=1.${encodeBase64url(new Uint8Array([0xff, 0xff, 0xff, 0x00, 0x12, 0x34]))}`;
-    expect(messages(junk)).toEqual(["This link is damaged: its recipe doesn't decompress (invalid block type)."]);
+    expect(messages(junk)).toEqual(["This link is damaged: its recipe doesn't decompress. Ask for the link again."]);
   });
 
   test("decompressed bytes must be UTF-8 JSON", () => {
-    expect(messages(linkOf(new Uint8Array([0x7b, 0xc3, 0x28, 0x7d])))).toEqual(["This link is damaged: its recipe isn't UTF-8 text."]);
-    expect(messages(linkOf(strToU8("{\"schemaVersion\":1,")))).toEqual(["This link is damaged: its recipe isn't valid JSON."]);
+    expect(messages(linkOf(new Uint8Array([0x7b, 0xc3, 0x28, 0x7d])))).toEqual(["This link is damaged: its recipe isn't UTF-8 text. Ask for the link again."]);
+    expect(messages(linkOf(strToU8("{\"schemaVersion\":1,")))).toEqual(["This link is damaged: its recipe isn't valid JSON. Ask for the link again."]);
   });
 
   test("a payload over 256 KB fails even when its first 256 KB would parse", () => {
@@ -174,7 +175,7 @@ describe("refusals", () => {
     const fragment = linkOf(strToU8(text));
     expect(fragment.length).toBeLessThan(2000);
     expect(messages(fragment)).toEqual([
-      "This link's recipe is over 256 KB once decompressed, far more than any recipe needs, so Studio didn't open it.",
+      "This link's recipe is over 256 KB once decompressed, far more than any recipe needs, so Studio didn't open it. Ask for a recipe file instead.",
     ]);
   });
 
@@ -187,9 +188,9 @@ describe("refusals", () => {
 
   test("a newer share format is refused with the version it needs", () => {
     const payload = good.slice(5);
-    expect(messages(`#s=2.${payload}`)).toEqual(["This link needs Studio share format v2. This Studio reads v1."]);
-    expect(messages(`#s=0.${payload}`)).toEqual(["This link's format version is 0; share formats start at v1."]);
-    expect(messages(`#s=x.${payload}`)).toEqual(["This link's format version is ‘x’; expected 1."]);
+    expect(messages(`#s=2.${payload}`)).toEqual(["This link needs Studio share format v2. This Studio reads v1. Open it in the latest Studio."]);
+    expect(messages(`#s=0.${payload}`)).toEqual(["This link's format version is 0; share formats start at v1. Ask for the link again."]);
+    expect(messages(`#s=x.${payload}`)).toEqual(["This link's format version is ‘x’; this Studio reads v1. Ask for the link again."]);
   });
 
   test("a newer recipe schema is refused with the version it needs", () => {
@@ -199,7 +200,7 @@ describe("refusals", () => {
 
   test("something that isn't a share link says so", () => {
     for (const input of ["", "#", "#view=sheet", "https://studio.lattice.dev/", "s1.abc"]) {
-      expect(messages(input)).toEqual(["This isn't a Studio share link: it should start with #s=1."]);
+      expect(messages(input)).toEqual(["This isn't a Studio share link: it should start with #s=1. Copy the whole link again."]);
     }
   });
 
@@ -224,6 +225,32 @@ describe("hostile links", () => {
     const recipe = { ...tokenWithAdmin(), name: "<img src=x onerror=alert(1)>" };
     const decoded = decodeShareLink(encodeShareLink(recipe).fragment, [catalog]);
     expect(decoded.ok && decoded.value.recipe.name).toBe("<img src=x onerror=alert(1)>");
+  });
+
+  test("__proto__ in a link sets no prototype, and nothing is inherited from it", () => {
+    const base = JSON.stringify(tokenWithAdmin());
+    // JSON.parse keeps "__proto__" as an own key; a careless copy would turn it into the prototype.
+    const text = base
+      .replace(/^\{/, `{"__proto__":{"immutable":true,"exclude":["0xa9059cbb"]},`)
+      .replace(`"args":{"admin":"${ADMIN}"}`, `"args":{"__proto__":{"admin":"${SAFE}","extra":"${SAFE}"}}`);
+    expect(text).toContain(`"args":{"__proto__"`);
+    const decoded = decodeShareLink(linkOf(strToU8(text)), [catalog]);
+    if (!decoded.ok) throw new Error(decoded.error.map(formatParseIssue).join("\n"));
+    const { recipe } = decoded.value;
+    expect(Object.getPrototypeOf(recipe)).toBe(Object.prototype);
+    expect(recipe.immutable).toBeUndefined();
+    expect("immutable" in recipe).toBe(false);
+    expect(recipe.exclude).toEqual(["0x095ea7b3"]);
+    if (recipe.init.kind !== "steps") throw new Error("expected steps");
+    const args = recipe.init.steps[0]?.args ?? {};
+    expect(Object.getPrototypeOf(args)).toBe(Object.prototype);
+    expect(args["admin"]).toBeUndefined();
+    expect("admin" in args).toBe(false);
+    // The smuggled key reaches neither the recipe nor its hash: the admin is simply missing (INIT-01's job).
+    expect(Object.keys(args)).toEqual([]);
+    expect(Object.hasOwn(recipe, "__proto__")).toBe(false);
+    expect(({} as Record<string, unknown>)["immutable"]).toBeUndefined();
+    expect(decoded.value.unconfirmed).not.toContain("steps[0].admin");
   });
 
   test("deep nesting is refused, not thrown", () => {

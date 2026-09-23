@@ -16,6 +16,10 @@ function isRef(value: ArgObject): boolean {
   return typeof value["$ref"] === "string";
 }
 
+function isArrayType(type: string): boolean {
+  return /\[\d*\]$/.test(type);
+}
+
 /** An array parameter's element: the same parameter with one `[]` or `[n]` taken off its type. */
 function elementOf(param: InitParam): InitParam {
   return { ...param, type: param.type.replace(/\[\d*\]$/, "") };
@@ -27,7 +31,9 @@ function walk(value: Arg, at: readonly (string | number)[], param: InitParam | u
     return;
   }
   if (Array.isArray(value)) {
-    const element = param === undefined ? undefined : elementOf(param);
+    // A list under a parameter that isn't an array (a tuple written positionally, or a malformed argument)
+    // can't be matched to components, so its leaves get no parameter and every address in it counts.
+    const element = param !== undefined && isArrayType(param.type) ? elementOf(param) : undefined;
     value.forEach((item, index) => walk(item, [...at, index], element, out));
     return;
   }
