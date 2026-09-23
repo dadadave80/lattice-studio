@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createxPredict, factoryPredict } from "../address/diamond";
+import { gasShare } from "../deploy/measure";
 import type { AnalysisContext, CheckInput, Routing } from "../model/analysis";
 import type { Catalog, InitSpec } from "../model/catalog";
 import type { ChainState, DeployContext } from "../model/chain";
@@ -323,27 +324,64 @@ describe("NET-05 address already used (spec R8)", () => {
 });
 
 describe("NET-06 gas cap (spec R16)", () => {
-  test("over the cap: a blocker with the spec's message", () => {
+  const CAP = 16777216n;
+
+  test("over the cap: a blocker with the spec's message, sharing C5c's gasShare share", () => {
+    const { share, level } = gasShare(17200000n, CAP);
+    expect(level).toBe("over");
+    // gasShare rounds down: 1.0251, not the 1.0252 Math.round used to give (that's the bug FX4 fixes).
+    expect(share).toBe(1.0251);
     const p = only(run(readyChain({ gasEstimate: "17200000" })), "NET-06");
     expect(p).toMatchObject({
       id: `NET-06:${SEPOLIA}`,
       severity: "blocker",
-      params: { chain: "Sepolia", gas: "17200000", cap: "16777216", share: 1.0252 },
+      params: { chain: "Sepolia", gas: "17200000", cap: "16777216", share },
       fixes: [{ id: "deploy.removeFacets" }],
     });
     expect(renderProblem("NET-06", p.params)).toBe("This deploy needs about 17.2M gas; Sepolia allows 16.8M per transaction.");
   });
 
-  test("from 80% up to the cap itself: a warning", () => {
-    expect(only(run(readyChain({ gasEstimate: "13421773" })), "NET-06").severity).toBe("warning");
-    expect(only(run(readyChain({ gasEstimate: "16777216" })), "NET-06").severity).toBe("warning");
-    expect(run(readyChain({ gasEstimate: "13421772" }))).toEqual([]);
+  test("just under 80%: nothing, matching gasShare's ok level", () => {
+    const gas = (CAP * 8n) / 10n; // 13421772: the last gas that's still below 80% (integer share)
+    expect(gasShare(gas, CAP).level).toBe("ok");
+    expect(run(readyChain({ gasEstimate: gas.toString() }))).toEqual([]);
+  });
+
+  test("at 80%: a warning whose level and share equal gasShare's", () => {
+    const gas = (CAP * 8n) / 10n + 1n; // 13421773: the first gas that crosses 80%
+    const { share, level } = gasShare(gas, CAP);
+    expect(level).toBe("warning");
+    const p = only(run(readyChain({ gasEstimate: gas.toString() })), "NET-06");
+    expect(p.severity).toBe("warning");
+    expect(p.params).toMatchObject({ share });
+  });
+
+  test("at the cap: a warning (EIP-7825 allows exactly the cap), matching gasShare", () => {
+    const { share, level } = gasShare(CAP, CAP);
+    expect(level).toBe("warning");
+    const p = only(run(readyChain({ gasEstimate: CAP.toString() })), "NET-06");
+    expect(p.severity).toBe("warning");
+    expect(p.params).toMatchObject({ share });
+  });
+
+  test("over the cap: level and share equal gasShare's", () => {
+    const gas = CAP + 1n;
+    const { share, level } = gasShare(gas, CAP);
+    expect(level).toBe("over");
+    const p = only(run(readyChain({ gasEstimate: gas.toString() })), "NET-06");
+    expect(p.severity).toBe("blocker");
+    expect(p.params).toMatchObject({ share });
   });
 
   test("no estimate, no cap, or an unreadable one: nothing", () => {
     expect(run(readyChain({ gasEstimate: undefined, gasCap: "100" }))).toEqual([]);
     expect(run(readyChain({ gasCap: undefined, gasEstimate: "99999999" }))).toEqual([]);
     expect(run(readyChain({ gasCap: "0x10", gasEstimate: "99999999" }))).toEqual([]);
+  });
+
+  test("a zero cap raises nothing and never throws gasShare's RangeError", () => {
+    expect(() => run(readyChain({ gasCap: "0", gasEstimate: "99999999" }))).not.toThrow();
+    expect(run(readyChain({ gasCap: "0", gasEstimate: "99999999" }))).toEqual([]);
   });
 });
 

@@ -65,6 +65,8 @@ export type SaveStatus = {
   text: string;
   /** What "click for details" shows. */
   detail?: string;
+  /** A command shown next to the status, e.g. Save a copy… when storage is full (spec L498); CCR from S7a. */
+  action?: CommandRef;
 };
 
 /** What a new project starts with besides its recipe. */
