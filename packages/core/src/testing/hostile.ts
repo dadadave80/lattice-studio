@@ -61,13 +61,29 @@ export function hostileNonEmptyString(maxPieces = 8): fc.Arbitrary<string> {
 }
 
 /**
- * Hostile text for an object argument's own field key: anything but the literal `"$ref"`, the one string
- * `ArgSchema` (model/schema.ts) forbids there, and `"__proto__"`. `describeArg` (export/docs/brief.ts) reads a
- * scalar-typed field or an array element that holds an object this way, so its keys need the same hostile
- * coverage as any other name; `"__proto__"` is excluded because canonical/normalize.ts's `mapFields` writes a
- * copy with plain `out[field] = value`, and JavaScript treats that one key specially (it sets the object's
- * prototype instead of a property) whatever the intent — a gap for C1, not this property (CCR, WP-FX5).
+ * Keys JavaScript objects treat specially: `__proto__` is an accessor on `Object.prototype` (assigning it sets
+ * the prototype), and `constructor` and `prototype` are what prototype-pollution gadgets reach for. Parsing
+ * refuses `__proto__` (canonical/proto-key.ts); code handed one anyway must keep it as an own property.
  */
-export function hostileKey(maxPieces = 8): fc.Arbitrary<string> {
-  return hostileNonEmptyString(maxPieces).filter((key) => key !== "$ref" && key !== "__proto__");
+export const PROTOTYPE_KEYS: readonly string[] = ["__proto__", "constructor", "prototype"];
+
+export type HostileKeyOptions = {
+  /**
+   * Also draw `PROTOTYPE_KEYS`, often (FX8). Off by default only because `helpers.test.ts` (outside FX8's
+   * paths) still asserts the default never draws `"__proto__"`; the export properties turn it on (CCR, WP-FX8).
+   */
+  prototypeKeys?: boolean;
+};
+
+/**
+ * Hostile text for an object argument's own field key: anything but the literal `"$ref"`, the one string
+ * `ArgSchema` (model/schema.ts) forbids there. `describeArg` (export/docs/brief.ts) reads a scalar-typed field
+ * or an array element that holds an object this way, so its keys need the same hostile coverage as any other
+ * name. With `prototypeKeys`, `PROTOTYPE_KEYS` come up about a quarter of the time. Since FX8, normalization
+ * defines keys instead of assigning them, so `"__proto__"` is kept as an own property, never dropped.
+ */
+export function hostileKey(maxPieces = 8, options: HostileKeyOptions = {}): fc.Arbitrary<string> {
+  const text = hostileNonEmptyString(maxPieces).filter((key) => key !== "$ref" && (options.prototypeKeys === true || key !== "__proto__"));
+  if (options.prototypeKeys !== true) return text;
+  return fc.oneof({ weight: 3, arbitrary: text }, { weight: 1, arbitrary: fc.constantFrom(...PROTOTYPE_KEYS) });
 }

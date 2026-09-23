@@ -76,14 +76,18 @@ function normalizeArg(value: Arg, param: ParamShape | undefined): Arg {
   return value;
 }
 
-/** Each field of an argument object (or of `args`), by the parameter `paramOf` finds for it. */
+/**
+ * Each field of an argument object (or of `args`), by the parameter `paramOf` finds for it. Every copy in this
+ * file is built with `Object.fromEntries`, which defines properties instead of assigning them, so a
+ * `"__proto__"` key that got past parsing's refusal stays an own property: never dropped, never a prototype.
+ */
 function mapFields(value: { [field: string]: Arg }, paramOf: (field: string) => ParamShape | undefined): { [field: string]: Arg } {
-  const out: { [field: string]: Arg } = {};
+  const out: [string, Arg][] = [];
   for (const field of Object.keys(value)) {
     const arg = value[field];
-    if (arg !== undefined) out[field] = normalizeArg(arg, paramOf(field));
+    if (arg !== undefined) out.push([field, normalizeArg(arg, paramOf(field))]);
   }
-  return out;
+  return Object.fromEntries(out);
 }
 
 function normalizeArgs(args: Record<string, Arg>, spec: string, catalog: Catalog | null): Record<string, Arg> {
@@ -94,10 +98,10 @@ function normalizeArgs(args: Record<string, Arg>, spec: string, catalog: Catalog
 
 /** Known keys first in `order`, then every other key of `source` in its own order (unknown fields survive). */
 function withRest<T extends object>(known: Partial<T>, source: T, order: readonly (keyof T & string)[]): T {
-  const out: Record<string, unknown> = {};
-  for (const key of order) if (known[key] !== undefined) out[key] = known[key];
-  for (const key of Object.keys(source)) if (!(order as readonly string[]).includes(key)) out[key] = (source as Record<string, unknown>)[key];
-  return out as T;
+  const out: [string, unknown][] = [];
+  for (const key of order) if (known[key] !== undefined) out.push([key, known[key]]);
+  for (const key of Object.keys(source)) if (!(order as readonly string[]).includes(key)) out.push([key, (source as Record<string, unknown>)[key]]);
+  return Object.fromEntries(out) as T;
 }
 
 function normalizeInit(init: RecipeInit, catalog: Catalog | null): RecipeInit {
@@ -140,9 +144,7 @@ function normalizeOwners(owners: Record<Hex4, string>): Record<Hex4, string> {
     const owner = owners[key as Hex4];
     if (owner !== undefined) byKey.set(key.toLowerCase() as Hex4, owner);
   }
-  const out: Record<Hex4, string> = {};
-  for (const key of [...byKey.keys()].sort()) out[key] = byKey.get(key) ?? "";
-  return out;
+  return Object.fromEntries([...byKey.keys()].sort().map((key) => [key, byKey.get(key) ?? ""])) as Record<Hex4, string>;
 }
 
 function normalizeExclude(exclude: readonly Hex4[]): Hex4[] {

@@ -306,7 +306,7 @@ describe("exportBrief", () => {
   test("the authority table carries each row's live via text (C4c's authorityTable, not a pinned string)", () => {
     const rows = authorityTable(recipe, catalog);
     expect(rows.length).toBeGreaterThan(0);
-    for (const row of rows) expect(brief.text).toContain(row.via);
+    for (const row of rows) expect(brief.text).toContain(cell(row.via));
   });
 
   test("the open problems section carries each problem's live rendered message (C3/C10, not a pinned string)", () => {
@@ -344,7 +344,8 @@ describe("exportBrief", () => {
     const hostile = { ...recipe, name: 'A "quoted" | pipe `tick`\nnewline * bold_' };
     const hostileAnalysis = analyze(hostile, catalog);
     const hostileBrief = exportBrief({ recipe: hostile, catalog, analysis: hostileAnalysis, studioVersion });
-    expect(hostileBrief.text.split("\n")[0]?.startsWith("# A \"quoted\" | pipe `tick` newline")).toBe(true);
+    // FX8: the pipe, backticks and emphasis markers are backslash-escaped, so they read as themselves.
+    expect(hostileBrief.text.split("\n")[0]).toBe("# A \"quoted\" \\| pipe \\`tick\\` newline \\* bold\\_ agent brief");
     expect(hostileBrief.filename).not.toContain("/");
     expect(hostileBrief.filename).not.toContain("\n");
   });
@@ -383,7 +384,7 @@ describe("exportBrief", () => {
     // The whole value collapses to one line (newlines become spaces), so none of its pieces can land on a
     // line of their own: this is a stronger check than scanning for a bare "```" line, which the brief's own
     // legitimate fences (the embedded recipe JSON, the acceptance command) also produce.
-    expect(hostileBrief.text).toContain("Evil ## Injected heading | a | b | | --- | --- | ``` fenced ```");
+    expect(hostileBrief.text).toContain("Evil ## Injected heading \\| a \\| b \\| \\| --- \\| --- \\| \\`\\`\\` fenced \\`\\`\\`");
   });
 
   test("a hostile recipe name, a facet-free label and an init argument render HTML-escaped; the heading skeleton and the embedded recipe.json are unchanged (spec L21, L857)", () => {
@@ -417,9 +418,9 @@ describe("exportBrief", () => {
     const hostileBrief = exportBrief({ recipe: hostile, catalog: hostileCatalog, analysis: hostileAnalysis, studioVersion });
 
     // the recipe name, in the heading
-    expect(hostileBrief.text.startsWith("# &lt;img src=x onerror=alert(1)&gt; agent brief")).toBe(true);
+    expect(hostileBrief.text.startsWith("# &lt;img src=x onerror=alert\\(1\\)&gt; agent brief")).toBe(true);
     // the role, a label no facet owns, in the authority table's Role cell
-    expect(hostileBrief.text).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(hostileBrief.text).toContain("&lt;script&gt;alert\\(1\\)&lt;/script&gt;");
     // the init argument, a describeArg leaf; its own entity-looking text is escaped again, not left half-done
     expect(hostileBrief.text).toContain("&amp;lt;");
 
