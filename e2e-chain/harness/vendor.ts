@@ -5,17 +5,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { keccak256, type Address, type Hex } from "viem";
-import { CREATEX, MULTICALL3 } from "@lattice-studio/core";
-import { CREATEX_CODEHASH } from "../../packages/core/src/checks/net";
+import { CREATEX, CREATEX_CODEHASH, MULTICALL3, MULTICALL3_CODEHASH } from "@lattice-studio/core";
 import type { Node } from "./node";
 
-/**
- * Multicall3's canonical runtime codehash (spec L842: Studio batches only when the chain holds this code). Core
- * pins none yet, so it lives here, from vendor/README.md.
- */
-export const MULTICALL3_CODEHASH: Hex = "0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891";
-
-export { CREATEX_CODEHASH };
+export { CREATEX_CODEHASH, MULTICALL3_CODEHASH };
 
 type Vendored = { name: string; address: Address; codehash: Hex; file: string };
 

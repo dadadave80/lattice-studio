@@ -30,7 +30,7 @@ export { log, now, randomBytes } from "./kernel";
 
 export {
   announce, chainService, closeDialog, createProject, hideBanner, isOnline, listDeployments, loadViewport,
-  openDialog, openProblemDoc, openProject, provideServices, pushEscape, putDeployment, registerDropTarget,
+  openDialog, openProblemDoc, openProject, openShareLink, provideServices, pushEscape, putDeployment, registerDropTarget,
   saveStatus, saveViewport, showBanner, startCatalogDrag, subscribeCatalogDrag, subscribeDeployments, toast,
   subscribeOnline, subscribeSaveStatus, useDeployments, useOnline, useRegion, useSaveStatus,
 } from "./services";
