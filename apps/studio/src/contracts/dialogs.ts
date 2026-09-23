@@ -86,6 +86,21 @@ export function registerDialog<I extends DialogId>(id: I, component: ComponentTy
   };
 }
 
+/**
+ * Tests only: puts `component` at `id` whatever is there (the owner's real one, nothing, or another override),
+ * or removes it with null. The disposer restores what was there. Mirrors `overrideCommands` (CCR from FX14:
+ * S0's DialogHost tests must not depend on which owners have landed).
+ */
+export function overrideDialog<I extends DialogId>(id: I, component: ComponentType<DialogComponentProps<I>> | null): () => void {
+  const previous = components.get(id);
+  if (component === null) components.delete(id);
+  else components.set(id, component as unknown as ComponentType<DialogComponentProps<never>>);
+  return () => {
+    if (previous === undefined) components.delete(id);
+    else components.set(id, previous);
+  };
+}
+
 /** The component registered for `id`, or null while its owner hasn't landed. */
 export function dialogComponent<I extends DialogId>(id: I): ComponentType<DialogComponentProps<I>> | null {
   return (components.get(id) as ComponentType<DialogComponentProps<I>> | undefined) ?? null;
