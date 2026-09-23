@@ -48,6 +48,10 @@ function readJson<T>(file: string): T {
   return JSON.parse(readFileSync(file, "utf8")) as T;
 }
 
+const committedSchema = join(appDir, "public", "schema", "recipe.v1.json");
+/** The committed schema before any build here ran: a build may only confirm it, never rewrite it. */
+const schemaBefore = readFileSync(committedSchema, "utf8");
+
 /** `vite build` of the app, as `bun run build` runs it (Node, the app's own config). */
 function buildApp(outDir: string, mode: string, env: Record<string, string> = {}): void {
   const vite = join(repoRoot, "node_modules", ".bin", "vite");
@@ -220,5 +224,14 @@ describe("the app, IPFS build", () => {
     const manifest = readJson<{ start_url: string; scope: string }>(join(out, "manifest.webmanifest"));
     expect(manifest.start_url).toBe("./");
     expect(manifest.scope).toBe("./");
+  });
+});
+
+describe("the committed files", () => {
+  // Keep the tree as it was even when this fails: the failure is the signal.
+  afterAll(() => writeFileSync(committedSchema, schemaBefore));
+
+  test("the builds left public/schema/recipe.v1.json as committed (else core's schema changed: build and commit it)", () => {
+    expect(readFileSync(committedSchema, "utf8")).toBe(schemaBefore);
   });
 });
