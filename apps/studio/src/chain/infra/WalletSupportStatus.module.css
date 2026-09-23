@@ -1,0 +1,7 @@
+.status {
+  display: block;
+  margin: 0;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}

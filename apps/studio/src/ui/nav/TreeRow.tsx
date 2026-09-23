@@ -8,10 +8,13 @@ export type TreeRowProps = ComponentPropsWithRef<"div"> & {
 
 /**
  * One `Tree` row element. Everything it's given (a context menu trigger's handlers, a ref) lands on the row
- * itself, so a menu and a reason tooltip can both wrap it.
+ * itself, so a menu and a reason tooltip can both wrap it. The tooltip is always there, disabled while the row
+ * has no reason, so a reason coming or going never remounts the row (focus stays put, spec L753).
  */
 export function TreeRow({ reason, ...props }: TreeRowProps) {
-  const row = <div {...props} />;
-  if (!reason) return row;
-  return <Tooltip content={reason}>{row}</Tooltip>;
+  return (
+    <Tooltip content={reason} disabled={!reason}>
+      <div {...props} />
+    </Tooltip>
+  );
 }
