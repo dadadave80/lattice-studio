@@ -65,6 +65,17 @@ describe("matching on real layouts", () => {
     expect(matchSpec("/", press(".", "Slash"), "other")).toBeNull();
     // Option on macOS types other characters: the letter's position still counts.
     expect(matchSpec("Alt+t", press("†", "KeyT", { altKey: true }), "mac")).toBe("position");
+    // Option+E is a dead key on a US Mac: it still falls back to position.
+    expect(matchSpec("Alt+e", press("Dead", "KeyE", { altKey: true }), "mac")).toBe("position");
+    // On a German Mac, Option+L types @ (still ASCII): position still counts (FX13 item g).
+    expect(matchSpec("Alt+l", press("@", "KeyL", { altKey: true }), "mac")).toBe("position");
+  });
+
+  test("AltGr on \"other\" is Ctrl+Alt together: it composes a character, never a position match (FX13 item h)", () => {
+    // A German keyboard's AltGr+E types €, which isn't Ctrl+Alt+E.
+    expect(matchSpec("Ctrl+Alt+e", press("€", "KeyE", { ctrlKey: true, altKey: true }), "other")).toBeNull();
+    // On macOS there's no AltGr, so Ctrl+Alt+E still falls back to position as usual.
+    expect(matchSpec("Ctrl+Alt+e", press("€", "KeyE", { ctrlKey: true, altKey: true }), "mac")).toBe("position");
   });
 
   test("zoom in accepts =, + and the keypad +", () => {
@@ -108,6 +119,15 @@ describe("recording a keypress", () => {
     expect(specFromEvent(press(" ", "Space"), "mac")).toBe("Space");
     expect(specFromEvent(press("Shift", "ShiftLeft", { shiftKey: true }), "mac")).toBeNull();
     expect(specFromEvent(press("Dead", "Quote"), "mac")).toBeNull();
+  });
+
+  test("Option+E/I/N/U are dead keys on a US Mac: recorded by position too (FX13 item g)", () => {
+    expect(specFromEvent(press("Dead", "KeyE", { altKey: true }), "mac")).toBe("Alt+e");
+    expect(specFromEvent(press("Dead", "KeyI", { altKey: true }), "mac")).toBe("Alt+i");
+    expect(specFromEvent(press("Dead", "KeyN", { altKey: true }), "mac")).toBe("Alt+n");
+    expect(specFromEvent(press("Dead", "KeyU", { altKey: true }), "mac")).toBe("Alt+u");
+    // A dead key on a physical key that isn't a letter still can't be recorded.
+    expect(specFromEvent(press("Dead", "Quote", { altKey: true }), "mac")).toBeNull();
   });
 
   test("a recorded spec matches the keypress it came from", () => {

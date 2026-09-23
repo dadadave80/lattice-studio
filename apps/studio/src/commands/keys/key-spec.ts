@@ -95,17 +95,22 @@ const isLatinCharacter = (key: string) => /^[\x20-\x7e]$/.test(key);
 
 /**
  * How `chord` matches `event`, or null. Modifiers other than a symbol's Shift must match exactly. A letter
- * matches the typed character in either case, else (on a layout that typed a non-Latin character, or an
- * Option character on macOS) the key in that letter's QWERTY position.
+ * matches the typed character in either case, else falls back to the key in that letter's QWERTY position: on
+ * a layout that typed a non-Latin character, or unconditionally for an Option chord on macOS, since Option
+ * composes its own characters (including dead keys) on every Mac layout, US or not (FX13 item g). On "other",
+ * Ctrl+Alt together is AltGr composing a character, not a real Ctrl+Alt chord, so it never falls back to a
+ * position match there (FX13 item h).
  */
-export function matchChord(chord: Chord, event: KeyInput): MatchTier | null {
+export function matchChord(chord: Chord, event: KeyInput, platform: Platform): MatchTier | null {
   if (event.ctrlKey !== chord.ctrl || event.altKey !== chord.alt || event.metaKey !== chord.meta) return null;
   if (!shiftFree(chord) && event.shiftKey !== chord.shift) return null;
   if (chord.code !== undefined) return event.code === chord.code ? "code" : null;
   const key = chord.key ?? "";
   if (key.length === 1) {
     if (event.key.toLowerCase() === key) return "key";
-    const foreign = event.key.length === 1 ? !isLatinCharacter(event.key) : event.key === "Dead" || event.key === "Unidentified";
+    if (platform === "other" && event.ctrlKey && event.altKey) return null;
+    const optionOnMac = platform === "mac" && chord.alt;
+    const foreign = optionOnMac || (event.key.length === 1 ? !isLatinCharacter(event.key) : event.key === "Dead" || event.key === "Unidentified");
     if (isLetter(key) && foreign && event.code === `Key${key.toUpperCase()}`) return "position";
     return null;
   }
@@ -115,7 +120,7 @@ export function matchChord(chord: Chord, event: KeyInput): MatchTier | null {
 /** How `spec` matches `event` on `platform`, or null. */
 export function matchSpec(spec: KeySpec, event: KeyInput, platform: Platform): MatchTier | null {
   const chord = chordOf(spec, platform);
-  return chord ? matchChord(chord, event) : null;
+  return chord ? matchChord(chord, event, platform) : null;
 }
 
 /**
@@ -153,10 +158,12 @@ const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "OS", "Hyper",
 /**
  * The spec a keypress records as (Settings → Keyboard's remap field): `Mod` for the platform's command key,
  * letters lower-cased, digits by physical key (`Shift+[Digit1]`), a letter typed on a non-Latin layout by its
- * position. Null for a modifier on its own or a key it can't name.
+ * position. Option+E/I/N/U (and `` ` ``) are dead keys on a US Mac keyboard, composing an accent instead of
+ * typing a character: recorded by position too, so they can still be bound (FX13 item g). Null for a modifier
+ * on its own, an unrecordable dead key, or a key it can't name.
  */
 export function specFromEvent(event: KeyInput, platform: Platform): string | null {
-  if (MODIFIER_KEYS.has(event.key) || event.key === "Dead" || event.key === "Unidentified") return null;
+  if (MODIFIER_KEYS.has(event.key) || event.key === "Unidentified") return null;
   const mods: string[] = [];
   const primary = platform === "mac" ? event.metaKey : event.ctrlKey;
   if (primary) mods.push("Mod");
@@ -171,8 +178,10 @@ export function specFromEvent(event: KeyInput, platform: Platform): string | nul
     key = "Space";
   } else if (event.key.length === 1 && isLetter(event.key)) {
     key = event.key.toLowerCase();
-  } else if (letter && (event.altKey || (event.key.length === 1 && !isLatinCharacter(event.key)))) {
+  } else if (letter && (event.altKey || event.key === "Dead" || (event.key.length === 1 && !isLatinCharacter(event.key)))) {
     key = letter.toLowerCase();
+  } else if (event.key === "Dead") {
+    return null;
   } else {
     key = event.key;
   }
