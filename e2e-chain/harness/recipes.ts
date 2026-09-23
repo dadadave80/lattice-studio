@@ -2,7 +2,7 @@
  * The v1 recipes (templates that load on the plain Lattice proxy) from the real catalog, with the arguments the
  * templates leave for the person filled in, and the deploy core builds for them.
  */
-import type { Address, Hex } from "viem";
+import { keccak256, slice, stringToHex, type Address, type Hex } from "viem";
 import {
   analyze, buildDiamondDeploy, buildSalt, createxPredict, encodeInit, factoryPredict, loadTemplate, planInit, templateList,
   type Analysis, type Arg, type Catalog, type DiamondDeploy, type Project, type Recipe,
@@ -122,12 +122,5 @@ export function coreDeploy(f: Fixture, from: Address, chainId: number): DiamondD
 
 /** Fresh 11-byte entropy per case, derived from a label so runs are repeatable. */
 export function entropyFor(label: string): Hex {
-  let h = 0x811c9dc5;
-  const bytes: number[] = [];
-  for (let i = 0; bytes.length < 11; i += 1) {
-    h ^= label.charCodeAt(i % Math.max(label.length, 1)) + i;
-    h = Math.imul(h, 0x01000193) >>> 0;
-    bytes.push(h & 0xff);
-  }
-  return `0x${bytes.map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+  return slice(keccak256(stringToHex(label)), 0, 11);
 }
