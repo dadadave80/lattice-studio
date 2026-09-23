@@ -1,7 +1,7 @@
 /**
  * The deploy machine's chain port over viem: reads, simulation (`eth_simulateV1`, else `eth_call` and
  * `eth_estimateGas`), a receipt watcher with replacement detection and no timeout of its own, and a wallet the caller
- * supplies (wagmi's connector in the app, `runtime-port.ts`; Anvil's unlocked accounts in the chain tests). Reads go
+ * supplies (wagmi's connector in the app, `app-port.ts`; Anvil's unlocked accounts in the chain tests). Reads go
  * through each chain's own client, so the person's RPC serves them; the wallet signs through its own.
  */
 import type { Address, ChainState, Hex, LoupeFacet, Result, TxRequest } from "@lattice-studio/core";

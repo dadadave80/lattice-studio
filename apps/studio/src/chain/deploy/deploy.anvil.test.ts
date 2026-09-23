@@ -1,16 +1,16 @@
 /**
- * The deploy machine against a local Anvil (prool, Foundry 1.8.3) on this worktree's `ANVIL_PORT_BASE`: the real
+ * The deploy machine against a local Anvil (Foundry 1.8.3) on this worktree's `ANVIL_PORT_BASE`: the real
  * catalog (CG8), CreateX and Multicall3 etched from Q5's hash-checked vendor files (not Lattice's MockCreateX), the
  * shared contracts deployed by the machine's own missing-contracts step through Arachnid's proxy, then a v1 recipe
  * deployed by both paths, a mismatch from a pre-used salt, the stale timeout on a manual clock, resume from a record,
- * and a From file record confirmed by re-reading. Skipped when Anvil or the port isn't available.
+ * and a From file record confirmed by re-reading. Skipped when Anvil or the port isn't available. The node is spawned
+ * as S8a's probe test does: prool's barrel pulls in http-proxy, whose follow-redirects throws under `bun test`.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { Address, Catalog, Deployment, Hex, LoupeFacet, Project, Result } from "@lattice-studio/core";
 import { CREATEX, CREATEX_CODEHASH, MULTICALL3, MULTICALL3_CODEHASH, planInit, toChecksum } from "@lattice-studio/core";
 import { filledTemplate, loadBuiltCatalog, makeProject } from "@lattice-studio/core/testing";
-import { Instance } from "prool";
 import { createClient, defineChain, http, keccak256, parseAbi, type Chain, type Client, type Transport } from "viem";
 import { getCode, getTransactionCount, readContract, sendTransaction } from "viem/actions";
 import { localEnv } from "../../../local-env";
@@ -53,7 +53,7 @@ function vendored(file: string, codehash: Hex): Hex {
 
 const LOUPE = parseAbi(["function facets() view returns ((address facetAddress, bytes4[] functionSelectors)[])"]);
 
-let node: ReturnType<typeof Instance.anvil> | null = null;
+let node: ReturnType<typeof Bun.spawn> | null = null;
 let client: Client<Transport, Chain>;
 let url = "";
 
@@ -180,9 +180,19 @@ async function deploy(r: Rig): Promise<Deployment> {
 
 describe.skipIf(!runnable || catalog === null)("the deploy machine on Anvil", () => {
   beforeAll(async () => {
-    node = Instance.anvil({ port, host: "127.0.0.1", chainId: ANVIL_ID });
-    await node.start();
+    node = Bun.spawn([Bun.which("anvil") ?? "anvil", "--port", String(port), "--host", "127.0.0.1", "--chain-id", String(ANVIL_ID), "--silent"], {
+      stdout: "ignore", stderr: "ignore",
+    });
     url = `http://127.0.0.1:${port}`;
+    for (let i = 0; ; i++) {
+      try {
+        await rpc("eth_chainId");
+        break;
+      } catch (error) {
+        if (i > 200) throw error;
+        await Bun.sleep(50);
+      }
+    }
     client = createClient({
       chain: defineChain({ id: ANVIL_ID, name: "Anvil", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: [url] } } }),
       transport: http(url),
@@ -193,7 +203,8 @@ describe.skipIf(!runnable || catalog === null)("the deploy machine on Anvil", ()
   }, 60_000);
 
   afterAll(async () => {
-    await node?.stop();
+    node?.kill();
+    await node?.exited;
   });
 
   test("missing contracts deploy through Arachnid's proxy, batched through Multicall3, each Deployed", async () => {

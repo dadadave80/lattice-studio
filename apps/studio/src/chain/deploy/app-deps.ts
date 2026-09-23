@@ -2,7 +2,7 @@
  * The deploy machine's dependencies in the app: the open document, S1's analysis and prediction, the session's chain
  * and acknowledgements, the connection service, S7a's deployment records (outside the document and its edit lock,
  * so a demoted tab keeps recording, spec L503), the catalog's files, the console, announcements and banners, the
- * settings and the injected clock. The chain comes from `runtime-port.ts`, loaded on first use.
+ * settings and the injected clock. The chain comes from `app-port.ts`, loaded on first use.
  */
 import {
   announce, chainService, doc, env, getAnalysis, getCatalog, hideBanner, isOnline, listDeployments, loadCreationCode, loadFacetDetail, log, now,
@@ -57,7 +57,7 @@ function inputs(): DeployInputs {
 export function appDeployDeps(): DeployDeps {
   return {
     inputs: inputs(),
-    chain: () => import("./runtime-port").then((m) => m.runtimePort()),
+    chain: () => import("./app-port").then((m) => m.appPort()),
     records: { list: listDeployments, put: putDeployment, subscribe: subscribeDeployments },
     files: { detail: loadFacetDetail, code: loadCreationCode },
     say: { log, announce, showBanner, hideBanner },
