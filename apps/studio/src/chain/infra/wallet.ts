@@ -75,7 +75,9 @@ function kindOf(connector: Connector): WalletConnector["kind"] | null {
 function describe(connector: Connector): WalletConnector | null {
   const kind = kindOf(connector);
   if (!kind) return null;
-  const rdns = typeof connector.rdns === "string" ? connector.rdns : connector.rdns?.[0];
+  // wagmi gives an EIP-6963 wallet's connector the announced rdns as its id ("io.metamask").
+  const rdns = (typeof connector.rdns === "string" ? connector.rdns : connector.rdns?.[0])
+    ?? (kind === "injected" && /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(connector.id) ? connector.id : undefined);
   return {
     id: connector.id,
     name: connector.name,

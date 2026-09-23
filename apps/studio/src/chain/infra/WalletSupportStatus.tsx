@@ -24,8 +24,8 @@ export function WalletSupportStatus({ loader = chainLoader }: WalletSupportStatu
   }
   if (state.status === "failed") {
     return (
-      <div className={styles.failed} role="alert">
-        <p className={styles.text}>
+      <div className={styles.failed}>
+        <p className={styles.text} role="alert">
           {state.text} <span className={styles.reason}>{state.reason}</span>
         </p>
         <button
