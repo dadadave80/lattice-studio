@@ -29,7 +29,7 @@ export type Toasts = {
   clear(): void;
 };
 
-/** How many toasts can wait at once; past it, the oldest waiting error is dropped. */
+/** How many errors can wait at once (beside the one info toast that can); past it, the oldest is dropped. */
 export const WAITING_LIMIT = 5;
 
 /** Auto-dismiss after 6 s, or 10 s with an action; errors stay until closed (0) (spec L733). */
@@ -99,7 +99,7 @@ export function createToasts(): Toasts {
   const wait = (entry: Entry) => {
     if (isError(entry)) {
       waiting.push(entry);
-      if (waiting.length > WAITING_LIMIT) waiting.splice(waiting.findIndex(isError), 1);
+      if (waiting.filter(isError).length > WAITING_LIMIT) waiting.splice(waiting.findIndex(isError), 1);
       return;
     }
     // A toast with an action only means something now; an info toast without one replaces the one waiting.
