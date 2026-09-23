@@ -339,6 +339,17 @@ describe("Tree item menus", () => {
     expect(focusedId()).toBe("pausable");
   });
 
+  test("a right click on a row without a menu isn't prevented: the browser's own menu can show", async () => {
+    await renderWithStudio(<Harness {...withMenu()} />);
+    let prevented: boolean | undefined;
+    document.addEventListener("contextmenu", (event) => {
+      prevented = event.defaultPrevented;
+    });
+    await item("Pausable").click({ button: "right" });
+    expect(prevented).toBe(false);
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+
   test("a disabled item with a menu: right click and Shift+F10 open it, and hover still shows the reason", async () => {
     await renderWithStudio(<Harness expanded={["erc20"]} {...withMenu()} />);
     const disabled = item("totalSupply()");
