@@ -99,12 +99,21 @@ describe("computeRouting resolution order", () => {
     expect(computeRouting(makeRecipe({ facets: ["A"] }), small)[S.exportSelectors]).toBeUndefined();
   });
 
-  test("an excluded selector is left out of routing, even when a seam or an owner would serve it", () => {
+  test("an excluded selector stays listed with its contenders but no owner, even when a seam or an owner would serve it", () => {
     const recipe = makeRecipe({ facets: ["A", "B", "D"], exclude: [shared, seamed], owners: { [shared]: "B" } });
     const routing = computeRouting(recipe, small);
-    expect(routing[shared]).toBeUndefined();
-    expect(routing[seamed]).toBeUndefined();
+    expect(routing[shared]).toEqual({ contenders: ["A", "B"], via: "chosen" });
+    expect(routing[seamed]).toEqual({ contenders: ["B", "D"], via: "chosen" });
     expect(routing[onlyA]).toEqual({ owner: "A", contenders: ["A"], via: "only" });
+  });
+
+  test("a placed facet whose selectors are all excluded still appears through routing's contenders", () => {
+    const routing = computeRouting(makeRecipe({ facets: ["E"], exclude: [picked] }), small);
+    expect(routing).toEqual({ [picked]: { contenders: ["E"], via: "chosen" } });
+    const all = computeRouting(makeRecipe({ facets: ["A", "B", "C", "D", "E"], exclude: [picked, seamed, shared, tie, onlyA] }), small);
+    const listed = new Set(Object.values(all).flatMap((route) => route.contenders));
+    expect([...listed].sort()).toEqual(["A", "B", "C", "D", "E"]);
+    expect(Object.values(all).every((route) => route.owner === undefined)).toBe(true);
   });
 
   test("a single contender owns it: via only", () => {

@@ -44,7 +44,7 @@ function collisions(view: RecipeView, routing: Routing): Problem[] {
   const out: Problem[] = [];
   for (const selector of Object.keys(routing).sort() as Hex4[]) {
     const route = routing[selector];
-    if (route === undefined || route.owner !== undefined || route.contenders.length < 2) continue;
+    if (route === undefined || route.owner !== undefined || route.contenders.length < 2 || view.exclude.has(selector)) continue;
     if (activeSeam(view, selector) !== undefined || oneFamily(view, route.contenders)) continue;
     const contenders = inCatalogOrder(view, route.contenders);
     const signature = signatureOf(view.catalog, selector) ?? selector;

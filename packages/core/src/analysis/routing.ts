@@ -7,7 +7,8 @@ import { activeSeam, allowedServers, type RecipeView, recipeView } from "./view"
  * Who serves every selector a placed facet exports (spec L300-L303, R19), keys sorted, contenders in catalog
  * order. First match wins:
  *
- * 1. Excluded: left out of `routing` entirely (it isn't routed; `stats.excluded` counts it).
+ * 1. Excluded (`recipe.exclude`): listed with its contenders but no `owner` (it isn't routed; `stats.excluded`
+ *    counts it), so every placed facet's selectors stay visible through `contenders`.
  * 2. A seam is active (every facet in its `when` is placed) and an allowed facet serves it: the explicit owner
  *    when it's one of the allowed servers, else the first placed facet in `anyOf`, `via: "seam"`. An owner
  *    outside `anyOf` doesn't move it; SEM-01 anchors that owner. With none of `anyOf` placed, resolution falls
@@ -16,19 +17,19 @@ import { activeSeam, allowedServers, type RecipeView, recipeView } from "./view"
  * 4. An explicit owner among the contenders: `via: "chosen"`.
  * 5. Exactly one contender lists it in `defaultOwnerOf`: `via: "default"`.
  * 6. Unresolved: no `owner`, `via: "chosen"` (the choice SEL-01 asks for is still to be made).
+ *
+ * The frozen `via` has no value for "excluded" or "unresolved", so both read `via: "chosen"` without an owner;
+ * `recipe.exclude` tells them apart.
  */
 export const computeRouting: ComputeRoutingFn = (recipe, catalog) => {
   const view = recipeView(recipe, catalog);
   const routing: Routing = {};
-  for (const [selector, contenders] of view.contenders) {
-    const route = resolve(view, selector, contenders);
-    if (route !== undefined) routing[selector] = route;
-  }
+  for (const [selector, contenders] of view.contenders) routing[selector] = resolve(view, selector, contenders);
   return routing;
 };
 
-function resolve(view: RecipeView, selector: Hex4, contenders: string[]): Route | undefined {
-  if (view.exclude.has(selector)) return undefined;
+function resolve(view: RecipeView, selector: Hex4, contenders: string[]): Route {
+  if (view.exclude.has(selector)) return { contenders: [...contenders], via: "chosen" };
   const owner = view.owners.get(selector);
   const seam = activeSeam(view, selector);
   if (seam !== undefined) {
