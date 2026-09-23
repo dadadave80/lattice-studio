@@ -117,7 +117,9 @@ export type Runner = (cmd: string[], opts?: { cwd?: string }) => Promise<RunResu
 export const runCommand: Runner = async (cmd, opts) => {
   let proc: ReturnType<typeof Bun.spawn>;
   try {
-    proc = Bun.spawn(cmd, { ...(opts?.cwd !== undefined ? { cwd: opts.cwd } : {}), stdout: "pipe", stderr: "pipe" });
+    // GIT_OPTIONAL_LOCKS=0: git's status doesn't refresh the index, so reading a checkout never writes to it.
+    const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
+    proc = Bun.spawn(cmd, { ...(opts?.cwd !== undefined ? { cwd: opts.cwd } : {}), env, stdout: "pipe", stderr: "pipe" });
   } catch (e) {
     return { code: -1, stdout: "", stderr: message(e) };
   }
@@ -272,7 +274,9 @@ export async function copyCheckout(
   const listed = await run(["git", "-C", latticeDir, "ls-files", "-z", "--recurse-submodules"]);
   if (listed.code !== 0) return err(`git ls-files failed in ${latticeDir}: ${listed.stderr.trim()}`);
   const files = listed.stdout.split("\0").filter((f) => f !== "");
-  const root = await mkdtemp(join(tmpdir(), "lattice-studio-catalog-"));
+  // Symlinks resolved (macOS's /var is /private/var): forge maps the absolute source paths it's given onto the
+  // project root only when both are spelled the same way.
+  const root = realpathSync(await mkdtemp(join(tmpdir(), "lattice-studio-catalog-")));
   const remove = async () => {
     await rm(root, { recursive: true, force: true });
   };
