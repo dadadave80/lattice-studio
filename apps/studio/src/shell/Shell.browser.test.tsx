@@ -77,9 +77,13 @@ describe("regions at each width", () => {
         await expect.poll(showing).toEqual(["sheet", "console"]);
         await expect.element(toggles).toBeVisible();
         await expect.element(switcher).not.toBeInTheDocument();
-        await expect.element(overflow).not.toBeInTheDocument();
-        if (tier === "narrow") await expect.element(deploy).toBeVisible();
-        else await expect.element(deploy).not.toBeInTheDocument();
+        if (tier === "narrow") {
+          await expect.element(deploy).toBeVisible();
+          await expect.element(overflow).toBeVisible();
+        } else {
+          await expect.element(deploy).not.toBeInTheDocument();
+          await expect.element(overflow).not.toBeInTheDocument();
+        }
       }
       if (tier !== "phone") await expect.element(undo).toBeVisible();
       const titlebar = bar().element() as HTMLElement;
@@ -153,6 +157,18 @@ describe("drawers, 768-1279 px", () => {
     await userEvent.keyboard("{Escape}");
     await expect.poll(showing).toEqual(["sheet", "console"]);
     await expect.element(toggle).toHaveFocus();
+  });
+
+  test("768-1023 px: Share, the theme and the palette move into the overflow menu", async () => {
+    await renderAt(900);
+    await bar().getByRole("button", { name: "More" }).click();
+    const menu = page.getByRole("menu", { name: "More" });
+    await expect.element(menu).toBeVisible();
+    for (const item of ["Share", "Theme", "Command palette"]) {
+      await expect.element(menu.getByRole("menuitem", { name: item, exact: true })).toBeInTheDocument();
+    }
+    await expect.element(menu.getByRole("menuitem", { name: "Tools", exact: true })).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
   });
 
   test("768-1023 px: the console collapses to its summary line, and comes back at 1024 px", async () => {
