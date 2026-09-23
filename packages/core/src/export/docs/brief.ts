@@ -18,10 +18,15 @@ function isRef(value: Arg): value is { $ref: "self" | "deployer" } {
   return typeof value === "object" && !Array.isArray(value) && Object.hasOwn(value, "$ref");
 }
 
-/** An init argument in prose: `{$ref}` reads as what it names (spec L285); a tuple lists its fields. */
+/**
+ * An init argument in prose: `{$ref}` reads as what it names (spec L285); a tuple lists its fields. Every
+ * string leaf goes through `oneLine` (spec L21, L857: "every generated string is escaped") so a value can't
+ * carry a literal newline into the Markdown list this renders into and inject a heading, a table row or a
+ * fenced block of its own.
+ */
 function describeArg(value: Arg): string {
   if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "string") return value;
+  if (typeof value === "string") return oneLine(value);
   if (Array.isArray(value)) return value.length === 0 ? "[]" : `[${value.map(describeArg).join(", ")}]`;
   if (isRef(value)) return value.$ref === "self" ? "This diamond" : "Deploying account";
   const fields = Object.entries(value);
@@ -114,9 +119,24 @@ function problemsSection(problems: readonly Problem[]): string {
   return problems.map((p) => `- **${p.severity}** \`${p.code}\` ${p.message}`).join("\n");
 }
 
+/**
+ * The brief's section order (spec L920-L923): C7b's own structure, never another WP's copy, so
+ * `index.test.ts` can snapshot it without pinning the cut plan, the authority table or a problem's message.
+ */
+export const SECTION_HEADINGS = [
+  "## Recipe",
+  "## Cut plan",
+  "## Init plan",
+  "## Authority table",
+  "## Open problems",
+  "## Acceptance checks",
+  "## What this leaves out",
+] as const;
+
 const ACCEPTANCE_CALL = 'cast call <diamond> "facets()((address,bytes4[])[])" --rpc-url $RPC_URL';
 
-function acceptanceSection(): string {
+/** All fixed prose, so `index.test.ts` can snapshot it directly instead of the whole (partly foreign) brief. */
+export function acceptanceSection(): string {
   return [
     "Compare what the diamond returns with the plan above:",
     codeBlock(ACCEPTANCE_CALL, "bash"),
@@ -126,7 +146,8 @@ function acceptanceSection(): string {
   ].join("\n\n");
 }
 
-function leavesOutSection(blockers: number): string {
+/** Fixed prose plus one line whose count varies with open blockers; no other WP's copy. */
+export function leavesOutSection(blockers: number): string {
   const lines = [
     "This brief leaves out the project's layout, deploy path, salt and scope, and its deployment records.",
     '"This diamond" and "Deploying account" are shown symbolically: no deploy context is set to resolve them to addresses.',
@@ -160,21 +181,23 @@ export const exportBrief: ExportBriefFn = (args) => {
   ].join("\n\n");
   const plan = planInit(recipe, catalog);
   const blockers = analysis.problems.filter((p) => p.severity === "blocker").length;
+  const [recipeHeading, cutPlanHeading, initPlanHeading, authorityHeading, problemsHeading, acceptanceHeading, leavesOutHeading] =
+    SECTION_HEADINGS;
   const sections = [
     header,
-    "## Recipe",
+    recipeHeading,
     codeBlock(exportRecipeJson(recipe, catalog).text, "json"),
-    "## Cut plan",
+    cutPlanHeading,
     cutPlanSection(recipe, catalog, byName, analysis.routing),
-    "## Init plan",
+    initPlanHeading,
     initPlanSection(plan, analysis.init?.target),
-    "## Authority table",
+    authorityHeading,
     authoritySection(recipe, catalog),
-    "## Open problems",
+    problemsHeading,
     problemsSection(analysis.problems),
-    "## Acceptance checks",
+    acceptanceHeading,
     acceptanceSection(),
-    "## What this leaves out",
+    leavesOutHeading,
     leavesOutSection(blockers),
   ];
   return { filename: `${slug(recipe.name)}.brief.md`, mime: "text/markdown", text: `${sections.join("\n\n")}\n` };

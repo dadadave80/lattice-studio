@@ -61,6 +61,8 @@ export function schemaMatches(value: unknown, schema: JsonSchema, root: JsonSche
       return typeof value === "string" && (typeof schema.pattern !== "string" || new RegExp(schema.pattern).test(value));
     case "number":
       return typeof value === "number";
+    case "integer":
+      return typeof value === "number" && Number.isInteger(value);
     case "boolean":
       return typeof value === "boolean";
     default:

@@ -1,14 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import { authorityTable } from "../../authority";
 import { parseProjectFile, parseRecipe, recipeHash } from "../../canonical";
-import { lintCopy } from "../../format";
+import { formatSelector, lintCopy } from "../../format";
 import type { Catalog } from "../../model/catalog";
 import type { Deployment, Project } from "../../model/project";
 import type { Recipe } from "../../model/recipe";
-import { blankDiamond, loadTemplate, templateList } from "../../plan";
+import { blankDiamond, buildPlan, loadTemplate, templateList } from "../../plan";
 import { addr, hex, makeCatalog, makeFacet, makeInit, makeRecipe, loadFixtureCatalog } from "../../testing";
 import { analyze } from "../../analysis";
 import { cell, codeBlock, fenceFor, oneLine, table } from "./markdown";
-import { exportBrief } from "./brief";
+import { acceptanceSection, exportBrief, leavesOutSection, SECTION_HEADINGS } from "./brief";
 import { exportRecipeJson } from "./recipe-json";
 import { exportProjectFile } from "./project-file";
 import { recipeJsonSchema } from "./json-schema";
@@ -261,10 +262,36 @@ describe("exportBrief", () => {
     expect(brief.text).toContain(exportRecipeJson(recipe, catalog).text.trimEnd());
   });
 
-  test("every section the spec asks for is present", () => {
-    for (const heading of ["## Recipe", "## Cut plan", "## Init plan", "## Authority table", "## Open problems", "## Acceptance checks", "## What this leaves out"]) {
-      expect(brief.text).toContain(heading);
+  test("every section the spec asks for is present, in order", () => {
+    let cursor = -1;
+    for (const heading of SECTION_HEADINGS) {
+      const at = brief.text.indexOf(heading);
+      expect(at).toBeGreaterThan(cursor);
+      cursor = at;
     }
+  });
+
+  test("the cut plan carries each entry's live formatted selectors (C10's formatSelector, not a pinned string)", () => {
+    const { entries } = buildPlan(recipe, catalog, analysis.routing);
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) {
+      const facet = catalog.facets.find((f) => f.name === entry.facet);
+      for (const selector of entry.selectors) {
+        const found = facet?.selectors.find((s) => s.hex.toLowerCase() === selector.toLowerCase());
+        expect(brief.text).toContain(formatSelector(found ?? { hex: selector, signature: selector }, "dense"));
+      }
+    }
+  });
+
+  test("the authority table carries each row's live via text (C4c's authorityTable, not a pinned string)", () => {
+    const rows = authorityTable(recipe, catalog);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(brief.text).toContain(row.via);
+  });
+
+  test("the open problems section carries each problem's live rendered message (C3/C10, not a pinned string)", () => {
+    expect(analysis.problems.length).toBeGreaterThan(0);
+    for (const p of analysis.problems) expect(brief.text).toContain(p.message);
   });
 
   test("carries the acceptance-check command verbatim", () => {
@@ -306,8 +333,52 @@ describe("exportBrief", () => {
     expect(lintCopy(proseOnly(brief.text))).toEqual([]);
   });
 
-  test("matches the snapshot", () => {
-    expect(brief.text).toMatchSnapshot();
+  test("an init argument can't inject a Markdown heading, table row or fence (spec L21, L857)", () => {
+    const stringArgCatalog: Catalog = makeCatalog({
+      lattice: { tag: "test", commit: "0".repeat(40) },
+      facets: [makeFacet({ name: "DiamondLoupeFacet", area: "diamond", selectors: ["facets()"] })],
+      inits: [
+        makeInit({
+          name: "ERC20Init",
+          contract: "ERC20Init",
+          fn: "init(string)",
+          kind: "step",
+          params: [{ name: "name_", type: "string", doc: "Token name." }],
+        }),
+      ],
+    });
+    const injected = 'Evil\n## Injected heading\n\n| a | b |\n| --- | --- |\n```\nfenced\n```';
+    const hostile: Recipe = makeRecipe(
+      {
+        name: "Hostile",
+        facets: ["DiamondLoupeFacet"],
+        init: { kind: "steps", steps: [{ spec: "ERC20Init", args: { name_: injected } }] },
+      },
+      stringArgCatalog,
+    );
+    const hostileAnalysis = analyze(hostile, stringArgCatalog);
+    const hostileBrief = exportBrief({ recipe: hostile, catalog: stringArgCatalog, analysis: hostileAnalysis, studioVersion });
+    const lines = hostileBrief.text.split("\n");
+    expect(lines.some((line) => line.trim() === "## Injected heading")).toBe(false);
+    // The whole value collapses to one line (newlines become spaces), so none of its pieces can land on a
+    // line of their own: this is a stronger check than scanning for a bare "```" line, which the brief's own
+    // legitimate fences (the embedded recipe JSON, the acceptance command) also produce.
+    expect(hostileBrief.text).toContain("Evil ## Injected heading | a | b | | --- | --- | ``` fenced ```");
+  });
+});
+
+describe("the brief's own fixed prose and structure (never another WP's copy)", () => {
+  test("the section headings, in order", () => {
+    expect(SECTION_HEADINGS).toMatchSnapshot();
+  });
+
+  test("the acceptance-checks text", () => {
+    expect(acceptanceSection()).toMatchSnapshot();
+  });
+
+  test("the what-this-leaves-out text, with and without open blockers", () => {
+    expect(leavesOutSection(0)).toMatchSnapshot();
+    expect(leavesOutSection(3)).toMatchSnapshot();
   });
 });
 
