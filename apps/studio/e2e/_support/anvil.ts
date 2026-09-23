@@ -95,7 +95,13 @@ export type AnvilNode = {
 /** Starts a fresh local node on `port` (chain 31337, never a fork). Stop it with `stop()`. */
 export async function startAnvil(port: number): Promise<AnvilNode> {
   const instance = Instance.anvil({ port, host: LOOPBACK, chainId: ANVIL_CHAIN_ID });
-  await instance.start();
+  try {
+    await instance.start();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    if (!/address already in use/i.test(reason)) throw error;
+    throw new Error(`Anvil couldn't bind ${LOOPBACK}:${port}: another process holds it (lsof -nP -iTCP:${port}).`);
+  }
   const url = anvilUrl(port);
   const client = clientFor(url);
   let id = 0;
