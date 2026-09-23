@@ -59,7 +59,8 @@ describe("the bundle form (GovernedVaultInit, spec L460)", () => {
     await expect.element(page.getByRole("img", { name: "Locked" })).toBeVisible();
     await expect.element(page.getByRole("heading", { name: "Order inside GovernedVaultInit" })).toBeVisible();
     const order = page.getByRole("list", { name: "Order inside GovernedVaultInit" });
-    await expect.element(order).toHaveTextContent(/^01AccessControl02EmergencyStop.*14GovernedVault$/);
+    await expect.element(order).toBeVisible();
+    expect(order.element().textContent).toMatch(/^01AccessControl02EmergencyStop.*14GovernedVault$/);
     // A bundle shows its fixed order and none of the step controls (spec L467).
     expect(page.getByRole("button", { name: /^Move / }).elements()).toHaveLength(0);
     expect(page.getByRole("button", { name: "Reorder steps automatically" }).elements()).toHaveLength(0);
@@ -165,18 +166,20 @@ describe("field types (spec L461-L466)", () => {
     await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(templateRecipe("SafeDiamondCut")), chain });
     pickChain();
     // SafeDiamondCut's admin is the deploying account by default.
-    await expect.element(page.getByText(`Deploying account (${SAFE})`)).toBeVisible();
+    await expect.element(page.getByText(`Deploying account (${SAFE})`).first()).toBeVisible();
     const pickers = page.getByRole("group", { name: "Safe quick picks" });
     await pickers.getByRole("button", { name: "This diamond" }).click();
     await expect.poll(() => argAt(doc.get(), "steps[0].safe")).toEqual({ $ref: "self" });
-    await expect.element(page.getByText(/^This diamond \(0x[0-9a-fA-F]{40}\)$/)).toBeVisible();
+    await expect.element(page.getByText(/^This diamond \(0x[0-9a-fA-F]{40}\)$/).first()).toBeVisible();
     // A nonzero rule: no Zero address pick.
     expect(pickers.getByRole("button", { name: "Zero address" }).elements()).toHaveLength(0);
   });
 
-  test("without a wallet a reference says why it doesn't resolve yet", async () => {
+  test("without a chain or wallet a reference says why it doesn't resolve yet", async () => {
     await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(templateRecipe("SafeDiamondCut")) });
-    await expect.element(page.getByText("Deploying account: Connect a wallet to see the deploy address (it depends on the deploying account)")).toBeVisible();
+    await expect.element(page.getByRole("textbox", { name: "Admin", exact: true })).toBeVisible();
+    const row = document.querySelector("[data-init-path='steps[0].admin']")?.textContent ?? "";
+    expect(row).toContain("Deploying account: Choose a chain to see the deploy address");
   });
 
   test("ENS: resolves through the chain service, stores the address and keeps the name as its label", async () => {
@@ -350,10 +353,11 @@ describe("From link, Confirm address… and the Authority table", () => {
   test("the Authority table: every role, full holders, how they get it, and the way to change who can upgrade", async () => {
     await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: vault() });
     const table = page.getByRole("table", { name: "Authority" });
-    await expect.element(table.getByRole("row", { name: /DEFAULT_ADMIN_ROLE/ })).toHaveTextContent(/This diamond/);
-    await expect.element(table.getByRole("row", { name: /Executor/ })).toHaveTextContent(/anyone/);
-    await expect.element(table.getByRole("row", { name: /Executor/ })).toHaveTextContent(/GovernedVaultInit \(open execution\)/);
-    await expect.element(table.getByRole("row", { name: /Guardian/ })).toHaveTextContent(/none/);
+    await expect.element(table).toBeVisible();
+    const rowText = (role: string) => table.element().querySelector(`[data-authority-row="${role}"]`)?.textContent ?? "";
+    expect(rowText("DEFAULT_ADMIN_ROLE")).toBe("DEFAULT_ADMIN_ROLEThis diamondGovernedVaultInit (the diamond itself)");
+    expect(rowText("Executor")).toBe("ExecutoranyoneGovernedVaultInit (open execution)");
+    expect(rowText("Guardian")).toBe("GuardiannoneEmergencyStop (no guardian at init)");
     await table.getByRole("button", { name: "Change who can upgrade…" }).click();
     expect(session.get().dialogs.map((d) => d.id)).toEqual(["choose-mechanism"]);
   });

@@ -45,7 +45,9 @@ export function FieldRow({ field, step, projectId }: { field: FieldModel; step: 
   const description = (
     <>
       {dot ? <ValueDot state={dot} source={exampleSource} /> : null}
-      <span className={styles.help}>{field.doc}</span>
+      <span className={styles.help}>
+        <CodeText text={field.doc} />
+      </span>
     </>
   );
   const fromLink = source === "link" || source === "file" ? source : null;
