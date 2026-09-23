@@ -163,6 +163,91 @@ describe("inert contexts (spec L753)", () => {
   });
 });
 
+describe("interactive controls inside the sheet (FX13 item c)", () => {
+  test("Enter, Space, arrows, Home and End go to a tool-strip button, not the sheet's bindings", async () => {
+    overrideCommands([
+      fake("layout.tidy", ["t"], SHEET),
+      fake("sheet.enterRows", ["Enter"], SHEET),
+      fake("sheet.nudge", ["ArrowLeft"], SHEET),
+      fake("sheet.focusFirst", ["Home"], SHEET),
+    ]);
+    await renderWithStudio(
+      <div data-keyctx="sheet" data-testid="sheet">
+        <button type="button" data-testid="tool">
+          Hand tool
+        </button>
+      </div>,
+    );
+    for (const init of [
+      { key: "Enter", code: "Enter" },
+      { key: " ", code: "Space" },
+      { key: "ArrowLeft", code: "ArrowLeft" },
+      { key: "Home", code: "Home" },
+      { key: "End", code: "End" },
+    ]) {
+      const event = key(el("tool"), init);
+      expect(event.defaultPrevented, init.key).toBe(false);
+    }
+    expect(ran).toEqual([]);
+    // A key that isn't exempted still reaches the sheet's own binding.
+    key(el("tool"), { key: "t", code: "KeyT" });
+    expect(ran).toEqual(["layout.tidy"]);
+    // The same keys still work on the sheet itself.
+    key(el("sheet"), { key: "Enter", code: "Enter" });
+    expect(ran).toEqual(["layout.tidy", "sheet.enterRows"]);
+  });
+
+  test("a control that declares its own context isn't exempted", async () => {
+    overrideCommands([fake("sheet.enterRows", ["Enter"], SHEET)]);
+    await renderWithStudio(
+      <div data-keyctx="sheet" data-testid="sheet">
+        <button type="button" data-keyctx="sheet" data-testid="own">
+          Own context
+        </button>
+      </div>,
+    );
+    key(el("own"), { key: "Enter", code: "Enter" });
+    expect(ran).toEqual(["sheet.enterRows"]);
+  });
+});
+
+describe("repeat: single keys and Escape don't repeat-fire; zoom and arrows do (IR L23, FX13 item e)", () => {
+  test("a held single key doesn't repeat Tidy; releasing and pressing again does", async () => {
+    await renderWithStudio(<Surface />);
+    const repeated = key(el("sheet"), { key: "t", code: "KeyT", repeat: true });
+    expect(repeated.defaultPrevented).toBe(false);
+    expect(ran).toEqual([]);
+    key(el("sheet"), { key: "t", code: "KeyT" });
+    expect(ran).toEqual(["layout.tidy"]);
+  });
+
+  test("a held Escape doesn't repeat-fire the Esc stack", async () => {
+    await renderWithStudio(<Surface />, { session: { selection: ["ERC20"] } });
+    const repeated = key(el("sheet"), { key: "Escape", code: "Escape", repeat: true });
+    expect(repeated.defaultPrevented).toBe(false);
+    expect(session.get().selection).toEqual(["ERC20"]);
+    const esc = key(el("sheet"), { key: "Escape", code: "Escape" });
+    expect(esc.defaultPrevented).toBe(true);
+    expect(session.get().selection).toEqual([]);
+  });
+
+  test("holding + keeps zooming in", async () => {
+    overrideCommands([fake("sheet.zoomIn", ["="], SHEET)]);
+    await renderWithStudio(<Surface />);
+    key(el("sheet"), { key: "=", code: "Equal", repeat: true });
+    key(el("sheet"), { key: "=", code: "Equal", repeat: true });
+    expect(ran).toEqual(["sheet.zoomIn", "sheet.zoomIn"]);
+  });
+
+  test("holding an arrow keeps nudging", async () => {
+    overrideCommands([fake("sheet.nudge", ["ArrowLeft"], SHEET)]);
+    await renderWithStudio(<Surface />);
+    key(el("sheet"), { key: "ArrowLeft", code: "ArrowLeft", repeat: true });
+    key(el("sheet"), { key: "ArrowLeft", code: "ArrowLeft", repeat: true });
+    expect(ran).toEqual(["sheet.nudge", "sheet.nudge"]);
+  });
+});
+
 describe("what the dispatcher consumes", () => {
   test("a disabled command's key is consumed and says why", async () => {
     await renderWithStudio(<Surface />);

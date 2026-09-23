@@ -24,16 +24,23 @@ function consume(event: KeyboardEvent): void {
 /** What a keydown did, for tests. */
 export type KeyOutcome = { ran: CommandRef } | { consumed: true } | null;
 
-/**
- * Handles one keydown: resolves it against the bindings after the keymap, in the target's key context, and
- * runs the binding's command through the registry (a disabled command logs and announces its reason). Esc
- * runs the Esc stack while no modal dialog is open, and passes on when there's nothing to leave.
- */
+/** A single character, digit or symbol with no modifier (WCAG 2.1.4): held down, it shouldn't repeat-fire. */
+function isSingleKeyPress(event: KeyboardEvent): boolean {
+  return !event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1;
+}
+
+/** Zoom keeps repeat, the way arrows do (IR L23): holding + or − zooms continuously. */
+const REPEATS: ReadonlySet<CommandRef["id"]> = new Set(["sheet.zoomIn", "sheet.zoomOut"]);
+
 export function handleKeyDown(event: KeyboardEvent, platform: Platform = currentPlatform()): KeyOutcome {
   if (event.isComposing || event.keyCode === 229 || event.defaultPrevented) return null;
+  // Enter, Space, an arrow, Home or End on a plain (unmodified) press of a native control goes to it, not to
+  // the sheet's own bindings (FX13 item c); a modifier changes what the keypress means (⌘←, ⇧←) and always
+  // resolves in the ambient context.
+  const plainKey = event.ctrlKey || event.altKey || event.metaKey || event.shiftKey ? undefined : event.key;
   const decision = resolveKey(event, {
     bindings: listBindings(),
-    context: keyContextOf(event.target),
+    context: keyContextOf(event.target, plainKey),
     platform,
     singleKeys: settings.get().singleKeys,
   });
@@ -44,6 +51,10 @@ export function handleKeyDown(event: KeyboardEvent, platform: Platform = current
   }
   const binding = pick(decision.matches);
   if (!binding) return null;
+  // A held single key or Escape shouldn't repeat-fire the command (IR L23); zoom and the arrows do.
+  if (event.repeat && !REPEATS.has(binding.ref.id) && (binding.ref.id === "ui.escape" || isSingleKeyPress(event))) {
+    return null;
+  }
   if (binding.ref.id === "ui.escape") {
     // Base UI dialogs close themselves; the stack never closes one a second time.
     if (session.get().dialogs.length > 0 || runEscape() === null) return null;
