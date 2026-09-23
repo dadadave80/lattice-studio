@@ -1,7 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { defineCommands, dialogComponent, getCommand, isPlaceholder, listBindings, listPaletteRows, pushEscape } from "@/contracts";
+import { page } from "vitest/browser";
+import {
+  command, defineCommands, dialogComponent, getCommand, isPlaceholder, listBindings, listPaletteRows, pushEscape,
+} from "@/contracts";
+import { onCleanup, overrideCommands, renderWithStudio } from "../../test/harness";
 import { S2_COMMANDS } from "./definitions";
 import { escapeDepth } from "./escape";
+import { installShortcuts } from "./keys/dispatcher";
 
 describe("discovery (contracts §5.3)", () => {
   test("the glob found S2's commands.ts and services.ts: real commands, the dialog and the Esc stack", () => {
@@ -16,6 +21,21 @@ describe("discovery (contracts §5.3)", () => {
     expect(escapeDepth()).toBe(before + 1);
     dispose();
     expect(escapeDepth()).toBe(before);
+  });
+
+  test("the app's dispatcher stays out of browser tests: a key does nothing until a test installs it", async () => {
+    const ran: string[] = [];
+    overrideCommands([
+      command({ id: "layout.tidy", title: () => "Tidy", category: "Sheet", keys: ["t"], keyContext: ["sheet"], enabled: () => ({ ok: true }), run: () => void ran.push("tidy") }),
+    ]);
+    await renderWithStudio(<div data-keyctx="sheet" data-testid="sheet" />);
+    const target = page.getByTestId("sheet").element();
+    const press = () => target.dispatchEvent(new KeyboardEvent("keydown", { key: "t", code: "KeyT", bubbles: true, cancelable: true }));
+    press();
+    expect(ran).toEqual([]);
+    onCleanup(installShortcuts());
+    press();
+    expect(ran).toEqual(["tidy"]);
   });
 
   test("a second real registration throws; a command without an owner's registration stays a placeholder", () => {
