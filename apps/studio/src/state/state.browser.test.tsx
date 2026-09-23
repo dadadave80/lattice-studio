@@ -1,7 +1,7 @@
 import type { CommandRef } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { runCommand, session, settings, useAnalysis, useCommandState, useDocument } from "@/contracts";
+import { doc, layoutMetrics, runCommand, session, settings, useAnalysis, useCommandState, useDocument } from "@/contracts";
 import { bufferedServices, fakeChainService, renderWithStudio } from "../../test/harness";
 import { NEEDS_WALLET, usePrediction } from ".";
 import { createSettingsStore, SETTINGS_KEY } from "./settings-store";
@@ -78,6 +78,21 @@ describe("S1 in the browser", () => {
     await expect.element(page.getByText(NEEDS_WALLET)).toBeVisible();
     session.set({ chainId: 11155111 });
     await expect.element(page.getByText(/^Address 0x[0-9a-fA-F]{40}$/)).toBeVisible();
+  });
+
+  test("with nothing selected, a keyboard placement lands at the center of the view", async () => {
+    await renderWithStudio(<Sheet />);
+    const id = doc.get().id;
+    session.set({ viewports: { [id]: { x: -200, y: -100, zoom: 0.5 } } });
+    await runCommand({ id: "facet.place", args: { facet: "Receive" } }, "palette");
+    const { panes } = session.get();
+    const width = window.innerWidth - panes.left.size - panes.inspector.size;
+    const height = window.innerHeight - 40 - 36 - panes.console.size;
+    const center = { x: (width / 2 + 200) / 0.5, y: (height / 2 + 100) / 0.5 };
+    const card = doc.get().layout.Receive;
+    expect(Math.abs((card?.x ?? 0) + layoutMetrics.cardWidth / 2 - center.x)).toBeLessThanOrEqual(layoutMetrics.snap);
+    expect(card?.y).toBeGreaterThan(center.y - 200);
+    expect(card?.y).toBeLessThan(center.y);
   });
 
   test("settings persist to the browser's localStorage and come back", () => {

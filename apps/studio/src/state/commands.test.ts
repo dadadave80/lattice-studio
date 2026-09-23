@@ -433,6 +433,50 @@ describe("layout", () => {
   });
 });
 
+describe("disabled reasons and no-op lines", () => {
+  test("arguments a surface forgot, or that name nothing on the sheet, disable the command with a reason", () => {
+    start(withFacets(["ERC20"]));
+    const cases: [CommandId, Record<string, unknown> | undefined, string][] = [
+      ["selector.route", { selector: "0xa9059cbb", facet: "ERC4626" }, "ERC4626 isn't on the sheet."],
+      ["selector.route", { facet: "ERC20" }, "Name a selector"],
+      ["selector.clearOwner", {}, "Name a selector"],
+      ["selector.include", { selector: "0xa9059cbb", facet: "Nope" }, "‘Nope’ isn't a facet in Lattice fixture."],
+      ["recipe.replace", { name: "Account6900" }, "Account6900 arrives in v1.1 and needs its own factory (AccountFactory6900)."],
+      ["recipe.load", {}, "Name a recipe"],
+      ["init.setArg", { value: "1" }, "Name an init field"],
+      ["init.setArg", { path: "bundle.p.asset" }, "Give the field a value"],
+      ["init.addStep", {}, "Name the init to add"],
+      ["init.removeStep", {}, "Name the step to remove"],
+      ["init.moveStep", { path: "bundle", to: 0 }, "Name the step to move"],
+      ["init.moveStep", { path: "steps[0]" }, "Say where to move it"],
+      ["layout.toggleExpand", { facet: "ERC4626" }, "ERC4626 isn't on the sheet."],
+      ["ack.set", {}, "Name the problem to acknowledge"],
+      ["project.rename", {}, "Give the project a name"],
+      ["facet.routeContested", {}, "Name a facet to route to"],
+    ];
+    for (const [id, args, expected] of cases) expect([id, reason(id, args)]).toEqual([id, expected]);
+  });
+
+  test("runs that change nothing say why", async () => {
+    start(withFacets(["ERC20"]));
+    expect(await run("layout.flipPins", { facets: ["ERC4626"] })).toEqual(["ERC4626 isn't on the sheet."]);
+    expect(await run("project.rename", { name: " " })).toEqual(["A project needs a name."]);
+    expect(await run("init.addStep", { spec: "NopeInit" })).toEqual(["The catalog has no init named NopeInit."]);
+    expect(await run("init.setArg", { path: "steps[3].x", value: "1" })).toEqual(["There's no step 4 in the init plan."]);
+    await run("recipe.replace", { name: "ERC20" });
+    expect(await run("recipe.replace", { name: "ERC20" })).toEqual(["The sheet already holds ERC20."]);
+  });
+
+  test("collapsing a card pulls nothing up", async () => {
+    start(withFacets(["ERC4626", "ERC20"]));
+    await run("layout.toggleExpand", { facet: "ERC4626" });
+    const pushed = doc.get().layout.ERC20;
+    expect(commandState({ id: "layout.toggleExpand", args: { facet: "ERC4626" } }).title).toBe("Collapse ERC4626");
+    expect(await run("layout.toggleExpand", { facet: "ERC4626" })).toEqual(["Collapsed ERC4626."]);
+    expect(doc.get().layout.ERC20).toEqual(pushed);
+  });
+});
+
 describe("session commands", () => {
   test("undo and redo say why they can't, and say what they did", async () => {
     start();

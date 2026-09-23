@@ -84,6 +84,11 @@ function recipeEnabled(ctx: CommandContext, name: unknown): Enablement {
   if (blocked) return blocked;
   if (!isString(name)) return disabled("Name a recipe");
   if (!ctx.catalog) return disabled(CATALOG_NOT_LOADED);
+  // Cheap for buttons and palette rows, which ask on every change: build the recipe only to learn why not.
+  const wanted = unquote(name).toLowerCase();
+  if (/^blank( diamond)?$/.test(wanted)) return OK;
+  const item = templateList(ctx.catalog).find((t) => t.name.toLowerCase() === wanted);
+  if (item?.loadable) return OK;
   const loaded = resolveRecipe(ctx.catalog, name);
   return loaded.ok ? OK : disabled(loaded.error);
 }
