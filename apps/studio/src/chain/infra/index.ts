@@ -8,8 +8,8 @@ import { chainService, type ChainService } from "@/contracts";
 import type { ChainRuntime } from "./service";
 
 export {
-  ANVIL, BASE_SEPOLIA, EIP7825_GAS_CAP, ETHEREUM, SEPOLIA, chainFromText, chainInfo, chainName, findChain, pickerChains,
-  rpcUrls,
+  ANVIL, BASE_SEPOLIA, EIP7825_GAS_CAP, ETHEREUM, SEPOLIA, chainFromText, chainInfo, chainName, findChain, isRpcUrl,
+  pickerChains, publicRpcUrls, rpcUrls,
 } from "./chains";
 export type { ChainSpec } from "./chains";
 export {

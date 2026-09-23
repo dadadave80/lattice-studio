@@ -186,14 +186,17 @@ describe("fallback transport", () => {
     expect(clients.setOverrides({ [SEPOLIA.id]: "https://mine.example" })).toEqual([]);
   });
 
-  test("a half-typed or non-http override is never called", () => {
-    for (const bad of ["https://mai", "mainnet.infura.io", "ftp://rpc.example.org", "javascript:alert(1)", "https://", ""]) {
+  test("only http(s) URLs with a host are called", () => {
+    for (const bad of ["mainnet.infura.io", "ftp://rpc.example.org", "wss://rpc.example.org", "javascript:alert(1)", "https://", "https://bad_host.org", ""]) {
       expect({ bad, ok: isRpcUrl(bad) }).toEqual({ bad, ok: false });
       expect(rpcUrls(SEPOLIA, bad)).toEqual([SEPOLIA.rpc.default, SEPOLIA.rpc.extra ?? ""]);
     }
-    for (const good of ["https://sepolia.infura.io/v3/key", "http://127.0.0.1:8545", "http://localhost:8545"]) {
-      expect({ good, ok: isRpcUrl(good) }).toEqual({ good, ok: true });
-    }
+    const good = [
+      "https://sepolia.infura.io/v3/key", "http://127.0.0.1:8545", "http://localhost:8545", "http://geth:8545",
+      "http://[::1]:8545", "http://[2001:db8::1]:8545/rpc", "https://xn--rpc-xyz.xn--p1ai/", "https://rpc.example.org./",
+    ];
+    for (const url of good) expect({ url, ok: isRpcUrl(url) }).toEqual({ url, ok: true });
+    expect(rpcUrls(SEPOLIA, "http://[::1]:8545")[0]).toBe("http://[::1]:8545");
   });
 
   test("a wallet only ever sees public RPCs; Anvil's local node is the exception", () => {

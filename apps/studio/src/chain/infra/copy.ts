@@ -59,6 +59,11 @@ export function noEns(chain: string): string {
   return `ENS isn't available on ${chain}.`;
 }
 
+/** An RPC override that isn't an http(s) URL with a host: Studio keeps using the chain's public RPCs. */
+export function overrideIgnored(chain: string): string {
+  return `The RPC set for ${chain} isn't an http(s) URL, so Studio uses ${chain}'s public RPCs.`;
+}
+
 /** An ENS name that doesn't normalize (ENSIP-15). */
 export function invalidEnsName(name: string): string {
   return `“${name}” isn't a valid ENS name.`;

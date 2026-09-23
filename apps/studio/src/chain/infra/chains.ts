@@ -119,8 +119,10 @@ export function chainInfo(spec: ChainSpec): ChainInfo {
 }
 
 /**
- * Whether `text` is an RPC URL Studio will call: http(s), with a host that is `localhost`, an IP address, or a
- * name with a dot and a top-level label. Anything else (a half-typed override) is never fetched.
+ * Whether `text` is an RPC URL Studio will call: http(s) (the transports are HTTP; ws and wss aren't used), with a
+ * host: a name (single-label such as `geth`, punycode, a trailing dot), an IPv4 address or a bracketed IPv6 one.
+ * Anything else is never fetched. Settings → Networks can use it to say when an override won't be used; typing is
+ * covered by the service's debounce.
  */
 export function isRpcUrl(text: string | undefined): text is string {
   if (!text) return false;
@@ -132,8 +134,8 @@ export function isRpcUrl(text: string | undefined): text is string {
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") return false;
   const host = url.hostname;
-  if (host === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith("[")) return true;
-  return /^([a-z0-9-]+\.)+[a-z]{2,}$/i.test(host);
+  if (/^\[[0-9a-f:.]+\]$/i.test(host)) return true;
+  return /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*[a-z0-9]([a-z0-9-]*[a-z0-9])?\.?$/i.test(host);
 }
 
 /**

@@ -15,16 +15,16 @@ import type { Config } from "@wagmi/core";
 import { BaseError, ContractFunctionExecutionError, ContractFunctionZeroDataError, parseAbi } from "viem";
 import { readContract } from "viem/actions";
 import {
-  doc, getCatalog, isOnline, now, session, settings, subscribeCatalog, subscribeOnline, type ChainReadiness, type ChainService,
+  doc, getCatalog, isOnline, log, now, session, settings, subscribeCatalog, subscribeOnline, type ChainReadiness, type ChainService,
   type WalletAccount, type WalletConnector,
 } from "@/contracts";
 import { reportConnectionFailure } from "@/contracts/services";
 import { predict } from "@/state/prediction";
 import { accountBalance, accountKind } from "./account";
-import { chainInfo, chainName, findChain, findKnownChain, pickerChains, publicRpcUrls, type ChainSpec } from "./chains";
+import { chainInfo, chainName, findChain, findKnownChain, isRpcUrl, pickerChains, publicRpcUrls, type ChainSpec } from "./chains";
 import type { ChainClient, Clients } from "./clients";
 import {
-  CHAIN_CHECKS_NEED_CONNECTION, couldntRead, invalidEnsName, noEns, rpcNotAnswering, unsupportedChain,
+  CHAIN_CHECKS_NEED_CONNECTION, couldntRead, invalidEnsName, noEns, overrideIgnored, rpcNotAnswering, unsupportedChain,
 } from "./copy";
 import { loadNormalize, resolveName, reverseName, type Normalize } from "./ens";
 import { isTransportFailure, probeChain, readCodeAt, type ProbeResult } from "./probe";
@@ -95,7 +95,11 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   const latest = new Map<number, number>();
   /** S8c's gas estimate per chain, decimal. */
   const estimates = new Map<number, string>();
-  const inflight = new Map<string, Promise<Result<ProbeResult, string>>>();
+  /**
+   * Per chain, the full read in flight: probes that need nothing it isn't reading join it instead of reading the
+   * cache it's replacing, so a Retry's fresh result is what gets published.
+   */
+  const reading = new Map<number, { key: string; addresses: Set<string>; running: Promise<Result<ProbeResult, string>> }>();
   const accountListeners = new Set<(account: WalletAccount | null) => void>();
   const connectorListeners = new Set<(connectors: readonly WalletConnector[]) => void>();
   let account: WalletAccount | null = null;
@@ -168,7 +172,11 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
       return NEEDS_CONNECTION;
     }
     const catalog = getCatalog();
-    if (!catalog) return { ok: false, error: "The catalog hasn't loaded yet." };
+    if (!catalog) {
+      const error = "The catalog hasn't loaded yet.";
+      if (current()) setReadiness(chainId, { status: "error", reason: error });
+      return { ok: false, error };
+    }
     const path = probeOptions.path ?? doc.get().deploy.path;
     // The predicted address is always read, so NET-05 knows whether it's taken.
     const predicted = predictedAddress(chainId, path);
@@ -176,6 +184,9 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     const key = cacheKey(chain, catalog);
     const cached = cache.get(chainId);
     const client = clients.get(chain);
+    const known = Object.keys(cached?.key === key ? cached.codeAt : {});
+    // A refresh replaces the cache: until its read finishes, other probes join it rather than read the old state.
+    if (probeOptions.refresh) cache.delete(chainId);
 
     if (!probeOptions.refresh && cached?.key === key) {
       const missing = asked.filter((address) => !Object.hasOwn(cached.codeAt, address));
@@ -183,7 +194,9 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
         try {
           Object.assign(cached.codeAt, await readCodeAt(client, missing));
         } catch (error) {
-          return { ok: false, error: failure(chainId, error) };
+          const message = failure(chainId, error);
+          if (current()) setReadiness(chainId, { status: "error", reason: isOnline() ? couldntRead(chain.name) : CHAIN_CHECKS_NEED_CONNECTION });
+          return { ok: false, error: message };
         }
       }
       const state = compose(cached, path);
@@ -193,10 +206,13 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     // A full read: whatever was published came from another catalog or RPC, or is being read again. Nothing
     // stale stays ready (S1 passes a ready state to analyze()).
     setReadiness(chainId, { status: "checking" });
-    const addresses = [...new Set([...Object.keys(cached?.key === key ? cached.codeAt : {}), ...asked])] as Address[];
-    const flight = `${chainId}|${key}|${addresses.join(",")}`;
-    let running = inflight.get(flight);
-    if (!running) {
+    const pending = reading.get(chainId);
+    const joinable = pending?.key === key && !probeOptions.refresh && asked.every((address) => pending.addresses.has(address));
+    let running: Promise<Result<ProbeResult, string>>;
+    if (pending && joinable) {
+      running = pending.running;
+    } else {
+      const addresses = [...new Set([...known, ...(pending?.key === key ? pending.addresses : []), ...asked])] as Address[];
       running = probeChain(client, {
         chainId,
         name: chain.name,
@@ -209,8 +225,11 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
         (value): Result<ProbeResult, string> => ({ ok: true, value }),
         (error: unknown): Result<ProbeResult, string> => ({ ok: false, error: failure(chainId, error) }),
       );
-      inflight.set(flight, running);
-      void running.finally(() => inflight.delete(flight));
+      const flight = { key, addresses: new Set<string>(addresses), running };
+      reading.set(chainId, flight);
+      void running.finally(() => {
+        if (reading.get(chainId) === flight) reading.delete(chainId);
+      });
     }
     const result = await running;
     if (!result.ok) {
@@ -328,14 +347,27 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
 
   /** Applies the typed RPC overrides once they've settled: changed chains drop their cache; the selected one is read again. */
   let overrideTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Overrides already reported as unusable, so each is said once. */
+  const ignored = new Set<string>();
+  const reportIgnored = (rpc: Readonly<Record<number, string>>): void => {
+    for (const chain of specs) {
+      const text = rpc[chain.id]?.trim();
+      if (!text || isRpcUrl(text) || ignored.has(`${chain.id}|${text}`)) continue;
+      ignored.add(`${chain.id}|${text}`);
+      log({ tag: "Note", text: overrideIgnored(chain.name) });
+    }
+  };
   const applyOverrides = (): void => {
     overrideTimer = null;
     if (disposed) return;
-    for (const chainId of clients.setOverrides(settings.get().rpc)) {
+    const rpc = settings.get().rpc;
+    reportIgnored(rpc);
+    for (const chainId of clients.setOverrides(rpc)) {
       cache.delete(chainId);
       if (chainId === selected()) reprobe(chainId, true);
     }
   };
+  reportIgnored(settings.get().rpc);
   clients.setOverrides(settings.get().rpc);
 
   const onVisibility = (): void => rankNow();

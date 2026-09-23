@@ -102,9 +102,10 @@ export function createClients(options: ClientOptions = {}): Clients {
     const started = clock();
     let expire: ReturnType<typeof setTimeout> | undefined;
     try {
-      const transport = make(url)({ chain: viemChain(spec, [url]), retryCount: 0, timeout: RANK.timeout });
+      // A transport's own `retryCount` wins over the factory argument, so the no-retry goes on the request itself.
+      const transport = make(url)({ chain: viemChain(spec, [url]) });
       await Promise.race([
-        transport.request({ method: "eth_blockNumber" }),
+        transport.request({ method: "eth_blockNumber" }, { retryCount: 0 }),
         new Promise((_, reject) => {
           expire = setTimeout(() => reject(new Error("timeout")), RANK.timeout);
         }),

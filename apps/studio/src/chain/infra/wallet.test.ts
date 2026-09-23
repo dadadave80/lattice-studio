@@ -10,7 +10,9 @@ import { custom, numberToHex } from "viem";
 import { BASE_SEPOLIA, SEPOLIA } from "./chains";
 import { extractRpcUrls } from "@wagmi/core";
 import { createClients, viemChain } from "./clients";
-import { delegate, walletChains } from "./runtime";
+import { settings } from "@/contracts";
+import { isolateContracts } from "@/contracts/test-support";
+import { delegate, loadWalletConnect, walletChains } from "./runtime";
 import { ANVIL_ACCOUNT, e2eConnectors } from "./e2e";
 import { createWallet, LEGACY_INJECTED_ID, WALLETCONNECT_ID, type Wallet } from "./wallet";
 
@@ -192,6 +194,24 @@ describe("the person's own RPC stays out of the wallet", () => {
   test("Anvil's local node is the exception, in end-to-end builds", () => {
     const chains = walletChains(true, { 31337: "http://127.0.0.1:20043" });
     expect(chains.find((c) => c.id === 31337)?.rpcUrls.default.http[0]).toBe("http://127.0.0.1:20043");
+  });
+});
+
+describe("WalletConnect's setting", () => {
+  test("turns on only once its code has loaded; a failed load or no project id leaves it off", async () => {
+    const restore = isolateContracts();
+    try {
+      expect(settings.get().walletConnect).toBe(false);
+      expect(await loadWalletConnect(undefined, () => Promise.reject(new Error("never loaded")))).toEqual({ ok: false, error: "WalletConnect isn't set up in this build of Studio." });
+      await expect(loadWalletConnect("project", () => Promise.reject(new Error("Failed to fetch dynamically imported module")))).rejects.toThrow();
+      expect(settings.get().walletConnect).toBe(false);
+      const connector = (() => ({})) as unknown as ReturnType<typeof e2eConnectors>[number];
+      const loaded = await loadWalletConnect("project", async () => ({ walletConnectConnector: () => connector }));
+      expect(loaded).toEqual({ ok: true, value: connector });
+      expect(settings.get().walletConnect).toBe(true);
+    } finally {
+      restore();
+    }
   });
 });
 

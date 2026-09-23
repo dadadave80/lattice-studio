@@ -179,11 +179,33 @@ describe("probeChain", () => {
     await expect(setup({ accounts, registryError: boom }).probe()).rejects.toThrow();
   });
 
-  test("eth_simulateV1 rate-limited or with rejected params: the probe can't tell, so it fails", async () => {
-    for (const code of [-32005, -32602]) {
+  test("eth_simulateV1: anything but a clear success reads as no (NET-07, Info); only a dead connection fails the probe", async () => {
+    const answers: Error[] = [
+      rpcError(-32005, "rate limited"),
+      rpcError(-32602, "invalid params"),
+      new HttpRequestError({ url: "https://rpc.test", status: 403 }),
+      new HttpRequestError({ url: "https://rpc.test", status: 405 }),
+      rpcError(-32000, "eth_simulateV1 is not enabled"),
+      rpcError(-32000, "method not allowed"),
+      rpcError(12345, "something nobody recognizes"),
+    ];
+    for (const answer of answers) {
       const { chain, probe } = setup();
-      chain.intercept = (method) => (method === "eth_simulateV1" ? rpcError(code, "no") : undefined);
+      chain.intercept = (method) => (method === "eth_simulateV1" ? answer : undefined);
+      expect({ answer: answer.message, simulate: (await probe()).simulate }).toEqual({ answer: answer.message, simulate: false });
+    }
+    const { chain, probe } = setup();
+    chain.intercept = (method) => (method === "eth_simulateV1" ? new HttpRequestError({ url: "https://rpc.test", status: 503 }) : undefined);
+    await expect(probe()).rejects.toThrow();
+  });
+
+  test("HTTP 401, 403 and 429 on the codehash call fail fast: no eth_getCode fan-out", async () => {
+    for (const status of [401, 403, 429]) {
+      const { chain, probe } = setup();
+      chain.intercept = (method, params) =>
+        method === "eth_call" && !(params[0] as { to?: string }).to ? new HttpRequestError({ url: "https://rpc.test", status }) : undefined;
       await expect(probe()).rejects.toThrow();
+      expect({ status, fannedOut: chain.methods().includes("eth_getCode") }).toEqual({ status, fannedOut: false });
     }
   });
 

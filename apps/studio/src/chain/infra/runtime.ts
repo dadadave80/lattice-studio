@@ -39,13 +39,25 @@ export function delegate(clients: Clients, chainId: number): ReturnType<typeof c
   });
 }
 
-async function walletConnect(): Promise<Result<CreateConnectorFn, string>> {
-  if (!WALLETCONNECT_PROJECT_ID) return { ok: false, error: WALLETCONNECT_NOT_SET_UP };
-  const { walletConnectConnector } = await import("./walletconnect");
-  // "Off until chosen" (spec L635): on once it's chosen and its code actually loaded.
+/**
+ * WalletConnect's connector, loaded when chosen. "Off until chosen" (spec L635): the setting turns on only once its
+ * code has actually loaded; a failed load leaves it off (and S11a's banner speaks for the failed chunk).
+ */
+export async function loadWalletConnect(
+  projectId: string | undefined,
+  importer: () => Promise<Pick<typeof import("./walletconnect"), "walletConnectConnector">>,
+): Promise<Result<CreateConnectorFn, string>> {
+  if (!projectId) return { ok: false, error: WALLETCONNECT_NOT_SET_UP };
+  const { walletConnectConnector } = await importer();
   settings.set({ walletConnect: true });
-  return { ok: true, value: walletConnectConnector(WALLETCONNECT_PROJECT_ID) };
+  return { ok: true, value: walletConnectConnector(projectId) };
 }
+
+/** While no project id is configured, the `import()` below folds away and the build carries no WalletConnect code. */
+const walletConnect = (): Promise<Result<CreateConnectorFn, string>> =>
+  WALLETCONNECT_PROJECT_ID
+    ? loadWalletConnect(WALLETCONNECT_PROJECT_ID, () => import("./walletconnect"))
+    : Promise.resolve({ ok: false, error: WALLETCONNECT_NOT_SET_UP });
 
 /**
  * The wallet's chains, with public RPC URLs only. wagmi's connectors read a chain's `rpcUrls` (WalletConnect puts

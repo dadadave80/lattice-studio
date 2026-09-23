@@ -4,6 +4,7 @@ import type { Address, Catalog } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
 import type { Config } from "@wagmi/core";
 import { doc, provideServices, session, setCatalogStatus, settings, type WalletConnector } from "@/contracts";
+import { bufferedServices } from "@/contracts/services";
 import { isolateContracts } from "@/contracts/test-support";
 import { BASE_SEPOLIA, SEPOLIA } from "./chains";
 import { createClients } from "./clients";
@@ -209,12 +210,21 @@ describe("probes and readiness", () => {
     start();
     session.set({ chainId: SEPOLIA.id });
     await settle();
-    for (const typed of ["h", "https://", "https://mai", "https://mainnet"]) settings.set({ rpc: { [SEPOLIA.id]: typed } });
+    for (const typed of ["h", "https://", "https://mai", "https://mainnet.example/11155111"]) settings.set({ rpc: { [SEPOLIA.id]: typed } });
     await Bun.sleep(OVERRIDE_WAIT + 10);
     await settle();
-    expect([...urlsCalled].some((url) => url.includes("mai"))).toBe(false);
+    // Only what the person settled on is called; the keystrokes before it never are.
+    expect([...urlsCalled].filter((url) => url.includes("mai"))).toEqual(["https://mainnet.example/11155111"]);
+    // Something that isn't an http(s) URL is never called, and the console says so once.
+    settings.set({ rpc: { [SEPOLIA.id]: "wss://mainnet.example" } });
+    await Bun.sleep(OVERRIDE_WAIT + 10);
+    await settle();
+    settings.set({ rpc: { [SEPOLIA.id]: " wss://mainnet.example" } });
+    await Bun.sleep(OVERRIDE_WAIT + 10);
     await service.probe(SEPOLIA.id, { refresh: true });
-    expect([...urlsCalled].some((url) => url.includes("mai"))).toBe(false);
+    expect([...urlsCalled].some((url) => url.startsWith("wss:"))).toBe(false);
+    const notes = bufferedServices().log.filter((line) => line.text === "The RPC set for Sepolia isn't an http(s) URL, so Studio uses Sepolia's public RPCs.");
+    expect(notes).toHaveLength(1);
   });
 
   test("a new catalog drops the old one's ready state until the new probe finishes", async () => {
@@ -236,6 +246,47 @@ describe("probes and readiness", () => {
     await Bun.sleep(5);
     await settle();
     expect(service.readiness(SEPOLIA.id).status).toBe("ready");
+  });
+
+  test("a Retry's fresh read wins over probes made while it runs", async () => {
+    start();
+    session.set({ chainId: SEPOLIA.id });
+    await settle();
+    const sepolia = chains[SEPOLIA.id];
+    if (!sepolia?.options.accounts) throw new Error("mock");
+    const erc20 = catalog.facets.find((f) => f.name === "ERC20");
+    if (!erc20) throw new Error("fixture has ERC20");
+    // The chain changed since the last read: ERC20 is gone.
+    delete sepolia.options.accounts[erc20.release.address.toLowerCase()];
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    sepolia.intercept = () => held;
+    const retry = service.probe(SEPOLIA.id, { refresh: true });
+    await settle();
+    expect(service.readiness(SEPOLIA.id).status).toBe("checking");
+    // A path edit or S8b's read while the Retry runs: it joins the fresh read, not the old cache.
+    const during = service.probe(SEPOLIA.id);
+    await settle();
+    expect(service.readiness(SEPOLIA.id).status).toBe("checking");
+    sepolia.intercept = undefined;
+    release();
+    const [fresh, joined] = await Promise.all([retry, during]);
+    expect(fresh.ok && fresh.value.shared.ERC20?.present).toBe(false);
+    expect(joined.ok && joined.value.shared.ERC20?.present).toBe(false);
+    const readiness = service.readiness(SEPOLIA.id);
+    expect(readiness.status === "ready" && readiness.state.shared.ERC20?.present).toBe(false);
+  });
+
+  test("a failed read of new addresses from the cache shows an error rather than leaving 'checking'", async () => {
+    start();
+    await service.probe(SEPOLIA.id);
+    const sepolia = chains[SEPOLIA.id];
+    if (sepolia) sepolia.down = true;
+    const result = await service.probe(SEPOLIA.id, { codeAt: [SAFE] });
+    expect(result).toEqual({ ok: false, error: "Sepolia's public RPC isn't answering." });
+    expect(service.readiness(SEPOLIA.id)).toEqual({ status: "error", reason: "Couldn't read Sepolia: the RPC didn't answer." });
   });
 
   test("probes that finish out of order: only the latest publishes", async () => {
@@ -298,6 +349,34 @@ describe("probes and readiness", () => {
     expect(timers).toEqual(["start", "stop", "start", "stop"]);
   });
 
+  test("the RPC ranking timer stops while the tab is hidden and starts again when it's shown", () => {
+    let hidden = false;
+    const target = new EventTarget();
+    const fakeDocument = Object.defineProperty(target, "visibilityState", { get: () => (hidden ? "hidden" : "visible") });
+    const had = "document" in globalThis;
+    Object.assign(globalThis, { document: fakeDocument });
+    try {
+      const timers: string[] = [];
+      const clients = createClients({
+        transport: () => mockChain({ chainId: SEPOLIA.id }).transport(),
+        setInterval: () => {
+          timers.push("start");
+          return timers.length;
+        },
+        clearInterval: () => timers.push("stop"),
+      });
+      service = createChainService({ e2e: false, clients, wallet: null });
+      hidden = true;
+      target.dispatchEvent(new Event("visibilitychange"));
+      hidden = false;
+      target.dispatchEvent(new Event("visibilitychange"));
+      expect(timers).toEqual(["start", "stop", "start"]);
+      service.dispose();
+    } finally {
+      if (!had) delete (globalThis as { document?: unknown }).document;
+    }
+  });
+
   test("offline, the reads say so without calling the RPC or reporting a failure", async () => {
     start();
     online = false;
@@ -318,6 +397,7 @@ describe("probes and readiness", () => {
     expect(!unknown.ok && unknown.error).toBe("Studio doesn't deploy to Chain 5. Choose Sepolia or Base Sepolia.");
     setCatalogStatus({ status: "loading" });
     expect(await service.probe(SEPOLIA.id)).toEqual({ ok: false, error: "The catalog hasn't loaded yet." });
+    expect(service.readiness(SEPOLIA.id)).toEqual({ status: "error", reason: "The catalog hasn't loaded yet." });
   });
 
   test("the picker lists the v1 testnets", () => {

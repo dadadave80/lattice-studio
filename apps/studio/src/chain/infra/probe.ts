@@ -14,14 +14,14 @@
 import type { Address, Catalog, ChainState, Hex } from "@lattice-studio/core";
 import { ARACHNID_PROXY, CREATEX, MULTICALL3, packVersion, registryNameHash, toChecksum } from "@lattice-studio/core";
 import {
-  BaseError, concat, ContractFunctionRevertedError, HttpRequestError, InvalidParamsRpcError, keccak256,
-  LimitExceededRpcError, MethodNotFoundRpcError, MethodNotSupportedRpcError, pad, parseAbi, TimeoutError,
+  BaseError, concat, ContractFunctionRevertedError, HttpRequestError, keccak256, LimitExceededRpcError, pad, parseAbi,
+  TimeoutError,
 } from "viem";
 import { call, getBlock, getCode, multicall, readContract } from "viem/actions";
 import type { ChainClient } from "./clients";
 
-/** CreateX's runtime codehash (NET-01, spec L335), as C6's `CREATEX_CODEHASH` in `checks/net.ts`. */
-export const CREATEX_CODEHASH: Hex = "0xbd8a7ea8cfca7b4e5f5041d7d4b17bc317c5ce42cfbc42066a00cf26b43eb53f";
+/** CreateX's runtime codehash (NET-01, spec L335): C6's constant. */
+export { CREATEX_CODEHASH } from "@lattice-studio/core";
 
 /** Multicall3's canonical runtime codehash at 0xcA11bde05977b3631167028862bE2a173976CA11. */
 export const MULTICALL3_CODEHASH: Hex = "0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891";
@@ -93,9 +93,10 @@ export function isRateLimited(error: unknown): boolean {
   return error.walk((e) => e instanceof LimitExceededRpcError || (e instanceof HttpRequestError && e.status === 429)) !== null;
 }
 
-/** The RPC rejected the request's parameters (-32602). */
-function isInvalidParams(error: unknown): boolean {
-  return error instanceof BaseError && error.walk((e) => e instanceof InvalidParamsRpcError) !== null;
+/** The RPC refused the caller (HTTP 401 or 403: a key missing, expired or not allowed): every other call would too. */
+export function isRefused(error: unknown): boolean {
+  if (!(error instanceof BaseError)) return false;
+  return error.walk((e) => e instanceof HttpRequestError && (e.status === 401 || e.status === 403)) !== null;
 }
 
 /** `LatticeRegistry.get` reverted with `RecordNotFound`: the version isn't listed. */
@@ -118,7 +119,8 @@ function codehashOrNull(word: Hex): Hex | null {
 /**
  * The runtime codehash at each address (null: no code), in order. Tries the one-call program first; if the RPC
  * rejects a call without `to` (an HTTP 400, invalid params, a revert) or answers oddly, falls back to `eth_getCode`
- * per address. A connection failure or a rate limit fails instead: fanning out would only make it worse.
+ * per address. A connection failure, a rate limit or a refusal (HTTP 401, 403) fails instead: fanning out would
+ * only make it worse.
  */
 export async function readCodehashes(client: ChainClient, addresses: readonly Address[]): Promise<(Hex | null)[]> {
   if (addresses.length === 0) return [];
@@ -130,7 +132,7 @@ export async function readCodehashes(client: ChainClient, addresses: readonly Ad
       return addresses.map((_, i) => codehashOrNull(`0x${out.slice(2 + 64 * i, 2 + 64 * (i + 1))}`));
     }
   } catch (error) {
-    if (isTransportFailure(error) || isRateLimited(error)) throw error;
+    if (isTransportFailure(error) || isRateLimited(error) || isRefused(error)) throw error;
   }
   const codes = await Promise.all(addresses.map((address) => getCode(client, { address })));
   return codes.map((code) => (code === undefined || code === "0x" ? null : keccak256(code)));
@@ -207,8 +209,10 @@ export async function readRegistry(
 }
 
 /**
- * Whether the RPC answers `eth_simulateV1` (NET-07). "Method not found" and its kin mean no. A connection failure,
- * a rate limit or rejected parameters mean the probe couldn't tell, so it fails rather than guess.
+ * Whether the RPC answers `eth_simulateV1` (NET-07). Only a clear success means yes; anything else the RPC answers
+ * (method not found, rejected parameters, HTTP 403 or 405, "not allowed", "not enabled", a rate limit, an error
+ * nobody recognizes) means no, which shows NET-07 at Info level (spec L341) and leaves `eth_call` to simulate.
+ * Only a connection failure fails the probe.
  */
 export async function supportsSimulate(client: ChainClient): Promise<boolean> {
   try {
@@ -218,10 +222,8 @@ export async function supportsSimulate(client: ChainClient): Promise<boolean> {
     });
     return true;
   } catch (error) {
-    if (isTransportFailure(error) || isRateLimited(error) || isInvalidParams(error)) throw error;
-    if (error instanceof BaseError && error.walk((e) => e instanceof MethodNotFoundRpcError || e instanceof MethodNotSupportedRpcError)) return false;
-    const text = error instanceof Error ? error.message : String(error);
-    return !/method .*(not (found|supported|available|exist))|does not exist|unsupported method|unknown method/i.test(text);
+    if (isTransportFailure(error)) throw error;
+    return false;
   }
 }
 
