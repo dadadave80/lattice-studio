@@ -4,9 +4,12 @@ import { runEscape } from "./escape";
 import { WHEREVER_SINGLE_KEYS } from "./keys/resolve";
 
 /**
- * Esc runs the Esc stack everywhere but a modal dialog or the palette (each closes itself on Esc) and a text
- * field (which keeps Esc to revert). "list" and "menu" run it too: neither closes itself (IR L17: everywhere,
- * in that order).
+ * Esc runs the Esc stack everywhere but a modal dialog, the palette and a text field (which keeps Esc to
+ * revert). A dialog or the palette closes itself on Esc: Base UI's `useDismiss` calls `preventDefault` before
+ * the dispatcher's window listener ever sees the event, and `handleKeyDown` skips one that's already
+ * defaultPrevented. "list" and "menu" popups close themselves the same way, so including them here changes
+ * nothing there; it's what lets the stack still reach a list or menu region that isn't a dismissible popup
+ * (IR L17: everywhere, in that order).
  */
 const ESCAPE_CONTEXTS: KeyContext[] = ["global", "sheet", "card-rows", "tree", "list", "menu", "console"];
 
