@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { KEY_CONTEXT_ATTRIBUTE } from "@/contracts";
@@ -363,7 +363,9 @@ describe("Tree item menus", () => {
     const control = { set: (_on: boolean) => {} };
     function Toggled() {
       const [on, setOn] = useState(initial);
-      control.set = setOn;
+      useEffect(() => {
+        control.set = setOn;
+      }, []);
       return (
         <Harness
           itemMenu={(node) => (on || node.id !== "erc20" ? <MenuItem label="Open source" onSelect={() => {}} /> : null)}

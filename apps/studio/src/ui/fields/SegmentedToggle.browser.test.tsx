@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { renderWithStudio } from "../../../test/harness";
@@ -119,7 +119,9 @@ describe("SegmentedToggle", () => {
     const control = { set: (_reason: string | undefined) => {} };
     function Toggled() {
       const [reason, setReason] = useState<string | undefined>(undefined);
-      control.set = setReason;
+      useEffect(() => {
+        control.set = setReason;
+      }, []);
       return <Theme {...(reason ? { disabledReason: reason } : {})} />;
     }
     await renderWithStudio(<Toggled />);
