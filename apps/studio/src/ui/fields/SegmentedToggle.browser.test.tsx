@@ -57,18 +57,26 @@ describe("SegmentedToggle", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  test("disabled with a reason: options stay focusable, the group says why, nothing changes", async () => {
+  test("disabled with a reason: options stay focusable, the group and each option say why, nothing changes", async () => {
     const onChange = vi.fn();
     await renderWithStudio(<Theme onChange={onChange} disabledReason="Resolve 2 blockers · F8" />);
     const group = page.getByRole("group", { name: "Theme" });
     await expect.element(group).toHaveAttribute("aria-disabled", "true");
     await expect.element(group).toHaveAccessibleDescription("Resolve 2 blockers · F8");
+    const shop = page.getByRole("button", { name: "Shop" });
     const draft = page.getByRole("button", { name: "Draft" });
+    for (const option of [shop, draft]) {
+      await expect.element(option).toHaveAttribute("aria-disabled", "true");
+      await expect.element(option).toHaveAccessibleDescription("Resolve 2 blockers · F8");
+    }
+    // Every option is aria-disabled, so the tab stop stays on the pressed one and arrows have nowhere to go.
     await userEvent.tab();
+    await expect.element(shop).toHaveFocus();
     await userEvent.keyboard("{ArrowRight}");
-    await expect.element(draft).toHaveFocus();
+    await expect.element(shop).toHaveFocus();
     await userEvent.keyboard(" ");
     await userEvent.keyboard("{Enter}");
+    await expect.element(shop).toHaveAttribute("aria-pressed", "true");
     await draft.click({ force: true });
     await expect.element(draft).toHaveAttribute("aria-pressed", "false");
     expect(onChange).not.toHaveBeenCalled();

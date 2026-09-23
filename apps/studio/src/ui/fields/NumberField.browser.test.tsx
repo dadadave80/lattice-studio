@@ -108,9 +108,9 @@ describe("NumberField", () => {
     await expect.element(input()).toHaveValue("1000000.25");
   });
 
-  test("the unit select is named Unit and shows the current unit", async () => {
+  test("the unit select is named after the field and shows the current unit", async () => {
     await renderWithStudio(<Supply />);
-    const unit = page.getByRole("combobox", { name: "Unit" });
+    const unit = page.getByRole("combobox", { name: "Initial supply unit" });
     await expect.element(unit).toHaveTextContent("ether");
     await userEvent.tab();
     await userEvent.tab();
@@ -140,20 +140,20 @@ describe("NumberField", () => {
     await expect.element(input()).toHaveFocus();
     await userEvent.keyboard("{ArrowUp}{Shift>}{ArrowUp}{/Shift}7");
     await expect.element(input()).toHaveValue("5");
-    const unit = page.getByRole("combobox", { name: "Unit" });
+    const unit = page.getByRole("combobox", { name: "Initial supply unit" });
     await expect.element(unit).toHaveAttribute("aria-disabled", "true");
     await userEvent.tab();
     await expect.element(unit).toHaveFocus();
     await userEvent.keyboard("{Enter}");
     await expect.element(unit).toHaveAttribute("aria-expanded", "false");
-    await expect.element(unit).toHaveTextContent("ether");
+    await expect.element(unit.getByText("ether", { exact: true })).toBeVisible();
     expect(onChange).not.toHaveBeenCalled();
   });
 
   test("the input and the unit select are at least 24 px tall", async () => {
     await renderWithStudio(<Supply />);
     expect(input().element().getBoundingClientRect().height).toBeGreaterThanOrEqual(24);
-    const unit = page.getByRole("combobox", { name: "Unit" }).element().getBoundingClientRect();
+    const unit = page.getByRole("combobox", { name: "Initial supply unit" }).element().getBoundingClientRect();
     expect(unit.height).toBeGreaterThanOrEqual(24);
     expect(unit.width).toBeGreaterThanOrEqual(24);
   });

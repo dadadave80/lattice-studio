@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
+import { settings } from "@/contracts";
 import { onCleanup, renderWithStudio } from "../../../test/harness";
 import { overridePlatform } from "../shared/platform";
 import { ToggleButton } from "./ToggleButton";
@@ -29,6 +30,14 @@ describe("ToggleButton", () => {
     expect(toggle.element().getAttribute("aria-keyshortcuts")).toBe("Meta+M");
     await userEvent.tab();
     await expect.element(page.getByText("Show minimap", { exact: true }).last()).toBeVisible();
+  });
+
+  test("a single-key shortcut is announced only while single-key shortcuts are on", async () => {
+    await renderWithStudio(<ToggleButton icon="minimap" label="Show minimap" shortcut="t" />);
+    const toggle = page.getByRole("button", { name: "Show minimap" });
+    await expect.element(toggle).toHaveAttribute("aria-keyshortcuts", "T");
+    settings.set({ singleKeys: false });
+    await expect.element(toggle).not.toHaveAttribute("aria-keyshortcuts");
   });
 
   test("disabled with a reason: focusable, says why, never changes", async () => {

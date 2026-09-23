@@ -3,9 +3,8 @@ import type { ReactNode } from "react";
 import type { KeySpec } from "@/contracts";
 import { Icon } from "../icons/Icon";
 import type { IconName } from "../icons/icon-paths";
-import { ariaKeyShortcuts } from "../keys/key-labels";
+import { useAriaKeyShortcuts } from "../keys/use-aria-key-shortcuts";
 import { cx } from "../shared/cx";
-import { usePlatform } from "../shared/platform";
 import type { TooltipSide } from "../tooltip/Tooltip";
 import { ReasonTooltip } from "../tooltip/ReasonTooltip";
 import styles from "./Toggle.module.css";
@@ -22,7 +21,7 @@ type ToggleCommon = {
    * `aria-disabled`, is described by the reason, shows it in a tooltip and never changes (spec L661).
    */
   disabledReason?: string | null | undefined;
-  /** Keys shown in the tooltip and set as `aria-keyshortcuts`, per platform. */
+  /** Keys shown in the tooltip and set as `aria-keyshortcuts`, per platform; single-key ones only while those are on. */
   shortcut?: KeySpec | readonly KeySpec[];
   tooltipSide?: TooltipSide;
   className?: string | undefined;
@@ -52,8 +51,7 @@ export function ToggleButton(props: ToggleButtonProps) {
     pressed, defaultPressed, onPressedChange, size = "medium", disabledReason, shortcut, tooltipSide, className,
     icon, label, children,
   } = props;
-  const platform = usePlatform();
-  const keyshortcuts = ariaKeyShortcuts(shortcut, platform);
+  const keyshortcuts = useAriaKeyShortcuts(shortcut);
   const iconOnly = children === undefined;
   return (
     <ReasonTooltip
@@ -66,7 +64,7 @@ export function ToggleButton(props: ToggleButtonProps) {
         {...(pressed === undefined ? {} : { pressed })}
         {...(defaultPressed === undefined ? {} : { defaultPressed })}
         {...(iconOnly && label ? { "aria-label": label } : {})}
-        {...(keyshortcuts ? { "aria-keyshortcuts": keyshortcuts } : {})}
+        {...keyshortcuts}
         onPressedChange={(next, details) => {
           if (disabledReason) {
             details.cancel();

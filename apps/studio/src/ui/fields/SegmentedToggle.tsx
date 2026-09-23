@@ -1,5 +1,6 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
+import { useId } from "react";
 import { cx } from "../shared/cx";
 import { ReasonTooltip } from "../tooltip/ReasonTooltip";
 import styles from "./Toggle.module.css";
@@ -17,8 +18,9 @@ export type SegmentedToggleProps<V extends string = string> = {
   onValueChange: (value: V) => void;
   options: readonly SegmentedOption<V>[];
   /**
-   * Why the choice can't change now. While set the group has `aria-disabled` and is described by the
-   * reason, its options stay focusable, the reason shows in a tooltip, and nothing changes (spec L661).
+   * Why the choice can't change now. While set the group and each option have `aria-disabled` and are
+   * described by the reason, the options stay focusable, the reason shows in a tooltip, and nothing changes
+   * (spec L661).
    */
   disabledReason?: string | null | undefined;
   className?: string | undefined;
@@ -31,6 +33,9 @@ export type SegmentedToggleProps<V extends string = string> = {
 export function SegmentedToggle<V extends string = string>({
   label, value, onValueChange, options, disabledReason, className,
 }: SegmentedToggleProps<V>) {
+  const reasonId = useId();
+  // Focus lands on an option, not the group, so each option says it's unavailable and why.
+  const optionState = disabledReason ? { "aria-disabled": true, "aria-describedby": reasonId } : {};
   return (
     <ReasonTooltip reason={disabledReason}>
       <ToggleGroup
@@ -47,10 +52,20 @@ export function SegmentedToggle<V extends string = string>({
         className={cx(styles.segmented, className)}
       >
         {options.map((option) => (
-          <Toggle key={option.value} value={option.value} className={cx(styles.segment, styles.pressedMark)}>
+          <Toggle
+            key={option.value}
+            value={option.value}
+            {...optionState}
+            className={cx(styles.segment, styles.pressedMark)}
+          >
             {option.label}
           </Toggle>
         ))}
+        {disabledReason ? (
+          <span id={reasonId} hidden>
+            {disabledReason}
+          </span>
+        ) : null}
       </ToggleGroup>
     </ReasonTooltip>
   );

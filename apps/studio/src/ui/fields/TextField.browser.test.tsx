@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { createRef, useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { renderWithStudio } from "../../../test/harness";
@@ -112,6 +112,35 @@ describe("TextField", () => {
     await expect.element(input).toHaveValue("");
     expect(onChange).not.toHaveBeenCalled();
     await expect.element(page.getByText("Connect a wallet first", { exact: true }).last()).toBeVisible();
+  });
+
+  test("inputRef gives the input; id sets its id and the label still names it", async () => {
+    const ref = createRef<HTMLInputElement>();
+    await renderWithStudio(<TextField label="Salt" defaultValue="0x12" inputRef={ref} id="salt-input" />);
+    const input = page.getByRole("textbox", { name: "Salt" }).element();
+    expect(ref.current).toBe(input);
+    expect(input.id).toBe("salt-input");
+  });
+
+  test("onBlur fires when focus leaves the input", async () => {
+    const onBlur = vi.fn();
+    await renderWithStudio(
+      <>
+        <TextField label="Salt" defaultValue="" onBlur={onBlur} />
+        <button type="button">After</button>
+      </>,
+    );
+    await userEvent.tab();
+    await expect.element(page.getByRole("textbox", { name: "Salt" })).toHaveFocus();
+    expect(onBlur).not.toHaveBeenCalled();
+    await userEvent.tab();
+    expect(onBlur).toHaveBeenCalledTimes(1);
+  });
+
+  test("autoFocus focuses the input on mount", async () => {
+    // oxlint-disable-next-line jsx-a11y/no-autofocus -- the prop under test (an inline rename that just opened)
+    await renderWithStudio(<TextField label="Facet name" defaultValue="ERC20Facet" autoFocus />);
+    await expect.element(page.getByRole("textbox", { name: "Facet name" })).toHaveFocus();
   });
 
   test("a long value scrolls inside the input; a long error wraps", async () => {

@@ -54,7 +54,9 @@ describe("RadioGroup", () => {
     await expect.element(wallet).toHaveAttribute("aria-disabled", "true");
     await expect.element(wallet).toHaveAccessibleDescription("Connect a wallet first");
     // Written out under the option too, since arrow keys never land on it.
-    await expect.element(page.getByText("Connect a wallet first", { exact: true }).first()).toBeVisible();
+    const written = document.querySelector<HTMLElement>("[data-reason]");
+    expect(written?.textContent).toBe("Connect a wallet first");
+    expect(written?.checkVisibility()).toBe(true);
 
     await userEvent.tab();
     await expect.element(foundry).toHaveFocus();

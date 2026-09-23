@@ -1,8 +1,10 @@
 import { Input } from "@base-ui/react/input";
-import { useId, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
+import { useId, type FocusEvent, type HTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from "react";
+import type { KeySpec } from "@/contracts";
 import { Icon } from "../icons/Icon";
+import { useAriaKeyShortcuts } from "../keys/use-aria-key-shortcuts";
 import { cx } from "../shared/cx";
-import { ReasonTooltip } from "../tooltip/ReasonTooltip";
+import { Tooltip } from "../tooltip/Tooltip";
 import styles from "./Field.module.css";
 
 export type TextFieldProps = {
@@ -38,8 +40,18 @@ export type TextFieldProps = {
   /** Beside the input, inside the field: a unit select, a Copy button. */
   trailing?: ReactNode;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
-  /** `aria-keyshortcuts` for keys the field handles itself ("ArrowUp ArrowDown" on a NumberField). */
-  keyShortcuts?: string;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+  /** Focus the input when it mounts (an inline rename that just opened). */
+  autoFocus?: boolean;
+  /**
+   * Keys the field handles itself, set as `aria-keyshortcuts` per platform ("ArrowUp", "Shift+ArrowUp" on a
+   * NumberField); single-key ones only while those are on.
+   */
+  keyShortcuts?: KeySpec | readonly KeySpec[];
+  /** The input element, to focus or select it from outside. */
+  inputRef?: Ref<HTMLInputElement>;
+  /** The input's id; generated when left out. */
+  id?: string;
   name?: string;
   className?: string | undefined;
 };
@@ -51,15 +63,23 @@ export type TextFieldProps = {
  */
 export function TextField({
   label, value, defaultValue, onValueChange, description, error, mono = false, required = false, readOnly = false,
-  placeholder, inputMode, autoComplete, spellCheck, disabledReason, trailing, onKeyDown, keyShortcuts, name, className,
+  placeholder, inputMode, autoComplete, spellCheck, disabledReason, trailing, onKeyDown, onBlur, autoFocus = false,
+  keyShortcuts, inputRef, id, name, className,
 }: TextFieldProps) {
-  const inputId = useId();
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const keyshortcuts = useAriaKeyShortcuts(keyShortcuts);
   const descriptionId = useId();
   const errorId = useId();
-  const describedBy = [description ? descriptionId : null, error ? errorId : null].filter(Boolean).join(" ");
+  const reasonId = useId();
+  const describedBy = [description ? descriptionId : null, error ? errorId : null, disabledReason ? reasonId : null]
+    .filter(Boolean)
+    .join(" ");
   const input = (
     <Input
       id={inputId}
+      {...(disabledReason ? { "aria-disabled": true } : {})}
+      {...(inputRef ? { ref: inputRef } : {})}
       {...(value === undefined ? {} : { value })}
       {...(defaultValue === undefined ? {} : { defaultValue })}
       {...(describedBy ? { "aria-describedby": describedBy } : {})}
@@ -80,9 +100,20 @@ export function TextField({
         onValueChange?.(next);
       }}
       {...(onKeyDown ? { onKeyDown } : {})}
-      {...(keyShortcuts ? { "aria-keyshortcuts": keyShortcuts } : {})}
+      {...(onBlur ? { onBlur } : {})}
+      {...(autoFocus ? { autoFocus } : {})}
+      {...keyshortcuts}
       className={cx(styles.input, mono && styles.mono)}
     />
+  );
+  // The disabled-control pattern (spec L661) wired here rather than through ReasonTooltip, which puts the
+  // reason inside its trigger: an input can't hold children. The input is already read-only and refuses edits.
+  const control = disabledReason ? (
+    <Tooltip content={disabledReason} closeOnClick={false}>
+      {input}
+    </Tooltip>
+  ) : (
+    input
   );
   return (
     <div className={cx(styles.field, className)}>
@@ -91,12 +122,17 @@ export function TextField({
       </label>
       {trailing ? (
         <div className={styles.inputRow}>
-          <ReasonTooltip reason={disabledReason}>{input}</ReasonTooltip>
+          {control}
           {trailing}
         </div>
       ) : (
-        <ReasonTooltip reason={disabledReason}>{input}</ReasonTooltip>
+        control
       )}
+      {disabledReason ? (
+        <span id={reasonId} hidden>
+          {disabledReason}
+        </span>
+      ) : null}
       {description ? (
         <span id={descriptionId} className={styles.description}>
           {description}

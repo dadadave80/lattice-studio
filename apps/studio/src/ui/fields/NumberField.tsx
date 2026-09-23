@@ -1,4 +1,5 @@
 import type { KeyboardEvent, ReactNode } from "react";
+import type { KeySpec } from "@/contracts";
 import { stepDecimal, toStep, type DecimalBound } from "./decimal-step";
 import styles from "./Field.module.css";
 import { Select, type SelectOption } from "./Select";
@@ -10,7 +11,7 @@ export type NumberFieldProps<U extends string = string> = {
   /** The amount as typed: a decimal string, never a JS number, so uint256 values keep every digit. */
   value: string;
   onValueChange: (text: string) => void;
-  /** Units offered beside the amount (ether, gwei, wei). The select is named "Unit". */
+  /** Units offered beside the amount (ether, gwei, wei). The select is named "{label} unit" ("Initial supply unit"). */
   units?: readonly SelectOption<U>[];
   unit?: U;
   onUnitChange?: (unit: U) => void;
@@ -33,7 +34,7 @@ export type NumberFieldProps<U extends string = string> = {
   className?: string | undefined;
 };
 
-const STEP_KEYS = "ArrowUp ArrowDown Shift+ArrowUp Shift+ArrowDown";
+const STEP_KEYS: readonly KeySpec[] = ["ArrowUp", "ArrowDown", "Shift+ArrowUp", "Shift+ArrowDown"];
 
 /**
  * An amount typed as text (init arguments, settings), with ↑/↓ stepping by `step` and Shift+↑/↓ by ten
@@ -59,7 +60,7 @@ export function NumberField<U extends string = string>({
 
   const unitSelect = units?.length ? (
     <Select<U>
-      label="Unit"
+      label={`${label} unit`}
       hideLabel
       options={units}
       value={unit ?? null}

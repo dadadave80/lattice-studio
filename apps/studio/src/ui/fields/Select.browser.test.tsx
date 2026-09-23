@@ -55,6 +55,19 @@ describe("Select", () => {
     expect(onChange.mock.calls).toEqual([["sepolia"]]);
   });
 
+  test("the keyboard-focused option keeps the focus ring", async () => {
+    await renderWithStudio(<Network />);
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(expanded).toBe("true");
+    await userEvent.keyboard("{ArrowDown}");
+    const option = page.getByRole("option", { name: "Sepolia", exact: true });
+    await expect.element(option).toHaveFocus();
+    const style = getComputedStyle(option.element());
+    expect(style.outlineStyle).toBe("solid");
+    expect(style.outlineWidth).toBe("2px");
+  });
+
   test("Esc closes without picking and focus returns to the trigger", async () => {
     const onChange = vi.fn();
     await renderWithStudio(<Network onChange={onChange} />);
@@ -112,7 +125,7 @@ describe("Select", () => {
     await trigger.click({ force: true });
     expect(expanded()).toBe("false");
     await expect.element(page.getByRole("option", { name: "Sepolia", exact: true })).not.toBeInTheDocument();
-    await expect.element(trigger).toHaveTextContent("Anvil");
+    await expect.element(trigger.getByText("Anvil", { exact: true })).toBeVisible();
     await expect.element(trigger).toHaveFocus();
     expect(onChange).not.toHaveBeenCalled();
   });
