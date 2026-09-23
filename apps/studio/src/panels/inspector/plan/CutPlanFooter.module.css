@@ -1,0 +1,140 @@
+/* Board 06: the DiamondCut plan on sunken ground, then the diamond's address. */
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  padding: var(--lx-space-3) var(--lx-space-4);
+  background: var(--lx-sunken);
+  border-top: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  min-height: 0;
+  max-height: 45%;
+  overflow-y: auto;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lx-space-2);
+}
+
+.label {
+  margin: 0;
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.aside {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-faint);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--lx-space-2);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text);
+}
+
+.index,
+.action,
+.address {
+  color: var(--lx-text-faint);
+}
+
+.name {
+  flex: 1 1 8ch;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  color: var(--lx-text-muted);
+}
+
+.contested,
+.contested .index,
+.contested .action,
+.contested .count {
+  color: var(--lx-accent);
+  font-weight: 600;
+}
+
+.mark {
+  color: var(--lx-accent);
+}
+
+.copy {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.empty {
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  color: var(--lx-text-muted);
+}
+
+.addressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  padding-top: var(--lx-space-2);
+  border-top: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.fullAddress {
+  margin: 0;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  overflow-wrap: anywhere;
+  color: var(--lx-text);
+}
+
+.live {
+  color: var(--lx-accent);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-3);
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.nextSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-2);
+}
+
+.link {
+  color: var(--lx-text);
+  text-decoration: underline;
+  text-underline-offset: var(--lx-stroke-heavy);
+}
+
+.link:hover {
+  color: var(--lx-accent-strong);
+}
