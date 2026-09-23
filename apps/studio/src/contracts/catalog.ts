@@ -10,7 +10,7 @@
  * "Lattice" for the proxy.
  */
 import type { Catalog, CatalogManifest, FacetDetail, Hex, Result, ShardRef, SharedContract } from "@lattice-studio/core";
-import { isHex, validateCatalog, validateFacetDetail } from "@lattice-studio/core";
+import { findProtoKey, isHex, validateCatalog, validateFacetDetail } from "@lattice-studio/core";
 import { useSyncExternalStore } from "react";
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
@@ -112,6 +112,7 @@ function minimalLoader(): CatalogLoader {
     } catch {
       return { ok: false, error: `${name}'s shard isn't valid JSON.` };
     }
+    if (findProtoKey(json) !== null) return { ok: false, error: `${name}'s shard doesn't match the shard schema.` };
     const parsed = validateFacetDetail(json);
     return parsed.ok ? parsed : { ok: false, error: `${name}'s shard doesn't match the shard schema.` };
   };

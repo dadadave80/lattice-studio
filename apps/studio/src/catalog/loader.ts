@@ -12,7 +12,7 @@ import { keccak256 } from "viem";
 import type { CatalogLoader, CatalogStatus, FacetDetailState } from "@/contracts";
 import { getCatalogStatus, log, setCatalogStatus, subscribeCatalog } from "@/contracts";
 import type { Catalog, CatalogManifest, FacetDetail, Hex, Result, ShardRef } from "@lattice-studio/core";
-import { err, isHex, lines, ok, validateCatalog, validateFacetDetail } from "@lattice-studio/core";
+import { err, findProtoKey, isHex, lines, ok, validateCatalog, validateFacetDetail } from "@lattice-studio/core";
 import { catalogDirFor, defaultEntry, entryDir, fetchManifest, type ManifestEntry } from "./lookup";
 import { shardRef } from "./resolve";
 
@@ -92,6 +92,7 @@ export function createCatalogLoader(): CatalogLoaderInstance {
     } catch {
       return err(`${name}'s shard isn't valid JSON.`);
     }
+    if (findProtoKey(json) !== null) return err(`${name}'s shard doesn't match the shard schema.`);
     const parsed = validateFacetDetail(json);
     return parsed.ok ? parsed : err(`${name}'s shard doesn't match the shard schema.`);
   }

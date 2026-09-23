@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
-import { lintCopy, PROBLEM_CODES, renderProblem, type Hex, type ProblemParams } from "@lattice-studio/core";
+import { CREATEX_CODEHASH, lintCopy, PROBLEM_CODES, renderProblem, type ProblemParams } from "@lattice-studio/core";
 import { PROBLEM_DOC_CONTENT, PROBLEM_DOC_ENTRIES } from "./content/index";
 import { latticeRefs, plainText } from "./markdown";
 import { latticeUrl, parseLatticeRef } from "./lattice-link";
@@ -119,11 +119,8 @@ describe("problem doc content", () => {
     }
   });
 
-  test("NET-01's example codehash is C6's own CREATEX_CODEHASH, not a fabricated value", () => {
-    const source = readFileSync(join(REPO_ROOT, "packages/core/src/checks/net.ts"), "utf8");
-    const pinned = source.match(/CREATEX_CODEHASH: Hex = "([^"]+)"/)?.[1];
-    expect(pinned).toBeDefined();
+  test("NET-01's example codehash is core's own CREATEX_CODEHASH, not a fabricated value", () => {
     const net01 = PROBLEM_DOC_CONTENT["NET-01"].exampleParams as ProblemParams["NET-01"];
-    expect(net01.case === "codehash" ? net01.expected : null).toBe(pinned as Hex);
+    expect(net01.case === "codehash" ? net01.expected : null).toBe(CREATEX_CODEHASH);
   });
 });

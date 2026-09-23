@@ -15,7 +15,7 @@ import { NotImplemented } from "@lattice-studio/core";
 import { useSyncExternalStore, type HTMLAttributes, type RefCallback } from "react";
 import type { ChainService } from "./chain";
 import type { DialogEntry, DialogId, DialogPropsMap } from "./dialogs";
-import { clearLog, provideKernel, randomBytes, recordedLog, resetKernel as resetKernelForServices } from "./kernel";
+import { clearLog, log, provideKernel, randomBytes, recordedLog, resetKernel as resetKernelForServices } from "./kernel";
 import { REGION_LABELS, type RegionId } from "./regions";
 import { listenerSet } from "./relay";
 import { doc, session, settings, type Viewport } from "./stores";
@@ -33,8 +33,11 @@ export type AnnounceOptions = {
 
 export type ToastInput = {
   text: string;
-  /** The toast's one action, run through the command registry ("Removed 2 facets" · Undo). */
-  action?: CommandRef;
+  /**
+   * The toast's one action, run through the command registry ("Removed 2 facets" · Undo). `label` is the
+   * button's text when it isn't the command's title, as with Undo running `project.restore` (CCR from S7b).
+   */
+  action?: CommandRef & { label?: string };
   /** Errors stay until closed (spec L733). */
   kind?: "info" | "error";
 };
@@ -150,6 +153,8 @@ export type Services = {
   dnd: DndService;
   /** S12. */
   openProblemDoc(code: ProblemCode): void;
+  /** S13: open a `#s=` share link the router found in the address (CCR from S3). */
+  openShareLink(link: string): void;
   /** S11a. */
   connection: ConnectionService;
   /** Milliseconds since the epoch; tests inject a fake clock. */
@@ -363,6 +368,9 @@ function defaults(): Rest {
     dnd: minimalDnd(),
     openProblemDoc: (code) => {
       session.set((s) => ({ panes: { ...s.panes, inspector: { ...s.panes.inspector, open: true, view: { kind: "doc", code } } } }));
+    },
+    openShareLink: () => {
+      log({ tag: "Note", text: `Opening a shared link: ${new NotImplemented("S13", "openShareLink").message}` });
     },
     connection: browserConnection(),
   };
@@ -655,6 +663,10 @@ export function subscribeCatalogDrag(listener: (drag: CatalogDrag | null) => voi
 /** Shows the problem's doc page in the inspector (K2's default routes there; S12 replaces it). */
 export function openProblemDoc(code: ProblemCode): void {
   impl.openProblemDoc(code);
+}
+
+export function openShareLink(link: string): void {
+  impl.openShareLink(link);
 }
 
 export function isOnline(): boolean {
