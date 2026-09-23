@@ -89,7 +89,7 @@ const picked = sig(D, "picked()");
 describe("computeRouting resolution order", () => {
   test("every exported selector once, keys sorted, contenders in catalog order whatever the recipe's order", () => {
     const routing = computeRouting(makeRecipe({ facets: ["C", "A", "B"] }), small);
-    expect(Object.keys(routing)).toEqual([...Object.keys(routing)].sort());
+    expect(Object.keys(routing)).toEqual(Object.keys(routing).sort());
     expect(routing[shared]?.contenders).toEqual(["A", "B", "C"]);
     expect(routing).toEqual(computeRouting(makeRecipe({ facets: ["A", "B", "C"] }), small));
   });

@@ -36,7 +36,7 @@ export const analyze: AnalyzeFn = (recipe, catalog, ctx, options) => {
   if (cached !== undefined) return cached;
 
   const routing = computeRouting(normalized, catalog);
-  const checks = options?.checks ?? CHECKS.map((check) => degradeCheck(check.run));
+  const checks = (options?.checks ?? CHECKS.map((check) => check.run)).map(degradeCheck);
   const problems = sortProblems(runChecks({ recipe: normalized, catalog, routing, ctx: context }, checks), catalog);
   const analysis: Analysis = {
     recipeHash: hash,
