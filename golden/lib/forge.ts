@@ -42,7 +42,7 @@ export function readEnvValue(text: string, key: string): string | undefined {
 }
 
 export type ForgeTest = { suite: string; test: string; ok: boolean; reason: string | null; logs: string[] };
-export type ForgeRun = { exitCode: number; tests: ForgeTest[]; output: string };
+export type ForgeRun = { exitCode: number; tests: ForgeTest[]; output: string; timedOut: boolean; timeoutSeconds: number };
 
 /**
  * Copies `files` into `<lattice>/test/<folder>/`, runs `forge test` on that folder only and returns each test's
@@ -83,7 +83,12 @@ export async function runForgeHarness(opts: {
       },
     );
     child = proc;
-    const timer = setTimeout(() => proc.kill(), opts.timeoutMs ?? 600_000);
+    const timeoutMs = opts.timeoutMs ?? 600_000;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      proc.kill();
+    }, timeoutMs);
     const [stdout, stderr, exitCode] = await Promise.all([
       new Response(proc.stdout).text(),
       new Response(proc.stderr).text(),
@@ -92,7 +97,7 @@ export async function runForgeHarness(opts: {
     clearTimeout(timer);
     const output = `${stdout}${stderr}`;
     const tests = existsSync(jsonFile) ? parseForgeJson(readFileSync(jsonFile, "utf8")) : [];
-    return { exitCode, tests, output };
+    return { exitCode, tests, output, timedOut, timeoutSeconds: Math.round(timeoutMs / 1000) };
   } finally {
     cleanup();
     process.off("SIGINT", onSignal);

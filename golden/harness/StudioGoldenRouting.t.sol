@@ -11,7 +11,7 @@ pragma solidity ^0.8.30;
 //   STUDIO_GOLDEN init <direct|MultiInit|none> <init address> <runtime codehash> <name> <artifact>
 //   STUDIO_GOLDEN step <index> <init address> <runtime codehash> <name> <artifact> <function selector>
 // Names come from matching runtime codehashes against FacetInventory (facets) and _initArtifacts() (inits);
-// an address that matches nothing is reported with the name `?`.
+// setUp fails if two candidates share a codehash, and an address that matches nothing is reported as `?`.
 
 import {MultiInit} from "@diamond/initializers/MultiInit.sol";
 import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
@@ -156,10 +156,18 @@ contract StudioGoldenRoutingTest is Test {
         return string.concat(vm.toString(a), " ", vm.toString(h), " ", name, " ", artifact);
     }
 
+    /// @dev Codehashes must be unique, or `_who` would silently report the first matching name.
     function _candidate(string memory name, string memory artifact) private {
+        bytes32 h = keccak256(vm.getDeployedCode(artifact));
+        for (uint256 i; i < _hashes.length; ++i) {
+            require(
+                _hashes[i] != h,
+                string.concat("StudioGolden: ", artifact, " has the same runtime codehash as ", _artifacts[i])
+            );
+        }
         _names.push(name);
         _artifacts.push(artifact);
-        _hashes.push(keccak256(vm.getDeployedCode(artifact)));
+        _hashes.push(h);
     }
 
     function _action(FacetCutAction a) private pure returns (string memory) {

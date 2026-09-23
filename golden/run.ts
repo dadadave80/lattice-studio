@@ -31,16 +31,16 @@ try {
 } catch (e) {
   if (e instanceof SetupError) {
     console.error(`golden: ${e.message}`);
-    process.exit(2);
-  }
-  if (e instanceof HarnessError) {
+    code = 2;
+  } else if (e instanceof HarnessError) {
     console.error(`golden: the harness failed: ${e.message}`);
     code = 1;
   } else throw e;
 }
 console.log(`golden: recipe routing took ${seconds(started)}.`);
 
-for (const suite of new Bun.Glob("*/run.ts").scanSync({ cwd: GOLDEN })) {
+const suites = [...new Bun.Glob("*/run.ts").scanSync({ cwd: GOLDEN })].sort();
+for (const suite of suites) {
   console.log(`golden: running ${relative(REPO_ROOT, join(GOLDEN, suite))}`);
   const p = Bun.spawnSync(["bun", join(GOLDEN, suite), ...args], { stdout: "inherit", stderr: "inherit", env: process.env });
   if (p.exitCode !== 0) code = Math.max(code, p.exitCode ?? 1);
@@ -57,6 +57,8 @@ async function routing(): Promise<number> {
     console.log("golden: git couldn't read the Lattice checkout's status, so the clean-checkout check was skipped.");
   } else if (before !== after) {
     throw new HarnessError(`the run left changes in the Lattice checkout:\n${after}`);
+  } else if (after !== "") {
+    console.warn(`golden: warning: the Lattice checkout at ${lattice} already had changes before this run:\n${after}`);
   }
 
   const failed = run.tests.filter((t) => !t.ok);
@@ -64,7 +66,11 @@ async function routing(): Promise<number> {
     for (const t of failed) console.error(`  ${t.test} failed: ${t.reason ?? "no reason given"}`);
     console.error(run.output.split("\n").slice(-40).join("\n"));
     throw new HarnessError(
-      run.tests.length === 0 ? `forge test ran no tests (exit ${run.exitCode}).` : `forge test exited ${run.exitCode}.`,
+      run.timedOut
+        ? `forge test timed out after ${run.timeoutSeconds} s.`
+        : run.tests.length === 0
+          ? `forge test ran no tests (exit ${run.exitCode}).`
+          : `forge test exited ${run.exitCode}.`,
     );
   }
 
