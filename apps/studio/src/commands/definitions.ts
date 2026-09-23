@@ -4,10 +4,11 @@ import { runEscape } from "./escape";
 import { WHEREVER_SINGLE_KEYS } from "./keys/resolve";
 
 /**
- * Esc runs the Esc stack wherever no modal dialog, menu, list or palette has focus (those close themselves)
- * and nobody is typing (a field keeps Esc to revert).
+ * Esc runs the Esc stack everywhere but a modal dialog or the palette (each closes itself on Esc) and a text
+ * field (which keeps Esc to revert). "list" and "menu" run it too: neither closes itself (IR L17: everywhere,
+ * in that order).
  */
-const ESCAPE_CONTEXTS: KeyContext[] = ["global", "sheet", "card-rows", "tree", "console"];
+const ESCAPE_CONTEXTS: KeyContext[] = ["global", "sheet", "card-rows", "tree", "list", "menu", "console"];
 
 export const NOTHING_TO_CLOSE = "Nothing to close.";
 export const DIALOG_OPEN = "A dialog is open. Close it to see the shortcuts.";
