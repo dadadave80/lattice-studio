@@ -4,11 +4,12 @@ import { Menu } from "@/ui/overlays/Menu";
 import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
 import { MenuItem } from "@/ui/overlays/MenuItem";
 import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
-import { briefFile, copyExport, exportFailed } from "./actions";
+import { loadConsoleBody } from "./load-body";
 
 export const IMAGE_LATER = "Arrives in v1.1";
 
 async function copyBrief(): Promise<void> {
+  const { briefFile, copyExport, exportFailed } = await loadConsoleBody();
   const file = await briefFile();
   if (file.ok) await copyExport(file.value);
   else exportFailed(file.error);
@@ -17,7 +18,8 @@ async function copyBrief(): Promise<void> {
 /**
  * The Export menu in the console header (spec L509-L518, IR L132): Foundry script, Agent brief, Recipe JSON,
  * Project file (S7b's `project.exportFile`), Safe batch…, and Image, which arrives in v1.1. Each item is its
- * command, disabled with the command's reason.
+ * command, disabled with the command's reason. The trigger sits in the drawer's header, so the menu is part of
+ * the frame; building and copying a file reach the body's chunk through `loadConsoleBody()`.
  */
 export function ExportMenu() {
   const brief = useCommandState({ id: "export.brief" }, "menu");
