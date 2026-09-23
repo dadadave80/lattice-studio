@@ -35,9 +35,16 @@ describe("HelpIndex (help.open with no code)", () => {
   test("opening a code from the index runs help.open and shows its page", async () => {
     await renderWithStudio(<InspectorHost />);
     session.set((s) => ({ panes: { ...s.panes, inspector: { ...s.panes.inspector, view: { kind: "doc" } as InspectorView } } }));
-    await expect.element(page.getByRole("heading", { name: "Problem docs" })).toBeVisible();
+    const indexHeading = page.getByRole("heading", { name: "Problem docs" });
+    await expect.element(indexHeading).toBeVisible();
+    await expect.element(indexHeading).toHaveFocus();
     await runCommand(commandRef("help.open", { code: "SEL-01" }), "button");
-    await expect.element(page.getByRole("heading", { name: "Selector needs an owner" })).toBeVisible();
+    const docHeading = page.getByRole("heading", { name: "Selector needs an owner" });
+    await expect.element(docHeading).toBeVisible();
+    // Focus moves to the new view's own heading, not left on the link that opened it or dropped to <body>.
+    await expect.element(docHeading).toHaveFocus();
+    expect(document.activeElement).toBe(docHeading.element());
+    expect(document.activeElement).not.toBe(document.body);
   });
 });
 
@@ -59,12 +66,18 @@ describe("ProblemDoc (one code's page)", () => {
       .toHaveAttribute("href", "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/LatticeFactory.sol#L103-L107");
   });
 
-  test("the back control returns to the index through help.open", async () => {
+  test("the back control returns to the index through help.open, moving focus to its heading", async () => {
     await renderWithStudio(<InspectorHost />);
     openProblemDoc("SEL-01");
-    await expect.element(page.getByRole("heading", { name: "Selector needs an owner" })).toBeVisible();
-    await page.getByRole("button", { name: "Back to problem docs" }).click();
-    await expect.element(page.getByRole("heading", { name: "Problem docs" })).toBeVisible();
+    const docHeading = page.getByRole("heading", { name: "Selector needs an owner" });
+    await expect.element(docHeading).toBeVisible();
+    await expect.element(docHeading).toHaveFocus();
+    await page.getByRole("button", { name: "Show all problem docs" }).click();
+    const indexHeading = page.getByRole("heading", { name: "Problem docs" });
+    await expect.element(indexHeading).toBeVisible();
+    await expect.element(indexHeading).toHaveFocus();
+    expect(document.activeElement).toBe(indexHeading.element());
+    expect(document.activeElement).not.toBe(document.body);
   });
 
   test("every code's page renders without crashing, each with its own heading", async () => {

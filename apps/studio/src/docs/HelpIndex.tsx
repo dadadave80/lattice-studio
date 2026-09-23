@@ -1,5 +1,6 @@
 /** The problem docs index (`help.open` with no code, IR L64's App menu "Help"): every code, grouped by family. */
 import type { ProblemCode } from "@lattice-studio/core";
+import { useEffect, useRef } from "react";
 import { commandRef, runCommand, useCommandState } from "@/contracts";
 import { PROBLEM_DOC_ENTRIES, type DocFamily } from "./content";
 import styles from "./HelpIndex.module.css";
@@ -33,9 +34,19 @@ function DocLink({ code, title }: { code: ProblemCode; title: string }) {
 }
 
 export function HelpIndex() {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // Coming back here from a code's page (or opening the index for the first time in the inspector) moves
+  // focus to this heading, never dropping it to <body> (spec L751-L761, WCAG 2.4.3).
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   return (
     <div className={styles.index}>
-      <h2 className={styles.heading}>Problem docs</h2>
+      <h2 ref={headingRef} tabIndex={-1} className={styles.heading}>
+        Problem docs
+      </h2>
       <p className={styles.intro}>
         Every problem code the composer can raise: what it means, why Lattice or Studio enforces it, and how to fix it. Available offline,
         precached with the app.

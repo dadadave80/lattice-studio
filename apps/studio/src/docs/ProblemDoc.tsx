@@ -5,6 +5,7 @@
  * with the code's own representative params, so it stays correct wherever the message template changes.
  */
 import { PROBLEMS, renderProblem, type ProblemCode, type Severity } from "@lattice-studio/core";
+import { useEffect, useRef } from "react";
 import { useCatalog } from "@/contracts";
 import { PROBLEM_DOC_CONTENT } from "./content";
 import { renderList, renderParagraphs } from "./markdown";
@@ -14,7 +15,7 @@ const SEVERITY_LABEL: Record<Severity, string> = { blocker: "Blocker", warning: 
 
 export type ProblemDocProps = {
   code: ProblemCode;
-  /** Shown as a "Back to problem docs" control above the page; omitted when there's nowhere to go back to. */
+  /** Shown as a "Show all problem docs" control above the page; omitted when there's nowhere to go back to. */
   onBack?: () => void;
 };
 
@@ -38,19 +39,26 @@ export function ProblemDoc({ code, onBack }: ProblemDocProps) {
   const commit = catalog?.lattice.commit ?? null;
   const example = renderProblem(code, entry.exampleParams as never);
   const titleId = `doc-${code}-title`;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // In-place navigation (opened from HelpIndex, or from another code): focus moves to this page's own
+  // heading, never left on the control that opened it or dropped to <body> (spec L751-L761, WCAG 2.4.3).
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [code]);
 
   return (
     <article className={styles.doc} aria-labelledby={titleId}>
       {onBack ? (
         <button type="button" className={styles.back} onClick={onBack}>
-          Back to problem docs
+          Show all problem docs
         </button>
       ) : null}
       <p className={styles.eyebrow}>
         {code} · {severityLabel(code)}
         {info.ack ? " · acknowledge to deploy" : ""}
       </p>
-      <h2 id={titleId} className={styles.title}>
+      <h2 id={titleId} ref={headingRef} tabIndex={-1} className={styles.title}>
         {entry.title}
       </h2>
 

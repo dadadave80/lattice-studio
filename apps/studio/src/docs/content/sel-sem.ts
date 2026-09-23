@@ -77,7 +77,7 @@ export const SEL_SEM: readonly ProblemDocEntry[] = [
     meaning:
       "A seam selector — one that several facets share state through — is routed to a facet the seam doesn't allow, or every facet that could serve it is missing from the sheet. A seam has one job: keep related selectors on versions that agree about shared state.",
     why:
-      "With ERC20Votes placed, `transfer` and `transferFrom` must run a version that [updates vote checkpoints](lattice:src/governance/Votes.sol#43-44), or a transfer would move balances without moving the votes that track them; `delegate` and `delegateBySig` must run ERC20Votes' own version for the same reason. GovernedVault carries its own seams: `deposit`, `mint`, `withdraw`, `redeem` and `castVoteBySig` must run GovernedVault's version, `totalAssets` VaultCore's, and `decimals` ERC4626's. Once every facet a seam needs is placed, Studio routes it automatically and blocks any explicit owner outside the allowed set.",
+      "With ERC20Votes placed, `transfer` and `transferFrom` must run a version that [updates vote checkpoints](lattice:src/tokens/ERC20/ERC20Votes.sol#32-37), or a transfer would move balances without moving the votes that track them; `delegate` and `delegateBySig` must run ERC20Votes' own version for the same reason. GovernedVault carries its own seams: `deposit`, `mint`, `withdraw`, `redeem` and `castVoteBySig` must run GovernedVault's version, `totalAssets` VaultCore's, and `decimals` ERC4626's. Once every facet a seam needs is placed, Studio routes it automatically and blocks any explicit owner outside the allowed set.",
     fixes: [
       "Route the selector to an allowed facet.",
       "Remove the facet that's routed there instead.",

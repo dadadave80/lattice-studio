@@ -9,7 +9,7 @@ export const INIT_AUTH_LINK: readonly ProblemDocEntry[] = [
     meaning:
       "A required init argument is missing, or its value breaks the rule Studio validates it against — including a chain rule such as a Safe that must already exist at the address an argument names, once a chain is selected.",
     why:
-      "Some rules come straight from Solidity: [governor quorum](lattice:src/governance/VotesLib.sol#81-91) must sit between 0 and 100, because it's read as a percentage of total supply, and a voting period of zero would never let anyone vote. Others depend on what's on-chain, such as a Safe that hasn't been deployed yet. Studio validates every field's rule as it's typed, and again once a chain is selected.",
+      "Some rules come straight from Solidity: [governor quorum](lattice:src/governance/libraries/GovernorLib.sol#159-161) must sit between 0 and 100, because it's read as a percentage of total supply, and a voting period of zero would never let anyone vote. Others depend on what's on-chain, such as a Safe that hasn't been deployed yet. Studio validates every field's rule as it's typed, and again once a chain is selected.",
     fixes: ["Edit the field."],
     exampleParams: { path: "bundle.p.quorum", label: "Governor quorum", missing: false, detail: "it must be 0-100 (percent of supply)", value: 140 },
     exampleNote: "Quorum was set above the range the field allows:",
@@ -21,7 +21,7 @@ export const INIT_AUTH_LINK: readonly ProblemDocEntry[] = [
     meaning:
       "A step init runs before another step it needs to have already run — an order Lattice's own library documents, not one Studio invents.",
     why:
-      "[VaultCore reads ERC4626's share accounting during its own init](lattice:src/defi/VaultCoreLib.sol#64-65), so ERC4626 has to initialize first or VaultCore reads nothing. Order constraints like this live in the overlay, one per documented dependency, and only apply to step inits — a bundle's order is fixed in Solidity and shown read-only, never something Studio could reorder.",
+      "[VaultCore reads ERC4626's share accounting during its own init](lattice:src/defi/libraries/VaultCoreLib.sol#64-65), so ERC4626 has to initialize first or VaultCore reads nothing. Order constraints like this live in the overlay, one per documented dependency, and only apply to step inits — a bundle's order is fixed in Solidity and shown read-only, never something Studio could reorder.",
     fixes: ["Reorder the steps automatically.", "Move the step by hand."],
     exampleParams: { path: "steps[2]", spec: "VaultCoreInit", module: "VaultCore", after: "ERC4626" },
     exampleNote: "VaultCoreInit is placed before the ERC4626 step it depends on:",
@@ -33,7 +33,7 @@ export const INIT_AUTH_LINK: readonly ProblemDocEntry[] = [
     meaning:
       "Two init steps both set up the same module. Depending on what they do, this either conflicts outright, grants the same roles to different addresses, or does the exact same thing twice — a blocker, a warning and an info case, in that order.",
     why:
-      "A module's init usually isn't written to guard against running twice: [`AccessControlLib`'s init](lattice:src/access/AccessControlLib.sol#71-76) grants roles every time it runs, so two AccessControl-setting steps produce two grants, possibly to different admins, and EIP712's init overwrites the domain it just wrote. Studio checks every pair of steps that touch the same module for exactly this.",
+      "A module's init usually isn't written to guard against running twice: [`AccessControlLib`'s init](lattice:src/access/libraries/AccessControlLib.sol#71-76) grants roles every time it runs, so two AccessControl-setting steps produce two grants, possibly to different admins, and EIP712's init overwrites the domain it just wrote. Studio checks every pair of steps that touch the same module for exactly this.",
     fixes: ["Remove one of the two steps.", "Granting roles to different admins: use one admin for both."],
     exampleParams: {
       module: "EIP712",
@@ -51,7 +51,7 @@ export const INIT_AUTH_LINK: readonly ProblemDocEntry[] = [
     meaning:
       "A placed facet needs an init step and the plan doesn't provide one, or a module that must initialize in the same call as another has no init step of its own.",
     why:
-      "A facet without its init step deploys with empty or zero storage: an [`AccessControlLib`](lattice:src/access/AccessControlLib.sol#71-76)-based facet needs its init to grant the first roles, and ERC20 needs its to set `name()` and `symbol()` at all. Studio checks every placed facet's init entry against the plan, and blocks a deploy that would leave one unset.",
+      "A facet without its init step deploys with empty or zero storage: an [`AccessControlLib`](lattice:src/access/libraries/AccessControlLib.sol#71-76)-based facet needs its init to grant the first roles, and ERC20 needs its to set `name()` and `symbol()` at all. Studio checks every placed facet's init entry against the plan, and blocks a deploy that would leave one unset.",
     fixes: ["Add the init step."],
     exampleParams: { module: "ERC20", spec: "ERC20Init", facet: "ERC20", consequence: "`name()` and `symbol()` would be empty" },
     exampleNote: "ERC20 is placed with no init step for it:",

@@ -21,7 +21,7 @@ export const CORE_DEP_STO: readonly ProblemDocEntry[] = [
     meaning:
       "Nothing on the sheet can change this diamond after it deploys: no DiamondCutFacet, AccessControlDiamondCut, GovernedDiamondCut, SafeDiamondCut or GovernedSafeDiamondCut is placed. Immutability is a deliberate choice, not a default, so Studio asks for it to be acknowledged.",
     why:
-      "A diamond with no cut facet [can never be upgraded](lattice:src/ILatticeFactory.sol#55-56): there's no function left that could change its routing. That's a legitimate design, but it forecloses every future fix, so the deploy review makes it an explicit choice rather than a silent one.",
+      "A diamond with no cut facet [can never be upgraded](lattice:src/interfaces/ILatticeFactory.sol#55-56): there's no function left that could change its routing. That's a legitimate design, but it forecloses every future fix, so the deploy review makes it an explicit choice rather than a silent one.",
     fixes: ["Choose an upgrade mechanism.", "Keep the diamond immutable, and acknowledge it."],
     exampleParams: {},
     exampleNote: "The message is the same every time:",
@@ -33,7 +33,7 @@ export const CORE_DEP_STO: readonly ProblemDocEntry[] = [
     meaning:
       "Two members of the upgrade-mechanism family are placed together. DiamondCutFacet, AccessControlDiamondCut, GovernedDiamondCut, SafeDiamondCut and GovernedSafeDiamondCut all provide a way to cut the diamond, and a diamond holds one, even when the two share no selector.",
     why:
-      "A second upgrade path can bypass the protection the first one exists for: [`AccessControlDiamondCut`](lattice:src/governance/AccessControlDiamondCut.sol#16-19) would let its admin skip the delay `GovernedSafeDiamondCut` enforces. This isn't a routing conflict Studio can resolve by choosing an owner; it means removing one of the two facets.",
+      "A second upgrade path can bypass the protection the first one exists for: [`AccessControlDiamondCut`](lattice:src/governance/AccessControlDiamondCut.sol#16-19) would let its admin skip the [delay `GovernedSafeDiamondCut` enforces](lattice:src/governance/GovernedSafeDiamondCut.sol#150-169) (`scheduleCut`, `minDelay`, `executeCut`). This isn't a routing conflict Studio can resolve by choosing an owner; it means removing one of the two facets.",
     fixes: ["Remove one of the two facets."],
     exampleParams: {
       facets: ["AccessControlDiamondCut", "GovernedSafeDiamondCut"],
@@ -48,7 +48,7 @@ export const CORE_DEP_STO: readonly ProblemDocEntry[] = [
     meaning:
       "Nothing on the sheet accepts plain ETH sent to the diamond. A `.transfer` or `.send` call to it will revert, because there's no `receive()` to catch it.",
     why:
-      "A diamond only accepts plain ETH through a facet that routes selector `0x00000000`, and only [`Receive`](lattice:src/Receive.sol#12-31) does that in the catalog. This is a warning, not a blocker: many diamonds never need to receive ETH directly.",
+      "A diamond only accepts plain ETH through a facet that routes selector `0x00000000` to a `receive()` function, and only [`Receive`](lattice:src/Receive.sol#12-31) does that in the catalog. This is a warning, not a blocker: many diamonds never need to receive ETH directly.",
     fixes: ["Place Receive."],
     exampleParams: { facet: "Receive" },
     exampleNote: "The message is the same every time:",
@@ -60,7 +60,7 @@ export const CORE_DEP_STO: readonly ProblemDocEntry[] = [
     meaning:
       "Nothing on the sheet answers `supportsInterface()`, so wallets, block explorers and other contracts that check interface support before calling in can't detect what this diamond implements.",
     why:
-      "ERC-165 detection needs a facet that routes `supportsInterface(bytes4)`; the catalog's [`ERC165Facet`](lattice:lib/diamond-lib/src/facets/ERC165Facet.sol) is the only one that does. It's a warning rather than a blocker, because a diamond still works without it — callers just have to assume rather than ask.",
+      "ERC-165 detection needs a facet that routes `supportsInterface(bytes4)`; the catalog's `ERC165Facet` is the only one that does. `ERC165Facet` comes from diamond-lib, the library Lattice builds its diamonds on. It's a warning rather than a blocker, because a diamond still works without it — callers just have to assume rather than ask.",
     fixes: ["Place ERC165Facet."],
     exampleParams: { facet: "ERC165Facet" },
     exampleNote: "The message is the same every time:",

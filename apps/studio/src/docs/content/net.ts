@@ -1,4 +1,12 @@
+import type { Hex } from "@lattice-studio/core";
 import type { ProblemDocEntry } from "./types";
+
+/**
+ * C6's own pin (`packages/core/src/checks/net.ts` `CREATEX_CODEHASH`), copied rather than imported: the
+ * checks module has no public subpath for it. `content.test.ts` checks this literal against that file's
+ * source, so the two can't drift silently.
+ */
+const CREATEX_CODEHASH: Hex = "0xbd8a7ea8cfca7b4e5f5041d7d4b17bc317c5ce42cfbc42066a00cf26b43eb53f";
 
 /** NET-01 .. NET-08 (spec L335-L342; Rules R8, R16, R21). */
 export const NET: readonly ProblemDocEntry[] = [
@@ -11,7 +19,7 @@ export const NET: readonly ProblemDocEntry[] = [
     why:
       "CreateX predicts an address purely from the raw salt it's given (`keccak256(abi.encode(salt))`). Predicting against a different contract, or none, would be meaningless, so Studio checks the codehash against [CreateX](https://github.com/pcaversaccio/createx)'s own release before ever building a transaction against it.",
     fixes: ["Use LatticeFactory instead.", "Choose another chain."],
-    exampleParams: { chain: "Sepolia", case: "codehash", expected: "0xbd8a7ea8cfca7b4e5f5041d7d3e6f2c8e0f6b53f" },
+    exampleParams: { chain: "Sepolia", case: "codehash", expected: CREATEX_CODEHASH },
     exampleNote: "The contract at CreateX's address on Sepolia doesn't match its known codehash:",
   },
   {
