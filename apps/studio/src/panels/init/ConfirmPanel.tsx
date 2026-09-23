@@ -82,7 +82,7 @@ export function ConfirmPanel({ field, value, source, projectId }: { field: Field
   return (
     // Esc closes the panel from any of its controls (focus lands on the panel itself when it opens).
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
-    <section ref={panelRef} className={styles.confirm} aria-labelledby={headingId} tabIndex={-1} onKeyDown={onKeyDown}>
+    <section ref={panelRef} data-confirm-panel="" className={styles.confirm} aria-labelledby={headingId} tabIndex={-1} onKeyDown={onKeyDown}>
       <h4 id={headingId} className={styles.eyebrow}>
         Confirm address
       </h4>

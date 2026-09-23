@@ -67,6 +67,8 @@ export function useDraft(stored: string, commitText: (text: string) => Promise<s
     onBlur(event) {
       const next = event.relatedTarget;
       if (next instanceof Node && event.currentTarget.contains(next)) return;
+      // The field's unit list opening (a portaled listbox) isn't leaving the field.
+      if (next instanceof Element && next.closest("[role='listbox']")) return;
       void commit();
     },
   };

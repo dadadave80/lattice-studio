@@ -10,7 +10,7 @@ export function BundleOrder({ spec, sequence }: { spec: string; sequence: readon
         {`Order inside ${spec}`}
       </h3>
       <p className={styles.empty}>Fixed in Solidity, so it can't be reordered.</p>
-      <ol className={styles.sequence}>
+      <ol className={styles.sequence} aria-labelledby={headingId}>
         {sequence.map((module, i) => (
           <li key={module} className={styles.sequenceItem}>
             <span className={styles.sequenceIndex}>{i < 9 ? `0${i + 1}` : i + 1}</span>

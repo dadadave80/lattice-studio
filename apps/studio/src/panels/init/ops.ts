@@ -33,10 +33,27 @@ function stepsOf(recipe: Recipe): readonly InitStep[] {
   return recipe.init.kind === "steps" ? recipe.init.steps : [];
 }
 
+/** Every argument under the steps, by path: "steps[1].admin", "steps[0].p.asset". */
+function leaves(steps: readonly InitStep[]): { path: string; value: Arg }[] {
+  const out: { path: string; value: Arg }[] = [];
+  const walk = (at: string, value: Arg) => {
+    if (typeof value === "object" && value !== null && !Array.isArray(value) && !("$ref" in value)) {
+      for (const [key, inner] of Object.entries(value)) walk(`${at}.${key}`, inner);
+    } else {
+      out.push({ path: at, value });
+    }
+  };
+  steps.forEach((step, i) => {
+    for (const [key, value] of Object.entries(step.args)) walk(`steps[${i}].${key}`, value);
+  });
+  return out;
+}
+
 /**
- * Provenance keyed by the old recipe's paths, moved to the new recipe's: a step that survives keeps its marks
- * wherever it now sits, as long as the argument itself didn't change (a value the change wrote wasn't read from
- * a link). Marks on steps that went away go with them.
+ * Provenance keyed by the old recipe's paths, moved to the new recipe's. A step that survives keeps its marks
+ * wherever it now sits, as long as the argument itself didn't change (a value the dialog wrote wasn't read from a
+ * link). A literal address the change carried into another step (the admin SafeDiamondCutInit had, now
+ * AccessControlInit's) keeps its mark there, so a From link address never loses LINK-01 by changing hands.
  */
 export function remapProvenance(provenance: Project["provenance"], before: Recipe, after: Recipe): Project["provenance"] {
   const oldSteps = stepsOf(before);
@@ -51,6 +68,7 @@ export function remapProvenance(provenance: Project["provenance"], before: Recip
     }
   });
   const out: Project["provenance"] = {};
+  const carried: { value: Arg; source: Project["provenance"][string] }[] = [];
   for (const [key, source] of Object.entries(provenance)) {
     const match = STEP_KEY.exec(key);
     if (!match) {
@@ -60,12 +78,21 @@ export function remapProvenance(provenance: Project["provenance"], before: Recip
     const from = Number(match[1]);
     const to = moved.get(from);
     const oldStep = oldSteps[from];
-    const newStep = to === undefined ? undefined : newSteps[to];
-    if (to === undefined || !oldStep || !newStep) continue;
+    if (!oldStep) continue;
     const rest = match[2] ?? "";
     const keys = rest.split(".").filter((k) => k !== "");
-    if (keys.length > 0 && !sameArg(argAt(oldStep.args, keys) as Arg | undefined, argAt(newStep.args, keys) as Arg | undefined)) continue;
-    out[`steps[${to}]${rest}`] = source;
+    const oldValue = argAt(oldStep.args, keys);
+    const newStep = to === undefined ? undefined : newSteps[to];
+    if (to !== undefined && newStep && (keys.length === 0 || sameArg(oldValue, argAt(newStep.args, keys)))) {
+      out[`steps[${to}]${rest}`] = source;
+    } else if (typeof oldValue === "string" && oldValue !== "") {
+      carried.push({ value: oldValue, source });
+    }
+  }
+  for (const leaf of leaves(newSteps)) {
+    if (out[leaf.path] !== undefined) continue;
+    const mark = carried.find((c) => sameArg(c.value, leaf.value));
+    if (mark) out[leaf.path] = mark.source;
   }
   return out;
 }

@@ -26,7 +26,9 @@ function focusTarget(root: HTMLElement | null, focus: string | undefined): void 
   } else if (/^(steps\[\d+\]|bundle|auto)$/.test(focus)) {
     target = root.querySelector<HTMLElement>(`[data-init-step="${CSS.escape(focus)}"] h3`);
   } else {
-    target = root.querySelector(`[data-init-path="${CSS.escape(focus)}"]`)?.querySelector<HTMLElement>(CONTROL) ?? null;
+    const row = root.querySelector(`[data-init-path="${CSS.escape(focus)}"]`);
+    // Confirm address… opened on this field: the panel keeps focus (it's what the fix asked for).
+    target = row?.querySelector<HTMLElement>("[data-confirm-panel]") ?? row?.querySelector<HTMLElement>(CONTROL) ?? null;
   }
   if (!target) return;
   target.focus();
