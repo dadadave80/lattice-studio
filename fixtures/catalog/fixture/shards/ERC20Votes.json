@@ -1,0 +1,133 @@
+{
+  "name": "ERC20Votes",
+  "abi": [
+    {
+      "name": "checkpoints",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        },
+        {
+          "type": "uint32",
+          "name": "pos"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "delegate",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "delegatee"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "delegateBySig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "delegatee"
+        },
+        {
+          "type": "uint256",
+          "name": "nonce"
+        },
+        {
+          "type": "uint256",
+          "name": "expiry"
+        },
+        {
+          "type": "uint8",
+          "name": "v"
+        },
+        {
+          "type": "bytes32",
+          "name": "r"
+        },
+        {
+          "type": "bytes32",
+          "name": "s"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "numCheckpoints",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "transfer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "transferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "from"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet combining ERC-20 with checkpoint-based voting power.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20Votes.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC20/ERC20Votes.sol"
+  }
+}

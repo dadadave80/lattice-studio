@@ -1,0 +1,200 @@
+{
+  "name": "SafeDiamondCut",
+  "abi": [
+    {
+      "name": "cutCount",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "diamondCut",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint8"
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "_diamondCut"
+        },
+        {
+          "type": "address",
+          "name": "_init"
+        },
+        {
+          "type": "bytes",
+          "name": "_calldata"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "emergencyRemoveCut",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint8"
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "_cuts"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "freezeSelectors",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes4[]",
+          "name": "_selectors"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "frozenSelectors",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes4[]"
+        }
+      ]
+    },
+    {
+      "name": "getCutRecord",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_version"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "isSelectorFrozen",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "_selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "previewCut",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint8"
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "_cuts"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool",
+          "name": "ok"
+        },
+        {
+          "type": "bytes4",
+          "name": "offendingSelector"
+        }
+      ]
+    },
+    {
+      "name": "safe",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "setSafe",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "_newSafe"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "verifyInterfaceRegistered",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "_interfaceId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet exposing the EIP-2535 `diamondCut` function at the canonical selector `0x1f931c1c`, gated behind EmergencyStop + a pinned Gnosis Safe mu",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/governance/SafeDiamondCut.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/governance/SafeDiamondCut.sol"
+  }
+}

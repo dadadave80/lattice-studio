@@ -1,0 +1,106 @@
+{
+  "name": "AccountSigner",
+  "abi": [
+    {
+      "name": "owner",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "p256PublicKey",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "x"
+        },
+        {
+          "type": "bytes32",
+          "name": "y"
+        }
+      ]
+    },
+    {
+      "name": "requireUserVerification",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setOwner",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "newOwner"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setP256Signer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "x"
+        },
+        {
+          "type": "bytes32",
+          "name": "y"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setWebAuthnSigner",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "x"
+        },
+        {
+          "type": "bytes32",
+          "name": "y"
+        },
+        {
+          "type": "bool",
+          "name": "requireUserVerification_"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "signerType",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Single-owner signer facet.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/accounts/erc7579/AccountSigner.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/accounts/erc7579/AccountSigner.sol"
+  }
+}

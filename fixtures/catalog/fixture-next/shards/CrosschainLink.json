@@ -1,0 +1,156 @@
+{
+  "name": "CrosschainLink",
+  "abi": [
+    {
+      "name": "getHandler",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "tag"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "handler"
+        }
+      ]
+    },
+    {
+      "name": "getLink",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "chain"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "gateway"
+        },
+        {
+          "type": "bytes",
+          "name": "counterpart"
+        }
+      ]
+    },
+    {
+      "name": "isProcessed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "gateway"
+        },
+        {
+          "type": "bytes32",
+          "name": "receiveId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "receiveMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "receiveId"
+        },
+        {
+          "type": "bytes",
+          "name": "sender"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes4"
+        }
+      ]
+    },
+    {
+      "name": "sendMessage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "chain"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes[]",
+          "name": "attributes"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "sendId"
+        }
+      ]
+    },
+    {
+      "name": "setHandler",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "tag"
+        },
+        {
+          "type": "address",
+          "name": "handler"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setLink",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "gateway"
+        },
+        {
+          "type": "bytes",
+          "name": "counterpart"
+        },
+        {
+          "type": "bool",
+          "name": "allowOverride"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet that owns the single ERC-7786 `receiveMessage` selector.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/CrosschainLink.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/CrosschainLink.sol"
+  }
+}

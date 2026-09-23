@@ -1,0 +1,107 @@
+{
+  "name": "TWAPOracle",
+  "abi": [
+    {
+      "name": "consult",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "uint32",
+          "name": "windowSeconds"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "price0Twap"
+        },
+        {
+          "type": "uint256",
+          "name": "price1Twap"
+        }
+      ]
+    },
+    {
+      "name": "getLatestObservation",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getPair",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "pair"
+        }
+      ]
+    },
+    {
+      "name": "recordObservation",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerPair",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "address",
+          "name": "pair"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "unregisterPair",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet for a Uniswap V2-style time-weighted average price oracle.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/uniswap/TWAPOracle.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/uniswap/TWAPOracle.sol"
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "name": "ERC6900ModuleManager",
+  "abi": [
+    {
+      "name": "accountId",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "installExecution",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "module"
+        },
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "bytes4"
+                },
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "bool"
+                }
+              ]
+            },
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "bytes4"
+                },
+                {
+                  "type": "uint32"
+                },
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "bool"
+                }
+              ]
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "manifest"
+        },
+        {
+          "type": "bytes",
+          "name": "installData"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "installValidation",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes25",
+          "name": "validationConfig"
+        },
+        {
+          "type": "bytes4[]",
+          "name": "selectors"
+        },
+        {
+          "type": "bytes",
+          "name": "installData"
+        },
+        {
+          "type": "bytes[]",
+          "name": "hooks"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "uninstallExecution",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "module"
+        },
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "bytes4"
+                },
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "bool"
+                }
+              ]
+            },
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "bytes4"
+                },
+                {
+                  "type": "uint32"
+                },
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "bool"
+                }
+              ]
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "manifest"
+        },
+        {
+          "type": "bytes",
+          "name": "uninstallData"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "uninstallValidation",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes24",
+          "name": "validationFunction"
+        },
+        {
+          "type": "bytes",
+          "name": "uninstallData"
+        },
+        {
+          "type": "bytes[]",
+          "name": "hookUninstallData"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-6900 module-configuration facet: installs/uninstalls execution modules (selector → module + execution hooks) and validation modules (`ModuleEntity` → flags ",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/accounts/erc6900/ERC6900ModuleManager.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/accounts/erc6900/ERC6900ModuleManager.sol"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "name": "OwnableFacet",
+  "abi": [
+    {
+      "name": "transferOwnership",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "_newOwner"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "renounceOwnership",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "requestOwnershipHandover",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "cancelOwnershipHandover",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "completeOwnershipHandover",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "_pendingOwner"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "owner",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "ownershipHandoverExpiresAt",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "_pendingOwner"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Simple single owner and multiroles authorization mixin.",
+    "functions": {}
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/facets/OwnableFacet.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/facets/OwnableFacet.sol"
+  }
+}

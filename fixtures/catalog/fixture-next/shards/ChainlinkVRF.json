@@ -1,0 +1,102 @@
+{
+  "name": "ChainlinkVRF",
+  "abi": [
+    {
+      "name": "getConfig",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "getUserKey",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "vrfRequestId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "rawFulfillRandomWords",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "requestId"
+        },
+        {
+          "type": "uint256[]",
+          "name": "randomWords"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "requestRandomWords",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "userKey"
+        },
+        {
+          "type": "uint32",
+          "name": "numWords"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "vrfRequestId"
+        }
+      ]
+    },
+    {
+      "name": "setConfig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "uint16"
+            },
+            {
+              "type": "uint32"
+            }
+          ],
+          "name": "config"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet for Chainlink VRF V2.5 subscription-funded random words.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/chainlink/ChainlinkVRF.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/chainlink/ChainlinkVRF.sol"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "name": "ENSResolver",
+  "abi": [
+    {
+      "name": "ensRegistry",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "resolve",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "node"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "resolverOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "node"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "setEnsRegistry",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "ensRegistry_"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "subnode",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "parentNode"
+        },
+        {
+          "type": "string",
+          "name": "label"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet for on-chain ENS forward resolution: resolves an ENS node to its address via the configured ENS registry.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/ens/ENSResolver.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/ens/ENSResolver.sol"
+  }
+}

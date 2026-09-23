@@ -1,0 +1,244 @@
+{
+  "name": "MarketplaceZone",
+  "abi": [
+    {
+      "name": "authorizeOrder",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "address"
+            },
+            {
+              "type": "address"
+            },
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "uint8"
+                },
+                {
+                  "type": "address"
+                },
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "uint256"
+                }
+              ]
+            },
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "uint8"
+                },
+                {
+                  "type": "address"
+                },
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "address"
+                }
+              ]
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes32[]"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "bytes32"
+            }
+          ],
+          "name": "zoneParameters"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes4"
+        }
+      ]
+    },
+    {
+      "name": "blockedRole",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "getSeaportMetadata",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "isRoyaltyRequired",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "collection"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setPaused",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bool",
+          "name": "paused_"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setRoyaltyRequired",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "collection"
+        },
+        {
+          "type": "bool",
+          "name": "required"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "validateOrder",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "address"
+            },
+            {
+              "type": "address"
+            },
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "uint8"
+                },
+                {
+                  "type": "address"
+                },
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "uint256"
+                }
+              ]
+            },
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "uint8"
+                },
+                {
+                  "type": "address"
+                },
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "address"
+                }
+              ]
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes32[]"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "bytes32"
+            }
+          ],
+          "name": "zoneParameters"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes4"
+        }
+      ]
+    },
+    {
+      "name": "zonePaused",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Seaport 1.6 zone facet.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/MarketplaceZone.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/MarketplaceZone.sol"
+  }
+}

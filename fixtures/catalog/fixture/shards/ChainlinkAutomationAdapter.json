@@ -1,0 +1,106 @@
+{
+  "name": "ChainlinkAutomationAdapter",
+  "abi": [
+    {
+      "name": "checkUpkeep",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "checkData"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool",
+          "name": "upkeepNeeded"
+        },
+        {
+          "type": "bytes",
+          "name": "performData"
+        }
+      ]
+    },
+    {
+      "name": "getCounter",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getForwarder",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "getInterval",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getLastTimeStamp",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "performUpkeep",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "performData"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setConfig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "forwarder"
+        },
+        {
+          "type": "uint256",
+          "name": "interval"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet for the consumer side of Chainlink Automation (keepers) with a canonical time-interval upkeep.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/chainlink/ChainlinkAutomationAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/chainlink/ChainlinkAutomationAdapter.sol"
+  }
+}

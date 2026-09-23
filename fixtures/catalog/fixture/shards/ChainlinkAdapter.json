@@ -1,0 +1,108 @@
+{
+  "name": "ChainlinkAdapter",
+  "abi": [
+    {
+      "name": "getFeed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "feed"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ]
+    },
+    {
+      "name": "latestAnswer",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int256",
+          "name": "answerWad"
+        }
+      ]
+    },
+    {
+      "name": "latestAnswerRaw",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int256",
+          "name": "answer"
+        },
+        {
+          "type": "uint256",
+          "name": "updatedAt"
+        },
+        {
+          "type": "uint8",
+          "name": "decimals_"
+        }
+      ]
+    },
+    {
+      "name": "registerFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "address",
+          "name": "feed"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "unregisterFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet that exposes Chainlink AggregatorV3 price feeds with per-feed staleness configuration and WAD-normalised answers.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/chainlink/ChainlinkAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/chainlink/ChainlinkAdapter.sol"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "EIP712",
+  "abi": [
+    {
+      "name": "eip712Domain",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes1",
+          "name": "fields"
+        },
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "version"
+        },
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "address",
+          "name": "verifyingContract"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        },
+        {
+          "type": "uint256[]",
+          "name": "extensions"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Thin facet that exposes the ERC-5267 `eip712Domain()` view.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/utils/EIP712.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/utils/EIP712.sol"
+  }
+}

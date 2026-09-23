@@ -1,0 +1,186 @@
+{
+  "name": "ERC7786OpenBridge",
+  "abi": [
+    {
+      "name": "addGateway",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "gateway"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getGateways",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address[]"
+        }
+      ]
+    },
+    {
+      "name": "getRemoteBridge",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "chain"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "getThreshold",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint8"
+        }
+      ]
+    },
+    {
+      "name": "minDirectCoverage",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint8"
+        }
+      ]
+    },
+    {
+      "name": "receiveMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "receiveId"
+        },
+        {
+          "type": "bytes",
+          "name": "sender"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes4"
+        }
+      ]
+    },
+    {
+      "name": "registerRemoteBridge",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "bridge"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "removeGateway",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "gateway"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "sendMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes[]",
+          "name": "attributes"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "setMinDirectCoverage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint8",
+          "name": "minDirectCoverage_"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setThreshold",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint8",
+          "name": "threshold"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "supportsAttribute",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "N-of-M ERC-7786 aggregator facet: `sendMessage` fans a message out across M gateways, and `receiveMessage` delivers to the recipient once N independent gateways",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/ERC7786OpenBridge.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/ERC7786OpenBridge.sol"
+  }
+}

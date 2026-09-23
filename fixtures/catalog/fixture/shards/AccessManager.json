@@ -1,0 +1,541 @@
+{
+  "name": "AccessManager",
+  "abi": [
+    {
+      "name": "ADMIN_ROLE",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint64"
+        }
+      ]
+    },
+    {
+      "name": "PUBLIC_ROLE",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint64"
+        }
+      ]
+    },
+    {
+      "name": "canCall",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "caller"
+        },
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        },
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "cancel",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "caller"
+        },
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "execute",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "getAccess",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        },
+        {
+          "type": "address",
+          "name": "account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint48"
+        },
+        {
+          "type": "uint32"
+        },
+        {
+          "type": "uint32"
+        },
+        {
+          "type": "uint48"
+        }
+      ]
+    },
+    {
+      "name": "getNonce",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "operationId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "getRoleAdmin",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint64"
+        }
+      ]
+    },
+    {
+      "name": "getRoleGrantDelay",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "getRoleGuardian",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint64"
+        }
+      ]
+    },
+    {
+      "name": "getRoleMemberCount",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getRoleMembers",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address[]"
+        }
+      ]
+    },
+    {
+      "name": "getSchedule",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "operationId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint48"
+        }
+      ]
+    },
+    {
+      "name": "getTargetAdminDelay",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "getTargetFunctionRole",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint64"
+        }
+      ]
+    },
+    {
+      "name": "grantRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        },
+        {
+          "type": "address",
+          "name": "account"
+        },
+        {
+          "type": "uint32",
+          "name": "executionDelay"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "hasRole",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        },
+        {
+          "type": "address",
+          "name": "account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        },
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "hashOperation",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "caller"
+        },
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "isTargetClosed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "labelRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        },
+        {
+          "type": "string",
+          "name": "label"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "renounceRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        },
+        {
+          "type": "address",
+          "name": "callerConfirmation"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "revokeRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        },
+        {
+          "type": "address",
+          "name": "account"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "schedule",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        },
+        {
+          "type": "uint48",
+          "name": "when"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        },
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "setGrantDelay",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        },
+        {
+          "type": "uint32",
+          "name": "newDelay"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setRoleAdmin",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        },
+        {
+          "type": "uint64",
+          "name": "admin"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setRoleGuardian",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint64",
+          "name": "roleId"
+        },
+        {
+          "type": "uint64",
+          "name": "guardian"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setTargetAdminDelay",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "uint32",
+          "name": "newDelay"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setTargetClosed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bool",
+          "name": "closed"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setTargetFunctionRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bytes4[]",
+          "name": "selectors"
+        },
+        {
+          "type": "uint64",
+          "name": "roleId"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet exposing AccessManagerLib.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/access/AccessManager.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/access/AccessManager.sol"
+  }
+}

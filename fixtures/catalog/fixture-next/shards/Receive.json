@@ -1,0 +1,17 @@
+{
+  "name": "Receive",
+  "abi": [
+    {
+      "type": "receive",
+      "stateMutability": "payable"
+    }
+  ],
+  "natspec": {
+    "notice": "Bare-ETH acceptance as a facet: cut this under the ZERO selector (`bytes4(0)`) and the diamond accepts plain ETH sends.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/Receive.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/Receive.sol"
+  }
+}

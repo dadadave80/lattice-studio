@@ -1,0 +1,45 @@
+{
+  "name": "ERC7802",
+  "abi": [
+    {
+      "name": "crosschainBurn",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "_from"
+        },
+        {
+          "type": "uint256",
+          "name": "_amount"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "crosschainMint",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "_to"
+        },
+        {
+          "type": "uint256",
+          "name": "_amount"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-7802 crosschain-native ERC-20 extension facet: a trusted bridge (holder of `CROSSCHAIN_BRIDGE_ROLE`) mints on the destination chain and burns on the source.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC7802/ERC7802.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC7802/ERC7802.sol"
+  }
+}
