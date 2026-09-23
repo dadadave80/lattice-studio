@@ -4,19 +4,19 @@
  */
 import type { Layout, LayoutMetrics, Point, Rect, Size, Sizes } from "../model/layout";
 
-/** Nearest multiple of `step` (half-way rounds up). */
+/** Nearest multiple of `step` (half-way rounds up; never -0). */
 export function snap(value: number, step: number): number {
-  return step > 0 ? Math.round(value / step) * step : value;
+  return step > 0 ? Math.round(value / step) * step || 0 : value;
 }
 
 /** The smallest multiple of `step` at or above `value`. */
 export function snapUp(value: number, step: number): number {
-  return step > 0 ? Math.ceil(value / step - 1e-9) * step : value;
+  return step > 0 ? Math.ceil(value / step - 1e-9) * step || 0 : value;
 }
 
 /** The largest multiple of `step` at or below `value`. */
 export function snapDown(value: number, step: number): number {
-  return step > 0 ? Math.floor(value / step + 1e-9) * step : value;
+  return step > 0 ? Math.floor(value / step + 1e-9) * step || 0 : value;
 }
 
 /** The size layout assumes for a card `sizes` doesn't list: a card with no rows. */

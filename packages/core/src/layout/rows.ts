@@ -40,7 +40,10 @@ export function contestedByFacet(list: readonly Collision[]): Map<string, Hex4[]
   return out;
 }
 
-/** Padding above and below a card's pin rows: one grid step each (the board's `PINS_PAD`). */
+/**
+ * Padding above and below a card's pin rows: one grid step each, as the board draws it (`PINS_PAD 8`,
+ * Composer-Final). `LayoutMetrics` has no length for it yet, so it borrows `grid` (see C9's CCR).
+ */
 export function pinsPad(metrics: LayoutMetrics): number {
   return metrics.grid;
 }

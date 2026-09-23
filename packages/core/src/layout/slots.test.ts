@@ -33,6 +33,11 @@ describe("freeSlot", () => {
     expect(freeSlot({}, {}, { x: 101, y: 45 }, { width: W, height: 100 }, metrics)).toEqual({ x: 104, y: 48 });
   });
 
+  test("a drop just left of the origin snaps to 0, not -0", () => {
+    const at = freeSlot({}, {}, { x: -3, y: -1 }, { width: W, height: 100 }, metrics);
+    expect(Object.is(at.x, 0) && Object.is(at.y, 0)).toBe(true);
+  });
+
   test("a drop onto a card slides to the nearest free spot", () => {
     const layout: Layout = { A: { x: 0, y: 0, pins: "right" } };
     const sizes: Sizes = { A: { width: W, height: 200 } };
