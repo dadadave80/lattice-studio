@@ -13,7 +13,7 @@ const FOCUS = { kind: "section", section: "deployments" } as const;
 
 /** Every deployment record, grouped by chain, newest first (Flow 13, spec L584, L698). */
 export function DeploymentsList() {
-  const { deployments, chain, chains, chainName } = useDeployStatus();
+  const { deployments, chain, chains, chainName } = useDeployStatus({ recordChains: true });
   const currentHash = useAnalysis((a) => a.recipeHash);
   const online = useOnline();
   const checks = useRecordChecks(deployments, chain, online);

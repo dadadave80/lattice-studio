@@ -27,7 +27,7 @@ export function ComparisonView({ view }: InspectorViewProps<"comparison">) {
   const sheetHash = useAnalysis((a) => a.recipeHash);
   const catalog = useCatalog();
   const signatureOf = useMemo(() => signatureLookup(catalog), [catalog]);
-  const { deployments } = useDeployStatus();
+  const { deployments } = useDeployStatus({ recordChains: true });
   const record = deployments?.find((d) => d.chainId === chainId && d.address.toLowerCase() === address.toLowerCase());
 
   const service = online && access.status === "ready" ? access.service : null;

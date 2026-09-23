@@ -89,6 +89,7 @@ describe("following the selection", () => {
   test("a routed view gives way when the selection changes on its own", async () => {
     await renderWithStudio(<InspectorPanel />, { project: project(["ERC20", "Receive"]) });
     setView({ kind: "preview", facet: "Governor" });
+    await viewShown("preview");
     session.set({ selection: ["Receive"] });
     expect(inspectorView()).toBeNull();
     await viewShown("facet");
@@ -102,6 +103,18 @@ describe("following the selection", () => {
       panes: { ...s.panes, inspector: { ...s.panes.inspector, view: { kind: "problem", id: "INIT-04:ERC20" } } },
     }));
     expect(inspectorView()).toEqual({ kind: "problem", id: "INIT-04:ERC20" });
+  });
+
+  test("routing the view, then selecting in a second update of the same task, keeps the view (F8)", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    await Promise.resolve();
+    setView({ kind: "problem", id: "INIT-04:ERC20" });
+    session.set({ selection: ["ERC20"] });
+    await Promise.resolve();
+    expect(inspectorView()).toEqual({ kind: "problem", id: "INIT-04:ERC20" });
+    // A later, separate selection change still moves the inspector on.
+    session.set({ selection: [] });
+    expect(inspectorView()).toBeNull();
   });
 
   test("the Init plan stays while the selection changes", async () => {

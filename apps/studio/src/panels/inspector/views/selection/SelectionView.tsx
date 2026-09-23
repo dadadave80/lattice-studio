@@ -1,7 +1,7 @@
 import { plural, recipeStats } from "@lattice-studio/core";
 import { useMemo } from "react";
 import type { InspectorViewProps } from "@/contracts";
-import { commandRef, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
+import { commandRef, emptyAnalysis, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
 import { CommandButton, cx } from "@/ui";
 import { Section } from "../../shared/Section";
 import { ViewHeader } from "../../shared/ViewHeader";
@@ -16,11 +16,17 @@ import { anchoredProblems } from "../facet/facet-model";
 export function SelectionView(_props: InspectorViewProps<"selection">) {
   const selection = useSession((s) => s.selection);
   const placed = useDocument((s) => s.project.recipe.facets);
-  const analysis = useAnalysis((a) => a);
+  const plan = useAnalysis((a) => a.plan);
+  const routing = useAnalysis((a) => a.routing);
+  const allProblems = useAnalysis((a) => a.problems);
   const catalog = useCatalog();
   const selected = useMemo(() => selection.filter((name) => placed.includes(name)), [selection, placed]);
-  const perFacet = useMemo(() => (catalog ? recipeStats(analysis, catalog).perFacet : {}), [analysis, catalog]);
-  const problems = useMemo(() => anchoredProblems(analysis.problems, selected), [analysis.problems, selected]);
+  // recipeStats reads only the plan and the routing.
+  const perFacet = useMemo(
+    () => (catalog ? recipeStats({ ...emptyAnalysis(), plan, routing }, catalog).perFacet : {}),
+    [plan, routing, catalog],
+  );
+  const problems = useMemo(() => anchoredProblems(allProblems, selected), [allProblems, selected]);
 
   return (
     <div className={sheet.view} data-view="selection">

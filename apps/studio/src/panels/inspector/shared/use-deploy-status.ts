@@ -1,7 +1,6 @@
 /**
  * The open project's deployment records and what they say about the selected chain (C5a's `projectStatus`),
- * with chain names and explorers from the chain module once it's needed: a chain is selected, or there are
- * records to name.
+ * with chain names and explorers from the chain module once it's needed.
  */
 import type { Deployment, ProjectStatus } from "@lattice-studio/core";
 import { projectStatus } from "@lattice-studio/core";
@@ -20,13 +19,18 @@ export type DeployStatus = {
 
 const NONE: readonly Deployment[] = Object.freeze([]);
 
-export function useDeployStatus(): DeployStatus {
+/**
+ * `recordChains`: also load the chain module when there are records to name and check, not only once a chain is
+ * selected. The Deployments list and the Comparison view ask for it; the footer doesn't, so the footer never
+ * pulls in the wallet stack on its own (spec L25, decision 13).
+ */
+export function useDeployStatus(options: { recordChains?: boolean } = {}): DeployStatus {
   const project = useDocument((s) => s.project);
   const chainId = useSession((s) => s.chainId);
   const recipeHash = useAnalysis((a) => a.recipeHash);
   const records = useDeployments(project.id);
   const deployments = records.status === "ready" ? records.deployments : null;
-  const chain = useChainService(chainId !== null || (deployments?.length ?? 0) > 0);
+  const chain = useChainService(chainId !== null || (options.recordChains === true && (deployments?.length ?? 0) > 0));
   const chains = useChains(chain);
   return useMemo(() => {
     const chainName = (id: number): string => chainNameOf(chains, id);
