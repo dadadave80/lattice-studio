@@ -1,0 +1,105 @@
+{
+  "name": "ChainlinkCREAdapter",
+  "abi": [
+    {
+      "name": "getForwarder",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "getLatestReport",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "workflowId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes",
+          "name": "report"
+        },
+        {
+          "type": "uint256",
+          "name": "timestamp"
+        }
+      ]
+    },
+    {
+      "name": "isWorkflowAllowed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "workflowId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "onReport",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "metadata"
+        },
+        {
+          "type": "bytes",
+          "name": "report"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setForwarder",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "forwarder"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setWorkflow",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "workflowId"
+        },
+        {
+          "type": "bool",
+          "name": "allowed"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet that receives Chainlink CRE (Chainlink Runtime Environment) workflow reports via the `IReceiver.onReport` entry point, delivered by the KeystoneFo",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/chainlink/ChainlinkCREAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/chainlink/ChainlinkCREAdapter.sol"
+  }
+}

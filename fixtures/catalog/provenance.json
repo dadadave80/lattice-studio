@@ -1,0 +1,548 @@
+{
+  "note": "Where each fact in fixtures/catalog comes from. `real` facts cite Lattice at the pin; `invented` values are fake. Written by fixtures/gen/build.ts.",
+  "lattice": {
+    "commit": "f4a32c8330934d39bcfdffff87d35a04b7fa6a79",
+    "diamondLib": "393435fbd01a85f9626cd62f436cdebf90ecdfdf",
+    "version": "0.2.0",
+    "versionSource": "src/LatticeVersion.sol#L22"
+  },
+  "real": {
+    "inventory": "script/lib/FacetInventory.sol#L20-L228",
+    "selectors": {
+      "AcrossBridgeAdapter": "src/crosschain/across/AcrossBridgeAdapter.sol#L51",
+      "AxelarGatewayAdapter": "src/crosschain/axelar/AxelarGatewayAdapter.sol#L88",
+      "BridgeERC20": "src/crosschain/BridgeERC20.sol#L50",
+      "BridgeERC7802": "src/crosschain/BridgeERC7802.sol#L50",
+      "CCIPGatewayAdapter": "src/crosschain/chainlink/CCIPGatewayAdapter.sol#L169",
+      "CCTPBridgeAdapter": "src/crosschain/circle/CCTPBridgeAdapter.sol#L119",
+      "ChainRegistry": "src/crosschain/ChainRegistry.sol#L103",
+      "CrosschainLink": "src/crosschain/CrosschainLink.sol#L84",
+      "CrosschainTimelockHandler": "src/crosschain/CrosschainTimelockHandler.sol#L52",
+      "ERC7786OpenBridge": "src/crosschain/ERC7786OpenBridge.sol#L106",
+      "HyperbridgeGatewayAdapter": "src/crosschain/hyperbridge/HyperbridgeGatewayAdapter.sol#L177",
+      "HyperlaneGatewayAdapter": "src/crosschain/hyperlane/HyperlaneGatewayAdapter.sol#L106",
+      "L1ToL2CrossDomainMessengerGatewayAdapter": "src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol#L96",
+      "L2ToL2CrossDomainMessengerGatewayAdapter": "src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapter.sol#L76",
+      "LayerZeroGatewayAdapter": "src/crosschain/layerzero/LayerZeroGatewayAdapter.sol#L127",
+      "StargateBridgeAdapter": "src/crosschain/layerzero/StargateBridgeAdapter.sol#L75",
+      "StarknetGatewayAdapter": "src/crosschain/starknet/StarknetGatewayAdapter.sol#L113",
+      "SuperchainETHBridgeAdapter": "src/crosschain/optimism/SuperchainETHBridgeAdapter.sol#L34",
+      "WormholeGatewayAdapter": "src/crosschain/wormhole/WormholeGatewayAdapter.sol#L108",
+      "ZetaChainGatewayAdapter": "src/crosschain/zetachain/ZetaChainGatewayAdapter.sol#L98",
+      "API3Adapter": "src/oracles/api3/API3Adapter.sol#L51",
+      "API3QRNGAdapter": "src/oracles/api3/API3QRNGAdapter.sol#L60",
+      "BandAdapter": "src/oracles/band/BandAdapter.sol#L80",
+      "ChainlinkAdapter": "src/oracles/chainlink/ChainlinkAdapter.sol#L57",
+      "ChainlinkAutomationAdapter": "src/oracles/chainlink/ChainlinkAutomationAdapter.sol#L75",
+      "ChainlinkCREAdapter": "src/oracles/chainlink/ChainlinkCREAdapter.sol#L75",
+      "ChainlinkVRF": "src/oracles/chainlink/ChainlinkVRF.sol#L58",
+      "ChronicleAdapter": "src/oracles/chronicle/ChronicleAdapter.sol#L52",
+      "DIAAdapter": "src/oracles/dia/DIAAdapter.sol#L61",
+      "GelatoAutomateAdapter": "src/oracles/gelato/GelatoAutomateAdapter.sol#L60",
+      "GelatoVRFAdapter": "src/oracles/gelato/GelatoVRFAdapter.sol#L53",
+      "PythAdapter": "src/oracles/pyth/PythAdapter.sol#L93",
+      "PythEntropyAdapter": "src/oracles/pyth/PythEntropyAdapter.sol#L65",
+      "RedStoneAdapter": "src/oracles/redstone/RedStoneAdapter.sol#L67",
+      "TellorAdapter": "src/oracles/tellor/TellorAdapter.sol#L75",
+      "TWAPOracle": "src/oracles/uniswap/TWAPOracle.sol#L62",
+      "ERC1155": "src/tokens/ERC1155/ERC1155.sol#L71",
+      "ERC20": "src/tokens/ERC20/ERC20.sol#L73",
+      "ERC20Burnable": "src/tokens/ERC20/ERC20Burnable.sol#L30",
+      "ERC20Capped": "src/tokens/ERC20/ERC20Capped.sol#L33",
+      "ERC20Crosschain": "src/tokens/ERC20/ERC20Crosschain.sol#L45",
+      "ERC20FlashMint": "src/tokens/ERC20/ERC20FlashMint.sol#L43",
+      "ERC20Pausable": "src/tokens/ERC20/ERC20Pausable.sol#L36",
+      "ERC20Permit": "src/tokens/ERC20/ERC20Permit.sol#L46",
+      "ERC20Votes": "src/tokens/ERC20/ERC20Votes.sol#L87",
+      "ERC2981": "src/tokens/ERC2981/ERC2981.sol#L48",
+      "ERC4626": "src/tokens/ERC4626/ERC4626.sol#L143",
+      "ERC721": "src/tokens/ERC721/ERC721.sol#L90",
+      "ERC7802": "src/tokens/ERC7802/ERC7802.sol#L32",
+      "MarketplaceZone": "src/tokens/MarketplaceZone.sol#L74",
+      "AccountSigner": "src/accounts/erc7579/AccountSigner.sol#L62",
+      "ERC1271Signature": "src/accounts/ERC1271Signature.sol#L28",
+      "ERC4337Validation": "src/accounts/ERC4337Validation.sol#L45",
+      "ERC6900AccountView": "src/accounts/erc6900/ERC6900AccountView.sol#L45",
+      "ERC6900Executor": "src/accounts/erc6900/ERC6900Executor.sol#L51",
+      "ERC6900ModuleManager": "src/accounts/erc6900/ERC6900ModuleManager.sol#L68",
+      "ERC6900Signature": "src/accounts/erc6900/ERC6900Signature.sol#L28",
+      "ERC6900Validation": "src/accounts/erc6900/ERC6900Validation.sol#L33",
+      "ERC7821Executor": "src/accounts/erc7579/ERC7821Executor.sol#L35",
+      "ConstantProduct": "src/amm/ConstantProduct.sol#L128",
+      "AggregatorExecAdapter": "src/defi/AggregatorExecAdapter.sol#L48",
+      "GovernedVault": "src/defi/GovernedVault.sol#L138",
+      "StrategyManager": "src/defi/StrategyManager.sol#L112",
+      "VaultCore": "src/defi/VaultCore.sol#L125",
+      "CommitReveal": "src/privacy/CommitReveal.sol#L55",
+      "ERC5564Announcer": "src/privacy/ERC5564Announcer.sol#L30",
+      "ERC6538Registry": "src/privacy/ERC6538Registry.sol#L72",
+      "Groth16Verifier": "src/privacy/Groth16Verifier.sol#L34",
+      "PlonkVerifier": "src/privacy/PlonkVerifier.sol#L34",
+      "PrivateVoting": "src/privacy/PrivateVoting.sol#L62",
+      "Semaphore": "src/privacy/Semaphore.sol#L101",
+      "ShieldedPool": "src/privacy/ShieldedPool.sol#L77",
+      "AccessControlDiamondCut": "src/governance/AccessControlDiamondCut.sol#L37",
+      "GovernedDiamondCut": "src/governance/GovernedDiamondCut.sol#L87",
+      "GovernedSafeDiamondCut": "src/governance/GovernedSafeDiamondCut.sol#L170",
+      "Governor": "src/governance/Governor.sol#L299",
+      "SafeDiamondCut": "src/governance/SafeDiamondCut.sol#L108",
+      "SafeHarborAdopter": "src/governance/SafeHarborAdopter.sol#L71",
+      "TimelockController": "src/governance/TimelockController.sol#L176",
+      "Votes": "src/governance/Votes.sol#L78",
+      "CircuitBreaker": "src/security/CircuitBreaker.sol#L54",
+      "EmergencyStop": "src/security/EmergencyStop.sol#L61",
+      "InvariantChecker": "src/security/InvariantChecker.sol#L62",
+      "Pausable": "src/security/Pausable.sol#L51",
+      "RateLimiter": "src/security/RateLimiter.sol#L43",
+      "AccessControl": "src/access/AccessControl.sol#L66",
+      "AccessControlEnumerable": "src/access/AccessControlEnumerable.sol#L79",
+      "AccessControlTimed": "src/access/AccessControlTimed.sol#L85",
+      "AccessManaged": "src/access/AccessManaged.sol#L37",
+      "AccessManager": "src/access/AccessManager.sol#L189",
+      "ENSResolver": "src/ens/ENSResolver.sol#L52",
+      "ENSReverseClaimer": "src/ens/ENSReverseClaimer.sol#L48",
+      "ENSSubnameIssuer": "src/ens/ENSSubnameIssuer.sol#L48",
+      "EIP712": "src/utils/EIP712.sol#L39",
+      "Multicall": "src/utils/Multicall.sol#L25",
+      "Receive": "src/Receive.sol#L28",
+      "DiamondCutFacet": "lib/diamond-lib/src/facets/DiamondCutFacet.sol#L32",
+      "DiamondLoupeFacet": "lib/diamond-lib/src/facets/DiamondLoupeFacet.sol#L50",
+      "ERC165Facet": "lib/diamond-lib/src/facets/ERC165Facet.sol#L23",
+      "OwnableFacet": "lib/diamond-lib/src/facets/OwnableFacet.sol#L70"
+    },
+    "signatures": "The design prototype's signatures, each checked: keccak256(signature)[:4] equals the exported selector.",
+    "storage": "Namespaces from the prototype; slots computed with the ERC-7201 formula (R13) and found as constants in the source.",
+    "families": [
+      {
+        "family": "upgrade",
+        "facets": [
+          "DiamondCutFacet",
+          "AccessControlDiamondCut",
+          "GovernedDiamondCut",
+          "SafeDiamondCut",
+          "GovernedSafeDiamondCut"
+        ],
+        "source": "src/governance/AccessControlDiamondCut.sol#L11-L11"
+      },
+      {
+        "family": "access",
+        "facets": [
+          "AccessControl",
+          "AccessControlEnumerable",
+          "AccessControlTimed"
+        ],
+        "source": "src/access/AccessControlEnumerable.sol#L11-L11"
+      },
+      {
+        "family": "account",
+        "facets": [
+          "AccountSigner",
+          "ERC6900Validation"
+        ],
+        "source": "script/base/accounts/DeployAccount6900.s.sol#L23-L23"
+      }
+    ],
+    "touchesOnly": [
+      {
+        "facet": "DiamondCutFacet",
+        "namespace": "diamond.lib.storage",
+        "source": "lib/diamond-lib/src/facets/DiamondCutFacet.sol#L28-L28"
+      },
+      {
+        "facet": "DiamondLoupeFacet",
+        "namespace": "diamond.lib.storage",
+        "source": "lib/diamond-lib/src/facets/DiamondLoupeFacet.sol#L18-L18"
+      }
+    ],
+    "summaries": [
+      {
+        "facet": "DiamondCutFacet",
+        "source": "lib/diamond-lib/src/facets/DiamondCutFacet.sol#L24-L28"
+      }
+    ],
+    "after": [
+      {
+        "name": "VaultCoreInit",
+        "after": [
+          "AccessControl",
+          "ERC4626"
+        ],
+        "source": "src/defi/libraries/VaultCoreLib.sol#L64-L65"
+      },
+      {
+        "name": "GovernedDiamondCutInit",
+        "after": [
+          "AccessControl"
+        ],
+        "source": "src/governance/libraries/GovernedDiamondCutLib.sol#L113-L114"
+      }
+    ],
+    "requires": [
+      {
+        "facet": "VaultCore",
+        "anyOf": [
+          "ERC4626"
+        ],
+        "strength": "hard",
+        "source": "src/defi/libraries/VaultCoreLib.sol#L64-L65"
+      },
+      {
+        "facet": "GovernedDiamondCut",
+        "anyOf": [
+          "EmergencyStop"
+        ],
+        "strength": "convention",
+        "source": "src/governance/GovernedDiamondCut.sol#L14-L14"
+      },
+      {
+        "facet": "SafeDiamondCut",
+        "anyOf": [
+          "EmergencyStop"
+        ],
+        "strength": "convention",
+        "source": "script/base/governance/DeploySafeDiamondCut.s.sol#L20-L20"
+      },
+      {
+        "facet": "GovernedSafeDiamondCut",
+        "anyOf": [
+          "EmergencyStop"
+        ],
+        "strength": "convention",
+        "source": "src/governance/libraries/GovernedSafeDiamondCutLib.sol#L298-L298"
+      },
+      {
+        "facet": "AccessControlDiamondCut",
+        "anyOf": [
+          "EmergencyStop"
+        ],
+        "strength": "convention",
+        "source": "src/governance/AccessControlDiamondCut.sol#L11-L11"
+      }
+    ],
+    "defaultOwnerOf": [
+      {
+        "facet": "ERC4626",
+        "selectors": [
+          "0x313ce567"
+        ],
+        "source": "docs/guides/compose-your-own-diamond.md#L40-L40"
+      },
+      {
+        "facet": "VaultCore",
+        "selectors": [
+          "0x01e1d114"
+        ],
+        "source": "docs/guides/compose-your-own-diamond.md#L40-L40"
+      },
+      {
+        "facet": "ERC20Votes",
+        "selectors": [
+          "0x5c19a95c",
+          "0xc3cda520"
+        ],
+        "source": "docs/guides/compose-your-own-diamond.md#L41-L41"
+      },
+      {
+        "facet": "GovernedVault",
+        "selectors": [
+          "0x06fdde03",
+          "0x91ddadf4",
+          "0x4bf5d7e9"
+        ],
+        "source": "docs/guides/compose-your-own-diamond.md#L41-L42"
+      }
+    ],
+    "seams": [
+      {
+        "selector": "0xa9059cbb",
+        "when": [
+          "ERC20Votes"
+        ],
+        "anyOf": [
+          "GovernedVault",
+          "ERC20Votes"
+        ],
+        "source": "script/base/tokens/DeployERC20Votes.s.sol#L21-L22"
+      },
+      {
+        "selector": "0x23b872dd",
+        "when": [
+          "ERC20Votes"
+        ],
+        "anyOf": [
+          "GovernedVault",
+          "ERC20Votes"
+        ],
+        "source": "script/base/tokens/DeployERC20Votes.s.sol#L21-L22"
+      },
+      {
+        "selector": "0x5c19a95c",
+        "when": [
+          "ERC20Votes"
+        ],
+        "anyOf": [
+          "ERC20Votes"
+        ],
+        "source": "src/governance/Votes.sol#L43-L44"
+      },
+      {
+        "selector": "0xc3cda520",
+        "when": [
+          "ERC20Votes"
+        ],
+        "anyOf": [
+          "ERC20Votes"
+        ],
+        "source": "src/governance/Votes.sol#L43-L44"
+      },
+      {
+        "selector": "0x6e553f65",
+        "when": [
+          "GovernedVault"
+        ],
+        "anyOf": [
+          "GovernedVault"
+        ],
+        "source": "script/base/defi/DeployGovernedVault.s.sol#L31-L32"
+      },
+      {
+        "selector": "0x94bf804d",
+        "when": [
+          "GovernedVault"
+        ],
+        "anyOf": [
+          "GovernedVault"
+        ],
+        "source": "script/base/defi/DeployGovernedVault.s.sol#L31-L32"
+      },
+      {
+        "selector": "0xb460af94",
+        "when": [
+          "GovernedVault"
+        ],
+        "anyOf": [
+          "GovernedVault"
+        ],
+        "source": "script/base/defi/DeployGovernedVault.s.sol#L31-L32"
+      },
+      {
+        "selector": "0xba087652",
+        "when": [
+          "GovernedVault"
+        ],
+        "anyOf": [
+          "GovernedVault"
+        ],
+        "source": "script/base/defi/DeployGovernedVault.s.sol#L31-L32"
+      },
+      {
+        "selector": "0x8ff262e3",
+        "when": [
+          "GovernedVault"
+        ],
+        "anyOf": [
+          "GovernedVault"
+        ],
+        "source": "script/base/defi/DeployGovernedVault.s.sol#L35-L35"
+      },
+      {
+        "selector": "0x01e1d114",
+        "when": [
+          "GovernedVault"
+        ],
+        "anyOf": [
+          "VaultCore"
+        ],
+        "source": "script/base/defi/DeployGovernedVault.s.sol#L30-L30"
+      },
+      {
+        "selector": "0x313ce567",
+        "when": [
+          "GovernedVault"
+        ],
+        "anyOf": [
+          "ERC4626"
+        ],
+        "source": "script/base/defi/DeployGovernedVault.s.sol#L28-L28"
+      }
+    ],
+    "facetInits": [
+      {
+        "facet": "ERC20",
+        "init": "ERC20Init",
+        "source": "src/tokens/ERC20/ERC20Init.sol#L13-L13"
+      },
+      {
+        "facet": "ERC20Permit",
+        "init": "ERC20PermitInit",
+        "source": "src/tokens/ERC20/ERC20PermitInit.sol#L16-L16"
+      },
+      {
+        "facet": "ERC4626",
+        "init": "ERC4626Init",
+        "source": "src/tokens/ERC4626/ERC4626Init.sol#L22-L22"
+      },
+      {
+        "facet": "VaultCore",
+        "init": "VaultCoreInit",
+        "source": "src/defi/VaultCoreInit.sol#L24-L24"
+      },
+      {
+        "facet": "ERC6538Registry",
+        "init": "ERC6538RegistryInit",
+        "source": "src/privacy/ERC6538RegistryInit.sol#L18-L18"
+      },
+      {
+        "facet": "AccessControl",
+        "init": "AccessControlInit",
+        "source": "src/access/AccessControlInit.sol#L16-L16"
+      },
+      {
+        "facet": "SafeDiamondCut",
+        "init": "SafeDiamondCutInit",
+        "source": "src/governance/SafeDiamondCutInit.sol#L25-L25"
+      },
+      {
+        "facet": "GovernedSafeDiamondCut",
+        "init": "GovernedSafeDiamondCutInit",
+        "source": "src/governance/GovernedSafeDiamondCutInit.sol#L27-L27"
+      },
+      {
+        "facet": "GovernedDiamondCut",
+        "init": "GovernedDiamondCutInit",
+        "source": "src/governance/GovernedDiamondCutInit.sol#L23-L23"
+      },
+      {
+        "facet": "DiamondCutFacet",
+        "init": "OwnableInit",
+        "source": "lib/diamond-lib/src/facets/DiamondCutFacet.sol#L24-L26"
+      },
+      {
+        "facet": "OwnableFacet",
+        "init": "OwnableInit",
+        "source": "lib/diamond-lib/src/initializers/OwnableInit.sol#L15-L15"
+      }
+    ],
+    "inits": [
+      {
+        "name": "MultiInit",
+        "source": "lib/diamond-lib/src/initializers/MultiInit.sol#L15-L15"
+      },
+      {
+        "name": "DiamondIntrospectionInit.initUpgradeable",
+        "source": "src/utils/DiamondIntrospectionInit.sol#L21-L23"
+      },
+      {
+        "name": "DiamondIntrospectionInit.initImmutable",
+        "source": "src/utils/DiamondIntrospectionInit.sol#L31-L35"
+      },
+      {
+        "name": "ERC165Init",
+        "source": "lib/diamond-lib/src/initializers/ERC165Init.sol#L12-L14"
+      },
+      {
+        "name": "OwnableInit",
+        "source": "lib/diamond-lib/src/initializers/OwnableInit.sol#L15-L18"
+      },
+      {
+        "name": "AccessControlInit",
+        "source": "src/access/AccessControlInit.sol#L16-L18"
+      },
+      {
+        "name": "ERC20Init",
+        "source": "src/tokens/ERC20/ERC20Init.sol#L13-L15"
+      },
+      {
+        "name": "ERC4626Init",
+        "source": "src/tokens/ERC4626/ERC4626Init.sol#L22-L25"
+      },
+      {
+        "name": "VaultCoreInit",
+        "source": "src/defi/VaultCoreInit.sol#L24-L30"
+      },
+      {
+        "name": "ERC20PermitInit",
+        "source": "src/tokens/ERC20/ERC20PermitInit.sol#L16-L20"
+      },
+      {
+        "name": "ERC6538RegistryInit",
+        "source": "src/privacy/ERC6538RegistryInit.sol#L18-L21"
+      },
+      {
+        "name": "SafeDiamondCutInit",
+        "source": "src/governance/SafeDiamondCutInit.sol#L25-L30"
+      },
+      {
+        "name": "GovernedSafeDiamondCutInit",
+        "source": "src/governance/GovernedSafeDiamondCutInit.sol#L27-L32"
+      },
+      {
+        "name": "GovernedDiamondCutInit",
+        "source": "src/governance/GovernedDiamondCutInit.sol#L23-L28"
+      },
+      {
+        "name": "GovernedVaultInit",
+        "source": "src/defi/GovernedVaultInit.sol#L44-L87"
+      },
+      {
+        "name": "AccountInit",
+        "source": "src/accounts/erc7579/AccountInit.sol#L35-L37"
+      },
+      {
+        "name": "AccountInit6900",
+        "source": "src/accounts/erc6900/AccountInit6900.sol#L37-L51"
+      }
+    ],
+    "templates": [
+      {
+        "name": "GovernedVault",
+        "cuts": "script/base/defi/DeployGovernedVault.s.sol#L76-L92"
+      },
+      {
+        "name": "ERC20",
+        "cuts": "script/base/tokens/DeployERC20.s.sol#L58-L64"
+      },
+      {
+        "name": "SafeDiamondCut",
+        "cuts": "script/base/governance/DeploySafeDiamondCut.s.sol#L35-L43"
+      },
+      {
+        "name": "Account",
+        "cuts": "script/base/accounts/DeployAccount.s.sol#L35-L45"
+      },
+      {
+        "name": "Account6900",
+        "cuts": "script/base/accounts/DeployAccount6900.s.sol#L31-L42"
+      }
+    ],
+    "libraries": [
+      {
+        "name": "PoseidonT3",
+        "linkedBy": [
+          "Semaphore",
+          "ShieldedPool"
+        ],
+        "source": "lib/zk-kit/lean-imt/InternalLeanIMT.sol#L4-L4"
+      }
+    ],
+    "releaseSalts": "script/deploy/DeployRelease.s.sol (facet salt L238, registry L94, factory L97)"
+  },
+  "invented": [
+    "lattice.tag (`fixture`, `fixture-next`)",
+    "every creation code: the UTF-8 bytes of `fixture:<Name>` (`fixture-next:<Name>` for the rebuilt facet); initCodeHash and addresses follow from it by the real formulas",
+    "every runtime codehash but Arachnid's proxy (whose real one C5b pins): keccak256(`fixture:<Name>:runtime`)",
+    "json/Lattice.standard.json",
+    "ABI state mutability (all `nonpayable`) and outputs (all empty); ABIs carry functions only, no errors or events",
+    "examples marked `studio` (ERC20Init name_ and symbol_, SafeDiamondCutInit minThreshold)",
+    "PoseidonT3's release (salt by the facet formula, fake code) and registryOwner (decision D6's placeholder 0x…dEaD)",
+    "template recipes' catalog.hash (zero: an index can't hold its own hash)",
+    "the DiamondCutFacet summary (its source NatSpec is OwnableFacet's)",
+    "fixture-next's changes: EmergencyStop gains guardianCount() and Governor loses version(), both with new code; ERC20 gets new code with the same selectors"
+  ],
+  "prototypeDifferences": [
+    "Prototype lists TimelockControllerStandalone, which isn't in FacetInventory at the pin: dropped.",
+    "DiamondCutFacet: the prototype gives it diamond.lib.storage as its own storage; it only calls into that library's storage, so the fixture lists it in touches.",
+    "DiamondCutFacet: the prototype's summary is stale NatSpec; the fixture writes its own.",
+    "DiamondLoupeFacet: the prototype gives it diamond.lib.storage as its own storage; it only calls into that library's storage, so the fixture lists it in touches."
+  ]
+}

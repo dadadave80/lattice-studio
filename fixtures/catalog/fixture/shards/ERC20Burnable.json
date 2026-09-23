@@ -1,0 +1,41 @@
+{
+  "name": "ERC20Burnable",
+  "abi": [
+    {
+      "name": "burn",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "burnFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet adding burn operations to ERC-20.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20Burnable.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC20/ERC20Burnable.sol"
+  }
+}

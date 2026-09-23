@@ -1,0 +1,169 @@
+{
+  "name": "StargateBridgeAdapter",
+  "abi": [
+    {
+      "name": "poolOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "quoteSendFee",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            }
+          ],
+          "name": "p"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "nativeFee"
+        }
+      ]
+    },
+    {
+      "name": "registerPool",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        },
+        {
+          "type": "address",
+          "name": "pool"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerStargateEid",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "uint32",
+          "name": "eid"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "sendToken",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            }
+          ],
+          "name": "p"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "guid"
+        },
+        {
+          "type": "uint256",
+          "name": "amountSentLD"
+        },
+        {
+          "type": "uint256",
+          "name": "amountReceivedLD"
+        }
+      ]
+    },
+    {
+      "name": "stargateChainIdOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint32",
+          "name": "eid"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "stargateEidOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stargate v2 pooled-liquidity token-bridge facet — the third token rail beside CCTP (burn/mint) and Across (intent): `sendToken` pulls the token from the caller ",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/layerzero/StargateBridgeAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/layerzero/StargateBridgeAdapter.sol"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "Multicall",
+  "abi": [
+    {
+      "name": "multicall",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes[]",
+          "name": "data"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes[]",
+          "name": "results"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Thin Diamond facet that enables batched calls in a single transaction.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/utils/Multicall.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/utils/Multicall.sol"
+  }
+}

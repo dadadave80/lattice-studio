@@ -1,0 +1,43 @@
+{
+  "name": "CrosschainTimelockHandler",
+  "abi": [
+    {
+      "name": "crosschainTimelockTag",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes4"
+        }
+      ]
+    },
+    {
+      "name": "processMessage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "receiveId"
+        },
+        {
+          "type": "bytes"
+        },
+        {
+          "type": "bytes",
+          "name": "bytes"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Cross-chain governance handler facet: on an authenticated inbound ERC-7786 message routed by {CrosschainLink}, schedules the encoded operation on the co-mounted",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/CrosschainTimelockHandler.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/CrosschainTimelockHandler.sol"
+  }
+}

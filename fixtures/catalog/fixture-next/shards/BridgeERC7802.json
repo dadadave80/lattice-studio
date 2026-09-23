@@ -1,0 +1,64 @@
+{
+  "name": "BridgeERC7802",
+  "abi": [
+    {
+      "name": "crosschainTransfer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "amount"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "sendId"
+        }
+      ]
+    },
+    {
+      "name": "processMessage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "receiveId"
+        },
+        {
+          "type": "bytes"
+        },
+        {
+          "type": "bytes",
+          "name": "bytes"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "token",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Mint/burn bridge facet for ERC-7802 tokens: burns on `crosschainTransfer`, mints on an inbound message.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/BridgeERC7802.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/BridgeERC7802.sol"
+  }
+}

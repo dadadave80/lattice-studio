@@ -1,0 +1,24 @@
+{
+  "name": "ERC20Capped",
+  "abi": [
+    {
+      "name": "cap",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet for ERC-20 tokens with a capped total supply.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20Capped.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC20/ERC20Capped.sol"
+  }
+}

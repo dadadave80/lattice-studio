@@ -1,0 +1,171 @@
+{
+  "name": "PythAdapter",
+  "abi": [
+    {
+      "name": "getFeed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "priceId"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        },
+        {
+          "type": "uint64",
+          "name": "maxConfBps"
+        }
+      ]
+    },
+    {
+      "name": "getUpdateFee",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes[]",
+          "name": "updateData"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "latestAnswer",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int256",
+          "name": "answerWad"
+        }
+      ]
+    },
+    {
+      "name": "latestAnswerRaw",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int64",
+          "name": "price"
+        },
+        {
+          "type": "int32",
+          "name": "expo"
+        },
+        {
+          "type": "uint64",
+          "name": "conf"
+        },
+        {
+          "type": "uint256",
+          "name": "publishTime"
+        }
+      ]
+    },
+    {
+      "name": "pyth",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "registerFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "bytes32",
+          "name": "priceId"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        },
+        {
+          "type": "uint64",
+          "name": "maxConfBps"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setPyth",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "pyth_"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "unregisterFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "updatePriceFeeds",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes[]",
+          "name": "updateData"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet exposing pull-based Pyth price feeds with per-feed staleness + confidence configuration and WAD-normalized answers.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/pyth/PythAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/pyth/PythAdapter.sol"
+  }
+}

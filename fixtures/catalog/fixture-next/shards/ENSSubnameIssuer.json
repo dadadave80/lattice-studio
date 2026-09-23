@@ -1,0 +1,76 @@
+{
+  "name": "ENSSubnameIssuer",
+  "abi": [
+    {
+      "name": "issueSubname",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "parentNode"
+        },
+        {
+          "type": "string",
+          "name": "label"
+        },
+        {
+          "type": "address",
+          "name": "owner"
+        },
+        {
+          "type": "address",
+          "name": "resolver"
+        },
+        {
+          "type": "uint64",
+          "name": "ttl"
+        },
+        {
+          "type": "uint32",
+          "name": "fuses"
+        },
+        {
+          "type": "uint64",
+          "name": "expiry"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "nameWrapper",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "setNameWrapper",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "nameWrapper_"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet letting a diamond that owns a parent ENS name mint subnames (e.g.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/ens/ENSSubnameIssuer.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/ens/ENSSubnameIssuer.sol"
+  }
+}

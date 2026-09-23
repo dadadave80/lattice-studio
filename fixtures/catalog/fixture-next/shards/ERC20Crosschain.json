@@ -1,0 +1,53 @@
+{
+  "name": "ERC20Crosschain",
+  "abi": [
+    {
+      "name": "crosschainTransfer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "amount"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "sendId"
+        }
+      ]
+    },
+    {
+      "name": "processMessage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "receiveId"
+        },
+        {
+          "type": "bytes"
+        },
+        {
+          "type": "bytes",
+          "name": "bytes"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Self-bridging ERC-20 extension facet: `crosschainTransfer` burns the token's own supply and sends a message; an inbound message mints it on the destination.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20Crosschain.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC20/ERC20Crosschain.sol"
+  }
+}

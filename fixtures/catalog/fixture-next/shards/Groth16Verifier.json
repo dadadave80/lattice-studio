@@ -1,0 +1,65 @@
+{
+  "name": "Groth16Verifier",
+  "abi": [
+    {
+      "name": "verifyProof",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint256[2]"
+            },
+            {
+              "type": "uint256[2][2]"
+            },
+            {
+              "type": "uint256[2][2]"
+            },
+            {
+              "type": "uint256[2][2]"
+            },
+            {
+              "type": "uint256[2][]"
+            }
+          ],
+          "name": "vk"
+        },
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint256[2]"
+            },
+            {
+              "type": "uint256[2][2]"
+            },
+            {
+              "type": "uint256[2]"
+            }
+          ],
+          "name": "proof"
+        },
+        {
+          "type": "uint256[]",
+          "name": "input"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet exposing a GENERIC Groth16 verifier over BN254.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/privacy/Groth16Verifier.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/Groth16Verifier.sol"
+  }
+}

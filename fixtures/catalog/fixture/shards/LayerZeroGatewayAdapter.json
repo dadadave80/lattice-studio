@@ -1,0 +1,300 @@
+{
+  "name": "LayerZeroGatewayAdapter",
+  "abi": [
+    {
+      "name": "allowInitializePath",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint32"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "uint64"
+            }
+          ],
+          "name": "origin"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "configureDestination",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "uint128",
+          "name": "gas"
+        },
+        {
+          "type": "uint128",
+          "name": "msgValue"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "endpoint",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "getChainId",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint32",
+          "name": "eid"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getDestinationGas",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint128"
+        }
+      ]
+    },
+    {
+      "name": "getDestinationMsgValue",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint128"
+        }
+      ]
+    },
+    {
+      "name": "getEid",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "getPeer",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "lzReceive",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint32"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "uint64"
+            }
+          ],
+          "name": "origin"
+        },
+        {
+          "type": "bytes32",
+          "name": "guid"
+        },
+        {
+          "type": "bytes",
+          "name": "message"
+        },
+        {
+          "type": "address"
+        },
+        {
+          "type": "bytes"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "nextNonce",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "uint32",
+          "name": "eid"
+        },
+        {
+          "type": "bytes32",
+          "name": "sender"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint64"
+        }
+      ]
+    },
+    {
+      "name": "quoteFee",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "registerEid",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "uint32",
+          "name": "eid"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerPeer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "bytes32",
+          "name": "peer"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "sendMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes[]",
+          "name": "attributes"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "supportsAttribute",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-7786 cross-chain gateway facet over the LayerZero v2 EndpointV2 (OApp).",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/layerzero/LayerZeroGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/layerzero/LayerZeroGatewayAdapter.sol"
+  }
+}

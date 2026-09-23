@@ -64,6 +64,13 @@ export type Catalog = {
    * The About page and the first console line show it (contracts §3.1).
    */
   provisional?: string;
+  /**
+   * Addition: linked libraries Studio releases as shared contracts (PoseidonT3 for Semaphore and ShieldedPool),
+   * each through Arachnid's proxy like any other shared contract.
+   */
+  libraries?: { name: string; release: SharedContract }[];
+  /** Addition: the LatticeRegistry owner the release assumes (decision D6's placeholder while provisional). */
+  registryOwner?: Address;
 };
 
 /** Deployed once per chain through Arachnid's proxy (spec L149-L155). */
@@ -85,6 +92,13 @@ export type SharedContract = {
    * LatticeRegistry, LatticeFactory, init contracts. Facets carry theirs in `Facet.detail`.
    */
   detail?: ShardRef;
+  /**
+   * Addition: shared contracts that must be on the chain first, by name (a linked library such as PoseidonT3,
+   * listed in `Catalog.libraries`). Missing-contract deploys order them before this one.
+   */
+  dependsOn?: string[];
+  /** Addition: why this contract's address isn't final yet, e.g. it links a library Lattice doesn't pin. */
+  provisional?: string;
 };
 
 /** A facet in `FacetInventory` (spec L156-L168). */

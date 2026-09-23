@@ -1,0 +1,85 @@
+{
+  "name": "GelatoVRFAdapter",
+  "abi": [
+    {
+      "name": "fulfillRandomness",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "randomness"
+        },
+        {
+          "type": "bytes",
+          "name": "dataWithRound"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getOperator",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "getUserKey",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "requestId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "requestRandomness",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "userKey"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "requestId"
+        }
+      ]
+    },
+    {
+      "name": "setOperator",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "operator"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet for Gelato VRF (drand-backed) randomness — no on-chain fee.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/gelato/GelatoVRFAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/gelato/GelatoVRFAdapter.sol"
+  }
+}

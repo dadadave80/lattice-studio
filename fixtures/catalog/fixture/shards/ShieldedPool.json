@@ -1,0 +1,184 @@
+{
+  "name": "ShieldedPool",
+  "abi": [
+    {
+      "name": "createPool",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        },
+        {
+          "type": "uint256",
+          "name": "denomination"
+        },
+        {
+          "type": "address",
+          "name": "verifier"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "poolId"
+        },
+        {
+          "type": "uint256",
+          "name": "commitment"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getPool",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "poolId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "token"
+        },
+        {
+          "type": "uint256",
+          "name": "denomination"
+        },
+        {
+          "type": "address",
+          "name": "verifier"
+        },
+        {
+          "type": "uint256",
+          "name": "merkleRoot"
+        },
+        {
+          "type": "uint256",
+          "name": "numLeaves"
+        }
+      ]
+    },
+    {
+      "name": "isKnownRoot",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "poolId"
+        },
+        {
+          "type": "uint256",
+          "name": "root"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "isSpent",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "poolId"
+        },
+        {
+          "type": "uint256",
+          "name": "nullifierHash"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "poolCount",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "poolId"
+        },
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint256[2]"
+            },
+            {
+              "type": "uint256[2][2]"
+            },
+            {
+              "type": "uint256[2]"
+            }
+          ],
+          "name": "proof"
+        },
+        {
+          "type": "uint256",
+          "name": "root"
+        },
+        {
+          "type": "uint256",
+          "name": "nullifierHash"
+        },
+        {
+          "type": "address",
+          "name": "recipient"
+        },
+        {
+          "type": "address",
+          "name": "relayer"
+        },
+        {
+          "type": "uint256",
+          "name": "fee"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet for fixed-denomination shielded (private) ERC-20 transfers (Tornado-style): deposit a commitment, then withdraw to an arbitrary recipien",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/privacy/ShieldedPool.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/ShieldedPool.sol"
+  }
+}

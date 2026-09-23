@@ -1,0 +1,45 @@
+{
+  "name": "SuperchainETHBridgeAdapter",
+  "abi": [
+    {
+      "name": "bridge",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "sendETH",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "msgHash"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "OP Stack `SuperchainETHBridge` interop facet: `sendETH` forwards `msg.value` native ETH to the canonical predeploy (`0x…0024`) to bridge it to another Superchai",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/optimism/SuperchainETHBridgeAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/optimism/SuperchainETHBridgeAdapter.sol"
+  }
+}

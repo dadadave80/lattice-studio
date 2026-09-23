@@ -336,6 +336,8 @@ export const SharedContractSchema = z.looseObject({
   initCodeHash: Hash32Schema,
   creationCode: ShardRefSchema,
   detail: opt(ShardRefSchema),
+  dependsOn: opt(z.array(text)),
+  provisional: opt(text),
 });
 
 export const FacetSchema = z.looseObject({
@@ -427,6 +429,8 @@ export const CatalogSchema = z.looseObject({
   chains: z.array(ChainReleaseSchema),
   seams: z.array(SeamSchema),
   provisional: opt(text),
+  libraries: opt(z.array(z.looseObject({ name: text, release: SharedContractSchema }))),
+  registryOwner: opt(AddressSchema),
 }) satisfies z.ZodType<Catalog>;
 
 /** `catalog/manifest.json` (contracts §4). */
