@@ -10,7 +10,7 @@ import {
 import { landing } from "./geometry";
 import {
   catalogName, combined, disabled, edit, err, facetOf, guard, isPlaced, isString, notOnSheet, OK, ok, parseFacet,
-  resolveFacetName, sayNote,
+  resolveFacetName, sayNote, summaryLine,
 } from "./shared";
 
 type PlaceArgs = CommandArgsOf<"facet.place">;
@@ -155,6 +155,7 @@ export const routeContestedCommand = command<RouteContestedArgs>({
       // A seam that can't move says why (IR L144), even when the others moved.
       {
         say: (r) => (r.changed ? refusals.map((text) => ({ tag: "Note" as const, text })) : []),
+        fallback: summaryLine,
         announce: (r) => `${r.summary}.`,
       },
     );

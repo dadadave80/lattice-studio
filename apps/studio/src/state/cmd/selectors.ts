@@ -6,7 +6,7 @@ import { clearOwner, excludeSelector, includeSelector, routeSelector } from "@la
 import { command, getCatalog, type CommandArgsOf } from "@/contracts";
 import {
   catalogName, disabled, edit, err, facetOf, guard, isHex4, isPlaced, isString, notOnSheet, OK, ok, parseFacet,
-  placedSelectors, resolveSelector, selectorLabel,
+  placedSelectors, resolveSelector, selectorLabel, summaryLine,
 } from "./shared";
 
 type RouteArgs = CommandArgsOf<"selector.route">;
@@ -44,7 +44,8 @@ export const routeCommand = command<RouteArgs>({
   run(ctx, { selector, facet }) {
     const catalog = ctx.catalog;
     if (!catalog) return;
-    edit((p) => routeSelector(p, catalog, selector, facet));
+    // Settling a collision narrates "Resolved: … routes to {facet}." (spec L713); anything else says the summary.
+    edit((p) => routeSelector(p, catalog, selector, facet), { fallback: summaryLine });
   },
 });
 

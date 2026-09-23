@@ -39,7 +39,12 @@ export function notOnSheet(names: readonly string[]): string {
 
 /** "Lattice 0.4.0" for the catalog tag "v0.4.0". */
 export function catalogName(catalog: Catalog): string {
-  return catalog.provisional ?? `Lattice ${catalog.lattice.tag.replace(/^v(?=[0-9])/, "")}`;
+  return `Lattice ${catalog.lattice.tag.replace(/^v(?=[0-9])/, "")}`;
+}
+
+/** An edit's summary as a console sentence: "Routed `transfer · 0xa9059cbb` to GovernedVault." */
+export function summaryLine(result: EditResult): LineDraft {
+  return { tag: "Note", text: `${result.summary}.` };
 }
 
 export function facetOf(catalog: Catalog, name: string): Facet | undefined {
@@ -68,9 +73,15 @@ export function sayNote(text: string): void {
 export type EditOutcome = {
   /** The undo label. Default: the op's summary ("Placed ERC20"). */
   label?: string;
-  /** Lines logged first, before the problems the edit adds or resolves. */
+  /**
+   * Lines logged first, before the problems the edit adds or resolves. Default, unless `fallback` is given: the
+   * summary as a sentence ("Left `transfer · 0xa9059cbb` out of the diamond.").
+   */
   say?: (result: EditResult) => LineDraft[];
-  /** Logged only when the edit narrates nothing. Default: the summary as a sentence. Null: nothing. */
+  /**
+   * Logged only when the edit narrates nothing: for edits whose narration is their spec line (an owner choice
+   * says "Resolved: …", spec L713). Null: nothing.
+   */
   fallback?: ((result: EditResult) => LineDraft) | null;
   /** What the status region says. Default: the first `say` line, else the summary. */
   announce?: (result: EditResult) => string;
@@ -90,9 +101,10 @@ export function edit(op: EditOp, outcome: EditOutcome = {}): EditResult {
   const result = doc.apply(outcome.label ?? preview.summary, () => preview);
   if (!result.changed) return result; // Refused (read-only): the store logged why.
   const engine = studioState().analysis;
-  const said = outcome.say?.(result) ?? [];
+  const summary = { tag: "Note" as const, text: `${result.summary}.` };
+  const said = outcome.say ? outcome.say(result) : outcome.fallback === undefined ? [summary] : [];
   for (const line of said) engine.say(line);
-  const fallback = outcome.fallback === undefined ? { tag: "Note" as const, text: `${result.summary}.` } : outcome.fallback?.(result);
+  const fallback = outcome.fallback?.(result);
   if (fallback) engine.fallback(fallback);
   engine.flush();
   announce(outcome.announce?.(result) ?? said[0]?.text ?? `${result.summary}.`);
