@@ -1,0 +1,27 @@
+name: GovernedSafeDiamondCut
+script: script/base/governance/DeployGovernedSafeDiamondCut.s.sol
+buildCuts: buildCuts(address,address,uint256,uint256)
+source: script/base/governance/DeployGovernedSafeDiamondCut.s.sol#L34-L47
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/governance/DeployGovernedSafeDiamondCut.s.sol#L39-L39
+  - add: DiamondLoupeFacet
+    source: script/base/governance/DeployGovernedSafeDiamondCut.s.sol#L40-L40
+  - add: AccessControl
+    source: script/base/governance/DeployGovernedSafeDiamondCut.s.sol#L41-L41
+  - add: EmergencyStop
+    source: script/base/governance/DeployGovernedSafeDiamondCut.s.sol#L42-L42
+  - add: GovernedSafeDiamondCut
+    source: script/base/governance/DeployGovernedSafeDiamondCut.s.sol#L43-L43
+  - add: Receive
+    source: script/base/governance/DeployGovernedSafeDiamondCut.s.sol#L44-L44
+init:
+  kind: steps
+  steps:
+    - spec: GovernedSafeDiamondCutInit
+      args: {}  # the script passes (admin, safe, minThreshold, minDelay)
+  source: script/base/governance/DeployGovernedSafeDiamondCut.s.sol#L45-L46
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin, safe, minThreshold, minDelay).

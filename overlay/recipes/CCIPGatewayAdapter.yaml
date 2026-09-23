@@ -1,0 +1,27 @@
+name: CCIPGatewayAdapter
+script: script/base/crosschain/DeployCCIPGatewayAdapter.s.sol
+buildCuts: buildCuts(address,address,address)
+source: script/base/crosschain/DeployCCIPGatewayAdapter.s.sol#L29-L44
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/crosschain/DeployCCIPGatewayAdapter.s.sol#L34-L34
+  - add: AccessControl
+    source: script/base/crosschain/DeployCCIPGatewayAdapter.s.sol#L35-L35
+  - add: CCIPGatewayAdapter
+    source: script/base/crosschain/DeployCCIPGatewayAdapter.s.sol#L36-L36
+  - add: DiamondLoupeFacet
+    source: script/base/crosschain/DeployCCIPGatewayAdapter.s.sol#L37-L37
+  - add: AccessControlDiamondCut
+    source: script/base/crosschain/DeployCCIPGatewayAdapter.s.sol#L38-L38
+  - add: Receive
+    source: script/base/crosschain/DeployCCIPGatewayAdapter.s.sol#L39-L39
+init:
+  kind: steps
+  steps:
+    - spec: CCIPGatewayAdapterInit
+      args: {}  # the script passes (admin, router, feeToken)
+  source: script/base/crosschain/DeployCCIPGatewayAdapter.s.sol#L40-L43
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin, router, feeToken).

@@ -1,0 +1,27 @@
+name: ERC2981
+script: script/base/tokens/DeployERC2981.s.sol
+buildCuts: buildCuts(address)
+source: script/base/tokens/DeployERC2981.s.sol#L26-L36
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/tokens/DeployERC2981.s.sol#L28-L28
+  - add: AccessControl
+    source: script/base/tokens/DeployERC2981.s.sol#L29-L29
+  - add: ERC2981
+    source: script/base/tokens/DeployERC2981.s.sol#L30-L30
+  - add: DiamondLoupeFacet
+    source: script/base/tokens/DeployERC2981.s.sol#L31-L31
+  - add: AccessControlDiamondCut
+    source: script/base/tokens/DeployERC2981.s.sol#L32-L32
+  - add: Receive
+    source: script/base/tokens/DeployERC2981.s.sol#L33-L33
+init:
+  kind: steps
+  steps:
+    - spec: ERC2981Init
+      args: {}  # the script passes (admin)
+  source: script/base/tokens/DeployERC2981.s.sol#L34-L35
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin).

@@ -1,0 +1,33 @@
+# DeployERC20's four cuts (its init discarded), then AccessControl, CrosschainLink, ERC20Crosschain and
+# AccessControlDiamondCut, with ERC20CrosschainInit, which initializes the token itself.
+name: ERC20Crosschain
+script: script/base/tokens/DeployERC20Crosschain.s.sol
+buildCuts: buildCuts(address,string,string)
+source: script/base/tokens/DeployERC20Crosschain.s.sol#L32-L50
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/tokens/DeployERC20.s.sol#L60-L60
+  - add: ERC20
+    source: script/base/tokens/DeployERC20.s.sol#L61-L61
+  - add: DiamondLoupeFacet
+    source: script/base/tokens/DeployERC20.s.sol#L62-L62
+  - add: Receive
+    source: script/base/tokens/DeployERC20.s.sol#L63-L63
+  - add: AccessControl
+    source: script/base/tokens/DeployERC20Crosschain.s.sol#L42-L42
+  - add: CrosschainLink
+    source: script/base/tokens/DeployERC20Crosschain.s.sol#L43-L43
+  - add: ERC20Crosschain
+    source: script/base/tokens/DeployERC20Crosschain.s.sol#L44-L44
+  - add: AccessControlDiamondCut
+    source: script/base/tokens/DeployERC20Crosschain.s.sol#L45-L45
+init:
+  kind: steps
+  steps:
+    - spec: ERC20CrosschainInit
+      args: {}  # the script passes (admin, name_, symbol_)
+  source: script/base/tokens/DeployERC20Crosschain.s.sol#L47-L49
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin, name_, symbol_).

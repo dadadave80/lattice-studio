@@ -1,0 +1,51 @@
+# The default, immutable overload: ERC165Facet, ERC20, ERC4626 as a mixed cut (Add the vault surface, Replace
+# ERC20's decimals with the share-offset variant), DiamondLoupeFacet and Receive, with ERC4626Init.
+name: ERC4626
+script: script/base/tokens/DeployERC4626.s.sol
+buildCuts: buildCuts(address,string,string,uint8)
+source: script/base/tokens/DeployERC4626.s.sol#L37-L45
+proxy: Lattice
+phase: v1.1
+immutable: true
+cuts:
+  - add: ERC165Facet
+    source: script/base/tokens/DeployERC4626.s.sol#L72-L72
+  - add: ERC20
+    source: script/base/tokens/DeployERC4626.s.sol#L73-L73
+  - add: ERC4626
+    selectors:
+      - "asset()"
+      - "totalAssets()"
+      - "convertToShares(uint256)"
+      - "convertToAssets(uint256)"
+      - "maxDeposit(address)"
+      - "maxMint(address)"
+      - "maxWithdraw(address)"
+      - "maxRedeem(address)"
+      - "previewDeposit(uint256)"
+      - "previewMint(uint256)"
+      - "previewWithdraw(uint256)"
+      - "previewRedeem(uint256)"
+      - "deposit(uint256,address)"
+      - "mint(uint256,address)"
+      - "withdraw(uint256,address,address)"
+      - "redeem(uint256,address,address)"
+    source: script/base/tokens/DeployERC4626.s.sol#L69-L74
+    listSource: script/base/tokens/DeployERC4626.s.sol#L82-L100
+  - replace: ERC4626
+    selectors: ["decimals()"]
+    source: script/base/tokens/DeployERC4626.s.sol#L69-L76
+    listSource: script/base/tokens/DeployERC4626.s.sol#L103-L106
+  - add: DiamondLoupeFacet
+    source: script/base/tokens/DeployERC4626.s.sol#L77-L77
+  - add: Receive
+    source: script/base/tokens/DeployERC4626.s.sol#L78-L78
+init:
+  kind: steps
+  steps:
+    - spec: ERC4626Init
+      args: {}  # the script passes (asset_, name_, symbol_, decimalsOffset_)
+  source: script/base/tokens/DeployERC4626.s.sol#L42-L44
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (asset_, name_, symbol_,
+  decimalsOffset_).

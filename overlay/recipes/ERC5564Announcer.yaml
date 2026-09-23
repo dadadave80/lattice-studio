@@ -1,0 +1,22 @@
+name: ERC5564Announcer
+script: script/base/privacy/DeployERC5564Announcer.s.sol
+buildCuts: buildCuts()
+source: script/base/privacy/DeployERC5564Announcer.s.sol#L28-L33
+proxy: Lattice
+phase: v1.1
+immutable: true
+cuts:
+  - add: ERC165Facet
+    source: script/base/privacy/DeployERC5564Announcer.s.sol#L53-L53
+  - add: ERC5564Announcer
+    source: script/base/privacy/DeployERC5564Announcer.s.sol#L54-L54
+  - add: DiamondLoupeFacet
+    source: script/base/privacy/DeployERC5564Announcer.s.sol#L55-L55
+  - add: Receive
+    source: script/base/privacy/DeployERC5564Announcer.s.sol#L56-L56
+init:
+  kind: steps
+  steps:
+    - spec: ERC5564AnnouncerInit
+      args: {}
+  source: script/base/privacy/DeployERC5564Announcer.s.sol#L30-L32

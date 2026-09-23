@@ -1,0 +1,49 @@
+# Seams (spec R19, L302): once every facet in `when` is placed, the selector routes to the first placed facet in
+# `anyOf`, and routing it elsewhere, or placing `when` with none of `anyOf`, blocks (SEM-01).
+#
+# - selectors: signatures (or quoted lowercase selectors); one rule can cover several.
+# - reason: a lowercase clause with no final period. It reads after "must be served by a version that " (SEM-01,
+#   spec L316) and after "its version " (the seam pin, spec L441).
+# - source: where Lattice states it, path#L<a>-L<b> at the pin.
+#
+# Order matters: core takes the first active seam for a selector. Other overrides in the deploy scripts
+# (ERC20Pausable's transfer, ERC4626's and VaultCore's replacements) are defaults or choices, not seams; each
+# facet's seamReview in overlay/facets/ says why. `bun test packages/catalog-gen/test/cg6` checks this file.
+seams:
+  # With ERC20Votes, transfers must move vote checkpoints with balances.
+  - selectors: ["transfer(address,uint256)", "transferFrom(address,address,uint256)"]
+    when: [ERC20Votes]
+    anyOf: [GovernedVault, ERC20Votes]
+    reason: updates vote checkpoints
+    source: script/base/tokens/DeployERC20Votes.s.sol#L21-L22
+
+  # Votes' own delegate passes 0 voting units, so checkpoints stay at zero (VOT-08).
+  - selectors: ["delegate(address)", "delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)"]
+    when: [ERC20Votes]
+    anyOf: [ERC20Votes]
+    reason: counts the delegator's balance as votes
+    source: src/governance/Votes.sol#L43-L44
+
+  - selectors: ["deposit(uint256,address)", "mint(uint256,address)", "withdraw(uint256,address,address)", "redeem(uint256,address,address)"]
+    when: [GovernedVault]
+    anyOf: [GovernedVault]
+    reason: updates vote checkpoints when shares are minted or burned
+    source: script/base/defi/DeployGovernedVault.s.sol#L31-L32
+
+  - selectors: ["castVoteBySig(uint256,uint8,address,bytes)"]
+    when: [GovernedVault]
+    anyOf: [GovernedVault]
+    reason: uses the vault's own ballot nonce
+    source: script/base/defi/DeployGovernedVault.s.sol#L35-L35
+
+  - selectors: ["totalAssets()"]
+    when: [GovernedVault]
+    anyOf: [VaultCore]
+    reason: counts the assets strategies hold
+    source: script/base/defi/DeployGovernedVault.s.sol#L30-L30
+
+  - selectors: ["decimals()"]
+    when: [GovernedVault]
+    anyOf: [ERC4626]
+    reason: applies the ERC-4626 decimals offset
+    source: script/base/defi/DeployGovernedVault.s.sol#L28-L28
