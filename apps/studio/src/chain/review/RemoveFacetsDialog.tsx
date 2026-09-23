@@ -1,9 +1,8 @@
 import { plural } from "@lattice-studio/core";
 import { useRef, useState } from "react";
 import {
-  closeDialog, env, runCommand, useAnalysis, useCatalog, useDocument, useSession, type DialogComponentProps,
+  closeDialog, runCommand, useAnalysis, useCatalog, useDocument, useSession, type DialogComponentProps,
 } from "@/contracts";
-import { chainName } from "@/chain/infra/chains";
 import { Button, Checkbox, Dialog } from "@/ui";
 import { removeTitle } from "./copy";
 import { gasByFacet, magnitude, parseGas } from "./model";
@@ -39,7 +38,7 @@ export function RemoveFacetsDialog({ entry, top }: DialogComponentProps<"remove-
   const state = readiness.status === "ready" ? readiness.state : undefined;
   const estimate = parseGas(state?.gasEstimate);
   const cap = parseGas(state?.gasCap);
-  const name = chainId === null ? null : (service?.chains().find((c) => c.id === chainId)?.name ?? chainName(chainId, env.e2e));
+  const name = chainId === null ? null : (service?.chains().find((c) => c.id === chainId)?.name ?? `Chain ${chainId}`);
 
   const listRef = useRef<HTMLFieldSetElement>(null);
   const [ticked, setTicked] = useState<readonly string[]>([]);

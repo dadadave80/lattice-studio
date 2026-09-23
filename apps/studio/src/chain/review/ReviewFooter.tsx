@@ -1,11 +1,11 @@
 import { useId } from "react";
 import { log } from "@/contracts";
-import { CANCELED_IN_WALLET } from "@/chain/infra/copy";
-import { catalogDeployBlock } from "@/chain/infra";
 import { Button } from "@/ui";
 import { cantSimulate, pendingAcks, signEnablement, type Enablement } from "./model";
 import { shortOfFunds, useReview, type Review } from "./review-data";
 import { useReviewState } from "./review-state";
+import { CANCELED_IN_WALLET } from "./copy";
+import { fixtureBlock } from "./entry-copy";
 import styles from "./review.module.css";
 
 /** Sign & deploy's enablement for this review (spec L573, IR L238). */
@@ -15,7 +15,8 @@ export function useSignEnablement(review: Review): Enablement {
   const { analysis, account, chainId, deploy } = review;
   return signEnablement({
     online: review.online,
-    catalogBlock: catalogDeployBlock(review.catalog),
+    readOnly: review.readOnly,
+    catalogBlock: fixtureBlock(review.catalog.lattice.tag),
     blockers: analysis.problems.filter((p) => p.severity === "blocker").length,
     chainId,
     chainName: review.chainName,
@@ -67,7 +68,7 @@ export function ReviewFooter({ progress, onClose }: { progress: boolean; onClose
         </p>
       )}
       <Button onClick={onClose}>Cancel</Button>
-      <Button variant="primary" icon="deploy" disabledReason={enablement.ok ? null : enablement.reason} onClick={sign}>
+      <Button variant="primary" icon="deploy" data-tour="deploy" disabledReason={enablement.ok ? null : enablement.reason} onClick={sign}>
         {again ? "Sign again" : "Sign & deploy"}
       </Button>
     </div>

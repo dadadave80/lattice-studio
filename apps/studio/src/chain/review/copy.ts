@@ -3,7 +3,30 @@
  * them. Where the spec is silent the wording follows its voice rules (spec L667-L676) and is listed in S8b's
  * report. Only the review's lazy chunk imports it; the commands' few words are in `entry-copy.ts`.
  */
+import { formatFee } from "@lattice-studio/core";
 import type { AccountKind } from "@/contracts";
+
+/*
+ * S8a's words (chain/infra/copy.ts, spec L562, L586-L606, L697), mirrored here so the lazy review never imports the
+ * chain module's light files: importing them from a lazy chunk splits them out of the entry (spec L822, the size
+ * gate). copy.test.ts keeps each one equal to S8a's.
+ */
+export const LOADING_WALLET_SUPPORT = "Loading wallet support…";
+export const CHAIN_CHECKS_NEED_CONNECTION = "Chain checks need a connection.";
+export const NO_WALLET = "No wallet found in this browser.";
+export const CANCELED_IN_WALLET = "You canceled in your wallet.";
+export const CONNECT_A_WALLET = "Connect a wallet first.";
+export const CHOOSE_A_CHAIN = "Choose a chain first.";
+export function checking(chain: string): string {
+  return `Checking ${chain}…`;
+}
+export function walletOn(chain: string): string {
+  return `Your wallet is on ${chain}.`;
+}
+export function needsFunds(needed: bigint, balance: bigint, symbol = "ETH", decimals = 18): string {
+  const has = formatFee(balance, symbol, decimals).replace(new RegExp(` ${symbol}$`), "");
+  return `Needs about ${formatFee(needed, symbol, decimals)}; this account has ${has}.`;
+}
 
 export { DEPLOY_NEEDS_CONNECTION, WAITING_FOR_SAFE, resolveBlockers } from "./entry-copy";
 

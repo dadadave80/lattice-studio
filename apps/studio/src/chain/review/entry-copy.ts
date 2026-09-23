@@ -21,6 +21,9 @@ export function tickFirst(count: number): string {
   return count === 1 ? "Tick the acknowledgement first" : `Tick the ${count} acknowledgements first`;
 }
 
+/** A deploy is on its way: nothing in the review can change it now. */
+export const ON_ITS_WAY = "This deploy is already on its way";
+
 /** IR L231: the salt's scope on the CreateX path. */
 export const SCOPE_TITLES: Readonly<Record<Scope, string>> = {
   "every-chain": "Same address on every chain",
@@ -29,6 +32,11 @@ export const SCOPE_TITLES: Readonly<Record<Scope, string>> = {
 
 /** Contracts §4: a fixture catalog can't deploy (the words S8a's `catalogDeployBlock` uses). */
 export const FIXTURE_CATALOG = "Fixture catalog: build the real catalog first";
+
+/** Why a catalog with this tag can't deploy, or null (S8a's `catalogDeployBlock`, without importing its module). */
+export function fixtureBlock(tag: string): string | null {
+  return tag === "fixture" || tag.startsWith("fixture-") ? FIXTURE_CATALOG : null;
+}
 
 /** The path's display name. */
 export function pathName(path: DeployPath): string {

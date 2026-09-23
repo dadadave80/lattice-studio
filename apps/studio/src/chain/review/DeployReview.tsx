@@ -2,10 +2,9 @@ import type { Address, Catalog } from "@lattice-studio/core";
 import { authorityTable, isAddress, toChecksum } from "@lattice-studio/core";
 import { useEffect, useMemo, useRef } from "react";
 import {
-  closeDialog, env, useAnalysis, useCatalog, useDeployState, useDocument, useOnline, useSession,
+  closeDialog, useAnalysis, useCatalog, useDeployState, useDocument, useOnline, useSession,
   type DialogComponentProps,
 } from "@/contracts";
-import { chainName as knownChainName } from "@/chain/infra/chains";
 import { usePrediction } from "@/state";
 import { useProjectStatus } from "@/shell/status";
 import { Dialog } from "@/ui";
@@ -69,6 +68,7 @@ function ReviewDialog({ catalog, entry, top }: DialogComponentProps<"deploy-revi
   const chainId = useSession((s) => s.chainId);
   const acks = useSession((s) => s.acks);
   const online = useOnline();
+  const readOnly = useSession((s) => s.readOnly);
   const prediction = usePrediction();
   const serviceLoad = useChainService();
   const service = serviceLoad.status === "ready" ? serviceLoad.value : null;
@@ -81,13 +81,14 @@ function ReviewDialog({ catalog, entry, top }: DialogComponentProps<"deploy-revi
   const { status } = useProjectStatus();
 
   const chainInfo = chainId === null ? undefined : service?.chains().find((c) => c.id === chainId);
-  const chainName = chainId === null ? "" : (chainInfo?.name ?? knownChainName(chainId, env.e2e));
+  const chainName = chainId === null ? "" : (chainInfo?.name ?? `Chain ${chainId}`);
   const chain = readiness.status === "ready" ? readiness.state : undefined;
   const cost = useCost({ project, catalog, analysis, prediction, chain, online });
 
   const review: Review = {
-    project, catalog, analysis, online, chainId, chainName, chainInfo, service,
+    project, catalog, analysis, online, readOnly, chainId, chainName, chainInfo, service,
     serviceError: serviceLoad.status === "error" ? serviceLoad.reason : null,
+    serviceLoading: serviceLoad.status === "loading",
     readiness, chain, account, connectors, prediction, deploy, controller,
     acked: acks[analysis.recipeHash] ?? [], cost,
   };

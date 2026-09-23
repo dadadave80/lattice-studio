@@ -1,11 +1,9 @@
 import { useEffect, useRef } from "react";
-import { commandRef, env, runCommand } from "@/contracts";
-import { WalletSupportStatus } from "@/chain/infra";
-import { pickerChains } from "@/chain/infra/chains";
-import { CHAIN_CHECKS_NEED_CONNECTION, CHOOSE_A_CHAIN, checking } from "@/chain/infra/copy";
+import { commandRef, runCommand } from "@/contracts";
 import { Select } from "@/ui";
-import type { SectionStatus } from "./copy";
+import { CHAIN_CHECKS_NEED_CONNECTION, CHOOSE_A_CHAIN, checking, type SectionStatus } from "./copy";
 import { FixButton } from "./FixButton";
+import { WalletLoading } from "./WalletLoading";
 import { neededContracts, problemStatus, readinessLine, worse } from "./model";
 import { ProblemList } from "./ProblemList";
 import { problemsIn, useReview } from "./review-data";
@@ -22,7 +20,7 @@ export function NetworkSection() {
   const review = useReview();
   const { chainId, chainName, readiness, service, project, catalog, analysis, online, acked } = review;
   const problems = problemsIn(review, "network");
-  const chains = service?.chains() ?? pickerChains(env.e2e);
+  const chains = service?.chains() ?? [];
   const options = chains.map((chain) => ({ value: String(chain.id), label: chain.name }));
 
   const picker = useRef<HTMLDivElement>(null);
@@ -69,7 +67,7 @@ export function NetworkSection() {
           onValueChange={(value) => void runCommand(commandRef("chain.select", { chainId: Number(value) }), "button")}
         />
       </div>
-      <WalletSupportStatus />
+      <WalletLoading />
       <p className={styles.line} data-readiness="">
         {line}
       </p>

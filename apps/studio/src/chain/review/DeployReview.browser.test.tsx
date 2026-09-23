@@ -265,6 +265,19 @@ describe("Checks, acknowledgements and Sign & deploy (spec L569, L573)", () => {
     expect(controller.calls).toContainEqual({ method: "sign", args: [{ withoutSimulation: true }] });
   });
 
+  test("after a cancel in the wallet the Simulation line stays the can't-simulate note", async () => {
+    const { controller } = await readyReview();
+    controller.set({ phase: "review", simulation: { ok: false, unavailable: true }, error: "You canceled in your wallet." });
+    await expect.element(section("Simulation").getByText(/^This RPC couldn't simulate the deploy/)).toBeVisible();
+    await expect.element(section("Simulation").getByText("You canceled in your wallet.")).not.toBeInTheDocument();
+  });
+
+  test("read-only disables Sign & deploy with the session's reason", async () => {
+    await readyReview({ session: { chainId: SEPOLIA, readOnly: "Another tab is editing this project" } });
+    await expect.element(signButton()).toHaveAccessibleDescription("Another tab is editing this project");
+    await expect.element(signButton()).toHaveAttribute("data-tour", "deploy");
+  });
+
   test("a passed simulation signs plainly", async () => {
     const { controller } = await readyReview();
     await tickExamples();

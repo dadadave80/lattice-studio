@@ -1,10 +1,9 @@
 import type { CommandRef } from "@lattice-studio/core";
 import { formatFee, toChecksum } from "@lattice-studio/core";
 import { commandRef } from "@/contracts";
-import { WalletSupportStatus } from "@/chain/infra";
-import { CONNECT_A_WALLET, NO_WALLET, walletOn } from "@/chain/infra/copy";
-import { ACCOUNT_KINDS, type SectionStatus } from "./copy";
+import { ACCOUNT_KINDS, CONNECT_A_WALLET, NO_WALLET, walletOn, type SectionStatus } from "./copy";
 import { FixButton } from "./FixButton";
+import { WalletLoading } from "./WalletLoading";
 import { currencyOf, nameOf, shortOfFunds, useReview } from "./review-data";
 import styles from "./review.module.css";
 import { Section } from "./Section";
@@ -98,7 +97,7 @@ export function DeployerSection() {
 
   return (
     <Section id="deployer" status={status}>
-      <WalletSupportStatus />
+      <WalletLoading />
       {body}
     </Section>
   );

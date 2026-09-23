@@ -1,12 +1,13 @@
 /**
  * The Cost section's fees (spec L571): an "about" and a "max" fee for the deploy's gas, and the L1 data fee on OP
  * Stack chains. Neither `ChainState` nor `DeployState` carries fee data, so the review reads it from the chain
- * module's viem client itself (S8a's `loadChainRuntime`). Tests replace the reader with `provideFeeReader`.
+ * module's viem client itself (S8a's `ChainRuntime.publicClient`). Tests replace the reader with `provideFeeReader`.
  */
 import type { Result, TxRequest } from "@lattice-studio/core";
 import { parseAbi, serializeTransaction } from "viem";
 import { estimateFeesPerGas, getBlock, readContract } from "viem/actions";
-import { loadChainRuntime } from "@/chain/infra";
+import { chainService } from "@/contracts";
+import type { ChainRuntime } from "@/chain/infra/service";
 
 /** Fees in wei for the deploy's gas. */
 export type FeeQuote = {
@@ -32,8 +33,10 @@ function reasonOf(error: unknown): string {
 
 async function readFromChain(chainId: number, tx: TxRequest, gas: bigint): Promise<Result<FeeQuote, string>> {
   try {
-    const runtime = await loadChainRuntime();
-    const client = runtime.publicClient(chainId);
+    const service = (await chainService()) as Partial<ChainRuntime>;
+    // S8a's runtime carries each chain's viem client; a test's fake service has none.
+    if (typeof service.publicClient !== "function") return { ok: false, error: "The chain service in use has no viem clients." };
+    const client = service.publicClient(chainId);
     const [fees, block] = await Promise.all([estimateFeesPerGas(client), getBlock(client)]);
     const priority = fees.maxPriorityFeePerGas ?? 0n;
     const base = block.baseFeePerGas ?? 0n;

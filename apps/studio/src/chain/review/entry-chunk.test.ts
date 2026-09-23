@@ -14,6 +14,8 @@ import { appDir } from "../../../local-env";
 const REVIEW_MARKERS = ["Using a hardware wallet?", "Deploy without a simulation", "Authority after deploy"];
 /** Copy only Remove facets renders. */
 const REMOVE_MARKER = "Tick the facets to remove";
+/** What the commands do when they run (command-runs.ts): loaded on the first run, never in the entry. */
+const RUN_MARKERS = ["Drew a new salt", "The deploy review is already open.", "Nothing is live yet, so the salt stays as it is."];
 /** The commands' own words stay in the entry: Deploy… must say why it's disabled before anything loads. */
 const COMMAND_MARKERS = ["Deploy needs a connection", "Waiting for the Safe to execute the batch"];
 
@@ -38,18 +40,16 @@ afterAll(() => {
 });
 
 describe("the deploy review's chunks (spec L822)", () => {
-  test("the first load carries the commands but not the review or Remove facets", () => {
-    for (const marker of [...REVIEW_MARKERS, REMOVE_MARKER]) expect({ marker, found: firstLoad.includes(marker) }).toEqual({ marker, found: false });
+  test("the first load carries the commands' registrations but not the review, Remove facets or the runs", () => {
+    for (const marker of [...REVIEW_MARKERS, REMOVE_MARKER, ...RUN_MARKERS]) expect({ marker, found: firstLoad.includes(marker) }).toEqual({ marker, found: false });
     for (const marker of COMMAND_MARKERS) expect({ marker, found: firstLoad.includes(marker) }).toEqual({ marker, found: true });
   });
 
-  test("the review and Remove facets each load as their own lazy chunk", () => {
-    const review = lazy.find((chunk) => chunk.name.startsWith("DeployReview-"));
-    const remove = lazy.find((chunk) => chunk.name.startsWith("RemoveFacetsDialog-"));
-    expect(review).toBeDefined();
-    expect(remove).toBeDefined();
-    const carried = lazy.filter((chunk) => REVIEW_MARKERS.every((marker) => chunk.text.includes(marker)));
-    expect(carried.length).toBeGreaterThan(0);
-    expect(lazy.some((chunk) => chunk.text.includes(REMOVE_MARKER))).toBe(true);
+  test("the review, Remove facets and the runs load together as S8b's one lazy chunk", () => {
+    const chunk = lazy.find((c) => c.name.startsWith("lazy-"));
+    expect(chunk).toBeDefined();
+    for (const marker of [...REVIEW_MARKERS, REMOVE_MARKER, ...RUN_MARKERS]) {
+      expect({ marker, found: chunk?.text.includes(marker) }).toEqual({ marker, found: true });
+    }
   });
 });

@@ -6,9 +6,8 @@
 import type { Address, AnalysisContext, Hex } from "@lattice-studio/core";
 import { exportSafeBatch, safeBatchTarget, toChecksum } from "@lattice-studio/core";
 import {
-  announce, chainService, deployController, env, listDeployments, loadCreationCode, log, now, type CommandContext,
+  announce, chainService, deployController, listDeployments, loadCreationCode, log, now, type CommandContext,
 } from "@/contracts";
-import { chainName } from "@/chain/infra/chains";
 import { saveFile } from "./save-file";
 import { STUDIO_VERSION } from "./version";
 
@@ -18,13 +17,13 @@ function say(text: string, tag: "Note" | "Deploy" | "Error" = "Note"): void {
 }
 
 /** The project's known addresses and argument sources, as S1 builds them for AUTH-02 and LINK-01 (spec L333-L334). */
-async function exportContext(ctx: CommandContext): Promise<Pick<AnalysisContext, "known" | "unconfirmed" | "knownFrom" | "unconfirmedFrom">> {
+async function exportContext(ctx: CommandContext, chainName: (id: number) => string): Promise<Pick<AnalysisContext, "known" | "unconfirmed" | "knownFrom" | "unconfirmedFrom">> {
   const known: Address[] = [];
   const knownFrom: NonNullable<AnalysisContext["knownFrom"]> = {};
   const add = (address: Address, source: "prediction" | "deployment", chainId: number) => {
     const key = address.toLowerCase();
     if (!knownFrom[key]) known.push(toChecksum(address));
-    if (!knownFrom[key] || source === "deployment") knownFrom[key] = { source, chainId, chain: chainName(chainId, env.e2e) };
+    if (!knownFrom[key] || source === "deployment") knownFrom[key] = { source, chainId, chain: chainName(chainId) };
   };
   for (const p of ctx.project.predicted) add(p.address, "prediction", p.chainId);
   // Every record counts, whatever its status (a verified diamond is still "confirmed", core model/project.ts).
@@ -68,7 +67,7 @@ export async function downloadSafeBatch(ctx: CommandContext): Promise<void> {
     path,
     now: now(),
     studioVersion: STUDIO_VERSION,
-    context: await exportContext(ctx),
+    context: await exportContext(ctx, (id) => service.chains().find((c) => c.id === id)?.name ?? `Chain ${id}`),
     ...(readiness.status === "ready" ? { chain: readiness.state } : {}),
     ...(proxyCreationCode === undefined ? {} : { proxyCreationCode }),
   });

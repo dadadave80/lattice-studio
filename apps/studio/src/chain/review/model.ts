@@ -8,12 +8,11 @@ import type {
 } from "@lattice-studio/core";
 import { CREATEX_CODEHASH, planInit, sameAddress } from "@lattice-studio/core";
 import type { AccountKind, ChainReadiness, DeployPhase, DeployState } from "@/contracts";
-import { CHOOSE_A_CHAIN, CONNECT_A_WALLET, checking, needsFunds, walletOn } from "@/chain/infra/copy";
 import {
-  CHANGED_SINCE_REVIEW, DEPLOY_NEEDS_CONNECTION, SAFE_SIGNS_BY_BATCH, SIMULATING, TYPE_THE_NAME, resolveBlockers, tickFirst,
+  CHANGED_SINCE_REVIEW, CHOOSE_A_CHAIN, CONNECT_A_WALLET, checking, needsFunds, walletOn, DEPLOY_NEEDS_CONNECTION, SAFE_SIGNS_BY_BATCH, SIMULATING, TYPE_THE_NAME, resolveBlockers, tickFirst,
   type SectionId, type SectionStatus,
 } from "./copy";
-import { pathName } from "./entry-copy";
+import { ON_ITS_WAY, pathName } from "./entry-copy";
 
 export { IN_FLIGHT_PHASES, pathName } from "./entry-copy";
 
@@ -177,6 +176,8 @@ export function shortHash(hash: string): string {
 
 export type SignInput = {
   online: boolean;
+  /** The session's read-only reason (spec L389: Deploy disabled with the same reason). */
+  readOnly?: string | null;
   /** `catalogDeployBlock(catalog)`: a fixture catalog can't deploy (contracts §4). */
   catalogBlock: string | null;
   /** The catalog hasn't loaded. */
@@ -211,6 +212,7 @@ export type Enablement = { ok: true } | { ok: false; reason: string };
  */
 export function signEnablement(input: SignInput): Enablement {
   const no = (reason: string): Enablement => ({ ok: false, reason });
+  if (input.readOnly) return no(input.readOnly);
   if (!input.online) return no(DEPLOY_NEEDS_CONNECTION);
   if (input.catalogLoading) return no("The catalog hasn't loaded yet");
   if (input.catalogBlock) return no(input.catalogBlock);
@@ -232,13 +234,13 @@ export function signEnablement(input: SignInput): Enablement {
   if (deploy.changedSinceReview || (deploy.snapshot !== undefined && deploy.snapshot !== input.recipeHash)) return no(CHANGED_SINCE_REVIEW);
   if (deploy.phase === "simulating") return no(SIMULATING);
   if (deploy.phase === "awaitingSignature") return no("Waiting for your wallet");
-  if (PROGRESS_PHASES.has(deploy.phase)) return no("This deploy is already on its way");
+  if (PROGRESS_PHASES.has(deploy.phase)) return no(ON_ITS_WAY);
   const passed = deploy.simulation?.ok === true || noSimulation;
   if (!passed) {
     if (deploy.simulation?.revert) return no(`The simulation reverted: ${deploy.simulation.revert}`);
     return no(SIMULATING);
   }
-  if (deploy.phase !== "ready" && !(noSimulation && (deploy.phase === "review" || deploy.phase === "failed"))) return no(SIMULATING);
+  if (deploy.phase !== "ready" && !(noSimulation && (deploy.phase === "review"))) return no(SIMULATING);
   if (input.mainnet && input.typedName.trim() !== input.projectName) return no(TYPE_THE_NAME);
   return { ok: true };
 }

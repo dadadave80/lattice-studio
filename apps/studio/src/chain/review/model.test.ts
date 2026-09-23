@@ -95,6 +95,17 @@ describe("Sign & deploy enablement (spec L573, IR L238)", () => {
     expect(signEnablement(ready({ deploy, noSimulationTicked: true }))).toEqual({ ok: true });
   });
 
+  test("read-only disables it with the session's reason (spec L389)", () => {
+    expect(reason({ readOnly: "Another tab is editing this project" })).toBe("Another tab is editing this project");
+    expect(signEnablement(ready({ readOnly: null }))).toEqual({ ok: true });
+  });
+
+  test("without a simulation it signs from Review only, never from Failed", () => {
+    const simulation = { ok: false, unavailable: true } as const;
+    expect(signEnablement(ready({ deploy: { phase: "review", snapshot: HASH, simulation }, noSimulationTicked: true }))).toEqual({ ok: true });
+    expect(reason({ deploy: { phase: "failed", snapshot: HASH, simulation }, noSimulationTicked: true })).toBe(SIMULATING);
+  });
+
   test("a mainnet needs the project name typed exactly (paste allowed)", () => {
     expect(reason({ mainnet: true })).toBe(TYPE_THE_NAME);
     expect(reason({ mainnet: true, typedName: "governedvault" })).toBe(TYPE_THE_NAME);

@@ -14,7 +14,7 @@ import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
 import { prediction } from "@/state";
 import {
-  DEPLOY_NEEDS_CONNECTION, FIXTURE_CATALOG, SCOPE_TITLES, WAITING_FOR_SAFE, resolveBlockers, tickFirst,
+  DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, fixtureBlock, ON_ITS_WAY, SCOPE_TITLES, WAITING_FOR_SAFE, resolveBlockers, tickFirst,
 } from "./entry-copy";
 
 const OK: Enablement = { ok: true };
@@ -44,8 +44,7 @@ function names(): string[] {
 function openBlock(ctx: CommandContext): string | null {
   if (!ctx.online) return DEPLOY_NEEDS_CONNECTION;
   if (!ctx.catalog) return CATALOG_LOADING;
-  const tag = ctx.catalog.lattice.tag;
-  return tag === "fixture" || tag.startsWith("fixture-") ? FIXTURE_CATALOG : null;
+  return fixtureBlock(ctx.catalog.lattice.tag);
 }
 
 function readOnly(ctx: CommandContext): Enablement | null {
@@ -73,6 +72,9 @@ const open = command<CommandArgsOf<"deploy.open">>({
   enabled(ctx, args) {
     const block = openBlock(ctx);
     if (block) return no(block);
+    // Spec L389: read-only disables Deploy with the same reason.
+    const locked = readOnly(ctx);
+    if (locked) return locked;
     // Spec L385: while a Safe proposal waits, Deploy is disabled; the proposal shows in the Deployments list.
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
     const count = blockers(ctx).length;
@@ -146,7 +148,7 @@ const previewFor = command<CommandArgsOf<"deploy.previewFor">>({
     if (!ctx.catalog) return no(CATALOG_LOADING);
     return OK;
   },
-  run: async (ctx, { address }) => (await runs()).runPreviewFor(ctx, address),
+  run: async (ctx, { address }) => (await runs()).runPreviewFor(ctx, address, chainName(ctx.session.chainId ?? 0, env.e2e)),
 });
 
 const copyAddress = command({
@@ -181,6 +183,8 @@ const downloadSafeBatch = command({
   enabled(ctx) {
     const block = openBlock(ctx);
     if (block && block !== DEPLOY_NEEDS_CONNECTION) return no(block);
+    const locked = readOnly(ctx);
+    if (locked) return locked;
     const count = blockers(ctx).length;
     if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
     // The review's ticks are the person's consent however the deploy goes out, a Safe batch included (spec L573).
@@ -204,7 +208,11 @@ const focusPicker = command({
     // blockers or warnings whose very fix this is.
     const block = openBlock(ctx);
     if (block) return no(block);
+    const locked = readOnly(ctx);
+    if (locked) return locked;
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
+    // A deploy on its way opens the review at its progress, where there's no picker to move to.
+    if (IN_FLIGHT_PHASES.has(ctx.deploy.phase)) return no(ON_ITS_WAY);
     return OK;
   },
   run: async (ctx) => (await runs()).runFocusPicker(ctx),

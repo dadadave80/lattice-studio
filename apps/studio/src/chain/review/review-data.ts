@@ -8,8 +8,6 @@ import type {
   ChainInfo, ChainReadiness, ChainService, DeployController, DeployState, WalletAccount, WalletConnector,
 } from "@/contracts";
 import type { Prediction } from "@/state";
-import { env } from "@/contracts";
-import { findChain } from "@/chain/infra/chains";
 import type { SectionId } from "./copy";
 import { fundsShort, sectionOf } from "./model";
 import type { Cost } from "./use-cost";
@@ -19,6 +17,8 @@ export type Review = {
   catalog: Catalog;
   analysis: Analysis;
   online: boolean;
+  /** The session's read-only reason, or null. */
+  readOnly: string | null;
   /** The selected chain, and its name ("Chain 11155111" while the chain module hasn't said). */
   chainId: number | null;
   chainName: string;
@@ -26,6 +26,8 @@ export type Review = {
   /** The chain module; null while it loads or when it failed (`serviceError`). */
   service: ChainService | null;
   serviceError: string | null;
+  /** The chain module is still loading ("Loading wallet support…", spec L562). */
+  serviceLoading: boolean;
   readiness: ChainReadiness;
   /** The selected chain's probes, once ready. */
   chain: ChainState | undefined;
@@ -54,10 +56,9 @@ export function problemsIn(review: Pick<Review, "analysis">, section: SectionId)
   return review.analysis.problems.filter((p) => sectionOf(p.code) === section);
 }
 
-/** The selected chain's native currency (ETH unless the chain table says otherwise). */
-export function currencyOf(review: Pick<Review, "chainId">): { symbol: string; decimals: number } {
-  const spec = review.chainId === null ? undefined : findChain(review.chainId, env.e2e);
-  return spec ? { symbol: spec.nativeCurrency.symbol, decimals: spec.nativeCurrency.decimals } : { symbol: "ETH", decimals: 18 };
+/** The selected chain's native currency: every chain Studio deploys to in v1 pays in ETH (S8a's chain table). */
+export function currencyOf(_review: Pick<Review, "chainId">): { symbol: string; decimals: number } {
+  return { symbol: "ETH", decimals: 18 };
 }
 
 /** Flow 14's "Needs about 0.012 ETH; this account has 0.004." for the connected account, or null. */

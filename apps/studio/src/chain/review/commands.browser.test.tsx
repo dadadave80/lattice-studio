@@ -255,6 +255,22 @@ describe("the review's own commands", () => {
     expect(reason("chain.focusPicker")).toBe("Waiting for the Safe to execute the batch");
   });
 
+  test("Choose another chain while a deploy is on its way says so and requests no focus", async () => {
+    await studio();
+    seedDeployState({ phase: "pending", chainId: SEPOLIA });
+    expect(reason("chain.focusPicker")).toBe("This deploy is already on its way");
+    await runCommand({ id: "chain.focusPicker" }, "fix");
+    expect(reviewState().focusPicker).toBe(false);
+    expect(session.get().dialogs).toEqual([]);
+  });
+
+  test("read-only disables Deploy…, Choose another chain and the Safe batch with its reason (spec L389)", async () => {
+    await studio({ session: { chainId: SEPOLIA, readOnly: "Another tab is editing this project" } });
+    for (const id of ["deploy.open", "chain.focusPicker", "deploy.downloadSafeBatch", "deploy.again"] as const) {
+      expect({ id, reason: reason(id) }).toEqual({ id, reason: "Another tab is editing this project" });
+    }
+  });
+
   test("Download Transaction Builder batch with an account that isn't a Safe says so", async () => {
     await studio();
     await runCommand({ id: "ack.set", args: { problemId: "INIT-05:diamond" } }, "button");

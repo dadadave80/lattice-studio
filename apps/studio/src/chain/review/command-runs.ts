@@ -6,14 +6,14 @@
 import type { Address, DeployPath, Scope } from "@lattice-studio/core";
 import { formatAddress, newEntropy, toChecksum } from "@lattice-studio/core";
 import {
-  announce, commandRef, deployState, doc, env, listDeployments, log, openDialog, randomBytes, runCommand, session,
+  announce, commandRef, deployState, doc, listDeployments, log, openDialog, randomBytes, runCommand, session,
   type CommandContext,
 } from "@/contracts";
-import { chainName } from "@/chain/infra/chains";
 import { predict, prediction } from "@/state";
 import { copyText } from "@/ui/copy/copy-text";
 import { IN_FLIGHT_PHASES, SCOPE_TITLES, pathName } from "./entry-copy";
 import { requestPickerFocus, setPreview } from "./review-state";
+import { downloadSafeBatch } from "./safe-batch";
 
 function say(text: string, tag: "Note" | "Deploy" | "Error" = "Note"): void {
   log({ tag, text });
@@ -107,7 +107,7 @@ export function runSetScope(ctx: CommandContext, target: Scope): void {
   if (result.changed) say(`Salt scope: ${label.toLowerCase()}.${whereNow()}`);
 }
 
-export function runPreviewFor(ctx: CommandContext, address: Address): void {
+export function runPreviewFor(ctx: CommandContext, address: Address, chain: string): void {
   // Spec L565: any address, such as a Safe, without connecting it. The prediction isn't recorded: it isn't this diamond's.
   const account: Address = toChecksum(address);
   const p = predict({ deploy: ctx.project.deploy, catalog: ctx.catalog, chainId: ctx.session.chainId, account: { address: account } });
@@ -117,7 +117,7 @@ export function runPreviewFor(ctx: CommandContext, address: Address): void {
     return;
   }
   setPreview({ account, result: { ok: true, address: p.address, chainId: p.chainId } });
-  say(`Deployed by ${formatAddress(account)}, this diamond would be at ${p.address} on ${chainName(p.chainId, env.e2e)}.`);
+  say(`Deployed by ${formatAddress(account)}, this diamond would be at ${p.address} on ${chain}.`);
 }
 
 export async function runCopyAddress(): Promise<void> {
@@ -130,7 +130,6 @@ export function runRemoveFacets(ctx: CommandContext): void {
 }
 
 export async function runDownloadSafeBatch(ctx: CommandContext): Promise<void> {
-  const { downloadSafeBatch } = await import("./safe-batch");
   await downloadSafeBatch(ctx);
 }
 
