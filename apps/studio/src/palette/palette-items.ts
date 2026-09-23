@@ -1,0 +1,239 @@
+/**
+ * The palette's rows (IR L162-L168), built from the registry and the open project without touching the DOM:
+ * Suggested (from context: resolve current problems, Fill in, Next problem), Recent (the last 5), Commands
+ * (by category: Sheet, Build, Session, then the rest), Place facet and Recipes, always in that order
+ * (PA bug 15), so commands never sit behind a hundred facets. Every row carries its title, its category, the
+ * binding for its shortcut chip and its console syntax, so each use teaches both (spec L660).
+ */
+import type { Catalog, CommandRef, Json, Problem, TemplateItem } from "@lattice-studio/core";
+import { templateList } from "@lattice-studio/core";
+import {
+  bindingId, getCommand, isPlaceholder, type BindingId, type CommandCategory, type PaletteRow, type SheetPoint,
+} from "@/contracts";
+import { CATEGORY_ORDER } from "@/commands";
+import type { PaletteMode } from "./palette-state";
+
+export type GroupId = "suggested" | "recent" | "commands" | "facets" | "recipes";
+
+export const GROUP_ORDER: readonly GroupId[] = ["suggested", "recent", "commands", "facets", "recipes"];
+
+export const GROUP_LABELS: Readonly<Record<GroupId, string>> = {
+  suggested: "Suggested",
+  recent: "Recent",
+  commands: "Commands",
+  facets: "Place facet",
+  recipes: "Recipes",
+};
+
+/** A placed facet's row says so (PA bug 16: "On sheet"); placing it again selects and locates it. */
+export const ON_SHEET = "On sheet";
+
+/** At most this many problem fixes lead Suggested. */
+export const SUGGESTED_FIXES = 3;
+
+export type PaletteItem = {
+  /** Unique within the palette: the group and the command with its arguments. */
+  key: string;
+  group: GroupId;
+  ref: CommandRef;
+  /** The command's title for these arguments ("Place ERC20"): its one name everywhere. */
+  title: string;
+  category: CommandCategory;
+  /** The binding whose keys the shortcut chip shows. */
+  binding?: BindingId;
+  /** Console syntax in grey ("place erc20"). */
+  syntax?: string;
+  /** "On sheet". */
+  note?: string;
+  /** Lowercased text the query matches. */
+  search: string;
+};
+
+export type PaletteGroup = { id: GroupId; label: string; items: PaletteItem[] };
+
+/** What a command shows as a row, or null while it's a placeholder (it has no real title yet). */
+export type Describe = (ref: CommandRef) => {
+  title: string;
+  category: CommandCategory;
+  binding?: BindingId;
+  syntax?: string;
+} | null;
+
+/** Describes a command from the registry. */
+export const describeCommand: Describe = (ref) => {
+  if (isPlaceholder(ref.id)) return null;
+  const c = getCommand(ref.id);
+  let title: string;
+  try {
+    title = c.title(ref.args ?? {});
+  } catch {
+    return null;
+  }
+  return {
+    title,
+    category: c.category,
+    ...(c.keys?.length ? { binding: bindingId(c.id) } : {}),
+    ...(c.console ? { syntax: c.console.syntax } : {}),
+  };
+};
+
+export type PaletteSources = {
+  mode: PaletteMode;
+  /** Where Add facet here… places. */
+  at: SheetPoint | null;
+  /** The Commands group's rows (`listPaletteRows()`). */
+  rows: readonly PaletteRow[];
+  recent: readonly CommandRef[];
+  problems: readonly Problem[];
+  catalog: Catalog | null;
+  /** Facets on the sheet. */
+  placed: ReadonlySet<string>;
+  describe?: Describe;
+};
+
+function refKey(ref: CommandRef): string {
+  return `${ref.id}${ref.args ? JSON.stringify(ref.args) : ""}`;
+}
+
+function searchText(...parts: (string | undefined)[]): string {
+  return parts.filter((p) => p !== undefined && p !== "").join(" ").toLowerCase();
+}
+
+function item(group: GroupId, ref: CommandRef, shown: NonNullable<ReturnType<Describe>>, extra: {
+  syntax?: string; note?: string; keywords?: string;
+} = {}): PaletteItem {
+  const syntax = extra.syntax ?? shown.syntax;
+  return {
+    key: `${group}:${refKey(ref)}`,
+    group,
+    ref,
+    title: shown.title,
+    category: shown.category,
+    ...(shown.binding ? { binding: shown.binding } : {}),
+    ...(syntax ? { syntax } : {}),
+    ...(extra.note ? { note: extra.note } : {}),
+    search: searchText(shown.title, shown.category, syntax, extra.note, extra.keywords),
+  };
+}
+
+function fromRef(group: GroupId, ref: CommandRef, describe: Describe): PaletteItem | null {
+  const shown = describe(ref);
+  return shown ? item(group, ref, shown) : null;
+}
+
+function present<T>(value: T | null): value is T {
+  return value !== null;
+}
+
+/**
+ * Suggested, from context (IR L164): the first fix of each of the first problems (blockers first, as the
+ * analysis orders them), Fill in while required arguments are empty (INIT-01, spec L362), and Next problem
+ * while there are problems.
+ */
+function suggested(problems: readonly Problem[], describe: Describe): PaletteItem[] {
+  const out: PaletteItem[] = [];
+  const seen = new Set<string>();
+  const add = (ref: CommandRef): boolean => {
+    const key = refKey(ref);
+    if (seen.has(key)) return false;
+    const row = fromRef("suggested", ref, describe);
+    if (!row) return false;
+    seen.add(key);
+    out.push(row);
+    return true;
+  };
+  let fixes = 0;
+  for (const problem of problems) {
+    if (fixes >= SUGGESTED_FIXES) break;
+    if (problem.fixes.some((fix) => add(fix))) fixes += 1;
+  }
+  if (problems.some((p) => p.code === "INIT-01")) add({ id: "init.open" });
+  if (problems.length > 0) add({ id: "problem.next" });
+  return out;
+}
+
+function categoryRank(category: CommandCategory): number {
+  const at = CATEGORY_ORDER.indexOf(category);
+  return at < 0 ? CATEGORY_ORDER.length : at;
+}
+
+/** Commands (IR L164): Sheet, Build, Session, then Export, Deploy, Console and Chain; by title within each. */
+function commands(rows: readonly PaletteRow[]): PaletteItem[] {
+  return [...rows]
+    .sort((a, b) => categoryRank(a.category) - categoryRank(b.category) || a.title.localeCompare(b.title, "en"))
+    .map((row) =>
+      item("commands", row.ref, {
+        title: row.title,
+        category: row.category,
+        binding: row.binding,
+        ...(row.syntax ? { syntax: row.syntax } : {}),
+      }),
+    );
+}
+
+/** Place facet: every catalog facet in catalog order, as `place <facet>` teaches (IR L165). */
+function facets(catalog: Catalog | null, placed: ReadonlySet<string>, at: SheetPoint | null, describe: Describe): PaletteItem[] {
+  if (!catalog) return [];
+  const where: Record<string, Json> = at ? { at: { x: at.x, y: at.y } } : {};
+  return catalog.facets
+    .map((facet) => {
+      const ref: CommandRef = { id: "facet.place", args: { facet: facet.name, ...where } };
+      const shown = describe(ref);
+      if (!shown) return null;
+      return item("facets", ref, shown, {
+        syntax: `place ${facet.name.toLowerCase()}`,
+        ...(placed.has(facet.name) ? { note: ON_SHEET } : {}),
+        keywords: `${facet.name} ${facet.area}`,
+      });
+    })
+    .filter(present);
+}
+
+/**
+ * Recipes: each Lattice recipe as "Recipe: GovernedVault" (spec L407); on a sheet with facets, the v1
+ * recipes also as "Replace this sheet with…" (spec L408). Recipes that arrive later stay, disabled with why.
+ */
+function recipes(catalog: Catalog | null, sheetHasFacets: boolean, describe: Describe): PaletteItem[] {
+  if (!catalog) return [];
+  const templates: TemplateItem[] = templateList(catalog);
+  const load = templates.map((t) => {
+    const ref: CommandRef = { id: "recipe.load", args: { name: t.name } };
+    const shown = describe(ref);
+    return shown ? item("recipes", ref, shown, { syntax: `recipe ${t.name.toLowerCase()}` }) : null;
+  });
+  const replace = sheetHasFacets
+    ? templates.filter((t) => t.loadable).map((t) => fromRef("recipes", { id: "recipe.replace", args: { name: t.name } }, describe))
+    : [];
+  return [...load, ...replace].filter(present);
+}
+
+/** Every group in order, empty ones left out. Add facet here… shows the Place facet group only. */
+export function paletteGroups(sources: PaletteSources): PaletteGroup[] {
+  const describe = sources.describe ?? describeCommand;
+  const placeAt = sources.mode === "facets" ? sources.at : null;
+  const items: Record<GroupId, PaletteItem[]> =
+    sources.mode === "facets"
+      ? { suggested: [], recent: [], commands: [], recipes: [], facets: facets(sources.catalog, sources.placed, placeAt, describe) }
+      : {
+          suggested: suggested(sources.problems, describe),
+          recent: sources.recent.map((ref) => fromRef("recent", ref, describe)).filter(present),
+          commands: commands(sources.rows),
+          facets: facets(sources.catalog, sources.placed, null, describe),
+          recipes: recipes(sources.catalog, sources.placed.size > 0, describe),
+        };
+  return GROUP_ORDER.map((id) => ({ id, label: GROUP_LABELS[id], items: items[id] })).filter((g) => g.items.length > 0);
+}
+
+/** The query's words, lowercased. */
+export function queryWords(query: string): string[] {
+  return query.toLowerCase().split(/\s+/).filter((w) => w !== "");
+}
+
+/** Rows matching every word of `query` (in title, category, syntax, note, facet name or area), groups kept in order. */
+export function filterGroups(groups: readonly PaletteGroup[], query: string): PaletteGroup[] {
+  const words = queryWords(query);
+  if (words.length === 0) return [...groups];
+  return groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => words.every((w) => i.search.includes(w))) }))
+    .filter((g) => g.items.length > 0);
+}
