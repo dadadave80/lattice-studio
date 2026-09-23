@@ -3,9 +3,23 @@ export function oneLine(text: string): string {
   return text.replace(/\s*[\r\n]+\s*/g, " ").trim();
 }
 
-/** A Markdown table cell: `|` and `\` escaped, newlines collapsed (GFM tables can't hold either). */
+/**
+ * Escapes the three characters a Markdown renderer reads as HTML (spec L21, L857: every generated string is
+ * escaped, so a name like `<img onerror>` can't render as a tag). `&` first, so the entities this introduces
+ * are never themselves re-escaped.
+ */
+export function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** One line of prose, safe outside a code fence or inline code: newlines collapsed, then HTML-escaped. */
+export function escapedLine(text: string): string {
+  return escapeHtml(oneLine(text));
+}
+
+/** A Markdown table cell: collapsed, HTML-escaped, then `|` and `\` escaped (GFM tables can't hold either). */
 export function cell(text: string): string {
-  return oneLine(text).replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
+  return escapedLine(text).replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 }
 
 /** A fence at least as long as the longest run of backticks in `text`, and never under three. */
