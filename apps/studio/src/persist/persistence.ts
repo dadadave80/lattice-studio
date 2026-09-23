@@ -238,6 +238,8 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   let writing: Promise<void> | null = null;
   /** Set while this instance loads the document itself, so the load isn't broadcast as an edit. */
   let quiet = 0;
+  /** The lock claim in flight for the open project; a flush waits for it to know whether it may write. */
+  let claiming: Promise<boolean> | null = null;
 
   const loadQuietly = (project: Project, reason?: string) => {
     quiet += 1;
@@ -298,7 +300,9 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   async function flush(): Promise<void> {
     clearTimer();
     await flushViewports().catch(() => {});
+    if (claiming) await claiming;
     while (writing) await writing;
+    clearTimer();
     const project = doc.get();
     if (!dirty() || !holds(project.id)) {
       refreshStatus();
@@ -314,7 +318,10 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
 
   /** Claims the lock for the open project; once held, anything unsaved is scheduled. */
   async function claim(id: string): Promise<boolean> {
-    const held = await lock.claim(id).catch(() => false);
+    const pending = lock.claim(id).catch(() => false);
+    claiming = pending;
+    const held = await pending;
+    if (claiming === pending) claiming = null;
     if (openId === id) schedule();
     return held;
   }
