@@ -18,7 +18,7 @@ import { setAppDeployMachine } from "./controller";
 import { createDeployMachine, type DeployMachine, type MissingStep } from "./machine";
 import { MissingContractsDialog } from "./MissingContractsDialog";
 import { startDivergenceWatch } from "./diverged";
-import { needsController, startDeployTracking } from "./services";
+import { needsController, startDeployTracking } from "./tracking";
 import { deployHarness, flush } from "./testing";
 
 const SEPOLIA = 11155111;
@@ -157,9 +157,12 @@ describe("commands", () => {
     seedDeployState({ phase: "review", error: "You canceled in your wallet.", simulation: { ok: true, block: 1 } });
     expect(commandState({ id: "deploy.sign" }).title).toBe("Sign again");
     // Spec L575: an RPC that can't simulate at all asks for the review's extra tick, not a passing simulation.
+    const cant = "Sepolia's RPC can't simulate this deploy. Signing without a simulation needs one more tick.";
+    seedDeployState({ phase: "review", chainId: SEPOLIA, error: cant, simulation: { ok: false, unavailable: true } });
+    expect(commandState({ id: "deploy.sign" })).toMatchObject({ ok: false, reason: cant });
     seedDeployState({ phase: "review", chainId: SEPOLIA, simulation: { ok: false, unavailable: true } });
     expect(commandState({ id: "deploy.sign" })).toMatchObject({
-      ok: false, reason: "Sepolia's RPC can't simulate this deploy. Tick the review's extra box to sign without a simulation.",
+      ok: false, reason: "This chain's RPC can't simulate this deploy. Signing without a simulation needs one more tick.",
     });
   });
 
@@ -178,7 +181,7 @@ describe("commands", () => {
     seedStudio();
     expect(commandState({ id: "deploy.missingContracts" })).toMatchObject({ ok: false, reason: "Choose a chain first." });
     session.set({ chainId: SEPOLIA });
-    expect(commandState({ id: "deploy.missingContracts" })).toMatchObject({ ok: false, reason: "Nothing this recipe needs is missing on Sepolia." });
+    expect(commandState({ id: "deploy.missingContracts" })).toMatchObject({ ok: false, reason: "Nothing this recipe needs is missing on this chain." });
     const ref = { id: "deploy.missingContracts" as const, args: { names: ["ERC20"] } };
     expect(commandState(ref).ok).toBe(true);
     await runCommand(ref, "fix");

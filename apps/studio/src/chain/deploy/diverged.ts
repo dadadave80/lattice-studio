@@ -4,9 +4,7 @@
  * so it says so without loading the deploy engine or the chain module. Light.
  */
 import type { Deployment, Hex } from "@lattice-studio/core";
-import { lines } from "@lattice-studio/core";
-import { announce, doc, env, getAnalysis, listDeployments, log, settings, subscribeAnalysis, subscribeDeployments } from "@/contracts";
-import { chainName } from "../infra/chains";
+import { announce, doc, getAnalysis, listDeployments, log, settings, subscribeAnalysis, subscribeDeployments } from "@/contracts";
 
 /** Before any analysis: never a recipe the sheet had. */
 const NO_HASH = "0x";
@@ -57,11 +55,15 @@ export function startDivergenceWatch(): () => void {
     const from = hash;
     hash = next.recipeHash;
     if (from === NO_HASH || loadedFor !== id) return;
-    for (const d of divergedRecords(records, id, from, next.recipeHash)) {
-      const line = lines.diverged({ chain: chainName(d.chainId, env.e2e), revision: d.revision });
-      log(line);
-      if (settings.get().deployAnnouncements === "all") announce(line.text, { politeness: "polite" });
-    }
+    const left = divergedRecords(records, id, from, next.recipeHash);
+    if (left.length === 0) return;
+    import("./diverged-line").then(({ divergedLine }) => {
+      for (const d of left) {
+        const line = divergedLine(d.chainId, d.revision);
+        log(line);
+        if (settings.get().deployAnnouncements === "all") announce(line.text, { politeness: "polite" });
+      }
+    }, (error: unknown) => console.error(error));
   });
   const stopRecords = subscribeDeployments((id) => {
     if (id === doc.get().id) load(id);

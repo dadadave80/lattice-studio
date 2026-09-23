@@ -240,12 +240,18 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
 
   const chainName = (chainId: number): string => inputs.chainName(chainId);
 
-  /** A console line, announced as the deploy-announcements setting says (spec L778). */
-  const emit = (line: LineDraft, level: Level = line.tag === "Error" ? "alert" : "info"): void => {
+  /**
+   * A console line. Deploy output (Deploy and Verify lines, and Error lines that start "Deploy") is announced by the
+   * console as the deploy-announcements setting says (spec L778, S5e's `deploy-announce.ts`), so each line is read
+   * once. The machine announces only what the console doesn't: an Error of its own, such as a record the browser
+   * refused to save, which interrupts (spec L785) unless announcements are off. `_level` says how serious the line
+   * is, for the console's own rules.
+   */
+  const emit = (line: LineDraft, _level: Level = line.tag === "Error" ? "alert" : "info"): void => {
     deps.say.log(line);
-    const mode = deps.settings().deployAnnouncements;
-    if (mode === "none" || (mode === "errors" && level === "info")) return;
-    deps.say.announce(line.text.replaceAll("`", ""), { politeness: level === "alert" ? "assertive" : "polite" });
+    const consoleSays = line.tag === "Deploy" || line.tag === "Verify" || (line.tag === "Error" && line.text.startsWith("Deploy"));
+    if (consoleSays || deps.settings().deployAnnouncements === "none") return;
+    deps.say.announce(line.text.replaceAll("`", ""), { politeness: line.tag === "Error" ? "assertive" : "polite" });
   };
 
   const note = (text: string, level: Level = "info"): void => emit({ tag: "Deploy", text }, level);

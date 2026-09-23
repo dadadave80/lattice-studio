@@ -7,8 +7,8 @@
 import type { Address, Hex, TxRequest } from "@lattice-studio/core";
 import type { Config } from "@wagmi/core";
 import { numberToHex } from "viem";
-import { loadChainRuntime } from "../infra";
-import type { ChainRuntime } from "../infra";
+import { chainService } from "@/contracts";
+import type { ChainRuntime } from "../infra/service";
 import type { CallsOutcome, DeployChainPort } from "./ports";
 import { createViemPort, isRejection, reason, type DeployWallet } from "./viem-port";
 
@@ -126,11 +126,21 @@ export function portOf(runtime: ChainRuntime): DeployChainPort {
   });
 }
 
+/**
+ * The chain module's full runtime (S8a's `loadChainRuntime`, without its barrel, which would bring the chain table
+ * and its copy into a chunk of their own): the service plus each chain's viem client and wagmi's config.
+ */
+async function loadRuntime(): Promise<ChainRuntime> {
+  const service = await chainService();
+  if (typeof (service as Partial<ChainRuntime>).publicClient === "function") return service as ChainRuntime;
+  throw new Error("The chain service in use has no viem clients (a test fake).");
+}
+
 let port: Promise<DeployChainPort> | null = null;
 
 /** The port over the app's chain module, built once. A failed load is tried again on the next call. */
 export function appPort(): Promise<DeployChainPort> {
-  port ??= loadChainRuntime().then(portOf, (error: unknown) => {
+  port ??= loadRuntime().then(portOf, (error: unknown) => {
     port = null;
     throw error;
   });

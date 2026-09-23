@@ -94,7 +94,7 @@ describe("review and simulation", () => {
     expect(h.said.texts()).toContain("Simulated at block 9,123,456 with eth_call: succeeded.");
   });
 
-  test("a revert goes back to Review, decoded, as an Error line announced assertively", async () => {
+  test("a revert goes back to Review, decoded, as a Deploy reverted Error line (the console announces it)", async () => {
     const { h, m } = rig();
     const abi = parseAbi(["error LatticeRegistry__RecordNotFound(bytes32 nameHash, uint64 version)"]);
     const data = encodeErrorResult({ abi, errorName: "LatticeRegistry__RecordNotFound", args: ["0x" + "11".repeat(32) as Hex, 1n] });
@@ -106,8 +106,7 @@ describe("review and simulation", () => {
     expect(m.state().simulation?.revert).toMatch(/^Deploy reverted in LatticeRegistry: `LatticeRegistry__RecordNotFound\(/);
     const line = h.said.lines.at(-1);
     expect(line?.tag).toBe("Error");
-    expect(h.said.announced.at(-1)?.[1]).toEqual({ politeness: "assertive" });
-    expect(h.said.announced.at(-1)?.[0]).not.toContain("`");
+    expect(line?.text).toMatch(/^Deploy reverted/);
     expect(h.port.calls.filter((c) => c.method === "noteEstimate").at(-1)?.args).toEqual([SEPOLIA_ID, null]);
   });
 
@@ -844,16 +843,26 @@ describe("safety and resilience", () => {
   });
 });
 
-describe("announcements follow the setting (spec L778)", () => {
-  test("errors: only failures are announced; all: every deploy line; none: nothing", async () => {
+describe("announcements (spec L778)", () => {
+  test("deploy lines are the console's to announce (S5e), so the machine never reads them twice", async () => {
     for (const mode of ["errors", "all", "none"] as const) {
       const { h, m } = rig();
       h.settings.deployAnnouncements = mode;
+      h.port.simulation = { kind: "reverted", block: 12, data: "0x", method: "simulate" };
       m.open();
       await flush();
-      const said = h.said.announced.map(([t]) => t);
-      if (mode === "all") expect(said).toContain("Simulated at block 9,123,456: succeeded, 7 events.");
-      else expect(said).toEqual([]);
+      expect(h.said.lines.some((l) => l.tag === "Error" && l.text.startsWith("Deploy reverted"))).toBe(true);
+      expect(h.said.announced).toEqual([]);
+    }
+  });
+
+  test("a record the browser refused to save interrupts, unless announcements are off", async () => {
+    for (const mode of ["errors", "none"] as const) {
+      const r = rig();
+      r.h.settings.deployAnnouncements = mode;
+      r.h.records.failWith = "Not saved: browser storage is full";
+      await submit(r);
+      expect(r.h.said.announced.map(([, o]) => o?.politeness)).toEqual(mode === "none" ? [] : ["assertive"]);
     }
   });
 });

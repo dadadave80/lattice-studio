@@ -7,11 +7,10 @@
 import type { Analysis } from "@lattice-studio/core";
 import { plural } from "@lattice-studio/core";
 import {
-  command, deployController, deployState, dialogComponent, env, log, openDialog, type CommandArgsOf, type CommandContext,
+  command, deployController, deployState, dialogComponent, log, openDialog, type CommandArgsOf, type CommandContext,
   type DeployController, type DeployState, type Enablement,
 } from "@/contracts";
-import { chainName } from "../infra/chains";
-import { CANCELED_IN_WALLET, DEPLOY_NEEDS_CONNECTION, DEPLOY_NOT_BUILT, signNeedsTick } from "./copy";
+import { CANCELED_IN_WALLET, CANT_SIMULATE_HERE, DEPLOY_NEEDS_CONNECTION, DEPLOY_NOT_BUILT } from "./command-copy";
 
 type MissingArgs = CommandArgsOf<"deploy.missingContracts">;
 
@@ -47,14 +46,15 @@ export const missingContractsCommand = command<MissingArgs>({
   id: "deploy.missingContracts",
   title: () => "Deploy missing contracts…",
   category: "Deploy",
-  palette: true,
+  // Reached from NET-03's fix and the review's Network section; in the palette it would sort before Deploy….
+  palette: false,
   enabled(ctx, args) {
     const chainId = ctx.session.chainId;
     if (ctx.session.readOnly !== null) return { ok: false, reason: ctx.session.readOnly };
     if (chainId === null) return { ok: false, reason: "Choose a chain first." };
     if (!ctx.online) return { ok: false, reason: DEPLOY_NEEDS_CONNECTION };
     const names = args.names ?? missingNames(ctx.analysis);
-    if (names.length === 0) return { ok: false, reason: `Nothing this recipe needs is missing on ${chainName(chainId, env.e2e)}.` };
+    if (names.length === 0) return { ok: false, reason: "Nothing this recipe needs is missing on this chain." };
     return OK;
   },
   run(ctx, args) {
@@ -76,7 +76,8 @@ export const signCommand = command({
     if (phase === "idle") return { ok: false, reason: "Open the deploy review first." };
     if (phase === "simulating") return { ok: false, reason: "Simulating…" };
     if (phase === "review" && simulation?.unavailable === true) {
-      return { ok: false, reason: signNeedsTick(chainName(ctx.deploy.chainId ?? ctx.session.chainId ?? 0, env.e2e)) };
+      // The machine's own sentence names the chain (spec L575): the RPC can't simulate; the review asks for one more tick.
+      return { ok: false, reason: ctx.deploy.error ?? CANT_SIMULATE_HERE };
     }
     if (phase !== "ready" && !(phase === "review" && simulation?.ok === true)) {
       return { ok: false, reason: phase === "review" ? "The simulation has to pass first." : "A deploy is already in flight." };
@@ -110,7 +111,8 @@ export const checkWalletCommand = command({
   id: "deploy.checkWallet",
   title: () => "Check wallet",
   category: "Deploy",
-  palette: true,
+  // Reached from the stale deploy's own buttons; in the palette it would sort before Deploy….
+  palette: false,
   enabled: stale,
   run: () => withController((c) => c.checkWallet()),
 });

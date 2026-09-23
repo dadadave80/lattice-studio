@@ -6,7 +6,14 @@
 import { formatAddress, plural } from "@lattice-studio/core";
 import type { Address } from "@lattice-studio/core";
 
-export { CANCELED_IN_WALLET, CONNECT_A_WALLET, walletOn } from "../infra/copy";
+/** Flow 14 (the chain module's words, kept here so this chunk doesn't split them out of the entry). */
+export const CONNECT_A_WALLET = "Connect a wallet first.";
+
+/** Flow 14: the wallet is on another chain than the one selected. */
+export function walletOn(chain: string): string {
+  return `Your wallet is on ${chain}.`;
+}
+export { CANCELED_IN_WALLET, cantSimulate, DEPLOY_NEEDS_CONNECTION, DEPLOY_NOT_BUILT } from "./command-copy";
 
 /** "9,123,456": digits grouped by threes, as the console lines write block numbers (spec L721). */
 export function groupDigits(value: number | bigint): string {
@@ -30,9 +37,6 @@ export const MISMATCH = "Deployed, but `facets()` doesn't match the plan.";
 
 /** Flow 14: offline mid-deploy. */
 export const OFFLINE_TRACKING = "Offline. Tracking resumes when you reconnect.";
-
-/** Flow 14: Deploy disabled offline. */
-export const DEPLOY_NEEDS_CONNECTION = "Deploy needs a connection.";
 
 /** Flow 12 step 6: no receipt after the timeout (180 s by default). */
 export function notSeenFor(seconds: number): string {
@@ -111,16 +115,6 @@ export function stillWaiting(hash: string, chain: string): string {
   return `${hash} is still waiting on ${chain} with this salt. Keep waiting, speed it up in your wallet, or use a new salt.`;
 }
 
-/** Sign & deploy's reason while the RPC can't simulate: the review's extra tick is the way on (spec L575). */
-export function signNeedsTick(chain: string): string {
-  return `${chain}'s RPC can't simulate this deploy. Tick the review's extra box to sign without a simulation.`;
-}
-
-/** Spec L575: the RPC can't simulate at all. The review asks for one more tick before signing. */
-export function cantSimulate(chain: string): string {
-  return `${chain}'s RPC can't simulate this deploy. Signing without a simulation needs one more tick.`;
-}
-
 /** The wallet moved to another account between the step's start and a send: nothing was sent. */
 export const ACCOUNT_CHANGED = "Your wallet switched accounts, so nothing was sent. Deploy again from this step.";
 
@@ -164,5 +158,3 @@ export function missingReverts(name: string): string {
   return `Creating ${name} reverts: Arachnid's proxy gives no reason, so check the gas and the chain's code size limit.`;
 }
 export const NOTHING_MISSING = "Nothing to deploy: every contract is already on this chain.";
-
-export const DEPLOY_NOT_BUILT = "Not built yet · WP-S8b";
