@@ -1,0 +1,53 @@
+/*
+ * The tour's coach mark (spec L400, IR L188): a small floating card, never a dialog. No backdrop, no focus
+ * trap; it sits above popovers but under toasts and dialogs, since either can still open while it's up.
+ */
+.card {
+  composes: surface from "../ui/shared/controls.module.css";
+  position: fixed;
+  z-index: 52;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  inline-size: min(calc(100vw - var(--lx-space-8)), calc(var(--lx-card-width) + var(--lx-space-12) * 2));
+  padding: var(--lx-space-3);
+  border-color: var(--lx-border-strong);
+}
+
+.counter {
+  margin: 0;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font: var(--lx-font-subheading);
+  letter-spacing: var(--lx-tracking-subheading);
+  color: var(--lx-text);
+}
+
+.text {
+  margin: 0;
+  color: var(--lx-text);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-2);
+}
+
+.steps {
+  display: flex;
+  gap: var(--lx-space-2);
+}
+
+@media (forced-colors: active) {
+  .card {
+    border-color: CanvasText;
+  }
+}

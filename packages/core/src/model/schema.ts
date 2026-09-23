@@ -405,7 +405,7 @@ export const ChainReleaseSchema = z.looseObject({
 /** The catalog index (spec L139-L148, contracts §3.1, §4 `index.json`). */
 export const CatalogSchema = z.looseObject({
   lattice: z.looseObject({ tag: text, commit: text }),
-  toolchain: z.looseObject({ foundry: text, solc: text }),
+  toolchain: z.looseObject({ foundry: text, solc: text, solcLong: opt(text) }),
   hash: Hash32Schema,
   deployer: z.looseObject({ address: AddressSchema, codehash: Hash32Schema }),
   registry: SharedContractSchema,

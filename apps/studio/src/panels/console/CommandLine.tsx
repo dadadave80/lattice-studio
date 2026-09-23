@@ -3,7 +3,7 @@ import { runCommand, subscribeCommands } from "@/contracts";
 import { platform } from "@/ui/shared/platform";
 import { commandHistory, remember, submitLine } from "./command-line";
 import styles from "./CommandLine.module.css";
-import { verbWords } from "./definitions";
+import { verbWords } from "./verbs";
 import { completion } from "./suggest";
 
 export const COMMAND_LABEL = "Command line";

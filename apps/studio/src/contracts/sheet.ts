@@ -2,10 +2,12 @@
  * The sheet's mounting seam. S4b owns `<ReactFlow>`; the modules built beside it plug in here, so none of
  * them edits S4b's files and S4b never imports theirs:
  *
- * - **Layers** (S4c notes and leaders in `ViewportPortal`, S4d's tool strip, zoom readout and title block in
- *   `Panel`s, S4e's marquee and Move to… ghost): components S4b renders as children of `<ReactFlow>`, in
- *   `order`, so they can use React Flow's hooks. Suggested orders: 10 notes, 20 interaction overlays,
- *   30 chrome panels.
+ * - **Layers** (S4c notes and leaders, S4d's tool strip, zoom readout and title block in `Panel`s, S4e's
+ *   marquee and Move to… ghost): components S4b renders as children of `<ReactFlow>`, in `order`, so they
+ *   can use React Flow's hooks. `order` is DOM order and so Tab order (spec L752: tool strip, notes, title
+ *   block): 1 Start block, 2 tool strip and zoom readout, 10 notes, 20 interaction overlays, 28 init-order
+ *   chip and legend, 30 title block. `ViewportPortal` content lands before every `Panel` in the DOM whatever
+ *   its order, so the notes are a plain layer that follows the viewport, not a portal.
  * - **Node and edge types** (S4a's facet card, S4c's traces and ties): registered at module evaluation;
  *   S4b reads `sheetNodeTypes()` and `sheetEdgeTypes()` once, at its own module scope, after `discover`
  *   has run, so the objects never change identity (spec L825).

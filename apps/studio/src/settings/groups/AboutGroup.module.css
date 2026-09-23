@@ -1,0 +1,26 @@
+.line {
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text);
+}
+
+.note {
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text-muted);
+}
+
+.heading {
+  margin: 0 0 var(--lx-space-1);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.list {
+  margin: 0 0 var(--lx-space-1);
+  padding-inline-start: var(--lx-space-4);
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text);
+}

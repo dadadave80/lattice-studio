@@ -68,6 +68,9 @@ export default defineConfig(async (configEnv): Promise<UserConfig> => {
     },
     build: {
       reportCompressedSize: true,
+      // Every lazy chunk that shares core, contracts or state with the entry split them into small first-load files
+      // (25 of them); one group for what the entry loads at start keeps first load in two files (FX17: 342.7 → 328.7 KB).
+      rolldownOptions: { output: { codeSplitting: { groups: [{ name: "app", tags: ["$initial"] }] } } },
     },
   };
 });
