@@ -19,7 +19,8 @@ function detail(name: string, signatures: readonly string[]): FacetDetail {
 }
 
 function encode(signature: string, args: readonly unknown[] = []): Hex {
-  const abi = parseAbi([`error ${signature}`]) as Abi;
+  const signatures: readonly string[] = [`error ${signature}`];
+  const abi = parseAbi(signatures) as Abi;
   const [item] = abi;
   if (!item || item.type !== "error") throw new Error(signature);
   return encodeErrorResult({ abi, errorName: item.name, args: args as never });
