@@ -42,58 +42,62 @@ const ACTIVATING = new Set(["Enter", " ", "ArrowDown", "ArrowUp"]);
  * - shows the reason in a tooltip on hover and focus, and when clicked or tapped;
  * - never activates or opens anything: pointer presses, clicks, Enter, Space and ↑/↓ are stopped before the
  *   control's own handlers (and Base UI's menu and popover triggers) see them.
+ *
+ * The element tree is the same with or without a reason (the tooltip stays mounted, disabled when it has
+ * nothing to show), so a control whose reason comes or goes keeps its element and its focus (spec L753).
  */
 export function ReasonTooltip({ reason, content, shortcut, children, side }: ReasonTooltipProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
-  const common = { shortcut, ...(side ? { side } : {}) };
-  if (!reason) {
-    if (content === undefined) return children;
-    return (
-      <Tooltip content={content} {...common}>
-        {children}
-      </Tooltip>
-    );
-  }
+  const hasReason = Boolean(reason);
   const block = (event: { preventDefault(): void; stopPropagation(): void }) => {
     event.preventDefault();
     event.stopPropagation();
   };
-  const describedBy = [children.props["aria-describedby"], id].filter(Boolean).join(" ");
-  const trigger = cloneElement(
-    children,
-    {
-      "aria-disabled": true,
-      "aria-describedby": describedBy,
-      // Focus still moves to the control (so the reason shows), but no press reaches a menu or popover trigger.
-      onPointerDownCapture: (event: PointerEvent<HTMLElement>) => event.stopPropagation(),
-      onMouseDownCapture: (event: MouseEvent<HTMLElement>) => event.stopPropagation(),
-      onClickCapture: (event: MouseEvent<HTMLElement>) => {
-        block(event);
-        setOpen(true);
-      },
-      onKeyDownCapture: (event: KeyboardEvent<HTMLElement>) => {
-        // ↑/↓ open a menu from its trigger; elsewhere they're a toolbar's or list's navigation, so they pass.
-        const opensPopup = event.currentTarget.hasAttribute("aria-haspopup");
-        if (event.key === "Enter" || event.key === " " || (opensPopup && ACTIVATING.has(event.key))) {
+  // Only a reason adds props: an enabled control keeps its own `aria-*` and handlers untouched.
+  const blocked = hasReason
+    ? {
+        "aria-disabled": true,
+        "aria-describedby": [children.props["aria-describedby"], id].filter(Boolean).join(" "),
+        // Focus still moves to the control (so the reason shows), but no press reaches a menu or popover trigger.
+        onPointerDownCapture: (event: PointerEvent<HTMLElement>) => event.stopPropagation(),
+        onMouseDownCapture: (event: MouseEvent<HTMLElement>) => event.stopPropagation(),
+        onClickCapture: (event: MouseEvent<HTMLElement>) => {
           block(event);
           setOpen(true);
-        }
-      },
-    },
+        },
+        onKeyDownCapture: (event: KeyboardEvent<HTMLElement>) => {
+          // ↑/↓ open a menu from its trigger; elsewhere they're a toolbar's or list's navigation, so they pass.
+          const opensPopup = event.currentTarget.hasAttribute("aria-haspopup");
+          if (event.key === "Enter" || event.key === " " || (opensPopup && ACTIVATING.has(event.key))) {
+            block(event);
+            setOpen(true);
+          }
+        },
+      }
+    : {};
+  // The control's children always sit beside one slot for the hidden reason, so they keep their places too.
+  const trigger = cloneElement(
+    children,
+    blocked,
     children.props.children,
-    <span key="lx-reason" id={id} hidden>
-      {reason}
-    </span>,
+    hasReason ? (
+      <span key="lx-reason" id={id} hidden>
+        {reason}
+      </span>
+    ) : null,
   );
   return (
     <Tooltip
       content={content ?? reason}
       reason={content === undefined ? null : reason}
+      // Controlled either way, so the tooltip never switches between controlled and uncontrolled.
       open={open}
       onOpenChange={setOpen}
-      closeOnClick={false}
-      {...common}
+      closeOnClick={!hasReason}
+      disabled={!hasReason && content === undefined}
+      shortcut={shortcut}
+      {...(side ? { side } : {})}
     >
       {trigger}
     </Tooltip>
