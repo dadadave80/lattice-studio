@@ -1,0 +1,9 @@
+ConstantProduct:
+  requires: []
+  init:
+    name: ConstantProductInit
+    source: src/amm/ConstantProductInit.sol#L21-L24
+  notes: >-
+    ConstantProduct checks no role and tracks LP shares internally, not through an ERC-20 facet
+    (src/amm/libraries/ConstantProductLib.sol L42-L43). ConstantProductInit still seeds AccessControl for the
+    diamond's admin-gated operations.

@@ -1,0 +1,77 @@
+GovernedDiamondCutInit:
+  kind: step
+  source: src/governance/GovernedDiamondCutInit.sol#L23-L28
+  registersInterfaces: true
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/governance/GovernedDiamondCutInit.sol#L22-L24
+  after:
+    # Satisfied by GovernedDiamondCutInit itself, which runs AccessControl first (contracts §4 `after`).
+    - module: AccessControl
+      source: src/governance/libraries/GovernedDiamondCutLib.sol#L113-L114
+
+GovernedSafeDiamondCutInit:
+  kind: step
+  source: src/governance/GovernedSafeDiamondCutInit.sol#L27-L32
+  registersInterfaces: true
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/governance/GovernedSafeDiamondCutInit.sol#L23-L28
+    safe:
+      rule: nonzero&code(safe)
+      authority: true
+      role: scheduleCut
+      # Zero reverts, and getThreshold() must answer: the address has to be a Safe.
+      source: src/governance/libraries/GovernedSafeDiamondCutLib.sol#L137-L143
+    minThreshold:
+      rule: gte(1)
+      source: src/governance/libraries/GovernedSafeDiamondCutLib.sol#L139-L139
+    minDelay:
+      unit: seconds
+      source: src/governance/GovernedSafeDiamondCutInit.sol#L26-L26
+
+SafeDiamondCutInit:
+  kind: step
+  source: src/governance/SafeDiamondCutInit.sol#L25-L30
+  registersInterfaces: true
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/governance/SafeDiamondCutInit.sol#L22-L26
+    safe:
+      rule: nonzero&code(safe)
+      authority: true
+      role: diamondCut
+      # Zero reverts, and getThreshold() must answer: the address has to be a Safe.
+      source: src/governance/libraries/SafeDiamondCutLib.sol#L126-L133
+    minThreshold:
+      rule: gte(1)
+      source: src/governance/libraries/SafeDiamondCutLib.sol#L128-L128
+      # Lattice has no caller with a value (DeploySafeDiamondCut takes it as a parameter), so Studio wrote it.
+      example: "2"
+      exampleSource: studio
+
+SafeHarborAdopterInit:
+  kind: step
+  source: src/governance/SafeHarborAdopterInit.sol#L22-L25
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/governance/SafeHarborAdopterInit.sol#L19-L23
+    registry:
+      rule: nonzero
+      source: src/governance/libraries/SafeHarborAdopterLib.sol#L78-L78

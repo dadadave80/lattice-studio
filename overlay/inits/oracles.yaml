@@ -1,0 +1,169 @@
+API3AdapterInit:
+  kind: step
+  source: src/oracles/api3/API3AdapterInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/api3/API3AdapterInit.sol#L19-L19
+API3QRNGAdapterInit:
+  kind: step
+  source: src/oracles/api3/API3QRNGAdapterInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/api3/API3QRNGAdapterInit.sol#L19-L19
+BandAdapterInit:
+  kind: step
+  source: src/oracles/band/BandAdapterInit.sol#L20-L23
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/band/BandAdapterInit.sol#L21-L21
+    reference_:
+      rule: nonzero
+      source: src/oracles/band/BandAdapterLib.sol#L66-L66
+ChainlinkAdapterInit:
+  kind: step
+  source: src/oracles/chainlink/ChainlinkAdapterInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/chainlink/ChainlinkAdapterInit.sol#L19-L19
+ChainlinkAutomationAdapterInit:
+  kind: step
+  source: src/oracles/chainlink/ChainlinkAutomationAdapterInit.sol#L19-L22
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/chainlink/ChainlinkAutomationAdapterInit.sol#L20-L20
+ChainlinkCREAdapterInit:
+  kind: step
+  source: src/oracles/chainlink/ChainlinkCREAdapterInit.sol#L19-L22
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/chainlink/ChainlinkCREAdapterInit.sol#L20-L20
+ChainlinkVRFInit:
+  kind: step
+  source: src/oracles/chainlink/ChainlinkVRFInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/chainlink/ChainlinkVRFInit.sol#L19-L19
+ChronicleAdapterInit:
+  kind: step
+  source: src/oracles/chronicle/ChronicleAdapterInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/chronicle/ChronicleAdapterInit.sol#L19-L19
+DIAAdapterInit:
+  kind: step
+  source: src/oracles/dia/DIAAdapterInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/dia/DIAAdapterInit.sol#L19-L19
+GelatoAutomateAdapterInit:
+  kind: step
+  source: src/oracles/gelato/GelatoAutomateAdapterInit.sol#L19-L22
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/gelato/GelatoAutomateAdapterInit.sol#L20-L20
+GelatoVRFAdapterInit:
+  kind: step
+  source: src/oracles/gelato/GelatoVRFAdapterInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/gelato/GelatoVRFAdapterInit.sol#L19-L19
+PythAdapterInit:
+  kind: step
+  source: src/oracles/pyth/PythAdapterInit.sol#L20-L23
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/pyth/PythAdapterInit.sol#L21-L21
+    pyth:
+      rule: nonzero
+      source: src/oracles/pyth/PythAdapterLib.sol#L64-L64
+PythEntropyAdapterInit:
+  kind: step
+  source: src/oracles/pyth/PythEntropyAdapterInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/pyth/PythEntropyAdapterInit.sol#L19-L19
+RedStoneAdapterInit:
+  kind: step
+  source: src/oracles/redstone/RedStoneAdapterInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/redstone/RedStoneAdapterInit.sol#L19-L19
+TWAPOracleInit:
+  kind: step
+  source: src/oracles/uniswap/TWAPOracleInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/uniswap/TWAPOracleInit.sol#L19-L19
+TellorAdapterInit:
+  kind: step
+  source: src/oracles/tellor/TellorAdapterInit.sol#L20-L23
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/tellor/TellorAdapterInit.sol#L21-L21
+    tellor:
+      rule: nonzero
+      source: src/oracles/tellor/TellorAdapterLib.sol#L65-L65
