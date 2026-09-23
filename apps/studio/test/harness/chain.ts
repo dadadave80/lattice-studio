@@ -6,16 +6,15 @@
  * that for you) and the harness takes it out after the test. Free of Vitest imports.
  */
 import type { Address, Catalog, ChainState, Hex, LoupeFacet, Result } from "@lattice-studio/core";
+import { CREATEX_CODEHASH, MULTICALL3_CODEHASH } from "@lattice-studio/core";
 import {
   getCatalog, provideServices, type ChainInfo, type ChainReadiness, type ChainService, type WalletAccount,
   type WalletConnector,
 } from "@/contracts";
 import { onCleanup } from "./cleanup";
 
-/** CreateX's runtime codehash (NET-01, S8a brief). */
-export const CREATEX_CODEHASH: Hex = "0xbd8a7ea8cfca7b4e5f5041d7d4b17bc317c5ce42cfbc42066a00cf26b43eb53f";
-/** Multicall3's runtime codehash at 0xcA11bde05977b3631167028862bE2a173976CA11. */
-export const MULTICALL3_CODEHASH: Hex = "0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891";
+// Core's canonical codehashes, re-exported so tests keep importing them from the harness.
+export { CREATEX_CODEHASH, MULTICALL3_CODEHASH };
 /** EIP-7825's per-transaction cap. */
 export const GAS_CAP = "16777216";
 
