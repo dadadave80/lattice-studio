@@ -348,6 +348,13 @@ describe("loading the templates", () => {
     }
   });
 
+  test("example arguments are flagged until changed (INIT-05), Studio's and Lattice's alike", () => {
+    for (const name of V1) {
+      const codes = analyze(template(name).recipe, catalog).problems.map((p) => p.code);
+      expect([name, codes.includes("INIT-05")]).toEqual([name, true]);
+    }
+  });
+
   test("GovernedVault loads with only INIT-01 for asset as a blocker (spec Flow 2)", () => {
     const problems = analyze(template("GovernedVault").recipe, catalog).problems;
     expect(problems.filter((p) => p.severity === "blocker").map((p) => p.id)).toEqual(["INIT-01:bundle.p.asset"]);
