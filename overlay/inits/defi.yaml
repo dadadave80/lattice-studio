@@ -23,6 +23,7 @@ GovernedVaultENSInit:
           components:
             asset:
               doc: Underlying ERC-20 the vault holds.
+              # Studio's rule: the source stores the asset without rejecting zero or a codeless address.
               rule: nonzero&code(token)
               # Stored as the vault's asset; its decimals() is read at init.
               source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L69-L81
@@ -93,6 +94,7 @@ GovernedVaultInit:
       components:
         asset:
           doc: Underlying ERC-20 the vault holds.
+          # Studio's rule: the source stores the asset without rejecting zero or a codeless address.
           rule: nonzero&code(token)
           # Stored as the vault's asset; its decimals() is read at init.
           source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L69-L81
@@ -165,6 +167,7 @@ StrategyManagerInit:
   source: src/defi/StrategyManagerInit.sol#L18-L21
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -175,10 +178,12 @@ VaultCoreInit:
   source: src/defi/VaultCoreInit.sol#L24-L31
   params:
     asset_:
+      # Studio's rule: the source stores the asset without rejecting zero or a codeless address.
       rule: nonzero&code(token)
       # Stored as the vault's asset; its decimals() is read at init.
       source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L69-L81
     admin_:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE

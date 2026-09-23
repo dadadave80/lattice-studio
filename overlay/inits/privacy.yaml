@@ -31,6 +31,7 @@ SemaphoreInit:
   source: src/privacy/SemaphoreInit.sol#L18-L21
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -44,6 +45,7 @@ ShieldedPoolInit:
   source: src/privacy/ShieldedPoolInit.sol#L17-L20
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE

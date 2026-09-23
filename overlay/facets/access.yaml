@@ -2,7 +2,9 @@ AccessControl:
   requires: []
   family:
     name: access
-    source: src/access/AccessControlEnumerable.sol#L11-L11
+    # Each flavor "is cut in place of the base AccessControl facet (cutting both would collide on the shared role
+    # selectors)".
+    source: script/base/access/DeployAccessControlEnumerable.s.sol#L17-L18
   init:
     name: AccessControlInit
     source: src/access/AccessControlInit.sol#L16-L16
@@ -15,7 +17,9 @@ AccessControlEnumerable:
   requires: []
   family:
     name: access
-    source: src/access/AccessControlEnumerable.sol#L11-L11
+    # Each flavor "is cut in place of the base AccessControl facet (cutting both would collide on the shared role
+    # selectors)".
+    source: script/base/access/DeployAccessControlEnumerable.s.sol#L17-L18
   init:
     name: AccessControlEnumerableInit
     source: src/access/AccessControlEnumerableInit.sol#L15-L18
@@ -28,7 +32,9 @@ AccessControlTimed:
   requires: []
   family:
     name: access
-    source: src/access/AccessControlEnumerable.sol#L11-L11
+    # Each flavor "is cut in place of the base AccessControl facet (cutting both would collide on the shared role
+    # selectors)".
+    source: script/base/access/DeployAccessControlTimed.s.sol#L17-L18
   init:
     name: AccessControlTimedInit
     source: src/access/AccessControlTimedInit.sol#L15-L18

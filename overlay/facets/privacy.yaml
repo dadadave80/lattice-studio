@@ -20,7 +20,8 @@ ERC6538Registry:
     them, so the user chooses (SEL-01) and INIT-03 flags the two inits' conflicting domain names.
   notes: >-
     Wallets discover its EIP-712 domain through the EIP712 facet's eip712Domain() (src/privacy/ERC6538Registry.sol#L13-L16).
-    No requires entry: it touches EIP712's namespace, so C3's namespace rule already warns (contracts §4).
+    That facet is optional discovery, so there's no requires entry, and no check raises anything when EIP712 is
+    missing (the namespace rule fires only for access-family owners).
 
 Groth16Verifier:
   requires: []

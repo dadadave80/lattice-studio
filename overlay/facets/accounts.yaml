@@ -7,26 +7,36 @@ AccountSigner:
     owner() is shared with OwnableFacet; the account scripts cut DiamondCutFacet without OwnableFacet, so AccountSigner
     serves it there, and no script pins an owner when both are placed, so the user chooses (SEL-01).
   notes: >-
-    Lattice ships no AccountSignerInit; AccountInit (init and init7702) seeds the owner through
-    AccountSignerLib.__AccountSigner_init.
+    Lattice ships no AccountSignerInit; AccountInit seeds the owner through AccountSignerLib.__AccountSigner_init.
+    Its EIP-7702-only entry point init7702 is left out: a factory diamond is never delegated (contracts §3.1).
 
 ERC1271Signature:
-  requires: []
+  requires:
+    - anyOf: [AccountSigner]
+      strength: convention
+      reason: it accepts a signature only from the owner AccountSigner manages
+      source: src/accounts/ERC1271Signature.sol#L10-L11
   seamReview: >-
     isValidSignature is shared with ERC6900Signature; ERC6900Signature's NatSpec says the two are never cut into the
     same account and no script pins an owner, so placing both raises SEL-01.
   notes: >-
-    Checks signatures against the AccountSigner owner (src/accounts/ERC1271Signature.sol#L10-L11). No requires entry: it touches AccountSigner's
-    namespace, so C3's namespace rule already warns when AccountSigner is missing (contracts §4).
+    Convention, not hard: AccountInit seeds the signing owner through AccountSignerLib without the facet
+    (src/accounts/erc7579/AccountInit.sol#L60-L60), so signatures still verify; the AccountSigner facet adds owner()
+    and owner rotation. The namespace rule doesn't cover this pairing (it fires only for access-family owners).
 
 ERC4337Validation:
-  requires: []
+  requires:
+    - anyOf: [AccountSigner]
+      strength: convention
+      reason: it validates each user operation's signature against the owner AccountSigner manages
+      source: src/accounts/ERC4337Validation.sol#L11-L13
   seamReview: >-
     validateUserOp is shared with ERC6900Validation; ERC6900Validation's NatSpec says the two are never cut into the
     same account and no script pins an owner, so placing both raises SEL-01.
   notes: >-
-    Checks signatures against the AccountSigner owner (src/accounts/ERC4337Validation.sol#L11-L13). No requires entry: it touches AccountSigner's
-    namespace, so C3's namespace rule already warns when AccountSigner is missing (contracts §4).
+    Convention, not hard: AccountInit seeds the signing owner through AccountSignerLib without the facet
+    (src/accounts/erc7579/AccountInit.sol#L60-L60), so user operations still validate; the AccountSigner facet adds
+    owner() and owner rotation. The namespace rule doesn't cover this pairing (it fires only for access-family owners).
 
 ERC6900AccountView:
   requires: []

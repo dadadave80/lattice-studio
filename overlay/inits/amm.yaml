@@ -3,6 +3,7 @@ ConstantProductInit:
   source: src/amm/ConstantProductInit.sol#L21-L24
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE

@@ -90,17 +90,27 @@ const REQUIRES_ADDED: Record<string, string[][]> = {
   BridgeERC7802: [["CrosschainLink"]],
   CrosschainTimelockHandler: [["CrosschainLink"], ["TimelockController"]],
   ERC20Crosschain: [["ERC20"], ["CrosschainLink"]],
-  ERC20Votes: [["ERC20"]],
+  ERC20Votes: [["ERC20"], ["Votes"]],
   ERC4626: [["ERC20"]],
   ERC7802: [["ERC20"]],
   PrivateVoting: [["Semaphore"]],
+  ERC20Pausable: [["Pausable"]],
+  ERC1271Signature: [["AccountSigner"]],
+  ERC4337Validation: [["AccountSigner"]],
+};
+
+/** The added requirements' strengths, as each source's wording reads (see the overlay entries' notes). */
+const ADDED_STRENGTH: Record<string, "hard" | "convention"> = {
+  "ERC20Pausable:Pausable": "convention",
+  "ERC1271Signature:AccountSigner": "convention",
+  "ERC4337Validation:AccountSigner": "convention",
 };
 
 describe("agrees with K3's fixture", () => {
-  test("every added requirement is hard (conventions that restate a namespace touch are C3's, contracts §4)", () => {
+  test("every added requirement is present with its strength (hard unless the source reads as a companion)", () => {
     for (const [name, anyOfs] of Object.entries(REQUIRES_ADDED)) {
       const added = facetOverlayFields(overlay.facets[name]).requires.filter((r) => anyOfs.some((a) => a.join() === r.anyOf.join()));
-      expect(added.map((r) => [r.anyOf, r.strength])).toEqual(anyOfs.map((a) => [a, "hard"]));
+      expect(added.map((r) => [r.anyOf, r.strength])).toEqual(anyOfs.map((a) => [a, ADDED_STRENGTH[`${name}:${a.join()}`] ?? "hard"]));
     }
   });
 
@@ -121,9 +131,6 @@ describe("agrees with K3's fixture", () => {
     });
   }
 
-  /** The fixture's `AccountInit` is two entries at the pin: the contract has `init` and `init7702`. */
-  const renamed: Record<string, string> = { AccountInit: "AccountInit.init" };
-
   const decorations = (p: InitParam): unknown => ({
     name: p.name,
     unit: p.unit,
@@ -137,7 +144,7 @@ describe("agrees with K3's fixture", () => {
 
   for (const spec of fixture.inits) {
     test(`${spec.name}: kind, after, sameCall, sequence, registersInterfaces and param decorations`, () => {
-      const entry = overlay.inits[renamed[spec.name] ?? spec.name];
+      const entry = overlay.inits[spec.name];
       expect(entry).toBeDefined();
       const got = initOverlayFields(entry);
       const want: Partial<InitSpec> = { kind: spec.kind, after: spec.after, sameCall: spec.sameCall };

@@ -60,7 +60,11 @@ ERC20FlashMint:
     flash-mint library if both are placed.
 
 ERC20Pausable:
-  requires: []
+  requires:
+    - anyOf: [Pausable]
+      strength: convention
+      reason: the diamond cuts in Pausable for the admin-gated pause and unpause that it obeys
+      source: src/tokens/ERC20/ERC20Pausable.sol#L10-L11
   init:
     name: ERC20PausableInit
     source: src/tokens/ERC20/ERC20PausableInit.sol#L16-L16
@@ -70,8 +74,8 @@ ERC20Pausable:
     Without ERC20Votes, DeployERC20Pausable replaces ERC20's transfer and transferFrom with these, but no doc names
     a default, so the user chooses (SEL-01); transferFrom also collides with ERC721.
   notes: >-
-    Usually cut with Pausable, whose pause and unpause it obeys (src/tokens/ERC20/ERC20Pausable.sol#L10-L11). No
-    requires entry: it touches Pausable's namespace, so C3's namespace rule already warns (contracts §4).
+    Convention, not hard: without Pausable transfers still work, they just can't be paused. The namespace rule
+    doesn't cover this pairing (it fires only for access-family owners).
 
 ERC20Permit:
   requires: []
@@ -88,6 +92,10 @@ ERC20Votes:
       strength: hard
       reason: the token's ERC-20 surface comes from a separately cut ERC20 facet
       source: src/tokens/ERC20/ERC20Votes.sol#L15-L17
+    - anyOf: [Votes]
+      strength: hard
+      reason: its voting power, delegates and clock come from a separately cut Votes facet
+      source: src/tokens/ERC20/ERC20Votes.sol#L15-L17
   defaultOwnerOf:
     - selectors: ["0x5c19a95c", "0xc3cda520"]
       source: docs/guides/compose-your-own-diamond.md#L41-L41
@@ -100,9 +108,8 @@ ERC20Votes:
     must be ERC20Votes', not Votes', whose versions leave checkpoints at zero (Votes.sol L43-44); ERC20Votes also
     owns them by default (compose guide L41). transferFrom also collides with ERC721.
   notes: >-
-    Votes' read surface (voting power, delegates, clock) comes from the Votes facet
-    (src/tokens/ERC20/ERC20Votes.sol#L15-L17). No requires entry for it: ERC20Votes touches Votes' namespace, so C3's
-    namespace rule already warns (contracts §4).
+    Hard on Votes: getVotes, getPastVotes, delegates and clock are served only by the Votes facet, which
+    DeployERC20Votes composes with ERC20 and ERC20Votes (src/tokens/ERC20/ERC20Votes.sol#L15-L17).
 
 ERC2981:
   requires: []
@@ -123,11 +130,11 @@ ERC4626:
     name: ERC4626Init
     source: src/tokens/ERC4626/ERC4626Init.sol#L22-L22
   seamReview: >-
-    In GovernedVault, decimals must be ERC4626's (DeployGovernedVault.s.sol L28, spec R19), and it owns decimals by
-    default against ERC20 (compose guide L40); totalAssets must be VaultCore's, and deposit, mint, withdraw and
-    redeem must be GovernedVault's (DeployGovernedVault.s.sol L30-32). Outside GovernedVault, DeployVaultCore
-    replaces all five with VaultCore's (DeployVaultCore.s.sol L22-23); VaultCore owns totalAssets by default (compose
-    guide L40), and no doc names a default for the four movers, so the user chooses (SEL-01).
+    It owns decimals by default against ERC20 (compose guide L40), and in GovernedVault decimals must be ERC4626's
+    (DeployGovernedVault.s.sol L28, spec R19). VaultCore wins totalAssets, deposit, mint, withdraw and redeem by
+    default, as DeployVaultCore cuts them (DeployVaultCore.s.sol L21-23, compose guide L40). In GovernedVault
+    totalAssets must be VaultCore's and deposit, mint, withdraw and redeem GovernedVault's (DeployGovernedVault.s.sol
+    L30-32), so ERC4626 keeps only its own vault views there.
 
 ERC721:
   requires: []

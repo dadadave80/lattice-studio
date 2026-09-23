@@ -52,7 +52,9 @@ VaultCore:
 ```
 
 - `requires`: only what the source states. Role writers carry no `requires` on AccessControl: C3 derives the
-  namespace warning from `touches` against `storage.id`, so nothing is reported twice (contracts §4).
+  namespace warning from `touches` against `storage.id`, so nothing is reported twice (contracts §4). That rule
+  fires only for access-family owners, so any other pairing the source states (ERC20Votes and Votes) needs its
+  own `requires` entry.
 - `init`: the facet's own init contract, when Lattice ships one. INIT-04 is satisfied by any plan step that
   initializes the same modules (GovernedVaultInit covers ERC20's `init`).
 - `seamReview`: what you checked about the shared selectors. The seams themselves live in `seams.yaml` (CG6).
@@ -60,13 +62,15 @@ VaultCore:
 ## `inits/<area>.yaml`
 
 ```yaml
-GovernedDiamondCutInit:        # the contract; `<Contract>.<fn>` when it has several entry points
+GovernedDiamondCutInit:        # the contract; `<Contract>.<fn>` only with two or more usable entry points
+                               # (EIP-7702-only ones such as AccountInit.init7702 are left out, contracts §3.1)
   kind: step                   # step | bundle (one call whose internal order is fixed in Solidity)
   source: src/governance/GovernedDiamondCutInit.sol#L19-L33   # the init function
   registersInterfaces: true    # only when the init itself calls DiamondLib.registerInterface()
   params:
     admin:
       doc: The address granted DEFAULT_ADMIN_ROLE.   # optional: replaces a missing or unclear @param
+      # Studio's rule: say so in a comment when the source doesn't enforce it itself.
       rule: nonzero            # range(a,b) gt(n) gte(n) nonzero maxlen(n) code(safe|token|contract) enum(a|b|c), joined with &
       unit: seconds            # seconds | percent | wei, integers only
       authority: true          # receives a role, ownership or upgrade rights; needs `role`

@@ -1,4 +1,4 @@
-AccountInit.init:
+AccountInit:
   kind: step
   source: src/accounts/erc7579/AccountInit.sol#L35-L37
   registersInterfaces: true
@@ -10,11 +10,6 @@ AccountInit.init:
       role: signer
       source: src/accounts/libraries/AccountSignerLib.sol#L146-L150
 
-AccountInit.init7702:
-  kind: step
-  source: src/accounts/erc7579/AccountInit.sol#L49-L51
-  registersInterfaces: true
-
 AccountInit6900:
   kind: step
   source: src/accounts/erc6900/AccountInit6900.sol#L37-L51
@@ -22,6 +17,7 @@ AccountInit6900:
   params:
     owner:
       doc: "The account's admin: the authority that installs and uninstalls validations and executions."
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE

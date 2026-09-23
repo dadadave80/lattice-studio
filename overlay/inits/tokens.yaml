@@ -24,6 +24,7 @@ ERC20CrosschainInit:
   source: src/tokens/ERC20/ERC20CrosschainInit.sol#L24-L29
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -52,6 +53,7 @@ ERC20PausableInit:
   params:
     admin_:
       doc: The address granted DEFAULT_ADMIN_ROLE, which gates pause and unpause.
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -72,6 +74,7 @@ ERC20VotesInit:
       doc: "The EIP-712 domain name: the token name."
     admin_:
       doc: The address granted DEFAULT_ADMIN_ROLE, which gates a consumer's minting authority.
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -98,6 +101,7 @@ ERC2981Init:
   source: src/tokens/ERC2981/ERC2981Init.sol#L18-L21
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -111,6 +115,7 @@ ERC4626Init:
     decimals() fails, without rejecting zero or a codeless address.
   params:
     asset_:
+      # Studio's rule: the source stores the asset without rejecting zero or a codeless address.
       rule: nonzero&code(token)
       source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L74-L81
 
@@ -129,6 +134,7 @@ ERC721URIStorageInit:
   params:
     admin_:
       doc: The metadata admin granted DEFAULT_ADMIN_ROLE, who may call setTokenURI.
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -139,11 +145,13 @@ ERC7802Init:
   source: src/tokens/ERC7802/ERC7802Init.sol#L23-L28
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
       source: src/tokens/ERC7802/ERC7802Init.sol#L24-L24
     bridge:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: CROSSCHAIN_BRIDGE_ROLE
@@ -155,6 +163,7 @@ MarketplaceZoneInit:
   params:
     admin_:
       doc: The address granted DEFAULT_ADMIN_ROLE, which gates setPaused, setRoyaltyRequired and MARKETPLACE_BLOCKED_ROLE grants.
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE

@@ -14,6 +14,7 @@ AxelarGatewayAdapterInit:
   source: src/crosschain/axelar/AxelarGatewayAdapterInit.sol#L20-L23
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -24,6 +25,7 @@ BridgeERC20Init:
   source: src/crosschain/BridgeERC20Init.sol#L20-L24
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -37,6 +39,7 @@ BridgeERC7802Init:
   source: src/crosschain/BridgeERC7802Init.sol#L20-L24
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -50,6 +53,7 @@ CCIPGatewayAdapterInit:
   source: src/crosschain/chainlink/CCIPGatewayAdapterInit.sol#L21-L24
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -60,6 +64,7 @@ CCTPBridgeAdapterInit:
   source: src/crosschain/circle/CCTPBridgeAdapterInit.sol#L23-L26
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -79,6 +84,7 @@ ChainRegistryInit:
   source: src/crosschain/ChainRegistryInit.sol#L19-L22
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -89,6 +95,7 @@ CrosschainLinkInit:
   source: src/crosschain/CrosschainLinkInit.sol#L18-L21
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -99,6 +106,7 @@ CrosschainTimelockHandlerInit:
   source: src/crosschain/CrosschainTimelockHandlerInit.sol#L21-L31
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -117,6 +125,7 @@ ERC7786OpenBridgeInit:
   source: src/crosschain/ERC7786OpenBridgeInit.sol#L19-L22
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -127,6 +136,7 @@ HyperbridgeGatewayAdapterInit:
   source: src/crosschain/hyperbridge/HyperbridgeGatewayAdapterInit.sol#L24-L27
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -140,6 +150,7 @@ HyperlaneGatewayAdapterInit:
   source: src/crosschain/hyperlane/HyperlaneGatewayAdapterInit.sol#L21-L24
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -153,6 +164,7 @@ L1ToL2CrossDomainMessengerGatewayAdapterInit:
   source: src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterInit.sol#L26-L31
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -169,6 +181,7 @@ L2ToL2CrossDomainMessengerGatewayAdapterInit:
   source: src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterInit.sol#L22-L25
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -179,6 +192,7 @@ LayerZeroGatewayAdapterInit:
   source: src/crosschain/layerzero/LayerZeroGatewayAdapterInit.sol#L21-L24
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -189,6 +203,7 @@ StargateBridgeAdapterInit:
   source: src/crosschain/layerzero/StargateBridgeAdapterInit.sol#L21-L24
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -199,6 +214,7 @@ StarknetGatewayAdapterInit:
   source: src/crosschain/starknet/StarknetGatewayAdapterInit.sol#L23-L26
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -216,6 +232,7 @@ WormholeGatewayAdapterInit:
   source: src/crosschain/wormhole/WormholeGatewayAdapterInit.sol#L21-L24
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -226,6 +243,7 @@ ZetaChainGatewayAdapterInit:
   source: src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol#L24-L35
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE

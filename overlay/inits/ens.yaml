@@ -3,6 +3,7 @@ ENSResolverInit:
   source: src/ens/ENSResolverInit.sol#L19-L22
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -15,6 +16,7 @@ ENSReverseClaimerInit:
   source: src/ens/ENSReverseClaimerInit.sol#L20-L23
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
@@ -27,6 +29,7 @@ ENSSubnameIssuerInit:
   source: src/ens/ENSSubnameIssuerInit.sol#L20-L23
   params:
     admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE

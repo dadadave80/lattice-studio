@@ -5,7 +5,7 @@
  * - Facets: the fixture catalog's 100 facets (names, areas and selectors, which K3 checks against the source),
  *   with each summary from the contract's NatSpec: solc's metadata when the checkout is built, else the source.
  * - Inits: every init contract in `src/**` and diamond-lib's initializers (DiamondInit excluded, which Lattice
- *   can't use), one per external function; params with types, components and `@param` docs from the build.
+ *   can't use), one per usable external function (EIP-7702-only ones left out); params with types, components and `@param` docs from the build.
  * - Modules: every `__X_init` defined in the checkout, plus `Ownable` (OwnableLib.initializeOwner).
  * - `registersInterfaces`: the init's own file calls `DiamondLib.registerInterface()`.
  */
@@ -104,6 +104,13 @@ function sourceFunctions(text: string): { name: string; params: KnownParam[] }[]
   return out;
 }
 
+/**
+ * Entry points no Studio diamond can use (contracts §3.1 "Multi-entry-point naming, refined"): AccountInit's
+ * `init7702` is EIP-7702-only, and a factory diamond is never delegated (R7). An init with one usable entry point
+ * keeps its plain contract name.
+ */
+const EIP7702_ONLY = new Set(["init7702"]);
+
 /** Line counts of files in the checkout, cached. */
 export function lineCounter(dir: string): (path: string) => number | undefined {
   const cache = new Map<string, number | undefined>();
@@ -144,13 +151,15 @@ export async function latticeFacts(dir: string): Promise<LintFacts & { built: bo
     const a = built ? await findArtifact(out, { file: base, contract, sourcePath: path }) : undefined;
     if (a === undefined || !a.ok) {
       // Not compiled by the ci profile (diamond-lib's OwnableInit and ERC165Init) or not built: read the source.
-      const fns = sourceFunctions(text);
+      const fns = sourceFunctions(text).filter((fn) => !EIP7702_ONLY.has(fn.name));
       for (const fn of fns) {
         inits.push({ name: fns.length > 1 ? `${contract}.${fn.name}` : contract, area, ...(built ? { params: fn.params } : {}), registersInterfaces });
       }
       continue;
     }
-    const fns = (a.value.abi as unknown as AbiFunction[]).filter((x) => x.type === "function" && x.stateMutability !== "view" && x.stateMutability !== "pure");
+    const fns = (a.value.abi as unknown as AbiFunction[]).filter(
+      (x) => x.type === "function" && x.stateMutability !== "view" && x.stateMutability !== "pure" && !EIP7702_ONLY.has(x.name),
+    );
     for (const fn of fns) {
       const signature = `${fn.name}(${fn.inputs.map(canonicalType).join(",")})`;
       const docs = a.value.metadata.output.devdoc.methods?.[signature]?.params;
