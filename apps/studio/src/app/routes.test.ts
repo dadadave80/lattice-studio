@@ -13,7 +13,7 @@ describe("routes", () => {
 
   test("share and open links stay whole", () => {
     expect(parseRoute({ hash: "#s=1.eJyrVkrLz1eyUkpKLFKqBQAvRQVn", pathname: "/" }, withPaths)).toEqual({
-      kind: "share", link: "s=1.eJyrVkrLz1eyUkpKLFKqBQAvRQVn",
+      kind: "share", link: "#s=1.eJyrVkrLz1eyUkpKLFKqBQAvRQVn",
     });
     expect(parseRoute({ hash: "#open=eip155:11155111:0xabc", pathname: "/" }, hashOnly)).toEqual({
       kind: "open", target: "eip155:11155111:0xabc",

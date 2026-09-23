@@ -3,7 +3,7 @@
  * applies each route once, when the app mounts and whenever the hash or history changes.
  */
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import { announce, commandRef, env, log, runCommand } from "@/contracts";
+import { announce, commandRef, env, log, openShareLink, runCommand } from "@/contracts";
 import { parseRoute, type Route, type RouteLocation } from "./routes";
 
 function readLocation(): string {
@@ -48,8 +48,8 @@ export async function applyRoute(route: Route): Promise<void> {
       if (!env.dev) say("There's no page at /__ui. Showing the sheet.");
       return;
     case "share":
-      // S13 opens share links; contracts have no seam to hand one over yet (the report's CCR).
-      say("Opening a shared link: Not built yet · WP-S13");
+      // S13 opens it (and says what happened); the whole fragment, "#s=1.…", as it stands in the address.
+      openShareLink(route.link);
       return;
     case "open":
       say("Open diamond… arrives in v2.");

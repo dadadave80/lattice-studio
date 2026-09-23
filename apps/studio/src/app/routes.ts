@@ -69,7 +69,7 @@ export function routeForPath(path: string): Route {
 
 /** Which route a location names. The hash wins; an empty hash reads the path when routes live there. */
 export function parseRoute({ hash, pathname }: RouteLocation, options: RouteOptions): Route {
-  if (hash.startsWith("#s=")) return { kind: "share", link: hash.slice(1) };
+  if (hash.startsWith("#s=")) return { kind: "share", link: hash };
   if (hash.startsWith("#open=")) return { kind: "open", target: decode(hash.slice("#open=".length)) };
   if (hash.startsWith("#/")) return routeForPath(hash.slice(1));
   if (options.paths) return routeForPath(underBase(pathname, options.base));

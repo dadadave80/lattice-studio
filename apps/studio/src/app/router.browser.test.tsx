@@ -2,7 +2,7 @@ import type { Analysis, Problem } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
-import { doc, emptyAnalysis, provideAnalysis, session } from "@/contracts";
+import { doc, emptyAnalysis, provideAnalysis, provideServices, session } from "@/contracts";
 import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio } from "../../test/harness";
 import { App } from "./App";
 
@@ -52,11 +52,19 @@ describe("routes", () => {
     await expect.poll(lastLine).toBe("Not built yet · WP-S10");
   });
 
-  test("a share link waits for S13, and the link stays in the address", async () => {
+  test("a share link goes to openShareLink whole, and stays in the address", async () => {
+    const opened: string[] = [];
+    onCleanup(provideServices({ openShareLink: (link) => void opened.push(link) }));
+    go("#s=1.abc");
+    await renderWithStudio(<App />);
+    await expect.poll(() => opened).toEqual(["#s=1.abc"]);
+    expect(location.hash).toBe("#s=1.abc");
+  });
+
+  test("until S13 provides it, the default says a share link can't open yet", async () => {
     go("#s=1.abc");
     await renderWithStudio(<App />);
     await expect.poll(lastLine).toBe("Opening a shared link: Not built yet · WP-S13");
-    expect(location.hash).toBe("#s=1.abc");
   });
 
   test("#open= is v2", async () => {
