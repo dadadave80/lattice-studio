@@ -84,7 +84,9 @@ export type HostileKeyOptions = {
  * keys instead of assigning them, so `"__proto__"` is kept as an own property, never dropped.
  */
 export function hostileKey(maxPieces = 8, options: HostileKeyOptions = {}): fc.Arbitrary<string> {
-  const text = hostileNonEmptyString(maxPieces).filter((key) => key !== "$ref" && (options.prototypeKeys !== false || key !== "__proto__"));
+  const text = hostileNonEmptyString(maxPieces).filter(
+    (key) => key !== "$ref" && (options.prototypeKeys !== false || !PROTOTYPE_KEYS.includes(key)),
+  );
   if (options.prototypeKeys === false) return text;
   return fc.oneof({ weight: 3, arbitrary: text }, { weight: 1, arbitrary: fc.constantFrom(...PROTOTYPE_KEYS) });
 }

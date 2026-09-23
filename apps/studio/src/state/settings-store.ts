@@ -70,9 +70,11 @@ export function readSettings(raw: string | null): SettingsState {
       );
       if (valid.length === keys.length) entries.push([binding, valid]);
     }
-    // Object.fromEntries defines each own property directly, so a "__proto__" binding (findProtoKey already
-    // refuses the whole stored blob above; this is defense in depth) can't reach the prototype the way
-    // `keymap[binding] = valid` would.
+    // Defense in depth, not separately tested: findProtoKey above already refuses the whole stored blob
+    // whenever a "__proto__" binding could reach this loop, so there's no reachable input left that would
+    // make `keymap[binding] = valid` (direct assignment) misbehave here. Object.fromEntries defines each own
+    // property directly instead, so if that guard were ever bypassed, a "__proto__" binding still couldn't
+    // reach the prototype.
     out.keymap = Object.fromEntries(entries) as SettingsState["keymap"];
   }
   if (isRecord(s.rpc)) {

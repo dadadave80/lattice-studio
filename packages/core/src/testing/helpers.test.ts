@@ -116,6 +116,18 @@ describe("shape", () => {
     expect(prose).not.toContain("real");
   });
 
+  test("markdownProse tells an escaped backslash from an escaping one: two backslashes before a backtick leave it a real, unescaped opener", () => {
+    // x\\`real`<leak \`y: "\\" (an escaped backslash) then an unescaped "`" opens a real span around "real";
+    // "<leak " is plain text; the trailing "\`" is one backslash escaping that backtick, so it stays literal.
+    // A regex that only checks one preceding character misreads the real opener as escaped (it sees the
+    // second of the two backslashes) and instead pairs the real closer with the trailing escaped backtick,
+    // stripping "<leak" along with it.
+    const text = "x\\\\`real`<leak \\`y";
+    const prose = markdownProse(text);
+    expect(prose).toContain("<leak");
+    expect(prose).not.toContain("real");
+  });
+
   test("overlappingPairs ignores touching edges", () => {
     const rects = { A: { x: 0, y: 0, width: 10, height: 10 }, B: { x: 10, y: 0, width: 10, height: 10 }, C: { x: 5, y: 5, width: 10, height: 10 } };
     expect(overlappingPairs(rects)).toEqual(["A/C", "B/C"]);

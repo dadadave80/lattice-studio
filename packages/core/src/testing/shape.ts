@@ -191,9 +191,13 @@ export function markdownProse(text: string): string {
       i = j + 1;
       continue;
     }
-    // A backtick run preceded by a backslash is a backslash-escaped literal (escapeMarkdown's doing), not a
-    // code-span delimiter: it must not pair with a later real span and swallow the text between them.
-    prose.push(line.replace(/(?<!\\)(`+)[\s\S]*?\1/g, ""));
+    // A backtick run is a backslash-escaped literal (escapeMarkdown's doing), not a code-span delimiter, only
+    // when an odd number of backslashes precede it: `\`` escapes the backtick, but `\\\`` is an escaped
+    // backslash followed by a real, unescaped backtick. The lookbehind requires an even count (zero counts):
+    // it matches a run of backslash pairs whose start isn't itself preceded by a backslash, so the parity is
+    // counted from the true start of the run, not from the middle of one. An escaped opener must not pair
+    // with a later real span and swallow the text between them.
+    prose.push(line.replace(/(?<=(?<!\\)(?:\\\\)*)(`+)[\s\S]*?\1/g, ""));
     i++;
   }
   return prose.join("\n");
