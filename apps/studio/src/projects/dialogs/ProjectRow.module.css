@@ -1,0 +1,39 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-3);
+  padding: var(--lx-space-3) 0;
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.name {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  text-align: start;
+  color: var(--lx-text);
+  font: var(--lx-font-body);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name:hover {
+  text-decoration: underline;
+}
+
+.saved {
+  flex: none;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+  white-space: nowrap;
+}
+
+.actions {
+  flex: none;
+  display: flex;
+  gap: var(--lx-space-2);
+}
