@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { analyze, loadTemplate, type Catalog, type Hex4, type Recipe } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeRecipe } from "@lattice-studio/core/testing";
-import { pinAction } from "./pin-action";
+import { joinNames, pinAction } from "./pin-action";
 
 function catalog(): Catalog {
   const loaded = loadFixtureCatalog();
@@ -111,5 +111,13 @@ describe("pinAction", () => {
     const c = catalog();
     const action = pin(c, makeRecipe({ facets: ["ERC20"], exclude: ["0xA9059CBB" as Hex4] }, c), "ERC20", TRANSFER);
     expect(action.state).toBe("excluded");
+  });
+});
+
+describe("joinNames", () => {
+  test("two names with and, three or more with commas and a final and", () => {
+    expect(joinNames(["A"])).toBe("A");
+    expect(joinNames(["A", "B"])).toBe("A and B");
+    expect(joinNames(["A", "B", "C"])).toBe("A, B and C");
   });
 });

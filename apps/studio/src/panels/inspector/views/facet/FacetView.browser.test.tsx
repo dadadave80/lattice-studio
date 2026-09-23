@@ -358,7 +358,7 @@ describe("storage, seams and release", () => {
       session: { chainId: SEPOLIA },
     });
     await shown("ERC20");
-    await vi.waitFor(() => expect(specValue("Chain")).toBe("Not checked yet"));
+    await vi.waitFor(() => expect(specValue("Chain")).toBe("Not checked yet."));
     await chain.probe(SEPOLIA);
     await vi.waitFor(() => expect(specValue("Chain")).toBe("Deployed on Sepolia"));
     chain.setState(SEPOLIA, { shared: {} });

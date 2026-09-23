@@ -11,10 +11,10 @@ import { UnknownFields } from "./UnknownFields";
 
 /**
  * The inspector with nothing selected: the diamond itself (IR L119). An empty sheet shows the starting points
- * (spec L384); the view ends with the Deployments list. `view.section` needs nothing here: the frame's focus
+ * (spec L384); the view ends with the Deployments list. `view.section` "deployments" (deployments.show) reads the records on the chain; the frame's focus
  * request lands on the matching Section heading.
  */
-export function DiamondView(_props: InspectorViewProps<"diamond">) {
+export function DiamondView({ view }: InspectorViewProps<"diamond">) {
   const name = useDocument((s) => s.project.name);
   const empty = useDocument((s) => s.project.recipe.facets.length === 0);
   return (
@@ -30,7 +30,7 @@ export function DiamondView(_props: InspectorViewProps<"diamond">) {
       )}
       <UnknownFields />
       <ChainReadiness />
-      <DeploymentsList />
+      <DeploymentsList autoCheck={view.section === "deployments"} />
     </div>
   );
 }

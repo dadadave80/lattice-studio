@@ -97,7 +97,13 @@ export function pinAction({ facet, selector, route, exclude, seams, placed }: Pi
   return {
     state: "contested",
     label: "contested",
-    tooltip: `Contested by ${route.contenders.join(" and ")}. Click to route here.`,
+    tooltip: `Contested by ${joinNames(route.contenders)}. Click to route here.`,
     command: { id: "selector.route", args: { selector: selectorArg, facet } },
   };
+}
+
+/** "A and B", "A, B and C". */
+export function joinNames(names: readonly string[]): string {
+  if (names.length <= 2) return names.join(" and ");
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1) ?? ""}`;
 }

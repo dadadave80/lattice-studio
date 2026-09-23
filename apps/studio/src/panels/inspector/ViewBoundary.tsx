@@ -7,11 +7,21 @@ type State = { error: unknown };
 
 /**
  * Keeps a failing view from taking the inspector down. A function another WP hasn't finished (NotImplemented)
- * shows `Not built yet · WP-<id>`; anything else shows its reason and is logged. The frame keys it by view, so
+ * shows `Not built yet · WP-<id>`; anything else shows its reason and is logged. The frame keys the view's boundary by view, so
  * routing elsewhere starts over.
  */
-export class ViewBoundary extends Component<{ children: ReactNode }, State> {
+type Props = {
+  children: ReactNode;
+  /** When it changes, a caught error clears and the children render again (without remounting them otherwise). */
+  resetKey?: string;
+};
+
+export class ViewBoundary extends Component<Props, State> {
   override state: State = { error: null };
+
+  override componentDidUpdate(previous: Props): void {
+    if (this.state.error !== null && previous.resetKey !== this.props.resetKey) this.setState({ error: null });
+  }
 
   static getDerivedStateFromError(error: unknown): State {
     return { error };

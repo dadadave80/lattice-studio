@@ -15,7 +15,7 @@ export function FacetView({ view }: InspectorViewProps<"facet">) {
   const catalog = useCatalog();
   const facet = catalog?.facets.find((entry) => entry.name === view.facet);
   return (
-    <div className={styles.view} data-view="facet">
+    <div className={styles.view} data-view="facet" data-facet={view.facet}>
       <ViewHeader title={view.facet} kind="Facet" />
       {!catalog ? (
         <div className={styles.section}>

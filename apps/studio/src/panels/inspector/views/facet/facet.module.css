@@ -112,3 +112,10 @@ button.row[aria-disabled="true"] {
   flex-direction: column;
   gap: var(--lx-space-1);
 }
+
+.missing {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-accent);
+}

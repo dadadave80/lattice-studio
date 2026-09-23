@@ -45,8 +45,19 @@ export function explorerUrl(chains: readonly ChainInfo[], chainId: number, addre
   return base ? `${base.replace(/\/$/, "")}/address/${address}` : null;
 }
 
-/** Louper's page for a diamond: `https://louper.dev/diamond/<address>?network=<chain>`. */
-export function louperUrl(chains: readonly ChainInfo[], chainId: number, address: string): string {
-  const name = chainNameOf(chains, chainId).toLowerCase().replace(/\s+/g, "-");
-  return `https://louper.dev/diamond/${address}?network=${encodeURIComponent(name)}`;
+/** Louper's network names, by chain id. A chain Louper doesn't list gets no Louper link. */
+const LOUPER_NETWORKS: Readonly<Record<number, string>> = {
+  1: "mainnet",
+  10: "optimism",
+  137: "polygon",
+  8453: "base",
+  42161: "arbitrum",
+  84532: "base-sepolia",
+  11155111: "sepolia",
+};
+
+/** Louper's page for a diamond, `https://louper.dev/diamond/<address>?network=<network>`; null off its networks. */
+export function louperUrl(chainId: number, address: string): string | null {
+  const network = LOUPER_NETWORKS[chainId];
+  return network ? `https://louper.dev/diamond/${address}?network=${network}` : null;
 }

@@ -1,8 +1,7 @@
 import { formatSelector, type Hex4 } from "@lattice-studio/core";
-import { useId, type Ref } from "react";
-import { runCommand } from "@/contracts";
-import { cx, ReasonTooltip, Tooltip } from "@/ui";
-import { CodeText } from "./CodeText";
+import type { Ref } from "react";
+import { cx, ReasonTooltip } from "@/ui";
+import { CommandSelectorRow } from "./CommandSelectorRow";
 import { plainCode } from "./facet-model";
 import type { PinAction, PinState } from "./pin-action";
 import styles from "./facet.module.css";
@@ -32,7 +31,6 @@ const STATE_CLASS: Record<PinState, string | undefined> = {
  * Enter, Space or a click does what its tooltip says; a seam offers no route and says why.
  */
 export function SelectorRow({ selector, action, readOnly, tabIndex, onFocus, rowRef }: SelectorRowProps) {
-  const descriptionId = useId();
   const dense = plainCode(formatSelector(selector, "dense"));
   const content = (
     <>
@@ -74,14 +72,7 @@ export function SelectorRow({ selector, action, readOnly, tabIndex, onFocus, row
 
   return (
     <li className={styles.rowItem}>
-      <Tooltip content={<CodeText text={action.tooltip} />}>
-        <button {...common} aria-describedby={descriptionId} onClick={() => void runCommand(command, "button")}>
-          {content}
-          <span id={descriptionId} hidden>
-            {plainCode(action.tooltip)}
-          </span>
-        </button>
-      </Tooltip>
+      <CommandSelectorRow command={command} tooltip={action.tooltip} content={content} button={common} />
     </li>
   );
 }

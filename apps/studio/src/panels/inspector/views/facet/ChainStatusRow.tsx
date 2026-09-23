@@ -5,7 +5,7 @@ import { SpecRow } from "../../shared/SpecRow";
 
 /**
  * Whether the facet's release is on the selected chain, as the chain module last checked: "Deployed on
- * Sepolia", "Not on Sepolia" or "Not checked yet". Nothing until a chain is selected, so the chain module
+ * Sepolia", "Not on Sepolia" or "Not checked yet.". Nothing until a chain is selected, so the chain module
  * loads only then.
  */
 export function ChainStatusRow({ facet }: { facet: Facet }) {
@@ -20,6 +20,6 @@ export function ChainStatusRow({ facet }: { facet: Facet }) {
   if (!online) text = "Chain checks need a connection.";
   else if (access.status === "unavailable") text = access.reason;
   else if (readiness.status === "ready") text = readiness.state.shared[facet.name]?.present ? `Deployed on ${chain}` : `Not on ${chain}`;
-  else text = "Not checked yet";
+  else text = "Not checked yet.";
   return <SpecRow label="Chain">{text}</SpecRow>;
 }

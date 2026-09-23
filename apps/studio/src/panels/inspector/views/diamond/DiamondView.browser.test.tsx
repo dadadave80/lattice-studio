@@ -265,8 +265,28 @@ describe("DiamondView: deployments", () => {
     const chain = { ...fakeChainService(), codeAt: () => new Promise<never>(() => {}) };
     await putDeployment(record("deploy-checking", { address: address("b1") }));
     await putDeployment(record("deploy-checking", { address: address("b2") }));
-    await renderWithStudio(view, { project: makeProject({ id: "deploy-checking" }), chain });
+    // deployments.show (the status chip) asked for the list: its records are read on the chain.
+    await renderWithStudio(<DiamondView view={{ kind: "diamond", section: "deployments" }} />, {
+      project: makeProject({ id: "deploy-checking" }),
+      chain,
+    });
     await expect.element(page.getByText("Checking 2 deployments…")).toBeVisible();
+  });
+
+  test("records are read only on request, and each read says what it found", async () => {
+    const found = address("e1");
+    const empty = address("e2");
+    const chain = fakeChainService({ code: { [found]: "0x6080" } });
+    await putDeployment(record("deploy-on-request", { address: found }));
+    await putDeployment(record("deploy-on-request", { address: empty, at: "2026-09-21T12:00:00.000Z" }));
+    await renderWithStudio(view, { project: makeProject({ id: "deploy-on-request" }), chain });
+    const check = page.getByRole("button", { name: "Check 2 deployments on chain" });
+    await expect.element(check).toBeVisible();
+    expect(chain.calls.filter((call) => call.method === "codeAt")).toHaveLength(0);
+    await check.click();
+    await expect.element(page.getByText("Code found on Sepolia.")).toBeVisible();
+    await expect.element(page.getByText("No code at this address on Sepolia.")).toBeVisible();
+    expect(chain.calls.filter((call) => call.method === "codeAt")).toHaveLength(2);
   });
 
   test("offline: no reads, the records as stored", async () => {
@@ -283,6 +303,7 @@ describe("DiamondView: deployments", () => {
     const chain = fakeChainService({ down: [SEPOLIA] });
     await putDeployment(record("deploy-down", { address: address("c1") }));
     await renderWithStudio(view, { project: makeProject({ id: "deploy-down" }), chain });
+    await page.getByRole("button", { name: "Check 1 deployment on chain" }).click();
 
     const failure = page.getByText("Couldn't read Sepolia for this record.");
     await expect.element(failure).toBeVisible();

@@ -14,18 +14,23 @@ const GOVERNED = ["GovernedDiamondCut", "GovernedSafeDiamondCut"];
 export function LiveNextSteps({ record, chains }: { record: Deployment; chains: readonly ChainInfo[] }) {
   const governed = useDocument((s) => s.project.recipe.facets.some((name) => GOVERNED.includes(name)));
   const explorer = explorerUrl(chains, record.chainId, record.address);
+  const louper = louperUrl(record.chainId, record.address);
   return (
     <>
-      <p className={styles.links}>
-        {explorer ? (
-          <a className={styles.link} href={explorer} target="_blank" rel="noreferrer">
-            Open in explorer
-          </a>
-        ) : null}
-        <a className={styles.link} href={louperUrl(chains, record.chainId, record.address)} target="_blank" rel="noreferrer">
-          Open in Louper
-        </a>
-      </p>
+      {explorer || louper ? (
+        <p className={styles.links}>
+          {explorer ? (
+            <a className={styles.link} href={explorer} target="_blank" rel="noreferrer">
+              Open in explorer
+            </a>
+          ) : null}
+          {louper ? (
+            <a className={styles.link} href={louper} target="_blank" rel="noreferrer">
+              Open in Louper
+            </a>
+          ) : null}
+        </p>
+      ) : null}
       <div className={styles.nextSteps}>
         <Button size="small" variant="quiet" onClick={() => void copyText(record.address)}>
           Copy address

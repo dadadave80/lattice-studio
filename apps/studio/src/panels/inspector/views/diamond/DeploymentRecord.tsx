@@ -39,6 +39,8 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, che
         </span>
       </div>
       <span className={styles.quiet}>{verificationWord(record.verification)}</span>
+      {check === "found" ? <span className={styles.quiet}>{`Code found on ${chainName}.`}</span> : null}
+      {check === "empty" ? <span className={sheet.text}>{`No code at this address on ${chainName}.`}</span> : null}
       {check === "failed" ? (
         <div className={styles.recordError}>
           <p className={sheet.text} role="alert">{`Couldn't read ${chainName} for this record.`}</p>

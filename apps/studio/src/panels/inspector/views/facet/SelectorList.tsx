@@ -1,6 +1,6 @@
 import type { Catalog, Facet } from "@lattice-studio/core";
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { useAnalysis, useDocument } from "@/contracts";
+import { KEY_CONTEXT_ATTRIBUTE, useAnalysis, useDocument } from "@/contracts";
 import { TextField } from "@/ui";
 import { useInspectorFocus } from "../../focus-request";
 import { Section } from "../../shared/Section";
@@ -80,7 +80,7 @@ export function SelectorList({ facet, catalog, readOnly }: SelectorListProps) {
       {rows.length === 0 ? (
         <p className={sheet.muted}>{query.trim() === "" ? "Exports no selectors." : `No selector matches ‘${query.trim()}’.`}</p>
       ) : (
-        <ul className={styles.rows} aria-label={`${facet.name} selectors`} {...(readOnly ? {} : { onKeyDown: move })}>
+        <ul className={styles.rows} aria-label={`${facet.name} selectors`} {...(readOnly ? {} : { onKeyDown: move, [KEY_CONTEXT_ATTRIBUTE]: "list" })}>
           {rows.map(({ selector, action }, index) => (
             <SelectorRow
               key={selector.hex}

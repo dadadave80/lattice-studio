@@ -51,7 +51,7 @@ defineCommands([
     title: () => "Compare options…",
     category: "Build",
     enabled: (ctx, { options }) => {
-      if (!ctx.catalog) return { ok: false, reason: "The catalog hasn't loaded" };
+      if (!ctx.catalog) return { ok: false, reason: "The catalog hasn't loaded." };
       if (options.length < 2) return { ok: false, reason: "Compare needs two or more options." };
       const known = new Set(ctx.catalog.facets.map((facet) => facet.name));
       const missing = options.find((name) => !known.has(name));

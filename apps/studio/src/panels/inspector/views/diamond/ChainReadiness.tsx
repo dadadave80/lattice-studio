@@ -1,18 +1,12 @@
-import type { ChainState } from "@lattice-studio/core";
-import { commandRef, useDocument, useOnline, useSession } from "@/contracts";
+import { commandRef, useOnline, useSession } from "@/contracts";
 import { CommandButton } from "@/ui";
 import { Section } from "../../shared/Section";
-import { SpecRow } from "../../shared/SpecRow";
-import { SpecRows } from "../../shared/SpecRows";
 import sheet from "../../shared/sheet.module.css";
 import styles from "./diamond.module.css";
 import { chainNameOf, useChainService, useChains, useReadiness } from "../../shared/use-chain";
+import { ReadinessRows } from "./ReadinessRows";
 
 const FOCUS = { kind: "section", section: "readiness" } as const;
-
-function presence(probe: { present: boolean } | undefined): string {
-  return probe?.present ? "present" : "missing";
-}
 
 /**
  * The selected chain's readiness (IR L119, spec L697): read from the chain module's last probe, never probed
@@ -24,6 +18,7 @@ export function ChainReadiness() {
   const access = useChainService(chainId !== null);
   const chains = useChains(access);
   const readiness = useReadiness(access, chainId);
+  const known = chainId !== null && chains.some((chain) => chain.id === chainId);
   const name = chainId === null ? "" : chainNameOf(chains, chainId);
 
   let body;
@@ -44,7 +39,7 @@ export function ChainReadiness() {
     body = <p className={sheet.muted}>{access.reason}</p>;
   } else if (access.status !== "ready" || readiness.status === "checking") {
     body = (
-      <output className={`${sheet.muted} ${styles.status}`}>{`Checking ${name}…`}</output>
+      <output className={`${sheet.muted} ${styles.status}`}>{known ? `Checking ${name}…` : "Checking…"}</output>
     );
   } else if (readiness.status === "unknown") {
     body = <p className={sheet.muted}>Not checked yet.</p>;
@@ -67,26 +62,8 @@ export function ChainReadiness() {
   }
 
   return (
-    <Section label="Chain readiness" aside={name || undefined} focusTarget={FOCUS}>
+    <Section label="Chain readiness" aside={known ? name : undefined} focusTarget={FOCUS}>
       {body}
     </Section>
-  );
-}
-
-function ReadinessRows({ state, name }: { state: ChainState; name: string }) {
-  const path = useDocument((s) => s.project.deploy.path);
-  const facets = useDocument((s) => s.project.recipe.facets);
-  const present = facets.filter((facet) => state.shared[facet]?.present).length;
-  return (
-    <SpecRows>
-      <SpecRow label="Deployer">{`Arachnid's proxy ${presence(state.deployer)}`}</SpecRow>
-      <SpecRow label="Factory">
-        {path === "createx" ? `CreateX ${presence(state.createx)}` : `LatticeFactory ${presence(state.shared.LatticeFactory)}`}
-      </SpecRow>
-      <SpecRow label="Registry">{`LatticeRegistry ${presence(state.shared.LatticeRegistry)}`}</SpecRow>
-      <SpecRow label="Multicall3">{presence(state.multicall3)}</SpecRow>
-      <SpecRow label="Facets">{`${present} of ${facets.length} on ${name}`}</SpecRow>
-      <SpecRow label="Simulation">{state.simulate ? "eth_simulateV1" : "eth_call only"}</SpecRow>
-    </SpecRows>
   );
 }

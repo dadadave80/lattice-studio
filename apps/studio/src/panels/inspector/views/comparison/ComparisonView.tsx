@@ -22,7 +22,9 @@ export function ComparisonView({ view }: InspectorViewProps<"comparison">) {
   const { chainId, address } = view;
   const online = useOnline();
   const access = useChainService(true);
-  const chain = chainNameOf(useChains(access), chainId);
+  const chains = useChains(access);
+  const chain = chainNameOf(chains, chainId);
+  const known = chains.some((entry) => entry.id === chainId);
   const plan = useAnalysis((a) => a.plan);
   const sheetHash = useAnalysis((a) => a.recipeHash);
   const catalog = useCatalog();
@@ -39,7 +41,7 @@ export function ComparisonView({ view }: InspectorViewProps<"comparison">) {
   else if (access.status === "unavailable") status = access.reason;
   else if (read.status === "error") status = read.error;
   else if (comparison) status = verdict(comparison, plan);
-  else status = `Checking ${chain}…`;
+  else status = known ? `Checking ${chain}…` : "Checking…";
 
   const copyDetails = () => {
     const text = comparisonText(

@@ -1,7 +1,8 @@
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useRef } from "react";
 import { useAnalysis, useDocument, useSession } from "@/contracts";
+import { useFocusRecovery } from "./focus-recovery";
 import { CutPlanFooter, NarrowFillIn } from "./lazy-views";
-import { resolveView } from "./resolve-view";
+import { resolveView, viewKey } from "./resolve-view";
 import { ViewBoundary } from "./ViewBoundary";
 import { ViewSwitch } from "./ViewSwitch";
 import styles from "./InspectorPanel.module.css";
@@ -23,21 +24,24 @@ export function InspectorPanel() {
     () => resolveView({ view, selection, placed, problems: problemIds === "" ? [] : problemIds.split("\n") }),
     [view, selection, placed, problemIds],
   );
-  const key = JSON.stringify(resolved);
+  const key = viewKey(resolved);
+  const body = useRef<HTMLDivElement>(null);
+  useFocusRecovery(body, key);
 
   return (
     <div className={styles.panel} data-inspector-view={resolved.kind}>
       <Suspense fallback={null}>
         <NarrowFillIn />
       </Suspense>
-      <div className={styles.body}>
+      <div ref={body} className={styles.body}>
         <ViewBoundary key={key}>
           <Suspense fallback={<p className={styles.placeholder}>Loading…</p>}>
             <ViewSwitch view={resolved} />
           </Suspense>
         </ViewBoundary>
       </div>
-      <ViewBoundary>
+      {/* Stays mounted across views; an error in it clears when the view changes. */}
+      <ViewBoundary resetKey={key}>
         <Suspense fallback={null}>
           <CutPlanFooter />
         </Suspense>

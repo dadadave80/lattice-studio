@@ -63,8 +63,8 @@ describe("catalog preview", () => {
       session: { chainId: SEPOLIA },
       chain,
     });
-    await vi.waitFor(() => expect(availability(SEPOLIA)).toBe("Not checked yet"));
-    expect(availability(BASE_SEPOLIA)).toBe("Not checked yet");
+    await vi.waitFor(() => expect(availability(SEPOLIA)).toBe("Not checked yet."));
+    expect(availability(BASE_SEPOLIA)).toBe("Not checked yet.");
     await chain.probe(SEPOLIA);
     await chain.probe(BASE_SEPOLIA);
     await vi.waitFor(() => expect(availability(SEPOLIA)).toBe("Available"));

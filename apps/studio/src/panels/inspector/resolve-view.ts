@@ -40,6 +40,28 @@ export function selectionView(selection: readonly string[], placed: readonly str
   return { kind: "selection" };
 }
 
+/**
+ * What makes a view a different view: its kind and what it's about (a facet, a problem, a doc page, a record),
+ * never its parameters (`focus`, `section`, `path`). The frame remounts a view only when this changes, so
+ * `init.focusField` moving between fields keeps the Init plan's drafts.
+ */
+export function viewKey(view: ResolvedView): string {
+  switch (view.kind) {
+    case "facet":
+      return `facet:${view.facet}`;
+    case "preview":
+      return `preview:${view.facet}:${(view.compare ?? []).join(",")}`;
+    case "problem":
+      return `problem:${view.id}`;
+    case "doc":
+      return `doc:${view.code ?? ""}`;
+    case "comparison":
+      return `comparison:${view.chainId}:${view.address.toLowerCase()}`;
+    default:
+      return view.kind;
+  }
+}
+
 export function resolveView({ view, selection, placed, problems }: ViewInputs): ResolvedView {
   const fallback = (): ResolvedView => selectionView(selection, placed);
   if (view === null) return fallback();

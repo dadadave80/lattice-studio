@@ -6,6 +6,7 @@ import { SpecRow } from "../../shared/SpecRow";
 import { SpecRows } from "../../shared/SpecRows";
 import sheet from "../../shared/sheet.module.css";
 import type { InitPlacement } from "./facet-model";
+import { InitFields } from "./InitFields";
 
 export type InitSectionProps = {
   /** The facet's own init spec, if it has one. */
@@ -45,6 +46,9 @@ export function InitSection({ spec, placement, catalog, readOnly }: InitSectionP
         <SpecRow label="Spec">{initSpec ? `${initSpec.name} · ${initSpec.fn}` : (shown ?? "none")}</SpecRow>
         <SpecRow label="Position">{position(placement)}</SpecRow>
       </SpecRows>
+      {initSpec ? (
+        <InitFields spec={initSpec} path={placement.kind === "step" || placement.kind === "bundle" ? placement.path : null} />
+      ) : null}
       {readOnly || placement.kind === "none" || placement.kind === "absent" ? null : (
         <div className={sheet.actions}>
           {step ? (
