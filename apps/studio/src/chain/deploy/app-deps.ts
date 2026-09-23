@@ -5,10 +5,11 @@
  * settings and the injected clock. The chain comes from `runtime-port.ts`, loaded on first use.
  */
 import {
-  announce, chainService, doc, getAnalysis, getCatalog, hideBanner, isOnline, listDeployments, loadCreationCode, loadFacetDetail, log, now,
+  announce, chainService, doc, env, getAnalysis, getCatalog, hideBanner, isOnline, listDeployments, loadCreationCode, loadFacetDetail, log, now,
   putDeployment, session, settings, showBanner, subscribeAnalysis, subscribeCatalog, subscribeDeployments, subscribeOnline,
 } from "@/contracts";
 import { prediction } from "@/state";
+import { chainName } from "../infra/chains";
 import type { DeployDeps, DeployInputs } from "./ports";
 
 function inputs(): DeployInputs {
@@ -17,6 +18,7 @@ function inputs(): DeployInputs {
     analysis: getAnalysis,
     catalog: getCatalog,
     chainId: () => session.get().chainId,
+    chainName: (chainId) => chainName(chainId, env.e2e),
     prediction: () => {
       const p = prediction();
       return p.status === "ready"

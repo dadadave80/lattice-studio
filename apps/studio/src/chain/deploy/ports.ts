@@ -91,6 +91,8 @@ export type DeployInputs = {
   catalog(): Catalog | null;
   /** The selected chain. */
   chainId(): number | null;
+  /** "Sepolia": a chain's display name, known without loading the chain module. */
+  chainName(chainId: number): string;
   /** The predicted address for the selected chain, path, salt and account (S1), or why there's none. */
   prediction(): { status: "ready"; address: Address; chainId: number; path: DeployPath; from: Address; salt: Hex } | { status: "none"; reason: string };
   /** Acknowledged problem ids for the current recipe hash. */

@@ -394,6 +394,7 @@ export function fakeInputs(options: {
     analysis,
     catalog: () => catalog,
     chainId: () => chainId,
+    chainName: (id) => ({ [SEPOLIA_ID]: "Sepolia", 84532: "Base Sepolia", 31337: "Anvil" } as Record<number, string>)[id] ?? `Chain ${id}`,
     prediction,
     acks: () => acks,
     online: () => online,

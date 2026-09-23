@@ -204,7 +204,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
 
   const iso = (): string => new Date(clock.now()).toISOString();
 
-  const chainName = (port: DeployChainPort | null, chainId: number): string => port?.chainName(chainId) ?? `Chain ${chainId}`;
+  const chainName = (_port: DeployChainPort | null, chainId: number): string => inputs.chainName(chainId);
 
   /** A console line, announced as the deploy-announcements setting says (spec L778). */
   const emit = (line: LineDraft, level: Level = line.tag === "Error" ? "alert" : "info"): void => {
