@@ -1,0 +1,122 @@
+/*
+ * The title bar (spec L355, final-*-sample screens): 40 px, the App menu and history at the start, the project
+ * name, save status and status chip in the middle, Share, Shop/Draft and ⌘K at the end. Narrow layouts have no
+ * board yet (PA L78): built from the drawn bar and the tokens.
+ */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  block-size: calc(var(--lx-space-8) + var(--lx-space-2));
+  min-inline-size: 0;
+  padding-inline: var(--lx-space-2);
+}
+
+.start,
+.end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--lx-space-1);
+}
+
+.middle {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lx-space-2);
+  min-inline-size: 0;
+}
+
+.bar[data-layout="phone"] .middle {
+  justify-content: flex-start;
+}
+
+.brand {
+  color: var(--lx-text);
+}
+
+.toggles {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-1);
+  min-inline-size: 0;
+  margin: 0;
+  margin-inline-start: var(--lx-space-2);
+  padding: 0;
+  border: 0;
+}
+
+/* The name truncates first at 320 px (spec L370); the chip keeps its words until the bar is narrower still. */
+.name {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: hidden;
+  color: var(--lx-text);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.nameText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameInput {
+  flex: 0 1 auto;
+  inline-size: calc(var(--lx-card-width) - var(--lx-space-8));
+  min-inline-size: 0;
+  block-size: var(--lx-space-8);
+  padding-inline: var(--lx-space-2);
+  border: var(--lx-stroke-hair) solid var(--lx-border-focus);
+  border-radius: var(--lx-radius);
+  background: var(--lx-raised);
+  color: var(--lx-text);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.save {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--lx-space-1);
+}
+
+.saveText {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.save[data-state="not-saved"] .saveText {
+  color: var(--lx-accent);
+}
+
+/* The status chip as a button: the chip draws itself; the button adds the target size and the focus ring. */
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-block-size: var(--lx-space-6);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chip[aria-disabled="true"] {
+  cursor: default;
+}
+
+.palette {
+  font: var(--lx-font-code-sm);
+}
+
+/* The pane switcher under 768 px: a second row of the title bar region. */
+.switcher {
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}

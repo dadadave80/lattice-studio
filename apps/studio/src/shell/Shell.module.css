@@ -1,0 +1,147 @@
+/*
+ * The frame (spec L347-L370). 1280 px and wider: title bar 40 px; left pane, sheet and inspector side by side;
+ * the console drawer (36 px header plus its body) along the bottom. 768-1279 px: the side panes float over the
+ * sheet as drawers. Under 768 px: one pane at a time, full size, picked by the switcher in the title bar.
+ * Sizes come from the session as `--shell-left`, `--shell-inspector` and `--shell-console`.
+ * The narrow layouts have no board yet (PA L78); they follow the drawn desktop frame.
+ */
+/* The whole window, also on phones whose browser bars come and go (`dvh`). */
+.shell {
+  display: flex;
+  flex-direction: column;
+  block-size: 100vh;
+  block-size: 100dvh;
+  min-inline-size: 0;
+  overflow: hidden;
+  background: var(--lx-ground);
+  color: var(--lx-text);
+}
+
+.titlebar[hidden],
+.body[hidden],
+.left[hidden],
+.sheet[hidden],
+.inspector[hidden],
+.console[hidden] {
+  display: none;
+}
+
+.titlebar {
+  flex: none;
+  min-inline-size: 0;
+  background: var(--lx-panel);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.body {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+
+.left,
+.inspector {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-block-size: 0;
+  overflow: auto;
+  background: var(--lx-panel);
+}
+
+.left {
+  inline-size: var(--shell-left);
+  border-inline-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.inspector {
+  inline-size: var(--shell-inspector);
+  border-inline-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+/* The sheet pans in two dimensions inside its own pane, the Reflow exception (spec L372). */
+.sheet {
+  position: relative;
+  flex: 1 1 0;
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow: hidden;
+  background-color: var(--lx-ground);
+  background-image: radial-gradient(var(--lx-dot) 1px, transparent 1px);
+  background-size: var(--lx-grid) var(--lx-grid);
+}
+
+.console {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  block-size: calc(var(--lx-space-8) + var(--lx-space-1) + var(--shell-console));
+  min-block-size: 0;
+  overflow: hidden;
+  background: var(--lx-sunken);
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+/* Collapsed: the 36 px header, with its summary line. */
+.shell[data-console="header"] .console {
+  block-size: calc(var(--lx-space-8) + var(--lx-space-1));
+}
+
+/* Maximized, or the console pane under 768 px: everything below the title bar. */
+.shell[data-console="full"] .console {
+  flex: 1 1 0;
+  block-size: auto;
+}
+
+.consoleSplitter {
+  flex: none;
+}
+
+/* 768-1279 px: the side panes are overlay drawers over the sheet, one at a time. */
+.shell[data-drawers] .left,
+.shell[data-drawers] .inspector {
+  position: absolute;
+  z-index: 2;
+  inset-block: 0;
+  max-inline-size: calc(100% - var(--lx-space-12));
+  border-color: var(--lx-border);
+}
+
+.shell[data-drawers] .left {
+  inset-inline-start: 0;
+}
+
+.shell[data-drawers] .inspector {
+  inset-inline-end: 0;
+}
+
+.shell[data-drawers] .leftSplitter,
+.shell[data-drawers] .inspectorSplitter {
+  position: absolute;
+  z-index: 3;
+  inset-block: 0;
+}
+
+.shell[data-drawers] .leftSplitter {
+  inset-inline-start: var(--shell-left);
+}
+
+.shell[data-drawers] .inspectorSplitter {
+  inset-inline-end: var(--shell-inspector);
+}
+
+/* Under 768 px: the one pane the switcher shows fills the body. */
+.shell[data-layout="phone"] .left,
+.shell[data-layout="phone"] .inspector {
+  flex: 1 1 0;
+  inline-size: auto;
+  border-inline: 0;
+}
+
+.fillIn {
+  flex: none;
+  padding: var(--lx-space-2) var(--lx-space-3);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
