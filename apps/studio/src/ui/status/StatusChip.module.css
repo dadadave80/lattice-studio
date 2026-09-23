@@ -1,0 +1,78 @@
+/* The title bar's diamond state: a dot and words (spec L353, L683). The words carry the meaning. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  min-block-size: var(--lx-space-6);
+  padding-inline: var(--lx-space-2);
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  border-radius: var(--lx-radius);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+  white-space: nowrap;
+}
+
+.dot {
+  flex: none;
+  inline-size: var(--lx-space-2);
+  block-size: var(--lx-space-2);
+  border: var(--lx-stroke-hair) solid currentColor;
+}
+
+/* Not deployed: a hollow square. */
+.idle .dot {
+  background: transparent;
+}
+
+/* Proposed, verifying: half filled. */
+.pending {
+  color: var(--lx-text);
+}
+
+.pending .dot {
+  background: linear-gradient(to top, currentColor 50%, transparent 50%);
+}
+
+/* Live: filled in ink. */
+.live {
+  color: var(--lx-text);
+}
+
+.live .dot {
+  background: currentColor;
+}
+
+/* Modified, mismatch: accent and weight, because it needs a decision. */
+.attention {
+  color: var(--lx-accent);
+  border-color: var(--lx-accent-line);
+  font-weight: 600;
+}
+
+.attention .dot {
+  background: var(--lx-accent);
+  border-color: var(--lx-accent);
+}
+
+.full {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (forced-colors: active) {
+  .chip,
+  .attention {
+    border-color: CanvasText;
+  }
+
+  .dot,
+  .attention .dot {
+    border-color: CanvasText;
+  }
+
+  .live .dot,
+  .attention .dot {
+    background: CanvasText;
+  }
+}

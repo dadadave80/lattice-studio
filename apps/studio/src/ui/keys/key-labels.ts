@@ -77,3 +77,15 @@ export function ariaKeyShortcuts(specs: readonly KeySpec[] | KeySpec | undefined
   }
   return out.join(" ");
 }
+
+/**
+ * A character-key shortcut (WCAG 2.1.4): a letter, digit, punctuation or symbol with no modifier other than
+ * Shift. F-keys, Enter, Esc, Delete and arrows aren't; `Mod+k` isn't.
+ */
+export function isSingleKey(keys: string): boolean {
+  const tokens = keys.endsWith("++") ? [...keys.slice(0, -2).split("+").filter(Boolean), "+"] : keys.split("+");
+  const key = tokens.at(-1) ?? "";
+  const modifiers = tokens.slice(0, -1);
+  if (modifiers.some((m) => m !== "Shift")) return false;
+  return key.length === 1 || /^\[(Digit|Key|Numpad)/.test(key);
+}
