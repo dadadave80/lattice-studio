@@ -20,13 +20,28 @@ export function escapeHtml(text: string): string {
 const MARKDOWN_PUNCTUATION = /[\\`*_~[\]()!|]/g;
 
 /**
- * Backslash-escapes `MARKDOWN_PUNCTUATION`, and a `#` that starts the text (an ATX heading, were it to start
- * a line). CommonMark renders a backslash-escaped ASCII punctuation character as the character itself, so
- * ordinary names read the same while `[x](javascript:alert(1))`, `![i](x)` and `*b*` stay literal text.
+ * `MARKDOWN_PUNCTUATION` backslash-escaped, then what GFM's extended autolinks key on, so a bare URL in a name
+ * ("Claim at https://evil.example") never becomes a clickable link (spec L857): the `:` of `://`, the `.`
+ * after `www` (any case) and every `@` (email autolinks). Each renders as itself. The autolink escapes come
+ * second so the backslashes they add aren't escaped again.
+ */
+function escapePunctuation(text: string): string {
+  return text
+    .replace(MARKDOWN_PUNCTUATION, "\\$&")
+    .replace(/:(?=\/\/)/g, "\\:")
+    .replace(/(www)\./gi, "$1\\.")
+    .replace(/@/g, "\\@");
+}
+
+/**
+ * Backslash-escapes `MARKDOWN_PUNCTUATION` and autolink triggers (`escapePunctuation`), and a `#` that starts
+ * the text (an ATX heading, were it to start a line). CommonMark renders a backslash-escaped ASCII
+ * punctuation character as the character itself, so ordinary names read the same while
+ * `[x](javascript:alert(1))`, `![i](x)`, `*b*` and `https://x` stay literal text.
  * Run it after `escapeHtml`: escaping `<` first would turn `\<` into `\&lt;`, which renders as "&lt;".
  */
 export function escapeMarkdown(text: string): string {
-  return text.replace(MARKDOWN_PUNCTUATION, "\\$&").replace(/^#/, "\\#");
+  return escapePunctuation(text).replace(/^#/, "\\#");
 }
 
 /**
@@ -76,9 +91,14 @@ export function codeSpans(text: string): Piece[] {
  * text. `table` also escapes `|` inside spans, because GFM splits a row on every unescaped pipe first.
  */
 export function formattedLine(text: string, table = false): string {
+  // escapeHtml runs on the whole line before the split, spans included. That's the accepted trade-off: a
+  // `<`, `>` or `&` inside a kept span shows as its entity (`&lt;`), since code spans don't decode entities,
+  // but no raw `<` can reach the brief anywhere, and nothing depends on this split and a checker's split
+  // agreeing about where spans end. The other way round (escape only between spans) would render spans
+  // exactly but trust that agreement.
   const pieces = codeSpans(escapeHtml(oneLine(text)));
   const out = pieces.map((piece) => {
-    if (!piece.code) return piece.text.replace(MARKDOWN_PUNCTUATION, "\\$&");
+    if (!piece.code) return escapePunctuation(piece.text);
     return table ? piece.text.replace(/\|/g, "\\|") : piece.text;
   });
   return out.join("").replace(/^#/, "\\#");

@@ -234,11 +234,11 @@ describe("hostile links", () => {
       .replace(/^\{/, `{"__proto__":{"immutable":true,"exclude":["0xa9059cbb"]},`)
       .replace(`"args":{"admin":"${ADMIN}"}`, `"args":{"__proto__":{"admin":"${SAFE}","extra":"${SAFE}"}}`);
     expect(text).toContain(`"args":{"__proto__"`);
-    expect(messages(linkOf(strToU8(text)))).toEqual(["__proto__ is a reserved field name. Remove the field and try again."]);
+    expect(messages(linkOf(strToU8(text)))).toEqual(["__proto__ is a reserved field name. Ask for the link again."]);
     expect(({} as Record<string, unknown>)["immutable"]).toBeUndefined();
     const argsOnly = base.replace(`"args":{"admin":"${ADMIN}"}`, `"args":{"__proto__":{"admin":"${SAFE}"}}`);
     expect(messages(linkOf(strToU8(argsOnly)))).toEqual([
-      "init.steps[0].args.__proto__ is a reserved field name. Remove the field and try again.",
+      "init.steps[0].args.__proto__ is a reserved field name. Ask for the link again.",
     ]);
   });
 

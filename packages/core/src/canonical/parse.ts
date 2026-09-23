@@ -9,7 +9,7 @@ import { formatPath, MAX_JSON_DEPTH, validateProject, validateProjectFile, valid
 import { LONE_SURROGATE } from "./json";
 import { runMigrations, type MigrateTarget } from "./migrate";
 import { normalizeWith } from "./normalize";
-import { findProtoKey, PROTO_KEY_MESSAGE } from "./proto-key";
+import { findProtoKey, protoKeyMessage } from "./proto-key";
 
 /**
  * One issue as a line: `recipe.json: facets[3] ‘ERC20X’ isn't in Lattice 0.4.0.` (spec L501). The file comes
@@ -159,7 +159,7 @@ type Shape<T> = {
  */
 function parseAs<T>(shape: Shape<T>, json: unknown, opts: ParseOptions): Result<Parsed<T>, ParseIssue[]> {
   const protoPath = findProtoKey(json);
-  if (protoPath !== null) return err([issue(formatPath(protoPath), PROTO_KEY_MESSAGE, opts)]);
+  if (protoPath !== null) return err([issue(formatPath(protoPath), protoKeyMessage(opts.source), opts)]);
   const badPath = findLoneSurrogate(json, []);
   if (badPath !== null) {
     return err([issue(formatPath(badPath), "has a broken character. Fix the text and try again.", opts)]);

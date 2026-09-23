@@ -11,13 +11,14 @@ import { exportBrief } from "./brief";
 import { cell, codeSpans, escapedLine, escapeHtml, formattedLine, oneLine } from "./markdown";
 import { readInline } from "./test-support";
 
-const LINKS = ["[x](javascript:alert(1))", "![i](x)", "*b*", "<https://x>"] as const;
+const LINKS = ["[x](javascript:alert(1))", "![i](x)", "*b*", "<https://x>", "Claim at https://evil.example"] as const;
 
 const ESCAPED: Record<(typeof LINKS)[number], string> = {
   "[x](javascript:alert(1))": "\\[x\\]\\(javascript:alert\\(1\\)\\)",
   "![i](x)": "\\!\\[i\\]\\(x\\)",
   "*b*": "\\*b\\*",
-  "<https://x>": "&lt;https://x&gt;",
+  "<https://x>": "&lt;https\\://x&gt;",
+  "Claim at https://evil.example": "Claim at https\\://evil.example",
 };
 
 describe("escapedLine", () => {
@@ -27,6 +28,22 @@ describe("escapedLine", () => {
       expect(readInline(escapedLine(text))).toEqual({ text, openers: [] });
     });
   }
+
+  test("bare URLs, www. hosts and emails can't become GFM autolinks, and read the same", () => {
+    const cases: [string, string][] = [
+      ["Claim at https://evil.example", "Claim at https\\://evil.example"],
+      ["www.evil.com", "www\\.evil.com"],
+      ["WWW.Evil.com", "WWW\\.Evil.com"],
+      ["a@b.co", "a\\@b.co"],
+      ["mailto:a@b.co", "mailto:a\\@b.co"],
+    ];
+    for (const [text, escaped] of cases) {
+      expect(escapedLine(text)).toBe(escaped);
+      expect(readInline(escapedLine(text))).toEqual({ text, openers: [] });
+      expect(readInline(escapeHtml(text)).openers).not.toEqual([]);
+    }
+    expect(formattedLine("‘https://evil.example’ in `a://b`")).toBe("‘https\\://evil.example’ in `a://b`");
+  });
 
   test("the rest of the punctuation that opens a construct, and a leading #", () => {
     expect(escapedLine("_u_ ~~s~~ `c` a|b back\\slash")).toBe("\\_u\\_ \\~\\~s\\~\\~ \\`c\\` a\\|b back\\\\slash");
@@ -41,7 +58,7 @@ describe("escapedLine", () => {
   });
 
   test("without the backslash escapes, the same text would open constructs (the check isn't vacuous)", () => {
-    for (const text of LINKS.slice(0, 3)) expect(readInline(escapeHtml(text)).openers).not.toEqual([]);
+    for (const text of LINKS) expect(readInline(escapeHtml(text)).openers).not.toEqual([]);
   });
 
   test("any hostile text renders as itself on one line, opening nothing (property)", () => {

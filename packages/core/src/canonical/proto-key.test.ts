@@ -11,7 +11,7 @@ import { canonicalJson } from "./json";
 import { migrate } from "./migrate";
 import { normalizeRecipe, normalizeWith } from "./normalize";
 import { formatParseIssue, parseProject, parseProjectFile, parseRecipe } from "./parse";
-import { findProtoKey, PROTO_KEY_MESSAGE } from "./proto-key";
+import { findProtoKey, PROTO_KEY_LINK_MESSAGE, PROTO_KEY_MESSAGE, protoKeyMessage } from "./proto-key";
 import { bundleRecipe, catalog, PROTO_VALUE, stepsRecipe, withProtoKey } from "./test-support";
 
 const recipeFile: ParseOptions = { catalogs: [catalog], source: "file", filename: "recipe.json" };
@@ -44,8 +44,12 @@ describe("findProtoKey", () => {
     expect(() => findProtoKey(deep)).not.toThrow();
   });
 
-  test("the message passes the copy rules", () => {
+  test("the messages pass the copy rules; a link can't be edited, so it's asked for again", () => {
     expect(lintCopy(PROTO_KEY_MESSAGE)).toEqual([]);
+    expect(lintCopy(PROTO_KEY_LINK_MESSAGE)).toEqual([]);
+    expect(protoKeyMessage("file")).toBe("is a reserved field name. Remove the field and try again.");
+    expect(protoKeyMessage("db")).toBe(PROTO_KEY_MESSAGE);
+    expect(protoKeyMessage("link")).toBe("is a reserved field name. Ask for the link again.");
   });
 });
 
@@ -65,7 +69,7 @@ describe("parse refuses a __proto__ key with its path", () => {
 
   test("a share-link payload names the path without a file", () => {
     const json = withProtoKey(stepsRecipe(), ["owners"]);
-    expect(issuesOf(parseRecipe(json, { catalogs: [catalog], source: "link" }))).toEqual([`owners.__proto__ ${PROTO_KEY_MESSAGE}`]);
+    expect(issuesOf(parseRecipe(json, { catalogs: [catalog], source: "link" }))).toEqual([`owners.__proto__ ${PROTO_KEY_LINK_MESSAGE}`]);
   });
 
   const fileCases: [string, (string | number)[]][] = [

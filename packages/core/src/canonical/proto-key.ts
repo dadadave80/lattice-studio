@@ -1,3 +1,4 @@
+import type { ParseSource } from "../model/io";
 import { MAX_JSON_DEPTH } from "../model/schema";
 
 /**
@@ -10,6 +11,14 @@ export const PROTO_KEY = "__proto__";
 
 /** What `formatParseIssue` prints after the key's path: `recipe.json: owners.__proto__ is a reserved …`. */
 export const PROTO_KEY_MESSAGE = "is a reserved field name. Remove the field and try again.";
+
+/** The same for a share link, which the person can't edit: share/link.ts's "Ask for the link again." */
+export const PROTO_KEY_LINK_MESSAGE = "is a reserved field name. Ask for the link again.";
+
+/** The message for where the input came from: a link gets the link wording, a file or stored project the file's. */
+export function protoKeyMessage(source: ParseSource): string {
+  return source === "link" ? PROTO_KEY_LINK_MESSAGE : PROTO_KEY_MESSAGE;
+}
 
 /**
  * The path to the first `"__proto__"` key, depth-first in key order, ending with that key; null when there's

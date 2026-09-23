@@ -83,7 +83,7 @@ const ENTITIES: readonly (readonly [string, string])[] = [["&amp;", "&"], ["&lt;
  * Anything that could open a construct is listed in `openers` instead: an unescaped `` ` `` (code span),
  * `*` `_` (emphasis), `~` (strikethrough), `[` `]` (links; `![` images), `<` `>` (autolinks, raw HTML), `|`
  * (a table cell), an `&` that starts any other entity, a `#` that starts the line, a trailing backslash (a
- * hard break). So `readInline(md)` returning `{ text: t, openers: [] }` means `md` renders as exactly `t`.
+ * hard break), and GFM extended-autolink triggers: an unescaped `://`, `www.` or `@`. So `readInline(md)` returning `{ text: t, openers: [] }` means `md` renders as exactly `t`.
  *
  * With `spans`, code spans are allowed (for copy that marks code, like a problem message): an unescaped
  * backtick run closed by a later run of exactly its length (§6.1) is read as a span, its content verbatim,
@@ -128,6 +128,10 @@ export function readInline(md: string, spans = false): InlineReading {
       continue;
     }
     if ("`*_~[]<>|".includes(char)) openers.push(`${char} at ${at}`);
+    // GFM extended autolinks: a scheme's `://`, `www.` (any case) and an email's `@`, each unescaped.
+    if (char === ":" && md.startsWith("//", at + 1)) openers.push(`:// at ${at}`);
+    if (/^www\./i.test(md.slice(at, at + 4))) openers.push(`www. at ${at}`);
+    if (char === "@") openers.push(`@ at ${at}`);
     text += char;
   }
   return { text, openers };
