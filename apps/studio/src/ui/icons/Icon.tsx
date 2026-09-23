@@ -11,7 +11,7 @@ export type IconProps = {
    * visible word or the control's label already says it: the icon is then hidden from assistive technology.
    */
   label?: string;
-  className?: string;
+  className?: string | undefined;
 };
 
 /** One icon from the provisional inline set, drawn in `currentColor`. */
