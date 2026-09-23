@@ -1,0 +1,243 @@
+/**
+ * Release addressing for shared contracts (spec L101, L149-L155, decision 6, R21): the pure half. Given a
+ * contract's creation code (libraries linked, constructor arguments appended), its salt, init-code hash and
+ * address through Arachnid's deterministic deployment proxy follow from core's `sharedSalt` and
+ * `arachnidAddress`. `release.ts` does the half that needs a Lattice build and an Anvil.
+ *
+ * Rules at the pin (Lattice dev f4a32c8, `VERSION` "0.2.0"; every address here is provisional until the 0.4.0
+ * re-pin, HANDOFF D2):
+ * - Version: `LatticeVersion.VERSION`, read from `src/LatticeVersion.sol`, never hardcoded.
+ * - Salts: `sharedSalt(name, version)`, `keccak256("lattice.<Name>.<version>")`; LatticeRegistry and
+ *   LatticeFactory are versionless (`DeployRelease.s.sol` L93-L97).
+ * - Constructor arguments, as the canonical build passes them (`DeployRelease.s.sol` L155-L165):
+ *   `LatticeRegistry(initialOwner)` with the placeholder owner below, and `LatticeFactory(registry, 0, 0)`,
+ *   the registry's predicted address and no ENS reverse registrar. Any other contract whose ABI has constructor
+ *   inputs is per-deployment and gets no release data.
+ * - Linked libraries (PoseidonT3, which Semaphore and ShieldedPool link through lean-imt): Lattice pins no
+ *   library address, so Studio releases each library as a shared contract of its own, through Arachnid's proxy
+ *   at `sharedSalt("<Lib>", version)`, `keccak256("lattice.PoseidonT3.0.2.0")` at the pin, and links that
+ *   address. Every contract that links one is flagged provisional: its address is Studio's choice until
+ *   Lattice pins the library (ledger "For Lattice" #5).
+ */
+import {
+  ARACHNID_PROXY,
+  type AbiItem,
+  type Address,
+  arachnidAddress,
+  err,
+  type Hex,
+  ok,
+  type Result,
+  type ShardRef,
+  type SharedContract,
+  sharedSalt,
+} from "@lattice-studio/core";
+import { type AbiParameter, encodeAbiParameters, keccak256, toHex, zeroAddress } from "viem";
+import type { LinkReferences, SolcMetadata } from "./artifacts";
+
+/**
+ * The registry's initial owner while the real one is undecided (HANDOFF D6; Lattice A7 decides it). Clearly
+ * fake and non-zero (the constructor rejects zero), recorded with the release data so the catalog shows it.
+ * It's part of the registry's init code, so the registry's and the factory's addresses depend on it.
+ */
+export const REGISTRY_OWNER_PLACEHOLDER: Address = "0x000000000000000000000000000000000000dEaD";
+
+/** Where the library-wide version lives in a Lattice checkout. */
+export const LATTICE_VERSION_PATH = "src/LatticeVersion.sol";
+
+/** The two shared contracts whose constructor arguments the release fixes. */
+export const REGISTRY = "LatticeRegistry";
+export const FACTORY = "LatticeFactory";
+
+const VERSION_CONSTANT = /string\s+internal\s+constant\s+VERSION\s*=\s*"([^"]*)"\s*;/g;
+const SEMVER = /^\d+\.\d+\.\d+$/;
+
+/**
+ * Reads `VERSION` from `LatticeVersion.sol`'s source. Exactly one declaration, a plain `MAJOR.MINOR.PATCH`
+ * (what `DeployRelease.packVersion` accepts), or an error saying what was found.
+ */
+export function parseLatticeVersion(source: string): Result<string, string> {
+  const found = [...source.matchAll(VERSION_CONSTANT)].map((m) => m[1] ?? "");
+  if (found.length !== 1) {
+    return err(`${LATTICE_VERSION_PATH}: expected one VERSION constant, found ${found.length}.`);
+  }
+  const version = found[0] ?? "";
+  if (!SEMVER.test(version)) return err(`${LATTICE_VERSION_PATH}: VERSION "${version}" isn't MAJOR.MINOR.PATCH.`);
+  return ok(version);
+}
+
+/** The constructor's inputs from an ABI; none when the ABI has no constructor. */
+export function constructorInputs(abi: readonly AbiItem[]): readonly AbiParameter[] {
+  const ctor = abi.find((item) => item.type === "constructor");
+  return ctor?.type === "constructor" ? ctor.inputs : [];
+}
+
+/** Renders constructor inputs as `(address initialOwner, uint256 x)` for messages. */
+export function describeInputs(inputs: readonly AbiParameter[]): string {
+  return `(${inputs.map((i) => (i.name ? `${i.type} ${i.name}` : i.type)).join(", ")})`;
+}
+
+/**
+ * The ABI-encoded constructor arguments the release passes, by contract name: the registry's owner and the
+ * factory's `(registry, 0, 0)`. `ok(undefined)` for a contract without constructor inputs; an error for any
+ * other contract that has them (deployed per use, spec L190) or for arguments that don't fit the ABI.
+ */
+export function releaseConstructorArgs(
+  name: string,
+  abi: readonly AbiItem[],
+  context: { registryOwner: Address; registry?: Address },
+): Result<Hex | undefined, string> {
+  const inputs = constructorInputs(abi);
+  let args: readonly unknown[];
+  if (name === REGISTRY) args = [context.registryOwner];
+  else if (name === FACTORY) {
+    if (context.registry === undefined) return err(`${FACTORY} needs the registry's address.`);
+    args = [context.registry, zeroAddress, zeroAddress];
+  } else if (inputs.length === 0) return ok(undefined);
+  else return err(`${name} takes constructor arguments ${describeInputs(inputs)}, so it's deployed per use.`);
+
+  if (inputs.length !== args.length) {
+    return err(`${name}'s constructor takes ${describeInputs(inputs)}, not the ${args.length} arguments the release passes.`);
+  }
+  try {
+    return ok(encodeAbiParameters(inputs, args));
+  } catch (e) {
+    return err(`${name}: constructor arguments don't encode: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+/** Appends ABI-encoded constructor arguments to linked creation code. */
+export function withConstructorArgs(creationCode: Hex, args: Hex | undefined): Hex {
+  return args === undefined ? creationCode : (`${creationCode}${args.slice(2)}`.toLowerCase() as Hex);
+}
+
+/** `"<file>:<Lib>"` for every library a piece of code links, in the order the link references list them. */
+export function linkedLibraries(refs: LinkReferences): string[] {
+  const keys: string[] = [];
+  for (const [file, libs] of Object.entries(refs)) for (const lib of Object.keys(libs)) keys.push(`${file}:${lib}`);
+  return keys;
+}
+
+/** The library name in a `"<file>:<Lib>"` key. */
+export function libraryName(key: string): string {
+  return key.slice(key.lastIndexOf(":") + 1);
+}
+
+/** What a shared contract's address commits to, before anything is deployed. */
+export type SharedAddressing = {
+  name: string;
+  /** Passed unhashed to Arachnid's proxy. */
+  salt: Hex;
+  version: string;
+  /** keccak256 of `creationCode`. */
+  initCodeHash: Hex;
+  /** CREATE2(Arachnid's proxy, salt, initCodeHash), checksummed. */
+  address: Address;
+  /** Linked, with constructor arguments appended: what Arachnid's proxy receives after the salt. */
+  creationCode: Hex;
+};
+
+/** Salt, init-code hash and address of a shared contract through Arachnid's proxy. */
+export function predictShared(name: string, version: string, creationCode: Hex): SharedAddressing {
+  const salt = sharedSalt(name, version);
+  const initCodeHash = keccak256(creationCode);
+  return { name, salt, version, initCodeHash, address: arachnidAddress(salt, initCodeHash), creationCode };
+}
+
+/**
+ * The catalog's `SharedContract` for an addressed, deployed contract, once CG7 has written its creation code
+ * to a file and made the `ShardRef`.
+ */
+export function toSharedContract(
+  entry: Pick<SharedAddressing, "salt" | "version" | "address" | "initCodeHash"> & { codehash: Hex },
+  creationCode: ShardRef,
+): SharedContract {
+  return {
+    salt: entry.salt,
+    version: entry.version,
+    address: entry.address,
+    codehash: entry.codehash,
+    initCodeHash: entry.initCodeHash,
+    creationCode,
+  };
+}
+
+/** Solidity standard JSON input (the fields Sourcify reads). */
+export type StandardJsonInput = {
+  language: string;
+  sources: Record<string, { content: string }>;
+  settings: Record<string, unknown>;
+};
+
+/** The part of a Foundry build-info file the proxy's standard JSON comes from. */
+export type BuildInfoInput = {
+  language: string;
+  sources: Record<string, { content?: string }>;
+  settings: Record<string, unknown>;
+};
+
+/**
+ * The standard JSON input for one contract, pruned from a build's input to the sources its metadata lists
+ * (the ones its metadata hash covers, so recompiling reproduces the bytecode). Every source must be present
+ * with the content the metadata hashed; settings are the build's own, and must agree with the metadata on the
+ * settings that change bytecode.
+ */
+export function pruneStandardJson(input: BuildInfoInput, metadata: SolcMetadata): Result<StandardJsonInput, string> {
+  if (input.language !== metadata.language) {
+    return err(`build info compiles ${input.language}, the metadata says ${metadata.language}.`);
+  }
+  const sources: Record<string, { content: string }> = {};
+  for (const [path, { keccak256: expected }] of Object.entries(metadata.sources)) {
+    const content = input.sources[path]?.content;
+    if (content === undefined) return err(`build info lacks ${path}.`);
+    if (keccak256(toHex(content)) !== expected.toLowerCase()) {
+      return err(`build info holds a different ${path} than the metadata hashed.`);
+    }
+    sources[path] = { content };
+  }
+  const s = input.settings;
+  const m = metadata.settings;
+  const mismatch = (label: string, a: unknown, b: unknown): string | undefined =>
+    JSON.stringify(a) === JSON.stringify(b) ? undefined : `${label}: build info ${JSON.stringify(a)}, metadata ${JSON.stringify(b)}`;
+  const optimizer = (s.optimizer ?? {}) as { enabled?: boolean; runs?: number };
+  const buildMeta = (s.metadata ?? {}) as { bytecodeHash?: string };
+  const problems = [
+    mismatch("evmVersion", s.evmVersion, m.evmVersion),
+    mismatch("optimizer.enabled", optimizer.enabled ?? false, m.optimizer?.enabled ?? false),
+    mismatch("optimizer.runs", optimizer.runs, m.optimizer?.runs),
+    mismatch("viaIR", s.viaIR ?? false, m.viaIR ?? false),
+    mismatch("metadata.bytecodeHash", buildMeta.bytecodeHash ?? "ipfs", m.metadata?.bytecodeHash ?? "ipfs"),
+    mismatch("libraries", s.libraries ?? {}, m.libraries ?? {}),
+  ].filter((p): p is string => p !== undefined);
+  if (problems.length > 0) return err(`build settings differ from the metadata: ${problems.join("; ")}.`);
+  return ok({ language: input.language, sources, settings: s });
+}
+
+/** One row of the release report. */
+export type ReportRow = { name: string; salt: Hex; address: Address; codehash: Hex; note?: string };
+
+/**
+ * The release report: one line per contract with its salt, address and runtime codehash, then the proxy's
+ * init-code hash. Plain text, column-aligned, deterministic.
+ */
+export function formatReleaseReport(args: {
+  version: string;
+  registryOwner: Address;
+  rows: ReportRow[];
+  skipped?: { name: string; reason: string }[];
+  proxy?: { initCodeHash: Hex; sources: number };
+}): string {
+  const width = Math.max(4, ...args.rows.map((r) => r.name.length));
+  const lines = [
+    `Release ${args.version} through Arachnid's proxy ${ARACHNID_PROXY} · registry owner ${args.registryOwner}`,
+    `${"name".padEnd(width)}  ${"salt".padEnd(66)}  ${"address".padEnd(42)}  codehash`,
+    ...args.rows.map(
+      (r) => `${r.name.padEnd(width)}  ${r.salt}  ${r.address}  ${r.codehash}${r.note ? `  ${r.note}` : ""}`,
+    ),
+  ];
+  for (const s of args.skipped ?? []) lines.push(`skipped ${s.name}: ${s.reason}`);
+  if (args.proxy) {
+    lines.push(`Lattice proxy · init-code hash ${args.proxy.initCodeHash} · standard JSON with ${args.proxy.sources} sources`);
+  }
+  return `${lines.join("\n")}\n`;
+}
