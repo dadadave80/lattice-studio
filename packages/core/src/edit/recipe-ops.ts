@@ -5,7 +5,7 @@
  */
 import { canonicalJson } from "../canonical/json";
 import { normalizeRecipe } from "../canonical/normalize";
-import { formatAddress, formatSelector, plural } from "../format/format";
+import { formatAddress, formatDuration, formatSelector, plural } from "../format/format";
 import { joinAnd, joinOr } from "../format/text";
 import type {
   AddInitStepFn, ClearOwnerFn, ExcludeSelectorFn, IncludeSelectorFn, LoadRecipeFn, MoveInitStepFn, PlaceFacetFn,
@@ -15,7 +15,7 @@ import type { Catalog, Facet, InitParam, Seam } from "../model/catalog";
 import { isAddress, toLowerHex, type Hex4 } from "../model/hex";
 import type { Project } from "../model/project";
 import type { Arg, InitStep, Recipe, RecipeInit } from "../model/recipe";
-import { dropProvenance, parseInitPath, remapStepProvenance, stepPath, type InitPath } from "./paths";
+import { dropProvenance, parseInitPath, remapStepProvenance, type InitPath } from "./paths";
 import { done, isFinitePoint, noOp, notOnSheet, unique } from "./shared";
 
 /** Pins of a newly placed card: on the right, as C9's `tidy` gives new cards. */
@@ -25,6 +25,12 @@ const DEFAULT_PINS = "right";
 const EXPORT_SELECTORS: Hex4 = "0x0ef22643";
 
 type Owners = Recipe["owners"];
+
+/**
+ * What removing every init leaves (orchestrator ruling): a step plan with no steps, so the planner still adds the
+ * automatic introspection step and the ERC-165 flags survive. `none` appears only when a recipe says so.
+ */
+const EMPTY_INIT: RecipeInit = { kind: "steps", steps: [] };
 
 // ── Lookups ────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -119,7 +125,7 @@ function routedOwners(recipe: Recipe, catalog: Catalog, selector: Hex4, facet: s
 // ── Facets ─────────────────────────────────────────────────────────────────────────────────────────────
 
 export const placeFacet: PlaceFacetFn = (project, catalog, name, at) => {
-  const facet = facetOf(catalog, name) ?? uniqueCaseInsensitive(catalog, name);
+  const facet = facetOf(catalog, name);
   if (facet === undefined) return noOp(project, `The catalog has no facet named ${name}.`);
   if (project.recipe.facets.includes(facet.name)) return noOp(project, `${facet.name} is already on the sheet.`);
   if (!isFinitePoint(at)) return noOp(project, `${facet.name} wasn't placed: the position isn't a number.`);
@@ -128,13 +134,6 @@ export const placeFacet: PlaceFacetFn = (project, catalog, name, at) => {
   const recipe: Recipe = { ...project.recipe, facets: [...project.recipe.facets, facet.name] };
   return done(withRecipe(project, catalog, recipe, { layout }), `Placed ${facet.name}`);
 };
-
-/** "erc20" finds ERC20 when exactly one catalog facet matches without regard to case (console `place erc20`). */
-function uniqueCaseInsensitive(catalog: Catalog, name: string): Facet | undefined {
-  const lower = name.toLowerCase();
-  const matches = catalog.facets.filter((facet) => facet.name.toLowerCase() === lower);
-  return matches.length === 1 ? matches[0] : undefined;
-}
 
 export const removeFacets: RemoveFacetsFn = (project, catalog, names) => {
   const asked = unique(names);
@@ -146,11 +145,14 @@ export const removeFacets: RemoveFacetsFn = (project, catalog, names) => {
   const remaining = recipe.facets.filter((name) => !removed.includes(name));
   const gone = new Set(removed);
 
-  // Their owner entries go with them (spec L285): placing one again brings back only seams and defaults.
+  // Their owner entries go with them (spec L285), and so does every choice left without a contest: placing a
+  // facet again brings back only seams and defaults, and a hand-picked owner comes back as a fresh SEL-01
+  // (spec L429, PA bug 7), never as a silent route to whichever facet was kept.
   const owners: Owners = {};
   for (const key of Object.keys(recipe.owners) as Hex4[]) {
     const owner = recipe.owners[key];
-    if (owner !== undefined && !gone.has(owner)) owners[key] = owner;
+    if (owner === undefined || gone.has(owner)) continue;
+    if (remaining.filter((name) => exports(catalog, name, key)).length > 1) owners[key] = owner;
   }
 
   // An exclusion only a removed facet exported has nothing left to exclude.
@@ -182,7 +184,7 @@ function dropInitSpecs(
   if (specs.size === 0) return { init, provenance };
   if (init.kind === "bundle") {
     if (!specs.has(init.spec)) return { init, provenance };
-    return { init: { kind: "none" }, provenance: dropProvenance(provenance, "bundle") };
+    return { init: EMPTY_INIT, provenance: dropProvenance(provenance, "bundle") };
   }
   if (init.kind !== "steps") return { init, provenance };
   const kept: number[] = [];
@@ -295,8 +297,9 @@ export const setImmutable: SetImmutableFn = (project, immutable) => {
 /** The step an init path lives in, or why there isn't one. */
 function stepAt(init: RecipeInit, path: InitPath): { spec: string; args: Record<string, Arg> } | string {
   if (path.root === "bundle") return init.kind === "bundle" ? init : "The init plan has no bundle.";
-  if (init.kind !== "steps") return `There's no init step at ${stepPath(path)}.`;
-  return init.steps[path.index] ?? `There's no init step at ${stepPath(path)}.`;
+  const missing = `There's no step ${path.index + 1} in the init plan.`;
+  if (init.kind !== "steps") return missing;
+  return init.steps[path.index] ?? missing;
 }
 
 /** Why `fields` doesn't name a field of `spec`, or null when it does (or when the catalog doesn't know `spec`). */
@@ -344,12 +347,20 @@ function writeArg(args: Record<string, Arg>, fields: readonly string[], value: A
   return out;
 }
 
-/** A value as the summary shows it: references in words, addresses short (spec L679), text as written. */
-function showArg(value: Arg): string {
+/**
+ * A value as the summary shows it (spec L679-L681): references in words, addresses short, durations as
+ * "5 minutes (300 s)", percentages with "%", wei and text as written.
+ */
+function showArg(value: Arg, param?: InitParam): string {
   if (typeof value === "boolean") return String(value);
   if (typeof value === "string") {
     if (value === "") return "an empty string";
-    return isAddress(value) ? formatAddress(value) : value;
+    if (isAddress(value)) return formatAddress(value);
+    if (/^[0-9]+$/.test(value)) {
+      if (param?.unit === "seconds") return formatDuration(value);
+      if (param?.unit === "percent") return `${value}%`;
+    }
+    return value;
   }
   if (!Array.isArray(value) && Object.hasOwn(value, "$ref")) {
     return value.$ref === "self" ? "this diamond" : "the deploying account";
@@ -366,7 +377,11 @@ function withInit(init: RecipeInit, path: InitPath, args: Record<string, Arg>): 
 
 export const setInitArg: SetInitArgFn = (project, catalog, path, value) => {
   const parsed = parseInitPath(path);
-  if (parsed === null || parsed.fields.length === 0) return noOp(project, `${path} isn't an init field.`);
+  if (parsed === null) return noOp(project, `\`${path}\` isn't an init field.`);
+  if (parsed.fields.length === 0) {
+    const which = parsed.root === "bundle" ? "The bundle" : `Step ${parsed.index + 1}`;
+    return noOp(project, `${which} is a whole init step; name one of its fields.`);
+  }
   const { recipe } = project;
   const step = stepAt(recipe.init, parsed);
   if (typeof step === "string") return noOp(project, step);
@@ -374,18 +389,36 @@ export const setInitArg: SetInitArgFn = (project, catalog, path, value) => {
   if (unknown !== null) return noOp(project, unknown);
 
   const label = `${step.spec}.${parsed.fields.join(".")}`;
-  const current = readArg(step.args, parsed.fields);
-  if (value === undefined && current === undefined) return noOp(project, `${label} is already empty.`);
-  if (value !== undefined && current !== undefined && canonicalJson(value) === canonicalJson(current)) {
-    return noOp(project, `${label} is already ${showArg(value)}.`);
-  }
+  const param = paramAt(catalog, step.spec, parsed.fields);
   const args = writeArg(step.args, parsed.fields, value);
-  const next: Recipe = { ...recipe, init: withInit(recipe.init, parsed, args) };
+  // Compare what would be stored: "004" for "4", or a stored address typed in lowercase, isn't an edit.
+  const next = normalizeRecipe({ ...recipe, init: withInit(recipe.init, parsed, args) }, catalog);
+  const stored = argAt(next.init, parsed);
+  if (canonicalJson(next) === canonicalJson(normalizeRecipe(recipe, catalog))) {
+    return noOp(project, stored === undefined ? `${label} is already empty.` : `${label} is already ${showArg(stored, param)}.`);
+  }
   // A value set by hand no longer came from a link or a file (LINK-01, spec L465).
   const provenance = dropProvenance(project.provenance, path);
-  const summary = value === undefined ? `Cleared ${label}` : `Set ${label} to ${showArg(value)}`;
-  return done(withRecipe(project, catalog, next, { provenance }), summary);
+  const summary = stored === undefined ? `Cleared ${label}` : `Set ${label} to ${showArg(stored, param)}`;
+  return done({ ...project, recipe: next, provenance }, summary);
 };
+
+/** The argument an init path addresses in `init`, if there is one. */
+function argAt(init: RecipeInit, path: InitPath): Arg | undefined {
+  const step = stepAt(init, path);
+  return typeof step === "string" ? undefined : readArg(step.args, path.fields);
+}
+
+/** The parameter `fields` names in `spec`, through tuple components. */
+function paramAt(catalog: Catalog, spec: string, fields: readonly string[]): InitParam | undefined {
+  let params: readonly InitParam[] | undefined = catalog.inits.find((candidate) => candidate.name === spec)?.params;
+  let param: InitParam | undefined;
+  for (const field of fields) {
+    param = params?.find((candidate) => candidate.name === field);
+    params = param?.components;
+  }
+  return param;
+}
 
 export const addInitStep: AddInitStepFn = (project, catalog, spec, index) => {
   const init = catalog.inits.find((candidate) => candidate.name === spec);
@@ -414,14 +447,14 @@ export const addInitStep: AddInitStepFn = (project, catalog, spec, index) => {
 
 export const removeInitStep: RemoveInitStepFn = (project, catalog, path) => {
   const parsed = parseInitPath(path);
-  if (parsed === null) return noOp(project, `${path} isn't an init step.`);
+  if (parsed === null) return noOp(project, `\`${path}\` isn't an init step.`);
   const { recipe } = project;
   const step = stepAt(recipe.init, parsed);
   if (typeof step === "string") return noOp(project, step);
   const summary = `Removed ${step.spec} from the init plan`;
   if (parsed.root === "bundle" || recipe.init.kind !== "steps") {
     const provenance = dropProvenance(project.provenance, "bundle");
-    return done(withRecipe(project, catalog, { ...recipe, init: { kind: "none" } }, { provenance }), summary);
+    return done(withRecipe(project, catalog, { ...recipe, init: EMPTY_INIT }, { provenance }), summary);
   }
   const removed = parsed.index;
   const steps = recipe.init.steps.filter((_, index) => index !== removed);
@@ -435,10 +468,10 @@ export const moveInitStep: MoveInitStepFn = (project, catalog, from, to) => {
   if (init.kind === "bundle") return noOp(project, `${init.spec} is a bundle: its order is fixed.`);
   if (init.kind !== "steps" || init.steps.length === 0) return noOp(project, "The init plan has no steps to move.");
   const inRange = (i: number): boolean => Number.isSafeInteger(i) && i >= 0 && i < init.steps.length;
-  if (!inRange(from)) return noOp(project, `There's no init step at steps[${from}].`);
+  if (!inRange(from)) return noOp(project, `There's no step ${from + 1} in the init plan.`);
   if (!inRange(to)) return noOp(project, `There's no step ${to + 1} to move to: the plan has ${plural(init.steps.length, "step")}.`);
   const moving = init.steps[from];
-  if (moving === undefined) return noOp(project, `There's no init step at steps[${from}].`);
+  if (moving === undefined) return noOp(project, `There's no step ${from + 1} in the init plan.`);
   if (from === to) return noOp(project, `${moving.spec} is already step ${to + 1}.`);
 
   const order = init.steps.map((_, index) => index);

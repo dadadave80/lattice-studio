@@ -9,7 +9,7 @@ import {
   addInitStep, clearOwner, excludeSelector, includeSelector, loadRecipe, moveInitStep, placeFacet, removeFacets,
   removeInitStep, routeSelector, setImmutable, setInitArg,
 } from "./recipe-ops";
-import { ADDRESS, catalog, changedIssues, noOpIssues, projectWith, SEL } from "./testkit";
+import { ADDRESS, catalog, changedIssues, deepFreeze, noOpIssues, projectWith, SEL } from "./testkit";
 
 function expectChanged(result: EditResult, before: Project, summary: string): Project {
   expect(changedIssues(result, before, summary)).toEqual([]);
@@ -28,14 +28,6 @@ function untouched<T>(project: Project, op: (p: Project) => T): T {
   return result;
 }
 
-function deepFreeze<T>(value: T): T {
-  if (typeof value === "object" && value !== null) {
-    for (const key of Object.keys(value)) deepFreeze((value as Record<string, unknown>)[key]);
-    Object.freeze(value);
-  }
-  return value;
-}
-
 describe("placeFacet", () => {
   test("adds the facet in catalog order and its card at the given point", () => {
     const before = projectWith({ facets: ["GovernedVault"] });
@@ -46,10 +38,9 @@ describe("placeFacet", () => {
     expect(after.layout.GovernedVault).toEqual(before.layout.GovernedVault);
   });
 
-  test("finds a facet by name without regard to case, as the console types it", () => {
+  test("names are exact: the console resolves case before it calls this", () => {
     const before = projectWith();
-    const after = expectChanged(placeFacet(before, catalog, "erc20", { x: 0, y: 0 }), before, "Placed ERC20");
-    expect(after.recipe.facets).toEqual(["ERC20"]);
+    expectNoOp(placeFacet(before, catalog, "erc20", { x: 0, y: 0 }), before, "The catalog has no facet named erc20.");
   });
 
   test("placing twice says it's already on the sheet and leaves the card where it is", () => {
@@ -74,6 +65,16 @@ describe("placeFacet", () => {
     expect(project.recipe.facets).toEqual(["Axelar", "Hyperlane"]);
   });
 
+  test("Keep A, remove B, place B again: a fresh choice, not a silent route to A (spec L429)", () => {
+    let project = projectWith({ facets: ["Axelar", "Hyperlane"] });
+    project = routeSelector(project, catalog, SEL.send, "Axelar").project;
+    expect(project.recipe.owners).toEqual({ [SEL.send]: "Axelar" });
+    project = removeFacets(project, catalog, ["Hyperlane"]).project;
+    expect(project.recipe.owners).toEqual({});
+    project = placeFacet(project, catalog, "Hyperlane", { x: 0, y: 0 }).project;
+    expect(project.recipe.owners).toEqual({});
+  });
+
   test("never adds an init step: INIT-04 offers that", () => {
     const before = projectWith();
     const after = placeFacet(before, catalog, "ERC20", { x: 0, y: 0 }).project;
@@ -82,16 +83,17 @@ describe("placeFacet", () => {
 });
 
 describe("removeFacets", () => {
-  test("drops the facets, their owners and their cards, and says which", () => {
+  test("drops the facets, their owners, owners left without a contest, and their cards", () => {
     const before = projectWith({
-      facets: ["Axelar", "Hyperlane", "ERC20", "GovernedVault"],
-      owners: { [SEL.send]: "Hyperlane", [SEL.supports]: "Axelar", [SEL.name]: "ERC20" },
+      facets: ["Axelar", "Hyperlane", "ERC20", "ERC20Votes", "GovernedVault"],
+      owners: { [SEL.send]: "Hyperlane", [SEL.supports]: "Axelar", [SEL.name]: "ERC20", [SEL.transfer]: "ERC20Votes" },
     });
     const result = untouched(before, (p) => removeFacets(p, catalog, ["Hyperlane", "ERC20"]));
     const after = expectChanged(result, before, "Removed Hyperlane and ERC20");
-    expect(after.recipe.facets).toEqual(["Axelar", "GovernedVault"]);
-    expect(after.recipe.owners).toEqual({ [SEL.supports]: "Axelar" });
-    expect(Object.keys(after.layout)).toEqual(["Axelar", "GovernedVault"]);
+    expect(after.recipe.facets).toEqual(["Axelar", "ERC20Votes", "GovernedVault"]);
+    // send: its owner went. supports: Axelar is its only exporter now. transfer: still contested, so kept.
+    expect(after.recipe.owners).toEqual({ [SEL.transfer]: "ERC20Votes" });
+    expect(Object.keys(after.layout)).toEqual(["Axelar", "ERC20Votes", "GovernedVault"]);
     expect(recipeHash(after.recipe)).not.toBe(recipeHash(before.recipe, catalog));
   });
 
@@ -135,13 +137,13 @@ describe("removeFacets", () => {
     expect(both.provenance).toEqual({ "steps[0].admin": "link" });
   });
 
-  test("drops a bundle whose facet goes, and its provenance", () => {
+  test("drops a bundle whose facet goes, leaving an empty step plan, and its provenance", () => {
     const before = projectWith(
       { facets: ["Vault", "Receive"], init: { kind: "bundle", spec: "VaultInit", args: { p: { asset: ADDRESS } } } },
       { provenance: { "bundle.p.asset": "link" } },
     );
     const after = removeFacets(before, catalog, ["Vault"]).project;
-    expect(after.recipe.init).toEqual({ kind: "none" });
+    expect(after.recipe.init).toEqual({ kind: "steps", steps: [] });
     expect(after.provenance).toEqual({});
   });
 
@@ -385,6 +387,27 @@ describe("setInitArg", () => {
     expectNoOp(setInitArg(steps, catalog, "steps[1].name_", "Example Token"), steps, "ERC20Init.name_ is already Example Token.");
   });
 
+  test("a value that normalizes to what's stored isn't an edit, and keeps provenance", () => {
+    const withAddress = projectWith(
+      { facets: ["OwnableFacet"], init: { kind: "steps", steps: [{ spec: "OwnableInit", args: { _owner: ADDRESS } }] } },
+      { provenance: { "steps[0]._owner": "link" } },
+    );
+    expectNoOp(
+      untouched(withAddress, (p) => setInitArg(p, catalog, "steps[0]._owner", ADDRESS.toLowerCase())),
+      withAddress,
+      "OwnableInit._owner is already 0x71C7…976F.",
+    );
+    const timed = projectWith({ facets: ["Vault"], init: { kind: "bundle", spec: "VaultInit", args: { p: { minDelay: "4" } } } });
+    expectNoOp(setInitArg(timed, catalog, "bundle.p.minDelay", "004"), timed, "VaultInit.p.minDelay is already 4 seconds (4 s).");
+  });
+
+  test("shows durations and percentages in their units", () => {
+    const bundle = projectWith({ facets: ["Vault"], init: { kind: "bundle", spec: "VaultInit", args: {} } });
+    expectChanged(setInitArg(bundle, catalog, "bundle.p.minDelay", "300"), bundle, "Set VaultInit.p.minDelay to 5 minutes (300 s)");
+    expectChanged(setInitArg(bundle, catalog, "bundle.p.quorum", "4"), bundle, "Set VaultInit.p.quorum to 4%");
+    expectChanged(setInitArg(bundle, catalog, "bundle.p.cap", "1000000000000000000"), bundle, "Set VaultInit.p.cap to 1000000000000000000");
+  });
+
   test("writes a tuple field of a bundle, and prunes the tuple once it's empty", () => {
     const bundle = projectWith({ facets: ["Vault"], init: { kind: "bundle", spec: "VaultInit", args: {} } });
     const set = expectChanged(setInitArg(bundle, catalog, "bundle.p.name", "Grant vault"), bundle, "Set VaultInit.p.name to Grant vault");
@@ -397,10 +420,10 @@ describe("setInitArg", () => {
   test("refuses paths that don't name a field of the plan", () => {
     expectNoOp(setInitArg(steps, catalog, "steps[1].nope", "x"), steps, "ERC20Init has no field nope.");
     expectNoOp(setInitArg(steps, catalog, "steps[1].name_.inner", "x"), steps, "ERC20Init has no field name_.inner.");
-    expectNoOp(setInitArg(steps, catalog, "steps[5].name_", "x"), steps, "There's no init step at steps[5].");
+    expectNoOp(setInitArg(steps, catalog, "steps[5].name_", "x"), steps, "There's no step 6 in the init plan.");
     expectNoOp(setInitArg(steps, catalog, "bundle.p.asset", "x"), steps, "The init plan has no bundle.");
-    expectNoOp(setInitArg(steps, catalog, "steps[1]", "x"), steps, "steps[1] isn't an init field.");
-    expectNoOp(setInitArg(steps, catalog, "args.name_", "x"), steps, "args.name_ isn't an init field.");
+    expectNoOp(setInitArg(steps, catalog, "steps[1]", "x"), steps, "Step 2 is a whole init step; name one of its fields.");
+    expectNoOp(setInitArg(steps, catalog, "args.name_", "x"), steps, "`args.name_` isn't an init field.");
   });
 });
 
@@ -476,23 +499,25 @@ describe("removeInitStep", () => {
     expect(after.provenance).toEqual({ "steps[0]._owner": "link" });
   });
 
-  test("removing the last step keeps a step plan with no steps", () => {
+  test("removing the last step leaves a step plan with no steps (the planner still adds ERC-165)", () => {
     const one = projectWith({ init: { kind: "steps", steps: [{ spec: "ERC20Init", args: {} }] } });
     expect(removeInitStep(one, catalog, "steps[0]").project.recipe.init).toEqual({ kind: "steps", steps: [] });
   });
 
-  test("removing the bundle leaves no init", () => {
+  test("removing the bundle also leaves a step plan with no steps, and adding works from there", () => {
     const bundle = projectWith({ facets: ["Vault"], init: { kind: "bundle", spec: "VaultInit", args: {} } }, { provenance: { "bundle.p.asset": "link" } });
     const after = expectChanged(removeInitStep(bundle, catalog, "bundle"), bundle, "Removed VaultInit from the init plan");
-    expect(after.recipe.init).toEqual({ kind: "none" });
+    expect(after.recipe.init).toEqual({ kind: "steps", steps: [] });
     expect(after.recipe.facets).toEqual(["Vault"]);
     expect(after.provenance).toEqual({});
+    expect(addInitStep(after, catalog, "VaultInit").project.recipe.init).toEqual({ kind: "bundle", spec: "VaultInit", args: {} });
+    expect(addInitStep(after, catalog, "ERC20Init").project.recipe.init).toEqual({ kind: "steps", steps: [{ spec: "ERC20Init", args: {} }] });
   });
 
   test("says when there's no such step", () => {
-    expectNoOp(removeInitStep(before, catalog, "steps[3]"), before, "There's no init step at steps[3].");
+    expectNoOp(removeInitStep(before, catalog, "steps[3]"), before, "There's no step 4 in the init plan.");
     expectNoOp(removeInitStep(before, catalog, "bundle"), before, "The init plan has no bundle.");
-    expectNoOp(removeInitStep(before, catalog, "step 1"), before, "step 1 isn't an init step.");
+    expectNoOp(removeInitStep(before, catalog, "step 1"), before, "`step 1` isn't an init step.");
   });
 });
 
@@ -525,7 +550,7 @@ describe("moveInitStep", () => {
 
   test("refuses no-ops, out-of-range steps, bundles and empty plans", () => {
     expectNoOp(moveInitStep(before, catalog, 1, 1), before, "ERC20Init is already step 2.");
-    expectNoOp(moveInitStep(before, catalog, 3, 0), before, "There's no init step at steps[3].");
+    expectNoOp(moveInitStep(before, catalog, 3, 0), before, "There's no step 4 in the init plan.");
     expectNoOp(moveInitStep(before, catalog, 0, 3), before, "There's no step 4 to move to: the plan has 3 steps.");
     const bundle = projectWith({ init: { kind: "bundle", spec: "VaultInit", args: {} } });
     expectNoOp(moveInitStep(bundle, catalog, 0, 1), bundle, "VaultInit is a bundle: its order is fixed.");

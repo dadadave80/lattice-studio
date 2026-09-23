@@ -57,6 +57,9 @@ export const catalog: Catalog = makeCatalog({
           components: [
             { name: "asset", type: "address", doc: "Asset." },
             { name: "name", type: "string", doc: "Name." },
+            { name: "minDelay", type: "uint48", doc: "Delay.", unit: "seconds" },
+            { name: "quorum", type: "uint256", doc: "Quorum.", unit: "percent" },
+            { name: "cap", type: "uint256", doc: "Cap.", unit: "wei" },
           ],
         },
       ],
@@ -77,6 +80,15 @@ export function projectWith(recipe: Partial<Recipe> = {}, extra: Partial<Project
     layout[name] = { x: index * 320, y: 0, pins: "right" };
   });
   return makeProject({ recipe: full, layout, ...extra });
+}
+
+/** Freezes `value` and everything in it, so an op that mutates its input throws. */
+export function deepFreeze<T>(value: T): T {
+  if (typeof value === "object" && value !== null) {
+    for (const key of Object.keys(value)) deepFreeze((value as Record<string, unknown>)[key]);
+    Object.freeze(value);
+  }
+  return value;
 }
 
 /**

@@ -2,7 +2,16 @@ import { describe, expect, test } from "bun:test";
 import { recipeHash } from "../canonical/hash";
 import type { EditResult, Project } from "../model/project";
 import { applyLayout, flipPins, moveCards, recordPrediction, renameProject, setCardPosition, setExpanded } from "./project-ops";
-import { ADDRESS, catalog, changedIssues, noOpIssues, projectWith } from "./testkit";
+import { ADDRESS, catalog, changedIssues, deepFreeze, noOpIssues, projectWith } from "./testkit";
+
+/** Runs `op` on a frozen deep copy, so any mutation of the input throws, and checks the input survived. */
+function untouched<T>(project: Project, op: (p: Project) => T): T {
+  const copy = structuredClone(project);
+  const snapshot = structuredClone(project);
+  const result = op(deepFreeze(copy));
+  expect(copy).toEqual(snapshot);
+  return result;
+}
 
 function expectChanged(result: EditResult, before: Project, summary: string): Project {
   expect(changedIssues(result, before, summary)).toEqual([]);
@@ -41,6 +50,7 @@ describe("moveCards", () => {
   test("moves every named card by the offset, once each", () => {
     const result = moveCards(base, ["ERC20", "Receive", "ERC20"], { x: 8, y: -16 });
     const after = expectChanged(result, base, "Moved 2 cards");
+    untouched(base, (p) => moveCards(p, ["ERC20", "Receive"], { x: 8, y: -16 }));
     expect(after.layout.ERC20).toEqual({ x: 8, y: -16, pins: "right" });
     expect(after.layout.Receive).toEqual({ x: 648, y: -16, pins: "right" });
     expect(after.layout.GovernedVault).toBe(base.layout.GovernedVault);
@@ -86,6 +96,7 @@ describe("flipPins", () => {
   test("flips each card's pin column", () => {
     const result = flipPins(base, ["ERC20"]);
     const after = expectChanged(result, base, "Flipped pins on ERC20");
+    untouched(base, (p) => flipPins(p, ["ERC20", "Receive"]));
     expect(after.layout.ERC20?.pins).toBe("left");
     expectRecipeKept(result, base);
     const back = flipPins(after, ["ERC20", "Receive"]);
@@ -104,6 +115,8 @@ describe("setExpanded", () => {
   test("sets the flag, and collapsing removes it", () => {
     const result = setExpanded(base, "GovernedVault", true);
     const expanded = expectChanged(result, base, "Expanded GovernedVault");
+    untouched(base, (p) => setExpanded(p, "GovernedVault", true));
+    untouched(expanded, (p) => setExpanded(p, "GovernedVault", false));
     expect(expanded.layout.GovernedVault).toEqual({ x: 320, y: 0, pins: "right", expanded: true });
     expectRecipeKept(result, base);
     expectNoOp(setExpanded(expanded, "GovernedVault", true), expanded, "GovernedVault is already expanded.");
@@ -132,6 +145,7 @@ describe("applyLayout", () => {
     };
     const result = applyLayout(base, layout);
     const after = expectChanged(result, base, "Arranged 2 cards");
+    untouched(base, (p) => applyLayout(p, deepFreeze(structuredClone(layout))));
     expect(after.layout).toEqual(layout);
     expect(after.layout).not.toBe(layout);
     expectRecipeKept(result, base);
@@ -153,6 +167,7 @@ describe("recordPrediction", () => {
   test("appends the address, checksummed, and never twice for a chain", () => {
     const result = recordPrediction(base, { chainId: 11155111, address: ADDRESS.toLowerCase() as `0x${string}` });
     const after = expectChanged(result, base, "Recorded 0x71C7…976F on chain 11155111");
+    untouched(base, (p) => recordPrediction(p, { chainId: 1, address: ADDRESS }));
     expect(after.predicted).toEqual([{ chainId: 11155111, address: ADDRESS }]);
     expectRecipeKept(result, base);
     expectNoOp(recordPrediction(after, { chainId: 11155111, address: ADDRESS }), after, "0x71C7…976F on chain 11155111 is already recorded.");
