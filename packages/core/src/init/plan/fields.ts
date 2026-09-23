@@ -22,6 +22,9 @@ const LABELS: Readonly<Record<string, string>> = { quorumNumerator: "Governor qu
 
 const WORD = /[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+/g;
 
+/** Acronyms a param name writes in lower or camel case ("ensName"), kept upper case in labels. */
+const ACRONYMS: ReadonlySet<string> = new Set(["ens", "eip", "erc", "uri", "url", "id", "nft", "dao", "evm"]);
+
 /** "votingPeriod" → "Voting period", "name_" → "Name", "_owner" → "Owner"; acronyms stay upper case. */
 export function labelFor(name: string): string {
   const fixed = LABELS[name];
@@ -32,6 +35,7 @@ export function labelFor(name: string): string {
       const acronym = word.length > 1 && word === word.toUpperCase() && /[A-Z]/.test(word);
       if (acronym) return word;
       const lower = word.toLowerCase();
+      if (ACRONYMS.has(lower)) return lower.toUpperCase();
       return i === 0 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
     })
     .join(" ");
@@ -182,11 +186,11 @@ function isEmpty(value: Arg | undefined): boolean {
   return value === undefined || (typeof value === "string" && value.trim() === "");
 }
 
+/** What a percent is a percent of, by param name, for messages (spec L327); otherwise just "percent". */
+const PERCENT_OF: Readonly<Record<string, string>> = { quorumNumerator: "percent of supply" };
+
 function unitClause(field: FieldModel): string {
-  if (field.unit === "percent") {
-    const of = /percent(?:age)? of (?:the )?(?:total )?([a-z]+)/i.exec(field.doc)?.[1];
-    return of ? ` (percent of ${of.toLowerCase()})` : " (percent)";
-  }
+  if (field.unit === "percent") return ` (${PERCENT_OF[field.name] ?? "percent"})`;
   if (field.unit === "seconds") return " (seconds)";
   if (field.unit === "wei") return " (wei)";
   return "";
@@ -285,7 +289,7 @@ function judgeTuple(field: FieldModel, value: Arg, ctx: ArgContext, invalid: Fai
   const record = value as Record<string, Arg>;
   const out: Record<string, Arg> = {};
   for (const component of field.components ?? []) {
-    const judged = judgeArg(component, record[component.name], ctx);
+    const judged = judgeArg(component, Object.hasOwn(record, component.name) ? record[component.name] : undefined, ctx);
     if (!judged.ok) return judged;
     out[component.name] = judged.value;
   }

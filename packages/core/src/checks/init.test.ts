@@ -5,6 +5,7 @@ import type { ChainState } from "../model/chain";
 import type { Problem, ProblemCode } from "../model/problems";
 import type { Arg, Recipe } from "../model/recipe";
 import { autoOrder } from "../init/plan/plan";
+import { lintCopy } from "../format/copy-lint";
 import { renderProblem } from "../narrate/problem";
 import { makeCatalog, makeFacet, makeInit, makeRecipe } from "../testing/builders";
 import { loadFixtureCatalog } from "../testing/fixtures";
@@ -92,7 +93,17 @@ describe("GovernedVault", () => {
       { id: "init.open", args: { focus: "examples" } },
       { id: "ack.set", args: { problemId: "INIT-05:diamond" } },
     ]);
-    expect(p?.message).toBe("8 fields still use example values, including name (Grant vault) and symbol (gVLT).");
+    expect(((p?.params["examples"] ?? []) as { path: string }[]).map((e) => e.path)).toEqual([
+      "bundle.p.votingPeriod",
+      "bundle.p.quorumNumerator",
+      "bundle.p.minDelay",
+      "bundle.p.votingDelay",
+      "bundle.p.proposalThreshold",
+      "bundle.p.name",
+      "bundle.p.symbol",
+      "bundle.p.decimalsOffset",
+    ]);
+    expect(p?.message).toBe("8 fields still use example values, including voting period (600 s) and governor quorum (4%).");
   });
 
   test("filled in with its own values, it raises nothing", () => {
@@ -339,6 +350,25 @@ describe("the other recipes", () => {
     expect(problems[0]?.message).toBe("2 fields still use example values, including name (Example Token) and symbol (EXT).");
   });
 
+  test("INIT-05 names authority fields first", () => {
+    const synthetic = makeCatalog({
+      inits: [
+        makeInit({
+          name: "TierInit",
+          params: [
+            { name: "label", type: "string", doc: "", example: "x" },
+            { name: "delay", type: "uint256", doc: "", unit: "seconds", example: "60" },
+            { name: "cap", type: "uint256", doc: "", rule: "gte(1)", example: "5" },
+            { name: "owner", type: "address", doc: "", authority: true, example: ADMIN_A },
+          ],
+        }),
+      ],
+    });
+    const [p] = run(makeRecipe({ init: { kind: "steps", steps: [{ spec: "TierInit", args: { label: "x", delay: "60", cap: "5", owner: ADMIN_A } }] } }), synthetic);
+    expect(p?.params["paths"]).toEqual(["steps[0].label", "steps[0].delay", "steps[0].cap", "steps[0].owner"]);
+    expect(((p?.params["examples"] ?? []) as { path: string }[]).map((e) => e.path)).toEqual(["steps[0].owner", "steps[0].cap", "steps[0].delay", "steps[0].label"]);
+  });
+
   test("SafeDiamondCut: the Safe is missing, minThreshold is an example", () => {
     const problems = run(template("SafeDiamondCut"));
     expect(problems.map((p) => p.id)).toEqual(["INIT-01:steps[0].safe", "INIT-05:diamond"]);
@@ -350,5 +380,27 @@ describe("the other recipes", () => {
 
   test("an init step the catalog doesn't have is skipped", () => {
     expect(run(makeRecipe({ init: { kind: "steps", steps: [{ spec: "GoneInit", args: {} }] } }, catalog))).toEqual([]);
+  });
+});
+
+describe("copy", () => {
+  test("every message these tests render passes C10's lintCopy", () => {
+    const recipes: [Recipe, Catalog?][] = [
+      [template("GovernedVault")],
+      [vault({ asset: TOKEN, quorumNumerator: "140" })],
+      [template("SafeDiamondCut")],
+      [makeRecipe({ facets: ["ERC20", "DiamondCutFacet"] }, catalog)],
+      [
+        steps(["ERC20", "ERC20Permit", "ERC6538Registry"], [
+          { spec: "ERC20PermitInit", args: { name_: "Token" } },
+          { spec: "ERC6538RegistryInit", args: {} },
+          { spec: "AccessControlInit", args: { admin: ADMIN_A } },
+          { spec: "SafeDiamondCutInit", args: { admin: ADMIN_B, safe: ADMIN_A, minThreshold: "3" } },
+        ]),
+      ],
+    ];
+    const messages = recipes.flatMap(([recipe, cat]) => run(recipe, cat).map((p) => p.message));
+    expect(messages.length).toBeGreaterThan(5);
+    for (const message of messages) expect([message, lintCopy(message)]).toEqual([message, []]);
   });
 });

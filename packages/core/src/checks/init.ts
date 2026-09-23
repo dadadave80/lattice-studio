@@ -5,7 +5,7 @@
 import type { Check, CheckInput } from "../model/analysis";
 import type { Catalog, InitParam, InitSpec } from "../model/catalog";
 import type { CommandRef } from "../model/commands";
-import type { ArgContext, InitPlan, InitStepView } from "../model/init";
+import type { ArgContext, FieldModel, InitPlan, InitStepView } from "../model/init";
 import type { Json } from "../model/json";
 import { problem, problemId, type Anchor, type Problem, type ProblemParams } from "../model/problems";
 import type { Arg } from "../model/recipe";
@@ -244,6 +244,8 @@ function init04(input: CheckInput, steps: readonly PlannedStep[]): Problem[] {
     for (const module of spec.sameCall) {
       if (initialized.has(module) || reported.has(module)) continue;
       reported.add(module);
+      // When no step init in the catalog runs the module, there is nothing to add: `spec` stays "" and the
+      // problem offers no fix (ruling 2026-09-23); C10 words it from `module` and `sameCallWith`.
       const add = specFor(module, catalog);
       const params: ProblemParams["INIT-04"] = { module, spec: add?.name ?? "", sameCallWith: spec.name };
       const fixes: CommandRef[] = add ? [{ id: "init.addStep", args: { spec: add.name } }] : [];
@@ -255,20 +257,35 @@ function init04(input: CheckInput, steps: readonly PlannedStep[]): Problem[] {
 
 // ── INIT-05 ────────────────────────────────────────────────────────────────────────────────────────
 
+type Example = ProblemParams["INIT-05"]["examples"][number];
+
+/**
+ * Which examples the message names first: authority fields, then fields with a rule, then fields with a unit,
+ * then the rest. GovernedVault then names voting period and quorum, as spec L331 does.
+ */
+function tier(field: FieldModel): number {
+  if (field.authority) return 0;
+  if (field.rule !== undefined) return 1;
+  if (field.unit !== undefined) return 2;
+  return 3;
+}
+
 function init05(steps: readonly PlannedStep[]): Problem[] {
-  const examples: ProblemParams["INIT-05"]["examples"] = [];
+  const found: { example: Example; tier: number }[] = [];
   for (const { view } of steps) {
     const flagged = new Set(view.examples);
     for (const { field, value } of leaves(view.fields, view.args)) {
       if (!flagged.has(field.path) || value === undefined) continue;
-      const example: ProblemParams["INIT-05"]["examples"][number] = { path: field.path, label: field.label, value: value as Json };
+      const example: Example = { path: field.path, label: field.label, value: value as Json };
       if (field.unit) example.unit = field.unit;
-      examples.push(example);
+      found.push({ example, tier: tier(field) });
     }
   }
-  if (examples.length === 0) return [];
+  if (found.length === 0) return [];
   const id = problemId("INIT-05", { kind: "diamond" });
-  const params: ProblemParams["INIT-05"] = { count: examples.length, paths: examples.map((e) => e.path), examples };
+  // `paths` stays in field order; `examples` is tiered (a stable sort keeps field order within each tier).
+  const examples = [...found].sort((a, b) => a.tier - b.tier).map((f) => f.example);
+  const params: ProblemParams["INIT-05"] = { count: found.length, paths: found.map((f) => f.example.path), examples };
   return [problem("INIT-05", [{ kind: "diamond" }], params, [{ id: "init.open", args: { focus: "examples" } }, { id: "ack.set", args: { problemId: id } }])];
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { InitParam } from "../../model/catalog";
 import type { ChainState } from "../../model/chain";
 import type { FieldModel } from "../../model/init";
+import { lintCopy } from "../../format/copy-lint";
 import { makeInit } from "../../testing/builders";
 import { loadFixtureCatalog } from "../../testing/fixtures";
 import { fieldModel, labelFor, validateArg } from "./fields";
@@ -44,7 +45,8 @@ describe("labelFor", () => {
     expect(labelFor("decimalsOffset_")).toBe("Decimals offset");
     expect(labelFor("_owner")).toBe("Owner");
     expect(labelFor("minDelay")).toBe("Min delay");
-    expect(labelFor("ensName")).toBe("Ens name");
+    expect(labelFor("ensName")).toBe("ENS name");
+    expect(labelFor("tokenId")).toBe("Token ID");
     expect(labelFor("rootENSNode")).toBe("Root ENS node");
   });
 
@@ -152,7 +154,10 @@ describe("validateArg", () => {
     expect(validateArg(field({ name: "threshold", type: "uint256", rule: "gte(1)" }), "0", {})).toEqual({ ok: false, error: "Threshold is 0; it must be at least 1." });
     expect(validateArg(field({ name: "fee", type: "uint256", rule: "nonzero", unit: "wei" }), "0", {})).toEqual({ ok: false, error: "Fee is 0; it can't be 0 (wei)." });
     expect(validateArg(field({ name: "bps", type: "uint16", rule: "range(1,10000)" }), "10001", {})).toEqual({ ok: false, error: "Bps is 10001; it must be 1-10000." });
-    expect(validateArg(field({ name: "share", type: "uint8", unit: "percent" }), "101", {})).toEqual({ ok: false, error: "Share is 101; it must be 0-100 (percent)." });
+    expect(validateArg(field({ name: "share", type: "uint8", unit: "percent", doc: "Share as a percentage of total supply." }), "101", {})).toEqual({
+      ok: false,
+      error: "Share is 101; it must be 0-100 (percent).",
+    });
     expect(validateArg(field({ name: "tier", type: "uint8", rule: "enum(1|2|3)" }), "4", {})).toEqual({ ok: false, error: "Tier is 4; it must be one of 1, 2 or 3." });
   });
 
@@ -203,6 +208,12 @@ describe("validateArg", () => {
     expect(validateArg(field({ name: "data", type: "bytes" }), "abcd", {})).toEqual({ ok: false, error: "Data is abcd; it must be hex bytes, starting 0x." });
   });
 
+  test("a tuple component that isn't there is missing, even one an object inherits", () => {
+    const partial = Object.create({ quorumNumerator: "4" }) as Record<string, string>;
+    Object.assign(partial, { asset: SAFE, name: "V", symbol: "V", decimalsOffset: "0", minDelay: "1", votingDelay: "1", votingPeriod: "1", proposalThreshold: "0" });
+    expect(validateArg(bundle, partial, {})).toEqual({ ok: false, error: "Governor quorum is required. Fill it in before deploying." });
+  });
+
   test("tuples and arrays report the component or item that failed", () => {
     expect(validateArg(bundle, { asset: SAFE, name: "V", symbol: "V", decimalsOffset: "0", minDelay: "1", votingDelay: "1", votingPeriod: "1", proposalThreshold: "0", quorumNumerator: "140" }, {})).toEqual({
       ok: false,
@@ -215,5 +226,46 @@ describe("validateArg", () => {
     expect(validateArg(list, [], {})).toEqual({ ok: true, value: [] });
     expect(validateArg(list, SAFE, {})).toEqual({ ok: false, error: `Guardians is ${SAFE}; it must be a list.` });
     expect(validateArg(field({ name: "pair", type: "address[2]" }), [SAFE], {})).toEqual({ ok: false, error: `Pair is ["${SAFE}"]; it must have exactly 2 items.` });
+  });
+});
+
+describe("copy", () => {
+  test("every sentence validateArg writes passes C10's lintCopy", () => {
+    const safe = fieldModel(spec("SafeDiamondCutInit"), spec("SafeDiamondCutInit").params[1] as InitParam, "steps[0]");
+    const sepolia = chain({ [SAFE.toLowerCase()]: "0x" });
+    const cases: [FieldModel, unknown, Parameters<typeof validateArg>[2]][] = [
+      [component("quorumNumerator"), "140", {}],
+      [component("asset"), undefined, {}],
+      [component("votingPeriod"), "0", {}],
+      [component("decimalsOffset"), "300", {}],
+      [component("decimalsOffset"), "-1", {}],
+      [component("minDelay"), "5 minutes", {}],
+      [field({ name: "count", type: "int8" }), "-200", {}],
+      [field({ name: "threshold", type: "uint256", rule: "gte(1)" }), "0", {}],
+      [field({ name: "fee", type: "uint256", rule: "nonzero", unit: "wei" }), "0", {}],
+      [field({ name: "bps", type: "uint16", rule: "range(1,10000)" }), "10001", {}],
+      [field({ name: "tier", type: "uint8", rule: "enum(1|2|3)" }), "4", {}],
+      [field({ name: "cap", type: "uint8", rule: "range(0,10)&gte(0)&gt(-1)" }), "11", {}],
+      [component("asset"), `${SAFE.slice(0, -1)}f`, {}],
+      [component("asset"), "0x1234", {}],
+      [component("asset"), `0x${"0".repeat(40)}`, {}],
+      [component("name"), { $ref: "self" }, {}],
+      [safe, SAFE, { chain: sepolia }],
+      [component("asset"), SAFE, { chain: sepolia }],
+      [field({ name: "target", type: "address", rule: "code(contract)" }), SAFE, { chain: sepolia }],
+      [field({ name: "symbol", type: "string", rule: "maxlen(3)" }), "gVLTX", {}],
+      [field({ name: "mode", type: "string", rule: "enum(open|closed)" }), "ajar", {}],
+      [field({ name: "paused", type: "bool" }), "yes", {}],
+      [field({ name: "salt", type: "bytes32" }), "0xAB", {}],
+      [field({ name: "data", type: "bytes" }), "abcd", {}],
+      [bundle, "p", {}],
+      [field({ name: "guardians", type: "address[]" }), SAFE, {}],
+      [field({ name: "pair", type: "address[2]" }), [SAFE], {}],
+    ];
+    for (const [f, value, ctx] of cases) {
+      const result = validateArg(f, value as Parameters<typeof validateArg>[1], ctx);
+      if (result.ok) throw new Error(`${f.path} passed`);
+      expect([result.error, lintCopy(result.error)]).toEqual([result.error, []]);
+    }
   });
 });

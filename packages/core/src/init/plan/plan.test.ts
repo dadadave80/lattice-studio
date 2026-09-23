@@ -98,6 +98,11 @@ describe("planInit", () => {
     }
   });
 
+  test("R11 follows placement: `immutable: true` with AccessControlDiamondCut placed still plans initUpgradeable", () => {
+    const recipe = makeRecipe({ facets: BLANK_FACETS, immutable: true, init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } }, catalog);
+    expect(planInit(recipe, catalog).steps.at(-1)?.automatic).toBe("initUpgradeable");
+  });
+
   test("an empty step list still gets the automatic step; none has no steps", () => {
     expect(planInit(makeRecipe({ init: { kind: "steps", steps: [] } }, catalog), catalog).steps.map((s) => s.path)).toEqual(["auto"]);
     expect(planInit(makeRecipe({}, catalog), catalog)).toEqual({ kind: "none", steps: [] });
