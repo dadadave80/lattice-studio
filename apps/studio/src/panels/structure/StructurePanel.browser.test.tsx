@@ -176,7 +176,14 @@ describe("Structure tree: facets", () => {
     expect(moved).toHaveLength(1);
   });
 
-  test("Move to… says why while the sheet's Move to… isn't built", async () => {
+  test("Move to… says why when it can't run", async () => {
+    // Pinned, so the test doesn't depend on S4e being unbuilt.
+    overrideCommands([
+      command({
+        id: "sheet.moveTo", title: () => "Move to…", category: "Sheet",
+        enabled: () => ({ ok: false, reason: "Not built yet · WP-S4e" }), run: () => undefined,
+      }),
+    ]);
     await renderTree(template("GovernedVault"));
     row("facet:Governor").focus();
     await userEvent.keyboard("{Shift>}{F10}{/Shift}");
