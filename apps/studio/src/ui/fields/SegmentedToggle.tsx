@@ -1,8 +1,8 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { cx } from "../shared/cx";
-import { ReasonTooltip } from "../tooltip/ReasonTooltip";
+import { Tooltip } from "../tooltip/Tooltip";
 import styles from "./Toggle.module.css";
 
 export type SegmentedOption<V extends string = string> = {
@@ -19,8 +19,8 @@ export type SegmentedToggleProps<V extends string = string> = {
   options: readonly SegmentedOption<V>[];
   /**
    * Why the choice can't change now. While set the group and each option have `aria-disabled` and are
-   * described by the reason, the options stay focusable, the reason shows in a tooltip, and nothing changes
-   * (spec L661).
+   * described by the reason (one hidden element, written once), the options stay focusable, the reason shows
+   * in a tooltip on hover, on focus and when a change is refused, and nothing changes (spec L661).
    */
   disabledReason?: string | null | undefined;
   className?: string | undefined;
@@ -34,17 +34,30 @@ export function SegmentedToggle<V extends string = string>({
   label, value, onValueChange, options, disabledReason, className,
 }: SegmentedToggleProps<V>) {
   const reasonId = useId();
-  // Focus lands on an option, not the group, so each option says it's unavailable and why.
-  const optionState = disabledReason ? { "aria-disabled": true, "aria-describedby": reasonId } : {};
+  const [reasonShown, setReasonShown] = useState(false);
+  // A reason that went away closes its tooltip, so it can't reopen by itself when a reason comes back.
+  if (!disabledReason && reasonShown) setReasonShown(false);
+  // Focus lands on an option, not the group, so each option says it's unavailable and why; the group and its
+  // options all point at the one hidden reason rather than each holding a copy.
+  const disabled = disabledReason ? { "aria-disabled": true, "aria-describedby": reasonId } : {};
+  // The tooltip always wraps the group (it never opens without a reason), so a reason coming or going doesn't
+  // remount the options and take focus with them.
   return (
-    <ReasonTooltip reason={disabledReason}>
+    <Tooltip
+      content={disabledReason}
+      open={Boolean(disabledReason) && reasonShown}
+      onOpenChange={(open) => setReasonShown(open && Boolean(disabledReason))}
+      closeOnClick={false}
+    >
       <ToggleGroup
         aria-label={label}
+        {...disabled}
         value={[value]}
         onValueChange={(next, details) => {
           const picked = options.find((o) => next.includes(o.value) && o.value !== value);
           if (disabledReason || !picked) {
             details.cancel();
+            if (disabledReason) setReasonShown(true);
             return;
           }
           onValueChange(picked.value);
@@ -52,12 +65,7 @@ export function SegmentedToggle<V extends string = string>({
         className={cx(styles.segmented, className)}
       >
         {options.map((option) => (
-          <Toggle
-            key={option.value}
-            value={option.value}
-            {...optionState}
-            className={cx(styles.segment, styles.pressedMark)}
-          >
+          <Toggle key={option.value} value={option.value} {...disabled} className={cx(styles.segment, styles.pressedMark)}>
             {option.label}
           </Toggle>
         ))}
@@ -67,6 +75,6 @@ export function SegmentedToggle<V extends string = string>({
           </span>
         ) : null}
       </ToggleGroup>
-    </ReasonTooltip>
+    </Tooltip>
   );
 }

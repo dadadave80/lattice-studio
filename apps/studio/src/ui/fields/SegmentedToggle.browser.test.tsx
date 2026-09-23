@@ -82,6 +82,63 @@ describe("SegmentedToggle", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  test("the reason is written once: the group and every option point at the same description", async () => {
+    await renderWithStudio(<Theme disabledReason="Resolve 2 blockers · F8" />);
+    const group = page.getByRole("group", { name: "Theme" }).element();
+    const holders = [...document.querySelectorAll<HTMLElement>("[hidden]")].filter(
+      (el) => el.textContent === "Resolve 2 blockers · F8",
+    );
+    expect(holders).toHaveLength(1);
+    const reasonId = holders[0]?.id;
+    expect(reasonId).toBeTruthy();
+    expect(group.getAttribute("aria-describedby")).toBe(reasonId);
+    for (const name of ["Shop", "Draft"]) {
+      expect(page.getByRole("button", { name }).element().getAttribute("aria-describedby")).toBe(reasonId);
+    }
+  });
+
+  test("disabled: hovering the group or focusing an option shows the reason", async () => {
+    await renderWithStudio(
+      <>
+        <button type="button">Before</button>
+        <Theme disabledReason="Resolve 2 blockers · F8" />
+      </>,
+    );
+    const tooltip = () => document.querySelector<HTMLElement>("[data-tooltip]")?.textContent;
+    await page.getByRole("button", { name: "Draft" }).hover();
+    await expect.poll(tooltip).toBe("Resolve 2 blockers · F8");
+    await page.getByRole("button", { name: "Before" }).hover();
+    await expect.poll(tooltip).toBeUndefined();
+    await page.getByRole("button", { name: "Before" }).click();
+    await userEvent.tab();
+    await expect.element(page.getByRole("button", { name: "Shop" })).toHaveFocus();
+    await expect.poll(tooltip).toBe("Resolve 2 blockers · F8");
+  });
+
+  test("a reason coming or going keeps the focused option (no remount); a refused click shows the reason", async () => {
+    const control = { set: (_reason: string | undefined) => {} };
+    function Toggled() {
+      const [reason, setReason] = useState<string | undefined>(undefined);
+      control.set = setReason;
+      return <Theme {...(reason ? { disabledReason: reason } : {})} />;
+    }
+    await renderWithStudio(<Toggled />);
+    const shop = page.getByRole("button", { name: "Shop" });
+    await userEvent.tab();
+    await expect.element(shop).toHaveFocus();
+    const before = shop.element();
+    control.set("Resolve 2 blockers · F8");
+    await expect.element(shop).toHaveAttribute("aria-disabled", "true");
+    expect(shop.element()).toBe(before);
+    await expect.element(shop).toHaveFocus();
+    await page.getByRole("button", { name: "Draft" }).click({ force: true });
+    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent).toBe("Resolve 2 blockers · F8");
+    control.set(undefined);
+    await expect.element(shop).not.toHaveAttribute("aria-disabled", "true");
+    await expect.poll(() => document.querySelector("[data-tooltip]")).toBeNull();
+    expect(shop.element()).toBe(before);
+  });
+
   test("each option is at least 24 px square", async () => {
     await renderWithStudio(<Theme />);
     const rect = page.getByRole("button", { name: "Draft" }).element().getBoundingClientRect();
