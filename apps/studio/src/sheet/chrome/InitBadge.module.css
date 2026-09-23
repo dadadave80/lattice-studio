@@ -1,0 +1,56 @@
+/*
+ * The init badge (IR L103, the init order board): the step's two digits in an accent box after the card's
+ * name. A badge that can move shows the grab cursor; while it's dragged, its ghost follows the pointer and the
+ * card under the pointer takes the accent outline.
+ */
+.badge {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: var(--lx-space-6);
+  block-size: var(--lx-space-4);
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-accent);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-accent-strong);
+  background: var(--lx-panel);
+  user-select: none;
+}
+
+.movable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.dragging {
+  cursor: grabbing;
+  opacity: 0.5;
+}
+
+.ghost {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  translate: -50% -50%;
+  box-shadow: none;
+  outline: var(--lx-stroke-heavy) solid var(--lx-accent);
+}
+
+/* The card a dragged badge would land on. */
+:global(.react-flow__node[data-init-drop]) {
+  outline: var(--lx-stroke-heavy) solid var(--lx-accent);
+  outline-offset: var(--lx-space-1);
+}
+
+@media (forced-colors: active) {
+  .badge {
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+
+  .ghost,
+  :global(.react-flow__node[data-init-drop]) {
+    outline-color: Highlight;
+  }
+}
