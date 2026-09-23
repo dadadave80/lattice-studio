@@ -14,6 +14,9 @@ export function resolveBlockers(count: number): string {
   return `Resolve ${plural(count, "blocker")} · F8`;
 }
 
+/** Spec L385: Deploy while a Safe proposal waits. */
+export const WAITING_FOR_SAFE = "Waiting for the Safe to execute the batch";
+
 /** Spec L562, L601: any edit, account switch or chain switch while the review is open. */
 export const CHANGED_SINCE_REVIEW = "Changed since review. Simulating again.";
 

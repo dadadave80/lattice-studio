@@ -15,7 +15,7 @@ import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
 import { predict, prediction } from "@/state";
 import { copyText } from "@/ui/copy/copy-text";
-import { DEPLOY_NEEDS_CONNECTION, resolveBlockers } from "./copy";
+import { DEPLOY_NEEDS_CONNECTION, WAITING_FOR_SAFE, resolveBlockers } from "./copy";
 import { IN_FLIGHT_PHASES, pathName } from "./model";
 import { requestPickerFocus, setPreview } from "./review-state";
 
@@ -100,6 +100,8 @@ const open = command<OpenArgs>({
   enabled(ctx, args) {
     const block = openBlock(ctx);
     if (block) return no(block);
+    // Spec L385: while a Safe proposal waits, Deploy is disabled; the proposal shows in the Deployments list.
+    if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
     const count = blockers(ctx).length;
     // ⌘/Ctrl+Enter jumps to the first blocker instead (spec L561); every other way in is disabled with the reason.
     if (count > 0 && ctx.source !== "keys") return no(resolveBlockers(count), { id: "problem.next" });
@@ -130,6 +132,7 @@ const again = command({
   enabled(ctx) {
     const block = openBlock(ctx);
     if (block) return no(block);
+    if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
     const count = blockers(ctx).length;
     if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
     return readOnly(ctx) ?? OK;
