@@ -8,7 +8,7 @@ import type { CreateConnectorFn } from "@wagmi/core";
 import type { Chain } from "viem";
 import { custom } from "viem";
 import { env, settings } from "@/contracts";
-import { findKnownChain, pickerChains } from "./chains";
+import { findKnownChain, pickerChains, publicRpcUrls } from "./chains";
 import { createClients, viemChain, type Clients } from "./clients";
 import { WALLETCONNECT_NOT_SET_UP } from "./copy";
 import { createChainService, type ChainRuntime } from "./service";
@@ -29,7 +29,7 @@ function storage(): Storage | null {
 }
 
 /** Every call through wagmi goes to the service's current client for that chain, so an RPC override applies at once. */
-function delegate(clients: Clients, chainId: number): ReturnType<typeof custom> {
+export function delegate(clients: Clients, chainId: number): ReturnType<typeof custom> {
   return custom({
     request: ({ method, params }) => {
       const spec = findKnownChain(chainId, env.e2e);
@@ -41,21 +41,33 @@ function delegate(clients: Clients, chainId: number): ReturnType<typeof custom> 
 
 async function walletConnect(): Promise<Result<CreateConnectorFn, string>> {
   if (!WALLETCONNECT_PROJECT_ID) return { ok: false, error: WALLETCONNECT_NOT_SET_UP };
-  settings.set({ walletConnect: true });
   const { walletConnectConnector } = await import("./walletconnect");
+  // "Off until chosen" (spec L635): on once it's chosen and its code actually loaded.
+  settings.set({ walletConnect: true });
   return { ok: true, value: walletConnectConnector(WALLETCONNECT_PROJECT_ID) };
 }
 
-async function build(): Promise<ChainRuntime> {
-  const clients = createClients({ overrides: () => settings.get().rpc });
-  const chains = pickerChains(env.e2e).map((spec) => viemChain(spec, clients.urls(spec)));
+/**
+ * The wallet's chains, with public RPC URLs only. wagmi's connectors read a chain's `rpcUrls` (WalletConnect puts
+ * them in the session proposal it sends through its relay), and the person's own RPC may carry an API key. Reads
+ * still go through the person's RPC: the transports delegate to the service's clients.
+ */
+export function walletChains(e2e: boolean, overrides: Readonly<Record<number, string>>): [Chain, ...Chain[]] {
+  const chains = pickerChains(e2e).map((spec) => viemChain(spec, publicRpcUrls(spec, overrides[spec.id])));
   const [first, ...rest] = chains;
   if (!first) throw new Error("Studio lists no chains.");
+  return [first, ...rest];
+}
+
+async function build(): Promise<ChainRuntime> {
+  // The service hands the clients the person's RPC overrides once they've settled.
+  const clients = createClients();
+  const chains = walletChains(env.e2e, settings.get().rpc);
   const connectors = env.e2e ? (await import("./e2e")).e2eConnectors() : [];
   const wallet = typeof window === "undefined"
     ? null
     : createWallet({
-      chains: [first, ...rest] as [Chain, ...Chain[]],
+      chains,
       transport: (chainId) => delegate(clients, chainId),
       connectors,
       storage: storage(),

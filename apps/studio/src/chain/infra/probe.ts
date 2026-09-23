@@ -14,8 +14,8 @@
 import type { Address, Catalog, ChainState, Hex } from "@lattice-studio/core";
 import { ARACHNID_PROXY, CREATEX, MULTICALL3, packVersion, registryNameHash, toChecksum } from "@lattice-studio/core";
 import {
-  BaseError, concat, ContractFunctionRevertedError, HttpRequestError, keccak256, MethodNotFoundRpcError,
-  MethodNotSupportedRpcError, pad, parseAbi, TimeoutError,
+  BaseError, concat, ContractFunctionRevertedError, HttpRequestError, InvalidParamsRpcError, keccak256,
+  LimitExceededRpcError, MethodNotFoundRpcError, MethodNotSupportedRpcError, pad, parseAbi, TimeoutError,
 } from "viem";
 import { call, getBlock, getCode, multicall, readContract } from "viem/actions";
 import type { ChainClient } from "./clients";
@@ -73,10 +73,35 @@ export type ProbeInput = {
  */
 export type ProbeResult = ChainState & { createx: Probe };
 
-/** A failure of the transport itself (the RPC down, rate limiting, a timeout), as opposed to a revert. */
+/** An HTTP status that means the endpoint is down or refusing load, not that it rejected this request. */
+function unreachableStatus(status: number | undefined): boolean {
+  return status === undefined || status === 408 || status === 429 || status >= 500;
+}
+
+/**
+ * A failure of the connection itself (the RPC down, a timeout, a 5xx), as opposed to a request the RPC answered
+ * with a rejection (an HTTP 400, invalid params) or a revert. Only these tell the connection service to re-check.
+ */
 export function isTransportFailure(error: unknown): boolean {
   if (!(error instanceof BaseError)) return !(error instanceof Error) || error.name === "TypeError";
-  return error.walk((e) => e instanceof HttpRequestError || e instanceof TimeoutError) !== null;
+  return error.walk((e) => e instanceof TimeoutError || (e instanceof HttpRequestError && unreachableStatus(e.status))) !== null;
+}
+
+/** The RPC is rate-limiting (JSON-RPC -32005, HTTP 429): stop, don't fan out into more calls. */
+export function isRateLimited(error: unknown): boolean {
+  if (!(error instanceof BaseError)) return false;
+  return error.walk((e) => e instanceof LimitExceededRpcError || (e instanceof HttpRequestError && e.status === 429)) !== null;
+}
+
+/** The RPC rejected the request's parameters (-32602). */
+function isInvalidParams(error: unknown): boolean {
+  return error instanceof BaseError && error.walk((e) => e instanceof InvalidParamsRpcError) !== null;
+}
+
+/** `LatticeRegistry.get` reverted with `RecordNotFound`: the version isn't listed. */
+export function isRecordNotFound(error: unknown): boolean {
+  if (!(error instanceof BaseError)) return false;
+  return error.walk((e) => e instanceof ContractFunctionRevertedError && e.data?.errorName === "LatticeRegistry__RecordNotFound") !== null;
 }
 
 function probeOf(hash: Hex | null): Probe {
@@ -92,7 +117,8 @@ function codehashOrNull(word: Hex): Hex | null {
 
 /**
  * The runtime codehash at each address (null: no code), in order. Tries the one-call program first; if the RPC
- * rejects a call without `to` or answers oddly, falls back to `eth_getCode` per address.
+ * rejects a call without `to` (an HTTP 400, invalid params, a revert) or answers oddly, falls back to `eth_getCode`
+ * per address. A connection failure or a rate limit fails instead: fanning out would only make it worse.
  */
 export async function readCodehashes(client: ChainClient, addresses: readonly Address[]): Promise<(Hex | null)[]> {
   if (addresses.length === 0) return [];
@@ -104,7 +130,7 @@ export async function readCodehashes(client: ChainClient, addresses: readonly Ad
       return addresses.map((_, i) => codehashOrNull(`0x${out.slice(2 + 64 * i, 2 + 64 * (i + 1))}`));
     }
   } catch (error) {
-    if (isTransportFailure(error)) throw error;
+    if (isTransportFailure(error) || isRateLimited(error)) throw error;
   }
   const codes = await Promise.all(addresses.map((address) => getCode(client, { address })));
   return codes.map((code) => (code === undefined || code === "0x" ? null : keccak256(code)));
@@ -160,14 +186,14 @@ export async function readRegistry(
     const results = await multicall(client, { contracts: calls, allowFailure: true, multicallAddress: MULTICALL3, batchSize: 16_384 });
     rows = results.map((result) => {
       if (result.status === "success") return rowOf(result.result);
-      if (isTransportFailure(result.error)) throw result.error;
-      return null;
+      if (isRecordNotFound(result.error)) return null;
+      throw result.error;
     });
   } else {
     rows = await Promise.all(
       calls.map((call) =>
         readContract(client, call).then(rowOf, (error: unknown) => {
-          if (error instanceof BaseError && error.walk((e) => e instanceof ContractFunctionRevertedError)) return null;
+          if (isRecordNotFound(error)) return null;
           throw error;
         }),
       ),
@@ -180,7 +206,10 @@ export async function readRegistry(
   return records;
 }
 
-/** Whether the RPC answers `eth_simulateV1` (NET-07). "Method not found" and its kin mean no. */
+/**
+ * Whether the RPC answers `eth_simulateV1` (NET-07). "Method not found" and its kin mean no. A connection failure,
+ * a rate limit or rejected parameters mean the probe couldn't tell, so it fails rather than guess.
+ */
 export async function supportsSimulate(client: ChainClient): Promise<boolean> {
   try {
     await client.request({
@@ -189,7 +218,7 @@ export async function supportsSimulate(client: ChainClient): Promise<boolean> {
     });
     return true;
   } catch (error) {
-    if (isTransportFailure(error)) throw error;
+    if (isTransportFailure(error) || isRateLimited(error) || isInvalidParams(error)) throw error;
     if (error instanceof BaseError && error.walk((e) => e instanceof MethodNotFoundRpcError || e instanceof MethodNotSupportedRpcError)) return false;
     const text = error instanceof Error ? error.message : String(error);
     return !/method .*(not (found|supported|available|exist))|does not exist|unsupported method|unknown method/i.test(text);

@@ -3,17 +3,21 @@
  * `import()` on the first call to `chainService()`, which happens on Deploy, on choosing a chain or on any
  * other on-chain read. While it loads, surfaces show "Loading wallet support…" (spec L562) from `useChainLoad()`.
  *
+ * A chunk that fails to load isn't worded here: S11a's `vite:preloadError` banner already says "Studio was
+ * updated. Save and reload to continue." The error goes to the browser console, and the next call tries again.
+ *
  * Light: this file is in the entry chunk (through `services.ts`), so it never imports the module statically.
  */
 import { useSyncExternalStore } from "react";
 import type { ChainService } from "@/contracts";
-import { LOADING_WALLET_SUPPORT, WALLET_SUPPORT_FAILED } from "./copy";
+import { LOADING_WALLET_SUPPORT } from "./copy";
 
 export type ChainLoadState =
   | { status: "idle" }
   | { status: "loading"; text: string }
   | { status: "ready" }
-  | { status: "failed"; text: string; reason: string };
+  /** `reason` is for the console; nothing shows it. */
+  | { status: "failed"; reason: string };
 
 export type ChainLoader = {
   /** Loads the module once; a failed load is tried again on the next call. */
@@ -46,8 +50,8 @@ export function createChainLoader(importer: () => Promise<ChainService>): ChainL
         },
         (error: unknown) => {
           pending = null;
-          const reason = error instanceof Error ? error.message : String(error);
-          set({ status: "failed", text: WALLET_SUPPORT_FAILED, reason });
+          console.error(error);
+          set({ status: "failed", reason: error instanceof Error ? error.message : String(error) });
           throw error;
         },
       );

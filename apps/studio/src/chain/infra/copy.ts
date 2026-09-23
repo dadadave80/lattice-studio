@@ -8,9 +8,6 @@ import { formatFee } from "@lattice-studio/core";
 /** Spec L562: shown while the lazy chain module loads. */
 export const LOADING_WALLET_SUPPORT = "Loading wallet support…";
 
-/** The lazy module failed to load (a stale deploy, a dropped connection). */
-export const WALLET_SUPPORT_FAILED = "Couldn't load wallet support.";
-
 /** Spec L697: a chain row while its probes run. */
 export function checking(chain: string): string {
   return `Checking ${chain}…`;
@@ -47,7 +44,7 @@ export function needsFunds(needed: bigint, balance: bigint, symbol = "ETH", deci
 }
 
 /** Nothing selected yet: the chain commands need a chain. */
-export const CHOOSE_A_CHAIN = "Choose a chain first";
+export const CHOOSE_A_CHAIN = "Choose a chain first.";
 
 /** `wallet.switchNetwork` with no wallet connected. */
 export const CONNECT_A_WALLET = "Connect a wallet first.";

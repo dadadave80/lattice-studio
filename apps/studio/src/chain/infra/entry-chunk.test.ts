@@ -13,6 +13,8 @@ import { appDir } from "../../../local-env";
 
 /** Strings only the wallet stack carries: wagmi's version tag, EIP-6963's events, wallet RPC methods, viem's fallback transport. */
 const WALLET_MARKERS = ["@wagmi/core@", "eip6963:requestProvider", "eth_requestAccounts", "wallet_switchEthereumChain", "wallet_addEthereumChain"];
+/** WalletConnect's SDK: its relay and its modal. */
+const WALLETCONNECT_MARKERS = ["relay.walletconnect", "@walletconnect/", "w3m-modal"];
 /** The probes' own code: the codehash program and the Multicall3 codehash. */
 const PROBE_MARKERS = ["610025803803809160003960005b", "d5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891"];
 
@@ -45,6 +47,13 @@ describe("the entry chunk", () => {
     const runtime = lazy.find((chunk) => chunk.name.startsWith("runtime-"));
     expect(runtime).toBeDefined();
     for (const marker of ["@wagmi/core@", ...PROBE_MARKERS]) expect(runtime?.text.includes(marker)).toBe(true);
+  });
+
+  test("WalletConnect's SDK is in neither the entry nor the chain module: it loads only when chosen", () => {
+    const runtime = lazy.find((chunk) => chunk.name.startsWith("runtime-"));
+    for (const marker of WALLETCONNECT_MARKERS) {
+      expect({ marker, entry: firstLoad.includes(marker), runtime: runtime?.text.includes(marker) }).toEqual({ marker, entry: false, runtime: false });
+    }
   });
 
   test("the ENS normalizer loads on its own, only when a name is resolved", () => {

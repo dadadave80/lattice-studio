@@ -4,7 +4,7 @@ import type { Address } from "@lattice-studio/core";
 import { custom, HttpRequestError } from "viem";
 import { getBlockNumber } from "viem/actions";
 import { accountBalance, accountKind, isDelegation } from "./account";
-import { BASE_SEPOLIA, ETHEREUM, rpcUrls, SEPOLIA } from "./chains";
+import { ANVIL, BASE_SEPOLIA, ETHEREUM, isRpcUrl, publicRpcUrls, rpcUrls, SEPOLIA } from "./chains";
 import { chainTransport, createClients, RANK, viemChain } from "./clients";
 import { ensCoinType, resolveName, reverseName } from "./ens";
 import { mockChain } from "./testing";
@@ -14,7 +14,7 @@ const ALICE_BASE = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512" as Address;
 const identity = (name: string): string => name.toLowerCase();
 
 function clientFor(chain: ReturnType<typeof mockChain>, spec = SEPOLIA) {
-  return createClients({ overrides: () => ({}), transport: () => chain.transport(), rank: false }).get(spec);
+  return createClients({ transport: () => chain.transport() }).get(spec);
 }
 
 describe("ENS", () => {
@@ -108,35 +108,98 @@ describe("fallback transport", () => {
           throw new Error(`unexpected ${method}`);
         },
       }, { retryCount: 0 });
-    const clients = createClients({ overrides: () => ({ [SEPOLIA.id]: "https://down.example" }), transport: make, rank: false });
+    const clients = createClients({ overrides: { [SEPOLIA.id]: "https://down.example" }, transport: make });
     expect(await getBlockNumber(clients.get(SEPOLIA), { cacheTime: 0 })).toBe(42n);
     expect(tried).toEqual(["https://down.example", SEPOLIA.rpc.default]);
   });
 
   test("every RPC down fails the call", async () => {
     const make = (url: string) => custom({ request: async () => { throw new HttpRequestError({ url, status: 503 }); } }, { retryCount: 0 });
-    const clients = createClients({ overrides: () => ({}), transport: make, rank: false });
+    const clients = createClients({ transport: make });
     await expect(getBlockNumber(clients.get(SEPOLIA), { cacheTime: 0 })).rejects.toThrow();
   });
 
-  test("several RPCs go behind a fallback; one goes as is; ranking pings once a minute", () => {
+  test("several RPCs go behind a fallback without viem's ranking; one goes as is", () => {
     const make = (url: string) => custom({ request: async () => url });
-    const several = chainTransport(["https://a.example", "https://b.example"], make, false);
+    const several = chainTransport(["https://a.example", "https://b.example"], make);
     expect(several({ chain: viemChain(SEPOLIA, ["https://a.example"]), retryCount: 0 }).config.type).toBe("fallback");
-    const one = chainTransport(["https://a.example"], make, true);
+    const one = chainTransport(["https://a.example"], make);
     expect(one({ chain: viemChain(SEPOLIA, ["https://a.example"]), retryCount: 0 }).config.type).toBe("custom");
-    expect(RANK.interval).toBe(60_000);
+  });
+
+  test("ranking orders the RPCs by answer time, a silent one last, and remakes the client", async () => {
+    let clock = 0;
+    const answers: Record<string, number | "down"> = {
+      [SEPOLIA.rpc.default]: 300,
+      [SEPOLIA.rpc.extra ?? ""]: 50,
+      "https://mine.example/rpc": "down",
+    };
+    const make = (url: string) => custom({
+      request: async () => {
+        const answer = answers[url];
+        if (answer === "down") throw new HttpRequestError({ url, status: 503 });
+        clock += answer ?? 0;
+        return "0x1";
+      },
+    }, { retryCount: 0 });
+    const clients = createClients({ overrides: { [SEPOLIA.id]: "https://mine.example/rpc" }, transport: make, clock: () => clock });
+    const before = clients.get(SEPOLIA);
+    expect(clients.urls(SEPOLIA)[0]).toBe("https://mine.example/rpc");
+    await clients.rank();
+    expect(clients.urls(SEPOLIA)).toEqual([SEPOLIA.rpc.extra ?? "", SEPOLIA.rpc.default, "https://mine.example/rpc"]);
+    expect(clients.get(SEPOLIA)).not.toBe(before);
+    // Ranking reorders, it doesn't reconfigure: the probe cache key stays.
+    expect(clients.key(SEPOLIA)).toBe(["https://mine.example/rpc", SEPOLIA.rpc.default, SEPOLIA.rpc.extra].join(" "));
+  });
+
+  test("the ranking timer runs only while active, one at a time, and stops on dispose", () => {
+    const started: number[] = [];
+    const stopped: unknown[] = [];
+    let next = 0;
+    const clients = createClients({
+      transport: () => custom({ request: async () => "0x1" }),
+      setInterval: (_run, ms) => {
+        started.push(ms);
+        next += 1;
+        return next;
+      },
+      clearInterval: (handle) => stopped.push(handle),
+    });
+    clients.setActive(true);
+    clients.setActive(true);
+    expect(started).toEqual([RANK.interval]);
+    clients.setActive(false);
+    expect(stopped).toEqual([1]);
+    clients.setActive(true);
+    clients.dispose();
+    expect(stopped).toEqual([1, 2]);
   });
 
   test("changing the person's RPC makes a new client; the same one keeps it", () => {
-    let overrides: Record<number, string> = {};
-    const clients = createClients({ overrides: () => overrides, transport: () => custom({ request: async () => "0x1" }), rank: false });
+    const clients = createClients({ transport: () => custom({ request: async () => "0x1" }) });
     const first = clients.get(SEPOLIA);
     expect(clients.get(SEPOLIA)).toBe(first);
-    overrides = { [SEPOLIA.id]: "https://mine.example" };
+    expect(clients.setOverrides({ [SEPOLIA.id]: "https://mine.example" })).toEqual([SEPOLIA.id]);
     const second = clients.get(SEPOLIA);
     expect(second).not.toBe(first);
     expect(second.chain.rpcUrls.default.http[0]).toBe("https://mine.example");
+    expect(clients.setOverrides({ [SEPOLIA.id]: "https://mine.example" })).toEqual([]);
+  });
+
+  test("a half-typed or non-http override is never called", () => {
+    for (const bad of ["https://mai", "mainnet.infura.io", "ftp://rpc.example.org", "javascript:alert(1)", "https://", ""]) {
+      expect({ bad, ok: isRpcUrl(bad) }).toEqual({ bad, ok: false });
+      expect(rpcUrls(SEPOLIA, bad)).toEqual([SEPOLIA.rpc.default, SEPOLIA.rpc.extra ?? ""]);
+    }
+    for (const good of ["https://sepolia.infura.io/v3/key", "http://127.0.0.1:8545", "http://localhost:8545"]) {
+      expect({ good, ok: isRpcUrl(good) }).toEqual({ good, ok: true });
+    }
+  });
+
+  test("a wallet only ever sees public RPCs; Anvil's local node is the exception", () => {
+    const secret = "https://sepolia.infura.io/v3/SECRET";
+    expect(publicRpcUrls(SEPOLIA, secret)).toEqual([SEPOLIA.rpc.default, SEPOLIA.rpc.extra ?? ""]);
+    expect(publicRpcUrls(ANVIL, "http://127.0.0.1:20043")).toEqual(["http://127.0.0.1:20043", ANVIL.rpc.default]);
   });
 
   test("viem chains carry ENS's Universal Resolver only where ENS lives", () => {

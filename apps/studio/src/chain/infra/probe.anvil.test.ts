@@ -39,7 +39,7 @@ describe.skipIf(!runnable)("against Anvil", () => {
     node = Bun.spawn([anvil ?? "anvil", "--port", String(port), "--silent"], { stdout: "ignore", stderr: "ignore" });
     const url = `http://127.0.0.1:${port}`;
     await waitForNode(url);
-    client = createClients({ overrides: () => ({ [ANVIL.id]: url }), rank: false }).get(ANVIL);
+    client = createClients({ overrides: { [ANVIL.id]: url } }).get(ANVIL);
   });
 
   afterAll(async () => {

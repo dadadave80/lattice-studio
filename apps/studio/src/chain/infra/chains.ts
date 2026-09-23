@@ -119,10 +119,38 @@ export function chainInfo(spec: ChainSpec): ChainInfo {
 }
 
 /**
- * The fallback order (spec L841): the person's own RPC when set, then the chain default, then one extra.
- * Duplicates collapse, keeping the first.
+ * Whether `text` is an RPC URL Studio will call: http(s), with a host that is `localhost`, an IP address, or a
+ * name with a dot and a top-level label. Anything else (a half-typed override) is never fetched.
+ */
+export function isRpcUrl(text: string | undefined): text is string {
+  if (!text) return false;
+  let url: URL;
+  try {
+    url = new URL(text.trim());
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+  const host = url.hostname;
+  if (host === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith("[")) return true;
+  return /^([a-z0-9-]+\.)+[a-z]{2,}$/i.test(host);
+}
+
+/**
+ * The fallback order (spec L841): the person's own RPC when set and valid, then the chain default, then one
+ * extra. Duplicates collapse, keeping the first.
  */
 export function rpcUrls(spec: ChainSpec, override: string | undefined): string[] {
-  const urls = [override?.trim(), spec.rpc.default, spec.rpc.extra].filter((url): url is string => !!url);
+  const own = isRpcUrl(override) ? override.trim() : undefined;
+  const urls = [own, spec.rpc.default, spec.rpc.extra].filter((url): url is string => !!url);
   return [...new Set(urls)];
+}
+
+/**
+ * The URLs a wallet may see: the chain's public RPCs only, never the person's own, which can carry an API key
+ * (WalletConnect sends a chain's `rpcUrls` through its relay). Anvil in end-to-end builds is the exception: its
+ * node is local, and wagmi's mock connector reaches it through `rpcUrls`.
+ */
+export function publicRpcUrls(spec: ChainSpec, override: string | undefined): string[] {
+  return spec.id === ANVIL.id ? rpcUrls(spec, override) : rpcUrls(spec, undefined);
 }

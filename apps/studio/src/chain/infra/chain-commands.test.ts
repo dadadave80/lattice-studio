@@ -71,6 +71,17 @@ describe("chain.select", () => {
     expect(state("chain.select", { chainId: 1 })).toMatchObject({ ok: false, reason: "Studio doesn't deploy to Ethereum. Choose Sepolia or Base Sepolia." });
   });
 
+  test("a probe that fails is an Error line", async () => {
+    const chain = serve(fakeChainService({ catalog: fixtureCatalog(), down: [84532] }));
+    await runCommand({ id: "chain.select", args: { chainId: 84532 } }, "console");
+    expect(chain.calls.some((c) => c.method === "probe")).toBe(true);
+    expect(lines()).toContain("Error: Base Sepolia's public RPC isn't answering.");
+  });
+
+  test("wallet.connect has no console verb (IR L139-L160 lists none)", () => {
+    expect(getCommand("wallet.connect").console).toBeUndefined();
+  });
+
   test("selecting the selected chain checks it again", async () => {
     const chain = serve(fakeChainService({ catalog: fixtureCatalog() }));
     session.set({ chainId: 11155111 });
@@ -82,11 +93,11 @@ describe("chain.select", () => {
 
 describe("chain.retryRead", () => {
   test("needs a chain and a connection", () => {
-    expect(state("chain.retryRead")).toMatchObject({ ok: false, reason: "Choose a chain first", title: "Retry reading the chain" });
+    expect(state("chain.retryRead")).toMatchObject({ ok: false, reason: "Choose a chain first.", title: "Retry reading the chain" });
     session.set({ chainId: 11155111 });
     expect(state("chain.retryRead")).toMatchObject({ ok: true, title: "Retry reading Sepolia" });
     online = false;
-    expect(state("chain.retryRead")).toMatchObject({ ok: false, reason: "Chain checks need a connection" });
+    expect(state("chain.retryRead")).toMatchObject({ ok: false, reason: "Chain checks need a connection." });
   });
 
   test("reads again past the cache, and says what happened", async () => {
@@ -133,7 +144,7 @@ describe("wallet.connect", () => {
 
 describe("wallet.switchNetwork", () => {
   test("needs a chain; without a wallet says to connect one; on the chain already says so", async () => {
-    expect(state("wallet.switchNetwork")).toMatchObject({ ok: false, reason: "Choose a chain first" });
+    expect(state("wallet.switchNetwork")).toMatchObject({ ok: false, reason: "Choose a chain first." });
     session.set({ chainId: 11155111 });
     const chain = serve(fakeChainService({ account: null }));
     await runCommand({ id: "wallet.switchNetwork" }, "button");

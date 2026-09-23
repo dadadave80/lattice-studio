@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import type { ChainService } from "@/contracts";
 import { createChainLoader, type ChainLoadState } from "./loader";
 
@@ -28,19 +28,18 @@ describe("the lazy boundary", () => {
     expect(seen).toEqual(["loading", "ready"]);
   });
 
-  test("a failed load says why and is tried again on the next call", async () => {
+  test("a failed load goes to the console, not the page, and is tried again on the next call", async () => {
     let attempt = 0;
     const loader = createChainLoader(async () => {
       attempt += 1;
       if (attempt === 1) throw new Error("Failed to fetch dynamically imported module");
       return service;
     });
+    const errors = spyOn(console, "error").mockImplementation(() => {});
     await expect(loader.load()).rejects.toThrow("Failed to fetch");
-    expect(loader.state()).toEqual({
-      status: "failed",
-      text: "Couldn't load wallet support.",
-      reason: "Failed to fetch dynamically imported module",
-    });
+    expect(loader.state()).toEqual({ status: "failed", reason: "Failed to fetch dynamically imported module" });
+    expect(errors).toHaveBeenCalledTimes(1);
+    errors.mockRestore();
     expect(await loader.load()).toBe(service);
     expect(loader.state()).toEqual({ status: "ready" });
   });

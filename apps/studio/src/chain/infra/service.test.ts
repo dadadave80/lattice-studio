@@ -24,6 +24,9 @@ let reported = 0;
 const onlineListeners = new Set<(online: boolean) => void>();
 let chains: Record<number, MockChain>;
 let service: ChainRuntime;
+/** Every RPC URL a transport was made for. */
+const urlsCalled = new Set<string>();
+const OVERRIDE_WAIT = 20;
 
 function setOnline(next: boolean): void {
   online = next;
@@ -32,15 +35,16 @@ function setOnline(next: boolean): void {
 
 function start(wallet: Wallet | null = null): ChainRuntime {
   const clients = createClients({
-    overrides: () => settings.get().rpc,
     transport: (url) => {
+      urlsCalled.add(url);
       const chain = Object.values(chains).find((c) => url.includes(String(c.options.chainId))) ?? chains[SEPOLIA.id];
       if (!chain) throw new Error("no mock chain");
       return chain.transport();
     },
-    rank: false,
   });
-  service = createChainService({ e2e: false, clients, wallet, normalize: async () => (name) => name.toLowerCase() });
+  service = createChainService({
+    e2e: false, clients, wallet, rank: false, overrideDelay: OVERRIDE_WAIT, normalize: async () => (name) => name.toLowerCase(),
+  });
   return service;
 }
 
@@ -55,6 +59,7 @@ beforeEach(() => {
   online = true;
   reported = 0;
   onlineListeners.clear();
+  urlsCalled.clear();
   provideServices({
     now: () => NOW,
     connection: {
@@ -192,7 +197,118 @@ describe("probes and readiness", () => {
     const calls = sepolia?.calls.length ?? 0;
     settings.set({ rpc: { [SEPOLIA.id]: "https://mine.example/11155111" } });
     await settle();
+    // Debounced: nothing until the override has settled.
+    expect(sepolia?.calls.length).toBe(calls);
+    await Bun.sleep(OVERRIDE_WAIT + 10);
+    await settle();
     expect(sepolia?.calls.length).toBeGreaterThan(calls);
+    expect(urlsCalled.has("https://mine.example/11155111")).toBe(true);
+  });
+
+  test("a half-typed override is never called: keystrokes settle first, and an invalid URL isn't used", async () => {
+    start();
+    session.set({ chainId: SEPOLIA.id });
+    await settle();
+    for (const typed of ["h", "https://", "https://mai", "https://mainnet"]) settings.set({ rpc: { [SEPOLIA.id]: typed } });
+    await Bun.sleep(OVERRIDE_WAIT + 10);
+    await settle();
+    expect([...urlsCalled].some((url) => url.includes("mai"))).toBe(false);
+    await service.probe(SEPOLIA.id, { refresh: true });
+    expect([...urlsCalled].some((url) => url.includes("mai"))).toBe(false);
+  });
+
+  test("a new catalog drops the old one's ready state until the new probe finishes", async () => {
+    start();
+    session.set({ chainId: SEPOLIA.id });
+    await settle();
+    expect(service.readiness(SEPOLIA.id).status).toBe("ready");
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const sepolia = chains[SEPOLIA.id];
+    if (sepolia) sepolia.intercept = () => held;
+    setCatalogStatus({ status: "ready", id: "next", catalog: { ...catalog, hash: `0x${"12".repeat(32)}` }, manifest: null });
+    await settle();
+    expect(service.readiness(SEPOLIA.id).status).toBe("checking");
+    if (sepolia) sepolia.intercept = undefined;
+    release();
+    await Bun.sleep(5);
+    await settle();
+    expect(service.readiness(SEPOLIA.id).status).toBe("ready");
+  });
+
+  test("probes that finish out of order: only the latest publishes", async () => {
+    start();
+    const sepolia = chains[SEPOLIA.id];
+    if (!sepolia) throw new Error("mock");
+    let releaseFirst: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    sepolia.intercept = () => held;
+    const first = service.probe(SEPOLIA.id, { path: "factory" });
+    await settle();
+    sepolia.intercept = undefined;
+    // A different address set: its own read, which finishes first.
+    const second = await service.probe(SEPOLIA.id, { path: "createx", codeAt: [SAFE] });
+    expect(second.ok).toBe(true);
+    releaseFirst();
+    const late = await first;
+    expect(late.ok).toBe(true);
+    const readiness = service.readiness(SEPOLIA.id);
+    expect(readiness.status === "ready" && readiness.state.createx?.present).toBe(true);
+    expect(readiness.status === "ready" && readiness.state.codeAt[SAFE.toLowerCase()]).toBe("0x6080");
+  });
+
+  test("a revert isn't a connection failure; an unreachable RPC is (probe and readFacets)", async () => {
+    start();
+    const sepolia = chains[SEPOLIA.id];
+    if (!sepolia) throw new Error("mock");
+    expect((await service.readFacets(SEPOLIA.id, ME)).ok).toBe(false);
+    expect(reported).toBe(0);
+    sepolia.intercept = (method) => (method === "eth_simulateV1" ? Object.assign(new Error("execution reverted"), { code: 3 }) : undefined);
+    await service.probe(SEPOLIA.id);
+    expect(reported).toBe(0);
+    sepolia.intercept = undefined;
+    sepolia.down = true;
+    await service.readFacets(SEPOLIA.id, ME);
+    expect(reported).toBe(1);
+    await service.probe(SEPOLIA.id, { refresh: true });
+    expect(reported).toBeGreaterThan(1);
+  });
+
+  test("the RPC ranking timer runs while online and stops offline and on dispose", () => {
+    const timers: string[] = [];
+    const clients = createClients({
+      transport: () => mockChain({ chainId: SEPOLIA.id }).transport(),
+      setInterval: () => {
+        timers.push("start");
+        return timers.length;
+      },
+      clearInterval: () => timers.push("stop"),
+    });
+    service = createChainService({ e2e: false, clients, wallet: null });
+    expect(timers).toEqual(["start"]);
+    setOnline(false);
+    expect(timers).toEqual(["start", "stop"]);
+    setOnline(true);
+    expect(timers).toEqual(["start", "stop", "start"]);
+    service.dispose();
+    expect(timers).toEqual(["start", "stop", "start", "stop"]);
+  });
+
+  test("offline, the reads say so without calling the RPC or reporting a failure", async () => {
+    start();
+    online = false;
+    const sepolia = chains[SEPOLIA.id];
+    const calls = sepolia?.calls.length ?? 0;
+    expect(await service.codeAt(SEPOLIA.id, SAFE)).toEqual({ ok: false, error: "Chain checks need a connection." });
+    expect(await service.readFacets(SEPOLIA.id, SAFE)).toEqual({ ok: false, error: "Chain checks need a connection." });
+    expect(await service.resolveEns("alice.eth", SEPOLIA.id)).toEqual({ ok: false, error: "Chain checks need a connection." });
+    expect(await service.reverseEns(ME, SEPOLIA.id)).toEqual({ ok: false, error: "Chain checks need a connection." });
+    expect(sepolia?.calls.length).toBe(calls);
+    expect(reported).toBe(0);
   });
 
   test("a chain Studio doesn't list, and no catalog yet, say why", async () => {
@@ -231,7 +347,7 @@ describe("reads", () => {
     expect(await service.resolveEns("alice.eth", BASE_SEPOLIA.id)).toEqual({ ok: true, value: null });
     const strict = createChainService({
       e2e: false,
-      clients: createClients({ overrides: () => ({}), transport: () => chains[SEPOLIA.id]?.transport() ?? mockChain({ chainId: 1 }).transport(), rank: false }),
+      clients: createClients({ transport: () => chains[SEPOLIA.id]?.transport() ?? mockChain({ chainId: 1 }).transport() }),
       wallet: null,
       normalize: async () => (name) => {
         if (name.includes(" ")) throw new Error("bad");
@@ -251,13 +367,13 @@ describe("reads", () => {
 });
 
 describe("the wallet account", () => {
-  function fakeWallet(initial: WalletState | null = null): Wallet & { set(state: WalletState | null): void; switched: number[] } {
+  function fakeWallet(initial: WalletState | null = null): Wallet & { set(state: WalletState | null): void; switched: [number, string][] } {
     let state = initial;
     const listeners = new Set<(s: WalletState | null) => void>();
     const connectors: WalletConnector[] = [{ id: "io.metamask", name: "MetaMask", kind: "injected", rdns: "io.metamask" }];
     const wallet = {
       config: {} as Config,
-      switched: [] as number[],
+      switched: [] as [number, string][],
       connectors: () => connectors,
       subscribeConnectors: () => () => {},
       state: () => state,
@@ -272,8 +388,8 @@ describe("the wallet account", () => {
       async disconnect() {
         wallet.set(null);
       },
-      async switchChain(chainId: number) {
-        wallet.switched.push(chainId);
+      async switchChain(chainId: number, publicRpc: string) {
+        wallet.switched.push([chainId, publicRpc]);
         return { ok: true as const, value: undefined };
       },
       async reconnect() {},
@@ -285,8 +401,9 @@ describe("the wallet account", () => {
     return wallet;
   }
 
-  test("shown at once, then its kind, balance and primary name", async () => {
+  test("shown at once, then its kind, balance and primary name, read on the selected chain", async () => {
     const wallet = fakeWallet();
+    session.set({ chainId: SEPOLIA.id });
     start(wallet);
     const seen: (string | null)[] = [];
     service.subscribeAccount((account) => seen.push(account ? `${account.address}|${account.kind ?? "-"}|${account.balance ?? "-"}|${account.ens ?? "-"}` : null));
@@ -333,16 +450,31 @@ describe("the wallet account", () => {
 
   test("a Safe reads as a Safe", async () => {
     const wallet = fakeWallet({ address: SAFE, chainId: SEPOLIA.id, connector: "io.metamask" });
+    session.set({ chainId: SEPOLIA.id });
     start(wallet);
     await settle();
     expect(service.account()?.kind).toBe("safe");
   });
 
+  test("a wallet on a chain nobody selected (Ethereum) is never read there", async () => {
+    const wallet = fakeWallet({ address: ME, chainId: 1, connector: "io.metamask" });
+    session.set({ chainId: SEPOLIA.id });
+    start(wallet);
+    await settle();
+    expect(service.account()).toEqual({ address: ME, chainId: 1, connector: "io.metamask" });
+    expect([...urlsCalled].some((url) => url.includes("reth.rs") || url.includes("ethereum-rpc"))).toBe(false);
+    // Once the wallet is on the selected chain, its details are read there.
+    wallet.set({ address: ME, chainId: SEPOLIA.id, connector: "io.metamask" });
+    await settle();
+    expect(service.account()?.kind).toBe("eoa");
+  });
+
   test("switching network asks the wallet with the chain's public RPC; an unknown chain says why", async () => {
     const wallet = fakeWallet({ address: ME, chainId: BASE_SEPOLIA.id, connector: "io.metamask" });
+    settings.set({ rpc: { [SEPOLIA.id]: "https://sepolia.infura.io/v3/SECRET" } });
     start(wallet);
     expect(await service.switchNetwork(SEPOLIA.id)).toEqual({ ok: true, value: undefined });
-    expect(wallet.switched).toEqual([SEPOLIA.id]);
+    expect(wallet.switched).toEqual([[SEPOLIA.id, SEPOLIA.rpc.default]]);
     expect((await service.switchNetwork(1)).ok).toBe(false);
   });
 

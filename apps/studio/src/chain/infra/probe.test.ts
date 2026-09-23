@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Address, Catalog, ChainState, Hex, Problem } from "@lattice-studio/core";
 import { analyze, buildSalt, MULTICALL3 } from "@lattice-studio/core";
 import { makeRecipe } from "@lattice-studio/core/testing";
-import { keccak256 } from "viem";
+import { encodeErrorResult, HttpRequestError, keccak256, parseAbi } from "viem";
 import { CREATEX_CODEHASH as HARNESS_CREATEX, MULTICALL3_CODEHASH as HARNESS_MULTICALL3 } from "../../../test/harness/chain";
 import { ANVIL, BASE_SEPOLIA, SEPOLIA, type ChainSpec } from "./chains";
 import { createClients } from "./clients";
@@ -12,6 +12,7 @@ import {
 import { fixtureCatalog, healthyAccounts, listedRecords, mockChain, type MockChain, type MockChainOptions } from "./testing";
 
 const catalog = fixtureCatalog();
+const rpcError = (code: number, message: string): Error => Object.assign(new Error(message), { code });
 const FROM = "0x1111111111111111111111111111111111111111" as Address;
 
 /** The NET problems core raises for `facets` with these probes, on the factory path. */
@@ -26,7 +27,7 @@ const PROBED_AT = "2026-09-23T12:00:00.000Z";
 function setup(options: Partial<MockChainOptions> & { spec?: ChainSpec } = {}): { chain: MockChain; probe: (codeAt?: Address[], using?: Catalog) => Promise<ChainState & { createx: ChainState["deployer"] }> } {
   const spec = options.spec ?? SEPOLIA;
   const chain = mockChain({ chainId: spec.id, accounts: healthyAccounts(catalog), records: listedRecords(catalog), ...options });
-  const clients = createClients({ overrides: () => ({}), transport: () => chain.transport(), rank: false });
+  const clients = createClients({ transport: () => chain.transport() });
   return {
     chain,
     probe: (codeAt = [], using = catalog) =>
@@ -153,6 +154,39 @@ describe("probeChain", () => {
     expect(state.shared.ERC20?.codehash).not.toBe(erc20.release.codehash);
   });
 
+  test("an HTTP 400 on the call without `to` falls back to eth_getCode", async () => {
+    const { chain, probe } = setup();
+    chain.intercept = (method, params) =>
+      method === "eth_call" && !(params[0] as { to?: string }).to ? new HttpRequestError({ url: "https://rpc.test", status: 400 }) : undefined;
+    const state = await probe();
+    expect(chain.methods()).toContain("eth_getCode");
+    expect(state.deployer.present).toBe(true);
+  });
+
+  test("a rate limit fails the probe instead of fanning out into eth_getCode", async () => {
+    const { chain, probe } = setup();
+    chain.intercept = (method, params) =>
+      method === "eth_call" && !(params[0] as { to?: string }).to ? rpcError(-32005, "rate limited") : undefined;
+    await expect(probe()).rejects.toThrow();
+    expect(chain.methods()).not.toContain("eth_getCode");
+  });
+
+  test("only RecordNotFound means 'not listed': any other registry failure fails the probe, on both paths", async () => {
+    const boom = encodeErrorResult({ abi: parseAbi(["error Error(string)"]), errorName: "Error", args: ["boom"] });
+    await expect(setup({ registryError: boom }).probe()).rejects.toThrow();
+    const accounts = healthyAccounts(catalog);
+    accounts[MULTICALL3.toLowerCase()] = { code: "0x60", codehash: `0x${"99".repeat(32)}` };
+    await expect(setup({ accounts, registryError: boom }).probe()).rejects.toThrow();
+  });
+
+  test("eth_simulateV1 rate-limited or with rejected params: the probe can't tell, so it fails", async () => {
+    for (const code of [-32005, -32602]) {
+      const { chain, probe } = setup();
+      chain.intercept = (method) => (method === "eth_simulateV1" ? rpcError(code, "no") : undefined);
+      await expect(probe()).rejects.toThrow();
+    }
+  });
+
   test("eth_simulateV1 missing reads as false (NET-07)", async () => {
     const { probe } = setup({ simulate: false });
     expect((await probe()).simulate).toBe(false);
@@ -196,7 +230,7 @@ describe("readCodehashes", () => {
   test("empty accounts and unknown addresses read as no code", async () => {
     const funded = "0x1111111111111111111111111111111111111111" as Address;
     const chain = mockChain({ chainId: 1, accounts: { [funded]: { code: "0x", balance: 1n } } });
-    const clients = createClients({ overrides: () => ({}), transport: () => chain.transport(), rank: false });
+    const clients = createClients({ transport: () => chain.transport() });
     const hashes = await readCodehashes(clients.get(SEPOLIA), [funded, "0x2222222222222222222222222222222222222222"]);
     expect(hashes).toEqual([null, null]);
     expect(EMPTY_CODEHASH).toBe("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");

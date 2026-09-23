@@ -41,6 +41,8 @@ export type MockChainOptions = {
   ens?: Record<string, Record<string, Address>>;
   /** ENS reverse records: "<lowercase address>:<coin type>" → name. */
   reverse?: Record<string, string>;
+  /** LatticeRegistry's `get` reverts with this data instead of answering. */
+  registryError?: Hex;
 };
 
 export type MockCall = { method: string; params: unknown };
@@ -49,6 +51,8 @@ export type MockChain = {
   readonly calls: MockCall[];
   /** Every request fails as an unreachable HTTP endpoint would. */
   down: boolean;
+  /** Runs before each request: an error fails it, a promise holds it until settled. */
+  intercept?: ((method: string, params: readonly unknown[]) => Error | Promise<unknown> | undefined) | undefined;
   options: MockChainOptions;
   request: EIP1193RequestFn;
   /** A viem transport over this provider, without retries. */
@@ -177,6 +181,7 @@ export function mockChain(options: MockChainOptions): MockChain {
     if (lower === catalog.registry.address.toLowerCase()) {
       const { args } = decodeFunctionData({ abi: REGISTRY_ABI, data });
       const [nameHash, version] = args;
+      if (mock.options.registryError) throw revert(mock.options.registryError);
       const record = records().get(recordKey(nameHash, version));
       if (!record) {
         throw revert(encodeErrorResult({ abi: REGISTRY_ABI, errorName: "LatticeRegistry__RecordNotFound", args: [nameHash, version] }));
@@ -260,6 +265,9 @@ export function mockChain(options: MockChainOptions): MockChain {
     request: (async ({ method, params }: { method: string; params?: unknown }) => {
       calls.push({ method, params });
       if (mock.down) throw new HttpRequestError({ url: "https://rpc.test", status: 503, details: "Service Unavailable" });
+      const held = mock.intercept?.(method, (params ?? []) as unknown[]);
+      if (held instanceof Error) throw held;
+      if (held) await held;
       return answer(method, (params ?? []) as unknown[]);
     }) as EIP1193RequestFn,
     transport: () => custom({ request: mock.request }, { retryCount: 0 }),

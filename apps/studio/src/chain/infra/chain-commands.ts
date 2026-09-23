@@ -3,23 +3,19 @@
  * again, use another RPC, connect a wallet and switch its network (IR L225-L236, Flow 14). Definitions only;
  * `commands.ts` registers them. Light: they reach the chain module through `chainService()`, which loads it.
  */
-import type { Result } from "@lattice-studio/core";
 import { formatAddress } from "@lattice-studio/core";
 import {
   announce, chainService, command, dialogComponent, env, log, openDialog, session, type CommandArgsOf, type CommandContext,
   type Enablement,
 } from "@/contracts";
 import { chainFromText, chainName, findChain, pickerChains } from "./chains";
-import { CHOOSE_A_CHAIN, CONNECT_A_WALLET, unsupportedChain, walletOn } from "./copy";
+import { CHAIN_CHECKS_NEED_CONNECTION, CHOOSE_A_CHAIN, CONNECT_A_WALLET, unsupportedChain, walletOn } from "./copy";
 
 type SelectArgs = CommandArgsOf<"chain.select">;
 /** `wallet.connect` takes an optional connector id (a CCR adds the row to `CommandArgsMap`). */
 type ConnectArgs = { connector?: string };
 
 const OK: Enablement = { ok: true };
-
-/** Disabled with the chain rows' offline wording (spec L697). */
-export const CHAIN_CHECKS_OFFLINE = "Chain checks need a connection";
 
 function names(): string[] {
   return pickerChains(env.e2e).map((chain) => chain.name);
@@ -28,15 +24,6 @@ function names(): string[] {
 function say(tag: "Note" | "Error", text: string): void {
   log({ tag, text });
   announce(text, tag === "Error" ? { politeness: "assertive" } : {});
-}
-
-function bare(verb: string, syntax = verb) {
-  return {
-    verb,
-    syntax,
-    parse: (argv: string[]): Result<Record<string, never>, string> =>
-      argv.length === 0 ? { ok: true, value: {} } : { ok: false, error: `${verb} takes no arguments.` },
-  };
 }
 
 function selectedName(ctx: CommandContext): string | null {
@@ -72,7 +59,8 @@ export const selectChainCommand = command<SelectArgs>({
     }
     // Loading the module starts its readiness probes for the selected chain (spec L842).
     const service = await chainService();
-    await service.probe(chainId, { path: ctx.project.deploy.path });
+    const result = await service.probe(chainId, { path: ctx.project.deploy.path });
+    if (!result.ok) say("Error", result.error);
   },
 });
 
@@ -86,7 +74,7 @@ export const retryReadCommand = command({
   palette: true,
   enabled(ctx) {
     if (ctx.session.chainId === null) return { ok: false, reason: CHOOSE_A_CHAIN };
-    if (!ctx.online) return { ok: false, reason: CHAIN_CHECKS_OFFLINE };
+    if (!ctx.online) return { ok: false, reason: CHAIN_CHECKS_NEED_CONNECTION };
     return OK;
   },
   async run(ctx) {
@@ -119,7 +107,6 @@ export const connectWalletCommand = command<ConnectArgs>({
   title: () => "Connect wallet",
   category: "Chain",
   palette: true,
-  console: bare("connect"),
   enabled: () => OK,
   async run(_ctx, args) {
     const service = await chainService();

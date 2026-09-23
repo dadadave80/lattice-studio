@@ -14,9 +14,9 @@ export {
 export type { ChainSpec } from "./chains";
 export {
   CANCELED_IN_WALLET, CHAIN_CHECKS_NEED_CONNECTION, CHOOSE_A_CHAIN, CONNECT_A_WALLET, LOADING_WALLET_SUPPORT, NO_WALLET,
-  WALLET_SUPPORT_FAILED, checking, couldntRead, needsFunds, rpcNotAnswering, walletOn,
+  checking, couldntRead, needsFunds, rpcNotAnswering, walletOn,
 } from "./copy";
-export { CHAIN_COMMANDS, CHAIN_CHECKS_OFFLINE } from "./chain-commands";
+export { CHAIN_COMMANDS } from "./chain-commands";
 export { chainLoader, createChainLoader, useChainLoad } from "./loader";
 export type { ChainLoader, ChainLoadState } from "./loader";
 export { WalletSupportStatus } from "./WalletSupportStatus";

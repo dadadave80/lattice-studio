@@ -1,11 +1,13 @@
 /**
  * The chain service (contracts §5.2 "chain", `ChainService` in `contracts/chain.ts`): readiness probes cached per
  * session with their time (spec L842), code and loupe reads, ENS, and the wallet. It follows the stores itself:
- * choosing a chain, changing the deploy path, a new catalog, an RPC override or coming back online probes the
- * selected chain again, and going offline turns every chain's readiness into "Chain checks need a connection."
- * Online and offline come from the connection service; a failed RPC call reports itself there.
+ * choosing a chain, changing the deploy path or salt, a new catalog, an RPC override (debounced, and only a valid
+ * http(s) URL) or coming back online probes the selected chain again, and going offline turns every chain's
+ * readiness into "Chain checks need a connection." Online and offline come from the connection service; a failed
+ * connection reports itself there.
  *
- * `ChainRuntime` adds what the deploy engine (S8c) needs beyond the contract: each chain's viem client and wagmi's config.
+ * `ChainRuntime` adds what the deploy engine (S8c) needs beyond the contract: each chain's viem client, wagmi's
+ * config and a way to hand back the deploy's gas estimate.
  */
 import type { Address, Catalog, ChainState, DeployPath, Hex, LoupeFacet, Result } from "@lattice-studio/core";
 import { toChecksum } from "@lattice-studio/core";
@@ -19,7 +21,7 @@ import {
 import { reportConnectionFailure } from "@/contracts/services";
 import { predict } from "@/state/prediction";
 import { accountBalance, accountKind } from "./account";
-import { chainInfo, chainName, findChain, findKnownChain, pickerChains, type ChainSpec } from "./chains";
+import { chainInfo, chainName, findChain, findKnownChain, pickerChains, publicRpcUrls, type ChainSpec } from "./chains";
 import type { ChainClient, Clients } from "./clients";
 import {
   CHAIN_CHECKS_NEED_CONNECTION, couldntRead, invalidEnsName, noEns, rpcNotAnswering, unsupportedChain,
@@ -38,7 +40,7 @@ export type ChainRuntime = ChainService & {
    * the chain's `ChainState.gasEstimate`, so NET-06 weighs it against the cap.
    */
   noteEstimate(chainId: number, gas: bigint | null): void;
-  /** Stops following the stores and the wallet. */
+  /** Stops following the stores and the wallet, and stops ranking the RPCs. */
   dispose(): void;
 };
 
@@ -50,7 +52,14 @@ export type ServiceOptions = {
   wallet: Wallet | null;
   /** ENSIP-15 normalization, loaded on the first name. */
   normalize?: () => Promise<Normalize>;
+  /** How long an RPC override must stay unchanged before it's used (ms). Default 750, as autosave (spec L845). */
+  overrideDelay?: number;
+  /** Rank the RPCs on a timer while online and visible. Default true; tests turn it off. */
+  rank?: boolean;
 };
+
+/** Settle time for a typed RPC override. */
+export const OVERRIDE_DELAY = 750;
 
 /** `facets()` from the diamond's loupe. */
 const LOUPE_ABI = parseAbi(["function facets() view returns ((address facetAddress, bytes4[] functionSelectors)[])"]);
@@ -63,8 +72,14 @@ type CacheEntry = {
   codeAt: Record<string, Hex | "0x">;
 };
 
+const NEEDS_CONNECTION: Result<never, string> = { ok: false, error: CHAIN_CHECKS_NEED_CONNECTION };
+
 function sameJson(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function visible(): boolean {
+  return typeof document === "undefined" || document.visibilityState !== "hidden";
 }
 
 export function createChainService(options: ServiceOptions): ChainRuntime {
@@ -76,6 +91,8 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   const readiness = new Map<number, ChainReadiness>();
   const readinessListeners = new Set<(chainId: number) => void>();
   const cache = new Map<number, CacheEntry>();
+  /** Per chain, the number of the latest probe call: only it may publish (probes can finish out of order). */
+  const latest = new Map<number, number>();
   /** S8c's gas estimate per chain, decimal. */
   const estimates = new Map<number, string>();
   const inflight = new Map<string, Promise<Result<ProbeResult, string>>>();
@@ -95,15 +112,14 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   const nameOf = (chainId: number): string => chainName(chainId, options.e2e);
   const unsupported = (chainId: number): string => unsupportedChain(nameOf(chainId), specs.map((s) => s.name));
 
-  /** A failed read, in the spec's words; a transport failure also tells the connection service. */
+  /** A failed read, in the spec's words; a failed connection also tells the connection service. */
   const failure = (chainId: number, error: unknown): string => {
     if (isTransportFailure(error)) reportConnectionFailure();
     return rpcNotAnswering(nameOf(chainId));
   };
 
-  const cacheKey = (chain: ChainSpec, catalog: Catalog): string => `${catalog.hash}|${clients.urls(chain).join(" ")}`;
+  const cacheKey = (chain: ChainSpec, catalog: Catalog): string => `${catalog.hash}|${clients.key(chain)}`;
 
-  /** The state a caller sees: CreateX only on the CreateX path, every address asked about, online now. */
   /** The diamond's predicted address on `chainId` for the connected account (S1's `predict`), lowercase. */
   const predictedAddress = (chainId: number, path: DeployPath): Address | null => {
     const prediction = predict({
@@ -144,9 +160,12 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   const probe: ChainService["probe"] = async (chainId, probeOptions = {}) => {
     const chain = spec(chainId);
     if (!chain) return { ok: false, error: unsupported(chainId) };
+    const call = (latest.get(chainId) ?? 0) + 1;
+    latest.set(chainId, call);
+    const current = (): boolean => !disposed && latest.get(chainId) === call;
     if (!isOnline()) {
       setReadiness(chainId, { status: "error", reason: CHAIN_CHECKS_NEED_CONNECTION });
-      return { ok: false, error: CHAIN_CHECKS_NEED_CONNECTION };
+      return NEEDS_CONNECTION;
     }
     const catalog = getCatalog();
     if (!catalog) return { ok: false, error: "The catalog hasn't loaded yet." };
@@ -167,11 +186,13 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
           return { ok: false, error: failure(chainId, error) };
         }
       }
-      return { ok: true, value: publish(chainId, compose(cached, path)) };
+      const state = compose(cached, path);
+      return { ok: true, value: current() ? publish(chainId, state) : state };
     }
 
-    const current = readiness.get(chainId);
-    if (probeOptions.refresh || current?.status !== "ready") setReadiness(chainId, { status: "checking" });
+    // A full read: whatever was published came from another catalog or RPC, or is being read again. Nothing
+    // stale stays ready (S1 passes a ready state to analyze()).
+    setReadiness(chainId, { status: "checking" });
     const addresses = [...new Set([...Object.keys(cached?.key === key ? cached.codeAt : {}), ...asked])] as Address[];
     const flight = `${chainId}|${key}|${addresses.join(",")}`;
     let running = inflight.get(flight);
@@ -192,12 +213,13 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
       void running.finally(() => inflight.delete(flight));
     }
     const result = await running;
-    if (disposed) return result.ok ? { ok: true, value: result.value } : result;
     if (!result.ok) {
-      setReadiness(chainId, { status: "error", reason: isOnline() ? couldntRead(chain.name) : CHAIN_CHECKS_NEED_CONNECTION });
+      if (current()) setReadiness(chainId, { status: "error", reason: isOnline() ? couldntRead(chain.name) : CHAIN_CHECKS_NEED_CONNECTION });
       return result;
     }
     const entry: CacheEntry = { key, base: result.value, codeAt: { ...result.value.codeAt } };
+    // A later call owns the chain now: this result neither caches nor publishes.
+    if (!current()) return { ok: true, value: compose(entry, path) };
     cache.set(chainId, entry);
     return { ok: true, value: publish(chainId, compose(entry, path)) };
   };
@@ -209,9 +231,15 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     for (const listener of Array.from(accountListeners)) listener(account);
   };
 
+  const selected = (): number | null => session.get().chainId;
+
+  /**
+   * Kind, balance and name, read only on the selected chain and only while the wallet is on it: a wallet on a
+   * chain the person didn't choose (Ethereum, say) never makes Studio call that chain's RPCs.
+   */
   const enrich = async (state: WalletState): Promise<void> => {
-    const chain = findKnownChain(state.chainId, options.e2e);
-    if (!chain) return;
+    const chain = spec(state.chainId);
+    if (!chain || state.chainId !== selected()) return;
     const client = clients.get(chain);
     const settle = <T>(promise: Promise<T>): Promise<T | undefined> => promise.catch(() => undefined);
     const [kind, balance, ens] = await Promise.all([
@@ -251,6 +279,7 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   };
 
   const resolve: ChainService["resolveEns"] = async (name, chainId) => {
+    if (!isOnline()) return NEEDS_CONNECTION;
     const target = ensClient(chainId);
     if ("error" in target) return { ok: false, error: target.error };
     normalizer ??= normalizeLoader();
@@ -259,7 +288,8 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
       normalize = await normalizer;
     } catch (error) {
       normalizer = null;
-      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+      console.error(error);
+      return { ok: false, error: `Couldn't resolve ${name}.` };
     }
     try {
       normalize(name.trim());
@@ -274,6 +304,7 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   };
 
   const reverse: ChainService["reverseEns"] = async (address, chainId) => {
+    if (!isOnline()) return NEEDS_CONNECTION;
     const target = ensClient(chainId);
     if ("error" in target) return { ok: false, error: target.error };
     try {
@@ -286,15 +317,37 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   // ---------------------------------------------------------------------------------------------------------
   // Following the stores
 
-  const selected = (): number | null => session.get().chainId;
   const reprobe = (chainId: number | null, refresh = false): void => {
     if (chainId === null || disposed || !spec(chainId)) return;
     void probe(chainId, refresh ? { refresh: true } : {});
   };
 
+  const rankNow = (): void => {
+    if (options.rank !== false) clients.setActive(!disposed && isOnline() && visible());
+  };
+
+  /** Applies the typed RPC overrides once they've settled: changed chains drop their cache; the selected one is read again. */
+  let overrideTimer: ReturnType<typeof setTimeout> | null = null;
+  const applyOverrides = (): void => {
+    overrideTimer = null;
+    if (disposed) return;
+    for (const chainId of clients.setOverrides(settings.get().rpc)) {
+      cache.delete(chainId);
+      if (chainId === selected()) reprobe(chainId, true);
+    }
+  };
+  clients.setOverrides(settings.get().rpc);
+
+  const onVisibility = (): void => rankNow();
+  if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVisibility);
+
   const stops: (() => void)[] = [
     session.subscribe((state, previous) => {
-      if (state.chainId !== previous.chainId) reprobe(state.chainId);
+      if (state.chainId === previous.chainId) return;
+      reprobe(state.chainId);
+      // The wallet's details are read on the selected chain only.
+      const current = wallet?.state();
+      if (current && current.chainId === state.chainId) void enrich(current);
     }),
     doc.subscribe((state, previous) => {
       // Path, salt entropy or scope: CreateX's probe, and a new predicted address to check.
@@ -302,6 +355,7 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     }),
     subscribeCatalog(() => reprobe(selected())),
     subscribeOnline((online) => {
+      rankNow();
       if (online) {
         reprobe(selected());
         return;
@@ -312,12 +366,13 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     }),
     settings.subscribe((state, previous) => {
       if (state.rpc === previous.rpc) return;
-      for (const chain of specs) {
-        if ((state.rpc[chain.id] ?? "") === (previous.rpc[chain.id] ?? "")) continue;
-        cache.delete(chain.id);
-        if (chain.id === selected()) reprobe(chain.id, true);
-      }
+      if (overrideTimer !== null) clearTimeout(overrideTimer);
+      overrideTimer = setTimeout(applyOverrides, options.overrideDelay ?? OVERRIDE_DELAY);
     }),
+    () => {
+      if (overrideTimer !== null) clearTimeout(overrideTimer);
+      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVisibility);
+    },
   ];
   if (wallet) {
     stops.push(wallet.subscribe(follow));
@@ -328,6 +383,7 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     if (initial) follow(initial);
   }
   reprobe(selected());
+  rankNow();
 
   const client = (chainId: number): ChainClient => {
     const chain = findKnownChain(chainId, options.e2e);
@@ -348,6 +404,7 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     async codeAt(chainId, address) {
       const chain = spec(chainId);
       if (!chain) return { ok: false, error: unsupported(chainId) };
+      if (!isOnline()) return NEEDS_CONNECTION;
       try {
         const code = (await readCodeAt(clients.get(chain), [address]))[address.toLowerCase()] ?? "0x";
         const entry = cache.get(chainId);
@@ -360,6 +417,7 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     async readFacets(chainId, address) {
       const chain = spec(chainId);
       if (!chain) return { ok: false, error: unsupported(chainId) };
+      if (!isOnline()) return NEEDS_CONNECTION;
       try {
         const facets = await readContract(clients.get(chain), { address, abi: LOUPE_ABI, functionName: "facets" });
         return {
@@ -407,7 +465,8 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
       const chain = spec(chainId);
       if (!chain) return { ok: false, error: unsupported(chainId) };
       if (!wallet) return { ok: false, error: "Wallet support isn't available." };
-      return wallet.switchChain(chainId, chain.rpc.default);
+      // Only a public RPC: the wallet stores what it's given, and the person's own may carry a key.
+      return wallet.switchChain(chainId, publicRpcUrls(chain, undefined)[0] ?? chain.rpc.default);
     },
     publicClient: client,
     noteEstimate(chainId, gas) {
@@ -420,6 +479,7 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     dispose() {
       disposed = true;
       for (const stop of stops.splice(0)) stop();
+      clients.setActive(false);
       readinessListeners.clear();
       accountListeners.clear();
       connectorListeners.clear();

@@ -8,7 +8,9 @@ import type { Address } from "@lattice-studio/core";
 import type { Chain } from "viem";
 import { custom, numberToHex } from "viem";
 import { BASE_SEPOLIA, SEPOLIA } from "./chains";
-import { viemChain } from "./clients";
+import { extractRpcUrls } from "@wagmi/core";
+import { createClients, viemChain } from "./clients";
+import { delegate, walletChains } from "./runtime";
 import { ANVIL_ACCOUNT, e2eConnectors } from "./e2e";
 import { createWallet, LEGACY_INJECTED_ID, WALLETCONNECT_ID, type Wallet } from "./wallet";
 
@@ -169,6 +171,27 @@ describe("Flow 14", () => {
 
   test("switching with no wallet connected says to connect one", async () => {
     expect(await wallet().switchChain(SEPOLIA.id, SEPOLIA.rpc.default)).toEqual({ ok: false, error: "Connect a wallet first." });
+  });
+});
+
+describe("the person's own RPC stays out of the wallet", () => {
+  test("wagmi's chains and the URLs its connectors extract (WalletConnect's rpcMap) are public only", () => {
+    const secret = "https://sepolia.infura.io/v3/SECRET";
+    const overrides = { [SEPOLIA.id]: secret, [BASE_SEPOLIA.id]: "https://base-sepolia.g.alchemy.com/v2/SECRET" };
+    const clients = createClients({ overrides, transport: () => custom({ request: async () => "0x1" }) });
+    // Reads do go through the person's RPC…
+    expect(clients.urls(SEPOLIA)[0]).toBe(secret);
+    // …but the wallet's config never carries it.
+    const w = wallet({ chains: walletChains(false, overrides), transport: (chainId) => delegate(clients, chainId) });
+    for (const chain of w.config.chains) {
+      const urls = [...chain.rpcUrls.default.http, ...extractRpcUrls({ chain, transports: w.config._internal.transports })];
+      expect(urls.some((url) => url.includes("SECRET"))).toBe(false);
+    }
+  });
+
+  test("Anvil's local node is the exception, in end-to-end builds", () => {
+    const chains = walletChains(true, { 31337: "http://127.0.0.1:20043" });
+    expect(chains.find((c) => c.id === 31337)?.rpcUrls.default.http[0]).toBe("http://127.0.0.1:20043");
   });
 });
 
