@@ -92,7 +92,9 @@ export type Persistence = {
   flush(): Promise<void>;
   /**
    * Opens the project last opened in this browser (else the last saved); null when there's none, or when
-   * `proceed` says no once it's known which (the document changed meanwhile).
+   * `proceed` says no once it's known which (the document changed meanwhile). When `proceed` says yes, the
+   * never-stored document it vouched for (the boot's, with a recorded prediction at most) is left unsaved, so
+   * it doesn't become a stray project.
    */
   openLastProject(proceed?: () => boolean): Promise<Result<Project, string> | null>;
   editLock(): EditLockState;
@@ -625,8 +627,8 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     // Opening with no version creates a missing database at version 1: abort that creation instead.
     let missing = false;
     const connection = await openDB<StudioSchema>(dbName, undefined, {
-      upgrade(_db, oldVersion, _newVersion, transaction) {
-        if (oldVersion !== 0) return;
+      // With no version asked for, only a missing database needs an upgrade.
+      upgrade(_db, _oldVersion, _newVersion, transaction) {
         missing = true;
         transaction.done.catch(() => {});
         transaction.abort();
@@ -813,6 +815,11 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
           ? last
           : (await records.listProjects(connection, unreadable))[0]?.id;
         if (id === undefined || (proceed && !proceed())) return null;
+        const current = doc.get();
+        if (proceed && current.id === openId && !stored && detached === null) {
+          clearTimer();
+          persisted = current;
+        }
         return await projects.openProject(id);
       } catch (error) {
         return { ok: false, error: message(error) };

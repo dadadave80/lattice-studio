@@ -77,8 +77,11 @@ export function createEditLock(options: EditLockOptions): EditLock {
   const waiting = new Map<string, Waiting>();
   /** The tabs asking for the lock this tab holds (peer ids). One that withdrew isn't handed it. */
   const requesters = new Set<string>();
-  /** The tab this one last handed a project to: if it withdraws after all, this tab takes the lock back. */
-  let handedTo: { projectId: string; peer: string } | null = null;
+  /**
+   * The tab this one last handed a project to, and the epoch of that handover: if it withdraws after all, and
+   * nothing was claimed, taken over or released since, this tab takes the lock back.
+   */
+  let handedTo: { projectId: string; peer: string; epoch: number } | null = null;
 
   const set = (next: EditLockState) => {
     current = next;
@@ -133,6 +136,7 @@ export function createEditLock(options: EditLockOptions): EditLock {
   const letGo = () => {
     const held = holding;
     holding = null;
+    handedTo = null;
     requesters.clear();
     held?.letGo();
   };
@@ -141,7 +145,7 @@ export function createEditLock(options: EditLockOptions): EditLock {
   const withdrawn = (projectId: string, peer: string) => {
     requesters.delete(peer);
     if (current.state !== "handed-over" || current.projectId !== projectId) return;
-    if (handedTo?.projectId !== projectId || handedTo.peer !== peer) return;
+    if (handedTo?.projectId !== projectId || handedTo.peer !== peer || handedTo.epoch !== epoch) return;
     handedTo = null;
     epoch += 1;
     void hold(projectId, { ifAvailable: true }, epoch).catch(() => {});
@@ -174,7 +178,7 @@ export function createEditLock(options: EditLockOptions): EditLock {
         if (holding?.projectId !== projectId || !requesters.has(taker)) return;
         letGo();
         epoch += 1;
-        handedTo = { projectId, peer: taker };
+        handedTo = { projectId, peer: taker, epoch };
         set({ state: "handed-over", projectId });
       },
       (error: unknown) => {

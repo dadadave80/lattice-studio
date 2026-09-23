@@ -12,11 +12,11 @@ import {
 } from "@/contracts";
 import { bufferedServices, fakeClock, onCleanup } from "../../test/harness";
 import { META, openStudioDb } from "./db";
-import { bootPersistence, editLockState, subscribeEditLock } from "./index";
+import { bootPersistence, editLockState, persistence, subscribeEditLock } from "./index";
 import type { Persistence } from "./persistence";
 import { deleteDB } from "idb";
 import { createEditLock, STILL_SAVING } from "./lock";
-import { openChannel, type Channel } from "./channel";
+import { openChannel, type Channel, type ChannelMessage } from "./channel";
 import { fakeDoc, testPersistence, type FakeDoc } from "./testing";
 
 const realTimeout = globalThis.setTimeout.bind(globalThis);
@@ -865,8 +865,9 @@ describe("edge cases from the last review", () => {
       channelA.close();
       channelB.close();
     });
-    const held = async () => (await navigator.locks.query()).held?.filter((l) => l.name === `${prefix}:edit:p`) ?? [];
-    return { holder, taker, holderStates, held };
+    const lockName = `${prefix}:edit:p`;
+    const held = async () => (await navigator.locks.query()).held?.filter((l) => l.name === lockName) ?? [];
+    return { holder, taker, holderStates, held, lockName };
   }
 
   test("a taker that gave up withdraws its request: the holder keeps editing once it has saved", async () => {
@@ -899,6 +900,40 @@ describe("edge cases from the last review", () => {
     await until(() => holder.state().state === "held", "the holder to take the lock back");
     expect(taker.state()).toEqual({ state: "elsewhere", projectId: "p" });
     expect(await held()).toHaveLength(1);
+  });
+
+  test("take back editing before a late withdrawal arrives still ends with this tab editing", async () => {
+    // The holder's withdrawals wait until the test delivers them.
+    const held: { listener: (m: ChannelMessage) => void; message: ChannelMessage }[] = [];
+    const captured = (channel: Channel): Channel => ({
+      ...channel,
+      subscribe: (listener) => channel.subscribe((m) => {
+        if (m.kind === "lock-withdraw") held.push({ listener, message: m });
+        else listener(m);
+      }),
+    });
+    const { holder, taker, holderStates, held: holders, lockName } = lockPair(200, captured);
+    expect(await holder.claim("p")).toBe(true);
+    expect(await taker.claim("p")).toBe(false);
+    expect(await taker.takeOver("p")).toEqual({ ok: false, error: STILL_SAVING });
+    await until(() => holderStates.includes("handed-over") && held.length > 0, "the holder to let go");
+
+    // Something else holds the lock for a moment, so Take back editing waits for it.
+    let release: () => void = () => {};
+    onCleanup(() => release());
+    await new Promise<void>((granted) => {
+      void navigator.locks.request(lockName, () => new Promise<void>((r) => {
+        release = r;
+        granted();
+      }));
+    });
+    const back = holder.takeOver("p");
+    for (const { listener, message } of held.splice(0)) listener(message);
+    await new Promise((resolve) => realTimeout(resolve, 50));
+    release();
+    expect(await back).toEqual({ ok: true, value: undefined });
+    expect(holder.state()).toEqual({ state: "held", projectId: "p" });
+    expect(await holders()).toHaveLength(1);
   });
 
   test("without indexedDB.databases(), a database deleted after an upgrade still isn't recreated for a record", async () => {
@@ -1005,6 +1040,8 @@ describe("edge cases from the last review", () => {
       summary: "Recorded the predicted address",
     })));
     expect(await bootPersistence()).toMatchObject({ ok: true, value: { id: alpha.id, name: "Alpha" } });
+    // The untitled document it left isn't saved as a project.
+    expect((await (await persistence()).listProjects()).map((p) => p.name)).toEqual(["Alpha"]);
   });
 
   function at(hash: string): void {
