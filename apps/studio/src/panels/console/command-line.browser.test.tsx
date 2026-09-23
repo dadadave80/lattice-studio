@@ -71,6 +71,24 @@ describe("command line (IR L137)", () => {
     await logged("“expotr” isn't a command. Did you mean export? Type help for commands.");
   });
 
+  test("every registered verb answers when typed bare: it runs, or says what it needs", async () => {
+    await renderConsole();
+    const verbs = listVerbs().map((v) => v.verb);
+    expect(verbs.length).toBeGreaterThan(10);
+    for (const verb of verbs) {
+      resetConsole();
+      doc.load(erc20Project());
+      await run(verb);
+      if (verb === "clear") {
+        await vi.waitFor(() => expect(logEntries()).toEqual([]));
+        continue;
+      }
+      // The echo, then at least one line from the router or the command.
+      await vi.waitFor(() => expect(texts().length, `${verb} said nothing:\n${texts().join("\n")}`).toBeGreaterThanOrEqual(2));
+      expect(texts()[0]).toBe(`› ${verb}`);
+    }
+  });
+
   test("problems lists them as lines, blockers first, each locatable", async () => {
     await renderConsole(collisionProject());
     await run("problems");

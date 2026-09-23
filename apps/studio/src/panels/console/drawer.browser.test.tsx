@@ -18,7 +18,7 @@ describe("console header (IR L132, L252)", () => {
     const toggle = page.getByRole("button", { name: "Collapse console" });
     expect(toggle.element().getAttribute("aria-expanded")).toBe("true");
     expect(document.querySelector("[data-keyctx='console']")).not.toBeNull();
-    expect(page.getByRole("textbox", { name: "Command" }).element().getAttribute("data-keyctx")).toBe("text");
+    expect(page.getByRole("textbox", { name: "Command line" }).element().getAttribute("data-keyctx")).toBe("text");
     await userEvent.click(toggle);
     expect(session.get().panes.console.open).toBe(false);
     const expand = page.getByRole("button", { name: "Expand console" });

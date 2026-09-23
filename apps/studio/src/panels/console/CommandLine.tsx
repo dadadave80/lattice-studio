@@ -6,7 +6,7 @@ import styles from "./CommandLine.module.css";
 import { verbWords } from "./definitions";
 import { completion } from "./suggest";
 
-export const COMMAND_LABEL = "Command";
+export const COMMAND_LABEL = "Command line";
 export const COMMAND_PLACEHOLDER = "place governor · route erc20 · tidy · help";
 
 /**

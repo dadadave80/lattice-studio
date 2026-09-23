@@ -64,7 +64,7 @@ describe("Export menu (spec L509-L518, IR L132)", () => {
     expect(reasonOf("Agent brief")).toBeNull();
     expect(reasonOf("Recipe JSON")).toBeNull();
     // S7b owns the project file; until it lands the item says so.
-    expect(reasonOf("Project file")).toMatch(/^Not built yet · WP-S7b$|^$/);
+    expect(reasonOf("Project file") ?? "").toMatch(/^Not built yet · WP-S7b$|^$/);
   });
 
   test("Foundry script opens the Script tab maximized; Download saves core's file byte for byte, headed as spec L508 says", async () => {

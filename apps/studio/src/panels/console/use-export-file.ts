@@ -1,11 +1,13 @@
 /**
- * The live export a code tab shows (IR L135-L136): rebuilt through the exporter's lazy chunk whenever the
- * project, the catalog or the analysis changes, with the lines that changed since the previous build. When a
- * build fails (blockers, for the script) the last good file stays, so the tab keeps showing it under its banner.
+ * The live export a code tab shows (IR L135-L136): rebuilt through the exporter's lazy chunk whenever what the
+ * export reads changes (the recipe, the project's name and deploy settings, the catalog, the analysis), with the
+ * lines that changed since the previous build. Layout edits don't rebuild it, so dragging cards stays cheap with
+ * the tab open. When a build fails (blockers, for the script) the last good file stays, so the tab keeps showing
+ * it under its banner.
  */
 import type { ExportFile } from "@lattice-studio/core";
 import { useEffect, useState } from "react";
-import { useAnalysis, useCatalog, useDocument } from "@/contracts";
+import { doc, useAnalysis, useCatalog, useDocument } from "@/contracts";
 import { recipeFile, scriptFile } from "./actions";
 import { changedLines } from "./line-diff";
 
@@ -23,15 +25,19 @@ export type ExportView = {
 const NOTHING: ExportView = { file: null, error: null, changed: new Set() };
 
 export function useExportFile(kind: CodeKind): ExportView {
-  const project = useDocument((s) => s.project);
+  const recipe = useDocument((s) => s.project.recipe);
+  const name = useDocument((s) => s.project.name);
+  const deploy = useDocument((s) => s.project.deploy);
   const catalog = useCatalog();
   const analysis = useAnalysis();
   const [view, setView] = useState<ExportView>(NOTHING);
-  const empty = project.recipe.facets.length === 0;
+  const empty = recipe.facets.length === 0;
 
   useEffect(() => {
     if (!catalog || empty) return;
     let current = true;
+    // The rest of the project (layout, provenance) doesn't reach either file.
+    const project = { ...doc.get(), recipe, name, deploy };
     const build = kind === "script" ? scriptFile({ project, catalog, analysis }) : recipeFile({ project, catalog });
     build.then(
       (result) => {
@@ -54,7 +60,7 @@ export function useExportFile(kind: CodeKind): ExportView {
     return () => {
       current = false;
     };
-  }, [kind, project, catalog, analysis, empty]);
+  }, [kind, recipe, name, deploy, catalog, analysis, empty]);
 
   return empty ? NOTHING : view;
 }
