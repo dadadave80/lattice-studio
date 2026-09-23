@@ -57,6 +57,8 @@ export type CommandArgsMap = {
   "sheet.nudge": { dir: Direction; step: "small" | "large" };
   "sheet.focusDirection": { dir: Direction };
   "sheet.addFacetHere": { at?: SheetPoint };
+  /** S6. `mode: "facets"` is Add facet here…: facets only, placed at `at` (CCR from S6). */
+  "palette.open": { mode?: "facets"; at?: SheetPoint };
   "selector.copy": { selector: Hex4; facet?: string };
   "selector.copySignature": { selector: Hex4; facet?: string };
   "selector.showOwner": { selector: Hex4 };
@@ -78,6 +80,10 @@ export type CommandArgsMap = {
   "authority.chooseMechanism": { preset?: "safe" | "governance" };
   // S5e
   "export.safe": { safe?: Address; chainId?: number };
+  /** `find <text>` selects every placed facet with a matching pin (IR L152); CCR from S5e. */
+  "console.find": { query: string };
+  /** `help [verb]`; CCR from S5e. */
+  "console.help": { verb?: string };
   // S7b
   /** No id: pick a file (⌘O, App menu Open…). */
   "project.open": { id?: string };
