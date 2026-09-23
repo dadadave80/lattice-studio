@@ -6,7 +6,7 @@ import { analyze } from "../analysis";
 import { deploymentArb, projectArb, recipeArb } from "./arbitraries";
 import { loadBuiltCatalog, loadFixtureCatalog, propertyCatalogs } from "./fixtures";
 import { HOSTILE_NAMES, hostileString, wellFormed } from "./hostile";
-import { formatJsonPath, jsonKind, jsonWith, mutationArb, pathsRelated, retyped, withExtraKey } from "./mutate";
+import { formatJsonPath, jsonKind, jsonWith, mutationArb, pathsRelated, retyped, stringSites, withBrokenString, withExtraKey } from "./mutate";
 import { checkProperty } from "./property";
 import { lexSolidity, markdownOutline, overlappingPairs, solidityShape, solidityStringBytes, tableCells } from "./shape";
 import { exportableTemplates, fillFor, filledTemplate, fitText, loadableTemplates, mapStringArgs, offlineRule, stringArgPaths } from "./templates";
@@ -125,6 +125,20 @@ describe("mutate", () => {
     expect(kinds([1]).has("array")).toBe(false);
     expect(kinds(null).has("null")).toBe(false);
     expect(kinds("x").has("string")).toBe(true);
+  });
+
+  test("stringSites lists values and keys; withBrokenString splices into one and names where a parser should point", () => {
+    const doc = { name: "ab", owners: { "0xa9059cbb": "ERC20" } };
+    expect(stringSites(doc)).toEqual([
+      { kind: "key", path: [], key: "name" },
+      { kind: "key", path: [], key: "owners" },
+      { kind: "value", path: ["name"] },
+      { kind: "key", path: ["owners"], key: "0xa9059cbb" },
+      { kind: "value", path: ["owners", "0xa9059cbb"] },
+    ]);
+    expect(withBrokenString(doc, { kind: "value", path: ["name"] }, 1, "\ud800")).toEqual({ document: { name: "a\ud800b", owners: doc.owners }, path: ["name"] });
+    const key = withBrokenString(doc, { kind: "key", path: ["owners"], key: "0xa9059cbb" }, 99, "\udc00");
+    expect(key).toEqual({ document: { name: "ab", owners: { "0xa9059cbb\udc00": "ERC20" } }, path: ["owners"] });
   });
 
   test("a mutation always changes the document", () => {

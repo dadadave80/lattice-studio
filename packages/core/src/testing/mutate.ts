@@ -104,6 +104,38 @@ export function withExtraKey(document: unknown, path: readonly JsonStep[], key: 
   return write(document, []);
 }
 
+/** A string in a document: a value at `path`, or the key `key` of the object at `path`. */
+export type StringSite = { kind: "value"; path: JsonStep[] } | { kind: "key"; path: JsonStep[]; key: string };
+
+/** Every string value and object key in `document`, depth first. */
+export function stringSites(document: unknown): StringSite[] {
+  const out: StringSite[] = [];
+  for (const path of jsonPaths(document)) {
+    const node = jsonAt(document, path);
+    if (typeof node === "string") out.push({ kind: "value", path });
+    else if (jsonKind(node) === "object") for (const key of Object.keys(node as object)) out.push({ kind: "key", path, key });
+  }
+  return out;
+}
+
+/**
+ * `document` with `broken` (a lone surrogate) spliced into one string at code unit `at` (clamped), and the path
+ * a parser should name: the value's own path, or for a key, the path of the object that holds it.
+ */
+export function withBrokenString(document: unknown, site: StringSite, at: number, broken: string): { document: unknown; path: JsonStep[] } {
+  const splice = (text: string): string => {
+    const cut = Math.min(at, text.length);
+    return `${text.slice(0, cut)}${broken}${text.slice(cut)}`;
+  };
+  if (site.kind === "value") return { document: jsonWith(document, site.path, splice(String(jsonAt(document, site.path)))), path: site.path };
+  const parent = jsonAt(document, site.path) as Record<string, unknown>;
+  const renamed: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(parent)) {
+    Object.defineProperty(renamed, key === site.key ? splice(key) : key, { value, enumerable: true, writable: true, configurable: true });
+  }
+  return { document: jsonWith(document, site.path, renamed), path: site.path };
+}
+
 /** Paths of every object in `document`. */
 export function objectPaths(document: unknown): JsonStep[][] {
   return jsonPaths(document).filter((path) => {

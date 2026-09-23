@@ -8,9 +8,18 @@ import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import {
   canonicalJson, decodeShareLink, encodeShareLink, exportProjectFile, exportRecipeJson, importFile, normalizeRecipe,
-  parseProjectFile, parseRecipe, recipeHash, type Recipe,
+  parseProjectFile, parseRecipe, recipeHash, type ParseIssue, type Recipe,
 } from "../../src";
-import { checkProperty, deploymentArb, hostileString, projectArb, propertyCatalogs, recipeArb, wellFormed } from "../../src/testing";
+import { deflateSync, strToU8 } from "fflate";
+import {
+  checkProperty, deploymentArb, formatJsonPath, hostileString, projectArb, propertyCatalogs, recipeArb, stringSites, wellFormed,
+  withBrokenString,
+} from "../../src/testing";
+
+/** A share link carrying `text` as its payload, as C8 writes it: deflate-raw, then base64url. */
+function linkOf(text: string): string {
+  return `#s=1.${Buffer.from(deflateSync(strToU8(text))).toString("base64url")}`;
+}
 
 const catalogs = propertyCatalogs();
 
@@ -118,11 +127,48 @@ for (const catalog of catalogs) {
       );
     });
 
-    // Known gap, a follow-up for C1 (and C8, whose importFile inherits it): JSON can spell a lone surrogate
-    // ("\ud800"); parseRecipe and importFile accept it, then recipeHash, analyze and encodeShareLink throw from
-    // canonicalJson. Spec L936 wants such a file refused with a path (or its text repaired to U+FFFD). A todo, not
-    // a failing test, so C1's fix doesn't turn this suite red: once it lands, write the property that such a file
-    // is refused with a path or opens into a recipe that hashes, analyzes and shares.
-    test.todo("a file holding a lone surrogate is refused with a path, or opens into a recipe that hashes, analyzes and shares", () => undefined);
+    // JSON can spell a lone surrogate ("\ud800"), which has no UTF-8 form, so hashing can't hold it (spec L936).
+    test("a lone surrogate anywhere in a recipe.json, a project file or a share link is refused at its path", () => {
+      const documents = fc.oneof(
+        recipeArb(catalog).map((recipe) => ({ target: "recipe" as const, document: JSON.parse(exportRecipeJson(recipe, catalog).text) as unknown })),
+        recipeArb(catalog).map((recipe) => {
+          const { $schema: _schema, ...rest } = JSON.parse(exportRecipeJson(recipe, catalog).text) as Recipe;
+          return { target: "link" as const, document: rest as unknown };
+        }),
+        projectArb(catalog)
+          .chain((project) => fc.tuple(fc.constant(project), fc.array(deploymentArb(project.id), { maxLength: 2 })))
+          .map(([project, deployments]) => ({ target: "project" as const, document: JSON.parse(exportProjectFile(project, deployments).text) as unknown })),
+      );
+      checkProperty(
+        `${catalog.lattice.tag}: lone surrogates refused at their path`,
+        fc.property(
+          documents.chain(({ target, document }) =>
+            fc.record({
+              target: fc.constant(target),
+              document: fc.constant(document),
+              site: fc.constantFrom(...stringSites(document)),
+              at: fc.nat({ max: 40 }),
+              broken: fc.constantFrom("\ud800", "\udbff", "\udc00", "\udfff"),
+            }),
+          ),
+          ({ target, document, site, at, broken }) => {
+            const hostile = withBrokenString(document, site, at, broken);
+            const text = JSON.stringify(hostile.document);
+            const filename = target === "project" ? "vault.lattice.json" : "recipe.json";
+            let outcome: { ok: true } | { ok: false; error: ParseIssue[] } = { ok: true };
+            expect(() => {
+              outcome = target === "link" ? decodeShareLink(linkOf(text), [catalog]) : importFile(text, filename, [catalog]);
+            }).not.toThrow();
+            if (outcome.ok) throw new Error(`a lone surrogate at ${formatJsonPath(hostile.path)} opened`);
+            const issues = (outcome as { ok: false; error: ParseIssue[] }).error;
+            expect(issues.map((issue) => issue.path)).toContain(formatJsonPath(hostile.path));
+            for (const issue of issues) {
+              expect(issue.message.trim().length).toBeGreaterThan(0);
+              if (target !== "link") expect(issue.file).toBe(filename);
+            }
+          },
+        ),
+      );
+    });
   });
 }
