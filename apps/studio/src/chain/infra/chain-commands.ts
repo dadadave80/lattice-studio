@@ -107,7 +107,7 @@ export const useAnotherRpcCommand = command({
   enabled: () => OK,
   run() {
     if (!dialogComponent("settings")) {
-      say("Note", "Settings aren't built yet · WP-S10");
+      say("Note", "Not built yet · WP-S10");
       return;
     }
     openDialog("settings", { group: "networks" });

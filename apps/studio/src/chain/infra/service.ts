@@ -17,6 +17,7 @@ import {
   type WalletAccount, type WalletConnector,
 } from "@/contracts";
 import { reportConnectionFailure } from "@/contracts/services";
+import { predict } from "@/state/prediction";
 import { accountBalance, accountKind } from "./account";
 import { chainInfo, chainName, findChain, findKnownChain, pickerChains, type ChainSpec } from "./chains";
 import type { ChainClient, Clients } from "./clients";
@@ -32,6 +33,11 @@ export type ChainRuntime = ChainService & {
   publicClient(chainId: number): ChainClient;
   /** wagmi's config, for the deploy engine's wallet actions (send, sendCalls, capabilities). Null without a wallet. */
   readonly wagmi: Config | null;
+  /**
+   * The deploy's gas estimate on a chain (S8c, after simulating), or null when it no longer applies. It lands in
+   * the chain's `ChainState.gasEstimate`, so NET-06 weighs it against the cap.
+   */
+  noteEstimate(chainId: number, gas: bigint | null): void;
   /** Stops following the stores and the wallet. */
   dispose(): void;
 };
@@ -70,6 +76,8 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   const readiness = new Map<number, ChainReadiness>();
   const readinessListeners = new Set<(chainId: number) => void>();
   const cache = new Map<number, CacheEntry>();
+  /** S8c's gas estimate per chain, decimal. */
+  const estimates = new Map<number, string>();
   const inflight = new Map<string, Promise<Result<ProbeResult, string>>>();
   const accountListeners = new Set<(account: WalletAccount | null) => void>();
   const connectorListeners = new Set<(connectors: readonly WalletConnector[]) => void>();
@@ -96,9 +104,34 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   const cacheKey = (chain: ChainSpec, catalog: Catalog): string => `${catalog.hash}|${clients.urls(chain).join(" ")}`;
 
   /** The state a caller sees: CreateX only on the CreateX path, every address asked about, online now. */
+  /** The diamond's predicted address on `chainId` for the connected account (S1's `predict`), lowercase. */
+  const predictedAddress = (chainId: number, path: DeployPath): Address | null => {
+    const prediction = predict({
+      deploy: { ...doc.get().deploy, path },
+      catalog: getCatalog(),
+      chainId,
+      account: account ? { address: account.address } : null,
+    });
+    return prediction.status === "ready" ? (prediction.address.toLowerCase() as Address) : null;
+  };
+
+  /**
+   * The state a caller sees: CreateX only on the CreateX path, every address asked about, whether the predicted
+   * address already has code (NET-05), the deploy's gas estimate when S8c noted one (NET-06), online now.
+   */
   const compose = (entry: CacheEntry, path: DeployPath): ChainState => {
     const { createx, ...rest } = entry.base;
-    return { ...rest, ...(path === "createx" ? { createx } : {}), online: isOnline(), codeAt: { ...entry.codeAt } };
+    const predicted = predictedAddress(rest.chainId, path);
+    const code = predicted === null ? undefined : entry.codeAt[predicted];
+    const estimate = estimates.get(rest.chainId);
+    return {
+      ...rest,
+      ...(path === "createx" ? { createx } : {}),
+      online: isOnline(),
+      codeAt: { ...entry.codeAt },
+      ...(code !== undefined ? { predictedHasCode: code !== "0x" } : {}),
+      ...(estimate !== undefined ? { gasEstimate: estimate } : {}),
+    };
   };
 
   const publish = (chainId: number, state: ChainState): ChainState => {
@@ -118,7 +151,9 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     const catalog = getCatalog();
     if (!catalog) return { ok: false, error: "The catalog hasn't loaded yet." };
     const path = probeOptions.path ?? doc.get().deploy.path;
-    const asked = (probeOptions.codeAt ?? []).map((address) => address.toLowerCase() as Address);
+    // The predicted address is always read, so NET-05 knows whether it's taken.
+    const predicted = predictedAddress(chainId, path);
+    const asked = [...(probeOptions.codeAt ?? []), ...(predicted ? [predicted] : [])].map((address) => address.toLowerCase() as Address);
     const key = cacheKey(chain, catalog);
     const cached = cache.get(chainId);
     const client = clients.get(chain);
@@ -195,8 +230,11 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   };
 
   const follow = (state: WalletState | null): void => {
+    const moved = account?.address !== state?.address;
     account = state ? { address: state.address, chainId: state.chainId, connector: state.connector } : null;
     emitAccount();
+    // A new account predicts a new address: read whether it's free.
+    if (moved) reprobe(selected());
     if (state) void enrich(state);
   };
 
@@ -259,7 +297,8 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
       if (state.chainId !== previous.chainId) reprobe(state.chainId);
     }),
     doc.subscribe((state, previous) => {
-      if (state.project.deploy.path !== previous.project.deploy.path) reprobe(selected());
+      // Path, salt entropy or scope: CreateX's probe, and a new predicted address to check.
+      if (state.project.deploy !== previous.project.deploy) reprobe(selected());
     }),
     subscribeCatalog(() => reprobe(selected())),
     subscribeOnline((online) => {
@@ -371,6 +410,12 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
       return wallet.switchChain(chainId, chain.rpc.default);
     },
     publicClient: client,
+    noteEstimate(chainId, gas) {
+      if (gas === null) estimates.delete(chainId);
+      else estimates.set(chainId, gas.toString());
+      const entry = cache.get(chainId);
+      if (entry && readiness.get(chainId)?.status === "ready") publish(chainId, compose(entry, doc.get().deploy.path));
+    },
     wagmi: wallet?.config ?? null,
     dispose() {
       disposed = true;

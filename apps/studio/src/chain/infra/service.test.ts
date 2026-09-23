@@ -8,6 +8,7 @@ import { isolateContracts } from "@/contracts/test-support";
 import { BASE_SEPOLIA, SEPOLIA } from "./chains";
 import { createClients } from "./clients";
 import { CHAIN_CHECKS_NEED_CONNECTION } from "./copy";
+import { predict } from "@/state/prediction";
 import { createChainService, type ChainRuntime } from "./service";
 import { fixtureCatalog, healthyAccounts, listedRecords, mockChain, type MockChain } from "./testing";
 import type { Wallet, WalletState } from "./wallet";
@@ -295,6 +296,39 @@ describe("the wallet account", () => {
     expect(seen[0]).toBe(`${ME}|-|-|-`);
     expect(seen.at(-1)).toBe(`${ME}|eoa|${10n ** 16n}|me.eth`);
     expect(service.account()).toMatchObject({ address: ME, chainId: SEPOLIA.id, connector: "io.metamask", kind: "eoa" });
+  });
+
+  test("with an account, the predicted address is read: NET-05's `predictedHasCode`", async () => {
+    const wallet = fakeWallet({ address: ME, chainId: SEPOLIA.id, connector: "io.metamask" });
+    start(wallet);
+    session.set({ chainId: SEPOLIA.id });
+    await settle();
+    const free = service.readiness(SEPOLIA.id);
+    expect(free.status === "ready" && free.state.predictedHasCode).toBe(false);
+    const predicted = predict({ deploy: doc.get().deploy, catalog, chainId: SEPOLIA.id, account: { address: ME } });
+    if (predicted.status !== "ready") throw new Error("predicts");
+    const sepolia = chains[SEPOLIA.id];
+    if (sepolia?.options.accounts) sepolia.options.accounts[predicted.address.toLowerCase()] = { code: "0x60" };
+    await service.probe(SEPOLIA.id, { refresh: true });
+    const taken = service.readiness(SEPOLIA.id);
+    expect(taken.status === "ready" && taken.state.predictedHasCode).toBe(true);
+    // A new salt predicts a new, free address.
+    doc.record("Use a new salt", (p) => ({ project: { ...p, deploy: { ...p.deploy, entropy: `0x${"ee".repeat(11)}` } }, changed: true, summary: "" }));
+    await settle();
+    const fresh = service.readiness(SEPOLIA.id);
+    expect(fresh.status === "ready" && fresh.state.predictedHasCode).toBe(false);
+  });
+
+  test("a gas estimate from the deploy engine lands in the chain state", async () => {
+    start();
+    session.set({ chainId: SEPOLIA.id });
+    await settle();
+    service.noteEstimate(SEPOLIA.id, 17_200_000n);
+    const noted = service.readiness(SEPOLIA.id);
+    expect(noted.status === "ready" && noted.state.gasEstimate).toBe("17200000");
+    service.noteEstimate(SEPOLIA.id, null);
+    const cleared = service.readiness(SEPOLIA.id);
+    expect(cleared.status === "ready" && cleared.state.gasEstimate).toBeUndefined();
   });
 
   test("a Safe reads as a Safe", async () => {

@@ -104,7 +104,7 @@ describe("chain.retryRead", () => {
 describe("chain.useAnotherRpc", () => {
   test("opens Settings → Networks, or says Settings aren't built yet", async () => {
     await runCommand({ id: "chain.useAnotherRpc" }, "button");
-    expect(lines()).toContain("Note: Settings aren't built yet · WP-S10");
+    expect(lines()).toContain("Note: Not built yet · WP-S10");
     const dispose = registerDialog("settings", () => null);
     await runCommand({ id: "chain.useAnotherRpc" }, "button");
     expect(session.get().dialogs.at(-1)).toMatchObject({ id: "settings", props: { group: "networks" } });
