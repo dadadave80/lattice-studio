@@ -6,6 +6,7 @@
 import {
   formatParseIssue, parseProject, toChecksum, type Deployment, type Project, type Result,
 } from "@lattice-studio/core";
+import type { Viewport } from "@/contracts";
 import { META, type StudioDb, type TrashRecord } from "./db";
 
 /** Recently deleted keeps a project this long (spec L502). */
@@ -80,18 +81,59 @@ export async function listProjects(db: StudioDb, unreadable?: Unreadable): Promi
   return out.sort((a, b) => b.savedAt - a.savedAt || a.name.localeCompare(b.name));
 }
 
-/** Saves the open project and remembers it as the last one. A failed commit rejects with the transaction's error. */
-export async function writeProject(db: StudioDb, project: Project, savedAt: number): Promise<void> {
-  const tx = db.transaction(["projects", "meta"], "readwrite");
+/**
+ * What a save found: written, or not written because the stored project was deleted meanwhile (by another
+ * tab: moved to Recently deleted, or gone for good or cleared), which the writer must not undo.
+ */
+export type WriteOutcome = "written" | "trashed" | "gone";
+
+export type WriteOptions = {
+  /** The writer knows the project was stored: if it's missing now, someone deleted it; don't bring it back. */
+  mustExist: boolean;
+  /** Viewports to write in the same transaction. */
+  viewports?: readonly (readonly [string, Viewport])[];
+};
+
+/**
+ * Saves the open project (and pending viewports) and remembers it as the last one. The transaction and its
+ * first requests start synchronously, before this function first yields, so a save started in `pagehide` is
+ * already queued when the handler returns. A failed commit rejects with the transaction's error.
+ */
+export async function writeProject(
+  db: StudioDb,
+  project: Project,
+  savedAt: number,
+  options: WriteOptions,
+): Promise<WriteOutcome> {
+  const tx = db.transaction(["projects", "meta", "trash"], "readwrite");
+  const projects = tx.objectStore("projects");
+  const meta = tx.objectStore("meta");
+  const requests: Promise<unknown>[] = (options.viewports ?? []).map(([id, viewport]) => meta.put(viewport, META.viewport(id)));
+  let outcome: Promise<WriteOutcome>;
+  if (!options.mustExist) {
+    requests.push(projects.put({ id: project.id, savedAt, project }), meta.put(project.id, META.lastProject));
+    outcome = Promise.resolve("written");
+  } else {
+    const stored = projects.getKey(project.id);
+    const trashed = tx.objectStore("trash").getKey(project.id);
+    outcome = stored.then(async (key): Promise<WriteOutcome> => {
+      if (key === undefined) return (await trashed) === undefined ? "gone" : "trashed";
+      await Promise.all([projects.put({ id: project.id, savedAt, project }), meta.put(project.id, META.lastProject)]);
+      return "written";
+    });
+  }
   try {
-    await Promise.all([
-      tx.objectStore("projects").put({ id: project.id, savedAt, project }),
-      tx.objectStore("meta").put(project.id, META.lastProject),
-      tx.done,
-    ]);
+    const [result] = await Promise.all([outcome, ...requests, tx.done]);
+    return result;
   } catch (error) {
     throw tx.error ?? error;
   }
+}
+
+/** Writes pending viewports on their own (nothing else to save). Starts synchronously, like `writeProject`. */
+export async function writeViewports(db: StudioDb, viewports: readonly (readonly [string, Viewport])[]): Promise<void> {
+  const tx = db.transaction("meta", "readwrite");
+  await Promise.all([...viewports.map(([id, viewport]) => tx.store.put(viewport, META.viewport(id))), tx.done]);
 }
 
 export function listDeployments(db: StudioDb, projectId: string): Promise<Deployment[]> {
@@ -156,8 +198,14 @@ export async function trashProject(db: StudioDb, id: string, deletedAt: number):
   return { ok: true, value: countRecords(records) };
 }
 
-/** Puts a project back from Recently deleted; records whose key was reused meanwhile stay as they are. */
-export async function restoreProject(db: StudioDb, id: string): Promise<Result<Project, string>> {
+/** What a restore brought back. `skipped` records kept the address another project's record holds now. */
+export type Restored = { project: Project; restored: number; skipped: number };
+
+/**
+ * Puts a project back from Recently deleted. Records whose `[chainId, address]` was reused meanwhile stay as
+ * they are (and are counted). Refuses when a project with this id is stored again, so the newer copy wins.
+ */
+export async function restoreProject(db: StudioDb, id: string): Promise<Result<Restored, string>> {
   const tx = db.transaction(["projects", "deployments", "trash"], "readwrite");
   const entry = await tx.objectStore("trash").get(id);
   if (!entry) {
@@ -169,11 +217,15 @@ export async function restoreProject(db: StudioDb, id: string): Promise<Result<P
     await tx.done;
     return project;
   }
+  if ((await tx.objectStore("projects").getKey(id)) !== undefined) {
+    await tx.done;
+    return { ok: false, error: "A newer copy of this project is already in your projects. Recently deleted keeps this one." };
+  }
   await tx.objectStore("projects").put({ id, savedAt: entry.savedAt, project: entry.project });
-  await addRecords(tx.objectStore("deployments"), entry.deployments);
+  const counts = await addRecords(tx.objectStore("deployments"), entry.deployments);
   await tx.objectStore("trash").delete(id);
   await tx.done;
-  return { ok: true, value: project.value };
+  return { ok: true, value: { project: project.value, restored: counts.added, skipped: counts.skipped } };
 }
 
 /** Deletes a project in Recently deleted for good. Resolves what went with it. */
@@ -190,13 +242,18 @@ export async function deleteForGood(db: StudioDb, id: string): Promise<Result<Re
   return { ok: true, value: countRecords(entry.deployments) };
 }
 
-/** Deletes what's been in Recently deleted for 30 days or more. Resolves the ids that went. */
+/**
+ * Deletes the projects that have been in Recently deleted for 30 days or more. Deployment records are never
+ * deleted silently (spec L292): every record whose status isn't `failed` goes back to the deployments store,
+ * where it stays (listed by its project id, exported, counted by Clear data). Resolves the ids that went.
+ */
 export async function purgeTrash(db: StudioDb, now: number): Promise<string[]> {
-  const tx = db.transaction(["trash", "meta"], "readwrite");
+  const tx = db.transaction(["trash", "meta", "deployments"], "readwrite");
   const gone: string[] = [];
   for (const entry of await tx.objectStore("trash").getAll()) {
     if (now - entry.deletedAt < TRASH_MS) continue;
     gone.push(entry.id);
+    await addRecords(tx.objectStore("deployments"), entry.deployments.filter((d) => d.status !== "failed"));
     await tx.objectStore("trash").delete(entry.id);
     await tx.objectStore("meta").delete(META.viewport(entry.id));
   }
@@ -236,6 +293,39 @@ export async function clearDataCounts(db: StudioDb): Promise<ClearDataCounts> {
   ]);
   const all = [...deployments, ...trash.flatMap((entry) => entry.deployments)];
   return { projects, trashed: trash.length, ...countRecords(all) };
+}
+
+/** Everything stored, for Export all: nothing Clear data would delete is left out. */
+export type StoredEntry =
+  /** A project that reads, live or in Recently deleted, with its records. */
+  | { kind: "project"; project: Project; deployments: Deployment[] }
+  /** A project that doesn't read (a newer schema): exported as stored. */
+  | { kind: "raw"; id: string; project: unknown; deployments: Deployment[] }
+  /** Records whose project is gone (expired from Recently deleted), by project id. */
+  | { kind: "orphans"; projectId: string; deployments: Deployment[] };
+
+export async function listEverything(db: StudioDb, unreadable?: Unreadable): Promise<StoredEntry[]> {
+  const [projects, trash, deployments] = await Promise.all([
+    db.getAll("projects"), db.getAll("trash"), db.getAll("deployments"),
+  ]);
+  const byProject = new Map<string, Deployment[]>();
+  for (const d of deployments) byProject.set(d.projectId, [...(byProject.get(d.projectId) ?? []), d]);
+  const out: StoredEntry[] = [];
+  const add = (id: string, value: unknown, records: Deployment[]) => {
+    const project = readProjectValue(value);
+    if (project.ok) out.push({ kind: "project", project: project.value, deployments: records });
+    else {
+      unreadable?.(id, project.error);
+      out.push({ kind: "raw", id, project: value, deployments: records });
+    }
+  };
+  for (const record of projects) {
+    add(record.id, record.project, byProject.get(record.id) ?? []);
+    byProject.delete(record.id);
+  }
+  for (const entry of trash) add(entry.id, entry.project, entry.deployments);
+  for (const [projectId, records] of byProject) out.push({ kind: "orphans", projectId, deployments: records });
+  return out;
 }
 
 /** Empties every store (Clear data). */

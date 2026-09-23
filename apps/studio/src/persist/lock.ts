@@ -1,7 +1,8 @@
 /**
  * The edit lock, one per project (spec L505, Web Locks). The first tab on a project holds it and saves; a
- * second tab opens read-only. **Take over editing** asks the holder over the channel to flush its pending save
- * and let go; a holder that doesn't answer within `stealAfter` ms (a frozen tab) has the lock stolen.
+ * second tab opens read-only. **Take over editing** asks the holder over the channel; the holder answers at
+ * once (`lock-ack`), saves until nothing is pending, then lets go. Only a holder that doesn't answer within
+ * `stealAfter` ms (a frozen tab) has the lock stolen; a slow save is waited for.
  */
 import type { Channel } from "./channel";
 
@@ -22,9 +23,11 @@ export type EditLockOptions = {
   locks: LockManager | null;
   channel: Channel;
   peerId: string;
-  /** Runs before this tab lets go for another: flush the pending save. */
+  /** Runs before this tab lets go for another: save until nothing is pending. */
   beforeHandover(projectId: string): Promise<void>;
   onChange(state: EditLockState): void;
+  /** The browser refused a lock request for a reason other than a steal: this tab edits without one. */
+  onError(error: unknown): void;
   /** Ms to wait for the holder's answer before stealing. */
   stealAfter?: number;
 };
@@ -35,7 +38,7 @@ export type EditLock = {
   claim(projectId: string): Promise<boolean>;
   /** Asks the holder to hand over, then holds. Resolves true once held. */
   takeOver(projectId: string): Promise<boolean>;
-  /** Lets go quietly (another project opened, data cleared). */
+  /** Lets go quietly (another project opened, the database closed). */
   release(): void;
   dispose(): void;
 };
@@ -54,6 +57,8 @@ export function createEditLock(options: EditLockOptions): EditLock {
   let holding: { projectId: string; letGo: () => void } | null = null;
   /** Bumped on every claim, take over or release, so a late grant for an old request lets go at once. */
   let epoch = 0;
+  /** Take overs waiting for the holder's answer, by project id. */
+  const awaitingAck = new Map<string, () => void>();
 
   const set = (next: EditLockState) => {
     current = next;
@@ -61,22 +66,23 @@ export function createEditLock(options: EditLockOptions): EditLock {
   };
   const lockName = (projectId: string) => `${options.prefix}:edit:${projectId}`;
 
-  /** Requests the lock; `granted` runs while it's held. Resolves whether it was granted. */
+  /** Holds without a Web Lock: no Web Locks, or the browser refused the request. */
+  const holdUnlocked = (projectId: string, mine: number): boolean => {
+    if (mine !== epoch) return false;
+    holding = { projectId, letGo: () => {} };
+    set({ state: "held", projectId });
+    return true;
+  };
+
+  /** Requests the lock; resolves whether it was granted. Rejects with AbortError when `signal` aborts first. */
   const hold = (projectId: string, request: LockOptions, mine: number): Promise<boolean> => {
-    if (!locks) {
-      if (mine !== epoch) return Promise.resolve(false);
-      holding = { projectId, letGo: () => {} };
-      set({ state: "held", projectId });
-      return Promise.resolve(true);
-    }
+    if (!locks) return Promise.resolve(holdUnlocked(projectId, mine));
     return new Promise<boolean>((resolve, reject) => {
+      let settled = false;
       locks
         .request(lockName(projectId), request, (lock) => {
-          if (!lock) {
-            resolve(false);
-            return undefined;
-          }
-          if (mine !== epoch) {
+          settled = true;
+          if (!lock || mine !== epoch) {
             resolve(false);
             return undefined;
           }
@@ -87,13 +93,19 @@ export function createEditLock(options: EditLockOptions): EditLock {
           });
         })
         .catch((error: unknown) => {
-          // Stolen by a tab that couldn't reach this one: the lock is gone without a flush.
-          if (isAbort(error) && holding?.projectId === projectId) {
-            holding = null;
-            set({ state: "handed-over", projectId });
+          if (isAbort(error)) {
+            // Stolen by a tab that couldn't reach this one: the lock is gone without a save.
+            if (settled && holding?.projectId === projectId) {
+              holding = null;
+              set({ state: "handed-over", projectId });
+              return;
+            }
+            reject(error);
             return;
           }
-          reject(error);
+          // The browser refused the request itself: edit without coordination rather than never save.
+          options.onError(error);
+          if (!settled) resolve(holdUnlocked(projectId, mine));
         });
     });
   };
@@ -105,10 +117,16 @@ export function createEditLock(options: EditLockOptions): EditLock {
   };
 
   const stopListening = channel.subscribe((message) => {
-    if (message.kind !== "lock-request" || message.from === peerId) return;
+    if (message.from === peerId) return;
+    if (message.kind === "lock-ack" && message.to === peerId) {
+      awaitingAck.get(message.id)?.();
+      return;
+    }
+    if (message.kind !== "lock-request") return;
     const held = holding;
     if (!held || held.projectId !== message.id) return;
     const projectId = held.projectId;
+    channel.post({ kind: "lock-ack", from: peerId, id: projectId, to: message.from });
     void options
       .beforeHandover(projectId)
       .catch(() => {})
@@ -117,7 +135,6 @@ export function createEditLock(options: EditLockOptions): EditLock {
         letGo();
         epoch += 1;
         set({ state: "handed-over", projectId });
-        channel.post({ kind: "lock-released", from: peerId, id: projectId, to: message.from });
       });
   });
 
@@ -137,10 +154,16 @@ export function createEditLock(options: EditLockOptions): EditLock {
       letGo();
       epoch += 1;
       const mine = epoch;
-      channel.post({ kind: "lock-request", from: peerId, id: projectId });
-      if (!locks) return hold(projectId, {}, mine);
+      if (!locks) return holdUnlocked(projectId, mine);
       const patience = new AbortController();
-      const timer = setTimeout(() => patience.abort(), stealAfter);
+      let answered = false;
+      const timer = setTimeout(() => {
+        if (!answered) patience.abort();
+      }, stealAfter);
+      awaitingAck.set(projectId, () => {
+        answered = true;
+      });
+      channel.post({ kind: "lock-request", from: peerId, id: projectId });
       try {
         return await hold(projectId, { signal: patience.signal }, mine);
       } catch (error) {
@@ -148,6 +171,7 @@ export function createEditLock(options: EditLockOptions): EditLock {
         return hold(projectId, { steal: true }, mine);
       } finally {
         clearTimeout(timer);
+        awaitingAck.delete(projectId);
       }
     },
     release() {

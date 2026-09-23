@@ -10,12 +10,15 @@ export type ChannelMessage =
   | { kind: "change"; from: string; id: string; project: Project }
   /** Deployment records of `projectId` were written. */
   | { kind: "deployments"; from: string; projectId: string }
-  /** `from` asks the holder of project `id`'s edit lock to flush and hand it over. */
+  /** `from` asks the holder of project `id`'s edit lock to save and hand it over. */
   | { kind: "lock-request"; from: string; id: string }
-  /** The holder flushed its save and let go of project `id`'s lock for `to`. */
-  | { kind: "lock-released"; from: string; id: string; to: string }
-  /** Projects were deleted, restored or cleared elsewhere. */
-  | { kind: "projects"; from: string };
+  /** The holder heard `to`'s request and is saving before it lets go: wait, don't steal. */
+  | { kind: "lock-ack"; from: string; id: string; to: string }
+  /**
+   * The projects list changed in another tab. `trashed` went to Recently deleted, `restored` came back, and
+   * `cleared` means every project went (Clear data): a tab holding one of them stops writing it.
+   */
+  | { kind: "projects"; from: string; trashed?: string[]; restored?: string[]; gone?: string[]; cleared?: true };
 
 export type Channel = {
   post(message: ChannelMessage): void;

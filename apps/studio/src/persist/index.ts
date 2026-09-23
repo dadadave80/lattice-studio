@@ -20,7 +20,7 @@ export type { EditLockState } from "./lock";
 export type {
   DocPort, ExplicitSave, ImportResult, Persistence, PersistenceOptions, StorageInfo, StoragePort,
 } from "./persistence";
-export type { ClearDataCounts, ProjectSummary, RecordCounts, TrashSummary } from "./records";
+export type { ClearDataCounts, ProjectSummary, RecordCounts, Restored, TrashSummary } from "./records";
 
 /** Writes the pending autosave now (Save and reload, spec L605). */
 export async function flushPendingSave(): Promise<void> {
