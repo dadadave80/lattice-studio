@@ -1,6 +1,6 @@
 import type { Address, ProjectStatus } from "@lattice-studio/core";
 import { formatAddress, formatProblemSummary, recipeStats } from "@lattice-studio/core";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   chainService, commandRef, env, now, useAnalysis, useCatalog, useDeployState, useDocument, useOnline, type DeployState,
 } from "@/contracts";
@@ -207,7 +207,7 @@ function FullBlock({ facts, collapse }: { facts: Facts; collapse: () => void }) 
         <span id={titleId} className={styles.projectName}>
           {name}
         </span>
-        <IconButton icon="chevron-down" label="Collapse title block" size="small" aria-expanded onClick={collapse} />
+        <IconButton icon="chevron-down" label="Collapse title block" size="small" aria-expanded data-title-toggle="" onClick={collapse} />
       </div>
       <div className={styles.cell}>
         <ChainPathPicker />
@@ -252,7 +252,9 @@ function CollapsedBlock({ facts, expand }: { facts: Facts; expand: () => void })
       <Stamp stamp={stamp} />
       <AddressView line={address} short />
       <DeployAction again={status.deployAgain} empty={empty} phase={deploy.phase} size="small" />
-      <IconButton icon="chevron-up" label="Expand title block" size="small" aria-expanded={false} onClick={expand} />
+      <IconButton
+        icon="chevron-up" label="Expand title block" size="small" aria-expanded={false} data-title-toggle="" onClick={expand}
+      />
     </div>
   );
 }
@@ -277,15 +279,24 @@ export function TitleBlockContent({ form: forced }: { form?: TitleBlockForm }) {
   const tier = useLayoutTier();
   const [collapsed, setCollapsed] = useState(remembered);
   const facts = useTitleBlockFacts();
+  const root = useRef<HTMLElement>(null);
+  const toggled = useRef(false);
   const setForm = (next: boolean) => {
     remembered = next;
+    toggled.current = true;
     setCollapsed(next);
   };
+  // The toggle is a new button in the other form: focus follows it, so the keyboard never loses its place.
+  useLayoutEffect(() => {
+    if (!toggled.current) return;
+    toggled.current = false;
+    root.current?.querySelector<HTMLElement>("[data-title-toggle]")?.focus();
+  }, [collapsed]);
   const form: TitleBlockForm | null =
     forced ?? (tier === "phone" ? null : tier === "narrow" ? "strip" : collapsed ? "collapsed" : "full");
   if (form === null) return null;
   return (
-    <section className={styles.titleBlock} aria-label="Title block" data-form={form} data-chrome="title-block">
+    <section ref={root} className={styles.titleBlock} aria-label="Title block" data-form={form} data-chrome="title-block">
       {form === "full" ? <FullBlock facts={facts} collapse={() => setForm(true)} /> : null}
       {form === "collapsed" ? <CollapsedBlock facts={facts} expand={() => setForm(false)} /> : null}
       {form === "strip" ? <StripBlock facts={facts} /> : null}
