@@ -2,21 +2,20 @@
  * S8b's commands (contracts §5.3): open the deploy review (Deploy…, ⌘/Ctrl+Enter, the palette, `deploy [chain]`),
  * Deploy again… (Flow 13), and the review's own controls: Use a new salt, the path, the CreateX scope, Preview for
  * another account…, Copy address, Remove facets…, Download Transaction Builder batch and Choose another chain.
- * Light: in the entry chunk, like every `commands.ts`. The review itself and the Safe batch load lazily.
+ *
+ * In the entry chunk, like every `commands.ts`, so only what every surface needs before anything loads lives here:
+ * ids, titles, keys, console parsing and `enabled` with its reasons. What they do loads on the first run
+ * (`command-runs.ts`), and the review itself is a lazy dialog (spec L822).
  */
-import type { Address, CommandRef, DeployPath, Problem, Scope } from "@lattice-studio/core";
-import { formatAddress, isAddress, newEntropy, toChecksum } from "@lattice-studio/core";
-import {
-  announce, command, commandRef, defineCommands, deployState, doc, env, listDeployments, log, openDialog,
-  randomBytes, runCommand, session, type CommandArgsOf, type CommandContext, type Enablement,
-} from "@/contracts";
-import { catalogDeployBlock } from "@/chain/infra";
+import type { CommandRef, Problem } from "@lattice-studio/core";
+import { isAddress } from "@lattice-studio/core";
+import { command, defineCommands, env, type CommandArgsOf, type CommandContext, type Enablement } from "@/contracts";
 import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra/chains";
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
-import { predict, prediction } from "@/state";
-import { copyText } from "@/ui/copy/copy-text";
-import { DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, WAITING_FOR_SAFE, pathName, resolveBlockers, tickFirst } from "./entry-copy";
-import { requestPickerFocus, setPreview } from "./review-state";
+import { prediction } from "@/state";
+import {
+  DEPLOY_NEEDS_CONNECTION, FIXTURE_CATALOG, SCOPE_TITLES, WAITING_FOR_SAFE, resolveBlockers, tickFirst,
+} from "./entry-copy";
 
 const OK: Enablement = { ok: true };
 const CATALOG_LOADING = "The catalog hasn't loaded yet";
@@ -25,9 +24,9 @@ function no(reason: string, fix?: CommandRef): Enablement {
   return fix ? { ok: false, reason, fix } : { ok: false, reason };
 }
 
-function say(text: string, tag: "Note" | "Deploy" | "Error" = "Note"): void {
-  log({ tag, text });
-  announce(text, tag === "Error" ? { politeness: "assertive" } : {});
+/** The run half of each command, loaded on first use. */
+function runs(): Promise<typeof import("./lazy")> {
+  return import("./lazy");
 }
 
 function blockers(ctx: CommandContext): Problem[] {
@@ -38,47 +37,22 @@ function names(): string[] {
   return pickerChains(env.e2e).map((chain) => chain.name);
 }
 
-/** Opens the review, or brings it to its progress while a deploy is in flight (IR L207). */
-export function openReview(): void {
-  const open = session.get().dialogs.some((d) => d.id === "deploy-review");
-  if (open) {
-    say("The deploy review is already open.");
-    return;
-  }
-  openDialog("deploy-review", IN_FLIGHT_PHASES.has(deployState().phase) ? { at: "progress" } : { at: "review" });
-}
-
-/** What stops the review from opening at all: offline, the catalog, a fixture catalog (contracts §4). */
+/**
+ * What stops the review from opening at all: offline, the catalog, a fixture catalog (contracts §4, the same test
+ * as S8a's `catalogDeployBlock`, kept here so its module stays out of the entry).
+ */
 function openBlock(ctx: CommandContext): string | null {
   if (!ctx.online) return DEPLOY_NEEDS_CONNECTION;
   if (!ctx.catalog) return CATALOG_LOADING;
-  return catalogDeployBlock(ctx.catalog);
+  const tag = ctx.catalog.lattice.tag;
+  return tag === "fixture" || tag.startsWith("fixture-") ? FIXTURE_CATALOG : null;
 }
 
 function readOnly(ctx: CommandContext): Enablement | null {
   return ctx.session.readOnly === null ? null : no(ctx.session.readOnly);
 }
 
-/** Draws new salt entropy through `doc.record` (no undo step, contracts §5.1). False when the document refused. */
-function drawEntropy(label: string): boolean {
-  const entropy = newEntropy(randomBytes);
-  const result = doc.record(label, (project) => ({
-    project: { ...project, deploy: { ...project.deploy, entropy } },
-    changed: true,
-    summary: label,
-  }));
-  return result.changed;
-}
-
-/** "this diamond would deploy to 0x…" after a salt, path or scope change, or nothing to say without a wallet. */
-function whereNow(): string {
-  const p = prediction();
-  return p.status === "ready" ? ` This diamond would deploy to ${p.address}.` : "";
-}
-
-type OpenArgs = CommandArgsOf<"deploy.open">;
-
-const open = command<OpenArgs>({
+const open = command<CommandArgsOf<"deploy.open">>({
   id: "deploy.open",
   title: () => "Deploy…",
   category: "Deploy",
@@ -109,18 +83,7 @@ const open = command<OpenArgs>({
     }
     return OK;
   },
-  async run(ctx, args) {
-    const first = blockers(ctx)[0];
-    if (first) {
-      announce(first.message);
-      await runCommand({ id: "problem.focus", args: { problemId: first.id } }, "keys");
-      return;
-    }
-    if (typeof args.chainId === "number" && args.chainId !== ctx.session.chainId) {
-      await runCommand(commandRef("chain.select", { chainId: args.chainId }), "api");
-    }
-    openReview();
-  },
+  run: async (ctx, args) => (await runs()).runOpen(ctx, typeof args.chainId === "number" ? args.chainId : undefined),
 });
 
 const again = command({
@@ -136,18 +99,7 @@ const again = command({
     if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
     return readOnly(ctx) ?? OK;
   },
-  async run(ctx) {
-    // Flow 13, spec L286: only Deploy again after a confirmed deploy draws new entropy; "This diamond" follows it.
-    const records = await listDeployments(ctx.project.id);
-    // "confirmed" covers verified and live records too: Deployment.status has no "live" (core model/project.ts).
-    if (records.some((d) => d.status === "confirmed")) {
-      if (!drawEntropy("Drew a new salt for a new diamond")) return;
-      say(`Drew a new salt for a new diamond.${whereNow()}`);
-    } else {
-      say("Nothing is live yet, so the salt stays as it is.");
-    }
-    openReview();
-  },
+  run: async (ctx) => (await runs()).runAgain(ctx),
 });
 
 const newSalt = command({
@@ -156,10 +108,7 @@ const newSalt = command({
   category: "Deploy",
   palette: true,
   enabled: (ctx) => readOnly(ctx) ?? OK,
-  run() {
-    if (!drawEntropy("Drew a new salt")) return;
-    say(`Drew a new salt.${whereNow()}`);
-  },
+  run: async () => (await runs()).runNewSalt(),
 });
 
 const usePath = command<CommandArgsOf<"deploy.usePath">>({
@@ -171,23 +120,8 @@ const usePath = command<CommandArgsOf<"deploy.usePath">>({
     if (path !== "factory" && path !== "createx") return no("Name a path: factory or createx");
     return readOnly(ctx) ?? OK;
   },
-  run(ctx, { path }) {
-    const target: DeployPath = path;
-    if (ctx.project.deploy.path === target) {
-      say(`The diamond already deploys through ${pathName(target)}.`);
-      return;
-    }
-    const label = `Deploy through ${pathName(target)}`;
-    const result = doc.record(label, (project) => ({
-      project: { ...project, deploy: { ...project.deploy, path: target } },
-      changed: true,
-      summary: label,
-    }));
-    if (result.changed) say(`The diamond deploys through ${target === "createx" ? "CreateX CREATE3" : "LatticeFactory"} now.${whereNow()}`);
-  },
+  run: async (ctx, { path }) => (await runs()).runUsePath(ctx, path),
 });
-
-const SCOPE_TITLES: Record<Scope, string> = { "every-chain": "Same address on every chain", "this-chain": "This chain only" };
 
 const setScope = command<CommandArgsOf<"deploy.setScope">>({
   id: "deploy.setScope",
@@ -199,20 +133,7 @@ const setScope = command<CommandArgsOf<"deploy.setScope">>({
     if (ctx.project.deploy.path !== "createx") return no("The scope applies only on the CreateX path");
     return readOnly(ctx) ?? OK;
   },
-  run(ctx, { scope }) {
-    const target: Scope = scope;
-    if (ctx.project.deploy.scope === target) {
-      say(`The salt's scope is already ${SCOPE_TITLES[target].toLowerCase()}.`);
-      return;
-    }
-    const label = SCOPE_TITLES[target];
-    const result = doc.record(label, (project) => ({
-      project: { ...project, deploy: { ...project.deploy, scope: target } },
-      changed: true,
-      summary: label,
-    }));
-    if (result.changed) say(`Salt scope: ${label.toLowerCase()}.${whereNow()}`);
-  },
+  run: async (ctx, { scope }) => (await runs()).runSetScope(ctx, scope),
 });
 
 const previewFor = command<CommandArgsOf<"deploy.previewFor">>({
@@ -225,18 +146,7 @@ const previewFor = command<CommandArgsOf<"deploy.previewFor">>({
     if (!ctx.catalog) return no(CATALOG_LOADING);
     return OK;
   },
-  run(ctx, { address }) {
-    // Spec L565: any address, such as a Safe, without connecting it. The prediction isn't recorded: it isn't this diamond's.
-    const account: Address = toChecksum(address);
-    const p = predict({ deploy: ctx.project.deploy, catalog: ctx.catalog, chainId: ctx.session.chainId, account: { address: account } });
-    if (p.status !== "ready") {
-      setPreview({ account, result: { ok: false, reason: p.reason } });
-      say(p.reason);
-      return;
-    }
-    setPreview({ account, result: { ok: true, address: p.address, chainId: p.chainId } });
-    say(`Deployed by ${formatAddress(account)}, this diamond would be at ${p.address} on ${chainName(p.chainId, env.e2e)}.`);
-  },
+  run: async (ctx, { address }) => (await runs()).runPreviewFor(ctx, address),
 });
 
 const copyAddress = command({
@@ -247,11 +157,7 @@ const copyAddress = command({
     const p = prediction();
     return p.status === "ready" ? OK : no(p.reason);
   },
-  async run() {
-    const p = prediction();
-    if (p.status !== "ready") return;
-    await copyText(p.address);
-  },
+  run: async () => (await runs()).runCopyAddress(),
 });
 
 const removeFacets = command({
@@ -265,9 +171,7 @@ const removeFacets = command({
     if (ctx.analysis.plan.length === 0) return no("No facets are cut yet");
     return OK;
   },
-  run(ctx) {
-    openDialog("remove-facets", ctx.session.chainId === null ? {} : { chainId: ctx.session.chainId });
-  },
+  run: async (ctx) => (await runs()).runRemoveFacets(ctx),
 });
 
 const downloadSafeBatch = command({
@@ -275,9 +179,8 @@ const downloadSafeBatch = command({
   title: () => "Download Transaction Builder batch",
   category: "Deploy",
   enabled(ctx) {
-    if (!ctx.catalog) return no(CATALOG_LOADING);
-    const block = catalogDeployBlock(ctx.catalog);
-    if (block) return no(block);
+    const block = openBlock(ctx);
+    if (block && block !== DEPLOY_NEEDS_CONNECTION) return no(block);
     const count = blockers(ctx).length;
     if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
     // The review's ticks are the person's consent however the deploy goes out, a Safe batch included (spec L573).
@@ -287,10 +190,7 @@ const downloadSafeBatch = command({
     if (ctx.session.chainId === null) return no(CHOOSE_A_CHAIN);
     return OK;
   },
-  async run(ctx) {
-    const { downloadSafeBatch: download } = await import("./safe-batch");
-    await download(ctx);
-  },
+  run: async (ctx) => (await runs()).runDownloadSafeBatch(ctx),
 });
 
 const focusPicker = command({
@@ -307,15 +207,10 @@ const focusPicker = command({
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
     return OK;
   },
-  run(ctx) {
-    requestPickerFocus();
-    // The review's picker is the one to move to; outside the review, open it first (never over a deploy's progress).
-    if (!ctx.session.dialogs.some((d) => d.id === "deploy-review")) openReview();
-  },
+  run: async (ctx) => (await runs()).runFocusPicker(ctx),
 });
 
 /** In registration order. */
 export const REVIEW_COMMANDS = [open, again, newSalt, usePath, setScope, previewFor, copyAddress, removeFacets, downloadSafeBatch, focusPicker];
 
 defineCommands(REVIEW_COMMANDS);
-

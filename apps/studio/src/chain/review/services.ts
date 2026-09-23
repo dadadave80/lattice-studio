@@ -5,8 +5,8 @@
 import { createElement, lazy, Suspense } from "react";
 import { registerDialog, type DialogComponentProps } from "@/contracts";
 
-const LazyDeployReview = lazy(() => import("./DeployReview").then((m) => ({ default: m.DeployReview })));
-const LazyRemoveFacets = lazy(() => import("./RemoveFacetsDialog").then((m) => ({ default: m.RemoveFacetsDialog })));
+const LazyDeployReview = lazy(() => import("./lazy").then((m) => ({ default: m.DeployReview })));
+const LazyRemoveFacets = lazy(() => import("./lazy").then((m) => ({ default: m.RemoveFacetsDialog })));
 
 function DeployReviewDialog(props: DialogComponentProps<"deploy-review">) {
   return createElement(Suspense, { fallback: null }, createElement(LazyDeployReview, props));

@@ -3,4 +3,4 @@
  * dialogs and the commands; this barrel holds only light helpers, so importing it never pulls the review into the
  * entry chunk.
  */
-export { openReview } from "./commands";
+export { openReview } from "./command-runs";

@@ -2,7 +2,7 @@
  * The few words and phase sets the commands need (they're in the entry chunk). Everything else the review says
  * lives in `copy.ts` and `model.ts`, which only the review's lazy chunk imports.
  */
-import { plural, type DeployPath } from "@lattice-studio/core";
+import { plural, type DeployPath, type Scope } from "@lattice-studio/core";
 import type { DeployPhase } from "@/contracts";
 
 /** Spec L561, IR L13: Deploy offline; ⌘/Ctrl+Enter only announces it. */
@@ -20,6 +20,15 @@ export function resolveBlockers(count: number): string {
 export function tickFirst(count: number): string {
   return count === 1 ? "Tick the acknowledgement first" : `Tick the ${count} acknowledgements first`;
 }
+
+/** IR L231: the salt's scope on the CreateX path. */
+export const SCOPE_TITLES: Readonly<Record<Scope, string>> = {
+  "every-chain": "Same address on every chain",
+  "this-chain": "This chain only",
+};
+
+/** Contracts §4: a fixture catalog can't deploy (the words S8a's `catalogDeployBlock` uses). */
+export const FIXTURE_CATALOG = "Fixture catalog: build the real catalog first";
 
 /** The path's display name. */
 export function pathName(path: DeployPath): string {
