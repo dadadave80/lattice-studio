@@ -86,8 +86,13 @@ describe("the status region", () => {
 
   test("announcing before any region mounts still creates the live regions", async () => {
     resetAnnouncer();
+    for (const node of document.querySelectorAll("[data-announcer]")) node.remove();
+    expect(document.querySelectorAll("[data-announcer]")).toHaveLength(0);
     announce("Opened GovernedVault");
+    expect(document.querySelectorAll('[role="status"][data-announcer]')).toHaveLength(1);
+    expect(document.querySelectorAll('[role="alert"][data-announcer]')).toHaveLength(1);
     vi.advanceTimersByTime(QUIET_MS);
     expect(spoken().status).toBe("Opened GovernedVault");
+    expect(document.querySelector('[role="status"][data-announcer]')?.textContent).toBe("Opened GovernedVault");
   });
 });

@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { listPaletteRows, openDialog, REGION_LABELS, runCommand, settings, type RegionId } from "@/contracts";
-import { bufferedServices, renderWithStudio } from "../../test/harness";
+import {
+  command, commandState, listPaletteRows, openDialog, REGION_LABELS, runCommand, settings, type RegionId,
+} from "@/contracts";
+import { bufferedServices, onCleanup, overrideCommands, renderWithStudio } from "../../test/harness";
 import { resetAnnouncer } from "./announcer";
 import { currentRegion } from "./regions";
 import { RegionFrame } from "./testing/RegionFrame";
@@ -14,6 +16,17 @@ afterEach(() => {
 async function press(keys: string): Promise<RegionId | null> {
   await userEvent.keyboard(keys);
   return currentRegion();
+}
+
+/** A bubble-phase F6 listener on window, as Base UI's toast viewport has, removed after the test. */
+function windowF6(): { seen(): number } {
+  let count = 0;
+  const listener = (e: KeyboardEvent) => {
+    if (e.key === "F6") count += 1;
+  };
+  window.addEventListener("keydown", listener);
+  onCleanup(() => window.removeEventListener("keydown", listener));
+  return { seen: () => count };
 }
 
 async function order(keys: string, count: number): Promise<(RegionId | null)[]> {
@@ -68,12 +81,16 @@ describe("regions", () => {
     }
   });
 
-  test("Ctrl+F6 does nothing on macOS, where it's the system's", async () => {
+  test("Ctrl+F6 does nothing on macOS, where it's the system's, and no F6 reaches window listeners", async () => {
     vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
     Object.defineProperty(navigator, "userAgentData", { configurable: true, value: { platform: "macOS" } });
     try {
-      await renderWithStudio(<RegionFrame />);
+      await renderWithStudio(<RegionFrame toasts={["Link copied"]} />);
+      const f6 = windowF6();
       expect(await press("{Control>}{F6}{/Control}")).toBeNull();
+      expect(await press("{Alt>}{F6}{/Alt}")).toBeNull();
+      expect(await press("{Meta>}{F6}{/Meta}")).toBeNull();
+      expect(f6.seen()).toBe(0);
     } finally {
       delete (navigator as { userAgentData?: unknown }).userAgentData;
       vi.restoreAllMocks();
@@ -115,8 +132,11 @@ describe("regions", () => {
   });
 
   test("a remapped shortcut moves the cycle off F6", async () => {
-    await renderWithStudio(<RegionFrame />, { settings: { keymap: { "region.next": ["Alt+n"] } } });
+    await renderWithStudio(<RegionFrame toasts={["Link copied"]} />, { settings: { keymap: { "region.next": ["Alt+n"] } } });
+    const f6 = windowF6();
     expect(await press("{F6}")).toBeNull();
+    // F6 no longer cycles, but it still never reaches Base UI's viewport, which would take focus to the toasts.
+    expect(f6.seen()).toBe(0);
     expect(await press("{Alt>}n{/Alt}")).toBe("titlebar");
   });
 
@@ -179,9 +199,36 @@ describe("Go to commands", () => {
     expect(bufferedServices().announce.at(-1)?.[0]).toBe("No notifications are showing.");
   });
 
-  test("a region that isn't showing says so", async () => {
+  test("a hidden region whose pane can't be shown is disabled with the pane's reason and fix", async () => {
     await renderWithStudio(<RegionFrame hidden={["inspector"]} />);
-    await runCommand({ id: "region.focus", args: { region: "inspector" } }, "palette");
-    expect(bufferedServices().log.at(-1)?.text).toBe("The inspector isn't showing.");
+    const ref = { id: "region.focus", args: { region: "inspector" } } as const;
+    const paneShow = { id: "pane.show", args: { pane: "inspector" } };
+    expect(commandState(ref)).toEqual({
+      ok: false, reason: "Not built yet · WP-S3", fix: paneShow, title: "Go to inspector",
+    });
+    expect(await runCommand(ref, "palette")).toEqual({ ok: false, reason: "Not built yet · WP-S3", fix: paneShow });
+  });
+
+  test("a hidden region whose pane can be shown is shown, then focused", async () => {
+    overrideCommands([
+      command({
+        id: "pane.show",
+        title: () => "Show pane",
+        category: "Session",
+        enabled: () => ({ ok: true }),
+        run: () => {
+          page.getByRole("region", { name: "Inspector", includeHidden: true }).element().removeAttribute("hidden");
+        },
+      }),
+    ]);
+    await renderWithStudio(<RegionFrame hidden={["inspector"]} />);
+    expect(await runCommand({ id: "region.focus", args: { region: "inspector" } }, "palette")).toEqual({ ok: true });
+    await expect.element(page.getByRole("region", { name: "Inspector" })).toHaveFocus();
+  });
+
+  test("a hidden region with no pane to show says so", async () => {
+    await renderWithStudio(<RegionFrame hidden={["titlebar"]} />);
+    const result = await runCommand({ id: "region.focus", args: { region: "titlebar" } }, "palette");
+    expect(result).toEqual({ ok: false, reason: "The title bar isn't showing." });
   });
 });

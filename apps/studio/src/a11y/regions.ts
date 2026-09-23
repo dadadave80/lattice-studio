@@ -12,7 +12,7 @@
 import type { CommandRef } from "@lattice-studio/core";
 import {
   commandState, doc, KEY_CONTEXT_ATTRIBUTE, listBindings, REGION_IDS, REGION_LABELS, runCommand, session, settings,
-  type KeySpec, type RegionId, type ResolvedBinding,
+  type Enablement, type KeySpec, type RegionId, type ResolvedBinding,
 } from "@/contracts";
 import { ensureLiveRegions } from "./announcer";
 import { followDocument } from "./focus";
@@ -147,15 +147,22 @@ function singleKeyInert(target: EventTarget | null): boolean {
   return !!context && SINGLE_KEY_INERT.has(context);
 }
 
-function onKeyDown(event: KeyboardEvent): void {
-  if (event.defaultPrevented || event.isComposing) return;
-  const platform = currentPlatform();
-  const live = (k: KeySpec) => matchesKey(k, event, platform) && !(isSingleKey(k) && singleKeyInert(event.target));
-  const binding = regionBindings().find((b) => b.keys.some(live));
-  if (!binding) return;
+function swallow(event: KeyboardEvent): void {
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
+}
+
+function onKeyDown(event: KeyboardEvent): void {
+  // Every F6, with any modifier, stops here even when no binding matches (Alt+F6, ⌘F6, Ctrl+F6 on macOS, F6
+  // after a remap): Base UI's toast viewport would otherwise take it and pull focus to the toasts.
+  const f6 = event.key === "F6";
+  if (event.isComposing || (event.defaultPrevented && !f6)) return;
+  const platform = currentPlatform();
+  const live = (k: KeySpec) => matchesKey(k, event, platform) && !(isSingleKey(k) && singleKeyInert(event.target));
+  const binding = event.defaultPrevented ? undefined : regionBindings().find((b) => b.keys.some(live));
+  if (f6 || binding) swallow(event);
+  if (!binding) return;
   const ref: CommandRef = binding.ref;
   void runCommand(ref, "keys");
 }
@@ -219,6 +226,23 @@ function nextFrame(): Promise<void> {
 }
 
 /**
+ * Whether "Go to …" can reach a region: yes when it shows, or when its pane can be shown; else disabled
+ * with the reason the pane can't be shown and that pane command as the fix (spec L661).
+ */
+export function hiddenRegionState(id: RegionId): Enablement {
+  if (id === "toasts" || regionAvailable(id)) return { ok: true };
+  const pane = paneFor(id);
+  if (!pane) return { ok: false, reason: notShowing(id) };
+  const shown = commandState(pane);
+  return shown.ok ? { ok: true } : { ok: false, reason: shown.reason, fix: pane };
+}
+
+function notShowing(id: RegionId): string {
+  const phrase = regionPhrase(id);
+  return `${phrase.charAt(0).toUpperCase()}${phrase.slice(1)} isn't showing.`;
+}
+
+/**
  * "Go to inspector": focuses the region, first showing its pane when a drawer or the pane switcher hides it.
  * Returns what happened, in the words the console and the status region use.
  */
@@ -231,6 +255,5 @@ export async function goToRegion(id: RegionId): Promise<{ ok: boolean; text: str
     }
   }
   if (focusRegion(id)) return { ok: true, text: "" };
-  const phrase = regionPhrase(id);
-  return { ok: false, text: `${phrase.charAt(0).toUpperCase()}${phrase.slice(1)} isn't showing.` };
+  return { ok: false, text: notShowing(id) };
 }

@@ -1,6 +1,6 @@
 // S9's commands (contracts §5.3): region.next, region.prev and region.focus (spec L743, IR L16).
 import { announce, command, defineCommands, log, REGION_IDS, REGION_LABELS, type CommandArgsOf, type KeyBinding } from "@/contracts";
-import { cycleRegion, dialogReason, goToRegion, toastsShowing } from "./regions";
+import { cycleRegion, dialogReason, goToRegion, hiddenRegionState, toastsShowing } from "./regions";
 
 type FocusArgs = CommandArgsOf<"region.focus">;
 
@@ -57,7 +57,7 @@ defineCommands([
       const reason = dialogReason();
       if (reason) return { ok: false, reason };
       if (region === "toasts" && !toastsShowing()) return { ok: false, reason: "No notifications are showing." };
-      return { ok: true };
+      return hiddenRegionState(region);
     },
     run: async (_ctx, { region }) => {
       const result = await goToRegion(region);
