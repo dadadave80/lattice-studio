@@ -245,11 +245,11 @@ describe("compact below 40% zoom (spec L481)", () => {
   });
 
   test("crossing 40% redraws the card at full size", async () => {
-    let zoomTo: ((zoom: number) => Promise<boolean>) | null = null;
-    await renderWithStudio(<CardSheet zoom={0.3} onInit={(rf) => (zoomTo = (z) => rf.zoomTo(z))} />, { project: gallery() });
-    await expect.poll(() => zoomTo !== null).toBe(true);
+    const flow: { zoomTo?: (zoom: number) => Promise<boolean> } = {};
+    await renderWithStudio(<CardSheet zoom={0.3} onInit={(rf) => (flow.zoomTo = (z) => rf.zoomTo(z))} />, { project: gallery() });
+    await expect.poll(() => flow.zoomTo !== undefined).toBe(true);
     expect(card("ERC20").dataset.compact).toBe("");
-    await zoomTo?.(0.5);
+    await flow.zoomTo?.(0.5);
     await expect.poll(() => card("ERC20").dataset.compact).toBeUndefined();
     expect(card("ERC20").querySelectorAll("[data-selector]")).toHaveLength(9);
   });
@@ -257,13 +257,13 @@ describe("compact below 40% zoom (spec L481)", () => {
 
 describe("strokes scale with 1/zoom (spec L772)", () => {
   test("at 50% the hairline frame is 2 sheet px, 1 px on screen; at 200% it stays 1", async () => {
-    let zoomTo: ((zoom: number) => Promise<boolean>) | null = null;
-    await renderWithStudio(<CardSheet zoom={0.5} onInit={(rf) => (zoomTo = (z) => rf.zoomTo(z))} />, { project: gallery() });
-    await expect.poll(() => zoomTo !== null).toBe(true);
+    const flow: { zoomTo?: (zoom: number) => Promise<boolean> } = {};
+    await renderWithStudio(<CardSheet zoom={0.5} onInit={(rf) => (flow.zoomTo = (z) => rf.zoomTo(z))} />, { project: gallery() });
+    await expect.poll(() => flow.zoomTo !== undefined).toBe(true);
     const frame = () => getComputedStyle(card("Receive"), "::after");
     await expect.poll(() => frame().borderTopWidth).toBe("2px");
     await expect.poll(() => getComputedStyle(card("AxelarGatewayAdapter"), "::after").borderTopWidth).toBe("4px");
-    await zoomTo?.(2);
+    await flow.zoomTo?.(2);
     await expect.poll(() => frame().borderTopWidth).toBe("1px");
   });
 });
