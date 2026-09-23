@@ -6,9 +6,7 @@
 import type { Edge } from "@xyflow/react";
 import type { Hex4, Layout, Point, Sizes, Trace } from "@lattice-studio/core";
 import { dependencyHandleId, pinHandleId } from "@/sheet/card";
-
-export const TRACE_EDGE_TYPE = "dependency";
-export const TIE_EDGE_TYPE = "tie";
+import { TIE_EDGE_TYPE, TRACE_EDGE_TYPE } from "./edge-types";
 
 export type TraceEdgeData = {
   points: Point[];

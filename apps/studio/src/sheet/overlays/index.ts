@@ -12,4 +12,4 @@
  */
 export { buildNotes, COLLISION_RULE, noteOf } from "./note-model";
 export type { NoteKind, NoteModel, NoteSelector } from "./note-model";
-export { TIE_EDGE_TYPE, TRACE_EDGE_TYPE } from "./edge-data";
+export { TIE_EDGE_TYPE, TRACE_EDGE_TYPE } from "./edge-types";
