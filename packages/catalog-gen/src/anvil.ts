@@ -54,10 +54,14 @@ export type AnvilHandle = {
 };
 
 export type StartAnvilOptions = {
-  /** First port to try; defaults to `ANVIL_PORT_BASE`, then 8545. */
+  /** The port to try first; defaults to `ANVIL_PORT_BASE`, then 8545. */
   portBase?: number;
-  /** How many consecutive ports to try (default 16). */
-  attempts?: number;
+  /**
+   * When that port is taken, take one the OS hands out (default true). OS-assigned ports come from the
+   * ephemeral range (49152+ on macOS, 32768+ on Linux), outside the 20000+ slots claim.ts hands out, so a
+   * second Anvil never lands on a helper's or another WP's port.
+   */
+  fallback?: boolean;
   /** Extra anvil arguments. */
   args?: string[];
   /** The anvil binary (default `anvil` on PATH). */
@@ -66,13 +70,15 @@ export type StartAnvilOptions = {
   timeoutMs?: number;
 };
 
-async function portFree(port: number): Promise<boolean> {
+/** Binds `port` (0: any the OS picks) and releases it; returns the bound port, or null when it's taken. */
+function probePort(port: number): number | null {
   try {
     const server = Bun.listen({ hostname: "127.0.0.1", port, socket: { data() {} } });
+    const bound = server.port;
     server.stop(true);
-    return true;
+    return bound;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -91,18 +97,19 @@ function rpc(url: string): AnvilHandle["request"] {
 }
 
 /**
- * Starts Anvil on the first free port at or above the base and waits until it answers. Anvil's defaults
- * include Arachnid's proxy, its ten funded accounts and automine.
+ * Starts Anvil on the WP's own port (`ANVIL_PORT_BASE`), or on an OS-assigned port when that one is taken, and
+ * waits until it answers. It never scans upward: the ports above belong to helpers' lines in the same slot.
+ * Anvil's defaults include Arachnid's proxy, its ten funded accounts and automine.
  */
 export async function startAnvil(options: StartAnvilOptions = {}): Promise<Result<AnvilHandle, string>> {
   const base = options.portBase ?? Number(studioEnv("ANVIL_PORT_BASE") ?? DEFAULT_ANVIL_PORT);
-  const attempts = options.attempts ?? 16;
   const timeoutMs = options.timeoutMs ?? 15_000;
   const bin = options.bin ?? "anvil";
   if (Bun.which(bin) === null && !existsSync(bin)) return err(`${bin} isn't installed. Install Foundry 1.8.3.`);
 
-  for (let port = base; port < base + attempts; port++) {
-    if (!(await portFree(port))) continue;
+  for (const wanted of options.fallback === false ? [base] : [base, 0]) {
+    const port = probePort(wanted);
+    if (port === null) continue;
     const proc = Bun.spawn([bin, "--host", "127.0.0.1", "--port", String(port), ...(options.args ?? [])], {
       stdout: "ignore",
       stderr: "ignore",
@@ -128,7 +135,7 @@ export async function startAnvil(options: StartAnvilOptions = {}): Promise<Resul
     await stop();
     if (Date.now() >= deadline) return err(`anvil didn't answer on port ${port} within ${timeoutMs} ms.`);
   }
-  return err(`no free port for anvil in ${base}-${base + attempts - 1}.`);
+  return err(`port ${base} is taken, so anvil can't start there.`);
 }
 
 /** `eth_getCode` at the latest block. */

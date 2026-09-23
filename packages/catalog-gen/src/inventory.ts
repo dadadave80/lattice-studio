@@ -37,16 +37,31 @@ export type InventoryEntry = {
 const ARRAY_LITERAL = /string\s*\[\s*(\d+)\s*\]\s+memory\s+(\w+)\s*=\s*\[([\s\S]*?)\]\s*;/g;
 const STRING_LITERAL = /"((?:[^"\\]|\\.)*)"/g;
 
-/** Drops `//` and `/* *\/` comments, leaving string literals alone. */
+/**
+ * Just past the closing quote of the string literal that opens at `start`, honoring backslash escapes the way
+ * `STRING_LITERAL` does: `"a\"b"` is one string.
+ */
+function stringEnd(source: string, start: number): number {
+  const quote = source[start];
+  let i = start + 1;
+  while (i < source.length) {
+    const c = source[i];
+    if (c === "\\") i += 2;
+    else if (c === quote) return i + 1;
+    else i++;
+  }
+  return source.length;
+}
+
+/** Drops `//` and `/* *\/` comments, leaving string literals (either quote, escapes included) alone. */
 function stripComments(source: string): string {
   let out = "";
   let i = 0;
   while (i < source.length) {
     const c = source[i];
     const next = source[i + 1];
-    if (c === '"') {
-      const end = source.indexOf('"', i + 1);
-      const stop = end === -1 ? source.length : end + 1;
+    if (c === '"' || c === "'") {
+      const stop = stringEnd(source, i);
       out += source.slice(i, stop);
       i = stop;
     } else if (c === "/" && next === "/") {

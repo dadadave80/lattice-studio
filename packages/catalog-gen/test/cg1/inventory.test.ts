@@ -56,6 +56,19 @@ describe("parseInventory", () => {
     expect(result.ok && result.value.map((e) => e.name)).toEqual(["A", "B"]);
   });
 
+  test("an escaped quote doesn't end a string, so the comment stripper and the string scanner agree", () => {
+    // Were `\"` taken as the closing quote, `// x", "B"];` would read as a comment and swallow the rest of the line.
+    const text = String.raw`string[2] memory n = ["A\" // x", "B"]; string[2] memory p = ["src/A.sol:A\" // x", "src/B.sol:B"];`;
+    const result = parseInventory(text);
+    expect(result.ok && result.value.map((e) => e.name)).toEqual([String.raw`A\" // x`, "B"]);
+  });
+
+  test("a comment marker inside a single-quoted string stays", () => {
+    const text = String.raw`string s = 'a // \' b'; string[1] memory n = ["A"]; string[1] memory p = ["src/A.sol:A"];`;
+    const result = parseInventory(text);
+    expect(result.ok && result.value.map((e) => e.name)).toEqual(["A"]);
+  });
+
   test("accepts the paths array first", () => {
     const text = `string[1] memory p = ["src/A.sol:A"]; string[1] memory n = ["A"];`;
     const result = parseInventory(text);

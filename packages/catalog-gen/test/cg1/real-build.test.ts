@@ -4,7 +4,6 @@
  * is incremental: seconds when `out/` is current, minutes from clean.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
   type AnvilHandle,
@@ -19,17 +18,16 @@ import {
 import { checkBuildOutputs, libraryPlaceholder, RECEIVE_SELECTOR, SELF_SELECTOR } from "../../src/artifacts";
 import { type FacetFacts, readFacets, readInventory } from "../../src/inventory";
 import { facetNatspec, natspecSummary } from "../../src/natspec";
+import { realBuildGate } from "./real-build-gate";
 
-const LATTICE = studioEnv("LATTICE_DIR") ?? join(import.meta.dir, "..", "..", "..", "..", "lattice");
-const available =
-  Bun.which("forge") !== null &&
-  Bun.which("anvil") !== null &&
-  existsSync(join(LATTICE, "foundry.toml")) &&
-  existsSync(join(LATTICE, "lib", "diamond-lib", "src"));
+const REPO_ROOT = join(import.meta.dir, "..", "..", "..", "..");
+const gate = realBuildGate((name) => studioEnv(name, REPO_ROOT), REPO_ROOT, (bin) => Bun.which(bin));
+const LATTICE = gate.latticeDir;
 
 const BUILD_TIMEOUT_MS = 20 * 60_000;
 
-describe.skipIf(!available)("against the pinned Lattice, built with FOUNDRY_PROFILE=ci", () => {
+const title = "against the pinned Lattice, built with FOUNDRY_PROFILE=ci";
+describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason})`, () => {
   let anvil: AnvilHandle | undefined;
   let facts: FacetFacts[] = [];
 
@@ -148,20 +146,45 @@ describe.skipIf(!available)("against the pinned Lattice, built with FOUNDRY_PROF
 });
 
 describe.skipIf(Bun.which("anvil") === null)("startAnvil", () => {
-  test("skips a port in use and frees its own on stop", async () => {
-    const base = Number(studioEnv("ANVIL_PORT_BASE") ?? 8545) + 10;
-    const blocker = Bun.listen({ hostname: "127.0.0.1", port: base, socket: { data() {} } });
+  // Only this WP's own Anvil port is ever bound; with it taken, the OS picks one outside every claim.ts slot.
+  const own = Number(studioEnv("ANVIL_PORT_BASE", REPO_ROOT) ?? 8545);
+  const SLOT_PORTS_END = 24_000;
+
+  function block(port: number): { stop(): void } {
     try {
-      const started = await startAnvil({ portBase: base, attempts: 4 });
+      const server = Bun.listen({ hostname: "127.0.0.1", port, socket: { data() {} } });
+      return { stop: () => server.stop(true) };
+    } catch {
+      return { stop: () => {} }; // already taken, which is what the test needs
+    }
+  }
+
+  test("with its own port taken, it runs on an OS-assigned port and frees it on stop", async () => {
+    const blocker = block(own);
+    try {
+      const started = await startAnvil({ portBase: own });
       if (!started.ok) throw new Error(started.error);
-      expect(started.value.port).toBeGreaterThan(base);
+      expect(started.value.port).not.toBe(own);
+      expect(started.value.port).toBeGreaterThanOrEqual(SLOT_PORTS_END);
       expect(await started.value.request<string>("eth_chainId")).toBe("0x7a69");
       await started.value.stop();
       await started.value.stop();
       const again = Bun.listen({ hostname: "127.0.0.1", port: started.value.port, socket: { data() {} } });
       again.stop(true);
     } finally {
-      blocker.stop(true);
+      blocker.stop();
     }
   }, 30_000);
+
+  test("without the fallback, a taken port is refused, not scanned past", async () => {
+    const blocker = block(own);
+    try {
+      expect(await startAnvil({ portBase: own, fallback: false })).toEqual({
+        ok: false,
+        error: `port ${own} is taken, so anvil can't start there.`,
+      });
+    } finally {
+      blocker.stop();
+    }
+  });
 });

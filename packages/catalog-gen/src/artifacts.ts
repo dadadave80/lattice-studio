@@ -183,21 +183,24 @@ export async function findArtifact(outDir: string, ref: ArtifactRef): Promise<Re
   const first = await readJson(direct);
   if (first.ok) {
     const a = parseArtifact(first.value, ref.contract, direct);
-    if (!a.ok) return a;
-    if (matches(a.value) && ref.sourcePath !== undefined) return a;
+    if (a.ok && matches(a.value) && ref.sourcePath !== undefined) return a;
   }
+  // Unreadable candidates (the flat one included) don't stop the search; they're reported only if nothing matches.
   const hits: Artifact[] = [];
+  const unreadable: string[] = [];
   for (const path of await candidates(outDir, ref)) {
     const json = await readJson(path);
-    if (!json.ok) return json;
-    const a = parseArtifact(json.value, ref.contract, path);
-    if (!a.ok) return a;
-    if (matches(a.value)) hits.push(a.value);
+    const a = json.ok ? parseArtifact(json.value, ref.contract, path) : json;
+    if (!a.ok) unreadable.push(a.error);
+    else if (matches(a.value)) hits.push(a.value);
   }
   const want = ref.sourcePath ?? ref.file;
   if (hits.length === 1 && hits[0]) return ok(hits[0]);
   if (hits.length === 0) {
-    return err(`no artifact for ${want}:${ref.contract} under ${outDir}. Build with FOUNDRY_PROFILE=ci forge build.`);
+    const also = unreadable.length > 0 ? ` Unreadable: ${unreadable.join(" ")}` : "";
+    return err(
+      `no artifact for ${want}:${ref.contract} under ${outDir}. Build with FOUNDRY_PROFILE=ci forge build.${also}`,
+    );
   }
   return err(`${hits.length} artifacts match ${want}:${ref.contract}: ${hits.map((h) => h.sourcePath).sort().join(", ")}.`);
 }

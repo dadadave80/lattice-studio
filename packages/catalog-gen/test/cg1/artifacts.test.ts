@@ -136,6 +136,25 @@ describe("findArtifact", () => {
     );
   });
 
+  test("an unreadable flat artifact doesn't stop the search; it's reported only when nothing matches", async () => {
+    const broken = await mkdtemp(join(tmpdir(), "cg1-out-"));
+    try {
+      await mkdir(join(broken, "ERC20.sol"), { recursive: true });
+      await mkdir(join(broken, "tokens", "ERC20.sol"), { recursive: true });
+      await writeFile(join(broken, "ERC20.sol", "ERC20.json"), "{");
+      await writeFile(join(broken, "tokens", "ERC20.sol", "ERC20.json"), JSON.stringify(await raw("ERC20.sol", "ERC20")));
+      const found = await findArtifact(broken, { file: "ERC20.sol", contract: "ERC20", sourcePath: "src/tokens/ERC20/ERC20.sol" });
+      expect(found.ok && found.value.path).toBe(join(broken, "tokens", "ERC20.sol", "ERC20.json"));
+
+      const missing = await findArtifact(broken, { file: "ERC20.sol", contract: "ERC20", sourcePath: "src/Other.sol" });
+      expect(error(missing)).toBe(
+        `no artifact for src/Other.sol:ERC20 under ${broken}. Build with FOUNDRY_PROFILE=ci forge build. Unreadable: ${join(broken, "ERC20.sol", "ERC20.json")} isn't JSON.`,
+      );
+    } finally {
+      await rm(broken, { recursive: true, force: true });
+    }
+  });
+
   test("says how to build when nothing matches", async () => {
     expect(error(await findArtifact(OUT, { file: "ERC20.sol", contract: "ERC20", sourcePath: "src/Other.sol" }))).toBe(
       `no artifact for src/Other.sol:ERC20 under ${OUT}. Build with FOUNDRY_PROFILE=ci forge build.`,
