@@ -1,0 +1,130 @@
+{
+  "name": "lattice-studio-draft",
+  "type": "light",
+  "colors": {
+    "editor.background": "#E7E3D8",
+    "editor.foreground": "#16150F",
+    "editorLineNumber.foreground": "#635E52",
+    "editorLineNumber.activeForeground": "#3C3931",
+    "editorCursor.foreground": "#1F4FE0",
+    "editor.selectionBackground": "rgba(31,79,224,.10)"
+  },
+  "tokenColors": [
+    {
+      "scope": [
+        "comment",
+        "punctuation.definition.comment"
+      ],
+      "settings": {
+        "foreground": "#635E52",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "scope": [
+        "string",
+        "string.quoted"
+      ],
+      "settings": {
+        "foreground": "#16150F"
+      }
+    },
+    {
+      "scope": [
+        "constant.numeric",
+        "constant.language"
+      ],
+      "settings": {
+        "foreground": "#1F4FE0"
+      }
+    },
+    {
+      "scope": [
+        "keyword",
+        "keyword.control",
+        "keyword.operator",
+        "storage.modifier",
+        "storage.type.function.solidity"
+      ],
+      "settings": {
+        "foreground": "#1F4FE0",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "storage.type"
+      ],
+      "settings": {
+        "foreground": "#3C3931",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.type",
+        "entity.name.class",
+        "support.type"
+      ],
+      "settings": {
+        "foreground": "#16150F"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.function"
+      ],
+      "settings": {
+        "foreground": "#16150F",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "variable",
+        "variable.parameter",
+        "variable.other"
+      ],
+      "settings": {
+        "foreground": "#16150F"
+      }
+    },
+    {
+      "scope": [
+        "support.function",
+        "meta.function-call"
+      ],
+      "settings": {
+        "foreground": "#16150F"
+      }
+    },
+    {
+      "scope": [
+        "punctuation",
+        "meta.brace"
+      ],
+      "settings": {
+        "foreground": "#3C3931"
+      }
+    },
+    {
+      "scope": [
+        "support.type.property-name.json",
+        "meta.object-literal.key"
+      ],
+      "settings": {
+        "foreground": "#3C3931"
+      }
+    },
+    {
+      "scope": [
+        "invalid",
+        "invalid.illegal"
+      ],
+      "settings": {
+        "foreground": "#1F4FE0",
+        "fontStyle": "underline"
+      }
+    }
+  ]
+}
