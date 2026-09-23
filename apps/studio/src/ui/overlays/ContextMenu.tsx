@@ -22,6 +22,12 @@ export type ContextMenuProps = {
    * menu: below this element, with focus on the first item. Unset, it's placed below the target.
    */
   anchor?: Element | null;
+  /**
+   * No menu for now: a right click or long press reaches the browser (its own menu shows), Shift+F10 and the
+   * Menu key pass through to the target, an open menu closes (asking an owner that controls `open` to close),
+   * and an owner's `open` is ignored. The target keeps its element, so this can change while it has focus.
+   */
+  disabled?: boolean;
 };
 
 const ITEM_SELECTOR = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]';
@@ -38,9 +44,11 @@ type Origin = { kind: "pointer" } | { kind: "element"; element: Element } | null
  * `contextmenu` for either). Esc closes it and returns focus to the target. It can also be controlled, and
  * opened from elsewhere below `anchor`.
  */
-export function ContextMenu({ children, items, label, open: openProp, onOpenChange, anchor }: ContextMenuProps) {
+export function ContextMenu({
+  children, items, label, open: openProp, onOpenChange, anchor, disabled = false,
+}: ContextMenuProps) {
   const [innerOpen, setInnerOpen] = useState(false);
-  const open = openProp ?? innerOpen;
+  const open = !disabled && (openProp ?? innerOpen);
   const [origin, setOrigin] = useState<Origin>(null);
   const [trigger, setTrigger] = useState<HTMLElement | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -56,12 +64,19 @@ export function ContextMenu({ children, items, label, open: openProp, onOpenChan
     onOpenChange?.(next);
   };
 
+  // Disabling closes an open menu for good, so it can't reopen by itself when the menu is enabled again: its
+  // own state resets here, and an owner that controls `open` is asked to close.
+  if (disabled && innerOpen) setInnerOpen(false);
+  useEffect(() => {
+    if (disabled && openProp) onOpenChange?.(false);
+  }, [disabled, openProp, onOpenChange]);
+
   /** The element the menu sits below, or null to sit at the pointer. */
   const anchorElement: Element | null =
     origin?.kind === "element" ? origin.element : origin === null ? (anchor ?? trigger) : null;
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (open || !isContextMenuKey(event)) return;
+    if (open || disabled || !isContextMenuKey(event)) return;
     event.preventDefault();
     setOrigin({ kind: "element", element: event.currentTarget });
     setOpen(true);
@@ -78,6 +93,7 @@ export function ContextMenu({ children, items, label, open: openProp, onOpenChan
   return (
     <BaseContextMenu.Root
       open={open}
+      disabled={disabled}
       onOpenChange={(next) => {
         // Base UI asks to open only from a right click or a long press: those sit at the pointer.
         if (next) setOrigin({ kind: "pointer" });

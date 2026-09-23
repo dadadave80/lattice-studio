@@ -1,16 +1,19 @@
-import { useState } from "react";
-import { describe, expect, test, vi } from "vitest";
+import { useEffect, useState } from "react";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { renderWithStudio } from "../../../test/harness";
 import { ContextMenu } from "./ContextMenu";
 import { MenuItem } from "./MenuItem";
 import { MenuSeparator } from "./MenuSeparator";
 
-function Card({ onLocate = () => {}, onCardKey = () => {} }: { onLocate?: () => void; onCardKey?: (key: string) => void }) {
+function Card({
+  onLocate = () => {}, onCardKey = () => {}, disabled,
+}: { onLocate?: () => void; onCardKey?: (key: string) => void; disabled?: boolean }) {
   return (
     <div style={{ padding: 40 }}>
       <ContextMenu
         label="ERC20 actions"
+        {...(disabled === undefined ? {} : { disabled })}
         items={
           <>
             <MenuItem label="Open in inspector" onSelect={() => {}} />
@@ -250,5 +253,154 @@ describe("ContextMenu, touch", () => {
     touch("touchend", target, rect.left + 100, rect.top + 60);
     await wait(600);
     expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  test("a long press opens nothing while disabled", async () => {
+    await renderWithStudio(<Card disabled />);
+    const target = card().element();
+    const rect = target.getBoundingClientRect();
+    touch("touchstart", target, rect.left + 100, rect.top + 60);
+    await wait(650);
+    touch("touchend", target, rect.left + 100, rect.top + 60);
+    await wait(100);
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+});
+
+describe("ContextMenu, disabled", () => {
+  /** Each keydown that reached the window, and whether something on the way took it (default prevented). */
+  function watchKeys() {
+    const seen: { key: string; taken: boolean }[] = [];
+    const onKeyDown = (event: KeyboardEvent) => seen.push({ key: event.key, taken: event.defaultPrevented });
+    window.addEventListener("keydown", onKeyDown);
+    onTestFinished(() => window.removeEventListener("keydown", onKeyDown));
+    return seen;
+  }
+
+  /**
+   * Fires a `contextmenu` on the target, as a right click does, and says whether the page cancelled it. The
+   * browser shows its own menu exactly when it isn't cancelled.
+   */
+  function rightClickCancelled(target: Element): boolean {
+    const rect = target.getBoundingClientRect();
+    const event = new MouseEvent("contextmenu", {
+      bubbles: true, cancelable: true, button: 2, clientX: rect.left + 20, clientY: rect.top + 20,
+    });
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  }
+
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  test("a right click opens nothing and lets the browser's own menu through", async () => {
+    await renderWithStudio(<Card disabled />);
+    expect(rightClickCancelled(card().element())).toBe(false);
+    await card().click({ button: "right" });
+    await wait(100);
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  test("enabled, the same right click is taken by the menu", async () => {
+    await renderWithStudio(<Card disabled={false} />);
+    expect(rightClickCancelled(card().element())).toBe(true);
+    await expect.element(menu()).toBeVisible();
+  });
+
+  test("Shift+F10 and the Menu key open nothing and pass through to the target", async () => {
+    const seen = watchKeys();
+    const onCardKey = vi.fn();
+    await renderWithStudio(<Card disabled onCardKey={onCardKey} />);
+    await userEvent.tab();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    await userEvent.keyboard("{ContextMenu}");
+    await wait(100);
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(onCardKey.mock.calls.map(([key]) => key)).toEqual(["Shift", "F10", "ContextMenu"]);
+    expect(seen.filter(({ key }) => key === "F10" || key === "ContextMenu")).toEqual([
+      { key: "F10", taken: false },
+      { key: "ContextMenu", taken: false },
+    ]);
+    await expect.element(card()).toHaveFocus();
+  });
+
+  test("an open menu closes once disabled and doesn't reopen when enabled again", async () => {
+    const control = { set: (_disabled: boolean) => {} };
+    function Toggled() {
+      const [disabled, setDisabled] = useState(false);
+      useEffect(() => {
+        control.set = setDisabled;
+      }, []);
+      return <Card disabled={disabled} />;
+    }
+    await renderWithStudio(<Toggled />);
+    await card().click({ button: "right" });
+    await expect.element(menu()).toBeVisible();
+    control.set(true);
+    await expect.element(menu()).not.toBeInTheDocument();
+    control.set(false);
+    await wait(150);
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  test("an owner's open is ignored while disabled, and an open menu asks its owner to close once disabled", async () => {
+    const control = { set: (_state: { open: boolean; disabled: boolean }) => {} };
+    function Owned() {
+      const [state, setState] = useState({ open: false, disabled: true });
+      useEffect(() => {
+        control.set = setState;
+      }, []);
+      return (
+        <ContextMenu
+          label="Row actions"
+          open={state.open}
+          onOpenChange={(open) => setState((current) => ({ ...current, open }))}
+          disabled={state.disabled}
+          items={<MenuItem label="Rename" onSelect={() => {}} />}
+        >
+          <div
+            role="treeitem"
+            aria-selected="false"
+            tabIndex={0}
+            data-menu-open={String(state.open)}
+            data-menu-disabled={String(state.disabled)}
+          >
+            ERC20
+          </div>
+        </ContextMenu>
+      );
+    }
+    await renderWithStudio(<Owned />);
+    const row = page.getByRole("treeitem", { name: "ERC20" });
+    control.set({ open: true, disabled: true });
+    // Asked to close at once, so the owner's open never shows a menu.
+    await expect.element(row).toHaveAttribute("data-menu-open", "false");
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    control.set({ open: true, disabled: false });
+    await expect.element(page.getByRole("menu", { name: "Row actions" })).toBeVisible();
+    control.set({ open: true, disabled: true });
+    await expect.element(page.getByRole("menu", { name: "Row actions" })).not.toBeInTheDocument();
+    await expect.element(row).toHaveAttribute("data-menu-open", "false");
+  });
+
+  test("the target keeps its element and focus as its menu is disabled and enabled", async () => {
+    const control = { set: (_disabled: boolean) => {} };
+    function Toggled() {
+      const [disabled, setDisabled] = useState(false);
+      useEffect(() => {
+        control.set = setDisabled;
+      }, []);
+      return <Card disabled={disabled} />;
+    }
+    await renderWithStudio(<Toggled />);
+    await userEvent.tab();
+    const before = card().element();
+    for (const disabled of [true, false, true, false]) {
+      control.set(disabled);
+      await wait(50);
+      expect(card().element()).toBe(before);
+      await expect.element(card()).toHaveFocus();
+    }
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    await expect.element(menu()).toBeVisible();
   });
 });
