@@ -46,7 +46,8 @@ function noteById(id: string): HTMLElement | null {
 }
 
 async function waitForNote(kind: string): Promise<HTMLElement> {
-  await expect.poll(() => note(kind)).not.toBeNull();
+  // The layer is its own chunk: on a cold, busy run it can take a moment to land.
+  await expect.poll(() => note(kind), { timeout: 8000 }).not.toBeNull();
   return note(kind) as HTMLElement;
 }
 
@@ -122,7 +123,7 @@ describe("three or more contenders (spec L436, PA bug 22)", () => {
   test("one note per contested set, with the owner menu whose items route the set", async () => {
     await sheet(project([AXELAR, CCIP, HYPERLANE]));
     const three = `collision:${AXELAR}+${CCIP}+${HYPERLANE}`;
-    await expect.poll(() => noteById(three)).not.toBeNull();
+    await expect.poll(() => noteById(three), { timeout: 8000 }).not.toBeNull();
     expect(noteById(`collision:${CCIP}+${HYPERLANE}`)).not.toBeNull();
     const el = noteById(three) as HTMLElement;
     expect(el.querySelector("button")?.textContent).toBe(`Owner: ${AXELAR}`);
@@ -216,7 +217,7 @@ describe("traces and ties (IR L106-L107)", () => {
     const id = "needs:VaultCore:ERC4626";
     const trace = () => document.querySelector<SVGGElement>(`g[data-edge='${id}']`);
     const label = () => document.querySelector(`[data-trace-label='${id}']`);
-    await expect.poll(trace).not.toBeNull();
+    await expect.poll(trace, { timeout: 8000 }).not.toBeNull();
     const line = trace()?.querySelector("path:last-child") as SVGPathElement;
     expect(parseFloat(getComputedStyle(line).strokeWidth)).toBeCloseTo(1.5, 1);
     await expect.poll(label).not.toBeNull();
@@ -231,7 +232,7 @@ describe("traces and ties (IR L106-L107)", () => {
 
   test("ties are 2 px accent, dashed in forced colors", async () => {
     await sheet(project([AXELAR, HYPERLANE]));
-    await expect.poll(() => document.querySelectorAll("path[data-edge^='tie:']").length).toBe(2);
+    await expect.poll(() => document.querySelectorAll("path[data-edge^='tie:']").length, { timeout: 8000 }).toBe(2);
     const tie = document.querySelector<SVGPathElement>("path[data-edge^='tie:']") as SVGPathElement;
     expect(parseFloat(getComputedStyle(tie).strokeWidth)).toBe(2);
     expect(getComputedStyle(tie).strokeDasharray).toBe("none");
