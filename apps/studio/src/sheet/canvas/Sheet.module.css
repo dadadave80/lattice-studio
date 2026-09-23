@@ -1,0 +1,62 @@
+/*
+ * The sheet (spec L357): React Flow filling the sheet region, on the region's ground. React Flow's own
+ * colors come in only through its custom properties, set here from tokens; `base.css` carries no theme.
+ */
+.sheet {
+  position: absolute;
+  inset: 0;
+  --xy-background-color: transparent;
+  --xy-minimap-background-color: var(--lx-panel);
+  --xy-selection-background-color: var(--lx-accent-soft);
+  --xy-selection-border: var(--lx-stroke-hair) solid var(--lx-accent);
+}
+
+/* The Select tool: a drag on empty sheet draws the marquee (S4e), a crosshair as the Draft board draws it. */
+.sheet[data-tool="select"]:not([data-panning]) :global(.react-flow__pane) {
+  cursor: crosshair;
+}
+
+/* The Hand tool and Space held: every drag pans, over cards too. */
+.sheet[data-tool="hand"] :global(.react-flow__pane),
+.sheet[data-tool="hand"] :global(.react-flow__node),
+.sheet[data-panning] :global(.react-flow__pane),
+.sheet[data-panning] :global(.react-flow__node) {
+  cursor: grab;
+}
+
+.sheet[data-tool="hand"] :global(.react-flow__pane.dragging),
+.sheet[data-panning] :global(.react-flow__pane.dragging) {
+  cursor: grabbing;
+}
+
+/* Until the project's viewport is applied, the cards wait rather than flash at the origin. */
+.restoring :global(.react-flow__viewport) {
+  visibility: hidden;
+}
+
+.grid {
+  pointer-events: none;
+}
+
+/* Forced colors: no grid (spec L357, the brief); the tokens already make its dots transparent. */
+@media (forced-colors: active) {
+  .grid {
+    display: none;
+  }
+}
+
+.backToContent {
+  margin-block-end: var(--lx-space-6);
+}
+
+.minimap {
+  margin: var(--lx-space-4);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  background: var(--lx-panel);
+}
+
+@media (forced-colors: active) {
+  .minimap {
+    border-color: CanvasText;
+  }
+}

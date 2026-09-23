@@ -1,0 +1,193 @@
+/*
+ * The console drawer (spec L359; current-console, final-*-sample): a 36 px header row with the chevron, the
+ * CONSOLE eyebrow, the summary's square and words, the tabs and the actions; the body under it. The square
+ * and the words take the accent only while something needs a decision or is live.
+ */
+.console {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+  background: var(--lx-sunken);
+  color: var(--lx-text);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-3);
+  block-size: calc(var(--lx-space-8) + var(--lx-space-1));
+  min-block-size: calc(var(--lx-space-8) + var(--lx-space-1));
+  padding-inline: var(--lx-space-2) var(--lx-space-3);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  background: var(--lx-panel);
+  flex: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.console:not([data-open]) .header {
+  border-block-end: 0;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--lx-space-6);
+  block-size: var(--lx-space-6);
+  padding: 0;
+  border: 0;
+  border-radius: var(--lx-radius);
+  background: transparent;
+  color: var(--lx-text-muted);
+  cursor: pointer;
+  flex: none;
+}
+
+.toggle:hover {
+  color: var(--lx-text);
+  background: var(--lx-raised);
+}
+
+.chevron {
+  inline-size: var(--lx-space-4);
+  block-size: var(--lx-space-4);
+  rotate: 180deg;
+  transition: rotate 120ms ease-out;
+}
+
+.chevron[data-open] {
+  rotate: 0deg;
+}
+
+.title {
+  margin: 0;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  flex: none;
+}
+
+.summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  min-inline-size: 0;
+  color: var(--lx-text);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  white-space: nowrap;
+}
+
+.summaryText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.square {
+  inline-size: var(--lx-space-2);
+  block-size: var(--lx-space-2);
+  background: var(--lx-text-muted);
+  flex: none;
+}
+
+.accent .square {
+  background: var(--lx-accent);
+}
+
+.accent .summaryText {
+  color: var(--lx-accent);
+}
+
+.tabs {
+  position: relative;
+  display: flex;
+  align-self: stretch;
+  flex: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: var(--lx-space-6);
+  padding-block: 0;
+  padding-inline: var(--lx-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab:hover,
+.tab[data-active] {
+  color: var(--lx-text);
+}
+
+.tab:focus-visible {
+  outline-offset: calc(var(--lx-stroke-heavy) * -1);
+}
+
+.indicator {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  inline-size: var(--active-tab-width);
+  block-size: var(--lx-stroke-heavy);
+  translate: var(--active-tab-left) 0;
+  background: var(--lx-accent);
+  pointer-events: none;
+  transition: translate 150ms ease-out, inline-size 150ms ease-out;
+}
+
+.spacer {
+  flex: 1 1 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-block-size: 0;
+}
+
+.body[hidden] {
+  display: none;
+}
+
+.panel {
+  flex: 1 1 0;
+  min-block-size: 0;
+}
+
+/* The Script and Recipe JSON panels scroll their code; Base UI makes each panel a Tab stop. */
+.codePanel {
+  overflow: auto;
+  container-type: inline-size;
+}
+
+.panel:focus-visible {
+  outline-offset: calc(var(--lx-stroke-heavy) * -1);
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+@media (forced-colors: active) {
+  .square,
+  .indicator {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .accent .square,
+  .indicator {
+    background: Highlight;
+  }
+}

@@ -1,0 +1,167 @@
+/*
+ * The Log tab (current-console board; final-*-sample): a tag column in small caps, the text in code type,
+ * a hairline between lines. Collision, Missing and Error tags take the accent; the word carries the meaning.
+ */
+.view {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  padding-block: var(--lx-space-1);
+  padding-inline: var(--lx-space-3);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  overflow-x: auto;
+  flex: none;
+}
+
+.chips {
+  display: flex;
+  gap: var(--lx-space-1);
+  flex: none;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.chip {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+}
+
+.filter {
+  flex: 0 1 calc(var(--lx-space-12) * 5);
+  min-inline-size: calc(var(--lx-space-12) * 3);
+  min-block-size: var(--lx-space-6);
+  padding-inline: var(--lx-space-2);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  border-radius: var(--lx-radius);
+  background: var(--lx-ground-well);
+  color: var(--lx-text);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.filter::placeholder {
+  color: var(--lx-text-faint);
+}
+
+.showing {
+  flex: none;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1 1 0;
+}
+
+.listWrap {
+  position: relative;
+  flex: 1 1 0;
+  min-block-size: 0;
+}
+
+.list {
+  block-size: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.line {
+  display: grid;
+  inline-size: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  text-align: start;
+  grid-template-columns: calc(var(--lx-space-12) * 2) minmax(0, 1fr);
+  gap: var(--lx-space-3);
+  align-items: baseline;
+  min-block-size: var(--lx-space-6);
+  padding-block: var(--lx-space-1);
+  padding-inline: var(--lx-space-3);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  color: var(--lx-text);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  cursor: default;
+}
+
+.line:focus-visible {
+  outline-offset: calc(var(--lx-stroke-heavy) * -1);
+}
+
+.locatable {
+  cursor: pointer;
+}
+
+.locatable:hover {
+  background: var(--lx-raised);
+}
+
+.selected {
+  background: var(--lx-accent-soft);
+}
+
+.dim {
+  color: var(--lx-text-muted);
+}
+
+.tag {
+  color: var(--lx-text-muted);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+}
+
+.accentTag {
+  color: var(--lx-accent);
+}
+
+.text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.code {
+  color: var(--lx-accent-strong);
+  font: inherit;
+}
+
+.count {
+  margin-inline-start: var(--lx-space-2);
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  border-radius: var(--lx-radius);
+  color: var(--lx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  margin: 0;
+  padding-block: var(--lx-space-2);
+  padding-inline: var(--lx-space-3);
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+}
+
+.jump {
+  position: absolute;
+  inset-block-end: var(--lx-space-2);
+  inset-inline-end: var(--lx-space-4);
+}
+
+@media (forced-colors: active) {
+  .selected {
+    outline: var(--lx-stroke-hair) solid Highlight;
+  }
+}

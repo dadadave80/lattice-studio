@@ -1,0 +1,111 @@
+/*
+ * The Script and Recipe JSON tabs (current-console "Script tab", former-recipe-script): line numbers in a
+ * muted gutter, a "+" change mark in the accent, code type. The tab panel scrolls (Base UI makes it focusable,
+ * so the keyboard can scroll it); the banner and the bar stay on top. Token colors come from the Shiki themes
+ * generated from the tokens (`@lattice-studio/tokens/shiki-*.json`), set per token as custom properties and
+ * picked here by the theme on <html>.
+ */
+.view {
+  min-inline-size: 100%;
+  inline-size: max-content;
+}
+
+/* As wide as the panel's view (its container), pinned to its top-left while the code scrolls both ways. */
+.head {
+  position: sticky;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 1;
+  inline-size: 100cqi;
+  background: var(--lx-sunken);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  padding-block: var(--lx-space-1);
+  padding-inline: var(--lx-space-3);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.filename {
+  color: var(--lx-text-muted);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1 1 0;
+}
+
+.empty {
+  margin: 0;
+  padding-block: var(--lx-space-2);
+  padding-inline: var(--lx-space-3);
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+}
+
+.code {
+  margin: 0;
+  color: var(--lx-text);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.stale {
+  color: var(--lx-text-muted);
+}
+
+.lines {
+  display: block;
+  font: inherit;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: calc(var(--lx-space-8) + var(--lx-space-4)) var(--lx-space-4) max-content;
+  min-block-size: calc(var(--lx-space-4) + var(--lx-space-1));
+}
+
+.gutter {
+  padding-inline-end: var(--lx-space-2);
+  color: var(--lx-text-faint);
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.mark {
+  color: var(--lx-accent);
+  user-select: none;
+}
+
+.changed {
+  background: var(--lx-accent-soft);
+}
+
+.source {
+  padding-inline-end: var(--lx-space-4);
+  white-space: pre;
+}
+
+.token {
+  color: var(--shiki-shop);
+  font-style: var(--shiki-shop-font-style, normal);
+  font-weight: var(--shiki-shop-font-weight, inherit);
+}
+
+:global(html[data-theme="draft"]) .token {
+  color: var(--shiki-draft);
+  font-style: var(--shiki-draft-font-style, normal);
+  font-weight: var(--shiki-draft-font-weight, inherit);
+}
+
+.stale .token {
+  opacity: 0.6;
+}
