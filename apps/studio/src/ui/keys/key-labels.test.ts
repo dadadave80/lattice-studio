@@ -52,4 +52,11 @@ describe("isSingleKey", () => {
     expect(isSingleKey("Escape")).toBe(false);
     expect(isSingleKey("Alt+ArrowUp")).toBe(false);
   });
+
+  test("+, -, = and other unmodified printable keys are single keys too (FX13)", () => {
+    expect(isSingleKey("+")).toBe(true);
+    expect(isSingleKey("-")).toBe(true);
+    expect(isSingleKey("=")).toBe(true);
+    expect(isSingleKey("Mod++")).toBe(false);
+  });
 });
