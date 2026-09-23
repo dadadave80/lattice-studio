@@ -187,9 +187,18 @@ describe("chunk-load failures", () => {
     const target = new EventTarget();
     const seen = vi.fn();
     const stop = watchChunkErrors(target, seen);
-    target.dispatchEvent(preloadError(new Error("x")));
+    target.dispatchEvent(preloadError(new TypeError("Failed to fetch dynamically imported module: /assets/x.js")));
     stop();
-    target.dispatchEvent(preloadError(new Error("y")));
+    target.dispatchEvent(preloadError(new TypeError("Failed to fetch dynamically imported module: /assets/y.js")));
     expect(seen).toHaveBeenCalledTimes(1);
+  });
+
+  test("a bug thrown by a lazy module's top-level code (also a vite:preloadError) shows no update banner", async () => {
+    switchableConnection(true);
+    const { target } = boot();
+    target.dispatchEvent(preloadError(new TypeError("Cannot read properties of undefined (reading 'facets')")));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(bufferedServices().banners.has(BANNERS.updated.id)).toBe(false);
+    expect(pwaState.chunkFailed()).toBe(false);
   });
 });

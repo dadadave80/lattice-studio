@@ -38,7 +38,12 @@ export function watchChunkErrors(target: EventTarget, onFailure: (reason: unknow
     }
     onFailure(reason);
   };
-  const preload = (event: Event) => report((event as PreloadErrorEvent).payload ?? event);
+  // Vite also fires `vite:preloadError` for an error thrown by a lazy module's top-level code
+  // (`baseModule().catch(handlePreloadError)`): that's a bug, not a release, so both paths filter by message.
+  const preload = (event: Event) => {
+    const reason = (event as PreloadErrorEvent).payload;
+    if (isChunkLoadError(reason)) report(reason);
+  };
   const rejection = (event: Event) => {
     const reason = (event as PromiseRejectionEvent).reason;
     if (isChunkLoadError(reason)) report(reason);

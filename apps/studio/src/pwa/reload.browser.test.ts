@@ -103,6 +103,20 @@ describe("saveAndReload", () => {
 });
 
 describe("reloadStudio", () => {
+  test("says the project is still saving when the update controller gave up waiting", async () => {
+    const { d, save, log, announce, reloadPage } = deps(SAVED, () => ({
+      reload: async () => {
+        save.set(SAVING);
+        return false;
+      },
+    }));
+    expect(await reloadStudio(d)).toBe("still-saving");
+    expect(reloadPage).not.toHaveBeenCalled();
+    const text = "Didn't reload: the project is still saving. Try Save and reload again.";
+    expect(log).toHaveBeenCalledWith({ tag: "Note", text });
+    expect(announce).toHaveBeenCalledWith(text);
+  });
+
   test("says why when the update controller couldn't reload after an edit", async () => {
     const { d, save, log } = deps(SAVED, () => ({
       reload: async () => {

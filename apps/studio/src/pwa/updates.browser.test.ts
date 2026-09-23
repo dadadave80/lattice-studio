@@ -173,6 +173,18 @@ describe("reload", () => {
     expect(reloadPage).toHaveBeenCalledTimes(1);
   });
 
+  test("gives up without reloading when a save is still running after 10 s", async () => {
+    const { workbox, save, reloadPage, updates, timers } = setup(SAVED);
+    workbox.emitWaiting();
+    const done = updates.reload();
+    save.set(SAVING);
+    workbox.emitControlling(false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    timers.advance(10_000);
+    expect(await done).toBe(false);
+    expect(reloadPage).not.toHaveBeenCalled();
+  });
+
   test("just reloads when nothing is waiting", async () => {
     const { workbox, reloadPage, updates } = setup(SAVED);
     expect(await updates.reload()).toBe(true);
