@@ -10,8 +10,12 @@ import { join } from "node:path";
 import { build } from "vite";
 import { appDir } from "../../../local-env";
 
-/** Copy only the editor renders (StepCard) and only the dialog renders (the delay's help). */
-const EDITOR_MARKER = "Register ERC-165 interfaces (automatic)";
+/**
+ * Strings only the editor (InitEditor's step list label) and only the dialog (the delay's help) contain. Not spec
+ * copy: the spec's own labels, such as "Register ERC-165 interfaces (automatic)", are shown by other surfaces
+ * too (the Structure tree's automatic step), so they can't tell the editor's chunk apart.
+ */
+const EDITOR_MARKER = "Steps in call order";
 const DIALOG_MARKER = "How long a scheduled cut waits before it can run.";
 
 let out = "";
