@@ -6,14 +6,17 @@
  *   test("deploys GovernedVault @smoke", async ({ page, anvil }) => { … });
  *
  * Fixtures:
- * - `blockedRequests` (automatic): every request to a host other than the loopback is aborted and listed here.
- * - `anvil`: this worker's Anvil node (chain 31337 on `ANVIL_PORT_BASE + parallelIndex`), prepared once per worker
- *   with CreateX, Multicall3, the stand-in Safe and every v1 recipe's shared contracts, and wired to the page
- *   (`settings.rpc[31337]`). The chain goes back to its prepared state after each test. Asking for it is what
- *   starts a node: suites that never use it never start Anvil.
+ * - `blockedRequests` (automatic): every request and WebSocket to a host other than the loopback is aborted or
+ *   closed and listed here.
+ * - `anvil`: a fresh Anvil node for this test (chain 31337 on `ANVIL_PORT_BASE`, the one Anvil port this worktree's
+ *   line owns), holding the prepared chain: CreateX, Multicall3, the stand-in Safe and every v1 recipe's shared
+ *   contracts. It's wired to the page (`settings.rpc[31337]`) and stopped after the test. The port is the lock: tests
+ *   that ask for `anvil` run one at a time across workers, the others waiting their turn. Suites that never ask for
+ *   it never start Anvil.
+ * - `serviceWorkers` is "block" (see below).
  */
 import { test as base } from "@playwright/test";
-import { prepareAnvil, startAnvil, type AnvilNode } from "./anvil.ts";
+import { acquireAnvil, loadPrepared, type AnvilNode } from "./anvil.ts";
 import { anvilPort } from "./env.ts";
 import { keepLocal } from "./network.ts";
 import { seedAnvilRpc } from "./wallet.ts";
@@ -21,21 +24,17 @@ import { seedAnvilRpc } from "./wallet.ts";
 export { expect } from "@playwright/test";
 
 type TestFixtures = {
-  /** Non-local requests the page tried, in order; each was aborted. */
+  /** Non-local requests and WebSockets the page tried, in order; each was aborted or closed. */
   blockedRequests: string[];
-  /** This worker's Anvil node, wired to the page and reverted after the test. */
+  /** A fresh node on the prepared chain, wired to the page and stopped after the test. */
   anvil: AnvilNode;
 };
 
-type WorkerFixtures = {
-  /** This worker's prepared Anvil node. Use `anvil` in tests; this one isn't reverted. */
-  anvilNode: AnvilNode;
-};
-
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<TestFixtures>({
   // The PWA's service worker answers from its cache, where `page.route` (the network guard, seeding's catalog
-  // hold, a suite's stubs) can't see the request. Suites about offline and updates opt back in with
-  // `test.use({ serviceWorkers: "allow" })`.
+  // hold, a suite's stubs) can't see the request. A suite about offline and updates can opt back in with
+  // `test.use({ serviceWorkers: "allow" })`, and that weakens the guard: requests the worker makes itself, and
+  // responses it serves from its cache, bypass `blockedRequests`. Such a suite asserts on the network itself.
   serviceWorkers: "block",
 
   blockedRequests: [
@@ -45,25 +44,18 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     { auto: true },
   ],
 
-  anvilNode: [
-    // Playwright reads fixture dependencies from the first parameter's destructuring pattern; this one has none.
-    // oxlint-disable-next-line no-empty-pattern
-    async ({}, provide, workerInfo) => {
-      const node = await startAnvil(anvilPort(workerInfo.parallelIndex));
+  anvil: [
+    async ({ context }, provide) => {
+      const node = await acquireAnvil(anvilPort());
       try {
-        await prepareAnvil(node);
+        await loadPrepared(node);
+        await seedAnvilRpc(context, node);
         await provide(node);
       } finally {
         await node.stop();
       }
     },
-    { scope: "worker", timeout: 180_000 },
+    // Waiting for another worker's Anvil test, then preparing the run's chain once, can outlast a test's budget.
+    { timeout: 180_000 },
   ],
-
-  anvil: async ({ anvilNode, context }, provide) => {
-    await seedAnvilRpc(context, anvilNode);
-    const snapshot = await anvilNode.snapshot();
-    await provide(anvilNode);
-    await anvilNode.revert(snapshot);
-  },
 });

@@ -4,6 +4,7 @@
  *
  * Playwright runs under Node, so nothing in `_support/` may use Bun's APIs.
  */
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { localPort, repoRoot } from "../../local-env.ts";
 
@@ -13,27 +14,26 @@ export { repoRoot };
 export const LOOPBACK = "127.0.0.1";
 
 /**
- * A worktree's slot is 20 ports: the app's three, then `ANVIL_PORT_BASE` and the 16 after it (contracts §2). Q5's
- * chain tests use the same range, but they never run in the same process as Playwright.
+ * The one Anvil port the kit uses: `ANVIL_PORT_BASE`, the only Anvil port this worktree's line owns (claim.ts gives
+ * a WP and each of its helpers a line of four; the ports after it belong to the next helper's line, then to the next
+ * worktree's slot). Workers never take another port: they share this one, one test at a time (`fixtures.ts`), so
+ * Anvil tests run one after another whatever `--workers` says, and never spill into a neighbor's ports.
  */
-export const ANVIL_PORTS_PER_SLOT = 17;
-
-/**
- * The Anvil port for one Playwright worker: `ANVIL_PORT_BASE + parallelIndex`. `parallelIndex` (not
- * `workerIndex`) stays below the worker count when a worker restarts, so the port stays inside the slot.
- */
-export function anvilPort(parallelIndex: number): number {
-  if (!Number.isInteger(parallelIndex) || parallelIndex < 0 || parallelIndex >= ANVIL_PORTS_PER_SLOT) {
-    throw new RangeError(
-      `Worker ${parallelIndex} has no Anvil port: a slot holds ${ANVIL_PORTS_PER_SLOT}. Run with --workers=${ANVIL_PORTS_PER_SLOT} or fewer.`,
-    );
-  }
-  return localPort("ANVIL_PORT_BASE") + parallelIndex;
+export function anvilPort(): number {
+  return localPort("ANVIL_PORT_BASE");
 }
 
 /** An Anvil node's URL on the loopback host. */
 export function anvilUrl(port: number): string {
   return `http://${LOOPBACK}:${port}`;
+}
+
+/**
+ * Where the kit keeps per-line state outside the repo: the PIDs of the Anvil nodes it started (so global setup and
+ * teardown can sweep orphans) and the prepared chain of the current run.
+ */
+export function kitDir(port: number = anvilPort()): string {
+  return join(tmpdir(), "lattice-studio-e2e", String(port));
 }
 
 /** Q5's vendored runtime code (read-only here): CreateX and Multicall3, checked against core's codehashes. */

@@ -10,7 +10,8 @@
  * Local only: the node binds 127.0.0.1 and never forks. Every transaction goes to it, from Anvil's unlocked
  * default accounts.
  */
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Instance } from "prool";
 import {
@@ -21,7 +22,7 @@ import {
   type Catalog, type ChainState,
 } from "@lattice-studio/core";
 import { catalog as builtCatalog, creationCode, neededFor, sharedContracts, v1Recipes } from "./catalog.ts";
-import { LOOPBACK, VENDOR_DIR, anvilUrl } from "./env.ts";
+import { LOOPBACK, VENDOR_DIR, anvilUrl, kitDir } from "./env.ts";
 
 /** Anvil's chain id, the one the e2e build adds (contracts §5.5). */
 export const ANVIL_CHAIN_ID = 31337;
@@ -100,8 +101,10 @@ export async function startAnvil(port: number): Promise<AnvilNode> {
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     if (!/address already in use/i.test(reason)) throw error;
-    throw new Error(`Anvil couldn't bind ${LOOPBACK}:${port}: another process holds it (lsof -nP -iTCP:${port}).`);
+    throw new PortBusyError(port);
   }
+  const pid = (instance._internal as { process?: { pid?: number } } | undefined)?.process?.pid;
+  if (pid !== undefined) rememberPid(port, pid);
   const url = anvilUrl(port);
   const client = clientFor(url);
   let id = 0;
@@ -136,9 +139,66 @@ export async function startAnvil(port: number): Promise<AnvilNode> {
       const ok = await rpc<boolean>("evm_revert", [snapshot]);
       if (!ok) throw new Error(`Anvil couldn't revert to snapshot ${snapshot}.`);
     },
-    stop: () => instance.stop(),
+    async stop() {
+      await instance.stop();
+      if (pid !== undefined) forgetPid(port, pid);
+    },
   };
   return node;
+}
+
+/** Another process holds the port (another worker's node, or an orphan `sweepAnvils` will clear). */
+export class PortBusyError extends Error {
+  constructor(readonly port: number) {
+    super(`Anvil couldn't bind ${LOOPBACK}:${port}: another process holds it (lsof -nP -iTCP:${port}).`);
+    this.name = "PortBusyError";
+  }
+}
+
+function pidDir(port: number): string {
+  return join(kitDir(port), "pids");
+}
+
+function rememberPid(port: number, pid: number): void {
+  mkdirSync(pidDir(port), { recursive: true });
+  writeFileSync(join(pidDir(port), String(pid)), "");
+}
+
+function forgetPid(port: number, pid: number): void {
+  rmSync(join(pidDir(port), String(pid)), { force: true });
+}
+
+/** Whether `pid` is alive and still an `anvil` process (a PID can be reused after a crash). */
+function isAnvil(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return false;
+  }
+  try {
+    return /anvil/.test(execFileSync("ps", ["-o", "comm=", "-p", String(pid)], { encoding: "utf8" }));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Kills every Anvil node the kit started on `port` that is still running: a worker killed hard never reaches its
+ * fixture's teardown. Global setup and teardown call it. Returns the PIDs it killed.
+ */
+export function sweepAnvils(port: number): number[] {
+  const dir = pidDir(port);
+  if (!existsSync(dir)) return [];
+  const killed: number[] = [];
+  for (const name of readdirSync(dir)) {
+    const pid = Number.parseInt(name, 10);
+    if (Number.isInteger(pid) && isAnvil(pid)) {
+      process.kill(pid, "SIGKILL");
+      killed.push(pid);
+    }
+    rmSync(join(dir, name), { force: true });
+  }
+  return killed;
 }
 
 /** CreateX and Multicall3 at their canonical addresses, read back to confirm the codehash. */
@@ -228,4 +288,53 @@ export async function prepareAnvil(node: AnvilNode, options: PrepareOptions = {}
   await etchVendored(node);
   await etchSafe(node, options.safeThreshold);
   return deployShared(node, sharedFor(options.recipes));
+}
+
+/** Set by global setup: one id per Playwright run, so a prepared chain is never reused across runs. */
+export const RUN_ID_VARIABLE = "STUDIO_E2E_RUN";
+
+function statePath(port: number): string | null {
+  const run = process.env[RUN_ID_VARIABLE];
+  return run ? join(kitDir(port), `prepared-${run}.json`) : null;
+}
+
+/**
+ * Starts a node on `port`, waiting while another worker's test holds it (the port is the lock: one Anvil test at a
+ * time per line). Fails after `waitMs` with the busy port's message.
+ */
+export async function acquireAnvil(port: number, waitMs = 120_000): Promise<AnvilNode> {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    try {
+      return await startAnvil(port);
+    } catch (error) {
+      if (!(error instanceof PortBusyError) || Date.now() > deadline) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+}
+
+/**
+ * Brings a fresh node to the prepared chain (`prepareAnvil` with every v1 recipe). The first node of a run prepares
+ * it and saves `anvil_dumpState`; every later one loads that state, which takes milliseconds instead of seconds.
+ */
+export async function loadPrepared(node: AnvilNode): Promise<void> {
+  const path = statePath(node.port);
+  if (path && existsSync(path)) {
+    await node.rpc<boolean>("anvil_loadState", [readFileSync(path, "utf8")]);
+    return;
+  }
+  await prepareAnvil(node);
+  if (!path) return;
+  const state = await node.rpc<Hex>("anvil_dumpState", []);
+  mkdirSync(kitDir(node.port), { recursive: true });
+  writeFileSync(`${path}.tmp`, state);
+  renameSync(`${path}.tmp`, path);
+}
+
+/** Removes the prepared chains of earlier runs. */
+export function clearPrepared(port: number): void {
+  const dir = kitDir(port);
+  if (!existsSync(dir)) return;
+  for (const name of readdirSync(dir)) if (name.startsWith("prepared-")) rmSync(join(dir, name), { force: true });
 }

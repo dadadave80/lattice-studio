@@ -10,7 +10,10 @@ import { region } from "../keys.ts";
 import {
   collisionsProject, deploymentFor, filePayload, importedProject, projectFile, recipeProject, shareLink,
 } from "../projects.ts";
-import { DB_NAME, SETTINGS_KEY, openEmpty, seedProject, seedSettings } from "../seed.ts";
+import { DB_VERSION } from "../../../src/persist/db.ts";
+import {
+  DB_NAME, QUIET_URL, SEEDED_DB_VERSION, SETTINGS_KEY, openEmpty, seedProject, seedSettings, storeProject,
+} from "../seed.ts";
 
 /** The catalog's "n on sheet" counts, summed over its area folders: how many cards the sheet holds. */
 async function cardsOnSheet(page: Page): Promise<number> {
@@ -60,17 +63,26 @@ async function databaseLayout(page: Page): Promise<unknown> {
 }
 
 test.describe("seeding @smoke", () => {
-  test("creates the database exactly as the app does", async ({ page, browser }) => {
+  test("creates the database exactly as the app does", async ({ page }) => {
+    expect(DB_VERSION, "seeding creates S7a's version-1 stores").toBe(SEEDED_DB_VERSION);
     await openEmpty(page);
     const byApp = await databaseLayout(page);
-    const fresh = await browser.newContext();
-    try {
-      const other = await fresh.newPage();
-      await seedProject(other, { project: recipeProject("ERC20") });
-      expect(await databaseLayout(other)).toEqual(byApp);
-    } finally {
-      await fresh.close();
-    }
+    // Away from the app (its connection closes), delete what it made, and let seeding create the database.
+    await page.goto(QUIET_URL);
+    await page.evaluate(
+      (dbName) =>
+        new Promise<void>((resolve, reject) => {
+          const request = indexedDB.deleteDatabase(dbName);
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+          request.onblocked = () => reject(new Error("The app still holds the database open."));
+        }),
+      DB_NAME,
+    );
+    await storeProject(page, { project: recipeProject("ERC20") });
+    // Read before the app loads, so its upgrade can't paper over a difference.
+    expect(page.url()).toContain(QUIET_URL);
+    expect(await databaseLayout(page)).toEqual(byApp);
   });
 
   test("empty: a first visit opens Untitled with nothing on the sheet", async ({ page }) => {

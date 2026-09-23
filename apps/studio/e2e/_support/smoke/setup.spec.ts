@@ -33,6 +33,19 @@ test.describe("global setup @smoke", () => {
     });
     expect(outcome).toBe("blocked");
     expect(blockedRequests).toContain("https://example.com/");
+
+    // The CSP allows wss: (the WalletConnect relay, a wss RPC), so WebSockets need their own guard.
+    const socket = await page.evaluate(
+      () =>
+        new Promise<string>((resolve) => {
+          const ws = new WebSocket("wss://example.com/");
+          ws.addEventListener("close", (event) => resolve(`closed ${event.code}`));
+          ws.addEventListener("error", () => resolve("error"));
+          setTimeout(() => resolve("still open"), 10_000);
+        }),
+    );
+    expect(socket).toMatch(/^(closed \d+|error)$/);
+    expect(blockedRequests.some((url) => url.startsWith("wss://example.com"))).toBe(true);
   });
 });
 

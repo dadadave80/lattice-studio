@@ -5,7 +5,8 @@
  */
 import { CREATEX, CREATEX_CODEHASH, MULTICALL3, MULTICALL3_CODEHASH, loadTemplate } from "@lattice-studio/core";
 import { encodeFunctionData, parseAbi, type Address } from "viem";
-import { ANVIL_CHAIN_ID, BOB, SAFE } from "../anvil.ts";
+import { ANVIL_CHAIN_ID, BOB, SAFE, acquireAnvil, sweepAnvils } from "../anvil.ts";
+import { anvilPort } from "../env.ts";
 import { catalog, neededFor, sharedContracts, v1Recipes } from "../catalog.ts";
 import { expect, test } from "../fixtures.ts";
 import { SETTINGS_KEY, openEmpty } from "../seed.ts";
@@ -49,6 +50,18 @@ test.describe("Anvil kit @smoke", () => {
       return ((await response.json()) as { result: string }).result;
     }, anvil.url);
     expect(Number(chainId)).toBe(ANVIL_CHAIN_ID);
+  });
+
+  test("uses only the line's own Anvil port, and sweeps a node a dead worker left", async ({ anvil }) => {
+    expect(anvil.port).toBe(anvilPort());
+    await anvil.stop();
+    // A worker killed hard never stops its node: start one and "forget" it.
+    const orphan = await acquireAnvil(anvilPort());
+    expect(sweepAnvils(anvilPort()).length).toBe(1);
+    // The port is free again: a new node binds at once.
+    const next = await acquireAnvil(anvilPort(), 5_000);
+    await next.stop();
+    await orphan.stop().catch(() => undefined);
   });
 
   // Two tests in order: the first changes the chain, the second must not see it.

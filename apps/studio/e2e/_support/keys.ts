@@ -91,17 +91,39 @@ async function focusedRole(page: Page): Promise<string | null> {
 export async function openPalette(page: Page): Promise<Locator> {
   await page.keyboard.press(`${MOD}+k`);
   await expect.poll(() => focusedRole(page), { message: "⌘K should focus the palette's combobox" }).toBe("combobox");
-  return page.getByRole("combobox").and(page.locator(":focus"));
+  const comboboxes = page.getByRole("combobox");
+  for (let i = 0; i < (await comboboxes.count()); i += 1) {
+    const candidate = comboboxes.nth(i);
+    if (await candidate.evaluate((el) => el === document.activeElement)) {
+      await expect(candidate).toBeFocused();
+      return candidate;
+    }
+  }
+  throw new Error("⌘K focused a combobox that the accessibility tree doesn't list.");
+}
+
+/** The text of the palette's active row (the combobox's `aria-activedescendant`), or null. */
+async function activeOptionText(input: Locator): Promise<string | null> {
+  return input.evaluate((el) => {
+    const id = el.getAttribute("aria-activedescendant");
+    const option = id ? document.getElementById(id) : null;
+    return option?.textContent ?? null;
+  });
 }
 
 /**
- * Runs a command through the palette: opens it, types `query` and presses Enter on the active row. Keyboard only.
- * `query` should single out the row (a command's title, "Connect wallet").
+ * Runs a command through the palette: opens it, types `query`, waits until the active row is the one `query` names
+ * (its title contains the query, case-insensitively) and presses Enter. Keyboard only. `query` should single out the
+ * row: a command's title, "Connect wallet".
  */
 export async function runInPalette(page: Page, query: string): Promise<void> {
   const input = await openPalette(page);
   await input.fill(query);
-  await expect(page.getByRole("option").first()).toBeVisible();
+  await expect
+    .poll(async () => (await activeOptionText(input))?.toLowerCase().includes(query.toLowerCase()) ?? false, {
+      message: `the palette's active row should be "${query}"`,
+    })
+    .toBe(true);
   await page.keyboard.press("Enter");
 }
 

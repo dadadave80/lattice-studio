@@ -14,7 +14,7 @@
 import { expect, type BrowserContext, type Page, type Route } from "@playwright/test";
 import type { Deployment, Project } from "@lattice-studio/core";
 import type { SettingsState } from "../../src/contracts/stores.ts";
-import { DB_NAME, META } from "../../src/persist/db.ts";
+import { DB_NAME, DB_VERSION, META } from "../../src/persist/db.ts";
 import { SEEDED_AT } from "./projects.ts";
 
 /** S1's settings key in localStorage. */
@@ -79,6 +79,24 @@ export const QUIET_URL = "/catalog/manifest.json";
  * way out can overwrite them. Call it before the first `page.goto`, or from any page: it ends on `path`.
  */
 export async function seedProject(page: Page, seeded: SeededProject, path = "/"): Promise<void> {
+  await storeProject(page, seeded);
+  await openHoldingCatalog(page, path, seeded.project.name);
+}
+
+/** The database version `storeProject` creates when there's none: S7a's first. */
+export const SEEDED_DB_VERSION: number = 1;
+
+/**
+ * Writes `project` and its records into the app's database as the last project, from `QUIET_URL`, and leaves the page
+ * there with the app not running. `seedProject` then opens the app; a test can inspect the database first.
+ */
+export async function storeProject(page: Page, seeded: SeededProject): Promise<void> {
+  if (DB_VERSION !== SEEDED_DB_VERSION) {
+    throw new Error(
+      `S7a's database is at version ${DB_VERSION}, but seeding creates version ${SEEDED_DB_VERSION}'s stores. ` +
+        "Update storeProject's upgrade in e2e/_support/seed.ts to match src/persist/db.ts.",
+    );
+  }
   await page.goto(QUIET_URL);
   await page.evaluate(
     async ({ dbName, lastKey, id, project, deployments, savedAt }) => {
@@ -124,7 +142,6 @@ export async function seedProject(page: Page, seeded: SeededProject, path = "/")
       savedAt: SEEDED_AT,
     },
   );
-  await openHoldingCatalog(page, path, seeded.project.name);
 }
 
 /**

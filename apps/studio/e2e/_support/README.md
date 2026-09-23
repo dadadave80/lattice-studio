@@ -14,8 +14,12 @@ this folder builds and serves the app, seeds state, runs Anvil and holds the hel
   can reach the kit's Anvil nodes (`build/headers.ts`). Everything else, CSP included, is what the host sends.
 - **Network**: every request to a host other than the loopback is aborted and listed in `blockedRequests`. Nothing
   reaches a public RPC, Sourcify or ENS; a suite that needs an answer stubs it with its own `page.route`.
+- **WebSockets** to non-loopback hosts are closed before they connect and listed in `blockedRequests` too (the CSP
+  allows `wss:`, so the WalletConnect relay or a wss RPC would otherwise be reachable).
 - **Service workers** are blocked, so routes see every request. A suite about offline or updates opts in with
-  `test.use({ serviceWorkers: "allow" })`.
+  `test.use({ serviceWorkers: "allow" })`, and that weakens the guard: requests the worker makes itself, and
+  responses it serves from its cache, bypass `page.route` and `blockedRequests`. Such a suite asserts on the network
+  itself.
 
 ## Writing a suite
 
@@ -61,10 +65,10 @@ landed.
 
 | File | What it gives you |
 | --- | --- |
-| `fixtures.ts` | `test` with `blockedRequests` (automatic) and `anvil` (this worker's node, wired to the page and reverted after each test) |
+| `fixtures.ts` | `test` with `blockedRequests` (automatic) and `anvil` (a fresh node on the prepared chain for this test, wired to the page) |
 | `seed.ts` | `openEmpty(page)`, `seedProject(page, { project, deployments })`, `seedSettings(context, settings)`, `expectProject(page, name)` |
 | `projects.ts` | Projects to seed, built with core against the real catalog: `recipeProject("GovernedVault", { filled })`, `collisionsProject()` (30 cards, SEL-01), `projectFile()` and `importedProject(file)` (From file records), `filePayload(file)` for a file chooser, `shareLink(recipe)` (`page.goto("/" + link)`), `deploymentFor(project)` |
-| `anvil.ts` | `startAnvil(port)`, `prepareAnvil(node, { recipes })`, `deployShared`, `etchVendored`, `etchSafe`; `ALICE`, `BOB`, `SAFE` |
+| `anvil.ts` | `startAnvil(port)`, `acquireAnvil(port)`, `loadPrepared(node)`, `prepareAnvil(node, { recipes })`, `deployShared`, `etchVendored`, `etchSafe`, `sweepAnvils(port)`; `ALICE`, `BOB`, `SAFE` |
 | `wallet.ts` | `seedAnvilRpc(context, node)`, `connectMockWallet(page)` (console `chain anvil`, palette Connect wallet, Switch network), `MOCK_ACCOUNT` |
 | `keys.ts` | `MOD` (⌘ or Ctrl), `nextRegion` / `previousRegion` (F6, Ctrl+F6), `focusRegion`, `focusedRegion`, `nextProblem` / `previousProblem` (F8), `openPalette`, `runInPalette(page, "Connect wallet")`, `runConsole(page, "place erc20")`, `pagePlatform`, `region(page, name)` |
 | `axe.ts` | `expectNoAxeViolations(page, { include, disable })` and `runAxe`: the `wcag2a` to `wcag22aa` tags with `target-size` on (spec L797) |
@@ -81,11 +85,18 @@ Seed before anything else in the test; `seedProject` works from any page and end
 
 ### Anvil and the wallet
 
-Asking for the `anvil` fixture starts one node per worker on `ANVIL_PORT_BASE + parallelIndex` (a slot holds 17), on
-127.0.0.1 and chain 31337, prepared once with CreateX and Multicall3 (Q5's vendored runtimes, hash-checked), a
-stand-in Safe at `SAFE` that answers `getThreshold()` with 2, and every v1 recipe's shared contracts deployed through
-Arachnid's proxy. The fixture points `settings.rpc[31337]` at the node and reverts the chain after each test. Suites
-that never ask for it never start Anvil.
+Asking for the `anvil` fixture starts a fresh node for that test on `ANVIL_PORT_BASE`, 127.0.0.1 and chain 31337.
+That is the only Anvil port this worktree's line owns: the ports after it belong to your helpers' lines and to the
+next worktree's slot, so the kit never uses them. The port is also the lock: whatever `--workers` says, tests that ask
+for `anvil` run one at a time, each waiting (up to two minutes) for the one before to stop its node. Keep Anvil flows
+in few, focused tests; if Q1a-e ever need Anvil in parallel, that's a per-worktree Anvil range in `claim.ts` and
+contracts §2 first.
+
+The node holds the prepared chain: CreateX and Multicall3 (Q5's vendored runtimes, hash-checked), a stand-in Safe at
+`SAFE` that answers `getThreshold()` with 2, and every v1 recipe's shared contracts deployed through Arachnid's proxy.
+The first node of a run prepares it and saves `anvil_dumpState`; later ones load it in milliseconds. The fixture
+points `settings.rpc[31337]` at the node and stops it after the test. The kit records each node's PID; global setup
+and teardown kill any that a hard-killed worker left behind. Suites that never ask for `anvil` never start Anvil.
 
 The mock connector connects Anvil's account 0 on the picker's first chain (Sepolia), so `connectMockWallet` selects
 Anvil and switches the wallet there before anything is sent. The network guard aborts anything that would leave
