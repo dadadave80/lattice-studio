@@ -1,0 +1,25 @@
+import { describe, expect, test } from "vitest";
+import { page } from "vitest/browser";
+import { fixtureCatalog, renderWithStudio } from "../../../test/harness";
+import { AboutGroup } from "./AboutGroup";
+
+describe("AboutGroup", () => {
+  test("shows the version, the catalog's tag, commit and hash, its provisional note, and Licenses", async () => {
+    const catalog = fixtureCatalog();
+    await renderWithStudio(<AboutGroup />);
+    await expect.element(page.getByText(`Lattice ${catalog.lattice.tag}`, { exact: false })).toBeVisible();
+    await expect.element(page.getByText(catalog.lattice.commit, { exact: false })).toBeVisible();
+    await expect.element(page.getByText(catalog.hash, { exact: false })).toBeVisible();
+    if (catalog.provisional) {
+      await expect.element(page.getByText(catalog.provisional)).toBeVisible();
+    }
+    await expect.element(page.getByRole("heading", { name: "Licenses" })).toBeVisible();
+    await expect.element(page.getByText("react", { exact: true })).toBeVisible();
+  });
+
+  test("shows a loading state when there's no catalog yet, without crashing", async () => {
+    await renderWithStudio(<AboutGroup />, { catalog: null });
+    await expect.element(page.getByText("Catalog: loading…")).toBeVisible();
+    await expect.element(page.getByRole("heading", { name: "Licenses" })).toBeVisible();
+  });
+});

@@ -1,0 +1,17 @@
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+}
+
+.readiness {
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text-muted);
+}
+
+.note {
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text-muted);
+}
