@@ -90,10 +90,14 @@ function initSpec(catalog: Catalog, name: string | undefined): InitSpec | undefi
 /**
  * The init step a module's error came from (MultiInit bubbles a step's revert up raw, with no index): the one
  * step whose init contract declares the error or initializes one of the declaring modules. Several matching
- * steps, or none, give no target.
+ * steps, or none, give no target. An init of one call (a bundle, or a single step encoded as a direct call) is
+ * that call.
  */
 function stepTarget(scope: Scope, modules: readonly string[]): Address | undefined {
   const steps = scope.context.init?.steps ?? [];
+  // One call (a bundle, or a single step encoded as a direct call): whatever the init raised, it raised there.
+  const [single] = steps;
+  if (steps.length === 1 && single?.target !== undefined && isAddress(single.target.toLowerCase())) return toChecksum(single.target);
   const wanted = new Set(modules);
   const targets = new Set<string>();
   for (const step of steps) {

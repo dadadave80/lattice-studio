@@ -207,17 +207,17 @@ describe("NET-02 and NET-03: missing shared contracts", () => {
     expect(p.params).toMatchObject({ core: [], missing: ["PoseidonT3"], total: 7 });
   });
 
-  test("the automatic ERC-165 step is skipped when a step registers the interfaces itself", () => {
+  test("one call needs no MultiInit, and the automatic ERC-165 step is skipped when a step registers the interfaces itself", () => {
     const safe = makeRecipe({
       facets: ["DiamondCutFacet", "DiamondLoupeFacet"],
       init: { kind: "steps", steps: [{ spec: "SafeDiamondCutInit", args: {} }] },
     });
     const chain = withShared(
-      withShared(readyChain({}, ["DiamondCutFacet", "DiamondLoupeFacet", "MultiInit"]), "SafeDiamondCutInit", { present: false }),
+      withShared(withShared(readyChain({}, ["DiamondCutFacet", "DiamondLoupeFacet"]), "MultiInit", { present: false }), "SafeDiamondCutInit", { present: false }),
       "DiamondIntrospectionInit",
       { present: false },
     );
-    expect(only(run(chain, { recipe: safe }), "NET-03").params).toMatchObject({ missing: ["SafeDiamondCutInit"], total: 4 });
+    expect(only(run(chain, { recipe: safe }), "NET-03").params).toMatchObject({ missing: ["SafeDiamondCutInit"], total: 3 });
   });
 
   test("a bundle needs its own contract only; inits with constructor arguments aren't shared", () => {

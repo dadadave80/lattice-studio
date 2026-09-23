@@ -5,6 +5,7 @@ import type { ChainState, DeployContext } from "../model/chain";
 import type { Address, Hex } from "../model/hex";
 import { problem, problemId, type Anchor, type Problem } from "../model/problems";
 import type { Recipe } from "../model/recipe";
+import { planInit } from "../init/plan/plan";
 import { buildPlan } from "../plan/build";
 
 /**
@@ -43,22 +44,16 @@ function findInit(catalog: Catalog, name: string): InitSpec | undefined {
 }
 
 /**
- * The init contracts the recipe calls: a bundle's contract; for steps, MultiInit, each step's contract and the
- * automatic ERC-165 step (`initUpgradeable` with an upgrade mechanism placed, else `initImmutable`) unless a step
- * registers the interfaces itself (spec R11). Inits with constructor arguments are deployed per use, not shared.
+ * The init contracts the recipe calls, from C4a's plan (the automatic ERC-165 step added or skipped, spec R11):
+ * a bundle's contract; the steps' contracts, plus MultiInit only when two or more calls remain (one call is
+ * encoded as a direct call, contracts §3.1 init encoding ruling). Inits with constructor arguments are deployed
+ * per use, not shared, so they have no release to check.
  */
 function initContracts(recipe: Recipe, catalog: Catalog): InitSpec[] {
-  const init = recipe.init;
-  if (init.kind === "none") return [];
-  if (init.kind === "bundle") return [findInit(catalog, init.spec)].filter((spec) => spec !== undefined);
-  const specs = init.steps.map((step) => findInit(catalog, step.spec)).filter((spec) => spec !== undefined);
-  const placed = new Set(recipe.facets);
-  const upgradable = catalog.facets.some((facet) => facet.family === "upgrade" && placed.has(facet.name));
-  const automatic = specs.some((spec) => spec.registersInterfaces)
-    ? undefined
-    : findInit(catalog, upgradable ? "DiamondIntrospectionInit.initUpgradeable" : "DiamondIntrospectionInit.initImmutable");
-  const multiInit = catalog.inits.find((spec) => spec.contract === "MultiInit");
-  return [multiInit, ...specs, automatic].filter((spec) => spec !== undefined);
+  const plan = planInit(recipe, catalog);
+  const specs = plan.steps.map((step) => findInit(catalog, step.spec)).filter((spec) => spec !== undefined);
+  const multiInit = plan.kind === "steps" && plan.steps.length >= 2 ? catalog.inits.find((spec) => spec.contract === "MultiInit") : undefined;
+  return [multiInit, ...specs].filter((spec) => spec !== undefined);
 }
 
 /** A shared contract by name, for `dependsOn`: libraries first, then any other shared contract. */

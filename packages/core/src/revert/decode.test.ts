@@ -121,6 +121,32 @@ describe("module errors", () => {
   });
 });
 
+describe("LatticeRegistry and LatticeFactory without their shards", () => {
+  test("the spec's example decodes with no details at all (spec L727)", () => {
+    const data = encode("LatticeRegistry__RecordNotFound(bytes32 nameHash, uint64 version)", [nameHash("ERC20"), packVersion("0.4.0")]);
+    const decoded = decodeRevert(data, catalog, { details: {} });
+    expect(decoded).toMatchObject({ module: "LatticeRegistry", error: "LatticeRegistry__RecordNotFound" });
+    expect(decoded.args.map((arg) => arg.value)).toEqual(["lattice.ERC20", "0.4.0"]);
+  });
+
+  test("LatticeFactory's errors are the factory's", () => {
+    const decoded = decodeRevert(encode("LatticeFactory__MissingLoupeCoverage(bytes4 missingSelector)", ["0x7a0ed627"]), catalog, { details: {}, path: "factory" });
+    expect(decoded).toMatchObject({
+      module: "LatticeFactory",
+      shared: [],
+      error: "LatticeFactory__MissingLoupeCoverage",
+      signature: "LatticeFactory__MissingLoupeCoverage(bytes4)",
+      args: [{ name: "missingSelector", type: "bytes4", value: "0x7a0ed627" }],
+    });
+    expect(decodeRevert(encode("LatticeFactory__EmptyRecipe()"), catalog, { details: {} }).module).toBe("LatticeFactory");
+  });
+
+  test("a shard declaring the same error doesn't make it shared", () => {
+    const decoded = decodeRevert(encode("LatticeRegistry__Unauthorized(address caller)", [addr(3)]), catalog, context);
+    expect(decoded).toMatchObject({ module: "LatticeRegistry", shared: [] });
+  });
+});
+
 describe("modules that share an error (spec L75)", () => {
   const data = encode("AccessControlUnauthorizedAccount(address account, bytes32 neededRole)", [addr(1), `0x${"0".repeat(64)}`]);
 
@@ -173,6 +199,13 @@ describe("MultiInit and bundle attribution", () => {
     const decoded = decodeRevert(encode("VaultCore__ZeroAssets()"), catalog, { details, init });
     expect(decoded.module).toBe("VaultCore");
     expect(decoded.target).toBe(vaultTarget);
+  });
+
+  test("a single step encoded as a direct call: any module error it raised is attributed to it", () => {
+    const safeTarget = addr(0x1005);
+    const init = steps([["AccessControlInit", safeTarget]]);
+    const decoded = decodeRevert(encode("ERC20InvalidReceiver(address receiver)", [addr(0)]), catalog, { details, init });
+    expect(decoded).toMatchObject({ module: "ERC20", target: safeTarget, wrappers: [] });
   });
 
   test("infrastructure errors are never pinned on an init step", () => {
