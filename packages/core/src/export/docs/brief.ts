@@ -120,6 +120,7 @@ function acceptanceSection(): string {
   return [
     "Compare what the diamond returns with the plan above:",
     codeBlock(ACCEPTANCE_CALL, "bash"),
+    "Compare per facet as sets, address and selectors together: the factory applies registry cuts before custom cuts, so `facets()` can list them in a different order than the plan.",
     "Check each facet's codehash on the selected chain before trusting it, one `cast codehash <address> --rpc-url $RPC_URL` per row of the plan.",
     "Do not redeploy facets; check their codehashes.",
   ].join("\n\n");
@@ -153,7 +154,7 @@ export const exportBrief: ExportBriefFn = (args) => {
     [
       `- Recipe hash: \`${analysis.recipeHash}\``,
       `- Catalog: \`${catalog.lattice.tag}\``,
-      `- Studio: v${studioVersion}`,
+      `- Studio: ${studioVersion}`,
       `- Facets: ${facetVersions}`,
     ].join("\n"),
   ].join("\n\n");

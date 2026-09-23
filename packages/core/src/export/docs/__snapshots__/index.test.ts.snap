@@ -5,7 +5,7 @@ exports[`exportBrief matches the snapshot 1`] = `
 
 - Recipe hash: \`0x53521c0effe552dc47af8185256d4d4786a5f456412f3a4bf7d68eb2676d56e7\`
 - Catalog: \`test\`
-- Studio: v0.1.0-test
+- Studio: 0.1.0-test
 - Facets: DiamondLoupeFacet 0.4.0, AccessControl 0.4.0, ERC20 0.4.0
 
 ## Recipe
@@ -78,6 +78,8 @@ Compare what the diamond returns with the plan above:
 \`\`\`bash
 cast call <diamond> "facets()((address,bytes4[])[])" --rpc-url $RPC_URL
 \`\`\`
+
+Compare per facet as sets, address and selectors together: the factory applies registry cuts before custom cuts, so \`facets()\` can list them in a different order than the plan.
 
 Check each facet's codehash on the selected chain before trusting it, one \`cast codehash <address> --rpc-url $RPC_URL\` per row of the plan.
 

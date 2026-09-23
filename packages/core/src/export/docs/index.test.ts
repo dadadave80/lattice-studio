@@ -251,7 +251,7 @@ describe("exportBrief", () => {
   test("the header carries the recipe hash, catalog tag, each facet's pinned version and the Studio version", () => {
     expect(brief.text).toContain(`Recipe hash: \`${analysis.recipeHash}\``);
     expect(brief.text).toContain("Catalog: `test`");
-    expect(brief.text).toContain(`Studio: v${studioVersion}`);
+    expect(brief.text).toContain(`Studio: ${studioVersion}`);
     expect(brief.text).toContain("DiamondLoupeFacet 0.4.0");
     expect(brief.text).toContain("AccessControl 0.4.0");
     expect(brief.text).toContain("ERC20 0.4.0");
