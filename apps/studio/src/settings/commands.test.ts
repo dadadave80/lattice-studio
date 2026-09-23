@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { commandState, defineCommands, runCommand, session, settings } from "@/contracts";
+import { bufferedServices } from "@/contracts/services";
 import { isolateContracts } from "@/contracts/test-support";
 import { S10_COMMANDS } from "./commands";
 import { resetTour, tourState } from "../tour/tour-state";
@@ -17,21 +18,26 @@ afterEach(() => {
 });
 
 describe("S10's commands (contracts §5.3)", () => {
-  test("settings.open pushes the settings dialog", async () => {
+  test("settings.open pushes the settings dialog and logs it", async () => {
+    expect(commandState({ id: "settings.open" }).title).toBe("Open Settings");
     const outcome = await runCommand({ id: "settings.open" }, "menu");
     expect(outcome.ok).toBe(true);
     expect(session.get().dialogs.map((d) => d.id)).toEqual(["settings"]);
+    expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Note", text: "Opened Settings." });
   });
 
-  test("about.open pushes the about dialog", async () => {
+  test("about.open pushes the about dialog and logs it", async () => {
+    expect(commandState({ id: "about.open" }).title).toBe("Open About");
     await runCommand({ id: "about.open" }, "menu");
     expect(session.get().dialogs.map((d) => d.id)).toEqual(["about"]);
+    expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Note", text: "Opened About." });
   });
 
-  test("theme.set writes the setting and titles itself per theme", () => {
+  test("theme.set writes the setting, titles itself per theme, and logs it", () => {
     expect(commandState({ id: "theme.set", args: { theme: "draft" } }).title).toBe("Set theme to Draft");
     void runCommand({ id: "theme.set", args: { theme: "draft" } }, "button");
     expect(settings.get().theme).toBe("draft");
+    expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Note", text: "Theme: Draft." });
   });
 
   test("tour.start starts the tour and disables itself while running; tour.end stops it", async () => {

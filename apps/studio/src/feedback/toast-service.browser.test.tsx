@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { command, toast } from "@/contracts";
 import { shellToasts } from "@/shell";
 import { ToastRegion } from "@/ui";
@@ -51,6 +51,32 @@ describe("the toast() service (contracts §5.2, spec L731-L735)", () => {
     await expect.element(page.getByRole("button", { name: "Restore" })).not.toBeInTheDocument();
     await button.click();
     expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  test("through toast(): an info toast leaves at 6 s, an action toast at 10 s, and hover pauses either", async () => {
+    await renderWithStudio(<Toasts />);
+    toast({ text: "Link copied" });
+    const info = page.getByText("Link copied");
+    await expect.element(info).toBeVisible();
+    clock.advance(5_900);
+    await expect.element(info).toBeVisible();
+    clock.advance(200);
+    await expect.element(info).not.toBeInTheDocument();
+
+    overrideCommands([
+      command({ id: "history.undo", title: () => "Undo", category: "Session", enabled: () => ({ ok: true }), run: () => undefined }),
+    ]);
+    toast({ text: "Removed 2 facets", action: { id: "history.undo" } });
+    const action = page.getByText("Removed 2 facets");
+    await expect.element(action).toBeVisible();
+    clock.advance(9_000);
+    await expect.element(action).toBeVisible();
+    await action.hover();
+    clock.advance(5_000); // past the 10 s mark, but paused
+    await expect.element(action).toBeVisible();
+    await userEvent.hover(document.body);
+    clock.advance(1_000);
+    await expect.element(action).not.toBeInTheDocument();
   });
 
   test("a toast dropped without showing still gets its own console line, plus a dim note naming why", async () => {

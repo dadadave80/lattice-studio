@@ -12,26 +12,35 @@ type ThemeArgs = CommandArgsOf<"theme.set">;
 export const S10_COMMANDS: readonly Command[] = [
   command({
     id: "settings.open",
-    title: () => "Settings",
+    title: () => "Open Settings",
     category: "Session",
     palette: true,
     enabled: () => ({ ok: true }),
-    run: () => openDialog("settings"),
+    run: () => {
+      openDialog("settings");
+      log({ tag: "Note", text: "Opened Settings." });
+    },
   }),
   command({
     id: "about.open",
-    title: () => "About",
+    title: () => "Open About",
     category: "Session",
     palette: true,
     enabled: () => ({ ok: true }),
-    run: () => openDialog("about"),
+    run: () => {
+      openDialog("about");
+      log({ tag: "Note", text: "Opened About." });
+    },
   }),
   command<ThemeArgs>({
     id: "theme.set",
     title: ({ theme }) => `Set theme to ${THEME_LABEL[theme]}`,
     category: "Session",
     enabled: (_ctx, { theme }) => (theme in THEME_LABEL ? { ok: true } : { ok: false, reason: `"${theme}" isn't a theme.` }),
-    run: (_ctx, { theme }) => settings.set({ theme }),
+    run: (_ctx, { theme }) => {
+      settings.set({ theme });
+      log({ tag: "Note", text: `Theme: ${THEME_LABEL[theme]}.` });
+    },
   }),
   command({
     id: "tour.start",
