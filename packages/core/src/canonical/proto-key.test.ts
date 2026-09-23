@@ -9,7 +9,7 @@ import type { Result } from "../model/result";
 import { makeProject } from "../testing";
 import { canonicalJson } from "./json";
 import { migrate } from "./migrate";
-import { normalizeRecipe } from "./normalize";
+import { normalizeRecipe, normalizeWith } from "./normalize";
 import { formatParseIssue, parseProject, parseProjectFile, parseRecipe } from "./parse";
 import { findProtoKey, PROTO_KEY_MESSAGE } from "./proto-key";
 import { bundleRecipe, catalog, PROTO_VALUE, stepsRecipe, withProtoKey } from "./test-support";
@@ -141,7 +141,7 @@ describe("normalize keeps a __proto__ key that gets past the boundary", () => {
 
   test("in an argument with no catalog type, in owners and as an unknown top-level field", () => {
     const untyped = withProtoKey(stepsRecipe(), ["init", "steps", 1, "args"]) as Recipe;
-    const step = normalizeRecipe(untyped, null).init;
+    const step = normalizeWith(untyped, null).init;
     expect(step.kind === "steps" && Object.hasOwn(step.steps[1]?.args ?? {}, "__proto__")).toBe(true);
     const owners = normalizeRecipe(withProtoKey(stepsRecipe(), ["owners"], "ERC20") as Recipe, catalog).owners;
     expect(Object.getOwnPropertyDescriptor(owners, "__proto__")?.value).toBe("ERC20");
