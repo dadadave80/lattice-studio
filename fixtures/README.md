@@ -75,6 +75,11 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
 - Template recipes' `catalog.hash` is the zero hash: an index can't contain its own hash, so `loadTemplate`
   stamps the live catalog's.
 - `chains` is empty.
+- `libraries`: PoseidonT3's release (salt by the facet formula, fake code). The link is real:
+  `lib/zk-kit/lean-imt/InternalLeanIMT.sol#L4` imports the library, whose `hash` is `public`, and Semaphore and
+  ShieldedPool build their trees on that LeanIMT. Their releases carry `dependsOn: ["PoseidonT3"]` and
+  `provisional: "links PoseidonT3, which Lattice doesn't pin yet"`.
+- `registryOwner`: decision D6's placeholder `0x000000000000000000000000000000000000dEaD`.
 - `fixture-next`: EmergencyStop gains `guardianCount()` (invented) and Governor loses `version()`; both get new
   code, as a real release would, and ERC20 gets new code with the same selectors. New code is
   `fixture-next:<Name>`, so the codehash, init code hash and address change and the salt stays. Everything else

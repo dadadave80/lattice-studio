@@ -515,6 +515,16 @@
         "cuts": "script/base/accounts/DeployAccount6900.s.sol#L31-L42"
       }
     ],
+    "libraries": [
+      {
+        "name": "PoseidonT3",
+        "linkedBy": [
+          "Semaphore",
+          "ShieldedPool"
+        ],
+        "source": "lib/zk-kit/lean-imt/InternalLeanIMT.sol#L4-L4"
+      }
+    ],
     "releaseSalts": "script/deploy/DeployRelease.s.sol (facet salt L238, registry L94, factory L97)"
   },
   "invented": [
@@ -524,6 +534,7 @@
     "json/Lattice.standard.json",
     "ABI state mutability (all `nonpayable`) and outputs (all empty); ABIs carry functions only, no errors or events",
     "examples marked `studio` (ERC20Init name_ and symbol_, SafeDiamondCutInit minThreshold)",
+    "PoseidonT3's release (salt by the facet formula, fake code) and registryOwner (decision D6's placeholder 0x…dEaD)",
     "template recipes' catalog.hash (zero: an index can't hold its own hash)",
     "the DiamondCutFacet summary (its source NatSpec is OwnableFacet's)",
     "fixture-next's changes: EmergencyStop gains guardianCount() and Governor loses version(), both with new code; ERC20 gets new code with the same selectors"

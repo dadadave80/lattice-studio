@@ -58,7 +58,10 @@ import {
   FACET_INITS,
   FAMILIES,
   INITS,
+  LIBRARIES,
+  linksProvisional,
   NEXT_CHANGES,
+  REGISTRY_OWNER,
   REQUIRES,
   SEAMS,
   SUMMARIES,
@@ -355,6 +358,13 @@ function buildCatalog(tag: string, next: boolean): Built {
   if (next) applyNext(files, builds);
   for (const b of builds) writeShard(files, b);
   const facets = builds.map((b) => b.facet);
+  for (const lib of LIBRARIES) {
+    for (const name of lib.linkedBy) {
+      const b = builds.find((x) => x.facet.name === name);
+      if (!b) throw new Error(`${lib.name}: no facet ${name}`);
+      b.facet.release = { ...b.facet.release, dependsOn: [lib.name], provisional: linksProvisional(lib.name) };
+    }
+  }
   const proxyCode = fakeCreationCode("Lattice");
   const index: Catalog = {
     lattice: { tag, commit: COMMIT },
@@ -377,6 +387,8 @@ function buildCatalog(tag: string, next: boolean): Built {
     recipes: buildTemplates(facets, tag),
     chains: [],
     seams: SEAMS.map(({ source: _source, ...seam }) => seam),
+    libraries: LIBRARIES.map((lib) => ({ name: lib.name, release: shared(files, lib.name, releaseSalt(lib.name, VERSION as string)) })),
+    registryOwner: REGISTRY_OWNER,
     provisional: `Lattice ${VERSION} at dev ${COMMIT.slice(0, 7)}; v1 targets 0.4.0. Fixture catalog: invented release data.`,
   };
   assertOwnStorage(facets);
@@ -442,6 +454,7 @@ function provenance(fixture: Catalog, builds: Map<string, number>): unknown {
       facetInits: FACET_INITS.map((i) => ({ facet: i.facet, init: i.init, source: cite(i.source) })),
       inits: INITS.map((i) => ({ name: i.name, source: cite(i.source) })),
       templates: TEMPLATES.map((t) => ({ name: t.name, cuts: cite(t.source) })),
+      libraries: LIBRARIES.map((lib) => ({ name: lib.name, linkedBy: lib.linkedBy, source: cite(lib.source) })),
       releaseSalts: "script/deploy/DeployRelease.s.sol (facet salt L238, registry L94, factory L97)",
     },
     invented: [
@@ -451,6 +464,7 @@ function provenance(fixture: Catalog, builds: Map<string, number>): unknown {
       "json/Lattice.standard.json",
       "ABI state mutability (all `nonpayable`) and outputs (all empty); ABIs carry functions only, no errors or events",
       "examples marked `studio` (ERC20Init name_ and symbol_, SafeDiamondCutInit minThreshold)",
+      "PoseidonT3's release (salt by the facet formula, fake code) and registryOwner (decision D6's placeholder 0x…dEaD)",
       "template recipes' catalog.hash (zero: an index can't hold its own hash)",
       "the DiamondCutFacet summary (its source NatSpec is OwnableFacet's)",
       "fixture-next's changes: EmergencyStop gains guardianCount() and Governor loses version(), both with new code; ERC20 gets new code with the same selectors",

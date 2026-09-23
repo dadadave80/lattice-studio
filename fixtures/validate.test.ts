@@ -114,6 +114,7 @@ describe("both catalogs parse with K1's schemas", () => {
 function shardRefs(catalog: Catalog): ShardRef[] {
   const releases: SharedContract[] = [catalog.registry, catalog.factory, ...catalog.facets.map((f) => f.release)];
   for (const init of catalog.inits) if (init.release) releases.push(init.release);
+  for (const lib of catalog.libraries ?? []) releases.push(lib.release);
   return [
     catalog.proxy.creationCode,
     catalog.proxy.standardJson,
@@ -181,9 +182,28 @@ describe("release data is fake but formula-correct", () => {
         else if (init.release) expectRelease(id, init.release, releaseSalt(init.contract, version));
         else throw new Error(`${init.name} has neither ctorArgs nor a release`);
       }
+      for (const lib of catalog.libraries ?? []) expectRelease(id, lib.release, releaseSalt(lib.name, version));
       expectRelease(id, catalog.registry, versionlessSalt("LatticeRegistry"));
       expectRelease(id, catalog.factory, versionlessSalt("LatticeFactory"));
       expect(keccak256(readFileSync(join(ROOT, id, catalog.proxy.creationCode.path), "utf8") as Hex)).toBe(catalog.proxy.initCodeHash);
+    });
+  }
+
+  for (const id of IDS) {
+    test(`${id}: PoseidonT3 is a library; Semaphore and ShieldedPool depend on it; registryOwner is D6's placeholder`, () => {
+      const catalog = catalogs[id];
+      expect(catalog.libraries?.map((l) => l.name)).toEqual(["PoseidonT3"]);
+      expect(catalog.registryOwner).toBe("0x000000000000000000000000000000000000dEaD");
+      const libraries = new Set(catalog.libraries?.map((l) => l.name));
+      const dependents = catalog.facets.filter((f) => f.release.dependsOn).map((f) => f.name);
+      expect(dependents).toEqual(["Semaphore", "ShieldedPool"]);
+      for (const name of dependents) {
+        const release = facetOf(catalog, name).release;
+        expect(release.dependsOn).toEqual(["PoseidonT3"]);
+        expect(release.provisional).toBe("links PoseidonT3, which Lattice doesn't pin yet");
+        for (const dep of release.dependsOn ?? []) expect(libraries.has(dep)).toBe(true);
+      }
+      expect(catalog.facets.filter((f) => f.release.provisional).map((f) => f.name)).toEqual(dependents);
     });
   }
 

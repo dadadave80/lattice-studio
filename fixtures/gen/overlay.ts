@@ -757,6 +757,26 @@ export const BLANK_DIAMOND = {
   init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: { $ref: "deployer" } } }] } satisfies Recipe["init"],
 };
 
+// ── linked libraries and the registry owner (CG2's CCR, contracts §3.1) ───────────────────────────
+
+/** Linked libraries released as shared contracts, and the facets whose code links them. */
+export const LIBRARIES: { name: string; linkedBy: string[]; source: Cite }[] = [
+  {
+    name: "PoseidonT3",
+    linkedBy: ["Semaphore", "ShieldedPool"],
+    // A library with a `public` function, called by the LeanIMT both facets' trees use (SemaphoreLib L54, ShieldedPoolLib L56).
+    source: { path: "lib/zk-kit/lean-imt/InternalLeanIMT.sol", needle: 'import {PoseidonT3} from "poseidon-solidity/PoseidonT3.sol";' },
+  },
+];
+
+/** The sentence on a facet release that links a library Lattice doesn't pin. */
+export function linksProvisional(library: string): string {
+  return `links ${library}, which Lattice doesn't pin yet`;
+}
+
+/** Decision D6's placeholder LatticeRegistry owner while the release is provisional. */
+export const REGISTRY_OWNER = "0x000000000000000000000000000000000000dEaD";
+
 // ── fixture-next (the migrate flow) ────────────────────────────────────────────────────────────────
 
 /** What `fixture-next` changes. Every change is invented; the README lists them. */

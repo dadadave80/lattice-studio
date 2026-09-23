@@ -7,7 +7,7 @@
     "foundry": "1.8.3",
     "solc": "0.8.36"
   },
-  "hash": "0xca0c8ded4e485ac04a9d10d4e3c31aa8e6896b1835f90fc1fcc5ee4fa83781d9",
+  "hash": "0xce843be12f8b470d72cd0ddb41df9aed8a0c7d7abad718b34bb8b2731805ff24",
   "deployer": {
     "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
     "codehash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989"
@@ -4239,7 +4239,11 @@
           "path": "code/Semaphore.creation.hex",
           "bytes": 36,
           "hash": "0xb3628197c68a6f4b8a3f85449fc8a25bb98ec33c12f0489720531d776115011d"
-        }
+        },
+        "dependsOn": [
+          "PoseidonT3"
+        ],
+        "provisional": "links PoseidonT3, which Lattice doesn't pin yet"
       },
       "requires": [],
       "detail": {
@@ -4300,7 +4304,11 @@
           "path": "code/ShieldedPool.creation.hex",
           "bytes": 42,
           "hash": "0xe99b7f0fd82b976f803310feacb417bc38687235742ae6d5e4c3a8c5dee3bc9f"
-        }
+        },
+        "dependsOn": [
+          "PoseidonT3"
+        ],
+        "provisional": "links PoseidonT3, which Lattice doesn't pin yet"
       },
       "requires": [],
       "detail": {
@@ -7362,5 +7370,23 @@
       "reason": "applies the ERC-4626 decimals offset"
     }
   ],
+  "libraries": [
+    {
+      "name": "PoseidonT3",
+      "release": {
+        "salt": "0x422e19115867a717b434e96824364c4d757da81d9f407fe10fc43578dec7d79f",
+        "version": "0.2.0",
+        "address": "0xDc3fDeB27733A6fFaA21Ce55AD274259AA845EDC",
+        "codehash": "0x4e23235b2aca55cf85084ccc2d2e2b69a7b8436db5845ee4de5ec5fbd2008c2f",
+        "initCodeHash": "0xbb92dba6a08576ba8e1003984bf2b64853bcdc0591ac5f402f9cdc0ad3598b16",
+        "creationCode": {
+          "path": "code/PoseidonT3.creation.hex",
+          "bytes": 38,
+          "hash": "0x18139465b5e29e1251c0748801cf7bd3ac66dba8ed18e66d8992f5f6ef08505c"
+        }
+      }
+    }
+  ],
+  "registryOwner": "0x000000000000000000000000000000000000dEaD",
   "provisional": "Lattice 0.2.0 at dev f4a32c8; v1 targets 0.4.0. Fixture catalog: invented release data."
 }
