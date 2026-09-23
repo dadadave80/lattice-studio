@@ -1,21 +1,19 @@
-import { sheetEdgeTypes, sheetNodeTypes } from "@/contracts";
+import { lazy, Suspense } from "react";
 
 /**
- * React Flow's node and edge types, read once at module scope from the sheet seam (contracts `sheet.ts`), so
- * they never change identity between renders (spec L825). S4a and S4c register into them.
+ * The first paint is the static shell (spec L818), so the canvas (the sheet's React Flow component, its
+ * layers, Back to content, the grid and React Flow's `base.css`) is its own chunk, requested as soon as the app
+ * renders. Until it lands the sheet region shows its ground. The commands, the view API (`sheet-view.ts`) and
+ * the stored viewport are in the entry, so nothing that runs before then is lost: a zoom or Locate moves the
+ * stored viewport and the canvas opens there.
  */
-export const nodeTypes = sheetNodeTypes();
-export const edgeTypes = sheetEdgeTypes();
+const SheetCanvas = lazy(() => import("./SheetCanvas").then((m) => ({ default: m.SheetCanvas })));
 
-/**
- * Placeholder until WP-S4b. The canvas: facet cards on an 8 px dot grid (spec L357). S4b renders
- * `sheetLayers()` inside `<ReactFlow>` and spreads `useSheetInteractions()` onto it.
- */
+/** The sheet (WP-S4b): see `SheetCanvas.tsx`. */
 export function Sheet() {
   return (
-    <div data-placeholder="Sheet">
-      <p>Sheet</p>
-      <p>Not built yet · WP-S4b</p>
-    </div>
+    <Suspense fallback={null}>
+      <SheetCanvas />
+    </Suspense>
   );
 }

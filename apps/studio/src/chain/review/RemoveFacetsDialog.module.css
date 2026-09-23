@@ -1,0 +1,55 @@
+/*
+ * Remove facets (NET-06, IR L177). No board yet: ruled rows like the deploy review's, the running total as a
+ * quiet line under them. Tokens only.
+ */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  min-inline-size: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  padding: var(--lx-space-2) var(--lx-space-3);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.row:last-child {
+  border-block-end: 0;
+}
+
+.lock {
+  margin: 0;
+  padding-inline-start: calc(var(--lx-space-6) + var(--lx-space-1));
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  color: var(--lx-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.total {
+  display: block;
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  color: var(--lx-text);
+}
+
+.group {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
