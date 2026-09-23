@@ -48,5 +48,7 @@ describe("dependencies", () => {
     }
     expect(imported.size).toBeGreaterThan(0);
     for (const name of imported) expect([name, allowed.has(name)]).toEqual([name, true]);
+    // At K1, core imports only viem and zod; fflate arrives with C8's share codec.
+    expect([...imported].filter((name) => name !== "fflate").sort()).toEqual(["viem", "zod"]);
   });
 });

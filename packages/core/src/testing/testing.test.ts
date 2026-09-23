@@ -50,6 +50,8 @@ describe("fixture loaders", () => {
     else expect(catalog.error).toContain("fixture");
     const missing = loadFixtureCatalog("no-such-catalog");
     expect(missing.ok).toBe(false);
+    // Only reachable when node:fs loaded: the loader really reads the file system under Bun.
+    expect(!missing.ok && missing.error).toContain("WP-K3");
     expect(loadFixtureShard("NoSuchFacet").ok).toBe(false);
   });
 });
