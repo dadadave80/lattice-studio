@@ -110,9 +110,10 @@ describe("SEL-02 and SEL-03", () => {
       facet: "ERC20",
       count: 4,
       selectors: [S.name, S.decimals, S.transfer, S.transferFrom].sort((a, b) => erc20Order(a) - erc20Order(b)),
-      to: ["ERC4626", "GovernedVault"],
+      to: ["GovernedVault", "ERC4626"],
     });
-    expect(erc20?.message).toBe("ERC20 gives 4 selectors to ERC4626 and GovernedVault.");
+    // spec L312, word for word: GovernedVault takes 3 (name, transfer, transferFrom), ERC4626 takes 1 (decimals).
+    expect(erc20?.message).toBe("ERC20 gives 4 selectors to GovernedVault and ERC4626.");
     expect(erc20?.severity).toBe("info");
     expect(erc20?.fixes).toEqual([{ id: "inspector.focusSelectors", args: { facet: "ERC20" } }]);
   });

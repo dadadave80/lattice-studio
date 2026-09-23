@@ -169,11 +169,11 @@ describe("computeRouting resolution order", () => {
     expect(computeRouting(makeRecipe({ facets: ["D"] }), seamOnly)[picked]).toEqual({ owner: "D", contenders: ["D"], via: "seam" });
   });
 
-  test("an owner outside anyOf doesn't move a seam (SEM-01 anchors it); an allowed owner is kept", () => {
+  test("no owner moves a seam off the first placed facet in anyOf: outside anyOf (SEM-01 anchors it) or another allowed facet", () => {
     const outside = computeRouting(makeRecipe({ facets: ["B", "C", "D"], owners: { [seamed]: "D" } }), small);
     expect(outside[seamed]).toEqual({ owner: "C", contenders: ["B", "C", "D"], via: "seam" });
     const allowed = computeRouting(makeRecipe({ facets: ["B", "C", "D"], owners: { [seamed]: "B" } }), small);
-    expect(allowed[seamed]).toEqual({ owner: "B", contenders: ["B", "C", "D"], via: "seam" });
+    expect(allowed[seamed]).toEqual({ owner: "C", contenders: ["B", "C", "D"], via: "seam" });
   });
 
   test("a seam isn't active until every facet in when is placed", () => {

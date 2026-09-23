@@ -9,17 +9,17 @@ import { activeSeam, allowedServers, type RecipeView, recipeView } from "./view"
  *
  * 1. Excluded (`recipe.exclude`): listed with its contenders but no `owner` (it isn't routed; `stats.excluded`
  *    counts it), so every placed facet's selectors stay visible through `contenders`.
- * 2. A seam is active (every facet in its `when` is placed) and an allowed facet serves it: the explicit owner
- *    when it's one of the allowed servers, else the first placed facet in `anyOf`, `via: "seam"`. An owner
- *    outside `anyOf` doesn't move it; SEM-01 anchors that owner. With none of `anyOf` placed, resolution falls
- *    through to the rules below and SEM-01 blocks.
+ * 2. A seam is active (every facet in its `when` is placed) and an allowed facet serves it: the first placed
+ *    facet in `anyOf`, `via: "seam"` (spec L302, IR L102), whatever `owners` says. An owner outside `anyOf`
+ *    doesn't move it; SEM-01 anchors that owner. With none of `anyOf` placed, resolution falls through to the
+ *    rules below and SEM-01 blocks.
  * 3. A single contender: `via: "only"`.
  * 4. An explicit owner among the contenders: `via: "chosen"`.
  * 5. Exactly one contender lists it in `defaultOwnerOf`: `via: "default"`.
  * 6. Unresolved: no `owner`, `via: "chosen"` (the choice SEL-01 asks for is still to be made).
  *
- * The frozen `via` has no value for "excluded" or "unresolved", so both read `via: "chosen"` without an owner;
- * `recipe.exclude` tells them apart.
+ * `owner` is optional for exactly these (spec L262), but the frozen `via` has no value for "excluded" or
+ * "unresolved", so both read `via: "chosen"` without an owner; `recipe.exclude` tells them apart.
  */
 export const computeRouting: ComputeRoutingFn = (recipe, catalog) => {
   const view = recipeView(recipe, catalog);
@@ -33,8 +33,7 @@ function resolve(view: RecipeView, selector: Hex4, contenders: string[]): Route 
   const owner = view.owners.get(selector);
   const seam = activeSeam(view, selector);
   if (seam !== undefined) {
-    const allowed = allowedServers(view, seam, selector);
-    const pick = owner !== undefined && allowed.includes(owner) ? owner : allowed[0];
+    const pick = allowedServers(view, seam, selector)[0];
     if (pick !== undefined) return { owner: pick, contenders: [...contenders], via: "seam" };
   }
   const only = contenders.length === 1 ? contenders[0] : undefined;

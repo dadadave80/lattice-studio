@@ -8,7 +8,8 @@ import { type Anchor, type Problem, problem, problemId } from "../model/problems
  * excluded, either
  * - none of `anyOf` is placed to serve it (`nonePlaced`): fixes place each allowed facet; or
  * - an explicit owner outside `anyOf` is placed and exports it: the seam still wins routing (`via: "seam"`),
- *   and the problem anchors the stale owner until it's rerouted or removed.
+ *   and the problem anchors the stale owner until it's rerouted or removed. Fixes: one Route, to the first
+ *   placed facet in `anyOf` (where the seam routes it), and Remove the stale owner.
  * An owner that isn't placed or doesn't export the selector is SEL-05's, not this check's.
  */
 export const checkSem: Check = ({ recipe, catalog, routing }) => {
@@ -33,6 +34,7 @@ export const checkSem: Check = ({ recipe, catalog, routing }) => {
     }
     const owner = view.owners.get(selector);
     if (owner === undefined || seam.anyOf.includes(owner) || !contenders.includes(owner)) continue;
+    // One Route fix, to the facet the seam routes to: the first placed facet in `anyOf` (spec L302).
     const to = routing[selector]?.owner ?? allowed[0] ?? "";
     out.push(
       problem(

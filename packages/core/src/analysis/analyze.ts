@@ -1,12 +1,13 @@
 import { canonicalJson, normalizeRecipe, recipeHash } from "../canonical";
-import { CHECKS, runChecks } from "../checks";
+import { runChecks } from "../checks";
 import { collectRefs, encodeInit } from "../init/encode";
 import { planInit } from "../init/plan";
-import type { Analysis, AnalysisContext, Check, PlanEntry, Routing } from "../model/analysis";
+import type { Analysis, AnalysisContext, Routing } from "../model/analysis";
 import type { AnalyzeFn } from "../model/api";
+import type { Address } from "../model/hex";
 import type { Catalog } from "../model/catalog";
+import type { InitPlan } from "../model/init";
 import type { Recipe } from "../model/recipe";
-import { isNotImplemented } from "../model/wp";
 import { buildPlan } from "../plan";
 import { computeRouting } from "./routing";
 import { sortProblems } from "./sort";
@@ -22,10 +23,11 @@ const memo = new WeakMap<Catalog, Map<string, Analysis>>();
  * Routing, problems, the cut plan, the init call and stats (spec L296-L305). Pure and deterministic: the recipe
  * is normalized first (facets in catalog order, hex lowercase), so the order facets were placed in never
  * shows. Memoized per catalog on the recipe hash, the catalog hash and a digest of the context; injected
- * `options.checks` bypass the memo.
+ * `options.checks` bypass the memo. The result is deep-frozen, since the memo hands the same object to every
+ * caller: copy before sorting or editing it.
  *
- * Until C5a, C4a and C4b land, a stub they still hold degrades instead of throwing: the plan is empty, the init
- * summary null, and a check that throws `NotImplemented` contributes no problems.
+ * A neighbor that hasn't landed throws `NotImplemented` ("Not built yet · WP-<id>") through to the UI boundary:
+ * a stub never silently drops blockers (spec L296). Tests isolate checks with `options.checks`.
  */
 export const analyze: AnalyzeFn = (recipe, catalog, ctx, options) => {
   const context = ctx ?? EMPTY_CONTEXT;
@@ -36,43 +38,47 @@ export const analyze: AnalyzeFn = (recipe, catalog, ctx, options) => {
   if (cached !== undefined) return cached;
 
   const routing = computeRouting(normalized, catalog);
-  const checks = (options?.checks ?? CHECKS.map((check) => check.run)).map(degradeCheck);
-  const problems = sortProblems(runChecks({ recipe: normalized, catalog, routing, ctx: context }, checks), catalog);
-  const analysis: Analysis = {
+  const problems = sortProblems(runChecks({ recipe: normalized, catalog, routing, ctx: context }, options?.checks), catalog);
+  const analysis: Analysis = frozenCopy({
     recipeHash: hash,
     routing,
     problems,
-    plan: planOf(normalized, catalog, routing),
+    plan: buildPlan(normalized, catalog, routing).entries,
     init: initSummary(normalized, catalog, context),
     stats: statsOf(normalized, catalog, routing),
-  };
+  });
   if (key !== null) remember(catalog, key, analysis);
   return analysis;
 };
 
-function planOf(recipe: Recipe, catalog: Catalog, routing: Routing): PlanEntry[] {
-  return degrade(() => buildPlan(recipe, catalog, routing).entries, []);
-}
-
 /**
- * The init call the diamond receives: bundle → the bundle's init contract, steps → MultiInit (C4b), none →
- * null. `data` only once a deploy context resolves every reference the arguments use (spec L263) and the
- * arguments encode.
+ * The init call the diamond receives (contracts §3.1, "Init encoding ruling"): none → null; a final call list
+ * (C4a's plan, with the automatic introspection step added or skipped) of exactly one call → that init's
+ * release address, a direct call; two or more → MultiInit. The target never depends on the context. `data`
+ * only once a deploy context resolves every reference the arguments use (spec L263) and C4b encodes them.
  */
 function initSummary(recipe: Recipe, catalog: Catalog, ctx: AnalysisContext): Analysis["init"] {
-  const init = recipe.init;
-  if (init.kind === "none") return null;
-  const spec = init.kind === "bundle" ? init.spec : "MultiInit";
-  const target = catalog.inits.find((candidate) => candidate.name === spec)?.release?.address;
+  if (recipe.init.kind === "none") return null;
+  const plan = planInit(recipe, catalog);
+  const target = initTarget(plan, catalog);
   if (target === undefined) return null;
-  const refs = degrade(() => collectRefs(recipe), null);
-  if (refs === null) return null;
+  const refs = collectRefs(recipe);
   const summary: NonNullable<Analysis["init"]> = { target, refs };
   const resolved = ctx.refs;
   if (ctx.deploy === undefined || resolved === undefined || !refs.every((ref) => resolved[ref] !== undefined)) return summary;
-  const call = degrade(() => encodeInit(planInit(recipe, catalog), catalog, resolved), null);
-  if (call === null || !call.ok) return summary;
-  return { target: call.value.target, data: call.value.data, refs };
+  const call = encodeInit(plan, catalog, resolved);
+  return call.ok ? { target, data: call.value.data, refs } : summary;
+}
+
+/** One call: its init's release address. Several: MultiInit's. Undefined when there's no call or no release. */
+function initTarget(plan: InitPlan, catalog: Catalog): Address | undefined {
+  const [only, ...rest] = plan.steps;
+  if (only === undefined) return undefined;
+  const spec = rest.length > 0 ? "MultiInit" : only.spec;
+  const found =
+    catalog.inits.find((candidate) => candidate.name === spec) ??
+    (rest.length > 0 ? undefined : catalog.inits.find((candidate) => candidate.contract === only.contract && candidate.release !== undefined));
+  return found?.release?.address;
 }
 
 /**
@@ -95,18 +101,17 @@ function statsOf(recipe: Recipe, catalog: Catalog, routing: Routing): Analysis["
   };
 }
 
-/** `run()`, or `fallback` when it throws `NotImplemented` (a neighbor's stub); any other error propagates. */
-function degrade<T>(run: () => T, fallback: T): T {
-  try {
-    return run();
-  } catch (error) {
-    if (isNotImplemented(error)) return fallback;
-    throw error;
-  }
+/** A frozen copy: checks may put catalog arrays in params by reference, and those must stay unfrozen. */
+function frozenCopy<T>(value: T): T {
+  return deepFreeze(structuredClone(value));
 }
 
-function degradeCheck(check: Check): Check {
-  return (input) => degrade(() => check(input), []);
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const member of Object.values(value)) deepFreeze(member);
+  }
+  return value;
 }
 
 function memoKey(hash: string, recipe: Recipe, catalog: Catalog, ctx: AnalysisContext): string | null {

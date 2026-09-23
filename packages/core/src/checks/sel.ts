@@ -93,7 +93,7 @@ function facetProblems(view: RecipeView, routing: Routing): Problem[] {
     const where: Anchor[] = [{ kind: "facet", facet: facet.name }];
     const routedHere = selectors.filter((s) => routing[s]?.owner === facet.name);
     const given = selectors.filter((s) => !view.exclude.has(s) && ownerOf(routing, s) !== undefined && ownerOf(routing, s) !== facet.name);
-    const owners = inCatalogOrder(view, given.map((s) => ownerOf(routing, s) ?? ""));
+    const owners = byShare(view, given.map((s) => ownerOf(routing, s) ?? ""));
     if (routedHere.length > 0) {
       if (given.length === 0) continue;
       out.push(
@@ -115,6 +115,17 @@ function facetProblems(view: RecipeView, routing: Routing): Problem[] {
     out.push(problem("SEL-03", where, { facet: facet.name, count: selectors.length, why, servedBy: owners, movable }, fixes));
   }
   return out;
+}
+
+/**
+ * Distinct owners, the one taking the most selectors first, then catalog order (spec L312: "ERC20 gives 4
+ * selectors to GovernedVault and ERC4626", GovernedVault taking 3 and ERC4626 1).
+ */
+function byShare(view: RecipeView, owners: readonly string[]): string[] {
+  const count = new Map<string, number>();
+  for (const owner of owners) count.set(owner, (count.get(owner) ?? 0) + 1);
+  const ordered = inCatalogOrder(view, owners);
+  return ordered.sort((a, b) => (count.get(b) ?? 0) - (count.get(a) ?? 0));
 }
 
 function ownerOf(routing: Routing, selector: Hex4): string | undefined {
