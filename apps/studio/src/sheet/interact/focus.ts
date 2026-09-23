@@ -84,8 +84,21 @@ export function enterRows(facet: string): boolean {
   const [first] = rowsOf(facet);
   if (!first) return false;
   inRows(facet);
-  first.focus({ preventScroll: true });
+  void focusRow(first);
   return true;
+}
+
+/**
+ * Focuses a row. A card's body paints only while it's on screen (`content-visibility: auto`), and a row in a
+ * body the browser hasn't painted yet can't take focus, so this tries again for a few frames.
+ */
+async function focusRow(row: HTMLElement): Promise<boolean> {
+  for (let i = 0; i <= FRAMES; i++) {
+    row.focus({ preventScroll: true });
+    if (document.activeElement === row) return true;
+    await nextFrame();
+  }
+  return false;
 }
 
 /** The session's `rows` mode names `facet`, and Esc leaves it back to the card. */
@@ -114,6 +127,6 @@ export function moveBetweenRows(row: HTMLElement, key: string): boolean {
   else if (key === "End") next = rows.at(-1);
   else return false;
   inRows(facet);
-  next?.focus({ preventScroll: true });
+  if (next) void focusRow(next);
   return true;
 }
