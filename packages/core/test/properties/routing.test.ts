@@ -128,12 +128,19 @@ for (const catalog of catalogs) {
       }
     });
 
-    test('every selector a template\'s exclusion lists say "wins" is a seam or a default owner', () => {
+    // FX5 narrowed this from "is a seam or a default owner": spec L932's property covers only the selectors a
+    // script's exclusion notes say "win" (DeployGovernedVault.s.sol L27-35). CG8's real catalog also takes a
+    // template selector with a Replace cut and gives it no default on purpose (overlay/facets/tokens.yaml's
+    // ERC20Pausable seamReview: transfer 0xa9059cbb, transferFrom 0x23b872dd), so stripping that owner is meant
+    // to leave the selector to the person as SEL-01 (spec L303), not to fall back to the template's facet. A
+    // dropped owner never routes to a *different* facet on any catalog; the fixture's seam and default mix
+    // still resolves every one of GovernedVault's, so that stays strict.
+    test('every selector a template\'s exclusion lists say "wins" routes back to that owner (seam or default) or stays unrouted, never to another facet', () => {
       const templates = catalog.recipes.filter((template) => Object.keys(template.recipe.owners).length > 0);
       if (catalog.lattice.tag === "fixture") expect(templates.map((t) => t.name)).toContain("GovernedVault");
       if (templates.length === 0) return;
       checkProperty(
-        `${catalog.lattice.tag}: template owners win on their own`,
+        `${catalog.lattice.tag}: template owners route back or stay unrouted`,
         fc.property(
           fc.constantFrom(...templates).chain((template) =>
             fc.tuple(
@@ -143,7 +150,8 @@ for (const catalog of catalogs) {
             ),
           ),
           ([template, stripped, presented]) => {
-            // Some owners dropped: each dropped selector still goes to the facet the template's script cut it on.
+            // Some owners dropped: each dropped selector either goes back to the facet the template's script
+            // cut it on, or is left to the person to resolve; it never goes to a third facet.
             const kept: Record<Hex4, string> = {};
             for (const [selector, owner] of Object.entries(template.recipe.owners)) {
               if (!stripped.includes(selector as Hex4)) kept[selector as Hex4] = owner;
@@ -152,10 +160,18 @@ for (const catalog of catalogs) {
             const routing = computeRouting(recipe, catalog);
             for (const selector of stripped) {
               const route = routing[selector];
-              expect([template.name, selector, route?.owner, route?.via === "seam" || route?.via === "default"]).toEqual([
+              // `selector` came from `Object.keys(template.recipe.owners)`, so this key is always there.
+              const wantOwner = template.recipe.owners[selector] ?? "";
+              if (route?.owner === undefined) {
+                if (catalog.lattice.tag === "fixture") {
+                  throw new Error(`${template.name} ${selector} came back unrouted on the fixture catalog; expected a seam or default owner`);
+                }
+                continue;
+              }
+              expect([template.name, selector, route.owner, route.via === "seam" || route.via === "default"]).toEqual([
                 template.name,
                 selector,
-                template.recipe.owners[selector],
+                wantOwner,
                 true,
               ]);
             }

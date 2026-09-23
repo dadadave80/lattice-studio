@@ -1,9 +1,12 @@
 /**
  * Hostile names never break out of generated strings (spec L21, L857, L859, L936). Every template that exports
- * as it is, with a hostile project name, recipe name and every `string` init argument, exports through C7a
- * (Solidity), C7b (Markdown brief, recipe.json, project file) and C7c (Safe batch). Each output must have exactly
- * the structure of the same export with plain text, and each hostile value must arrive intact where it's data.
- * Nothing here pins another WP's copy: structure is compared with the plain run of the same functions.
+ * as it is, with a hostile project name, recipe name, every `string` init argument and (for some cases) a
+ * scalar init argument replaced by a hostile-keyed object, exports through C7a (Solidity), C7b (Markdown
+ * brief, recipe.json, project file) and C7c (Safe batch). Each output must have exactly the structure of the
+ * same export with plain text, and each hostile value must arrive intact where it's data; a hostile-keyed
+ * object, which no valid ABI type accepts, must make Solidity and Safe-batch export refuse cleanly rather
+ * than encode something wrong. Nothing here pins another WP's copy: structure is compared with the plain run
+ * of the same functions.
  */
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
@@ -12,9 +15,9 @@ import {
   type Project, type Recipe,
 } from "../../src";
 import {
-  addr, checkProperty, exportableTemplates, fitText, hex, hostileNonEmptyString, hostileString, isPrintableAscii, lexSolidity,
-  loadableTemplates, makeProject, mapStringArgs, markdownOutline, propertyCatalogs, solidityShape, solidityStringBytes,
-  stringArgPaths, wellFormed, type MarkdownOutline,
+  addr, checkProperty, exportableTemplates, fitText, hex, hostileKey, hostileNonEmptyString, hostileString, isPrintableAscii,
+  keyedArg, lexSolidity, loadableTemplates, makeProject, mapStringArgs, markdownOutline, markdownProse, propertyCatalogs,
+  scalarArgPaths, solidityShape, solidityStringBytes, stringArgPaths, wellFormed, type MarkdownOutline,
 } from "../../src/testing";
 
 const catalogs = propertyCatalogs();
@@ -34,18 +37,30 @@ function caseOf(catalog: Catalog, base: Recipe, name: string, strings: (i: numbe
   return { recipe, project, analysis: analyze(recipe, catalog, ctx) };
 }
 
+/** `catalog.chains`' ids, or Anvil's default when the catalog carries none. */
+function chainIdsOf(catalog: Catalog): number[] {
+  return catalog.chains.length > 0 ? catalog.chains.map((chain) => chain.chainId) : [31337];
+}
+
+function foundryResult(catalog: Catalog, c: Case) {
+  return exportFoundry({ project: c.project, catalog, analysis: c.analysis, studioVersion: STUDIO, chainIds: chainIdsOf(catalog) });
+}
+
 function foundryOf(catalog: Catalog, c: Case) {
-  const chainIds = catalog.chains.length > 0 ? catalog.chains.map((chain) => chain.chainId) : [31337];
-  const out = exportFoundry({ project: c.project, catalog, analysis: c.analysis, studioVersion: STUDIO, chainIds });
+  const out = foundryResult(catalog, c);
   if (!out.ok) throw new Error(`exportFoundry refused: ${out.error}`);
   return out.value;
 }
 
-function safeOf(catalog: Catalog, c: Case) {
-  const out = exportSafeBatch({
+function safeResult(catalog: Catalog, c: Case) {
+  return exportSafeBatch({
     recipe: c.recipe, catalog, safe: SAFE, chainId: catalog.chains[0]?.chainId ?? 31337, entropy: c.project.deploy.entropy,
     scope: "every-chain", path: "factory", now: 1_700_000_000_000, studioVersion: STUDIO, context: ctx,
   });
+}
+
+function safeOf(catalog: Catalog, c: Case) {
+  const out = safeResult(catalog, c);
   if (!out.ok) throw new Error(`exportSafeBatch refused: ${out.error}`);
   return out.value;
 }
@@ -64,16 +79,39 @@ function bytesOf(text: string): string {
   return Array.from(new TextEncoder().encode(text)).join(",");
 }
 
+type HostileCase = { base: Recipe; name: string; strings: readonly string[]; keyed: boolean; c: Case };
+
 for (const catalog of catalogs) {
   describe(`hostile names on catalog ${catalog.lattice.tag}`, () => {
     const fixture = catalog.lattice.tag === "fixture";
     const templates = exportableTemplates(catalog);
     const plain = new Map(templates.map((recipe) => [recipe, caseOf(catalog, recipe, "Plain", () => "Plain")]));
-    /** Built lazily: `fc.constantFrom` on an empty list throws, and a catalog may have no exportable template. */
-    const hostileCase = () =>
+    /**
+     * Built lazily: `fc.constantFrom` on an empty list throws, and a catalog may have no exportable template.
+     * About half the cases also replace one scalar init argument with a hostile-keyed object (`keyed: true`):
+     * a share link or file can put one there (model/schema.ts's `ArgSchema` only forbids the literal `"$ref"`
+     * key), and `describeArg` (export/docs/brief.ts) renders its key as prose. A case with no scalar argument
+     * to replace (an empty init) stays unkeyed.
+     */
+    const hostileCase = (): fc.Arbitrary<HostileCase> =>
       fc
-        .tuple(fc.constantFrom(...templates), hostileString(), fc.array(hostileNonEmptyString(), { minLength: 12, maxLength: 12 }))
-        .map(([base, name, strings]) => ({ base, name, strings, c: caseOf(catalog, base, name, (i) => strings[i % strings.length] ?? "x") }));
+        .tuple(
+          fc.constantFrom(...templates),
+          hostileString(),
+          fc.array(hostileNonEmptyString(), { minLength: 12, maxLength: 12 }),
+          fc.boolean(),
+          hostileKey(),
+        )
+        .chain(([base, name, strings, wantKeyed, key]) => {
+          const built = caseOf(catalog, base, name, (i) => strings[i % strings.length] ?? "x");
+          const paths = scalarArgPaths(built.recipe, catalog);
+          if (!wantKeyed || paths.length === 0) return fc.constant<HostileCase>({ base, name, strings, keyed: false, c: built });
+          return fc.constantFrom(...paths).map((path): HostileCase => {
+            const recipe = keyedArg(built.recipe, catalog, path, key);
+            const c: Case = { recipe, project: { ...built.project, recipe }, analysis: analyze(recipe, catalog, ctx) };
+            return { base, name, strings, keyed: true, c };
+          });
+        });
 
     test("the templates to export: on the fixture, every loadable one, and some carry string arguments", () => {
       if (fixture) {
@@ -83,10 +121,16 @@ for (const catalog of catalogs) {
       for (const c of plain.values()) expect(c.analysis.problems.filter((p) => p.severity === "blocker").map((p) => p.id)).toEqual([]);
     });
 
-    test.skipIf(templates.length === 0)("Solidity: a hostile name or argument changes only string literals and comments, and each argument arrives intact", () => {
+    test.skipIf(templates.length === 0)("Solidity: a hostile name or argument changes only string literals and comments, each argument arrives intact, and a hostile-keyed object is refused, not encoded", () => {
       const outcome = checkProperty(
         `${catalog.lattice.tag}: hostile Solidity`,
-        fc.property(hostileCase(), ({ base, c }) => {
+        fc.property(hostileCase(), ({ base, keyed, c }) => {
+          if (keyed) {
+            // No ABI type accepts an object where it expects a scalar; C4b's encoder refuses it by name,
+            // so Solidity export never runs on a value it hasn't validated.
+            expect(foundryResult(catalog, c).ok).toBe(false);
+            return;
+          }
           fc.pre(c.analysis.problems.every((p) => p.severity !== "blocker"));
           const plainCase = plain.get(base) as Case;
           const reference = foundryOf(catalog, plainCase);
@@ -115,7 +159,12 @@ for (const catalog of catalogs) {
       if (fixture) expect(outcome.skipped).toBeLessThan(outcome.runs / 10);
     });
 
-    test.skipIf(templates.length === 0)("Markdown brief: headings, tables and fences are the plain brief's, and its recipe.json block is the export", () => {
+    // FX5: replaces FX3's `test.todo`. A hostile name, string argument or object-arg field key (`<img src=x
+    // onerror=alert(1)>`, `<script>`, `&lt;`, `[x](javascript:alert(1))` among the pieces `hostileString` and
+    // `hostileKey` draw from) must render as text: the brief's heading/table/fence outline stays the plain
+    // brief's, the embedded recipe.json block is exactly `exportRecipeJson`'s text, and no raw `<` or `>`
+    // (spec L21, L857: "every generated string is escaped") survives outside a fence or an inline code span.
+    test.skipIf(templates.length === 0)("Markdown brief: headings, tables and fences are the plain brief's, its recipe.json block is the export, and hostile text never opens a raw HTML tag", () => {
       checkProperty(
         `${catalog.lattice.tag}: hostile Markdown`,
         fc.property(hostileCase(), ({ base, c }) => {
@@ -127,20 +176,15 @@ for (const catalog of catalogs) {
           for (const table of outline.tables) for (const row of table.rows) expect(row).toBe(table.columns);
           const json = outline.codeBlocks.find((block) => block.info === "json");
           expect(JSON.parse(json?.body ?? "null") as unknown).toEqual(JSON.parse(exportRecipeJson(c.recipe, catalog).text) as unknown);
+          expect(markdownProse(brief.text)).not.toMatch(/[<>]/);
         }),
       );
     });
 
-    // Known gap, recorded until FX3 lands: the brief writes names and arguments into Markdown unescaped, so raw
-    // HTML and links (`<img src=x onerror=alert(1)>`, `<script>`, `[x](javascript:alert(1))`) render as HTML or a
-    // live link in a Markdown viewer. Structure can't break (the property above), but spec L857 renders names as
-    // text. Once FX3 escapes them, assert that no hostile `<`, `>` or `](javascript:` survives outside code.
-    test.todo("FX3: the brief escapes HTML and javascript: links in names and arguments", () => undefined);
-
-    test.skipIf(templates.length === 0)("JSON: recipe.json, the project file and the Safe batch parse, carry the text exactly, and keep one-line fields plain", () => {
+    test.skipIf(templates.length === 0)("JSON: recipe.json, the project file and the Safe batch parse, carry the text exactly, keep one-line fields plain, and refuse a hostile-keyed object cleanly", () => {
       const outcome = checkProperty(
         `${catalog.lattice.tag}: hostile JSON`,
-        fc.property(hostileCase(), ({ base, name, c }) => {
+        fc.property(hostileCase(), ({ base, name, keyed, c }) => {
           const recipeJson = JSON.parse(exportRecipeJson(c.recipe, catalog).text) as Recipe;
           // A name that isn't well-formed UTF-16 may come out repaired (U+FFFD) once parsing refuses lone surrogates.
           expect([name, wellFormed(name)]).toContain(recipeJson.name ?? "");
@@ -148,6 +192,13 @@ for (const catalog of catalogs) {
           const projectFile = exportProjectFile(c.project, []);
           expect(projectFile.filename).not.toMatch(/[/\\\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u);
           expect((JSON.parse(projectFile.text) as { project: Project }).project).toEqual(c.project);
+          if (keyed) {
+            // Same refusal as Solidity: the Safe batch also encodes the init through C4b, so a hostile-keyed
+            // object never reaches a transaction. recipe.json and the project file above still carry it,
+            // because they store the recipe as data and never encode it.
+            expect(safeResult(catalog, c).ok).toBe(false);
+            return;
+          }
           fc.pre(c.analysis.problems.every((p) => p.severity !== "blocker"));
           const batch = safeOf(catalog, c);
           const reference = JSON.parse(safeOf(catalog, plain.get(base) as Case).text) as SafeFile;
