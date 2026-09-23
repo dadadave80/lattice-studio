@@ -1,0 +1,17 @@
+/*
+ * A segment composes Button.module.css's `.button` (Toggle.module.css's `.segment`). Its `[aria-disabled="true"]`
+ * rule sets `background: transparent`, a shorthand that also resets `background-position`, `-repeat` and `-size`
+ * to their initial values. Toggle.module.css's `.pressedMark[data-pressed]` sets those three explicitly for the
+ * pressed accent bar, at the same specificity as Button's reset; whichever of the two independently-loaded
+ * stylesheets a page renders second wins the tie. When Button's wins, the bar's flat-color gradient, sized
+ * `auto` and tiled from the top-left corner instead of a thin line along the bottom, fills the whole segment —
+ * the same color as the disabled segment's own text, so the text disappears into it.
+ *
+ * `.pressedFix.pressedFix` repeats the class to reach a higher specificity than either rule, so this wins
+ * regardless of load order.
+ */
+.pressedFix.pressedFix[data-pressed] {
+  background-position: bottom;
+  background-repeat: no-repeat;
+  background-size: 100% var(--lx-stroke-heavy);
+}
