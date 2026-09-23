@@ -1,0 +1,498 @@
+/**
+ * The standalone `Deploy{Name}.s.sol` (spec L507-L528 Flow 11, decision 9, L919). One file importing only
+ * forge-std, with the few types and interfaces it needs inlined; per-chain constants chosen by `block.chainid`;
+ * every selector a `bytes4` literal with its signature in a comment; no FFI. `run()` refuses to go on unless
+ * every shared contract's codehash matches the catalog, the predicted address is empty and, after the deploy
+ * call in its own simulation, `facets()` equals the plan per facet as sets.
+ */
+import { CREATEX } from "../../address/diamond";
+import { CREATEX_CODEHASH } from "../../checks/net";
+import { SCOPE_FLAG } from "../../address/salt";
+import type { PlanEntry } from "../../model/analysis";
+import type { Catalog, InitSpec } from "../../model/catalog";
+import type { DeployPath, Scope } from "../../model/chain";
+import { toChecksum, type Address, type Hex } from "../../model/hex";
+import type { InitPlan } from "../../model/init";
+import { commentText } from "../escape";
+import { renderInit } from "./init";
+import { addressLiteral, assignLines, callLines, declarationLines, fixedBytesLiteral, hexStringLiteral, indent, stringLiteral } from "./solidity";
+
+/** keccak256 of the CREATE3 proxy CreateX deploys first (CreateX `_PROXY_CHILD_BYTECODE`, as C5b uses it). */
+export const CREATE3_PROXY_CHILD_HASH: Hex = "0x21c35dbe1b344a2488cf3321d6ce542f8e9f305544ff09e4993a62319a497c1f";
+
+/** Where to deploy missing shared contracts until Lattice re-pins (D2): Studio or its CLI, never DeployRelease. */
+export const MISSING_HELP = "Deploy them first with Deploy missing contracts… in Lattice Studio or with the lattice-studio CLI.";
+
+/** One chain's constants: its LatticeFactory (chain-specific or canonical) and the proxy build it predicts with. */
+export type ChainConstants = {
+  chainId: number;
+  factory: Address;
+  factoryCodehash: Hex;
+  proxyInitCodeHash: Hex;
+  /** The Lattice commit the diamond's proxy code was built at, for verification. */
+  proxyCommit: string;
+  /** True when this chain has its own factory build. */
+  chainSpecific: boolean;
+};
+
+/** Everything the renderer needs, already validated. */
+export type ScriptInput = {
+  contractName: string;
+  filename: string;
+  projectName: string;
+  studioVersion: string;
+  recipeHash: Hex;
+  catalog: Catalog;
+  plan: readonly PlanEntry[];
+  /** Placed facets that route no selector. */
+  omitted: readonly string[];
+  excluded: readonly Hex[];
+  init: InitPlan;
+  path: DeployPath;
+  scope: Scope;
+  entropy: Hex;
+  chains: readonly ChainConstants[];
+  /** The Lattice proxy's creation code, on the CreateX path. */
+  proxyCreationCode?: Hex;
+};
+
+/** A shared contract the script checks: its constants' base name, address and codehash. */
+type Shared = { name: string; base: string; address: Address; codehash: Hex };
+
+/** UPPER_SNAKE from a catalog name: "ERC20Init" → "ERC20_INIT", "DiamondLoupeFacet" → "DIAMOND_LOUPE_FACET". */
+function upperSnake(name: string): string {
+  const snake = name
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .toUpperCase();
+  return /^[A-Z]/.test(snake) ? snake : `C_${snake}`;
+}
+
+/** Names every file-level and contract-level identifier the template itself uses. */
+const TEMPLATE_NAMES = [
+  "Script", "console", "FacetCutAction", "FacetCut", "Facet", "RecipeEntry", "ChainConfig", "ILatticeFactory",
+  "IDiamondLoupe", "ICreateX", "ILattice", "Values", "CREATEX", "CREATE3_PROXY_CHILD_HASH", "SCOPE", "ENTROPY",
+  "RECIPE_HASH", "PROJECT", "SUPPORTED_CHAINS", "MISSING_HELP", "LATTICE_CREATION_CODE", "CREATEX_CODEHASH", "missing", "wrongCode",
+];
+
+class SharedRegistry {
+  readonly list: Shared[] = [];
+  private readonly used = new Set<string>(["LATTICE_FACTORY"]);
+
+  constant(name: string, address: Address, codehash: Hex): string {
+    const found = this.list.find((shared) => shared.address.toLowerCase() === address.toLowerCase());
+    if (found) return `${found.base}_ADDRESS`;
+    const root = upperSnake(name);
+    let base = root;
+    for (let n = 2; this.used.has(base); n += 1) base = `${root}_${n}`;
+    this.used.add(base);
+    this.list.push({ name, base, address: toChecksum(address), codehash });
+    return `${base}_ADDRESS`;
+  }
+}
+
+function comment(depth: number, text: string): string {
+  return `${indent(depth)}// ${commentText(text)}`;
+}
+
+function headerLines(input: ScriptInput): string[] {
+  const { catalog } = input;
+  const lines: string[] = [];
+  // Every line goes through commentText, so no value in it can end the comment.
+  const add = (text = ""): void => {
+    lines.push(text === "" ? "//" : `// ${commentText(text)}`);
+  };
+  const item = (text: string): void => {
+    lines.push(`//   ${commentText(text)}`);
+  };
+  const chainList = input.chains.map((chain) => chain.chainId).join(", ");
+  add(`${input.filename}: deploys the diamond "${input.projectName}" as Lattice Studio composed it.`);
+  add(`Generated by Lattice Studio ${input.studioVersion}. The same recipe, catalog and inputs give the same bytes.`);
+  add();
+  add(`Recipe hash: ${input.recipeHash}`);
+  add(`Catalog: Lattice ${catalog.lattice.tag} at commit ${catalog.lattice.commit}, catalog hash ${catalog.hash}`);
+  if (catalog.provisional !== undefined) add(`Provisional: ${catalog.provisional}`);
+  add(`Toolchain: Foundry ${catalog.toolchain.foundry}, solc ${catalog.toolchain.solc}`);
+  add(
+    input.path === "factory"
+      ? "Deploys through: LatticeFactory.deploy, one transaction with its init"
+      : "Deploys through: CreateX.deployCreate3AndInit, one transaction with its init",
+  );
+  if (input.path === "createx") add(`CreateX must hold its published runtime code, codehash ${CREATEX_CODEHASH}`);
+  add(`Salt: deploying account, scope ${SCOPE_FLAG[input.scope]} (${input.scope}), entropy ${input.entropy}`);
+  add(`Chains: ${chainList}`);
+  add();
+  add("Run:");
+  item(`forge script ${input.filename} --rpc-url $RPC_URL --account deployer --broadcast`);
+  add("On Anvil, fork a supported chain where the shared contracts exist: anvil --fork-url $RPC_URL");
+  add();
+  add("Before it broadcasts, the script checks that every shared contract's codehash matches the catalog, that the");
+  add("predicted address is empty, and that its own simulation of the deploy finds facets() equal to this plan:");
+  for (const entry of input.plan) {
+    item(`${entry.facet} ${entry.version}, ${entry.selectors.length} ${entry.selectors.length === 1 ? "selector" : "selectors"}`);
+  }
+  add();
+  const steps = [...input.init.steps].sort((a, b) => a.index - b.index);
+  if (steps.length === 0) {
+    add("Init: none");
+  } else {
+    add(`Init: ${steps.length === 1 ? "one direct call" : `${steps.length} calls through MultiInit`}`);
+    for (const step of steps) item(`${step.contract}.${step.fn}`);
+  }
+  add('References: "This diamond" is the predicted address; "Deploying account" is the broadcaster.');
+  add();
+  add("Verify: the script creates no contract forge could match. Verify the diamond against the published Lattice");
+  add(`standard JSON, in a Lattice checkout at ${catalog.lattice.tag} (commit ${catalog.lattice.commit}):`);
+  item("FOUNDRY_PROFILE=ci forge verify-contract <diamond> src/Lattice.sol:Lattice --verifier sourcify --chain <chain id>");
+  if (input.path === "factory") {
+    for (const chain of input.chains.filter((c) => c.chainSpecific)) {
+      add(`Chain ${chain.chainId} has its own LatticeFactory: verify from a checkout at commit ${chain.proxyCommit} instead.`);
+    }
+  }
+  add();
+  add("Leaves out:");
+  // Template text, not escaped: the spec's own label keeps its ellipsis.
+  lines.push("//   Deploying missing shared contracts: use Deploy missing contracts… in Lattice Studio or the lattice-studio CLI.");
+  if (input.omitted.length > 0) item(`Facets that route no selector: ${input.omitted.join(", ")}`);
+  if (input.excluded.length > 0) item(`Excluded selectors: ${input.excluded.join(", ")}`);
+  return lines;
+}
+
+function cutsFunction(plan: readonly PlanEntry[], catalog: Catalog, constant: (entry: PlanEntry) => string): string[] {
+  const lines = [
+    `${indent(1)}function _cuts() internal pure returns (FacetCut[] memory cuts) {`,
+    `${indent(2)}cuts = new FacetCut[](${plan.length});`,
+    `${indent(2)}bytes4[] memory selectors;`,
+  ];
+  plan.forEach((entry, i) => {
+    const facet = catalog.facets.find((f) => f.name === entry.facet);
+    const signatures = new Map(facet?.selectors.map((s) => [s.hex.toLowerCase(), s.signature]) ?? []);
+    lines.push("", comment(2, `${entry.facet} ${entry.version}`));
+    lines.push(`${indent(2)}selectors = new bytes4[](${entry.selectors.length});`);
+    entry.selectors.forEach((selector, j) => {
+      const signature = signatures.get(selector.toLowerCase()) ?? "unknown signature";
+      lines.push(`${indent(2)}selectors[${j}] = bytes4(${fixedBytesLiteral(selector, 4)}); // ${commentText(signature)}`);
+    });
+    lines.push(...callLines(2, `cuts[${i}] = `, "FacetCut", [constant(entry), "FacetCutAction.Add", "selectors"]));
+  });
+  lines.push(`${indent(1)}}`);
+  return lines;
+}
+
+function chainFunction(input: ScriptInput): string[] {
+  const lines = [`${indent(1)}function _chainConfig() internal view returns (ChainConfig memory config) {`];
+  for (const chain of input.chains) {
+    lines.push(`${indent(2)}if (block.chainid == ${chain.chainId}) {`);
+    if (input.path === "factory") {
+      lines.push(
+        `${indent(3)}config.factory = ${addressLiteral(chain.factory)};`,
+        `${indent(3)}config.factoryCodehash = ${fixedBytesLiteral(chain.factoryCodehash, 32)};`,
+        `${indent(3)}config.proxyInitCodeHash = ${fixedBytesLiteral(chain.proxyInitCodeHash, 32)};`,
+      );
+    }
+    lines.push(...assignLines(3, "config.proxyCommit", stringLiteral(chain.proxyCommit)));
+    lines.push(`${indent(3)}return config;`, `${indent(2)}}`);
+  }
+  lines.push(`${indent(2)}revert UnsupportedChain(block.chainid, SUPPORTED_CHAINS);`, `${indent(1)}}`);
+  return lines;
+}
+
+/** The script's text. Throws only on a programmer error: the caller validates first. */
+export function renderScript(input: ScriptInput): string {
+  const { catalog } = input;
+  const factoryPath = input.path === "factory";
+  const shared = new SharedRegistry();
+  const planConstants = new Map<string, string>();
+  for (const entry of input.plan) planConstants.set(entry.facet, shared.constant(entry.facet, entry.address, entry.codehash));
+  const initConstant = (spec: InitSpec): string => {
+    if (spec.release === undefined) throw new TypeError(`${spec.name} has no release.`);
+    return shared.constant(spec.contract, spec.release.address, spec.release.codehash);
+  };
+  const init = renderInit(input.init, catalog, initConstant, [...TEMPLATE_NAMES, input.contractName]);
+  const initArgs = init.params.map((p) => (p === "diamond" ? "predicted" : "deployer")).join(", ");
+
+  const out: string[] = [];
+  const push = (...lines: string[]): void => {
+    out.push(...lines);
+  };
+  push("// SPDX-License-Identifier: MIT", ...headerLines(input), "pragma solidity ^0.8.30;", "");
+  push('import {Script} from "forge-std/Script.sol";', 'import {console} from "forge-std/console.sol";', "");
+  push(
+    "// Lattice's diamond types (diamond-lib DiamondLib.sol and ILatticeFactory.sol at the pin), inlined.",
+    "enum FacetCutAction {",
+    "    Add,",
+    "    Replace,",
+    "    Remove",
+    "}",
+    "",
+    "struct FacetCut {",
+    "    address facetAddress;",
+    "    FacetCutAction action;",
+    "    bytes4[] functionSelectors;",
+    "}",
+    "",
+    "struct Facet {",
+    "    address facetAddress;",
+    "    bytes4[] functionSelectors;",
+    "}",
+    "",
+  );
+  if (factoryPath) {
+    push(
+      "struct RecipeEntry {",
+      "    bytes32 nameHash;",
+      "    uint64 version;",
+      "}",
+      "",
+      "interface ILatticeFactory {",
+      "    function deploy(",
+      "        RecipeEntry[] calldata entries,",
+      "        FacetCut[] calldata customCuts,",
+      "        address init,",
+      "        bytes calldata initCalldata,",
+      "        bytes32 salt",
+      "    ) external returns (address diamond);",
+      "",
+      "    function predict(address deployer, bytes32 salt) external view returns (address diamond);",
+      "}",
+      "",
+    );
+  } else {
+    push(
+      "interface ICreateX {",
+      "    struct Values {",
+      "        uint256 constructorAmount;",
+      "        uint256 initCallAmount;",
+      "    }",
+      "",
+      "    function deployCreate3AndInit(bytes32 salt, bytes memory initCode, bytes memory data, Values memory values)",
+      "        external",
+      "        payable",
+      "        returns (address newContract);",
+      "",
+      "    function computeCreate3Address(bytes32 salt) external view returns (address computedAddress);",
+      "}",
+      "",
+      "interface ILattice {",
+      "    function initialize(FacetCut[] calldata facetCuts, address init, bytes calldata data) external payable;",
+      "}",
+      "",
+    );
+  }
+  push(
+    "interface IDiamondLoupe {",
+    "    function facets() external view returns (Facet[] memory);",
+    "}",
+    "",
+    "struct ChainConfig {",
+    ...(factoryPath ? ["    address factory;", "    bytes32 factoryCodehash;", "    bytes32 proxyInitCodeHash;"] : []),
+    "    string proxyCommit;",
+    "}",
+    "",
+  );
+  for (const struct of init.structs) push(...struct, "");
+
+  push(`contract ${input.contractName} is Script {`);
+  push(
+    "    error UnsupportedChain(uint256 chainId, string supportedChains);",
+    "    error MissingSharedContracts(string names, string howToDeploy);",
+    "    error UnexpectedCode(string contracts);",
+    "    error AddressTaken(address predicted);",
+    "    error PredictionDiffers(address expected, address actual);",
+    "    error FacetsDiffer(uint256 expected, uint256 actual);",
+    "    error UnexpectedFacet(address facet);",
+    "    error SelectorsDiffer(address facet);",
+    "",
+  );
+  // The name the run log prints: made comment-safe at export time, so no control, bidi or escape sequence reaches
+  // a terminal (commentText leaves printable ASCII only).
+  push(...declarationLines(1, "string internal constant PROJECT", stringLiteral(commentText(input.projectName))));
+  push(`    bytes32 internal constant RECIPE_HASH = ${fixedBytesLiteral(input.recipeHash, 32)};`);
+  push(`    bytes1 internal constant SCOPE = ${fixedBytesLiteral(SCOPE_FLAG[input.scope], 1)};`);
+  push(`    bytes11 internal constant ENTROPY = ${fixedBytesLiteral(input.entropy, 11)};`);
+  push(...declarationLines(1, "string internal constant SUPPORTED_CHAINS", stringLiteral(input.chains.map((c) => c.chainId).join(", "))));
+  push(...declarationLines(1, "string internal constant MISSING_HELP", stringLiteral(MISSING_HELP)));
+  if (!factoryPath) {
+    push(`    address internal constant CREATEX = ${addressLiteral(CREATEX)};`);
+    push(...declarationLines(1, "bytes32 internal constant CREATEX_CODEHASH", fixedBytesLiteral(CREATEX_CODEHASH, 32)));
+    push(...declarationLines(1, "bytes32 internal constant CREATE3_PROXY_CHILD_HASH", fixedBytesLiteral(CREATE3_PROXY_CHILD_HASH, 32)));
+    push(...declarationLines(1, "bytes internal constant LATTICE_CREATION_CODE", hexStringLiteral(input.proxyCreationCode ?? "0x")));
+  }
+  push("");
+  push("    // Shared contracts, at the addresses and codehashes the catalog pins.");
+  for (const item of shared.list) {
+    push(comment(1, item.name));
+    push(...declarationLines(1, `address internal constant ${item.base}_ADDRESS`, addressLiteral(item.address)));
+    push(...declarationLines(1, `bytes32 internal constant ${item.base}_CODEHASH`, fixedBytesLiteral(item.codehash, 32)));
+  }
+  push("", "    string internal missing;", "    string internal wrongCode;", "");
+
+  // run()
+  push(
+    "    function run() external returns (address diamond) {",
+    "        ChainConfig memory config = _chainConfig();",
+    "        _checkSharedContracts(config);",
+    "",
+    "        vm.startBroadcast();",
+    "        (, address deployer,) = vm.readCallers();",
+    "        bytes32 salt = _salt(deployer);",
+    "        address predicted = _predict(config, deployer, salt);",
+    "        if (predicted.code.length != 0) revert AddressTaken(predicted);",
+    `        (address init, bytes memory initCalldata) = _init(${initArgs});`,
+    "        diamond = _deploy(config, salt, init, initCalldata);",
+    "        vm.stopBroadcast();",
+    "",
+    "        if (diamond != predicted) revert PredictionDiffers(predicted, diamond);",
+    "        _checkFacets(diamond);",
+    "        console.log(\"Deployed\", PROJECT, \"at\", diamond);",
+    "        console.log(\"Recipe hash\", vm.toString(RECIPE_HASH));",
+    "        console.log(\"Verify it from a Lattice checkout at commit\", config.proxyCommit);",
+    "        console.log(",
+    "            string.concat(",
+    "                \"FOUNDRY_PROFILE=ci forge verify-contract \",",
+    "                vm.toString(diamond),",
+    "                \" src/Lattice.sol:Lattice --verifier sourcify --chain \",",
+    "                vm.toString(block.chainid)",
+    "            )",
+    "        );",
+    "    }",
+    "",
+  );
+
+  push(...chainFunction(input), "");
+
+  // Shared-contract checks.
+  if (factoryPath) {
+    push(
+      "    function _checkSharedContracts(ChainConfig memory config) internal {",
+      '        _expect("LatticeFactory", config.factory, config.factoryCodehash);',
+    );
+  } else {
+    push("    function _checkSharedContracts(ChainConfig memory) internal {", '        _expect("CreateX", CREATEX, CREATEX_CODEHASH);');
+  }
+  for (const item of shared.list) {
+    push(...callLines(2, "", "_expect", [stringLiteral(item.name), `${item.base}_ADDRESS`, `${item.base}_CODEHASH`]));
+  }
+  push(
+    "        if (bytes(wrongCode).length != 0) revert UnexpectedCode(wrongCode);",
+    "        if (bytes(missing).length != 0) revert MissingSharedContracts(missing, MISSING_HELP);",
+    "    }",
+    "",
+    "    function _expect(string memory name, address target, bytes32 codehash) internal {",
+    "        if (target.code.length == 0) {",
+    "            missing = _join(missing, name);",
+    "        } else if (target.codehash != codehash) {",
+    "            wrongCode = _join(wrongCode, string.concat(name, \" at \", vm.toString(target)));",
+    "        }",
+    "    }",
+    "",
+    "    function _join(string memory list, string memory item) internal pure returns (string memory) {",
+    "        return bytes(list).length == 0 ? item : string.concat(list, \", \", item);",
+    "    }",
+    "",
+    "    // from ‖ scope ‖ entropy: 20 + 1 + 11 bytes, the salt Lattice Studio builds for the deploying account.",
+    "    function _salt(address deployer) internal pure returns (bytes32) {",
+    "        return bytes32(bytes20(deployer)) | (bytes32(SCOPE) >> 160) | (bytes32(ENTROPY) >> 168);",
+    "    }",
+    "",
+  );
+
+  if (factoryPath) {
+    push(
+      "    // CREATE2 from the factory with keccak256(abi.encode(deployer, salt)), as LatticeFactory._saltFor folds it.",
+      "    function _predict(ChainConfig memory config, address deployer, bytes32 salt) internal view returns (address) {",
+      "        bytes32 folded = keccak256(abi.encode(deployer, salt));",
+      "        bytes32 digest = keccak256(abi.encodePacked(bytes1(0xff), config.factory, folded, config.proxyInitCodeHash));",
+      "        address predicted = address(uint160(uint256(digest)));",
+      "        address reported = ILatticeFactory(config.factory).predict(deployer, salt);",
+      "        if (reported != predicted) revert PredictionDiffers(predicted, reported);",
+      "        return predicted;",
+      "    }",
+      "",
+    );
+  } else {
+    push(
+      "    // CreateX guards a sender-prefixed salt, then CREATE3: a proxy at CREATE2(CreateX, guarded, child hash), then",
+      "    // the diamond at that proxy's first CREATE.",
+      "    function _predict(ChainConfig memory, address deployer, bytes32 salt) internal view returns (address) {",
+      "        bytes32 guarded = SCOPE == bytes1(0x01)",
+      "            ? keccak256(abi.encode(deployer, block.chainid, salt))",
+      "            : keccak256(abi.encode(deployer, salt));",
+      "        bytes32 digest = keccak256(abi.encodePacked(bytes1(0xff), CREATEX, guarded, CREATE3_PROXY_CHILD_HASH));",
+      "        address proxy = address(uint160(uint256(digest)));",
+      "        address predicted = address(uint160(uint256(keccak256(abi.encodePacked(hex\"d694\", proxy, hex\"01\")))));",
+      "        address reported = ICreateX(CREATEX).computeCreate3Address(guarded);",
+      "        if (reported != predicted) revert PredictionDiffers(predicted, reported);",
+      "        return predicted;",
+      "    }",
+      "",
+    );
+  }
+
+  if (factoryPath) {
+    push(
+      "    // Every facet as a custom Add cut; no RecipeEntry, since registry records aren't known when the script is written.",
+      "    function _deploy(ChainConfig memory config, bytes32 salt, address init, bytes memory data)",
+      "        internal",
+      "        returns (address)",
+      "    {",
+      "        RecipeEntry[] memory entries = new RecipeEntry[](0);",
+      "        return ILatticeFactory(config.factory).deploy(entries, _cuts(), init, data, salt);",
+      "    }",
+      "",
+    );
+  } else {
+    push(
+      "    // The raw sender-prefixed salt, which CreateX guards itself, then the proxy's initialize(cuts, init, data).",
+      "    function _deploy(ChainConfig memory, bytes32 salt, address init, bytes memory data) internal returns (address) {",
+      "        bytes memory initialize = abi.encodeCall(ILattice.initialize, (_cuts(), init, data));",
+      "        ICreateX.Values memory values = ICreateX.Values(0, 0);",
+      "        return ICreateX(CREATEX).deployCreate3AndInit(salt, LATTICE_CREATION_CODE, initialize, values);",
+      "    }",
+      "",
+    );
+  }
+
+  push(
+    "    // facets() against the plan, per facet as sets: LatticeFactory applies registry cuts first, so order differs.",
+    "    function _checkFacets(address diamond) internal view {",
+    "        FacetCut[] memory cuts = _cuts();",
+    "        Facet[] memory facets = IDiamondLoupe(diamond).facets();",
+    "        if (facets.length != cuts.length) revert FacetsDiffer(cuts.length, facets.length);",
+    "        for (uint256 i; i < facets.length; ++i) {",
+    "            bytes4[] memory expected = _selectorsOf(cuts, facets[i].facetAddress);",
+    "            bytes4[] memory actual = facets[i].functionSelectors;",
+    "            if (expected.length != actual.length) revert SelectorsDiffer(facets[i].facetAddress);",
+    "            for (uint256 j; j < actual.length; ++j) {",
+    "                if (!_contains(expected, actual[j])) revert SelectorsDiffer(facets[i].facetAddress);",
+    "            }",
+    "        }",
+    "    }",
+    "",
+    "    function _selectorsOf(FacetCut[] memory cuts, address facet) internal pure returns (bytes4[] memory) {",
+    "        for (uint256 i; i < cuts.length; ++i) {",
+    "            if (cuts[i].facetAddress == facet) return cuts[i].functionSelectors;",
+    "        }",
+    "        revert UnexpectedFacet(facet);",
+    "    }",
+    "",
+    "    function _contains(bytes4[] memory list, bytes4 selector) internal pure returns (bool) {",
+    "        for (uint256 i; i < list.length; ++i) {",
+    "            if (list[i] == selector) return true;",
+    "        }",
+    "        return false;",
+    "    }",
+    "",
+  );
+
+  push(...cutsFunction(input.plan, catalog, (entry) => planConstants.get(entry.facet) ?? ""), "");
+  init.functions.forEach((fn, i) => {
+    push(...fn);
+    if (i < init.functions.length - 1) push("");
+  });
+  push("}");
+  return `${out.join("\n")}\n`;
+}
