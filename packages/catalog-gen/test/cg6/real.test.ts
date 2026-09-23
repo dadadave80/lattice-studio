@@ -9,11 +9,13 @@ import {
   type Arg,
   type Catalog,
   computeRouting,
+  encodeInit,
   type Hex4,
   type InitParam,
   lintCopy,
   loadTemplate,
   normalizeRecipe,
+  planInit,
   RecipeTemplateSchema,
   type RecipeTemplate,
   renderProblem,
@@ -193,9 +195,26 @@ describe("v1 templates equal what Lattice's scripts build (golden/expected)", ()
     expect(goldenRouting("SafeDiamondCut").init.kind).toBe("direct");
   });
 
-  test("the v1 templates equal K3's fixture templates", () => {
+  test("SafeDiamondCut plans one call and no introspection step, so it encodes as a direct call (C4a, C4b)", () => {
+    const t = template("SafeDiamondCut");
+    const plan = planInit(t.recipe, catalog);
+    expect(plan.steps.map((s) => [s.spec, s.automatic ?? null])).toEqual([["SafeDiamondCutInit", null]]);
+    const safe = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+    const filled: RecipeTemplate["recipe"] = {
+      ...t.recipe,
+      init: { kind: "steps", steps: [{ spec: "SafeDiamondCutInit", args: { admin: { $ref: "deployer" }, safe, minThreshold: "2" } }] },
+    };
+    const call = encodeInit(planInit(filled, catalog), catalog, { deployer: "0x1111111111111111111111111111111111111111" });
+    expect(call.ok).toBe(true);
+    if (!call.ok) return;
+    const release = catalog.inits.find((i) => i.name === "SafeDiamondCutInit")?.release?.address;
+    expect(call.value.target.toLowerCase()).toBe(release?.toLowerCase() ?? "missing");
+    expect(call.value.data.slice(0, 10)).toBe(goldenRouting("SafeDiamondCut").init.steps[0]?.selector ?? "missing");
+  });
+
+  test("the v1 templates equal K3's fixture templates: name, script, proxy, phase and recipe", () => {
     for (const name of V1) {
-      expect(template(name).recipe).toEqual(fixture.recipes.find((r) => r.name === name)?.recipe as RecipeTemplate["recipe"]);
+      expect(template(name)).toEqual(fixture.recipes.find((r) => r.name === name) as RecipeTemplate);
     }
   });
 });

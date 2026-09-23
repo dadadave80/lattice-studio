@@ -235,8 +235,11 @@ export async function loadRecipeOverlay(dir: string = OVERLAY_DIR): Promise<Resu
   let names: string[] = [];
   try {
     names = (await readdir(join(dir, "recipes"))).filter((n) => n.endsWith(".yaml")).sort();
-  } catch {
-    names = [];
+  } catch (e) {
+    // No recipes/ directory is an empty set of recipes; any other failure is an issue, not a silent empty.
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
+      issues.push({ file: "overlay/recipes", path: "", message: `can't be read: ${e instanceof Error ? e.message : String(e)}` });
+    }
   }
   for (const name of names) {
     const file = `overlay/recipes/${name}`;
@@ -287,8 +290,9 @@ const INTROSPECTION = "DiamondIntrospectionInit";
 /**
  * The seams, one per selector and rule, in file order (core takes the first active seam for a selector, so order
  * matters where two could apply). Checks: every facet is in the catalog, every `anyOf` facet exports the selector,
- * a `when` facet exports it or a contender does, no selector has two rules with the same `when`, and the reason
- * follows the voice rules.
+ * the seam can decide something (a `when` facet exports the selector, or a catalog facet outside `anyOf` does, so it
+ * has a contender to route away from), no selector has two rules with the same `when`, and the reason follows the
+ * voice rules.
  */
 export function buildSeams(overlay: Pick<RecipeOverlay, "seams">, facts: RecipeFacts): Result<Seam[], ParseIssue[]> {
   const facets = new Map(facts.facets.map((f) => [f.name, new Set(f.selectors.map((s) => s.hex))]));
@@ -308,6 +312,12 @@ export function buildSeams(overlay: Pick<RecipeOverlay, "seams">, facts: RecipeF
       const selector = resolveSelector(ref);
       for (const name of def.anyOf) {
         if (facets.get(name)?.has(selector) === false) issues.push({ file: def.file, path: at, message: `${name} doesn't export ${ref} (${selector}).` });
+      }
+      const decides =
+        def.when.some((name) => facets.get(name)?.has(selector) === true) ||
+        [...facets].some(([name, exported]) => !def.anyOf.includes(name) && exported.has(selector));
+      if (!decides) {
+        issues.push({ file: def.file, path: at, message: `nothing contends ${ref} (${selector}): no \`when\` facet exports it and no facet outside anyOf does.` });
       }
       const key = `${selector}|${[...def.when].sort().join(",")}`;
       if (seen.has(key)) issues.push({ file: def.file, path: at, message: `${ref} already has a seam for when [${def.when.join(", ")}].` });

@@ -307,10 +307,10 @@ function seamDef(overrides: Partial<SeamDef> = {}): SeamDef & { file: string } {
 
 describe("buildSeams", () => {
   test("one seam per selector, in file order", () => {
-    const built = buildSeams({ seams: [seamDef({ selectors: [TRANSFER, "0x06fdde03"], anyOf: ["Token"] }), seamDef({ when: ["Pausable", "Token"] })] }, FACTS);
+    const built = buildSeams({ seams: [seamDef({ selectors: [TRANSFER, "0x313ce567"], anyOf: ["Token"] }), seamDef({ when: ["Pausable", "Token"] })] }, FACTS);
     expect(built.ok && built.value).toEqual([
       { selector: "0xa9059cbb", when: ["Pausable"], anyOf: ["Token"], reason: "checks the pause first" },
-      { selector: "0x06fdde03", when: ["Pausable"], anyOf: ["Token"], reason: "checks the pause first" },
+      { selector: "0x313ce567", when: ["Pausable"], anyOf: ["Token"], reason: "checks the pause first" },
       { selector: "0xa9059cbb", when: ["Pausable", "Token"], anyOf: ["Pausable"], reason: "checks the pause first" },
     ]);
   });
@@ -327,6 +327,15 @@ describe("buildSeams", () => {
       'seams[0].reason: is a lowercase clause with no final period; it reads after "must be served by a version that ".',
     ]);
     expect(messages(buildSeams({ seams: [seamDef({ reason: "please checks the colour" })] }, FACTS))).toHaveLength(2);
+  });
+
+  test("a seam that can't decide anything is an issue: nothing outside anyOf and no when facet exports it", () => {
+    const idle = seamDef({ selectors: ["facets()"], when: ["Pausable"], anyOf: ["Loupe"] });
+    expect(messages(buildSeams({ seams: [idle] }, FACTS))).toEqual([
+      "seams[0]: nothing contends facets() (0x7a0ed627): no `when` facet exports it and no facet outside anyOf does.",
+    ]);
+    const byWhen = seamDef({ selectors: ["asset()"], when: ["Vault"], anyOf: ["Vault"] });
+    expect(buildSeams({ seams: [byWhen] }, FACTS).ok).toBe(true);
   });
 
   test("parseSeamsFile reads the list and rejects unknown keys", () => {
@@ -489,6 +498,17 @@ describe("loadRecipeOverlay", () => {
       await writeFile(join(dir, "seams.yaml"), "seams: nope\n");
       const failed = await loadRecipeOverlay(dir);
       expect(failed.ok ? [] : failed.error.map((i) => i.file)).toEqual(["overlay/seams.yaml", "overlay/recipes/Bad.yaml"]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a recipes/ that can't be read is an issue, not an empty set", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "cg6-"));
+    try {
+      await writeFile(join(dir, "recipes"), "a file where the directory should be");
+      const loaded = await loadRecipeOverlay(dir);
+      expect(loaded.ok ? [] : loaded.error.map((i) => [i.file, i.message.split(":")[0]])).toEqual([["overlay/recipes", "can't be read"]]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
