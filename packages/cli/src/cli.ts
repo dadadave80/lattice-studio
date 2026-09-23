@@ -16,6 +16,8 @@ import { STUDIO_VERSION } from "./version";
 export async function run(argv: readonly string[], deps: Deps): Promise<number> {
   const parsed = parseCommandLine(argv);
   if (!parsed.ok) {
+    // parseArgs didn't get as far as reading --json, so look for it in the raw arguments.
+    if (argv.includes("--json")) return fail(deps, true, invalid(parsed.error));
     deps.stderr(`${parsed.error}\n\n${usageFor()}\n`);
     return EXIT.invalid;
   }

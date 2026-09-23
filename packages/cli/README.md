@@ -45,7 +45,7 @@ An authority address that came from the file (an admin, a Safe) blocks with LINK
 lattice-studio check recipe.json --confirm 'steps[0].safe=0x5AFe00000000000000000000000000000000a11C'
 ```
 
-Predict the address, and check chain readiness with read-only probes (the RPC comes from `--rpc`, `LATTICE_STUDIO_RPC_URL`, or the chain's public RPC; it's never printed):
+Predict the address, and check chain readiness with read-only probes. The RPC comes from `--rpc`, `LATTICE_STUDIO_RPC_URL`, or the chain's public RPC. The CLI says which one it reads through (a public RPC by its host, yours never by its URL); the RPC provider sees the addresses it reads. With `--json`, `readiness` is `online` or `offline` (the RPC isn't answering, so the chain checks didn't run):
 
 ```sh
 lattice-studio predict --deployer 0xYourAccount --chain 11155111 --project governed-vault.lattice.json

@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildSalt, CREATEX, factoryPredict, type Problem, toChecksum } from "@lattice-studio/core";
 import { custom, keccak256 } from "viem";
-import { sharedToProbe } from "../src/probe";
+import { chooseRpc, readingNote, scrub, sharedToProbe } from "../src/probe";
 import { ANVIL_0, BUILT, coreRead, ENTROPY, REPO_ROOT, runCli, SAFE, spawnCli, tempDir, template, writeRecipe } from "./support";
 
 const dir = tempDir();
@@ -93,9 +93,43 @@ describe("readiness probes", () => {
     });
     const { code, stdout, stderr } = await runCli(["check", erc20, "--deployer", ANVIL_0, "--chain", "11155111", "--entropy", ENTROPY, "--rpc", "http://secret-key.invalid/v3/abc123", "--json"], { transport: () => down });
     expect(code).toBe(0);
-    expect(stderr).toMatch(/Couldn't reach Sepolia \(11155111\): .+ Checked without readiness./);
+    expect(stderr).toContain("Reading Sepolia through the RPC from --rpc. RPC providers see the addresses Studio reads.");
+    expect(stderr).toContain("Sepolia's RPC isn't answering. Checked without readiness");
     expect(stderr + stdout).not.toContain("abc123");
+    expect(stderr + stdout).not.toContain("secret-key");
     expect(problemsOf(stdout).some((p) => p.code.startsWith("NET"))).toBe(false);
+    expect((JSON.parse(stdout) as { readiness?: string }).readiness).toBe("offline");
+  });
+
+  test("through viem's real HTTP transport to a closed local port: offline, and the key in the URL never printed", async () => {
+    const { code, stdout, stderr } = await runCli(["check", erc20, "--deployer", ANVIL_0, "--chain", "11155111", "--entropy", ENTROPY, "--rpc", "http://127.0.0.1:9/v3/SECRETKEY", "--json"]);
+    expect(code).toBe(0);
+    expect(stderr).toContain("Sepolia's RPC isn't answering.");
+    expect(stdout + stderr).not.toContain("SECRETKEY");
+    expect(stdout + stderr).not.toContain("127.0.0.1:9");
+    expect((JSON.parse(stdout) as { readiness?: string }).readiness).toBe("offline");
+  }, 30_000);
+
+  test("the reading note names a public RPC by host, and a given one only by where it came from", () => {
+    const publicRpc = chooseRpc(undefined, undefined, 11155111);
+    if (publicRpc === undefined) throw new Error("viem knows no Sepolia RPC");
+    expect(readingNote(11155111, publicRpc)).toBe(
+      `Reading Sepolia through its public RPC (${new URL(publicRpc.url).host}). RPC providers see the addresses Studio reads.`,
+    );
+    const fromEnv = chooseRpc(undefined, "https://eth.example/v3/KEY", 11155111);
+    expect(fromEnv?.source).toBe("env");
+    expect(readingNote(11155111, fromEnv ?? publicRpc)).toBe("Reading Sepolia through the RPC in LATTICE_STUDIO_RPC_URL. RPC providers see the addresses Studio reads.");
+    expect(chooseRpc("http://x", "http://y", 1)?.source).toBe("flag");
+    expect(scrub("HTTP request failed.\nURL: https://eth.example/v3/KEY\nDetails", "https://eth.example/v3/KEY")).toBe("HTTP request failed.");
+    expect(scrub("failed at https://eth.example/v3/KEY now", "https://eth.example/v3/KEY")).toBe("failed at the RPC now.");
+  });
+
+  test("probes that ran: readiness online in --json", async () => {
+    const fake = provider(11155111);
+    const { stdout } = await runCli(["check", erc20, "--deployer", ANVIL_0, "--chain", "11155111", "--entropy", ENTROPY, "--rpc", "http://rpc.invalid", "--json"], { transport: fake.transport });
+    expect((JSON.parse(stdout) as { readiness?: string }).readiness).toBe("online");
+    const plan = await runCli(["plan", erc20, "--deployer", ANVIL_0, "--chain", "11155111", "--entropy", ENTROPY, "--rpc", "http://rpc.invalid", "--json"], { transport: fake.transport });
+    expect((JSON.parse(plan.stdout) as { readiness?: string }).readiness).toBe("online");
   });
 
   test("--chain needs --deployer, and --deployer needs --chain", async () => {

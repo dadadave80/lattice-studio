@@ -9,6 +9,7 @@ import {
   analyze,
   type ChainState,
   err,
+  isAddress,
   ok,
   type Problem,
   type Project,
@@ -75,6 +76,9 @@ export function applyConfirmations(confirms: readonly string[], link01: readonly
     const held = problem?.params["address"];
     if (problem === undefined || typeof held !== "string") {
       return err(invalid(`Nothing to confirm at ${path}: no address from the file receives authority there.`));
+    }
+    if (/^0x[0-9a-fA-F]{40}$/.test(address) && !isAddress(address)) {
+      return err(invalid(`--confirm ${path}=${address}: its checksum doesn't match, so it may have a typo.`));
     }
     if (!/^0x[0-9a-fA-F]{40}$/.test(address) || !sameAddress(address, held)) {
       return err(invalid(`${path} holds ${held}, not ${address}. Check the full address, then confirm it again.`));

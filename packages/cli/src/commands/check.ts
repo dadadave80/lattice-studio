@@ -11,7 +11,7 @@ import { freshEntropyNote, parseAddress, parseChainId, predictDiamond, type Pred
 import { EXIT, type Failure, invalid } from "../failure";
 import type { Input } from "../input";
 import { blockerCount, checkLines, fail, note, planLines, writeJson, writeLines } from "../output";
-import { chainName, defaultRpc, httpTransport, probeChain } from "../probe";
+import { chainName, chooseRpc, httpTransport, probeChain, readingNote } from "../probe";
 import { analyzeInput, loadCatalogs, loadInput, saltProject } from "../session";
 
 /** The deploy context and probes for `--deployer` and `--chain`; nothing when neither is given. */
@@ -48,13 +48,15 @@ async function deployContext(
   const prediction = predictDiamond(catalog, deployer.value, chainId.value, settings.value);
   if (!prediction.ok) return prediction;
 
-  const url = values.rpc ?? deps.env["LATTICE_STUDIO_RPC_URL"] ?? defaultRpc(chainId.value);
-  if (url === undefined) {
+  const rpc = chooseRpc(values.rpc, deps.env["LATTICE_STUDIO_RPC_URL"], chainId.value);
+  if (rpc === undefined) {
     return err(invalid(`${chainName(chainId.value)} has no public RPC Studio knows. Pass --rpc <url> or set LATTICE_STUDIO_RPC_URL.`));
   }
+  note(deps, readingNote(chainId.value, rpc));
   const probed = await probeChain({
     chainId: chainId.value,
-    transport: (deps.transport ?? httpTransport)(url),
+    rpc,
+    transport: (deps.transport ?? httpTransport)(rpc.url),
     catalog,
     recipe: input.recipe,
     path: settings.value.path,
@@ -82,13 +84,16 @@ export async function runCheck(command: "check" | "plan", parsed: Parsed, deps: 
   const { recipe, loaded } = input.value;
   const fallbackName = basename(input.value.file).replace(/(\.lattice)?\.json$/i, "");
 
+  // With --chain, whether the probes ran: "offline" tells CI the NET checks had nothing to read.
+  const chain = deploy.value.chain;
+  const readiness = chain === undefined ? {} : { readiness: chain.online ? "online" : "offline" };
   if (command === "check") {
-    if (json) writeJson(deps, analysis);
+    if (json) writeJson(deps, { ...analysis, ...readiness });
     else writeLines(deps, checkLines(recipe, loaded.catalog, analysis, fallbackName));
   } else if (json) {
     const { omitted } = buildPlan(recipe, loaded.catalog, analysis.routing);
     const { recipeHash, plan, init, stats, problems } = analysis;
-    writeJson(deps, { recipeHash, plan, omitted, init, stats, problems });
+    writeJson(deps, { recipeHash, plan, omitted, init, stats, problems, ...readiness });
   } else {
     writeLines(deps, planLines(recipe, loaded.catalog, analysis, fallbackName));
   }

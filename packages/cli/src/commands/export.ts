@@ -89,6 +89,10 @@ export async function runExport(kind: ExportKind, parsed: Parsed, deps: Deps): P
   const catalog = loaded.catalog;
 
   if (kind === "brief" || kind === "recipe") {
+    // No salt goes into these, so --project could only name the input: a file and --project is one too many.
+    if (parsed.args.length > 0 && values.project !== undefined) {
+      return fail(deps, json, invalid(`${command} takes a file or --project, not both: it reads no salt.`));
+    }
     const analyzed = analyzeInput(input.value, values);
     if (!analyzed.ok) return fail(deps, json, analyzed.error);
     const { analysis } = analyzed.value;

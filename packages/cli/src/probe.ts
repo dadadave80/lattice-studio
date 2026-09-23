@@ -104,12 +104,54 @@ export type ProbeArgs = {
   predicted: Address;
   deployer: Address;
   now: () => number;
+  /** Where the RPC came from, for the notes; its URL is scrubbed from every message. */
+  rpc: RpcChoice;
 };
 
 export type ProbeResult = { state: ChainState; note?: string };
 
 const codehashOf = (code: Hex | undefined): { present: boolean; codehash?: Hex } =>
   code === undefined || code === "0x" ? { present: false } : { present: true, codehash: keccak256(code) };
+
+/** Which RPC the probes read through: `--rpc`, `LATTICE_STUDIO_RPC_URL`, or viem's public RPC for the chain. */
+export type RpcChoice = { source: "flag" | "env" | "public"; url: string };
+
+/** The RPC to use, or undefined when none is given and viem knows no public RPC for the chain. */
+export function chooseRpc(flag: string | undefined, env: string | undefined, chainId: number): RpcChoice | undefined {
+  if (flag !== undefined) return { source: "flag", url: flag };
+  if (env !== undefined && env !== "") return { source: "env", url: env };
+  const url = defaultRpc(chainId);
+  return url === undefined ? undefined : { source: "public", url };
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "an unreadable URL";
+  }
+}
+
+/**
+ * The note before probing (spec L882: RPC providers see the addresses Studio reads). A public RPC is named by
+ * its host; one the person gave is named by where it came from, never by its URL (it may carry a key).
+ */
+export function readingNote(chainId: number, rpc: RpcChoice): string {
+  const through =
+    rpc.source === "public" ? `its public RPC (${hostOf(rpc.url)})` : rpc.source === "flag" ? "the RPC from --rpc" : "the RPC in LATTICE_STUDIO_RPC_URL";
+  return `Reading ${chainName(chainId)} through ${through}. RPC providers see the addresses Studio reads.`;
+}
+
+/** "Sepolia's public RPC", "Sepolia's RPC" (spec L593). */
+function rpcLabel(chainId: number, rpc: RpcChoice): string {
+  return `${chainName(chainId)}'s ${rpc.source === "public" ? "public RPC" : "RPC"}`;
+}
+
+/** Removes the RPC's URL, and any other URL, from a message, then keeps its first line. */
+export function scrub(text: string, url: string): string {
+  const withoutUrl = url === "" ? text : text.split(url).join("the RPC");
+  return firstLine(withoutUrl.replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, "the RPC"));
+}
 
 /**
  * Probes the chain. An RPC that answers for another chain is an error; one that can't be reached gives an
@@ -128,7 +170,7 @@ export async function probeChain(args: ProbeArgs): Promise<{ ok: true; value: Pr
       ok: true,
       value: {
         state: { chainId, name, online: false, probedAt: probedAt(), deployer: { present: false }, shared: {}, simulate: false, codeAt: {} },
-        note: `Couldn't reach ${name} (${chainId}): ${firstLine(errorMessage(error))} Checked without readiness.`,
+        note: `${rpcLabel(chainId, args.rpc)} isn't answering. Checked without readiness (${scrub(errorMessage(error), args.rpc.url).replace(/\.$/, "")}).`,
       },
     };
   }
@@ -165,7 +207,7 @@ export async function probeChain(args: ProbeArgs): Promise<{ ok: true; value: Pr
     };
     return { ok: true, value: { state } };
   } catch (error) {
-    return { ok: false, error: `Reading ${name} (${chainId}) failed: ${firstLine(errorMessage(error))}` };
+    return { ok: false, error: `Reading ${name} (${chainId}) failed: ${scrub(errorMessage(error), args.rpc.url)}` };
   }
 }
 

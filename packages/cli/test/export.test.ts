@@ -102,6 +102,18 @@ describe("export brief and recipe", () => {
     expect(blocked.stderr).toContain("The recipe has 1 blocker; run lattice-studio check to see them.");
   });
 
+  test("a file and --project: exit 2, since neither export reads a salt", async () => {
+    const project = writeProject(dir, makeProject(coreRead(erc20, BUILT).recipe), [], "brief.lattice.json");
+    for (const kind of ["brief", "recipe"]) {
+      const { code, stdout, stderr } = await runCli(["export", kind, erc20, "--project", project]);
+      expect(code).toBe(2);
+      expect(stdout).toBe("");
+      expect(stderr).toContain(`export ${kind} takes a file or --project, not both: it reads no salt.`);
+    }
+    // --project alone names the input.
+    expect((await runCli(["export", "brief", "--project", project])).code).toBe(0);
+  });
+
   test("recipe: exportRecipeJson's text; --json gives the ExportFile", async () => {
     const { code, stdout } = await runCli(["export", "recipe", erc20, "--json"]);
     expect(code).toBe(0);

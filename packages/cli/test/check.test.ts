@@ -182,6 +182,12 @@ describe("LINK-01 and --confirm", () => {
     expect(nothing.stderr).toContain("Nothing to confirm at steps[0].admin");
     const shape = await runCli(["check", linked, "--confirm", "steps[0].safe"]);
     expect(shape.code).toBe(2);
+    // Mixed case must be the EIP-55 checksum, as for --deployer and --safe.
+    const typo = `0x5AFE${SAFE.slice(6)}`;
+    expect(typo).not.toBe(SAFE);
+    const badChecksum = await runCli(["check", linked, "--confirm", `steps[0].safe=${typo}`]);
+    expect(badChecksum.code).toBe(2);
+    expect(badChecksum.stderr).toContain(`--confirm steps[0].safe=${typo}: its checksum doesn't match, so it may have a typo.`);
   });
 });
 

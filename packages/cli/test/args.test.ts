@@ -50,6 +50,17 @@ describe("invalid input exits 2 with the usage", () => {
     expect(stderr).toContain("Usage: lattice-studio");
   });
 
+  test.each([
+    [["check", "r.json", "--nope", "--json"], "Unknown option '--nope'."],
+    [["--json"], "Name a command: check, plan, predict, export or verify-catalog."],
+    [["export", "script", "--json"], "export takes foundry, brief, recipe or safe, not script."],
+  ] as [string[], string][])("with --json, %p is JSON on stdout", async (argv, message) => {
+    const { code, stdout, stderr } = await runCli(argv);
+    expect(code).toBe(2);
+    expect(JSON.parse(stdout)).toEqual({ error: { exit: 2, message } });
+    expect(stderr).toBe("");
+  });
+
   test("spawned: an unknown command exits 2", async () => {
     const { code, stderr } = await spawnCli(["deploy"]);
     expect(code).toBe(2);
