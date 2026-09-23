@@ -1,5 +1,5 @@
 import type { Address, CommandId, Deployment, Hex, Project, Recipe } from "@lattice-studio/core";
-import { analyze, formatAddress, loadTemplate } from "@lattice-studio/core";
+import { analyze, formatAddress, loadTemplate, NotImplemented } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
@@ -180,6 +180,7 @@ describe("DiamondView: chain readiness", () => {
   });
 
   test("the chain module isn't available: says why", async () => {
+    onCleanup(provideServices({ chain: () => Promise.reject(new NotImplemented("S8a", "chainService")) }));
     await renderWithStudio(view, { project: makeProject({ id: "ready-unavailable" }), session: { chainId: SEPOLIA } });
     await expect.element(page.getByText("Not built yet · WP-S8a")).toBeVisible();
   });

@@ -1,12 +1,69 @@
+import { plural, recipeStats } from "@lattice-studio/core";
+import { useMemo } from "react";
 import type { InspectorViewProps } from "@/contracts";
+import { commandRef, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
+import { CommandButton, cx } from "@/ui";
+import { Section } from "../../shared/Section";
 import { ViewHeader } from "../../shared/ViewHeader";
-import styles from "../../shared/sheet.module.css";
+import sheet from "../../shared/sheet.module.css";
+import { CodeText } from "../facet/CodeText";
+import { anchoredProblems } from "../facet/facet-model";
 
-export function SelectionView({ view }: InspectorViewProps<"selection">) {
+/**
+ * The Selection view (IR L121): one row per selected facet with routed/total selectors and Open {name}, the
+ * problems anchored to any of them (each once), and Remove {n}, Tidy selection and Move to….
+ */
+export function SelectionView(_props: InspectorViewProps<"selection">) {
+  const selection = useSession((s) => s.selection);
+  const placed = useDocument((s) => s.project.recipe.facets);
+  const analysis = useAnalysis((a) => a);
+  const catalog = useCatalog();
+  const selected = useMemo(() => selection.filter((name) => placed.includes(name)), [selection, placed]);
+  const perFacet = useMemo(() => (catalog ? recipeStats(analysis, catalog).perFacet : {}), [analysis, catalog]);
+  const problems = useMemo(() => anchoredProblems(analysis.problems, selected), [analysis.problems, selected]);
+
   return (
-    <div className={styles.view} data-view="selection">
-      <ViewHeader title={"Selection"} kind="Selection" />
-      <p className={styles.muted}>{JSON.stringify(view)}</p>
+    <div className={sheet.view} data-view="selection">
+      <ViewHeader title={`${plural(selected.length, "facet")} selected`} kind="Selection" />
+      <Section label="Facets" aside={`${selected.length}`}>
+        <ul className={sheet.list}>
+          {selected.map((name) => (
+            <li key={name} className={sheet.item} data-facet={name}>
+              <div className={sheet.itemLine}>
+                <span className={cx(sheet.mono, sheet.strong)}>{name}</span>
+                <span className={sheet.muted}>{perFacet[name]?.text ?? ""}</span>
+              </div>
+              <div className={sheet.actions}>
+                <CommandButton command={commandRef("inspector.show", { facet: name })} size="small" variant="quiet">
+                  {`Open ${name}`}
+                </CommandButton>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Section>
+      {problems.length === 0 ? null : (
+        <Section label="Problems" aside={`${problems.length}`}>
+          <ul className={sheet.list}>
+            {problems.map((problem) => (
+              <li key={problem.id} className={sheet.item} data-problem={problem.id}>
+                <p className={sheet.text}>
+                  <CodeText text={problem.message} />
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+      <Section label="Actions">
+        <div className={sheet.actions}>
+          <CommandButton command={commandRef("facet.remove", { facets: [...selected] })} size="small" />
+          <CommandButton command={commandRef("layout.tidySelection")} size="small" />
+          <CommandButton command={commandRef("sheet.moveTo")} size="small">
+            Move to…
+          </CommandButton>
+        </div>
+      </Section>
     </div>
   );
 }
