@@ -1,0 +1,1 @@
+export { FacetCard } from "./FacetCard";

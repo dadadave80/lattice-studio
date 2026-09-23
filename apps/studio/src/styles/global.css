@@ -1,0 +1,40 @@
+/* Global styles: tokens, fonts, reset, and the few rules every module shares (contracts §5.4). */
+@import "@lattice-studio/tokens/dist/tokens.css";
+@import "./fonts.css";
+@import "./reset.css";
+
+html {
+  background: var(--lx-ground);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  color-scheme: dark;
+}
+
+html[data-theme="draft"] {
+  color-scheme: light;
+}
+
+body {
+  background: var(--lx-ground);
+}
+
+#root {
+  height: 100%;
+}
+
+/* The shared focus ring: 2 px solid border-focus, offset 2 px, outline and never box-shadow (spec L771). */
+.lx-focus-ring:focus-visible,
+:focus-visible {
+  outline: var(--lx-stroke-heavy) solid var(--lx-border-focus);
+  outline-offset: 2px;
+}
+
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
