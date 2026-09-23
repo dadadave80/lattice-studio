@@ -1,25 +1,37 @@
-// WP-C5a replaces this file with its real tests: until it lands, every function here is a stub.
 import { expect, test } from "bun:test";
-import { API_OWNERS, type ApiName } from "../model/api";
+import { API_OWNERS } from "../model/api";
 import { NotImplemented } from "../model/wp";
+import { addr, makeCatalog, makeProject, makeRecipe } from "../testing";
 import * as mod from "./index";
 
-const stubs = Object.entries(mod).filter(([, value]) => typeof value === "function");
+const owned = Object.entries(API_OWNERS)
+  .filter(([, wp]) => wp === "C5a")
+  .map(([name]) => name);
 
-test("the module exports its stubs", () => {
-  expect(stubs.length).toBeGreaterThan(0);
+test("the barrel exports every function WP-C5a owns", () => {
+  expect(owned.sort()).toEqual(["blankDiamond", "buildPlan", "comparePlan", "loadTemplate", "projectStatus", "recipeStats", "templateList"]);
+  for (const name of owned) expect(typeof (mod as Record<string, unknown>)[name]).toBe("function");
 });
 
-test.each(stubs)("%s throws NotImplemented naming WP-C5a", (name, fn) => {
-  expect(API_OWNERS[name as ApiName]).toBe("C5a");
-  let caught: unknown;
-  try {
-    (fn as (...args: unknown[]) => unknown)();
-  } catch (error) {
-    caught = error;
+test("no function here is a stub any more", () => {
+  const catalog = makeCatalog();
+  const calls: (() => unknown)[] = [
+    () => mod.buildPlan(makeRecipe(), catalog, {}),
+    () => mod.comparePlan([], [{ facetAddress: addr(1), functionSelectors: [] }]),
+    () => mod.templateList(catalog),
+    () => mod.loadTemplate(catalog, "Nope"),
+    () => mod.blankDiamond(catalog),
+    () => mod.projectStatus(makeProject(), [], null, makeRecipe().catalog.hash),
+    () => mod.recipeStats({ recipeHash: catalog.hash, routing: {}, problems: [], plan: [], init: null, stats: { facets: 0, routed: 0, exported: 0, excluded: 0, namespaces: 0 } }, catalog),
+  ];
+  for (const call of calls) {
+    let caught: unknown;
+    try {
+      call();
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).not.toBeInstanceOf(NotImplemented);
+    expect(caught).toBeUndefined();
   }
-  expect(caught).toBeInstanceOf(NotImplemented);
-  expect((caught as NotImplemented).wp).toBe("C5a");
-  expect((caught as NotImplemented).fn).toBe(name);
-  expect((caught as NotImplemented).message).toBe("Not built yet · WP-C5a");
 });
