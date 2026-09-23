@@ -59,7 +59,7 @@ type SelectorParams = { selector: Hex4; signature: string };
 export type ProblemParams = {
   /** "`sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c is exported by A and B. Choose one owner." Contenders in catalog order. */
   "SEL-01": SelectorParams & { contenders: string[] };
-  /** "ERC20 gives 4 selectors to GovernedVault and ERC4626." `to`: the owners, in catalog order. */
+  /** "ERC20 gives 4 selectors to GovernedVault and ERC4626." `to`: the owners, most selectors first, then catalog order (spec L312). */
   "SEL-02": { facet: string; count: number; selectors: Hex4[]; to: string[] };
   /**
    * "ERC20Pausable cuts nothing: both its selectors are seams that GovernedVault serves. Remove it."
