@@ -147,7 +147,9 @@ function eip712Detail(keys: readonly string[]): string | undefined {
   const name = keys.includes("name");
   const version = keys.includes("version");
   if (!name && !version) return undefined;
-  const what = name && version ? "names and versions" : name ? "names" : "versions";
+  // Spec L329 says "different names" for ERC20PermitInit and ERC6538RegistryInit, whose versions differ too
+  // ("1" and "1.0"): the name is what a signer sees, so it leads; "versions" only when the names match.
+  const what = name ? "names" : "versions";
   return `set the diamond's one EIP-712 domain, to different ${what}, so only one standard's signatures would verify`;
 }
 

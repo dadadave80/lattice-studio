@@ -89,6 +89,15 @@ describe("planInit", () => {
     expect(safe.steps.map((s) => s.spec)).toEqual(["SafeDiamondCutInit"]);
   });
 
+  test("for every fixture recipe, facet placement (R11) and `immutable` pick the same automatic step", () => {
+    for (const { name, recipe } of catalog.recipes) {
+      if (recipe.init.kind !== "steps") continue;
+      const auto = planInit(recipe, catalog).steps.find((s) => s.automatic);
+      if (!auto) continue;
+      expect([name, auto.automatic]).toEqual([name, recipe.immutable ? "initImmutable" : "initUpgradeable"]);
+    }
+  });
+
   test("an empty step list still gets the automatic step; none has no steps", () => {
     expect(planInit(makeRecipe({ init: { kind: "steps", steps: [] } }, catalog), catalog).steps.map((s) => s.path)).toEqual(["auto"]);
     expect(planInit(makeRecipe({}, catalog), catalog)).toEqual({ kind: "none", steps: [] });

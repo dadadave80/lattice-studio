@@ -220,11 +220,22 @@ describe("INIT-03", () => {
       case: "conflict",
       specs: ["ERC20PermitInit", "ERC6538RegistryInit"],
       paths: ["steps[1]", "steps[2]"],
-      detail: "set the diamond's one EIP-712 domain, to different names and versions, so only one standard's signatures would verify",
+      detail: "set the diamond's one EIP-712 domain, to different names, so only one standard's signatures would verify",
     });
     expect(p?.message).toBe(
-      "ERC20PermitInit and ERC6538RegistryInit both set the diamond's one EIP-712 domain, to different names and versions, so only one standard's signatures would verify.",
+      "ERC20PermitInit and ERC6538RegistryInit both set the diamond's one EIP-712 domain, to different names, so only one standard's signatures would verify.",
     );
+  });
+
+  test("EIP-712 domains with one name but different versions", () => {
+    const synthetic = makeCatalog({
+      inits: [
+        makeInit({ name: "OneInit", initializes: [{ module: "EIP712", with: { name: "Shared", version: "1" } }] }),
+        makeInit({ name: "TwoInit", initializes: [{ module: "EIP712", with: { name: "Shared", version: "2" } }] }),
+      ],
+    });
+    const [p] = run(makeRecipe({ init: { kind: "steps", steps: [{ spec: "OneInit", args: {} }, { spec: "TwoInit", args: {} }] } }), synthetic);
+    expect(p?.message).toBe("OneInit and TwoInit both set the diamond's one EIP-712 domain, to different versions, so only one standard's signatures would verify.");
   });
 
   test("two AccessControl admins: a warning, with Use one admin", () => {
