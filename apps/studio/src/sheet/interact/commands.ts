@@ -305,7 +305,7 @@ const copySelector = command<CopyArgs>({
   enabled: (_ctx, { selector }) => (isHex4(selector) ? OK : refuse(NAME_A_SELECTOR)),
   async run(ctx, { selector, facet }) {
     const entry = selectorEntry(ctx, selector, facet);
-    await copy(selector, entry ? `\`${formatSelector(entry, "dense")}\`` : `\`${selector}\``);
+    await copy(selector, entry ? formatSelector(entry, "dense") : `\`${selector}\``);
   },
 });
 
@@ -330,7 +330,7 @@ function ownerOf(ctx: CommandContext, selector: Hex4): string | undefined {
 
 function selectorWords(ctx: CommandContext, selector: Hex4): string {
   const entry = selectorEntry(ctx, selector);
-  return entry ? `\`${formatSelector(entry, "dense")}\`` : `\`${selector}\``;
+  return entry ? formatSelector(entry, "dense") : `\`${selector}\``;
 }
 
 const showOwner = command<ShowOwnerArgs>({

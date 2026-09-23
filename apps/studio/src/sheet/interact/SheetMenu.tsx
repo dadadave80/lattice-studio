@@ -1,6 +1,6 @@
 import type { Hex4 } from "@lattice-studio/core";
 import { formatSelector } from "@lattice-studio/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { commandRef, useCatalog, useDocument, useSession } from "@/contracts";
 import { ContextMenu } from "@/ui/overlays/ContextMenu";
 import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
@@ -16,6 +16,8 @@ import styles from "./interact.module.css";
  */
 export function SheetMenu() {
   const request = useSheetMenu();
+  // A menu belongs to the sheet it opened on: when the sheet goes (another project, a narrow pane), so does it.
+  useEffect(() => closeSheetMenu, []);
   if (!request) return null;
   return <OpenMenu key={request.key} request={request} />;
 }
@@ -38,7 +40,7 @@ function OpenMenu({ request }: { request: MenuRequest }) {
     request.kind === "card"
       ? `${request.facet} actions`
       : request.kind === "pin"
-        ? `${pin ? formatSelector(pin, "dense") : request.selector} actions`
+        ? `${pin ? formatSelector(pin, "dense").replaceAll("`", "") : request.selector} actions`
         : "Sheet actions";
   return (
     <ContextMenu
