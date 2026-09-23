@@ -1,0 +1,54 @@
+/* Toasts (spec L733): one at a time, bottom right, raised and outlined; errors carry an icon and a heavy edge. */
+.viewport {
+  position: fixed;
+  inset-block-end: var(--lx-space-4);
+  inset-inline-end: var(--lx-space-4);
+  z-index: 55;
+  inline-size: min(calc(100vw - var(--lx-space-8)), calc(var(--lx-card-width) + var(--lx-space-12) * 3));
+  outline-offset: var(--lx-stroke-heavy);
+}
+
+.toast {
+  composes: surface from "../shared/controls.module.css";
+  border-color: var(--lx-border-strong);
+  transition: opacity 120ms ease-out;
+}
+
+.toast[data-starting-style],
+.toast[data-ending-style] {
+  opacity: 0;
+}
+
+/* Base UI keeps a replaced toast mounted (inert) when the limit is exceeded; only the newest shows. */
+.toast[data-limited] {
+  display: none;
+}
+
+.toast[data-type="error"] {
+  border-inline-start: var(--lx-stroke-heavy) solid var(--lx-text);
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  padding-block: var(--lx-space-2);
+  padding-inline: var(--lx-space-3) var(--lx-space-2);
+}
+
+.icon {
+  flex: none;
+}
+
+.text {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+  .toast {
+    border-color: CanvasText;
+  }
+}

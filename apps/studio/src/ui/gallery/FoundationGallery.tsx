@@ -108,7 +108,7 @@ export function FoundationGallery() {
       </GallerySection>
 
       <GallerySection title="Icons (provisional)">
-        <ul role="list" className={styles.icons}>
+        <ul className={styles.icons}>
           {ICON_NAMES.map((name) => (
             <li key={name} className={styles.iconCell}>
               <Icon name={name} size="large" />

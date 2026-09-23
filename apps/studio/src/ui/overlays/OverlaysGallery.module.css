@@ -1,0 +1,33 @@
+/* A stand-in facet card for the context-menu specimen. */
+.target {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  inline-size: var(--lx-card-width);
+  padding: var(--lx-space-4);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  background: var(--lx-raised);
+  color: var(--lx-text);
+  cursor: context-menu;
+}
+
+.target[data-popup-open] {
+  border-color: var(--lx-accent);
+}
+
+.targetTitle {
+  font: var(--lx-font-subheading);
+  letter-spacing: var(--lx-tracking-subheading);
+}
+
+.targetMeta {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+}
+
+@media (forced-colors: active) {
+  .target {
+    border-color: CanvasText;
+  }
+}
