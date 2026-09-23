@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { lintCopy } from "../format/copy-lint";
 import type { ParseIssue, ParseOptions } from "../model/io";
 import type { Deployment } from "../model/project";
 import type { Result } from "../model/result";
@@ -325,5 +326,84 @@ describe("formatParseIssue", () => {
     );
     expect(formatParseIssue({ path: "facets[3]", message: "is 1; expected text." })).toBe("facets[3] is 1; expected text.");
     expect(formatParseIssue({ path: "", message: "This link is null; expected an object." })).toBe("This link is null; expected an object.");
+  });
+});
+
+// FX2: a lone surrogate anywhere in the input is refused with a ParseIssue, never a throw from canonicalJson
+// later (spec L936). C8's share-link decode runs the decoded payload through parseRecipe with source "link",
+// so exercising that source here covers it without reaching into C8's files.
+describe("lone surrogates", () => {
+  const MESSAGE = "has a broken character. Fix the text and try again.";
+
+  function withArgName(name: string): unknown {
+    const json = fromText(stepsRecipe());
+    const recipe = json as { init: { steps: { args: Record<string, unknown> }[] } };
+    const step = recipe.init.steps[1];
+    if (step) step.args["name"] = name;
+    return json;
+  }
+
+  test("a lone high surrogate in a recipe value is refused at its path, never thrown", () => {
+    const json = withArgName("Vault\ud800Share");
+    expect(() => parseRecipe(json, file)).not.toThrow();
+    const issues = issuesOf(parseRecipe(json, file));
+    expect(issues).toEqual([{ path: "init.steps[1].args.name", message: MESSAGE, file: "recipe.json" }]);
+    expect(lintCopy(MESSAGE)).toEqual([]);
+  });
+
+  test("a lone low surrogate is refused the same way", () => {
+    const json = withArgName("Vault\udc00Share");
+    expect(() => parseRecipe(json, file)).not.toThrow();
+    const [issue] = issuesOf(parseRecipe(json, file));
+    expect(issue?.path).toBe("init.steps[1].args.name");
+    expect(issue?.message).toBe(MESSAGE);
+  });
+
+  test("a lone surrogate in an object key is refused at the key's parent path", () => {
+    const json = fromText(stepsRecipe());
+    const recipe = json as { init: { steps: { args: Record<string, unknown> }[] } };
+    const step = recipe.init.steps[1];
+    if (step) step.args["\ud800bad"] = "x";
+    expect(() => parseRecipe(json, file)).not.toThrow();
+    const [issue] = issuesOf(parseRecipe(json, file));
+    expect(issue?.path).toBe("init.steps[1].args");
+    expect(issue?.message).toBe(MESSAGE);
+  });
+
+  test("a project file with a lone surrogate in a deployment field is refused, never thrown", () => {
+    const projectFile = { project: makeProject({ recipe: stepsRecipe() }), deployments: [] as unknown[] };
+    const json = fromText(projectFile) as { project: { recipe: { init: { steps: { args: Record<string, unknown> }[] } } } };
+    const step = json.project.recipe.init.steps[1];
+    if (step) step.args["name"] = "Vault\ud800Share";
+    const opts: ParseOptions = { catalogs: [catalog], source: "file", filename: "governed-vault.lattice.json" };
+    expect(() => parseProjectFile(json, opts)).not.toThrow();
+    const [issue] = issuesOf(parseProjectFile(json, opts));
+    expect(issue?.path).toBe("project.recipe.init.steps[1].args.name");
+    expect(issue?.file).toBe("governed-vault.lattice.json");
+    expect(issue?.message).toBe(MESSAGE);
+  });
+
+  test("a share-link payload with a lone surrogate is refused, never thrown (C8's decodeShareLink path)", () => {
+    const json = withArgName("Vault\udc00Share");
+    const opts: ParseOptions = { catalogs: [catalog], source: "link" };
+    expect(() => parseRecipe(json, opts)).not.toThrow();
+    expect(issuesOf(parseRecipe(json, opts)).map(formatParseIssue)).toEqual([`init.steps[1].args.name ${MESSAGE}`]);
+  });
+
+  test("a surrogate buried past the JSON depth limit never overflows the stack", () => {
+    let deep: unknown = "\ud800";
+    for (let i = 0; i < 100_000; i++) deep = [deep];
+    expect(() => parseRecipe(deep, file)).not.toThrow();
+    expect(parseRecipe(deep, file).ok).toBe(false);
+  });
+
+  test("a valid surrogate pair (an emoji) still parses and hashes", () => {
+    const json = withArgName("🎉Vault");
+    const result = parseRecipe(json, file);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.value.init.kind === "steps" && result.value.value.init.steps[1]?.args["name"]).toBe("🎉Vault");
+    expect(() => recipeHash(result.value.value)).not.toThrow();
+    expect(() => canonicalJson(result.value.value)).not.toThrow();
   });
 });
