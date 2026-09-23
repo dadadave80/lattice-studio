@@ -1,0 +1,89 @@
+import type { Analysis } from "./analysis";
+import type { Catalog } from "./catalog";
+import type { Hex4 } from "./hex";
+import type { Project } from "./project";
+import type { Recipe } from "./recipe";
+
+/** `Project["layout"]` (contracts §3.1): card positions by facet name, in sheet units (px at 100%). */
+export type Layout = Project["layout"];
+
+/** One card's layout entry. */
+export type CardLayout = Layout[string];
+
+export type Point = { x: number; y: number };
+export type Size = { width: number; height: number };
+export type Rect = { x: number; y: number; width: number; height: number };
+
+/** Card sizes by facet name. */
+export type Sizes = Record<string, Size>;
+
+/** C9 `cardSize` options (spec L479-L481). */
+export type CardSizeOptions = {
+  expanded: boolean;
+  pins: "left" | "right";
+  /** Below 40% zoom: header plus a tick strip. */
+  compact: boolean;
+  /** Contested selectors on this card; their rows never hide. */
+  contested: readonly Hex4[];
+};
+
+/** C9 `cardSize`'s result. */
+export type CardSize = Size & {
+  /** Selector rows drawn. */
+  rows: number;
+  /** Rows behind "+ n more". */
+  hidden: number;
+};
+
+/** A drawn connection: a dependency trace, or a 2 px tie between contested pins (spec L434, L480). */
+export type Trace = {
+  id: string;
+  kind: "dependency" | "tie";
+  from: string;
+  to: string;
+  /** Orthogonal path, in sheet units. */
+  points: Point[];
+  /** Label anchor. */
+  mid: Point;
+  /** "needs ERC4626". */
+  label?: string;
+  /** Ties: the contested selector. */
+  selector?: Hex4;
+};
+
+/** C9 `routeTraces`. */
+export type RouteTracesArgs = {
+  layout: Layout;
+  sizes: Sizes;
+  recipe: Recipe;
+  catalog: Catalog;
+  analysis: Analysis;
+};
+
+/** A margin note to place: a problem's note box, beside its ties or cards. */
+export type NoteRequest = {
+  /** The problem id. */
+  id: string;
+  size: Size;
+  /** Facets the note is about. */
+  facets: string[];
+  /** Traces it sits beside (ties for a collision). */
+  traces?: string[];
+};
+
+/** C9 `placeNotes`. */
+export type PlaceNotesArgs = {
+  layout: Layout;
+  sizes: Sizes;
+  traces: Trace[];
+  notes: NoteRequest[];
+};
+
+/** Where a note goes, never over a card, with its leader. */
+export type NotePlacement = {
+  id: string;
+  rect: Rect;
+  /** Where the leader touches its target. */
+  anchor: Point;
+  leader: Point[];
+};

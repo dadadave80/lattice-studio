@@ -1,0 +1,98 @@
+import type { Catalog } from "./catalog";
+import type { ChainState } from "./chain";
+import type { Address, Hex, Hex4 } from "./hex";
+import type { Problem } from "./problems";
+import type { Recipe } from "./recipe";
+
+/**
+ * Derived on every edit, never stored (spec L260-L267).
+ * `plan` holds `PlanEntry` rows: the spec's `{ facet, address, selectors }` plus `codehash` and the pinned
+ * `version` (contracts §3.1), which the review and every export show (spec L855).
+ */
+export type Analysis = {
+  recipeHash: Hex;
+  routing: Record<Hex4, { owner?: string; contenders: string[]; via: "only" | "seam" | "default" | "chosen" }>;
+  /** Blockers, then warnings, then info; catalog order within. */
+  problems: Problem[];
+  /** One Add per facet with ≥ 1 routed selector, in catalog order. */
+  plan: PlanEntry[];
+  /** `data` once a deploy context resolves every ref. */
+  init: { target: Address; data?: Hex; refs: ("self" | "deployer")[] } | null;
+  stats: { facets: number; routed: number; exported: number; excluded: number; namespaces: number };
+};
+
+/**
+ * What lives beside the recipe (spec L268-L272).
+ * Addition (contracts §3.1): `chain`. `known` holds `project.predicted` and every recorded deployment address;
+ * `unconfirmed` holds authority paths whose provenance is `link` or `file`.
+ */
+export type AnalysisContext = {
+  /** Resolves refs; enables NET checks. */
+  deploy?: { chainId: number; path: "factory" | "createx"; from: Address; salt: Hex };
+  /** Earlier predictions and recorded deployments (AUTH-02). */
+  known: Address[];
+  /** Argument paths that came from a link or file (LINK-01). */
+  unconfirmed: string[];
+  /** The selected chain's probes, for the NET checks. */
+  chain?: ChainState;
+};
+
+/** `Analysis["routing"]` (contracts §3.1). */
+export type Routing = Analysis["routing"];
+
+/** One selector's routing. */
+export type Route = Routing[Hex4];
+
+/** How a selector's owner was decided (spec L302-L303). */
+export type Via = Route["via"];
+
+/** One Add per facet that routes at least one selector (contracts §3.1). */
+export type PlanEntry = {
+  facet: string;
+  address: Address;
+  codehash: Hex;
+  /** The pinned version; the review and every export show it (spec L855). */
+  version: string;
+  /** Routed selectors, in the facet's own order. */
+  selectors: Hex4[];
+};
+
+/** C5a `buildPlan`'s result: the Adds, plus placed facets that route nothing (for exports). */
+export type CutPlan = { entries: PlanEntry[]; omitted: string[] };
+
+/**
+ * The plan against a diamond's `facets()`, per facet as sets: LatticeFactory applies registry cuts before
+ * custom cuts, so `facets()` order differs from the plan's (contracts §3.1).
+ */
+export type PlanComparison = {
+  matches: boolean;
+  missing: { facet: string; selectors: Hex4[] }[];
+  extra: { address: Address; selectors: Hex4[] }[];
+  moved: { selector: Hex4; expected: Address; actual: Address }[];
+};
+
+/** What every check reads (contracts §3.4). */
+export type CheckInput = {
+  recipe: Recipe;
+  catalog: Catalog;
+  routing: Routing;
+  ctx: AnalysisContext;
+};
+
+/** A check: sel, sem, core, dep, sto, init, auth, link or net (contracts §3.4). */
+export type Check = (input: CheckInput) => Problem[];
+
+/** The check files, in the order `runChecks` calls them. */
+export type CheckName = "sel" | "sem" | "core" | "dep" | "sto" | "init" | "auth" | "link" | "net";
+
+/** C2 `analyze` options. `checks` replaces the registry's checks, so tests can inject fakes. */
+export type AnalyzeOptions = { checks?: readonly Check[] };
+
+/** C5a `recipeStats`: "14 facets · 120 selectors" and per-facet "12/17 selectors" (spec L685). */
+export type RecipeStats = {
+  facets: number;
+  selectors: number;
+  /** "14 facets · 120 selectors". */
+  text: string;
+  perFacet: Record<string, { routed: number; exported: number; text: string }>;
+};
