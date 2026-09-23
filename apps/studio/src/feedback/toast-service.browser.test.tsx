@@ -38,18 +38,17 @@ describe("the toast() service (contracts §5.2, spec L731-L735)", () => {
     await expect.element(page.getByText("Couldn't save the project")).toBeVisible();
   });
 
-  // `ToastInput.action.label` (the CCR of 270a392) isn't rendered by `ui/overlays/toasts.ts` yet (FX14, not
-  // landed and outside this WP's scope): the button still shows the command's own title. This test pins
-  // today's behavior so it flags the day the label starts winning; see the Follow-ups in the WP-S10 report.
-  test("an action's ref is passed through to the toast, and running its button runs that command", async () => {
+  // `ToastInput.action.label` (the CCR of 270a392) now wins over the command's own title (FX14).
+  test("an action's label wins over the command's own title, and running it runs that command", async () => {
     const run = vi.fn();
     overrideCommands([
       command({ id: "history.undo", title: () => "Restore", category: "Session", enabled: () => ({ ok: true }), run }),
     ]);
     await renderWithStudio(<Toasts />);
     toast({ text: "Removed 2 facets", action: { id: "history.undo", label: "Undo" } });
-    const button = page.getByRole("button", { name: "Restore" });
+    const button = page.getByRole("button", { name: "Undo" });
     await expect.element(button).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Restore" })).not.toBeInTheDocument();
     await button.click();
     expect(run).toHaveBeenCalledTimes(1);
   });

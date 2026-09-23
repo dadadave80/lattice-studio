@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { command, settings } from "@/contracts";
+import { checkRemap, resetBinding, resetKeymap } from "@/commands";
 import { onCleanup, overrideCommands, pristineCommands, renderWithStudio } from "../../../test/harness";
 import { overridePlatform } from "@/ui/shared/platform";
 import { KeyboardGroup } from "./KeyboardGroup";
@@ -45,7 +46,7 @@ describe("Settings → Keyboard (Flow 16, spec L633)", () => {
     expect(settings.get().singleKeys).toBe(false);
   });
 
-  test("Change… captures the next key and remaps the binding; Reset puts it back", async () => {
+  test("Change… captures the next key and remaps the binding; Reset puts it back and shows what it did", async () => {
     await renderWithStudio(<KeyboardGroup />);
     const tidyRow = page.getByRole("listitem").filter({ hasText: "Tidy" });
     await tidyRow.getByRole("button", { name: "Change…" }).click();
@@ -53,9 +54,16 @@ describe("Settings → Keyboard (Flow 16, spec L633)", () => {
     await userEvent.keyboard("y");
     await expect.element(tidyRow.getByText("Y", { exact: true })).toBeVisible();
     expect(settings.get().keymap["layout.tidy"]).toEqual([{ keys: "y", platform: "mac" }]);
+
+    // What `resetBinding` would say, read without disturbing the state the UI is about to reset itself.
+    const before = settings.get().keymap;
+    const expectedText = resetBinding("layout.tidy");
+    settings.set({ keymap: before });
+
     await tidyRow.getByRole("button", { name: "Reset" }).click();
     await expect.element(tidyRow.getByText("T", { exact: true })).toBeVisible();
     expect(settings.get().keymap["layout.tidy"]).toBeUndefined();
+    await expect.element(page.getByText(expectedText, { exact: true })).toBeVisible();
   });
 
   test("Esc cancels capture without remapping", async () => {
@@ -69,19 +77,29 @@ describe("Settings → Keyboard (Flow 16, spec L633)", () => {
 
   test("a key already used elsewhere reports the conflict and offers to take it over", async () => {
     await renderWithStudio(<KeyboardGroup />);
+    // What `checkRemap` says for this exact collision (⌘Z is Undo's default); read, not asserted verbatim,
+    // so this test tracks the API's own wording (FX13) instead of a copy the API no longer produces.
+    const expectedReason = checkRemap("layout.tidy", [{ keys: "Mod+z", platform: "mac" }], { platform: "mac" })?.reason;
+    expect(expectedReason).toBeDefined();
     const tidyRow = page.getByRole("listitem").filter({ hasText: "Tidy" });
     await tidyRow.getByRole("button", { name: "Change…" }).click();
-    // ⌘Z is Undo's default; capturing it for Tidy is a conflict.
     await userEvent.keyboard("{Meta>}z{/Meta}");
-    await expect.element(page.getByText("⌘Z is already used for Undo.", { exact: true })).toBeVisible();
+    await expect.element(page.getByText(expectedReason!, { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Use this key anyway" }).click();
     await expect.element(tidyRow.getByText("⌘Z", { exact: true })).toBeVisible();
   });
 
-  test("Reset all shortcuts clears every override", async () => {
+  test("Reset all shortcuts clears every override and shows what it did", async () => {
     settings.set({ keymap: { "layout.tidy": [{ keys: "y", platform: "other" }] } });
     await renderWithStudio(<KeyboardGroup />);
+
+    // What `resetKeymap` would say, read without disturbing the state the UI is about to reset itself.
+    const before = settings.get().keymap;
+    const expectedText = resetKeymap();
+    settings.set({ keymap: before });
+
     await page.getByRole("button", { name: "Reset all shortcuts" }).click();
     expect(settings.get().keymap).toEqual({});
+    await expect.element(page.getByText(expectedText, { exact: true })).toBeVisible();
   });
 });

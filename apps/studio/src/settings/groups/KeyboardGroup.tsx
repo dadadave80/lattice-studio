@@ -136,7 +136,15 @@ export function KeyboardGroup() {
                   </Button>
                 )}
                 {isRemapped(binding.id, keymap) ? (
-                  <Button size="small" variant="quiet" onClick={() => resetBinding(binding.id)}>
+                  <Button
+                    size="small"
+                    variant="quiet"
+                    onClick={() => {
+                      const text = resetBinding(binding.id);
+                      setStatus(text);
+                      announce(text);
+                    }}
+                  >
                     Reset
                   </Button>
                 ) : null}
@@ -162,8 +170,7 @@ export function KeyboardGroup() {
       <Button
         variant="quiet"
         onClick={() => {
-          resetKeymap();
-          const text = "Every shortcut is back to its default.";
+          const text = resetKeymap();
           setStatus(text);
           announce(text);
         }}
