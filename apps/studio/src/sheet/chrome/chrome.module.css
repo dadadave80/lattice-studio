@@ -272,6 +272,12 @@ a.address {
   overflow: auto;
 }
 
+/* Under the minimap (React Flow's default minimap is 150 px tall, with S4b's margin around it). */
+.legend[data-below-minimap] {
+  margin-block-start: calc(150px + var(--lx-space-4) * 2);
+  max-block-size: calc(100% - 150px - var(--lx-space-4) * 3);
+}
+
 .legend > section {
   inline-size: calc(var(--lx-card-width) * 1.1);
   padding: var(--lx-space-2) var(--lx-space-3);

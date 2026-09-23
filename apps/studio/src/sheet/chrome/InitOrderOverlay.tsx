@@ -1,5 +1,5 @@
 import { Panel, useStore, ViewportPortal, type ReactFlowState } from "@xyflow/react";
-import { commandRef, layoutMetrics, useCatalog, useDocument, useSession } from "@/contracts";
+import { commandRef, layoutMetrics, useCatalog, useDocument, useSession, useSettings } from "@/contracts";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { bundleFixed, DRAG_TO_REORDER, INIT_ORDER_CHIP } from "./copy";
 import { badgeText, initOrderModel, type InitOrderModel } from "./init-order-model";
@@ -34,8 +34,15 @@ function InitOrderPath({ model }: { model: InitOrderModel }) {
 
 /** The legend: the order, as the path visits it (the init order board), and how to change it. */
 function Legend({ model }: { model: InitOrderModel }) {
+  // The minimap shares the top-right corner (S4b): the legend sits under it while it shows.
+  const minimap = useSettings((s) => s.minimap);
   return (
-    <Panel position="top-right" className={styles.legend} data-chrome="init-legend">
+    <Panel
+      position="top-right"
+      className={styles.legend}
+      data-chrome="init-legend"
+      data-below-minimap={minimap ? "" : undefined}
+    >
       <section aria-labelledby="init-order-legend">
         <h2 id="init-order-legend" className={styles.legendTitle}>
           Init order

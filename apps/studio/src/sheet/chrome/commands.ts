@@ -43,7 +43,8 @@ export const INIT_ORDER_OFF = "Init order mode off.";
 
 const initOrderToggle = command({
   id: "initOrder.toggle",
-  title: () => (session.get().modes.initOrder ? "Hide init order" : "Show init order"),
+  // IR L110 and the menus' "Init order"; the tool strip and the Tools menu show it pressed while it's on.
+  title: () => "Init order",
   category: "Sheet",
   keys: ["i"],
   keyContext: ["sheet"],
