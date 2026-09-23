@@ -24,8 +24,8 @@ const GROUPS: readonly TabItem<SettingsGroup>[] = [
 
 /**
  * Settings (Flow 16, IR L183): eight groups, one per left-hand tab. `group` picks which one opens (a fix
- * such as chain.useAnotherRpc opens straight to Networks, IR L236); without it the first group opens, as the
- * dialog's initial focus (IR L183 "First group").
+ * such as chain.useAnotherRpc opens straight to Networks, IR L236); without it the first group opens. Either
+ * way, the dialog's initial focus is that opened group's own tab (IR L183 "First group"), never the first tab.
  */
 export function SettingsDialog({ entry, top }: DialogComponentProps<"settings">) {
   const [group, setGroup] = useState<SettingsGroup>(entry.props.group ?? "appearance");
@@ -39,7 +39,9 @@ export function SettingsDialog({ entry, top }: DialogComponentProps<"settings">)
         if (!open) close();
       }}
       title="Settings"
-      initialFocus={() => tabsRef.current?.querySelector<HTMLElement>('[role="tab"]') ?? null}
+      initialFocus={() =>
+        tabsRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? null
+      }
       lossless
       top={top}
       size="wide"

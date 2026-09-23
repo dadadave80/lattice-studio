@@ -1,98 +1,122 @@
-import { isNotImplemented } from "@lattice-studio/core";
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { chainService, settings, useSettings, type ChainInfo, type ChainReadiness, type ChainService } from "@/contracts";
-import { isRpcUrl } from "@/chain/infra";
-import { TextField } from "@/ui";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { env, settings, useSettings, type ChainReadiness, type ChainService } from "@/contracts";
+import { chainLoader, checking, couldntRead, isRpcUrl, pickerChains, useChainLoad, type ChainLoader } from "@/chain/infra";
+import { Button, TextField } from "@/ui";
 import styles from "./NetworksGroup.module.css";
 
-/** Whether the override is worth keeping quiet about: unset, or a URL the chain module would actually use. */
-function acceptableOverride(value: string): boolean {
-  return value === "" || isRpcUrl(value);
-}
+/** Never re-created: `useSyncExternalStore`'s snapshot before anything has probed this chain, or off the runtime. */
+const UNKNOWN: ChainReadiness = { status: "unknown" };
 
 function readinessText(readiness: ChainReadiness, name: string): string {
   switch (readiness.status) {
     case "unknown":
-      return "Checking…";
+      return "Not checked yet.";
     case "checking":
-      return "Checking…";
+      return checking(name);
     case "ready":
       return "Ready";
     case "error":
-      return `Couldn't read ${name}: ${readiness.reason}`;
+      return couldntRead(name);
   }
 }
 
-function ChainRow({ chain, service }: { chain: ChainInfo; service: ChainService }) {
-  const rpc = useSettings((s) => s.rpc);
-  const readiness = useSyncExternalStore(
-    (onChange) =>
-      service.subscribeReadiness((chainId) => {
-        if (chainId === chain.id) onChange();
-      }),
-    () => service.readiness(chain.id),
-  );
-  const value = rpc[chain.id] ?? "";
+function ChainRow({
+  chain, service, onCheck,
+}: {
+  chain: { id: number; name: string };
+  service: ChainService | null;
+  onCheck: () => void;
+}) {
+  const stored = useSettings((s) => s.rpc[chain.id] ?? "");
+  const [draft, setDraft] = useState(stored);
+  // The setting can change from outside this field (another tab, a reset): follow it when it does.
+  useEffect(() => setDraft(stored), [stored]);
+  const valid = draft === "" || isRpcUrl(draft);
 
-  useEffect(() => {
-    void service.probe(chain.id);
+  const subscribe = useCallback(
+    (onChange: () => void) =>
+      service ? service.subscribeReadiness((id) => id === chain.id && onChange()) : () => {},
+    [service, chain.id],
+  );
+  const getSnapshot = useCallback(() => {
+    if (!service) return UNKNOWN;
+    const readiness = service.readiness(chain.id);
+    // A service's own "unknown" (no probe yet) isn't guaranteed to be the same object twice; normalize to
+    // the one stable constant so `useSyncExternalStore` never sees a snapshot that "changed" when it didn't.
+    return readiness.status === "unknown" ? UNKNOWN : readiness;
   }, [service, chain.id]);
+  const readiness = useSyncExternalStore(subscribe, getSnapshot);
 
   const onChange = (next: string) => {
-    const current = settings.get().rpc;
+    setDraft(next);
+    // Spec D13: opening Settings never loads the chain runtime or writes a guess; an override that isn't a
+    // URL Studio would call stays local (and shows why) until it validates, instead of landing in `settings.rpc`.
     if (next === "") {
-      const { [chain.id]: _removed, ...rest } = current;
+      const { [chain.id]: _removed, ...rest } = settings.get().rpc;
       settings.set({ rpc: rest });
-      return;
+    } else if (isRpcUrl(next)) {
+      settings.set({ rpc: { ...settings.get().rpc, [chain.id]: next } });
     }
-    settings.set({ rpc: { ...current, [chain.id]: next } });
   };
 
   return (
     <div className={styles.row}>
       <TextField
         label={`${chain.name} RPC override`}
-        value={value}
+        value={draft}
         onValueChange={onChange}
-        {...(acceptableOverride(value) ? {} : { description: "This won't be used: it needs a valid http(s) URL." })}
+        {...(valid ? {} : { description: "This won't be used: it needs a valid http(s) URL." })}
       />
-      <p className={styles.readiness}>{readinessText(readiness, chain.name)}</p>
+      {service ? (
+        <p className={styles.readiness}>{readinessText(readiness, chain.name)}</p>
+      ) : (
+        <Button size="small" onClick={onCheck}>
+          Check {chain.name}
+        </Button>
+      )}
     </div>
   );
 }
 
 /**
- * Settings → Networks (Flow 16 L629): chain list with RPC overrides and readiness. Reads the lazy chain
- * module (S8a); until it lands, `chainService()` rejects with `NotImplemented`, shown as plain text
- * (spec L661, no silent no-ops; PA L72-L84, no board yet).
+ * Settings → Networks (Flow 16 L629): the chain list and RPC overrides, from S8a's static `pickerChains` —
+ * opening this group must not load the chain runtime or probe every chain (spec D13: the runtime loads when
+ * a chain is selected or a deploy starts). Readiness shows only once `useChainLoad` says the runtime is
+ * already up (loaded for some other reason, in this session, or by an earlier Check here); otherwise each
+ * row offers Check, which loads the runtime and probes just that one chain. `loader` defaults to S8a's one
+ * real loader; tests inject their own so this group never touches the lazy chain module by itself.
+ * No board yet (PA L72-L84).
  */
-export function NetworksGroup() {
-  const [state, setState] = useState<{ status: "loading" } | { status: "error"; message: string } | { status: "ready"; service: ChainService }>({
-    status: "loading",
-  });
+export function NetworksGroup({ loader = chainLoader }: { loader?: ChainLoader } = {}) {
+  const load = useChainLoad(loader);
+  const [service, setService] = useState<ChainService | null>(null);
 
   useEffect(() => {
+    if (load.status !== "ready") {
+      setService(null);
+      return;
+    }
     let cancelled = false;
-    chainService().then(
-      (service) => {
-        if (!cancelled) setState({ status: "ready", service });
-      },
-      (error: unknown) => {
-        if (cancelled) return;
-        setState({ status: "error", message: isNotImplemented(error) ? error.message : String(error) });
-      },
-    );
+    void loader.load().then((svc) => {
+      if (!cancelled) setService(svc);
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [load.status, loader]);
+
+  const chains = pickerChains(env.e2e);
 
   return (
     <>
-      {state.status === "error" ? <p className={styles.note}>{state.message}</p> : null}
-      {state.status === "ready"
-        ? state.service.chains().map((chain) => <ChainRow key={chain.id} chain={chain} service={state.service} />)
-        : null}
+      {chains.map((chain) => (
+        <ChainRow
+          key={chain.id}
+          chain={chain}
+          service={service}
+          onCheck={() => void loader.load().then((svc) => svc.probe(chain.id))}
+        />
+      ))}
       <p className={styles.note}>Custom chains arrive in v1.1.</p>
     </>
   );

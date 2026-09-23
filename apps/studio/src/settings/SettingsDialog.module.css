@@ -2,7 +2,8 @@
    follows the design system's dialog and tabs primitives, side by side as the nearest drawn pattern (the left
    pane's header tabs) suggests. */
 .dialog {
-  block-size: min(560px, 80vh);
+  /* 18 * --lx-space-8 (32px), the same scale Dialog.module.css sizes its own width from. */
+  block-size: min(calc(var(--lx-space-8) * 18), 80vh);
 }
 
 .layout {
@@ -13,7 +14,7 @@
 
 .tabList {
   flex: none;
-  inline-size: 160px;
+  inline-size: calc(var(--lx-space-8) * 5); /* 160px */
   padding-block: var(--lx-space-2);
   overflow-y: auto;
 }

@@ -27,11 +27,12 @@ describe("Settings dialog (Flow 16, IR L183)", () => {
     await expect.element(tab("Appearance")).toHaveAttribute("aria-selected", "true");
   });
 
-  test("a group can be opened directly", async () => {
+  test("a group can be opened directly, with initial focus on that group's own tab", async () => {
     await renderWithStudio(<App />);
     openDialog("settings", { group: "networks" });
     await expect.element(dialog()).toBeVisible();
     await expect.element(tab("Networks")).toHaveAttribute("aria-selected", "true");
+    await expect.element(tab("Networks")).toHaveFocus();
   });
 
   test("clicking a tab switches the visible panel, and only that one is in the DOM", async () => {
