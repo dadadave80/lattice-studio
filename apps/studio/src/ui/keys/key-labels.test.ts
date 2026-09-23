@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ariaKeyShortcuts, firstKeys, isSingleKey, keyLabel } from "./key-labels";
+import { liveSpecs } from "./use-aria-key-shortcuts";
 
 describe("keyLabel", () => {
   test("per platform: ⌘ on macOS, Ctrl elsewhere (spec L689)", () => {
@@ -58,5 +59,13 @@ describe("isSingleKey", () => {
     expect(isSingleKey("-")).toBe(true);
     expect(isSingleKey("=")).toBe(true);
     expect(isSingleKey("Mod++")).toBe(false);
+  });
+});
+
+describe("liveSpecs (the chip filter itself, CR3)", () => {
+  test("+ drops out while single keys are off, the way the chip and aria-keyshortcuts hide it", () => {
+    expect(liveSpecs(["+"], "mac", false)).toEqual([]);
+    expect(liveSpecs(["+"], "mac", true)).toEqual(["+"]);
+    expect(liveSpecs(["Mod+k"], "mac", false)).toEqual(["Mod+k"]);
   });
 });
