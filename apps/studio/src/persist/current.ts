@@ -140,7 +140,9 @@ export function bootPersistence(): Promise<Result<Project, string> | null> {
     .then(async (p) => {
       p.start();
       if (typeof location !== "undefined" && routeOpensProject(location.hash)) return null;
-      return p.openLastProject(() => doc.get().id === before);
+      const opened = await p.openLastProject(() => doc.get().id === before);
+      if (opened && !opened.ok) log({ tag: "Error", text: `Couldn't open your last project. ${opened.error}` });
+      return opened;
     })
     .catch((error: unknown) => {
       const reason = error instanceof Error ? error.message : String(error);

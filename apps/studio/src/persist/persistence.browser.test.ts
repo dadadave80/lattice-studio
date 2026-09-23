@@ -201,6 +201,13 @@ describe("projects", () => {
     expect(await openProject("future")).toEqual({
       ok: false, error: "This project needs Studio schema v2. This Studio reads v1.",
     });
+    // Listed nowhere, but kept, and said once.
+    expect((await store.listProjects()).map((p) => p.id)).not.toContain("future");
+    await store.listProjects();
+    const lines = bufferedServices().log.filter((l) => l.text.includes("future"));
+    expect(lines).toEqual([expect.objectContaining({
+      tag: "Error", text: "Couldn't read the stored project future. This project needs Studio schema v2. This Studio reads v1.",
+    })]);
   });
 
   test("rename, duplicate and the projects list, recent first", async () => {
@@ -264,6 +271,7 @@ describe("projects", () => {
     rename("Not resurrected");
     await store.flush();
     expect(await store.listProjects()).toEqual([]);
+    expect(saveStatus()).toEqual({ state: "not-saved", text: "Not saved", detail: "Studio's data in this browser was cleared." });
   });
 });
 
@@ -313,10 +321,19 @@ describe("Recently deleted", () => {
     const a = await created("Alpha");
     rename("Alpha edited");
     expect(await store.deleteProject(a.id)).toMatchObject({ ok: true });
+    expect(saveStatus()).toEqual({ state: "saved", text: "Saved" });
     rename("After delete");
     await store.flush();
     expect(await store.listProjects()).toEqual([]);
     expect((await store.listTrash())[0]?.name).toBe("Alpha edited");
+    expect(saveStatus()).toEqual({
+      state: "not-saved", text: "Not saved", detail: "This project is in Recently deleted. Restore it to keep saving.",
+    });
+
+    await store.restoreProject(a.id);
+    await store.flush();
+    expect(await storedName(store, a.id)).toBe("After delete");
+    expect(saveStatus()).toEqual({ state: "saved", text: "Saved" });
   });
 });
 
@@ -412,13 +429,14 @@ describe("two tabs", () => {
     await created();
     const upgraded = await openDB(store.dbName, 2);
     onCleanup(() => upgraded.close());
+    await until(() => bufferedServices().banners.has("persist.updated"), "the reload banner");
     expect(bufferedServices().banners.get("persist.updated")).toEqual({
-      text: "Studio was updated in another tab. Reload to continue.", tone: "warning", actions: [{ id: "app.reload" }],
+      text: "A new version of Studio is ready", tone: "info", actions: [{ id: "app.reload" }],
     });
-    await until(() => saveStatus().state === "not-saved", "the status to say not saved");
-    expect(saveStatus()).toEqual({
-      state: "not-saved", text: "Not saved", detail: "Studio was updated in another tab. Reload to continue.",
-    });
+    expect(saveStatus()).toEqual({ state: "not-saved", text: "Not saved", detail: "A new version of Studio is ready" });
+    expect(await store.deployments.listDeployments("any").catch((e: Error) => e.message)).toBe(
+      "A new version of Studio is ready",
+    );
   });
 });
 

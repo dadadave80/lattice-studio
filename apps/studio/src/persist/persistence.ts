@@ -119,7 +119,10 @@ const QUIET_MS = 750;
 const SAVED: SaveStatus = { state: "saved", text: "Saved" };
 const SAVING: SaveStatus = { state: "saving", text: "Saving…" };
 const FULL_TEXT = "Not saved: browser storage is full";
-const UPDATED_TEXT = "Studio was updated in another tab. Reload to continue.";
+/** IR L208: the database was upgraded by a newer Studio, and this tab flushed its save before closing it. */
+const UPDATED_TEXT = "A new version of Studio is ready";
+const DELETED_DETAIL = "This project is in Recently deleted. Restore it to keep saving.";
+const CLEARED_DETAIL = "Studio's data in this browser was cleared.";
 const STORAGE_FULL_BANNER = "persist.storage-full";
 const UPDATED_BANNER = "persist.updated";
 
@@ -190,11 +193,11 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       .then(() => {
         updated = true;
         refreshStatus();
+        showBanner(UPDATED_BANNER, { text: UPDATED_TEXT, tone: "info", actions: [commandRef("app.reload")] });
         return closing;
       })
       .then((handle) => handle?.close())
       .catch(() => {});
-    showBanner(UPDATED_BANNER, { text: UPDATED_TEXT, tone: "warning", actions: [commandRef("app.reload")] });
   }
 
   // ── Save status ─────────────────────────────────────────────────────────────────────────────────────
@@ -213,6 +216,9 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       return { state: "read-only", text: "Read-only", detail: "Editing moved to another tab" };
     }
     if (updated) return { state: "not-saved", text: "Not saved", detail: UPDATED_TEXT };
+    if (detached !== null && doc.get().id === openId) {
+      return doc.get() === persisted ? SAVED : { state: "not-saved", text: "Not saved", detail: detached };
+    }
     if (timer !== null || writing !== null) return SAVING;
     if (failure?.quota) return { state: "not-saved", text: FULL_TEXT };
     if (failure) return { state: "not-saved", text: "Not saved", detail: failure.reason };
@@ -233,7 +239,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   /** The value last written or read for `openId`; the document differs from it when there's something to save. */
   let persisted: Project | null = null;
   /** The open project was deleted or the data cleared here: don't write it back. */
-  let detached = false;
+  let detached: string | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let writing: Promise<void> | null = null;
   /** Set while this instance loads the document itself, so the load isn't broadcast as an edit. */
@@ -262,7 +268,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
 
   const dirty = () => {
     const project = doc.get();
-    return openId !== null && !detached && project.id === openId && project !== persisted;
+    return openId !== null && detached === null && project.id === openId && project !== persisted;
   };
 
   function schedule(): void {
@@ -331,7 +337,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     clearTimer();
     openId = project.id;
     persisted = null;
-    detached = false;
+    detached = null;
     failure = null;
     void claim(project.id);
     refreshStatus();
@@ -344,7 +350,11 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       adopt(project);
       return;
     }
-    if (quiet > 0 || detached) return;
+    if (quiet > 0) return;
+    if (detached !== null) {
+      refreshStatus();
+      return;
+    }
     if (holds(project.id) && state.lastChange?.kind !== "drag") {
       channel.post({ kind: "change", from: peerId, id: project.id, project });
     }
@@ -369,6 +379,14 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   });
 
   // ── Deployment records (outside the lock) ───────────────────────────────────────────────────────────
+
+  /** Stored records that no longer parse, each logged once: they stay stored, but can't be listed or opened. */
+  const reported = new Set<string>();
+  const unreadable: records.Unreadable = (id, reason) => {
+    if (reported.has(id)) return;
+    reported.add(id);
+    log({ tag: "Error", text: `Couldn't read the stored project ${id}. ${reason}` });
+  };
 
   const deploymentListeners = new Set<(projectId: string) => void>();
   const emitDeployments = (projectId: string) => {
@@ -452,7 +470,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     clearTimer();
     openId = project.id;
     persisted = save ? null : project;
-    detached = false;
+    detached = null;
     failure = null;
     loadQuietly(project);
     const held = await claim(project.id);
@@ -478,7 +496,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     async openProject(id) {
       try {
         const current = doc.get();
-        if (openId === id && current.id === id && !detached) return { ok: true, value: current };
+        if (openId === id && current.id === id && detached === null) return { ok: true, value: current };
         await flush();
         const read = await records.readProject(await db(), id);
         if (!read.ok) return read;
@@ -538,7 +556,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
         const last = await handle.get("meta", META.lastProject);
         const id = typeof last === "string" && (await handle.getKey("projects", last)) !== undefined
           ? last
-          : (await records.listProjects(handle))[0]?.id;
+          : (await records.listProjects(handle, unreadable))[0]?.id;
         if (id === undefined || (proceed && !proceed())) return null;
         return await projects.openProject(id);
       } catch (error) {
@@ -569,10 +587,10 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       }
     },
     async listProjects() {
-      return records.listProjects(await db());
+      return records.listProjects(await db(), unreadable);
     },
     async renameProject(id, name) {
-      if (openId === id && doc.get().id === id && !detached) {
+      if (openId === id && doc.get().id === id && detached === null) {
         return { ok: false, error: "This project is open. Rename it in the title bar." };
       }
       const handle = await db();
@@ -610,7 +628,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
         if (isOpen) await flush();
         const moved = await records.trashProject(await db(), id, now());
         if (moved.ok && isOpen) {
-          detached = true;
+          detached = DELETED_DETAIL;
           clearTimer();
           refreshStatus();
         }
@@ -629,7 +647,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
         const restored = await records.restoreProject(await db(), id);
         if (restored.ok) {
           if (openId === id) {
-            detached = false;
+            detached = null;
             schedule();
           }
           emitProjects();
@@ -654,7 +672,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       const handle = await db();
       const purged = await records.purgeTrash(handle, now());
       if (purged.length > 0) emitProjects();
-      return records.listTrash(handle);
+      return records.listTrash(handle, unreadable);
     },
     async trashCounts(id) {
       return records.trashCounts(await db(), id);
@@ -681,10 +699,10 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       await flush().catch(() => {});
       const handle = await db();
       const files: ProjectFile[] = [];
-      for (const summary of await records.listProjects(handle)) {
+      for (const summary of await records.listProjects(handle, unreadable)) {
         files.push({ project: summary.project, deployments: await records.listDeployments(handle, summary.id) });
       }
-      for (const entry of await records.listTrash(handle)) {
+      for (const entry of await records.listTrash(handle, unreadable)) {
         files.push({ project: entry.project, deployments: entry.deployments });
       }
       return uniqueNames(files.map((file) => exportProjectFile(file.project, file.deployments)));
@@ -695,7 +713,8 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     async clearData() {
       clearTimer();
       pendingViewports.clear();
-      detached = true;
+      detached = CLEARED_DETAIL;
+      persisted = null;
       await records.clearAll(await db());
       refreshStatus();
       emitProjects();

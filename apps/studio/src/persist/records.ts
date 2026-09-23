@@ -65,13 +65,17 @@ export async function readProject(db: StudioDb, id: string): Promise<Result<{ pr
   return project.ok ? { ok: true, value: { project: project.value, savedAt: record.savedAt } } : project;
 }
 
-/** Stored projects, most recently saved first. Records that no longer parse are left out. */
-export async function listProjects(db: StudioDb): Promise<ProjectSummary[]> {
+/** Told about a stored record that no longer parses; it stays stored, but isn't listed. */
+export type Unreadable = (id: string, reason: string) => void;
+
+/** Stored projects, most recently saved first. Records that no longer parse are reported and left out. */
+export async function listProjects(db: StudioDb, unreadable?: Unreadable): Promise<ProjectSummary[]> {
   const records = await db.getAll("projects");
   const out: ProjectSummary[] = [];
   for (const record of records) {
     const project = readProjectValue(record.project);
     if (project.ok) out.push({ id: record.id, name: project.value.name, savedAt: record.savedAt, project: project.value });
+    else unreadable?.(record.id, project.error);
   }
   return out.sort((a, b) => b.savedAt - a.savedAt || a.name.localeCompare(b.name));
 }
@@ -200,11 +204,14 @@ export async function purgeTrash(db: StudioDb, now: number): Promise<string[]> {
   return gone;
 }
 
-export async function listTrash(db: StudioDb): Promise<TrashSummary[]> {
+export async function listTrash(db: StudioDb, unreadable?: Unreadable): Promise<TrashSummary[]> {
   const out: TrashSummary[] = [];
   for (const entry of await db.getAll("trash")) {
     const project = readProjectValue(entry.project);
-    if (!project.ok) continue;
+    if (!project.ok) {
+      unreadable?.(entry.id, project.error);
+      continue;
+    }
     out.push({
       id: entry.id,
       name: project.value.name,
