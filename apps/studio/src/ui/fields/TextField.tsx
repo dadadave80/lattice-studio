@@ -108,12 +108,12 @@ export function TextField({
   );
   // The disabled-control pattern (spec L661) wired here rather than through ReasonTooltip, which puts the
   // reason inside its trigger: an input can't hold children. The input is already read-only and refuses edits.
-  const control = disabledReason ? (
-    <Tooltip content={disabledReason} closeOnClick={false}>
+  // The Tooltip always wraps the input (toggling `disabled` instead of mounting and unmounting it), so a reason
+  // coming or going doesn't remount the input and take focus with it.
+  const control = (
+    <Tooltip content={disabledReason ?? ""} disabled={!disabledReason} closeOnClick={false}>
       {input}
     </Tooltip>
-  ) : (
-    input
   );
   return (
     <div className={cx(styles.field, className)}>

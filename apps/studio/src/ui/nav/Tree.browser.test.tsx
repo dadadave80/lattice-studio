@@ -339,6 +339,21 @@ describe("Tree item menus", () => {
     expect(focusedId()).toBe("pausable");
   });
 
+  test("a right click on a row without a menu isn't prevented: the browser's own menu can show", async () => {
+    await renderWithStudio(<Harness {...withMenu()} />);
+    let prevented: boolean | undefined;
+    document.addEventListener(
+      "contextmenu",
+      (event) => {
+        prevented = event.defaultPrevented;
+      },
+      { once: true },
+    );
+    await item("Pausable").click({ button: "right" });
+    expect(prevented).toBe(false);
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+
   test("a disabled item with a menu: right click and Shift+F10 open it, and hover still shows the reason", async () => {
     await renderWithStudio(<Harness expanded={["erc20"]} {...withMenu()} />);
     const disabled = item("totalSupply()");
@@ -353,9 +368,14 @@ describe("Tree item menus", () => {
     await userEvent.keyboard("{Escape}");
     await expect.element(disabled).toHaveFocus();
     await expect.element(disabled).toHaveAccessibleDescription("Served by GovernedVault");
+    // Focus opened the tooltip (L354); clicking away starts its close transition. Wait for it to finish
+    // closing before hovering, so the hover isn't racing a tooltip that's already mid-close (flaky otherwise).
     await page.getByRole("button", { name: "Before" }).click();
+    await expect.poll(() => document.querySelector("[data-tooltip]")).toBeNull();
     await disabled.hover();
-    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent).toBe("Served by GovernedVault");
+    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent, { timeout: 2_000 }).toBe(
+      "Served by GovernedVault",
+    );
   });
 
   /** A tree whose ERC20 item's menu the test turns on and off (a rerender, not a remount). */

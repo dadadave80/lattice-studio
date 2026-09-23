@@ -3,6 +3,7 @@ import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useId, useState } from "react";
 import { cx } from "../shared/cx";
 import { Tooltip } from "../tooltip/Tooltip";
+import fix from "./SegmentedToggle.module.css";
 import styles from "./Toggle.module.css";
 
 export type SegmentedOption<V extends string = string> = {
@@ -66,7 +67,12 @@ export function SegmentedToggle<V extends string = string>({
         className={cx(styles.segmented, className)}
       >
         {options.map((option) => (
-          <Toggle key={option.value} value={option.value} {...described} className={cx(styles.segment, styles.pressedMark)}>
+          <Toggle
+            key={option.value}
+            value={option.value}
+            {...described}
+            className={cx(styles.segment, styles.pressedMark, fix.pressedFix)}
+          >
             {option.label}
           </Toggle>
         ))}

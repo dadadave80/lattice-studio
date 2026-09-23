@@ -71,7 +71,7 @@ describe("Keyboard shortcuts dialog (IR L186)", () => {
     expect(session.get().dialogs).toHaveLength(1);
     await userEvent.clear(search());
     await userEvent.type(search(), "zzz");
-    await expect.element(page.getByText("No shortcuts match “zzz”.")).toBeVisible();
+    await expect.element(page.getByText("No shortcuts match “zzz”. Clear the search.")).toBeVisible();
     await expect.element(page.getByText("Showing 0 of", { exact: false })).toBeVisible();
   });
 
