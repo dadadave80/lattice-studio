@@ -2,7 +2,7 @@ import type { AnalysisContext, AuthorityRow, Catalog, Recipe } from "@lattice-st
 import { authorityTable, isNotImplemented } from "@lattice-studio/core";
 import { useId } from "react";
 import { commandRef } from "@/contracts";
-import { CommandButton } from "@/ui";
+import { CommandButton } from "@/ui/buttons/CommandButton";
 import { CodeText } from "./CodeText";
 import { REF_LABELS, refOf } from "./field-value";
 import { resolvedRef, useRefAddresses, type RefAddresses } from "./hooks";

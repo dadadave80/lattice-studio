@@ -1,4 +1,6 @@
-import { Icon, Select, Switch } from "@/ui";
+import { Icon } from "@/ui/icons/Icon";
+import { Select } from "@/ui/fields/Select";
+import { Switch } from "@/ui/fields/Switch";
 import type { FieldControlProps } from "./field-props";
 import styles from "./InitEditor.module.css";
 import { setArg } from "./use-draft";

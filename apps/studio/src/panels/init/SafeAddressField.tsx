@@ -1,4 +1,6 @@
-import { Button, TextField, VisuallyHidden } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
+import { TextField } from "@/ui/fields/TextField";
+import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
 import { REF_LABELS, refFromText, type Ref } from "./field-value";
 import { resolvedRef, useRefAddresses } from "./hooks";
 import styles from "./InitEditor.module.css";

@@ -1,7 +1,8 @@
 import type { InitStepView } from "@lattice-studio/core";
 import { useId, type KeyboardEvent } from "react";
 import { commandRef, runCommand } from "@/contracts";
-import { cx, Icon } from "@/ui";
+import { cx } from "@/ui/shared/cx";
+import { Icon } from "@/ui/icons/Icon";
 import { FieldRow } from "./FieldRow";
 import styles from "./InitEditor.module.css";
 import { MoveStepButton } from "./MoveStepButton";

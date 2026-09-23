@@ -4,7 +4,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   announce, closeDialog, doc, layoutMetrics, log, useCatalog, useDocument, useSession, type DialogComponentProps,
 } from "@/contracts";
-import { Button, Checkbox, Dialog, NumberField, RadioGroup } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
+import { Checkbox } from "@/ui/fields/Checkbox";
+import { NumberField } from "@/ui/fields/NumberField";
+import { RadioGroup } from "@/ui/fields/RadioGroup";
+import { Dialog } from "@/ui/overlays/Dialog";
 import styles from "./ChooseMechanismDialog.module.css";
 import { CodeText } from "./CodeText";
 import { bestUnit, DURATION_UNITS, durationEcho, toSeconds, type DurationUnit } from "./duration";

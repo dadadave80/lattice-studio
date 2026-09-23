@@ -2,7 +2,7 @@ import type { InitStepView } from "@lattice-studio/core";
 import { plural } from "@lattice-studio/core";
 import { useEffect, useRef } from "react";
 import { commandRef, useCatalog, useDocument, type InspectorViewProps } from "@/contracts";
-import { CommandButton } from "@/ui";
+import { CommandButton } from "@/ui/buttons/CommandButton";
 import { AuthorityTable } from "./AuthorityTable";
 import { BundleOrder } from "./BundleOrder";
 import styles from "./InitEditor.module.css";

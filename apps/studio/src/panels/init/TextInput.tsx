@@ -1,4 +1,5 @@
-import { NumberField, TextField } from "@/ui";
+import { NumberField } from "@/ui/fields/NumberField";
+import { TextField } from "@/ui/fields/TextField";
 import type { FieldControlProps } from "./field-props";
 import { displayText, parseFieldText } from "./field-value";
 import styles from "./InitEditor.module.css";

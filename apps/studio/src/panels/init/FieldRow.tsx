@@ -1,6 +1,6 @@
 import type { Arg, FieldModel, InitStepView } from "@lattice-studio/core";
 import { commandRef, useDocument, useSession } from "@/contracts";
-import { CommandButton } from "@/ui";
+import { CommandButton } from "@/ui/buttons/CommandButton";
 import { CodeText } from "./CodeText";
 import { ConfirmPanel } from "./ConfirmPanel";
 import { FieldControl } from "./FieldControl";

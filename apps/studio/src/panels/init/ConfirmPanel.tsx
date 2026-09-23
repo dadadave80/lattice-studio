@@ -2,7 +2,7 @@ import type { Arg, FieldModel } from "@lattice-studio/core";
 import { isNotImplemented } from "@lattice-studio/core";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { announce, chainService, doc, log, useOnline, useSession } from "@/contracts";
-import { Button } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
 import { displayText } from "./field-value";
 import { literalAddress } from "./hooks";
 import { closeConfirm, ensLabel } from "./init-ui-store";

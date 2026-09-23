@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NumberField } from "@/ui";
+import { NumberField } from "@/ui/fields/NumberField";
 import { bestUnit, DURATION_UNITS, durationEcho, fromSeconds, toSeconds, type DurationUnit } from "./duration";
 import type { FieldControlProps } from "./field-props";
 import { displayText } from "./field-value";

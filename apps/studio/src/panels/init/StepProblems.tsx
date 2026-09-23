@@ -1,5 +1,6 @@
 import type { CommandRef } from "@lattice-studio/core";
-import { CommandButton, Icon } from "@/ui";
+import { CommandButton } from "@/ui/buttons/CommandButton";
+import { Icon } from "@/ui/icons/Icon";
 import { CodeText } from "./CodeText";
 import { usePathProblems } from "./hooks";
 import styles from "./InitEditor.module.css";

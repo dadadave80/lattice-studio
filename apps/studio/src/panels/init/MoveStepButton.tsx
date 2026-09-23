@@ -1,5 +1,5 @@
 import { commandRef, runCommand, useCommandState } from "@/contracts";
-import { IconButton } from "@/ui";
+import { IconButton } from "@/ui/buttons/IconButton";
 
 /**
  * ↑ or ↓ on a step (spec L467): S1's `init.moveStep`, named for the step it moves ("Move VaultCoreInit up"), and
