@@ -19,7 +19,7 @@ import {
   keyedArg, lexSolidity, loadableTemplates, makeProject, mapStringArgs, markdownOutline, markdownProse, propertyCatalogs,
   scalarArgPaths, solidityShape, solidityStringBytes, stringArgPaths, wellFormed, type MarkdownOutline,
 } from "../../src/testing";
-import { escapedLine } from "../../src/export/docs/markdown";
+import { escapedLine, oneLine } from "../../src/export/docs/markdown";
 
 const catalogs = propertyCatalogs();
 const ctx = { known: [], unconfirmed: [] };
@@ -194,7 +194,8 @@ for (const catalog of catalogs) {
             // a regression that escapes values but not keys fails on any key with a character to escape, not
             // only on draws whose raw `<` or `>` happen to reach markdownProse.
             const prose = brief.text.replace(json?.body ?? "", "");
-            expect([key, prose.includes(`${escapedLine(key)}: `)]).toEqual([key, true]);
+            // A key that collapses to nothing (only whitespace or line breaks) leaves nothing to look for.
+            if (oneLine(key) !== "") expect([key, prose.includes(`${escapedLine(key)}: `)]).toEqual([key, true]);
           }
         }),
       );

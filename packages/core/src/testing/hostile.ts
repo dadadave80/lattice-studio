@@ -79,7 +79,7 @@ export type HostileKeyOptions = {
  * Hostile text for an object argument's own field key: anything but the literal `"$ref"`, the one string
  * `ArgSchema` (model/schema.ts) forbids there. `describeArg` (export/docs/brief.ts) reads a scalar-typed field
  * or an array element that holds an object this way, so its keys need the same hostile coverage as any other
- * name. With `prototypeKeys`, `PROTOTYPE_KEYS` come up about a quarter of the time; since FX8 normalization
+ * name. With `prototypeKeys`, `PROTOTYPE_KEYS` come up about a quarter of the time. Since FX8, normalization
  * defines keys instead of assigning them, so `"__proto__"` is kept as an own property, never dropped.
  */
 export function hostileKey(maxPieces = 8, options: HostileKeyOptions = {}): fc.Arbitrary<string> {
