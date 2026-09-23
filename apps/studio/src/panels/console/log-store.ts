@@ -106,11 +106,14 @@ export function setLogStorage(next: LogStorage | null): void {
   storage = next;
 }
 
-/** Turns keeping on or off. Off forgets what was kept. */
+/**
+ * Turns keeping on or off. On writes after the next quiet (so a `restoreLog()` right after still finds what the
+ * last session kept); off forgets what was kept.
+ */
 export function setKeepLog(on: boolean): void {
   keep = on;
   if (on) {
-    flushLogPersistence();
+    schedulePersist();
     return;
   }
   if (timer) clearTimeout(timer);
