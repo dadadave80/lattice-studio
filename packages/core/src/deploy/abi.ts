@@ -7,6 +7,13 @@ import type { Address, Hex } from "../model/hex";
  */
 export const MULTICALL3: Address = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
+/**
+ * Multicall3's canonical runtime codehash (spec L842), keccak256 of the deployed bytes vendored at
+ * `e2e-chain/vendor/Multicall3.runtime.hex` (Q5's provenance: read from Sepolia and mainnet at a pinned block).
+ * Studio batches through `MULTICALL3` only when the chain holds this exact code.
+ */
+export const MULTICALL3_CODEHASH: Hex = "0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891";
+
 /** `FacetCut` from diamond-lib's DiamondLib.sol (L102-L106): `(address facetAddress, uint8 action, bytes4[] functionSelectors)`. */
 const FACET_CUT = {
   type: "tuple[]",
