@@ -15,7 +15,7 @@ import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
 import { predict, prediction } from "@/state";
 import { copyText } from "@/ui/copy/copy-text";
-import { DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, WAITING_FOR_SAFE, pathName, resolveBlockers } from "./entry-copy";
+import { DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, WAITING_FOR_SAFE, pathName, resolveBlockers, tickFirst } from "./entry-copy";
 import { requestPickerFocus, setPreview } from "./review-state";
 
 const OK: Enablement = { ok: true };
@@ -139,6 +139,7 @@ const again = command({
   async run(ctx) {
     // Flow 13, spec L286: only Deploy again after a confirmed deploy draws new entropy; "This diamond" follows it.
     const records = await listDeployments(ctx.project.id);
+    // "confirmed" covers verified and live records too: Deployment.status has no "live" (core model/project.ts).
     if (records.some((d) => d.status === "confirmed")) {
       if (!drawEntropy("Drew a new salt for a new diamond")) return;
       say(`Drew a new salt for a new diamond.${whereNow()}`);
@@ -279,6 +280,10 @@ const downloadSafeBatch = command({
     if (block) return no(block);
     const count = blockers(ctx).length;
     if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
+    // The review's ticks are the person's consent however the deploy goes out, a Safe batch included (spec L573).
+    const acked = ctx.session.acks[ctx.analysis.recipeHash] ?? [];
+    const unticked = ctx.analysis.problems.filter((p) => p.ack === true && p.severity === "warning" && !acked.includes(p.id)).length;
+    if (unticked > 0) return no(tickFirst(unticked));
     if (ctx.session.chainId === null) return no(CHOOSE_A_CHAIN);
     return OK;
   },
@@ -293,17 +298,19 @@ const focusPicker = command({
   // NET-01, NET-02, NET-04 and NET-08's fix (IR L235).
   title: () => "Choose another chain",
   category: "Chain",
-  enabled: () => OK,
+  enabled(ctx) {
+    if (ctx.session.dialogs.some((d) => d.id === "deploy-review")) return OK;
+    // Outside the review it opens one, so deploy.open's gates apply, except blockers: NET-01, 02, 04 and 08 are
+    // blockers or warnings whose very fix this is.
+    const block = openBlock(ctx);
+    if (block) return no(block);
+    if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
+    return OK;
+  },
   run(ctx) {
     requestPickerFocus();
-    // The review's picker is the one to move to; outside the review, open it first (a new review, never over progress).
-    if (!ctx.session.dialogs.some((d) => d.id === "deploy-review")) {
-      if (!ctx.online) {
-        say(DEPLOY_NEEDS_CONNECTION);
-        return;
-      }
-      openDialog("deploy-review", { at: "review" });
-    }
+    // The review's picker is the one to move to; outside the review, open it first (never over a deploy's progress).
+    if (!ctx.session.dialogs.some((d) => d.id === "deploy-review")) openReview();
   },
 });
 

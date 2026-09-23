@@ -227,7 +227,10 @@ describe("the review's own commands", () => {
     const created = vi.spyOn(URL, "createObjectURL");
     onCleanup(() => created.mockRestore());
     await renderWithStudio(<DialogHost />, { project: templateProject("ERC20"), catalog: deployableCatalog(), session: { chainId: SEPOLIA } });
-    // The template's example values need acknowledging for the review, not for the batch: no blockers.
+    // The review's ticks are consent for the batch too: ERC20's example values (INIT-05) must be acknowledged first.
+    await expect.poll(() => reason("deploy.downloadSafeBatch")).toBe("Tick the acknowledgement first");
+    await runCommand({ id: "ack.set", args: { problemId: "INIT-05:diamond" } }, "button");
+    expect(reason("deploy.downloadSafeBatch")).toBeNull();
     await runCommand({ id: "deploy.downloadSafeBatch" }, "button");
     await expect.poll(() => controller.methods()).toContain("proposed");
     const [batch] = controller.calls.find((c) => c.method === "proposed")?.args ?? [];
@@ -238,8 +241,23 @@ describe("the review's own commands", () => {
     expect(lastLog()).toMatch(/^Saved .+\.safe\.json\. Import it in the Safe's Transaction Builder/);
   });
 
+  test("Choose another chain keeps deploy.open's gates outside the review, but not its blockers", async () => {
+    const { fixtureCatalog } = await import("../../../test/harness");
+    await studio({ catalog: fixtureCatalog(), project: makeProject({ recipe: templateProject("ERC20").recipe }) });
+    expect(reason("chain.focusPicker")).toBe(FIXTURE_CATALOG);
+  });
+
+  test("Choose another chain waits while a Safe proposal does, and works with blockers", async () => {
+    await studio({ project: makeProject({ recipe: makeRecipe({}, deployableCatalog()) }) });
+    expect(reason("deploy.open")).toBe("Resolve 1 blocker · F8");
+    expect(reason("chain.focusPicker")).toBeNull();
+    seedDeployState({ phase: "proposed", chainId: SEPOLIA });
+    expect(reason("chain.focusPicker")).toBe("Waiting for the Safe to execute the batch");
+  });
+
   test("Download Transaction Builder batch with an account that isn't a Safe says so", async () => {
     await studio();
+    await runCommand({ id: "ack.set", args: { problemId: "INIT-05:diamond" } }, "button");
     await runCommand({ id: "deploy.downloadSafeBatch" }, "button");
     expect(lastLog()).toBe("The connected account isn't a Safe. Export → Safe batch takes any Safe's address.");
   });

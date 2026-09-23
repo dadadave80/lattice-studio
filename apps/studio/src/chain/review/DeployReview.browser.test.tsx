@@ -248,15 +248,28 @@ describe("Checks, acknowledgements and Sign & deploy (spec L569, L573)", () => {
     await expect.element(signButton()).toHaveAccessibleDescription("Tick the acknowledgement first");
   });
 
-  test("an RPC that can't simulate asks for one extra tick", async () => {
+  test("an RPC that can't simulate asks for one extra tick, then signs without a simulation", async () => {
     const { controller } = await readyReview();
-    controller.set({ phase: "review", simulation: { ok: false } });
+    controller.set({
+      phase: "review",
+      simulation: { ok: false, unavailable: true },
+      error: "Sepolia's RPC can't simulate this deploy. Signing without a simulation needs one more tick.",
+    });
     await tickExamples();
     const tick = page.getByRole("checkbox", { name: "Deploy without a simulation" });
     await expect.element(tick).toBeVisible();
     await expect.element(signButton()).toHaveAccessibleDescription("Tick the acknowledgement first");
     await tick.click();
     await expect.element(signButton()).not.toHaveAttribute("aria-disabled");
+    await signButton().click();
+    expect(controller.calls).toContainEqual({ method: "sign", args: [{ withoutSimulation: true }] });
+  });
+
+  test("a passed simulation signs plainly", async () => {
+    const { controller } = await readyReview();
+    await tickExamples();
+    await signButton().click();
+    expect(controller.calls).toContainEqual({ method: "sign", args: [] });
   });
 
   test("blockers anywhere keep it disabled with their count", async () => {

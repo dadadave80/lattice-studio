@@ -27,6 +27,7 @@ async function exportContext(ctx: CommandContext): Promise<Pick<AnalysisContext,
     if (!knownFrom[key] || source === "deployment") knownFrom[key] = { source, chainId, chain: chainName(chainId, env.e2e) };
   };
   for (const p of ctx.project.predicted) add(p.address, "prediction", p.chainId);
+  // Every record counts, whatever its status (a verified diamond is still "confirmed", core model/project.ts).
   for (const d of await listDeployments(ctx.project.id)) add(d.address, "deployment", d.chainId);
   const unconfirmedFrom: Record<string, "link" | "file"> = {};
   for (const [path, source] of Object.entries(ctx.project.provenance)) {

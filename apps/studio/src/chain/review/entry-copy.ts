@@ -16,6 +16,11 @@ export function resolveBlockers(count: number): string {
   return `Resolve ${plural(count, "blocker")} · F8`;
 }
 
+/** Why Sign & deploy (or the Safe batch) waits on the acknowledgements (spec L573). */
+export function tickFirst(count: number): string {
+  return count === 1 ? "Tick the acknowledgement first" : `Tick the ${count} acknowledgements first`;
+}
+
 /** The path's display name. */
 export function pathName(path: DeployPath): string {
   return path === "createx" ? "CreateX" : "LatticeFactory";

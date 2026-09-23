@@ -194,6 +194,9 @@ describe("cost helpers", () => {
 
   test("a simulation that failed without a revert means the RPC couldn't simulate", () => {
     expect(cantSimulate({ ok: false })).toBe(true);
+    expect(cantSimulate({ ok: false, unavailable: true, revert: "eth_call failed" })).toBe(true);
+    expect(signEnablement(ready({ deploy: { phase: "review", snapshot: HASH, simulation: { ok: false, unavailable: true, revert: "x" } }, noSimulationTicked: true })))
+      .toEqual({ ok: true });
     expect(cantSimulate({ ok: false, revert: "Reverted" })).toBe(false);
     expect(cantSimulate({ ok: true })).toBe(false);
     expect(cantSimulate(undefined)).toBe(false);

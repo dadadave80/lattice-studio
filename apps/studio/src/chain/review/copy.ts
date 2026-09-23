@@ -42,9 +42,7 @@ export function confirmMismatch(name: string): string {
 export const UNAUDITED_NOTICE = "This deploys unaudited code: Lattice's README says it's unaudited, and so does CreateX's.";
 
 /** Why Sign & deploy waits on the acknowledgements (spec L573). */
-export function tickFirst(count: number): string {
-  return count === 1 ? "Tick the acknowledgement first" : `Tick the ${count} acknowledgements first`;
-}
+export { tickFirst } from "./entry-copy";
 
 export const TYPE_THE_NAME = "Type the project name to confirm";
 

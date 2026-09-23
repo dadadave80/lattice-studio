@@ -141,6 +141,22 @@ describe("Simulation", () => {
     await expect.element(simulation).toHaveAttribute("data-status", "ok");
   });
 
+  test("`unavailable` wins over a revert text: the controller's reason shows, no Copy details, and Sign goes without a simulation", async () => {
+    const { controller, dialog } = await openReview();
+    const reason = "Sepolia's RPC can't simulate this deploy. Signing without a simulation needs one more tick.";
+    controller.set({ phase: "review", simulation: { ok: false, unavailable: true, revert: "eth_call failed" }, error: reason });
+    const simulation = section("Simulation");
+    await expect.element(simulation.getByText(reason)).toBeVisible();
+    await expect.element(simulation.getByText("Needs a tick")).toBeVisible();
+    await expect.element(simulation.getByRole("button", { name: "Copy details" })).not.toBeInTheDocument();
+    await dialog.getByRole("checkbox", { name: NO_SIMULATION_TICK }).click();
+    await dialog.getByRole("checkbox", { name: "Keep example values" }).click();
+    const sign = dialog.getByRole("button", { name: "Sign & deploy" });
+    await expect.element(sign).not.toHaveAttribute("aria-disabled");
+    await sign.click();
+    expect(controller.calls).toContainEqual({ method: "sign", args: [{ withoutSimulation: true }] });
+  });
+
   test("says so while the deploy controller isn't built", async () => {
     const { controller } = await openReview();
     controller.set({ phase: "idle" });

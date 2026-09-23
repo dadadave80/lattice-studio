@@ -153,7 +153,10 @@ export function cutRows(plan: readonly PlanEntry[], catalog: Catalog, chain: Cha
 
 /** The RPC couldn't simulate at all (spec L573): a failed simulation that carries no revert. */
 export function cantSimulate(simulation: DeployState["simulation"]): boolean {
-  return simulation !== undefined && !simulation.ok && (simulation.revert === undefined || simulation.revert === "");
+  if (simulation === undefined || simulation.ok) return false;
+  // The controller says so outright (spec L575); a failure with no revert to show means the same.
+  if (simulation.unavailable === true) return true;
+  return simulation.revert === undefined || simulation.revert === "";
 }
 
 /** Phases after Sign & deploy (or a Safe batch): the review shows the deploy's progress instead of its sections. */

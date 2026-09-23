@@ -3,7 +3,7 @@ import { log } from "@/contracts";
 import { CANCELED_IN_WALLET } from "@/chain/infra/copy";
 import { catalogDeployBlock } from "@/chain/infra";
 import { Button } from "@/ui";
-import { pendingAcks, signEnablement, type Enablement } from "./model";
+import { cantSimulate, pendingAcks, signEnablement, type Enablement } from "./model";
 import { shortOfFunds, useReview, type Review } from "./review-data";
 import { useReviewState } from "./review-state";
 import styles from "./review.module.css";
@@ -40,6 +40,7 @@ export function useSignEnablement(review: Review): Enablement {
 export function ReviewFooter({ progress, onClose }: { progress: boolean; onClose: () => void }) {
   const review = useReview();
   const enablement = useSignEnablement(review);
+  const noSimulationTick = useReviewState((s) => s.noSimulationTick);
   const reasonId = useId();
   if (progress) {
     return (
@@ -49,10 +50,12 @@ export function ReviewFooter({ progress, onClose }: { progress: boolean; onClose
     );
   }
   const again = review.deploy.error === CANCELED_IN_WALLET;
+  // The extra tick (spec L573, L575) is the consent to sign without a simulation; the controller needs it said.
+  const withoutSimulation = cantSimulate(review.deploy.simulation) && noSimulationTick === review.analysis.recipeHash;
   const sign = () => {
     const controller = review.controller;
     if (!controller) return;
-    controller.sign().catch((error: unknown) => {
+    controller.sign(withoutSimulation ? { withoutSimulation: true } : undefined).catch((error: unknown) => {
       log({ tag: "Error", text: error instanceof Error ? error.message : String(error) });
     });
   };

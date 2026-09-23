@@ -87,8 +87,8 @@ export function fakeDeployController(initial: DeployState = { phase: "idle" }): 
       record("changed");
       set({ phase: "simulating", changedSinceReview: true });
     },
-    async sign() {
-      record("sign");
+    async sign(options) {
+      record("sign", options === undefined ? [] : [options]);
     },
     proposed(batch) {
       record("proposed", [batch]);

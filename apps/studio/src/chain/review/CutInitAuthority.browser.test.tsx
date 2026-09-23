@@ -69,6 +69,9 @@ describe("What gets cut", () => {
     // Open by itself so the blocking row shows.
     await expect.element(cut.getByText("Differs from the catalog")).toBeVisible();
     expect(dialog.element().querySelector('[data-facet="ERC20"]')?.getAttribute("data-check")).toBe("differs");
+    // The footer agrees with the section: NET-04 is the one blocker.
+    const sign = dialog.getByRole("button", { name: "Sign & deploy" });
+    await expect.element(sign).toHaveAccessibleDescription("Resolve 1 blocker · F8");
   });
 });
 

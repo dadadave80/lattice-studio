@@ -25,8 +25,9 @@ function shown(review: Review, ticked: boolean): Shown {
     const text = simulation.summary ?? (simulation.block === undefined ? "Simulated." : `Simulated at block ${grouped(simulation.block)}.`);
     return { status: "ok", text };
   }
+  // Before the revert branch: an RPC that can't simulate isn't a revert, whatever text it carries (spec L575).
+  if (cantSimulate(simulation)) return { status: ticked ? "ok" : "tick", text: deploy.error ?? NO_SIMULATION_NOTE };
   if (simulation?.revert) return { status: "blocked", text: simulation.revert, revert: simulation.revert };
-  if (cantSimulate(simulation)) return { status: ticked ? "ok" : "tick", text: NO_SIMULATION_NOTE };
   return { status: "waiting", text: NOT_YET };
 }
 
