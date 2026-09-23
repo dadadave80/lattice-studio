@@ -105,7 +105,7 @@ export async function startAnvil(options: StartAnvilOptions = {}): Promise<Resul
     if (!(await portFree(port))) continue;
     const proc = Bun.spawn([bin, "--host", "127.0.0.1", "--port", String(port), ...(options.args ?? [])], {
       stdout: "ignore",
-      stderr: "pipe",
+      stderr: "ignore",
     });
     const url = `http://127.0.0.1:${port}`;
     const request = rpc(url);

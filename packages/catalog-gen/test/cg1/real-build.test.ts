@@ -22,7 +22,10 @@ import { facetNatspec, natspecSummary } from "../../src/natspec";
 
 const LATTICE = studioEnv("LATTICE_DIR") ?? join(import.meta.dir, "..", "..", "..", "..", "lattice");
 const available =
-  Bun.which("forge") !== null && Bun.which("anvil") !== null && existsSync(join(LATTICE, "foundry.toml"));
+  Bun.which("forge") !== null &&
+  Bun.which("anvil") !== null &&
+  existsSync(join(LATTICE, "foundry.toml")) &&
+  existsSync(join(LATTICE, "lib", "diamond-lib", "src"));
 
 const BUILD_TIMEOUT_MS = 20 * 60_000;
 
