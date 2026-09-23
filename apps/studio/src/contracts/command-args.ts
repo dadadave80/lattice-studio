@@ -79,7 +79,8 @@ export type CommandArgsMap = {
   // S5e
   "export.safe": { safe?: Address; chainId?: number };
   // S7b
-  "project.open": { id: string };
+  /** No id: pick a file (⌘O, App menu Open…). */
+  "project.open": { id?: string };
   "project.duplicate": { id: string };
   "project.delete": { id: string };
   "project.restore": { id: string };

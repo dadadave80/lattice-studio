@@ -106,3 +106,24 @@ export function bundleRecipe(overrides: Partial<Recipe> = {}): Recipe {
     catalog,
   );
 }
+
+/** What a hostile file puts under `"__proto__"`: an object, the case that would replace a copy's prototype. */
+export const PROTO_VALUE = { polluted: true };
+
+/**
+ * `value` as JSON text, parsed back, with an own `"__proto__"` key added to the object at `at` (keys and
+ * indexes from the root). Written with `defineProperty`, since `obj.__proto__ = …` would set the prototype.
+ */
+export function withProtoKey(value: unknown, at: readonly (string | number)[], protoValue: unknown = PROTO_VALUE): unknown {
+  const json: unknown = JSON.parse(JSON.stringify(value));
+  let target = json;
+  for (const key of at) target = (target as Record<string | number, unknown>)[key];
+  if (target === null || typeof target !== "object") throw new Error(`withProtoKey: no object at ${at.join(".")}`);
+  Object.defineProperty(target, "__proto__", { value: protoValue, enumerable: true, writable: true, configurable: true });
+  return json;
+}
+
+/** `withProtoKey` as a file or link holds it: JSON text, whose own `"__proto__"` key `JSON.parse` keeps. */
+export function textWithProtoKey(value: unknown, at: readonly (string | number)[]): string {
+  return JSON.stringify(withProtoKey(value, at), null, 2);
+}
