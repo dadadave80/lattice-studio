@@ -123,6 +123,12 @@
   letter-spacing: var(--lx-tracking-body-sm);
 }
 
+.nextSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-2);
+}
+
 .link {
   color: var(--lx-text);
   text-decoration: underline;

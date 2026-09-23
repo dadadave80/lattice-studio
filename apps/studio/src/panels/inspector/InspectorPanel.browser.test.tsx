@@ -28,6 +28,11 @@ function setView(view: InspectorView): void {
   session.set((s) => ({ panes: { ...s.panes, inspector: { ...s.panes.inspector, view } } }));
 }
 
+/** Waits for a view to render; the first one loads the views' chunk, which takes a moment on a cold run. */
+async function viewShown(kind: string): Promise<void> {
+  await vi.waitFor(() => expect(document.querySelector(`[data-view="${kind}"]`)).not.toBeNull(), { timeout: 5000 });
+}
+
 function inspectorView(): InspectorView {
   return session.get().panes.inspector.view;
 }
@@ -35,16 +40,16 @@ function inspectorView(): InspectorView {
 describe("view routing", () => {
   test("nothing selected shows the Diamond view", async () => {
     await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
-    await vi.waitFor(() => expect(document.querySelector('[data-view="diamond"]')).not.toBeNull());
+    await viewShown("diamond");
     expect(shownKind()).toBe("diamond");
   });
 
   test("one selected card shows its Facet view, several the Selection view", async () => {
     await renderWithStudio(<InspectorPanel />, { project: project(["ERC20", "Receive"]), session: { selection: ["ERC20"] } });
-    await vi.waitFor(() => expect(document.querySelector('[data-view="facet"]')).not.toBeNull());
+    await viewShown("facet");
     await expect.element(page.getByRole("heading", { level: 2, name: "ERC20" })).toBeVisible();
     session.set({ selection: ["ERC20", "Receive"] });
-    await vi.waitFor(() => expect(document.querySelector('[data-view="selection"]')).not.toBeNull());
+    await viewShown("selection");
   });
 
   test("an explicit view a command routed here wins over the selection", async () => {
@@ -53,7 +58,7 @@ describe("view routing", () => {
       session: { selection: ["ERC20"] },
     });
     setView({ kind: "preview", facet: "Governor" });
-    await vi.waitFor(() => expect(document.querySelector('[data-view="preview"]')).not.toBeNull());
+    await viewShown("preview");
     expect(shownKind()).toBe("preview");
   });
 
@@ -86,7 +91,7 @@ describe("following the selection", () => {
     setView({ kind: "preview", facet: "Governor" });
     session.set({ selection: ["Receive"] });
     expect(inspectorView()).toBeNull();
-    await vi.waitFor(() => expect(document.querySelector('[data-view="facet"]')).not.toBeNull());
+    await viewShown("facet");
     await expect.element(page.getByRole("heading", { level: 2, name: "Receive" })).toBeVisible();
   });
 
@@ -250,15 +255,44 @@ describe("cut plan footer", () => {
     };
     await putDeployment(record);
     await renderWithStudio(<InspectorPanel />, { project: p, session: { chainId: SEPOLIA }, chain: fakeChainService() });
-    await expect.element(page.getByText("Live", { exact: true })).toBeVisible();
-    await expect.element(page.getByRole("link", { name: "Open in explorer" })).toHaveAttribute(
+    const footer = page.getByRole("region", { name: "DiamondCut plan" });
+    await expect.element(footer.getByText("Live", { exact: true })).toBeVisible();
+    await expect.element(footer.getByRole("link", { name: "Open in explorer" })).toHaveAttribute(
       "href",
       `https://sepolia.etherscan.io/address/${address}`,
     );
-    await expect.element(page.getByRole("link", { name: "Open in Louper" })).toHaveAttribute(
+    await expect.element(footer.getByRole("link", { name: "Open in Louper" })).toHaveAttribute(
       "href",
       `https://louper.dev/diamond/${address}?network=sepolia`,
     );
+    // Next steps (spec L578): copy address, save a file copy; no governance proposal for a plain diamond.
+    const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    await footer.getByRole("button", { name: "Copy address" }).click();
+    await vi.waitFor(() => expect(writes).toHaveBeenCalledWith(address));
+    expect(bufferedServices().toast.at(-1)?.text).toBe("Copied 0x71C7…976F");
+    const save = vi.fn();
+    overrideCommands([
+      command({ id: "project.exportFile", title: () => "Save a file copy", category: "Session", enabled: () => ({ ok: true }), run: save }),
+    ]);
+    await footer.getByRole("button", { name: "Save a file copy" }).click();
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).not.toContain("Recommended first proposal");
+  });
+
+  test("a live governed diamond recommends its first proposal", async () => {
+    const catalog = fixtureCatalog();
+    const recipe = makeRecipe({ facets: ["GovernedDiamondCut", "EmergencyStop", "DiamondLoupeFacet"] }, catalog);
+    const p = makeProject({ id: "inspector-frame-governed", recipe });
+    const address = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+    await putDeployment({
+      projectId: p.id, chainId: SEPOLIA, address, path: "factory", deployer: address, salt: `0x${"22".repeat(32)}`,
+      status: "confirmed", recipeHash: analyze(recipe, catalog).recipeHash, catalogHash: catalog.hash,
+      at: "2026-09-20T10:00:00.000Z", verification: "pending", revision: 1,
+    });
+    await renderWithStudio(<InspectorPanel />, { project: p, session: { chainId: SEPOLIA }, chain: fakeChainService() });
+    await expect
+      .element(page.getByText(/^Recommended first proposal: freeze the loupe selectors/))
+      .toBeVisible();
   });
 });
 
