@@ -42,7 +42,7 @@ lattice-studio check recipe.json --json > analysis.json   # mirrors the Analysis
 An authority address that came from the file (an admin, a Safe) blocks with LINK-01 until you confirm it in full:
 
 ```sh
-lattice-studio check recipe.json --confirm steps[0].safe=0x5AFe00000000000000000000000000000000a11C
+lattice-studio check recipe.json --confirm 'steps[0].safe=0x5AFe00000000000000000000000000000000a11C'
 ```
 
 Predict the address, and check chain readiness with read-only probes (the RPC comes from `--rpc`, `LATTICE_STUDIO_RPC_URL`, or the chain's public RPC; it's never printed):

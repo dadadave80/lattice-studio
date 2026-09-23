@@ -161,7 +161,7 @@ describe("LINK-01 and --confirm", () => {
     const { code, stdout } = await spawnCli(["check", linked]);
     expect(code).toBe(1);
     expect(stdout).toContain(`  Blocker  LINK-01  The upgrade role goes to ${formatAddress(SAFE)}, which came from an opened file.`);
-    expect(stdout).toContain(`Check the full address, then confirm it: --confirm steps[0].safe=${SAFE}`);
+    expect(stdout).toContain(`Check the full address, then confirm it: --confirm 'steps[0].safe=${SAFE}'`);
   });
 
   test("--confirm with the full address clears it; the analysis equals core's with the path confirmed", async () => {

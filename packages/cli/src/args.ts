@@ -108,7 +108,7 @@ export function parseCommandLine(argv: readonly string[]): Result<Parsed, string
   }
   if ((values.chain?.length ?? 0) > 1 && command !== "export foundry") return err(`${command} takes one --chain.`);
   if ((values.confirm?.length ?? 0) > 0 && values.confirm?.some((c) => !c.includes("="))) {
-    return err("--confirm takes <path>=<address>, for example --confirm steps[0].safe=0x….");
+    return err("--confirm takes <path>=<address>, for example --confirm 'steps[0].safe=0x…'.");
   }
   return ok({ command, args, values });
 }

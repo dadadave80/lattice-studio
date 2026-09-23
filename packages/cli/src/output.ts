@@ -53,7 +53,7 @@ export function problemLines(problems: readonly Problem[]): string[] {
   for (const p of problems) {
     lines.push(`  ${SEVERITY[p.severity]}  ${p.code.padEnd(7)}  ${p.message}`);
     if (p.code === "LINK-01" && typeof p.params["path"] === "string" && typeof p.params["address"] === "string") {
-      lines.push(`  ${" ".repeat(18)}Check the full address, then confirm it: --confirm ${p.params["path"]}=${p.params["address"]}`);
+      lines.push(`  ${" ".repeat(18)}Check the full address, then confirm it: --confirm '${p.params["path"]}=${p.params["address"]}'`);
     }
   }
   return lines;
