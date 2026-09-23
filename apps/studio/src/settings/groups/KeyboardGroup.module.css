@@ -58,11 +58,6 @@
   color: var(--lx-text-faint);
 }
 
-.listening {
-  font: var(--lx-font-body-sm);
-  color: var(--lx-accent);
-}
-
 .conflict {
   flex: 1 1 100%;
   display: flex;

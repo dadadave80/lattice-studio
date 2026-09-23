@@ -1,7 +1,8 @@
 import type { Platform } from "@lattice-studio/core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
-  announce, getCommand, listBindings, settings, useSettings, type BindingId, type ResolvedBinding,
+  announce, getCommand, listBindings, pushEscape, settings, useSettings, type BindingId, type KeySpec,
+  type ResolvedBinding,
 } from "@/contracts";
 import {
   bindingTitle, CATEGORY_ORDER, checkRemap, isRemapped, remapBinding, resetBinding, resetKeymap, specFromEvent,
@@ -10,7 +11,7 @@ import {
 import { Button, Kbd, Switch, usePlatform } from "@/ui";
 import styles from "./KeyboardGroup.module.css";
 
-type Pending = { id: BindingId; spec: string; platform: Platform; reason: string; conflicts: KeyConflict[] };
+type Pending = { id: BindingId; keys: readonly KeySpec[]; reason: string; conflicts: KeyConflict[] };
 
 /** The binding's command category, recovered from the registry (`listBindings` doesn't carry it). */
 function categoryOf(binding: ResolvedBinding): string {
@@ -33,6 +34,9 @@ export function KeyboardGroup() {
   const [capturing, setCapturing] = useState<BindingId | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  /** The row's "Change…" button, kept across the capturing/pending states so focus never has to jump. */
+  const changeRefs = useRef(new Map<BindingId, HTMLButtonElement>());
+  const anywayRef = useRef<HTMLButtonElement>(null);
 
   const bindings = listBindings(keymap);
   const groups = CATEGORY_ORDER.map((category) => ({
@@ -40,23 +44,28 @@ export function KeyboardGroup() {
     rows: bindings.filter((b) => categoryOf(b) === category),
   })).filter((g) => g.rows.length > 0);
 
+  const focusChange = (id: BindingId) => changeRefs.current.get(id)?.focus();
+
   const cancel = () => {
+    const id = pending?.id ?? capturing;
     setCapturing(null);
     setPending(null);
+    if (id) focusChange(id);
   };
 
-  const apply = (id: BindingId, keys: readonly [{ keys: string; platform: Platform }], replace: boolean) => {
+  const apply = (id: BindingId, keys: readonly KeySpec[], replace: boolean) => {
     const result = remapBinding(id, keys, { platform, replace });
     if (result.ok) {
       setCapturing(null);
       setPending(null);
       setStatus(result.text);
       announce(result.text);
+      focusChange(id);
       return;
     }
     if (result.conflicts.length > 0 && !replace) {
-      const [{ keys: spec }] = keys;
-      setPending({ id, spec, platform, reason: result.reason, conflicts: result.conflicts });
+      setCapturing(null);
+      setPending({ id, keys, reason: result.reason, conflicts: result.conflicts });
       announce(result.reason);
       return;
     }
@@ -64,35 +73,47 @@ export function KeyboardGroup() {
     setPending(null);
     setStatus(result.reason);
     announce(result.reason);
+    focusChange(id);
   };
 
+  // The conflict card gets its own Esc, and focus, the moment it appears: while it's up the row's own keydown
+  // capture is off (capturing was cleared above), so nothing else would catch Esc but the dialog itself.
   useEffect(() => {
-    if (!capturing) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      event.stopPropagation();
-      if (event.key === "Escape") {
-        event.preventDefault();
-        cancel();
-        return;
-      }
-      const spec = specFromEvent(event, platform);
-      if (spec === null) return; // a modifier alone: keep listening
-      if (event.key !== "Tab") event.preventDefault();
-      const check = checkRemap(capturing, [{ keys: spec, platform }], { platform });
-      if (check && check.conflicts.length === 0) {
-        setCapturing(null);
-        setStatus(check.reason);
-        announce(check.reason);
-        return;
-      }
-      apply(capturing, [{ keys: spec, platform }], false);
-    };
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-    // `apply` and `cancel` close over `capturing`/`platform` freshly each render; re-attaching on every
-    // capturing/platform change keeps the listener's closure current without adding them as separate deps.
+    if (!pending) return;
+    anywayRef.current?.focus();
+    return pushEscape(() => {
+      cancel();
+      return true;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [capturing, platform]);
+  }, [pending]);
+
+  const onCaptureKeyDown = (id: BindingId) => (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    // Stops here, before the app's own shortcut dispatcher (a bubble-phase window listener) ever sees it.
+    event.stopPropagation();
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancel();
+      return;
+    }
+    if (event.key === "Backspace") {
+      event.preventDefault();
+      apply(id, [], false); // listBindings: an empty list unbinds.
+      return;
+    }
+    const spec = specFromEvent(event, platform);
+    if (spec === null) return; // a modifier alone: keep listening
+    if (event.key !== "Tab") event.preventDefault();
+    const check = checkRemap(id, [{ keys: spec, platform }], { platform });
+    if (check && check.conflicts.length === 0) {
+      setCapturing(null);
+      setStatus(check.reason);
+      announce(check.reason);
+      focusChange(id);
+      return;
+    }
+    apply(id, [{ keys: spec, platform }], false);
+  };
 
   return (
     <div className={styles.group}>
@@ -100,70 +121,75 @@ export function KeyboardGroup() {
         label="Single-key shortcuts"
         checked={singleKeys}
         onCheckedChange={(checked) => settings.set({ singleKeys: checked })}
-        description="Letters, digits and symbols with no modifier (WCAG 2.1.4). Off while typing, and inside trees, lists, menus, the console and the palette either way."
+        description="Shortcuts match the character a key types, so they follow the person's layout; letter shortcuts fall back to the key's position on non-Latin layouts."
       />
       {status ? <output className={styles.status}>{status}</output> : null}
       {groups.map((group) => (
         <section key={group.category} className={styles.section} aria-label={group.category}>
           <h3 className={styles.heading}>{group.category}</h3>
           <ul className={styles.rows}>
-            {group.rows.map((binding) => (
-              <li key={binding.id} className={styles.row}>
-                <span className={styles.title}>{bindingTitle(binding)}</span>
-                <span className={styles.keys}>
-                  {binding.keys.length === 0 ? (
-                    <span className={styles.none}>No shortcut</span>
-                  ) : (
-                    binding.keys.map((k, i) => (
-                      <span key={i} className={styles.key}>
-                        <Kbd keys={k} />
-                      </span>
-                    ))
-                  )}
-                </span>
-                {capturing === binding.id ? (
-                  <output className={styles.listening}>Press a key, or Esc to cancel</output>
-                ) : (
+            {group.rows.map((binding) => {
+              const isCapturing = capturing === binding.id;
+              return (
+                <li key={binding.id} className={styles.row}>
+                  <span className={styles.title}>{bindingTitle(binding)}</span>
+                  <span className={styles.keys}>
+                    {binding.keys.length === 0 ? (
+                      <span className={styles.none}>No shortcut</span>
+                    ) : (
+                      binding.keys.map((k, i) => (
+                        <span key={i} className={styles.key}>
+                          <Kbd keys={k} />
+                        </span>
+                      ))
+                    )}
+                  </span>
                   <Button
+                    ref={(el) => {
+                      if (el) changeRefs.current.set(binding.id, el);
+                      else changeRefs.current.delete(binding.id);
+                    }}
                     size="small"
                     onClick={() => {
+                      if (isCapturing) {
+                        cancel();
+                        return;
+                      }
                       setStatus(null);
                       setPending(null);
                       setCapturing(binding.id);
                     }}
+                    {...(isCapturing ? { onKeyDown: onCaptureKeyDown(binding.id) } : {})}
                   >
-                    Change…
+                    {isCapturing ? "Press a key, or Esc to cancel" : "Change…"}
                   </Button>
-                )}
-                {isRemapped(binding.id, keymap) ? (
-                  <Button
-                    size="small"
-                    variant="quiet"
-                    onClick={() => {
-                      const text = resetBinding(binding.id);
-                      setStatus(text);
-                      announce(text);
-                    }}
-                  >
-                    Reset
-                  </Button>
-                ) : null}
-                {pending && pending.id === binding.id ? (
-                  <div className={styles.conflict} role="alert">
-                    <p>{pending.reason}</p>
+                  {isRemapped(binding.id, keymap) ? (
                     <Button
                       size="small"
-                      onClick={() => apply(pending.id, [{ keys: pending.spec, platform: pending.platform }], true)}
+                      variant="quiet"
+                      onClick={() => {
+                        const text = resetBinding(binding.id);
+                        setStatus(text);
+                        announce(text);
+                      }}
                     >
-                      Use this key anyway
+                      Reset
                     </Button>
-                    <Button size="small" variant="quiet" onClick={cancel}>
-                      Cancel
-                    </Button>
-                  </div>
-                ) : null}
-              </li>
-            ))}
+                  ) : null}
+                  {pending && pending.id === binding.id ? (
+                    <div className={styles.conflict}>
+                      <p>{pending.reason}</p>
+                      <Button ref={anywayRef} size="small" onClick={() => apply(pending.id, pending.keys, true)}>
+                        Use this key anyway
+                      </Button>
+                      <Button size="small" variant="quiet" onClick={cancel}>
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))}
