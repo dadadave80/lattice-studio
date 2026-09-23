@@ -130,6 +130,12 @@ describe("recording a keypress", () => {
     expect(specFromEvent(press("Dead", "Quote", { altKey: true }), "mac")).toBeNull();
   });
 
+  test("AltGr on \"other\" composes a character: recorded by it, not by the letter's position (CR1)", () => {
+    // A Polish keyboard's AltGr+Z types ż; recording it by KeyZ's position would save "Mod+Alt+z", which
+    // matchChord (FX13 item h) refuses forever since it never falls back to position for AltGr.
+    expect(specFromEvent(press("ż", "KeyZ", { ctrlKey: true, altKey: true }), "other")).toBe("Mod+Alt+ż");
+  });
+
   test("a recorded spec matches the keypress it came from", () => {
     const events = [
       press("K", "KeyK", { metaKey: true, shiftKey: true }),
@@ -143,5 +149,10 @@ describe("recording a keypress", () => {
       expect(spec).not.toBeNull();
       expect(matchSpec(spec ?? "", event, "mac")).not.toBeNull();
     }
+    // AltGr on "other" (CR1): the recorded spec must still match the keypress it came from.
+    const altGr = press("ż", "KeyZ", { ctrlKey: true, altKey: true });
+    const recorded = specFromEvent(altGr, "other");
+    expect(recorded).not.toBeNull();
+    expect(matchSpec(recorded ?? "", altGr, "other")).not.toBeNull();
   });
 });

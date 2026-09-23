@@ -159,7 +159,10 @@ const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "OS", "Hyper",
  * The spec a keypress records as (Settings → Keyboard's remap field): `Mod` for the platform's command key,
  * letters lower-cased, digits by physical key (`Shift+[Digit1]`), a letter typed on a non-Latin layout by its
  * position. Option+E/I/N/U (and `` ` ``) are dead keys on a US Mac keyboard, composing an accent instead of
- * typing a character: recorded by position too, so they can still be bound (FX13 item g). Null for a modifier
+ * typing a character: recorded by position too, so they can still be bound (FX13 item g). On "other", AltGr
+ * (Ctrl+Alt together) composes a character too, but never by position: `matchChord` never falls back to
+ * position there either (FX13 item h), so recording one by position would save a shortcut that can never
+ * fire; recorded by the literal character it composes instead, which matches on replay. Null for a modifier
  * on its own, an unrecordable dead key, or a key it can't name.
  */
 export function specFromEvent(event: KeyInput, platform: Platform): string | null {
@@ -169,6 +172,7 @@ export function specFromEvent(event: KeyInput, platform: Platform): string | nul
   if (primary) mods.push("Mod");
   if (platform === "mac" ? event.ctrlKey : event.metaKey) mods.push(platform === "mac" ? "Ctrl" : "Meta");
   if (event.altKey) mods.push("Alt");
+  const altGr = platform === "other" && event.ctrlKey && event.altKey;
   let key: string;
   const digit = /^Digit(\d)$/.exec(event.code)?.[1];
   const letter = /^Key([A-Z])$/.exec(event.code)?.[1];
@@ -178,7 +182,7 @@ export function specFromEvent(event: KeyInput, platform: Platform): string | nul
     key = "Space";
   } else if (event.key.length === 1 && isLetter(event.key)) {
     key = event.key.toLowerCase();
-  } else if (letter && (event.altKey || event.key === "Dead" || (event.key.length === 1 && !isLatinCharacter(event.key)))) {
+  } else if (letter && !altGr && (event.altKey || event.key === "Dead" || (event.key.length === 1 && !isLatinCharacter(event.key)))) {
     key = letter.toLowerCase();
   } else if (event.key === "Dead") {
     return null;
