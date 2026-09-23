@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { encodeFunctionData, parseAbi, toFunctionSelector } from "viem";
 import { API_OWNERS } from "../../model/api";
 import type { Catalog, InitSpec } from "../../model/catalog";
+import type { Address } from "../../model/hex";
 import type { InitPlan, InitStepView } from "../../model/init";
 import type { Arg } from "../../model/recipe";
 import { addr, loadFixtureCatalog, makeCatalog, makeInit, makeShared } from "../../testing";
@@ -29,11 +30,11 @@ function stepView(s: InitSpec, path: string, index: number, args: Record<string,
   };
 }
 
-const ASSET = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
-const SAFE = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
-const DEPLOYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
-const DIAMOND = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-const ZERO = "0x0000000000000000000000000000000000000000";
+const ASSET: Address = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+const SAFE: Address = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+const DEPLOYER: Address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+const DIAMOND: Address = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const ZERO: Address = "0x0000000000000000000000000000000000000000";
 
 const multiInit = parseAbi(["function multiInit(address[] _initAddresses, bytes[] _initData)"]);
 
