@@ -6,6 +6,7 @@
  */
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { keccak256 } from "viem";
 import { getCatalogStatus, setCatalogStatus } from "@/contracts";
 import { bufferedServices, clearServiceBuffers } from "@/contracts/services";
 import type { CatalogManifest, Result } from "@lattice-studio/core";
@@ -160,6 +161,37 @@ describe("shard integrity failure", () => {
     const code = await loader.loadCode("AccessControl");
     expect(code.ok).toBe(false);
     expect(!code.ok && code.error).toContain("hash");
+  });
+});
+
+describe("hostile shard content", () => {
+  test("a shard carrying a __proto__ key is refused, even one otherwise shaped exactly like a valid shard", async () => {
+    // Valid enough to pass validateFacetDetail on its own (FacetDetailSchema is a looseObject, which keeps
+    // unknown keys rather than rejecting them): only the findProtoKey guard catches the "__proto__" key here.
+    const hostile = new TextEncoder().encode(
+      '{"name":"AccessControl","abi":[],"natspec":{"functions":{}},"source":{"path":"src/access/AccessControl.sol","url":"x"},"__proto__":{"polluted":true}}',
+    );
+    const hash = keccak256(hostile);
+    const index = JSON.parse(new TextDecoder().decode(readFixtureBytes("fixture/index.json"))) as {
+      facets: { name: string; detail?: { path: string; hash: string; bytes: number } }[];
+    };
+    const facet = index.facets.find((f) => f.name === "AccessControl");
+    if (!facet?.detail) throw new Error("fixture has no AccessControl.detail");
+    facet.detail = { ...facet.detail, hash, bytes: hostile.byteLength };
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/catalog/fixture/index.json") return bytesResponse(new TextEncoder().encode(JSON.stringify(index)));
+      if (url === "/catalog/fixture/shards/AccessControl.json") return bytesResponse(hostile);
+      return fixtureFetch()(input);
+    }) as typeof fetch;
+
+    const loader = createCatalogLoader();
+    loader.start(MANIFEST_RESULT);
+    await waitFor(() => getCatalogStatus().status === "ready");
+
+    const shard = await loader.loadShard("AccessControl");
+    expect(shard).toEqual({ ok: false, error: "AccessControl's shard doesn't match the shard schema." });
   });
 });
 

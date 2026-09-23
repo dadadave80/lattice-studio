@@ -37,3 +37,6 @@ export const runChecks: RunChecksFn = (input, checks = CHECKS.map((check) => che
   checks.flatMap((check) => check(input)).map((p) => ({ ...p, message: renderProblem(p.code, p.params) }));
 
 export { checkAuth, checkCore, checkDep, checkInit, checkLink, checkNet, checkSel, checkSem, checkSto };
+
+/** CreateX's published runtime codehash, the value NET-01 and the exported CreateX script check against. */
+export { CREATEX_CODEHASH } from "./net";

@@ -84,7 +84,5 @@ export function unconfirmedPaths(recipe: Recipe, catalog: Catalog | null): strin
  * clears once the person confirms the address.
  */
 export function argProvenance(recipe: Recipe, catalog: Catalog | null, source: "link" | "file"): Record<string, "link" | "file"> {
-  const out: Record<string, "link" | "file"> = {};
-  for (const leaf of argLeaves(recipe, catalog)) out[leaf.path] = source;
-  return out;
+  return Object.fromEntries(argLeaves(recipe, catalog).map((leaf) => [leaf.path, source]));
 }

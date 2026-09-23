@@ -60,7 +60,8 @@ export type TreeProps = {
   itemProps?: (node: TreeNode) => TreeItemProps;
   /**
    * An item's context menu items (`MenuItem`s), or null for none. Right click, long press, Shift+F10 and the
-   * Menu key on the focused item open it; Esc returns focus to the item.
+   * Menu key on the focused item open it; Esc returns focus to the item. An item's menu can come and go
+   * without remounting its row (focus stays put).
    */
   itemMenu?: (node: TreeNode) => ReactNode;
   /** The menu's accessible name. Default: "<label> actions". */
@@ -124,6 +125,8 @@ export function Tree({
   const focusInside = useRef(false);
   const anchor = useRef<string | null>(null);
   const typed = useRef({ text: "", timer: 0 });
+  /** The item whose menu is open. */
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   const virtual = rows.length > VIRTUALIZE_AFTER;
   const [viewport, setViewport] = useState({ top: 0, height: 0 });
@@ -321,6 +324,8 @@ export function Tree({
   if (tabbable >= range.end) indices.push(tabbable);
 
   const reasons: { id: string; reason: string }[] = [];
+  /** Rows rendered with a menu: an open menu whose row lost its menu (or left the DOM) is closed, not kept. */
+  const withMenu = new Set<string>();
   const items = indices.map((index) => {
     const row = rows[index];
     if (!row) return null;
@@ -366,14 +371,29 @@ export function Tree({
         <span className={styles.content}>{renderItem ? renderItem(row.node, state) : row.node.label}</span>
       </TreeRow>
     );
-    const menu = itemMenu?.(row.node);
-    if (menu === null || menu === undefined || menu === false) return <Fragment key={row.id}>{element}</Fragment>;
+    if (!itemMenu) return <Fragment key={row.id}>{element}</Fragment>;
+    // With `itemMenu` set, every row sits in a ContextMenu, with or without a menu right now, so a row never
+    // remounts (and drops focus) when its menu appears or goes. A row without one declines to open.
+    const menu = itemMenu(row.node);
+    const hasMenu = menu !== null && menu !== undefined && menu !== false;
+    if (hasMenu) withMenu.add(row.id);
     return (
-      <ContextMenu key={row.id} label={itemMenuLabel?.(row.node) ?? `${row.node.label} actions`} items={menu}>
+      <ContextMenu
+        key={row.id}
+        label={itemMenuLabel?.(row.node) ?? `${row.node.label} actions`}
+        items={hasMenu ? menu : null}
+        open={hasMenu && menuFor === row.id}
+        onOpenChange={(open) => {
+          if (open && hasMenu) setMenuFor(row.id);
+          else if (!open) setMenuFor((current) => (current === row.id ? null : current));
+        }}
+      >
         {element}
       </ContextMenu>
     );
   });
+
+  if (menuFor !== null && !withMenu.has(menuFor)) setMenuFor(null);
 
   return (
     <>
