@@ -1,11 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
+import { session } from "@/contracts";
 import { testPersistence } from "@/persist/testing";
 import { renderWithStudio } from "../../../test/harness";
 import { DataGroup } from "./DataGroup";
 
 describe("DataGroup", () => {
-  test("renders storage use, the privacy note and both data commands without crashing", async () => {
+  test("renders storage use, the privacy note and both data commands, now that S7b is live", async () => {
     testPersistence();
     await renderWithStudio(<DataGroup />);
     await expect
@@ -18,13 +19,13 @@ describe("DataGroup", () => {
         ),
       )
       .toBeVisible();
-    const exportAll = page.getByRole("button", { name: "data.exportAll" });
-    const clear = page.getByRole("button", { name: "data.clear" });
+    const exportAll = page.getByRole("button", { name: "Export all projects" });
+    const clear = page.getByRole("button", { name: "Clear data" });
     await expect.element(exportAll).toBeVisible();
     await expect.element(clear).toBeVisible();
-    await expect.element(exportAll).toHaveAttribute("aria-disabled", "true");
-    await expect.element(clear).toHaveAttribute("aria-disabled", "true");
-    await expect.element(exportAll).toHaveAccessibleDescription("Not built yet · WP-S7b");
-    await expect.element(clear).toHaveAccessibleDescription("Not built yet · WP-S7b");
+    await expect.element(exportAll).not.toHaveAttribute("aria-disabled");
+    await expect.element(clear).not.toHaveAttribute("aria-disabled");
+    await clear.click();
+    await expect.poll(() => session.get().dialogs.map((d) => d.id)).toEqual(["clear-data"]);
   });
 });

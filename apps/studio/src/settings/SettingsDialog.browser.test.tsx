@@ -68,7 +68,8 @@ describe("Settings dialog (Flow 16, IR L183)", () => {
     // mounted underneath, and Clear data is the one that's interactive (top, IR L170-L187).
     await expect.element(page.getByRole("dialog", { name: "Clear data" })).toBeVisible();
     expect(document.querySelector('[aria-hidden="true"] [role="dialog"]')?.textContent).toContain("Settings");
-    await page.getByRole("button", { name: "Close" }).click();
+    // Clear data (S7b) has no Close button; Cancel loses nothing (spec's confirm-only-where-it-can't-be-undone).
+    await page.getByRole("button", { name: "Cancel" }).click();
     await expect.element(dialog()).toBeVisible();
     expect(session.get().dialogs.map((d) => d.id)).toEqual(["settings"]);
   });
