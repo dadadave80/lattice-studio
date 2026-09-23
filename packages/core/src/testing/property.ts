@@ -1,12 +1,13 @@
 /**
  * Seeded property runs for the property and hostile-input suites (spec L932, L936). Every property runs at
  * least `MIN_RUNS` times from a seed fixed by its name, so a run is the same on every machine; a failure throws
- * with the seed, the shrunk counterexample path and the command that replays it:
+ * with the seed, the shrunk counterexample path and the command that replays just that property:
  *
- *   LATTICE_FC_SEED=<seed> LATTICE_FC_PATH=<path> bun test packages/core/test/properties -t "<name>"
+ *   LATTICE_FC_PROPERTY="<name>" LATTICE_FC_SEED=<seed> LATTICE_FC_PATH=<path> bun test packages/core/test/properties
  *
- * `LATTICE_FC_SEED` alone reruns the whole search from another seed; `LATTICE_FC_RUNS` raises the run count
- * (never below the property's own minimum).
+ * `LATTICE_FC_SEED` and `LATTICE_FC_PATH` apply to the property `LATTICE_FC_PROPERTY` names; without a name,
+ * the seed applies to every property (a fresh search) and the path to none. `LATTICE_FC_RUNS` raises the run
+ * count (never below the property's own minimum).
  */
 import fc from "fast-check";
 
@@ -17,7 +18,7 @@ export const MIN_RUNS = 200;
 export type PropertyRun = { seed: number; numRuns: number; path?: string };
 
 /** Environment variables a replay reads; `process.env` under Bun or Node, nothing in a browser. */
-export type PropertyEnv = Partial<Record<"LATTICE_FC_SEED" | "LATTICE_FC_PATH" | "LATTICE_FC_RUNS", string>>;
+export type PropertyEnv = Partial<Record<"LATTICE_FC_PROPERTY" | "LATTICE_FC_SEED" | "LATTICE_FC_PATH" | "LATTICE_FC_RUNS", string>>;
 
 function processEnv(): PropertyEnv {
   const proc: unknown = (globalThis as { process?: unknown }).process;
@@ -45,21 +46,31 @@ function integerFrom(text: string | undefined): number | undefined {
 /** The seed, run count and replay path for property `name`, from its defaults and the environment. */
 export function propertyRun(name: string, runs = MIN_RUNS, env: PropertyEnv = processEnv()): PropertyRun {
   const floor = Math.max(runs, MIN_RUNS);
+  const target = env.LATTICE_FC_PROPERTY;
+  const named = target !== undefined && target !== "";
+  const mine = named && target === name;
+  const seed = named && !mine ? undefined : integerFrom(env.LATTICE_FC_SEED);
   const run: PropertyRun = {
-    seed: integerFrom(env.LATTICE_FC_SEED) ?? seedFor(name),
+    seed: seed ?? seedFor(name),
     numRuns: Math.max(floor, integerFrom(env.LATTICE_FC_RUNS) ?? floor),
   };
   const path = env.LATTICE_FC_PATH?.trim();
-  if (path !== undefined && path !== "" && env.LATTICE_FC_SEED !== undefined) run.path = path;
+  if (mine && seed !== undefined && path !== undefined && path !== "") run.path = path;
   return run;
 }
 
 /** The message a failed property throws: how to replay it, then fast-check's own report. */
 export function failureMessage(name: string, details: fc.RunDetails<unknown>): string {
   const path = details.counterexamplePath ?? "";
-  const replay = `LATTICE_FC_SEED=${details.seed}${path === "" ? "" : ` LATTICE_FC_PATH=${path}`}`;
+  const replay = `LATTICE_FC_PROPERTY=${JSON.stringify(name)} LATTICE_FC_SEED=${details.seed}${path === "" ? "" : ` LATTICE_FC_PATH=${path}`}`;
   const report = fc.defaultReportMessage(details) ?? "no report";
-  return `Property "${name}" failed with seed ${details.seed}${path === "" ? "" : ` at path ${path}`}.\nReplay: ${replay} bun test packages/core/test/properties -t "${name}"\n${report}`;
+  const cause = details.errorInstance instanceof Error ? details.errorInstance.message : details.errorInstance === null ? "" : String(details.errorInstance);
+  return [
+    `Property "${name}" failed with seed ${details.seed}${path === "" ? "" : ` at path ${path}`}.`,
+    `Replay: ${replay} bun test packages/core/test/properties`,
+    ...(cause === "" ? [] : [`Cause: ${cause}`]),
+    report,
+  ].join("\n");
 }
 
 /** What a finished property reports: the runs it made and the seed it used. */

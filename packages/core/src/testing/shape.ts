@@ -54,6 +54,43 @@ export function solidityShape(source: string, rename: Record<string, string> = {
   return lexSolidity(source).map((token) => (token.kind === "code" ? (rename[token.text] ?? token.text) : `<${token.kind}>`));
 }
 
+const SIMPLE_ESCAPES: Record<string, number> = { n: 0x0a, r: 0x0d, t: 0x09, '"': 0x22, "'": 0x27, "\\": 0x5c };
+
+/**
+ * The bytes solc stores for a string literal token (`"…"` or `'…'`): `\xNN` is one byte, `\uXXXX` the code
+ * unit's UTF-8, `\n \r \t \" \' \\` their characters, everything else its own UTF-8. Undefined for an escape
+ * solc rejects.
+ */
+export function solidityStringBytes(literal: string): Uint8Array | undefined {
+  const body = literal.slice(1, -1);
+  const out: number[] = [];
+  const encoder = new TextEncoder();
+  for (let i = 0; i < body.length; i++) {
+    const char = body[i] ?? "";
+    if (char !== "\\") {
+      const cp = body.codePointAt(i) ?? 0xfffd;
+      const text = String.fromCodePoint(cp);
+      out.push(...encoder.encode(text));
+      i += text.length - 1;
+      continue;
+    }
+    const next = body[i + 1] ?? "";
+    if (next in SIMPLE_ESCAPES) {
+      out.push(SIMPLE_ESCAPES[next] ?? 0);
+      i += 1;
+    } else if (next === "x" && /^[0-9a-fA-F]{2}$/.test(body.slice(i + 2, i + 4))) {
+      out.push(Number.parseInt(body.slice(i + 2, i + 4), 16));
+      i += 3;
+    } else if (next === "u" && /^[0-9a-fA-F]{4}$/.test(body.slice(i + 2, i + 6))) {
+      out.push(...encoder.encode(String.fromCharCode(Number.parseInt(body.slice(i + 2, i + 6), 16))));
+      i += 5;
+    } else {
+      return undefined;
+    }
+  }
+  return Uint8Array.from(out);
+}
+
 /** True when `text` (a string literal's body or a comment) is printable ASCII on one line. */
 export function isPrintableAscii(text: string): boolean {
   return /^[\x20-\x7e]*$/.test(text);
@@ -96,7 +133,7 @@ export function markdownOutline(text: string): MarkdownOutline {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i] ?? "";
-    const fence = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    const fence = /^ {0,3}(`{3,}|~{3,})(.*)$/s.exec(line);
     if (fence !== null) {
       const marker = fence[1] ?? "```";
       const body: string[] = [];
@@ -111,7 +148,7 @@ export function markdownOutline(text: string): MarkdownOutline {
       i = j + 1;
       continue;
     }
-    const heading = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$/.exec(line);
+    const heading = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$/s.exec(line);
     if (heading !== null) {
       outline.headings.push([(heading[1] ?? "#").length, heading[2] ?? ""]);
       i++;
