@@ -10,6 +10,13 @@ export function DeployGroup() {
   const receiptTimeout = useSettings((s) => s.receiptTimeout);
   const deployAnnouncements = useSettings((s) => s.deployAnnouncements);
   const [timeoutText, setTimeoutText] = useState(String(receiptTimeout));
+  // The setting can change from outside this field (a reset, another tab): adjusted during render (the
+  // documented React pattern), not an effect, so it never shows a stale value for even one frame.
+  const [syncedWith, setSyncedWith] = useState(receiptTimeout);
+  if (receiptTimeout !== syncedWith) {
+    setSyncedWith(receiptTimeout);
+    setTimeoutText(String(receiptTimeout));
+  }
 
   return (
     <>
@@ -24,11 +31,11 @@ export function DeployGroup() {
           ]}
         />
         <p className={styles.note}>
-          A project can switch paths in its own deploy review, where the CreateX address scope is set too.
+          A project can switch paths in its deploy review, where the CreateX address scope is set too.
         </p>
       </div>
       <NumberField
-        label="Receipt timeout"
+        label="Receipt timeout (seconds)"
         value={timeoutText}
         onValueChange={(text) => {
           setTimeoutText(text);

@@ -14,6 +14,14 @@ export function CanvasGroup() {
   const minimap = useSettings((s) => s.minimap);
   const [small, setSmall] = useState(String(nudge.small));
   const [large, setLarge] = useState(String(nudge.large));
+  // The setting can change from outside these fields (a reset, another tab): adjusted during render (the
+  // documented React pattern), not an effect, so neither ever shows a stale value for even one frame.
+  const [syncedWith, setSyncedWith] = useState(nudge);
+  if (nudge !== syncedWith) {
+    setSyncedWith(nudge);
+    setSmall(String(nudge.small));
+    setLarge(String(nudge.large));
+  }
 
   return (
     <>

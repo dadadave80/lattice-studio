@@ -36,4 +36,15 @@ describe("CanvasGroup", () => {
     await page.getByRole("switch", { name: "Show minimap" }).click();
     expect(settings.get().minimap).toBe(true);
   });
+
+  test("resyncs both nudge fields when the setting changes elsewhere (a reset, another tab)", async () => {
+    await renderWithStudio(<CanvasGroup />);
+    const small = page.getByRole("textbox", { name: "Small nudge" });
+    const large = page.getByRole("textbox", { name: "Large nudge" });
+    await expect.element(small).toHaveValue("8");
+    await expect.element(large).toHaveValue("32");
+    settings.set({ nudge: { small: 2, large: 10 } });
+    await expect.element(small).toHaveValue("2");
+    await expect.element(large).toHaveValue("10");
+  });
 });
