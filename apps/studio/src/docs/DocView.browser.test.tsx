@@ -5,7 +5,7 @@ import { inspectorViewComponent, openProblemDoc, session, useSession, type Inspe
 import { renderWithStudio } from "../../test/harness";
 import { PROBLEM_DOC_ENTRIES } from "./content";
 import { DocView } from "./DocView";
-import { markUserInteractedForTest, resetUserInteractionForTest } from "./navigation";
+import { markUserInteractedForTest, resetUserInteractionForTest } from "./test-support";
 
 /**
  * Renders whatever `registerInspectorView` has for the session's current view, exactly what S5c's inspector
@@ -52,6 +52,20 @@ describe("HelpIndex (help.open with no code)", () => {
     await expect.element(docHeading).toHaveFocus();
     expect(document.activeElement).toBe(docHeading.element());
     expect(document.activeElement).not.toBe(document.body);
+  });
+
+  test("a click with no prior pointerdown or keydown still moves focus (screen-reader activation)", async () => {
+    await renderWithStudio(<InspectorHost />);
+    setInspectorView({ kind: "doc" });
+    await expect.element(page.getByRole("heading", { name: "Problem docs" })).toBeVisible();
+    // NVDA/JAWS browse-mode Enter and VoiceOver's VO+Space often reach the page as a trusted click with
+    // neither a pointerdown nor a keydown first; dispatching the click alone reproduces that, unlike
+    // Playwright's .click(), which fires a full pointer sequence.
+    const link = page.getByRole("button", { name: /SEL-01/ }).element();
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    const docHeading = page.getByRole("heading", { name: "Selector needs an owner" });
+    await expect.element(docHeading).toBeVisible();
+    await expect.element(docHeading).toHaveFocus();
   });
 });
 

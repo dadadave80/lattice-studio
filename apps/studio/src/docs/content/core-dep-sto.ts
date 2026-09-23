@@ -33,7 +33,7 @@ export const CORE_DEP_STO: readonly ProblemDocEntry[] = [
     meaning:
       "Two members of the upgrade-mechanism family are placed together. DiamondCutFacet, AccessControlDiamondCut, GovernedDiamondCut, SafeDiamondCut and GovernedSafeDiamondCut all provide a way to cut the diamond, and a diamond holds one, even when the two share no selector.",
     why:
-      "A second upgrade path can bypass the protection the first one exists for: [`AccessControlDiamondCut`](lattice:src/governance/AccessControlDiamondCut.sol#10-19) lets its `DEFAULT_ADMIN_ROLE` admin cut synchronously, at any time, while [`GovernedSafeDiamondCut`](lattice:src/governance/GovernedSafeDiamondCut.sol#14-21) deliberately withholds that synchronous path so every cut waits out `minDelay` through `scheduleCut` and `executeCut`. Placing both gives the admin a way around the delay. This isn't a routing conflict Studio can resolve by choosing an owner; it means removing one of the two facets.",
+      "A second upgrade path can bypass the protection the first one exists for: [`AccessControlDiamondCut`](lattice:src/governance/AccessControlDiamondCut.sol#10-19) lets its `DEFAULT_ADMIN_ROLE` admin cut synchronously, while [`GovernedSafeDiamondCut`](lattice:src/governance/GovernedSafeDiamondCut.sol#14-21) deliberately withholds that synchronous path so every cut waits out `minDelay` through `scheduleCut` and `executeCut`. Placing both gives the admin a way around the delay. This isn't a routing conflict Studio can resolve by choosing an owner; it means removing one of the two facets.",
     fixes: ["Remove one of the two facets."],
     exampleParams: {
       facets: ["AccessControlDiamondCut", "GovernedSafeDiamondCut"],
