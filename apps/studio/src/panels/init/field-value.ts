@@ -2,7 +2,7 @@
  * What an init field shows and what it stores (spec L461-L466). Pure: text in the input ↔ the recipe's `Arg`.
  */
 import type { Arg, FieldModel, Json } from "@lattice-studio/core";
-import { canonicalJson, validateArg } from "@lattice-studio/core";
+import { canonicalJson, isAddress, validateArg } from "@lattice-studio/core";
 
 export type Ref = "self" | "deployer";
 
@@ -85,8 +85,15 @@ export function parseFieldText(field: FieldModel, text: string): Parsed {
   const typed = field.kind === "string" ? text : text.trim();
   const checked = validateArg(field, typed, {});
   if (checked.ok) return { ok: true, value: checked.value };
-  if (field.kind === "address" && /checksum/.test(checked.error)) return { ok: false, error: checked.error };
+  if (field.kind === "address" && badChecksum(typed)) return { ok: false, error: checked.error };
   return { ok: true, value: typed };
+}
+
+/** Mixed-case hex that isn't valid EIP-55: saving would re-checksum it and hide a likely typo. */
+export function badChecksum(text: string): boolean {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(text)) return false;
+  const digits = text.slice(2);
+  return /[a-f]/.test(digits) && /[A-F]/.test(digits) && !isAddress(text);
 }
 
 /** Plain value equality, as C4a decides "still the example" (canonical JSON). */

@@ -116,13 +116,30 @@ describe("Choose an upgrade mechanism (Flow 17, IR L175)", () => {
     expect(logged("Upgrade mechanism: AccessControlDiamondCut · Safe 0x71C7…976F.")).toBe(true);
   });
 
+  test("AUTH-01's Use a Safe… on an Admin-role diamond offers keeping the mechanism straight away", async () => {
+    const dialog = await open(projectFor(adminRecipe()), {}, "safe");
+    await expect.element(dialog.getByRole("radio", { name: "Admin role" })).toHaveAttribute("aria-checked", "true");
+    await expect.element(dialog.getByRole("checkbox", { name: /Use a Safe/ })).toHaveAttribute("aria-checked", "true");
+    await expect.element(dialog.getByRole("textbox", { name: "Safe address" })).toBeVisible();
+    await expect.element(dialog.getByRole("button", { name: "Use AccessControlDiamondCut" })).toBeVisible();
+  });
+
+  test("a Safe given as a reference is named in the console line", async () => {
+    const dialog = await open(projectFor(templateRecipe("ERC20")), {}, "safe");
+    await dialog.getByRole("button", { name: "This diamond" }).click();
+    await dialog.getByRole("textbox", { name: "Minimum threshold" }).fill("1");
+    await dialog.getByRole("button", { name: "Use SafeDiamondCut" }).click();
+    await expect.poll(() => session.get().dialogs.length).toBe(0);
+    expect(logged("Upgrade mechanism: SafeDiamondCut · Safe at this diamond.")).toBe(true);
+  });
+
   test("a bundle that sets up its own mechanism decides it, and the dialog offers no other choice", async () => {
     const dialog = await open(projectFor(templateRecipe("GovernedVault")));
     await expect.element(dialog).toHaveAccessibleDescription("GovernedVaultInit sets up the upgrade mechanism itself, so the bundle decides it.");
     await expect.element(dialog.getByRole("radio", { name: "Governance" })).toHaveAttribute("aria-checked", "true");
     await expect.element(dialog.getByRole("radio", { name: "Safe", exact: true })).toHaveAttribute("aria-disabled", "true");
     expect(dialog.getByRole("button", { name: /^Use / }).elements()).toHaveLength(0);
-    await dialog.getByRole("button", { name: "Close" }).click();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect.poll(() => session.get().dialogs.length).toBe(0);
   });
 

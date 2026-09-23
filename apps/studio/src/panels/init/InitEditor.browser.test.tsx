@@ -3,9 +3,11 @@ import { createElement, Suspense } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
-  commandRef, doc, getAnalysis, history, inspectorViewComponent, runCommand, session, useSession, type InspectorView,
+  commandRef, doc, getAnalysis, history, inspectorViewComponent, runCommand, session, useSession, type ChainService,
+  type InspectorView,
 } from "@/contracts";
-import { bufferedServices, fakeChainService, renderWithStudio } from "../../../test/harness";
+import { bufferedServices, fakeChainService, renderWithStudio, type FakeChain } from "../../../test/harness";
+import { ensChainChanged } from "./AddressInput";
 import { resetInitUi } from "./init-ui-store";
 import { InitEditor } from "./InitEditor";
 import { kitchenCatalog, kitchenRecipe, projectFor, SAFE, SOME_CODE, stepsRecipe, templateRecipe, TOKEN } from "./test-support";
@@ -34,6 +36,26 @@ function argAt(project: Project, path: string): Arg | undefined {
   if (m && init.kind === "steps") current = init.steps[Number(m[1])]?.args;
   for (const key of keys) current = (current as Record<string, Arg> | undefined)?.[key];
   return current;
+}
+
+/** A chain service whose ENS reads wait until `release()`: for what happens while a lookup is in flight. */
+function gated(fake: FakeChain): { service: ChainService; release: () => void } {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const service: ChainService = {
+    ...fake,
+    resolveEns: async (name, chainId) => {
+      await gate;
+      return fake.resolveEns(name, chainId);
+    },
+    reverseEns: async (address, chainId) => {
+      await gate;
+      return fake.reverseEns(address, chainId);
+    },
+  };
+  return { service, release: () => release() };
 }
 
 function lastLog(): string | undefined {
@@ -247,6 +269,47 @@ describe("field types (spec L461-L466)", () => {
     await expect.poll(() => argAt(doc.get(), "steps[0].slots")).toBe("8");
   });
 
+  test("an enum value the rule doesn't allow is described on the select itself", async () => {
+    const catalog = kitchenCatalog();
+    const recipe = kitchenRecipe(catalog);
+    const project = projectFor({ ...recipe, init: { kind: "steps", steps: [{ spec: "KitchenInit", args: { tier: "platinum" } }] } });
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project, catalog });
+    await expect.element(page.getByRole("combobox", { name: "Tier" })).toHaveAccessibleDescription(
+      /Tier is platinum; it must be one of bronze, silver or gold\./,
+    );
+  });
+
+  test("ENS names resolved for one chain are dropped when the chain changes", async () => {
+    const chain = fakeChainService({ ens: { "safe.eth": SAFE } });
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, {
+      project: projectFor(templateRecipe("SafeDiamondCut")),
+      session: { chainId: 11155111 },
+      chain,
+    });
+    await page.getByRole("textbox", { name: "Safe", exact: true }).fill("safe.eth");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByText(`safe.eth (${SAFE})`)).toBeVisible();
+    session.set({ chainId: 84532 });
+    await expect.poll(() => page.getByText(`safe.eth (${SAFE})`).elements().length).toBe(0);
+  });
+
+  test("a name that finishes resolving after the chain changed stores nothing", async () => {
+    const { service, release } = gated(fakeChainService({ ens: { "safe.eth": SAFE } }));
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, {
+      project: projectFor(templateRecipe("SafeDiamondCut")),
+      session: { chainId: 11155111 },
+      chain: service,
+    });
+    const safe = page.getByRole("textbox", { name: "Safe", exact: true });
+    await safe.fill("safe.eth");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByText("Resolving safe.eth…")).toBeVisible();
+    session.set({ chainId: 84532 });
+    release();
+    await expect.element(safe).toHaveAccessibleDescription(new RegExp(ensChainChanged("safe.eth").replace(/\./g, "\\.")));
+    expect(argAt(doc.get(), "steps[0].safe")).toBeUndefined();
+  });
+
   test("while the session is read-only, fields and picks say why and change nothing", async () => {
     const reason = "Editing moved to another tab";
     await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(templateRecipe("SafeDiamondCut")), session: { readOnly: reason } });
@@ -333,6 +396,43 @@ describe("From link, Confirm address… and the Authority table", () => {
     expect(doc.get().provenance["steps[0].safe"]).toBe("link");
   });
 
+  test("Confirm address waits for the ENS lookup before it counts", async () => {
+    const { service, release } = gated(fakeChainService({ ens: { "ops.eth": SAFE } }));
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: linked(), session: { chainId: 11155111 }, chain: service });
+    await page.getByRole("button", { name: "Confirm address…" }).click();
+    const panel = page.getByRole("region", { name: "Confirm address" });
+    const confirm = panel.getByRole("button", { name: "Confirm address" });
+    await expect.element(confirm).toHaveAttribute("aria-disabled", "true");
+    await expect.element(confirm).toHaveAccessibleDescription("Looking up the ENS name…");
+    await confirm.click({ force: true });
+    expect(doc.get().provenance["steps[0].safe"]).toBe("link");
+    release();
+    await expect.element(panel.getByText("ENS name: ops.eth")).toBeVisible();
+    await expect.element(confirm).not.toHaveAttribute("aria-disabled");
+  });
+
+  test("an address from an opened file reads From link too, and the panel says where it came from", async () => {
+    const project = linked();
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: { ...project, provenance: { "steps[0].safe": "file" } } });
+    await expect.element(page.getByText("From link", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Confirm address…" }).click();
+    await expect.element(page.getByText("Safe came from an opened file. It counts once you confirm it.")).toBeVisible();
+    // Offline or with no chain there's nothing to wait for: the note says why, and confirming is allowed.
+    await expect.element(page.getByText("Choose a chain to look up its ENS name.")).toBeVisible();
+    await page.getByRole("region", { name: "Confirm address" }).getByRole("button", { name: "Confirm address" }).click();
+    await expect.poll(() => doc.get().provenance["steps[0].safe"]).toBe("confirmed");
+  });
+
+  test("only addresses that receive authority offer Confirm address… (LINK-01's scope)", async () => {
+    const project = linked();
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: { ...project, provenance: { "steps[0].minThreshold": "link" } } });
+    await expect.element(page.getByRole("textbox", { name: "Min threshold", exact: true })).toBeVisible();
+    expect(page.getByText("From link", { exact: true }).elements()).toHaveLength(0);
+    expect(page.getByRole("button", { name: "Confirm address…" }).elements()).toHaveLength(0);
+    const state = await runCommand(commandRef("init.confirmAddress", { path: "steps[0].minThreshold" }), "api");
+    expect(state).toEqual({ ok: false, reason: "Only an address that receives authority needs confirming" });
+  });
+
   test("Esc or Cancel leaves it From link", async () => {
     await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: linked() });
     await page.getByRole("button", { name: "Confirm address…" }).click();
@@ -366,8 +466,8 @@ describe("From link, Confirm address… and the Authority table", () => {
   });
 });
 
-describe("the chunk (spec L822)", () => {
-  test("the registered view loads InitEditor lazily", async () => {
+describe("the registered view", () => {
+  test("renders through the inspector seam, and Review fields lands on the first example", async () => {
     await renderWithStudio(<InspectorHost />, { project: vault() });
     showView({ kind: "init", focus: "examples" });
     // INIT-05's Review fields lands on the first field still holding an example.

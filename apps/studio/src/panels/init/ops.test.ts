@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Catalog, LayoutMetrics, Project, Recipe } from "@lattice-studio/core";
-import { loadTemplate, planMechanismChange } from "@lattice-studio/core";
+import { analyze, loadTemplate, planMechanismChange } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeProject } from "@lattice-studio/core/testing";
 import { layoutSizes } from "@lattice-studio/tokens";
 import { applyMechanismOp, confirmAddressOp, remapProvenance } from "./ops";
@@ -92,6 +92,27 @@ describe("applying Flow 17", () => {
     };
     const moved = remapProvenance({ "steps[0].name_": "file", "steps[1].admin": "link", "steps[1].safe": "link", other: "link" }, before, after);
     expect(moved).toEqual({ "steps[1].name_": "file", "steps[0].admin": "link", other: "link" });
+  });
+
+  test("an address marked both confirmed and From link keeps the least trusted mark when it changes hands", () => {
+    // admin = safe = one address; only the admin was confirmed. Safe → Safe with delay drops SafeDiamondCutInit.
+    const recipe: Recipe = {
+      ...template("SafeDiamondCut"),
+      init: { kind: "steps", steps: [{ spec: "SafeDiamondCutInit", args: { admin: SAFE, safe: SAFE, minThreshold: "2" } }] },
+    };
+    const project = projectWith(recipe, { "steps[0].admin": "confirmed", "steps[0].safe": "link" });
+    const change = planMechanismChange(recipe, catalog, "safe-delay", { safe: SAFE, minThreshold: "2", delay: "86400" });
+    if (!change.ok) throw new Error(change.error);
+    const next = applyMechanismOp(change.value.next, catalog, metrics, "Use GovernedSafeDiamondCut")(project).project;
+    const steps = next.recipe.init.kind === "steps" ? next.recipe.init.steps : [];
+    const at = steps.findIndex((s) => s.spec === "GovernedSafeDiamondCutInit");
+    expect(next.provenance[`steps[${at}].admin`]).toBe("link");
+    expect(next.provenance[`steps[${at}].safe`]).toBe("link");
+    expect(Object.values(next.provenance)).not.toContain("confirmed");
+    // LINK-01 still blocks, as S1 builds the context from provenance.
+    const unconfirmed = Object.entries(next.provenance).filter(([, s]) => s !== "confirmed").map(([path]) => path);
+    const problems = analyze(next.recipe, catalog, { known: [], unconfirmed, unconfirmedFrom: Object.fromEntries(unconfirmed.map((p) => [p, "link" as const])) }).problems;
+    expect(problems.some((p) => p.code === "LINK-01" && p.severity === "blocker")).toBe(true);
   });
 
   test("placing into an empty sheet lands every new card, none stacked", () => {

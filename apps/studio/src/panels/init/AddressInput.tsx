@@ -1,20 +1,25 @@
 import type { Arg } from "@lattice-studio/core";
 import { isNotImplemented } from "@lattice-studio/core";
-import { useState } from "react";
-import { chainService, useOnline, useSession } from "@/contracts";
+import { useEffect, useState } from "react";
+import { chainService, session, useOnline, useSession } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { TextField } from "@/ui/fields/TextField";
 import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
 import type { FieldControlProps } from "./field-props";
 import { displayText, isEnsName, parseFieldText, REF_LABELS, refOf, ZERO_ADDRESS, type Ref } from "./field-value";
 import { literalAddress, probeCode, resolvedRef, useRefAddresses } from "./hooks";
-import { ensLabel, setEnsLabel, useEnsLabels } from "./init-ui-store";
+import { dropLabelsNotOn, ensLabel, setEnsLabel, useEnsLabels } from "./init-ui-store";
 import styles from "./InitEditor.module.css";
 import { setArg, useDraft } from "./use-draft";
 
 /** Offline or with no chain picked, an ENS name can't be resolved (spec L462). */
 export const ENS_OFFLINE = "ENS names resolve only while online. Paste the address instead.";
 export const ENS_NO_CHAIN = "Choose a chain to resolve ENS names.";
+
+/** A resolution that finished after the chain changed resolved for the wrong chain (spec L462). */
+export function ensChainChanged(name: string): string {
+  return `The chain changed while ${name} was resolving. Enter it again to resolve it for this chain.`;
+}
 
 /**
  * An address (spec L462): checksummed, paste-friendly (spaces trimmed, any case accepted and stored checksummed),
@@ -30,7 +35,12 @@ export function AddressInput({ field, value, description, error, disabledReason,
   const chainId = useSession((s) => s.chainId);
   const [status, setStatus] = useState<string | null>(null);
   const ref = refOf(value);
-  const label = ensLabel(projectId, field.path, value);
+  const label = ensLabel(projectId, field.path, value, chainId);
+
+  // A chain switch drops names resolved for the old chain: they may point elsewhere on this one.
+  useEffect(() => {
+    dropLabelsNotOn(chainId);
+  }, [chainId]);
 
   const store = async (next: Arg): Promise<string | null> => {
     const failed = await setArg(field.path, next);
@@ -46,10 +56,11 @@ export function AddressInput({ field, value, description, error, disabledReason,
     try {
       const service = await chainService();
       const resolved = await service.resolveEns(name, chainId);
+      if (session.get().chainId !== chainId) return ensChainChanged(name);
       if (!resolved.ok) return resolved.error;
       if (resolved.value === null) return `${name} doesn't resolve to an address.`;
       const failed = await store(resolved.value);
-      if (failed === null) setEnsLabel(projectId, field.path, { name, address: resolved.value });
+      if (failed === null) setEnsLabel(projectId, field.path, { name, address: resolved.value, chainId });
       return failed;
     } catch (caught) {
       if (isNotImplemented(caught)) return caught.message;

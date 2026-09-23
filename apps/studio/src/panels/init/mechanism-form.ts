@@ -2,7 +2,7 @@
  * Flow 17's Fill in step (spec L650), pure: what each choice asks for, the inputs `planMechanismChange` takes,
  * and what's wrong with what was typed, in the words of the init fields that will hold it.
  */
-import type { Arg, Catalog, FieldModel, InitParam, Mechanism, MechanismInputs, MechanismOption, Recipe } from "@lattice-studio/core";
+import type { Catalog, FieldModel, InitParam, Mechanism, MechanismInputs, MechanismOption, Recipe } from "@lattice-studio/core";
 import { fieldModel, validateArg } from "@lattice-studio/core";
 import { toSeconds, type DurationUnit } from "./duration";
 import { argAt, displayText, refFromText } from "./field-value";
@@ -32,6 +32,13 @@ function fieldFor(catalog: Catalog, spec: string, name: string): FieldModel | nu
   return init && param ? fieldModel(init, param, name) : null;
 }
 
+/** When the catalog has no such param: a plain nonzero address, or a whole number of at least 1. */
+function plainField(name: "safe" | "minThreshold"): FieldModel {
+  return name === "safe"
+    ? { path: name, name, label: "Safe", type: "address", kind: "address", doc: "", required: true, allowZero: false, authority: true }
+    : { path: name, name, label: "Minimum threshold", type: "uint256", kind: "integer", doc: "", min: "1", required: true, allowZero: false, authority: false };
+}
+
 function specFor(choice: Mechanism): string {
   return choice === "safe-delay" ? "GovernedSafeDiamondCutInit" : "SafeDiamondCutInit";
 }
@@ -53,15 +60,15 @@ export function formInputs(form: MechanismForm, catalog: Catalog): FormResult {
     const ref = refFromText(form.safe);
     if (ref) inputs.safe = { $ref: ref };
     else {
-      const field = fieldFor(catalog, spec, "safe");
-      const checked = field ? validateArg({ ...field, label: "Safe" }, form.safe.trim(), {}) : { ok: true as const, value: form.safe.trim() as Arg };
+      const field = fieldFor(catalog, spec, "safe") ?? plainField("safe");
+      const checked = validateArg({ ...field, label: "Safe" }, form.safe.trim(), {});
       if (checked.ok) inputs.safe = checked.value;
       else errors.safe = checked.error;
     }
   }
   if (needs.threshold && form.threshold.trim() !== "") {
-    const field = fieldFor(catalog, spec, "minThreshold");
-    const checked = field ? validateArg({ ...field, label: "Minimum threshold" }, form.threshold.trim(), {}) : { ok: true as const, value: form.threshold.trim() as Arg };
+    const field = fieldFor(catalog, spec, "minThreshold") ?? plainField("minThreshold");
+    const checked = validateArg({ ...field, label: "Minimum threshold" }, form.threshold.trim(), {});
     if (checked.ok && typeof checked.value === "string") inputs.minThreshold = checked.value;
     else if (!checked.ok) errors.threshold = checked.error;
   }

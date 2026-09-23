@@ -12,6 +12,7 @@ import { Dialog } from "@/ui/overlays/Dialog";
 import styles from "./ChooseMechanismDialog.module.css";
 import { CodeText } from "./CodeText";
 import { bestUnit, DURATION_UNITS, durationEcho, toSeconds, type DurationUnit } from "./duration";
+import { REF_LABELS, refOf } from "./field-value";
 import { literalAddress, probeCode } from "./hooks";
 import {
   applyLabel, currentValues, formInputs, initialChoice, needsOf, optionDescription, type MechanismForm,
@@ -43,9 +44,11 @@ function previewOf(recipe: Recipe, catalog: Catalog, form: MechanismForm, inputs
 function startForm(recipe: Recipe, options: MechanismOptions | null, preset: "safe" | "governance" | undefined): MechanismForm {
   const values = currentValues(recipe);
   const delay = values.delay === "" ? { amount: "", unit: "days" as DurationUnit } : bestUnit(values.delay);
+  // AUTH-01's Use a Safe… on an Admin-role diamond: spec L650's keep-the-mechanism path, straight away.
+  const keep = preset === "safe" && options?.current === "admin";
   return {
-    choice: options ? initialChoice(options.options, options.current, preset) : "immutable",
-    keep: false,
+    choice: keep ? "admin" : options ? initialChoice(options.options, options.current, preset) : "immutable",
+    keep,
     safe: values.safe,
     threshold: values.threshold,
     delay: delay.amount,
@@ -107,16 +110,16 @@ export function ChooseMechanismDialog({ entry, top }: DialogComponentProps<"choo
     (options?.bundle ? `${options.bundle} sets up the upgrade mechanism itself, so the bundle decides it.` : null) ??
     (option && !option.enabled ? (option.reason ?? `${option.label} isn't available.`) : null) ??
     inputError ??
-    (preview && !preview.ok ? preview.error : null);
+    (preview && !preview.ok ? preview.error.replaceAll("`", "") : null);
 
   const apply = () => {
     if (!catalog || !preview?.ok || reason !== null) return;
     const result = doc.apply(label, applyMechanismOp(preview.value.next, catalog, layoutMetrics, label));
     if (!result.changed) return;
-    const line = lines.mechanismChanged({
-      facet: option?.facet ?? "Immutable",
-      ...(safeAddress ? { holder: formatAddress(safeAddress) } : {}),
-    });
+    // The Safe by address, or by the reference it is ("Safe at this diamond"), so the line always names it (spec L652).
+    const safeRef = needs.safe ? refOf(inputs.safe) : null;
+    const holder = safeAddress ? formatAddress(safeAddress) : safeRef ? `at ${REF_LABELS[safeRef].toLowerCase()}` : null;
+    const line = lines.mechanismChanged({ facet: option?.facet ?? "Immutable", ...(holder ? { holder } : {}) });
     log(line);
     announce(line.text);
     close();
@@ -141,7 +144,7 @@ export function ChooseMechanismDialog({ entry, top }: DialogComponentProps<"choo
       {...(options?.bundle ? { description: `${options.bundle} sets up the upgrade mechanism itself, so the bundle decides it.` } : {})}
       footer={
         options?.bundle ? (
-          <Button onClick={close}>Close</Button>
+          <Button onClick={close}>Cancel</Button>
         ) : (
           <>
             <Button onClick={close}>Cancel</Button>
@@ -235,7 +238,9 @@ export function ChooseMechanismDialog({ entry, top }: DialogComponentProps<"choo
                 ))}
               </ul>
             ) : (
-              <p className={styles.note}>{inputError ?? preview.error}</p>
+              <p className={styles.note}>
+                <CodeText text={inputError ?? preview.error} />
+              </p>
             )}
           </section>
         ) : null}

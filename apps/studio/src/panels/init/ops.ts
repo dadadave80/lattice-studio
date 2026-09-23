@@ -27,7 +27,10 @@ export function confirmAddressOp(path: string, label: string): (project: Project
   };
 }
 
-const STEP_KEY = /^steps\[(0|[1-9][0-9]*)\]((?:\.|\[).*)?$/;
+/** How far a provenance mark is trusted: least first. */
+const TRUST: Readonly<Record<Project["provenance"][string], number>> = { link: 0, file: 1, confirmed: 2 };
+
+const STEP_KEY =/^steps\[(0|[1-9][0-9]*)\]((?:\.|\[).*)?$/;
 
 function stepsOf(recipe: Recipe): readonly InitStep[] {
   return recipe.init.kind === "steps" ? recipe.init.steps : [];
@@ -91,8 +94,11 @@ export function remapProvenance(provenance: Project["provenance"], before: Recip
   }
   for (const leaf of leaves(newSteps)) {
     if (out[leaf.path] !== undefined) continue;
-    const mark = carried.find((c) => sameArg(c.value, leaf.value));
-    if (mark) out[leaf.path] = mark.source;
+    // When one address carried several marks (admin confirmed, safe still From link), the least trusted wins:
+    // a mark must never turn into "confirmed" by changing hands.
+    const marks = carried.filter((c) => sameArg(c.value, leaf.value)).map((c) => c.source);
+    const mark = marks.sort((a, b) => TRUST[a] - TRUST[b])[0];
+    if (mark) out[leaf.path] = mark;
   }
   return out;
 }

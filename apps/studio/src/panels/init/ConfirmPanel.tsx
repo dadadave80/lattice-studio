@@ -9,6 +9,9 @@ import { closeConfirm, ensLabel } from "./init-ui-store";
 import styles from "./InitEditor.module.css";
 import { confirmAddressOp } from "./ops";
 
+/** Spec L334, L504: the address counts once it's been shown with any ENS name, so confirming waits for the lookup. */
+const LOOKING_UP = "Looking up the ENS name…";
+
 type EnsState = { kind: "name"; name: string } | { kind: "none" } | { kind: "note"; text: string } | { kind: "loading" };
 
 /** Where focus goes when the panel closes: the field it belongs to. */
@@ -28,7 +31,7 @@ export function ConfirmPanel({ field, value, source, projectId }: { field: Field
   const chainId = useSession((s) => s.chainId);
   const online = useOnline();
   const address = literalAddress(value);
-  const typedName = ensLabel(projectId, field.path, value);
+  const typedName = ensLabel(projectId, field.path, value, chainId);
   const [ens, setEns] = useState<EnsState>({ kind: "loading" });
 
   useEffect(() => {
@@ -93,12 +96,12 @@ export function ConfirmPanel({ field, value, source, projectId }: { field: Field
           : ens.kind === "none"
             ? "No ENS name."
             : ens.kind === "loading"
-              ? "Looking up the ENS name…"
+              ? LOOKING_UP
               : ens.text}
       </p>
       <p className={styles.empty}>{`${field.label} came from ${source === "link" ? "a shared link" : "an opened file"}. It counts once you confirm it.`}</p>
       <div className={styles.actions}>
-        <Button variant="primary" size="small" disabledReason={readOnly} onClick={confirm}>
+        <Button variant="primary" size="small" disabledReason={readOnly ?? (ens.kind === "loading" ? LOOKING_UP : null)} onClick={confirm}>
           Confirm address
         </Button>
         <Button size="small" onClick={close}>

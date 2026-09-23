@@ -50,14 +50,15 @@ export function FieldRow({ field, step, projectId }: { field: FieldModel; step: 
       </span>
     </>
   );
-  const fromLink = source === "link" || source === "file" ? source : null;
+  // LINK-01's scope (spec L334): addresses that receive authority. Both sources read "From link" (spec L466).
+  const fromLink = field.kind === "address" && field.authority && (source === "link" || source === "file") ? source : null;
 
   return (
     <div className={styles.field} data-init-path={field.path}>
       <FieldControl field={field} value={value} description={description} error={error} disabledReason={readOnly} projectId={projectId} />
       {fromLink ? (
         <div className={styles.origin}>
-          <span className={styles.originMark}>{fromLink === "link" ? "From link" : "From file"}</span>
+          <span className={styles.originMark}>From link</span>
           {link ? (
             <span>
               <CodeText text={link.message} />

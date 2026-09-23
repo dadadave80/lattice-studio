@@ -42,6 +42,13 @@ function fieldEnabled(ctx: CommandContext, path: unknown): Enablement {
   return planField(planOf(ctx.project.recipe, ctx.catalog), path) ? OK : disabled(`The init plan has no field ${path}`);
 }
 
+/** LINK-01's scope (spec L334): only an address that receives authority needs confirming. */
+function isAuthorityAddress(ctx: CommandContext, path: string): boolean {
+  if (!ctx.catalog) return false;
+  const field = planField(planOf(ctx.project.recipe, ctx.catalog), path);
+  return field?.kind === "address" && field.authority;
+}
+
 const open = command<CommandArgsOf<"init.open">>({
   id: "init.open",
   title: ({ focus }) => openTitle(focus),
@@ -69,6 +76,7 @@ const confirmAddress = command<CommandArgsOf<"init.confirmAddress">>({
     if (ctx.session.readOnly !== null) return disabled(ctx.session.readOnly);
     const field = fieldEnabled(ctx, path);
     if (!field.ok) return field;
+    if (!isAuthorityAddress(ctx, path)) return disabled("Only an address that receives authority needs confirming");
     const source = ctx.project.provenance[path];
     if (source === "confirmed") return disabled("This address is already confirmed");
     if (source !== "link" && source !== "file") return disabled("This address didn't come from a link or a file");
