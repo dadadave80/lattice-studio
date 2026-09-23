@@ -1,0 +1,290 @@
+import type { Deployment, Project } from "@lattice-studio/core";
+import { analyze, formatAddress } from "@lattice-studio/core";
+import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
+import {
+  command, commandRef, commandState, doc, inspectorViewComponent, putDeployment, runCommand, session, type InspectorView,
+} from "@/contracts";
+import { bufferedServices, fakeChainService, fixtureCatalog, overrideCommands, renderWithStudio } from "../../../test/harness";
+import { clearInspectorFocus, pendingInspectorFocus, requestInspectorFocus } from "./focus-request";
+import { InspectorPanel } from "./InspectorPanel";
+
+const SEPOLIA = 11155111;
+
+afterEach(() => {
+  clearInspectorFocus();
+});
+
+function project(facets: string[], id = "inspector-frame"): Project {
+  return makeProject({ id, name: "Frame test", recipe: makeRecipe({ facets }, fixtureCatalog()) });
+}
+
+function shownKind(): string | undefined {
+  return document.querySelector<HTMLElement>("[data-inspector-view]")?.dataset.inspectorView;
+}
+
+function setView(view: InspectorView): void {
+  session.set((s) => ({ panes: { ...s.panes, inspector: { ...s.panes.inspector, view } } }));
+}
+
+function inspectorView(): InspectorView {
+  return session.get().panes.inspector.view;
+}
+
+describe("view routing", () => {
+  test("nothing selected shows the Diamond view", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    await vi.waitFor(() => expect(document.querySelector('[data-view="diamond"]')).not.toBeNull());
+    expect(shownKind()).toBe("diamond");
+  });
+
+  test("one selected card shows its Facet view, several the Selection view", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20", "Receive"]), session: { selection: ["ERC20"] } });
+    await vi.waitFor(() => expect(document.querySelector('[data-view="facet"]')).not.toBeNull());
+    await expect.element(page.getByRole("heading", { level: 2, name: "ERC20" })).toBeVisible();
+    session.set({ selection: ["ERC20", "Receive"] });
+    await vi.waitFor(() => expect(document.querySelector('[data-view="selection"]')).not.toBeNull());
+  });
+
+  test("an explicit view a command routed here wins over the selection", async () => {
+    await renderWithStudio(<InspectorPanel />, {
+      project: project(["ERC20"]),
+      session: { selection: ["ERC20"] },
+    });
+    setView({ kind: "preview", facet: "Governor" });
+    await vi.waitFor(() => expect(document.querySelector('[data-view="preview"]')).not.toBeNull());
+    expect(shownKind()).toBe("preview");
+  });
+
+  test("a facet view whose card was removed falls back to the selection's view", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    setView({ kind: "facet", facet: "Governor" });
+    await vi.waitFor(() => expect(shownKind()).toBe("diamond"));
+  });
+
+  test("seam views render what their owner registered: S12's problem docs", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    setView({ kind: "doc", code: "SEL-01" });
+    await expect.element(page.getByRole("heading", { name: "Selector needs an owner" })).toBeVisible();
+    expect(shownKind()).toBe("doc");
+  });
+
+  test("a seam view nobody registered yet says who builds it", async () => {
+    const kind = (["confirm-addresses", "init"] as const).find((k) => inspectorViewComponent(k) === null);
+    if (!kind) return; // Both owners have landed: nothing left unbuilt.
+    const owner = kind === "init" ? "S5d" : "S13";
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    setView({ kind });
+    await expect.element(page.getByText(`Not built yet · WP-${owner}`)).toBeVisible();
+  });
+});
+
+describe("following the selection", () => {
+  test("a routed view gives way when the selection changes on its own", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20", "Receive"]) });
+    setView({ kind: "preview", facet: "Governor" });
+    session.set({ selection: ["Receive"] });
+    expect(inspectorView()).toBeNull();
+    await vi.waitFor(() => expect(document.querySelector('[data-view="facet"]')).not.toBeNull());
+    await expect.element(page.getByRole("heading", { level: 2, name: "Receive" })).toBeVisible();
+  });
+
+  test("a command that sets selection and view together keeps its view", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    session.set((s) => ({
+      selection: ["ERC20"],
+      panes: { ...s.panes, inspector: { ...s.panes.inspector, view: { kind: "problem", id: "INIT-04:ERC20" } } },
+    }));
+    expect(inspectorView()).toEqual({ kind: "problem", id: "INIT-04:ERC20" });
+  });
+
+  test("the Init plan stays while the selection changes", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20", "Receive"]) });
+    setView({ kind: "init" });
+    session.set({ selection: ["Receive"] });
+    expect(inspectorView()).toEqual({ kind: "init" });
+  });
+});
+
+describe("commands", () => {
+  test("inspector.show opens a placed facet, selects it and focuses the view's heading", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20", "Receive"]) });
+    setView({ kind: "preview", facet: "Governor" });
+    await runCommand(commandRef("inspector.show", { facet: "Receive" }), "menu");
+    expect(session.get().selection).toEqual(["Receive"]);
+    expect(inspectorView()).toBeNull();
+    const heading = page.getByRole("heading", { level: 2, name: "Receive" });
+    await expect.element(heading).toHaveFocus();
+  });
+
+  test("inspector.show on a facet that isn't placed says why", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    expect(commandState(commandRef("inspector.show", { facet: "Governor" }))).toMatchObject({
+      ok: false,
+      reason: "Governor isn't on the sheet.",
+    });
+    const outcome = await runCommand(commandRef("inspector.show", { facet: "Governor" }), "console");
+    expect(outcome.ok).toBe(false);
+    expect(bufferedServices().log.at(-1)?.text).toBe("Governor isn't on the sheet.");
+  });
+
+  test("inspector.show without a facet opens the pane on the current view", async () => {
+    await renderWithStudio(<InspectorPanel />, {
+      project: project(["ERC20"]),
+      session: { panes: { ...session.get().panes, inspector: { open: false, size: 316, view: null } } },
+    });
+    await runCommand(commandRef("inspector.show"), "palette");
+    expect(session.get().panes.inspector.open).toBe(true);
+    await vi.waitFor(() => expect(document.activeElement?.hasAttribute("data-inspector-heading")).toBe(true));
+  });
+
+  test("inspector.focusSelectors routes to the facet's Selectors list", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    await runCommand(commandRef("inspector.focusSelectors", { facet: "ERC20" }), "api");
+    expect(session.get().selection).toEqual(["ERC20"]);
+    expect(inspectorView()).toEqual({ kind: "facet", facet: "ERC20", focus: "selectors" });
+    expect(commandState(commandRef("inspector.focusSelectors", { facet: "Governor" }))).toMatchObject({
+      ok: false,
+      reason: "Governor isn't on the sheet.",
+    });
+  });
+
+  test("dependency.compare opens the options side by side as catalog previews", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["VaultCore"]) });
+    await runCommand(commandRef("dependency.compare", { options: ["ERC20", "ERC4626"] }), "fix");
+    expect(inspectorView()).toEqual({ kind: "preview", facet: "ERC20", compare: ["ERC20", "ERC4626"] });
+    expect(commandState(commandRef("dependency.compare", { options: ["ERC20"] }))).toMatchObject({
+      ok: false,
+      reason: "Compare needs two or more options.",
+    });
+    expect(commandState(commandRef("dependency.compare", { options: ["ERC20", "Nope"] }))).toMatchObject({
+      ok: false,
+      reason: "Nope isn't in the catalog.",
+    });
+    expect(commandState(commandRef("dependency.compare", { options: ["ERC20", "ERC4626"] })).title).toBe("Compare options…");
+  });
+
+  test("deploy.compare opens the comparison for the record", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    const address = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+    await runCommand(commandRef("deploy.compare", { chainId: SEPOLIA, address }), "button");
+    expect(inspectorView()).toEqual({ kind: "comparison", chainId: SEPOLIA, address });
+    await vi.waitFor(() => expect(shownKind()).toBe("comparison"));
+  });
+
+  test("deployments.show (the status chip) opens the Diamond view at its Deployments list", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]), session: { selection: ["ERC20"] } });
+    await runCommand(commandRef("deployments.show"), "button");
+    expect(inspectorView()).toEqual({ kind: "diamond", section: "deployments" });
+    expect(session.get().panes.inspector.open).toBe(true);
+    await vi.waitFor(() => expect(shownKind()).toBe("diamond"));
+  });
+
+  test("a focus request that never finds its element expires, so it can't steal focus later", () => {
+    clearInspectorFocus();
+    requestInspectorFocus({ kind: "heading" });
+    expect(pendingInspectorFocus()).toEqual({ kind: "heading" });
+    const spy = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 10_000);
+    try {
+      expect(pendingInspectorFocus()).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("cut plan footer", () => {
+  test("lists [00] ADD name, address and routed/total, with ⟂ while contested", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["HyperlaneGatewayAdapter", "AxelarGatewayAdapter"]) });
+    const cuts = page.getByRole("list", { name: "Cuts in order" });
+    await expect.element(cuts).toBeVisible();
+    const items = cuts.getByRole("listitem");
+    expect(items.elements().length).toBe(2);
+    // Text matchers take strings here: a RegExp from the test's realm doesn't survive into the matcher.
+    const axelar = fixtureCatalog().facets.find((f) => f.name === "AxelarGatewayAdapter")?.release.address ?? "";
+    expect(items.nth(0).element().textContent).toBe(`[00]ADDAxelarGatewayAdapter${formatAddress(axelar)}7/9 selectors⟂contested`);
+    expect(items.nth(1).element().textContent).toMatch(/^\[01\]ADDHyperlaneGatewayAdapter0x.+10\/12 selectors⟂contested$/);
+    await expect.element(page.getByText("2 · cut order")).toBeVisible();
+  });
+
+  test("Copy plan as JSON copies the FacetCuts and says so", async () => {
+    const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    const p = project(["ERC20"]);
+    await renderWithStudio(<InspectorPanel />, { project: p });
+    await page.getByRole("button", { name: "Copy plan as JSON" }).click();
+    await vi.waitFor(() => expect(writes).toHaveBeenCalledTimes(1));
+    const json = JSON.parse(String(writes.mock.calls[0]?.[0])) as { recipeHash: string; facetCuts: { facet: string }[] };
+    const catalog = fixtureCatalog();
+    expect(json.recipeHash).toBe(analyze(p.recipe, catalog).recipeHash);
+    expect(json.facetCuts.map((cut) => cut.facet)).toEqual(["ERC20"]);
+    expect(bufferedServices().toast.at(-1)?.text).toBe("Copied plan");
+  });
+
+  test("an empty sheet has no plan to copy, and says why", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project([]) });
+    await expect.element(page.getByText("No cuts yet. Place facets to plan the cut.")).toBeVisible();
+    const button = page.getByRole("button", { name: /Copy plan as JSON/ });
+    await expect.element(button).toHaveAttribute("aria-disabled", "true");
+    await expect.element(button).toHaveAccessibleDescription("Place facets first");
+  });
+
+  test("the address block reads the prediction's reason until there is one", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    await expect.element(page.getByText("LatticeFactory · deterministic")).toBeVisible();
+    await expect.element(page.getByText("Predicted")).toBeVisible();
+    await expect
+      .element(page.getByText("Connect a wallet to see the deploy address (it depends on the deploying account)"))
+      .toBeVisible();
+  });
+
+  test("live on the selected chain: the address takes the accent, with explorer and Louper links", async () => {
+    const p = project(["ERC20"], "inspector-frame-live");
+    const catalog = fixtureCatalog();
+    const address = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+    const record: Deployment = {
+      projectId: p.id, chainId: SEPOLIA, address, path: "factory", deployer: address, salt: `0x${"11".repeat(32)}`,
+      status: "confirmed", recipeHash: analyze(p.recipe, catalog).recipeHash, catalogHash: catalog.hash,
+      at: "2026-09-20T10:00:00.000Z", verification: "exact_match", revision: 1,
+    };
+    await putDeployment(record);
+    await renderWithStudio(<InspectorPanel />, { project: p, session: { chainId: SEPOLIA }, chain: fakeChainService() });
+    await expect.element(page.getByText("Live", { exact: true })).toBeVisible();
+    await expect.element(page.getByRole("link", { name: "Open in explorer" })).toHaveAttribute(
+      "href",
+      `https://sepolia.etherscan.io/address/${address}`,
+    );
+    await expect.element(page.getByRole("link", { name: "Open in Louper" })).toHaveAttribute(
+      "href",
+      `https://louper.dev/diamond/${address}?network=sepolia`,
+    );
+  });
+});
+
+describe("narrow windows", () => {
+  test("under 768 px, Fill in sits at the top of the pane while arguments are missing", async () => {
+    const init = vi.fn();
+    overrideCommands([
+      command({ id: "init.open", title: () => "Fill in", category: "Build", enabled: () => ({ ok: true }), run: init }),
+    ]);
+    await page.viewport(600, 800);
+    try {
+      const catalog = fixtureCatalog();
+      await renderWithStudio(<InspectorPanel />, {
+        project: makeProject({ id: "inspector-narrow", recipe: makeRecipe({ facets: ["ERC20"], init: { kind: "steps", steps: [{ spec: "ERC20Init", args: {} }] } }, catalog) }),
+      });
+      const fill = page.getByRole("button", { name: "Fill in" }).first();
+      await expect.element(fill).toBeVisible();
+      await fill.click();
+      expect(init).toHaveBeenCalledTimes(1);
+    } finally {
+      await page.viewport(1440, 900);
+    }
+  });
+
+  test("with nothing missing there is no Fill in bar", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["Receive"]) });
+    expect(document.querySelector("[data-narrow-fill-in]")).toBeNull();
+    expect(doc.get().recipe.facets).toEqual(["Receive"]);
+  });
+});

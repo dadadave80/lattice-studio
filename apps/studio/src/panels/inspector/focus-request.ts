@@ -62,10 +62,20 @@ export function useInspectorFocus(target: FocusTarget | null, ref: RefObject<HTM
       element.focus({ preventScroll: true });
       element.scrollIntoView?.({ block: "nearest" });
     };
+    // On mount, now. On a later request, after the frame: the command's store update may be about to replace
+    // this very view, and focus must land on the one that replaces it, not on this one on its way out.
+    let frame = 0;
+    const later = (): void => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (ref.current?.isConnected) serve();
+      });
+    };
     serve();
-    listeners.add(serve);
+    listeners.add(later);
     return () => {
-      listeners.delete(serve);
+      cancelAnimationFrame(frame);
+      listeners.delete(later);
     };
   }, [key, ref]);
 }
