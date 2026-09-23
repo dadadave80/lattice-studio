@@ -219,6 +219,27 @@ describe("Checks, acknowledgements and Sign & deploy (spec L569, L573)", () => {
     expect(controller.methods()).toContain("sign");
   });
 
+  test("Keep immutable (CORE-02) and Cut without the registry check (NET-08) are ticks in Checks", async () => {
+    const project = templateProject("ERC20");
+    // ERC20's template keeps the diamond immutable on purpose; without that flag, CORE-02 asks for the tick.
+    const { immutable: _immutable, ...recipe } = project.recipe;
+    const erc20 = deployableCatalog().facets.find((f) => f.name === "ERC20");
+    const chain = fakeChainService({
+      account: account(), catalog: deployableCatalog(),
+      state: { [SEPOLIA]: { registry: { records: { [`ERC20@${erc20?.release.version ?? ""}`]: null } } } },
+    });
+    await readyReview({ project: { ...project, recipe }, chain });
+    const checks = section("Checks");
+    await expect.element(checks.getByRole("checkbox", { name: "Keep immutable" })).toBeVisible();
+    await expect.element(checks.getByRole("checkbox", { name: "Cut without the registry check" })).toBeVisible();
+    await expect.element(signButton()).toHaveAccessibleDescription("Tick the 3 acknowledgements first");
+    for (const name of ["Keep immutable", "Cut without the registry check", "Keep example values"]) {
+      await checks.getByRole("checkbox", { name }).click();
+    }
+    await expect.element(checks.getByText("Ready")).toBeVisible();
+    await expect.element(signButton()).not.toHaveAttribute("aria-disabled");
+  });
+
   test("unticking drops the acknowledgement again", async () => {
     await readyReview();
     await tickExamples();
