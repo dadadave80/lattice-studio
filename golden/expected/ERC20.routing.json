@@ -1,0 +1,60 @@
+{
+  "recipe": "ERC20",
+  "script": "script/base/tokens/DeployERC20.s.sol",
+  "buildCuts": "buildCuts(string,string)",
+  "facets": [
+    "ERC165Facet",
+    "ERC20",
+    "DiamondLoupeFacet",
+    "Receive"
+  ],
+  "routing": {
+    "0x00000000": "Receive",
+    "0x01ffc9a7": "ERC165Facet",
+    "0x06fdde03": "ERC20",
+    "0x095ea7b3": "ERC20",
+    "0x18160ddd": "ERC20",
+    "0x23b872dd": "ERC20",
+    "0x313ce567": "ERC20",
+    "0x52ef6b2c": "DiamondLoupeFacet",
+    "0x70a08231": "ERC20",
+    "0x7a0ed627": "DiamondLoupeFacet",
+    "0x95d89b41": "ERC20",
+    "0xa9059cbb": "ERC20",
+    "0xadfca15e": "DiamondLoupeFacet",
+    "0xcdffacc6": "DiamondLoupeFacet",
+    "0xdd62ed3e": "ERC20"
+  },
+  "signatures": {
+    "0x00000000": "receive()",
+    "0x01ffc9a7": "supportsInterface(bytes4)",
+    "0x06fdde03": "name()",
+    "0x095ea7b3": "approve(address,uint256)",
+    "0x18160ddd": "totalSupply()",
+    "0x23b872dd": "transferFrom(address,address,uint256)",
+    "0x313ce567": "decimals()",
+    "0x52ef6b2c": "facetAddresses()",
+    "0x70a08231": "balanceOf(address)",
+    "0x7a0ed627": "facets()",
+    "0x95d89b41": "symbol()",
+    "0xa9059cbb": "transfer(address,uint256)",
+    "0xadfca15e": "facetFunctionSelectors(address)",
+    "0xcdffacc6": "facetAddress(bytes4)",
+    "0xdd62ed3e": "allowance(address,address)"
+  },
+  "init": {
+    "kind": "MultiInit",
+    "steps": [
+      {
+        "init": "ERC20Init",
+        "selector": "0x7029144c",
+        "signature": "init(string,string)"
+      },
+      {
+        "init": "DiamondIntrospectionInit",
+        "selector": "0xd1a4dbd8",
+        "signature": "initImmutable()"
+      }
+    ]
+  }
+}

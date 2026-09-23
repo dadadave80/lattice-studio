@@ -1,0 +1,164 @@
+{
+  "name": "AxelarGatewayAdapter",
+  "abi": [
+    {
+      "name": "execute",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "commandId"
+        },
+        {
+          "type": "string",
+          "name": "sourceChain"
+        },
+        {
+          "type": "string",
+          "name": "sourceAddress"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "gateway",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "getAxelarChain",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "chain"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "getErc7930Chain",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "axelar"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "getRemoteGateway",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "chain"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "registerChainEquivalence",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "chain"
+        },
+        {
+          "type": "string",
+          "name": "axelar"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerRemoteGateway",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "remote"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "sendMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes[]",
+          "name": "attributes"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "supportsAttribute",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Dual-mode ERC-7786 gateway facet over Axelar GMP: `sendMessage` (source) emits an Axelar `callContract`; `execute` (destination, called by the Axelar relayer) v",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/axelar/AxelarGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/axelar/AxelarGatewayAdapter.sol"
+  }
+}

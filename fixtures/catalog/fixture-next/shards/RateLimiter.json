@@ -1,0 +1,87 @@
+{
+  "name": "RateLimiter",
+  "abi": [
+    {
+      "name": "configure",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "uint256",
+          "name": "capacity"
+        },
+        {
+          "type": "uint256",
+          "name": "refillRate"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "consume",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "uint256",
+          "name": "amount"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getAvailable",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "available"
+        }
+      ]
+    },
+    {
+      "name": "getConfig",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "capacity"
+        },
+        {
+          "type": "uint256",
+          "name": "refillRate"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Thin Diamond facet that exposes token-bucket rate limiting keyed by bytes32.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/security/RateLimiter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/security/RateLimiter.sol"
+  }
+}

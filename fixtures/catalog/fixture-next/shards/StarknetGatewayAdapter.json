@@ -1,0 +1,235 @@
+{
+  "name": "StarknetGatewayAdapter",
+  "abi": [
+    {
+      "name": "cancel",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "uint256",
+          "name": "selector"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "uint256",
+          "name": "nonce"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "msgHash"
+        }
+      ]
+    },
+    {
+      "name": "consumeMessage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "fromAddress"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "msgHash"
+        }
+      ]
+    },
+    {
+      "name": "expectedChainReference",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "initiatorOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "msgHash"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "isTrustedL2Sender",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "fromAddress"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "l1HandlerSelector",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "l2Target"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "registerL2Handler",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "l2Target"
+        },
+        {
+          "type": "uint256",
+          "name": "selector"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "sendMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "msgHash"
+        },
+        {
+          "type": "uint256",
+          "name": "nonce"
+        }
+      ]
+    },
+    {
+      "name": "setTrustedL2Sender",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "fromAddress"
+        },
+        {
+          "type": "bool",
+          "name": "trusted"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "starknetCore",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "starknetSelector",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "name"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "startCancellation",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "uint256",
+          "name": "selector"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "uint256",
+          "name": "nonce"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "msgHash"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "L1-side (Ethereum-only) Starknet L1 <-> L2 connector facet: {sendMessage} escrows a non-refundable fee and dispatches a felt-chunk-encoded payload to a register",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/starknet/StarknetGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/starknet/StarknetGatewayAdapter.sol"
+  }
+}

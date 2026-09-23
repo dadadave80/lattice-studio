@@ -1,0 +1,90 @@
+{
+  "name": "InvariantChecker",
+  "abi": [
+    {
+      "name": "checkInvariant",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "checkInvariants",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32[]",
+          "name": "keys"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getInvariant",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ]
+    },
+    {
+      "name": "registerInvariant",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "unregisterInvariant",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Thin Diamond facet that exposes a registry of named on-chain invariants.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/security/InvariantChecker.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/security/InvariantChecker.sol"
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "name": "GelatoAutomateAdapter",
+  "abi": [
+    {
+      "name": "cancelTask",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "taskId"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "createTask",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "execAddress"
+        },
+        {
+          "type": "bytes",
+          "name": "execDataOrSelector"
+        },
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint8[]"
+            },
+            {
+              "type": "bytes[]"
+            }
+          ],
+          "name": "moduleData"
+        },
+        {
+          "type": "address",
+          "name": "feeToken"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "taskId"
+        }
+      ]
+    },
+    {
+      "name": "getConfig",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "automate"
+        },
+        {
+          "type": "address",
+          "name": "dedicatedMsgSender"
+        }
+      ]
+    },
+    {
+      "name": "isTask",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "taskId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setConfig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "automate"
+        },
+        {
+          "type": "address",
+          "name": "dedicatedMsgSender"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet for Gelato Automate (Web3 Functions) task management.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/gelato/GelatoAutomateAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/gelato/GelatoAutomateAdapter.sol"
+  }
+}

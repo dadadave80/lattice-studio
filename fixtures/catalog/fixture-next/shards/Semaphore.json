@@ -1,0 +1,250 @@
+{
+  "name": "Semaphore",
+  "abi": [
+    {
+      "name": "addMember",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "groupId"
+        },
+        {
+          "type": "uint256",
+          "name": "identityCommitment"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "addMembers",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "groupId"
+        },
+        {
+          "type": "uint256[]",
+          "name": "identityCommitments"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "createGroup",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "createGroup",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "admin"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getMerkleTreeRoot",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "groupId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getMerkleTreeSize",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "groupId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "groupAdmin",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "groupId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "groupCount",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "hasMember",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "groupId"
+        },
+        {
+          "type": "uint256",
+          "name": "identityCommitment"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setVerifier",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "verifier_"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "validateProof",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "groupId"
+        },
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256[8]"
+            }
+          ],
+          "name": "proof"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "verifier",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "verifyProof",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "groupId"
+        },
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256[8]"
+            }
+          ],
+          "name": "proof"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet for Semaphore anonymous membership / signaling: create groups, add identity commitments, and validate zero-knowledge membership + signal",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/privacy/Semaphore.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/Semaphore.sol"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "name": "BridgeERC20",
+  "abi": [
+    {
+      "name": "crosschainTransfer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "amount"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "sendId"
+        }
+      ]
+    },
+    {
+      "name": "processMessage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "receiveId"
+        },
+        {
+          "type": "bytes"
+        },
+        {
+          "type": "bytes",
+          "name": "bytes"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "token",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Custody bridge facet for legacy ERC-20 tokens: locks tokens on `crosschainTransfer`, releases them on an inbound message.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/BridgeERC20.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/BridgeERC20.sol"
+  }
+}

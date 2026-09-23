@@ -1,0 +1,112 @@
+{
+  "name": "DIAAdapter",
+  "abi": [
+    {
+      "name": "getFeed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "oracle"
+        },
+        {
+          "type": "string",
+          "name": "diaKey"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ]
+    },
+    {
+      "name": "getValue",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint128",
+          "name": "value"
+        },
+        {
+          "type": "uint128",
+          "name": "timestamp"
+        }
+      ]
+    },
+    {
+      "name": "latestAnswer",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int256",
+          "name": "answerWad"
+        }
+      ]
+    },
+    {
+      "name": "registerFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "address",
+          "name": "oracle"
+        },
+        {
+          "type": "string",
+          "name": "diaKey"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "unregisterFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet that reads DIA OracleV2 price feeds through their string-keyed `getValue` API with per-feed staleness configuration and WAD-normalized answers.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/dia/DIAAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/dia/DIAAdapter.sol"
+  }
+}

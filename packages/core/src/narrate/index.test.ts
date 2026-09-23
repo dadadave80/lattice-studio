@@ -1,38 +1,29 @@
-// WP-C10 replaces this file with its real tests: until it lands, every function here is a stub, and
-// renderProblem is a non-throwing placeholder.
 import { expect, test } from "bun:test";
-import { API_OWNERS, type ApiName } from "../model/api";
-import { NotImplemented } from "../model/wp";
+import { API_OWNERS } from "../model/api";
 import * as mod from "./index";
 
-const stubs = Object.entries(mod).filter(([name, value]) => typeof value === "function" && name !== "renderProblem");
-
-test("renderProblem's placeholder is the code and the params with sorted keys, deterministic", () => {
+test("the module exports renderProblem, narrate and every lines.* builder, all real (no stub)", () => {
   expect(API_OWNERS.renderProblem).toBe("C10");
-  expect(mod.renderProblem("DEP-01", { reason: "r", facet: "VaultCore", anyOf: ["ERC4626"] })).toBe(
-    'DEP-01 {"anyOf":["ERC4626"],"facet":"VaultCore","reason":"r"}',
-  );
-  expect(mod.renderProblem("SEL-01", { b: { d: 1, c: 2 }, a: null })).toBe('SEL-01 {"a":null,"b":{"c":2,"d":1}}');
+  expect(API_OWNERS.narrate).toBe("C10");
+  expect(API_OWNERS.lines).toBe("C10");
+  expect(typeof mod.renderProblem).toBe("function");
+  expect(typeof mod.narrate).toBe("function");
+  expect(typeof mod.lines).toBe("object");
 });
 
-test("the module exports its stubs", () => {
-  expect(stubs.length).toBeGreaterThan(0);
+test("renderProblem no longer returns the placeholder shape", () => {
+  const text = mod.renderProblem("CORE-02", {});
+  expect(text).not.toContain("CORE-02 {");
+  expect(text).toBe("Nothing can change this diamond after deploy.");
 });
 
-test.each(stubs)("%s throws NotImplemented naming WP-C10", (name, fn) => {
-  expect(API_OWNERS[name as ApiName]).toBe("C10");
-  let caught: unknown;
-  try {
-    (fn as (...args: unknown[]) => unknown)();
-  } catch (error) {
-    caught = error;
-  }
-  expect(caught).toBeInstanceOf(NotImplemented);
-  expect((caught as NotImplemented).wp).toBe("C10");
-  expect((caught as NotImplemented).fn).toBe(name);
-  expect((caught as NotImplemented).message).toBe("Not built yet · WP-C10");
+test("narrate resets on load (prev = null)", () => {
+  const empty = { recipeHash: "0x00" as const, routing: {}, problems: [], plan: [], init: null, stats: { facets: 0, routed: 0, exported: 0, excluded: 0, namespaces: 0 } };
+  expect(mod.narrate(null, empty)).toEqual([]);
 });
 
-test.each(Object.entries(mod.lines))("lines.%s is a stub naming WP-C10", (name, builder) => {
-  expect(() => (builder as (...args: unknown[]) => unknown)()).toThrow(new NotImplemented("C10", `lines.${name}`));
+test("every lines.* builder is a function, not a stub", () => {
+  const builders = Object.values(mod.lines);
+  expect(builders.length).toBeGreaterThan(20);
+  for (const builder of builders) expect(typeof builder).toBe("function");
 });

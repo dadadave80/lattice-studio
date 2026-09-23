@@ -152,15 +152,15 @@ type Present<T> = Exclude<T, undefined | null>;
 /** Every assertion; a `false` anywhere fails `bun run typecheck`. */
 export type SpecTypeAssertions = [
   // Catalog (L139-L148) + provisional (contracts §3.1)
-  Assert<Equals<Keys<M.Catalog>, Keys<Catalog> | "provisional">>,
-  Assert<Mutual<Omit<M.Catalog, "provisional" | "facets" | "inits" | "recipes" | "chains">, Omit<Catalog, "facets" | "inits" | "recipes" | "chains">>>,
+  Assert<Equals<Keys<M.Catalog>, Keys<Catalog> | "provisional" | "libraries" | "registryOwner">>,
+  Assert<Mutual<Omit<M.Catalog, "provisional" | "libraries" | "registryOwner" | "facets" | "inits" | "recipes" | "chains">, Omit<Catalog, "facets" | "inits" | "recipes" | "chains">>>,
   Assert<Equals<M.Catalog["provisional"], string | undefined>>,
   // proxy gains `detail` (its ABI shard, for revert decoding)
   Assert<Equals<Keys<M.Catalog["proxy"]>, Keys<Catalog["proxy"]> | "detail">>,
   Assert<Mutual<Omit<M.Catalog["proxy"], "detail">, Catalog["proxy"]>>,
   // SharedContract (L149-L155) + detail (ABI shard of a non-facet contract)
-  Assert<Equals<Keys<M.SharedContract>, Keys<SharedContract> | "detail">>,
-  Assert<Mutual<Omit<M.SharedContract, "detail">, SharedContract>>,
+  Assert<Equals<Keys<M.SharedContract>, Keys<SharedContract> | "detail" | "dependsOn" | "provisional">>,
+  Assert<Mutual<Omit<M.SharedContract, "detail" | "dependsOn" | "provisional">, SharedContract>>,
   Assert<Equals<M.SharedContract["detail"], M.ShardRef | undefined>>,
   // Facet (L156-L168)
   Assert<Equals<Keys<M.Facet>, Keys<Facet>>>,

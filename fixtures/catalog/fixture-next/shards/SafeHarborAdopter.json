@@ -1,0 +1,174 @@
+{
+  "name": "SafeHarborAdopter",
+  "abi": [
+    {
+      "name": "adoptSafeHarbor",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "agreement"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "agreementFactory",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "createAndAdopt",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            {
+              "type": "tuple[]",
+              "components": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "tuple[]",
+                  "components": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "uint8"
+                    }
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            {
+              "type": "tuple",
+              "components": [
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "uint256"
+                },
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "uint8"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "uint256"
+                }
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "name": "details"
+        },
+        {
+          "type": "address",
+          "name": "chainValidator"
+        },
+        {
+          "type": "address",
+          "name": "owner"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "safeHarborAgreement",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "safeHarborRegistry",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "setAgreementFactory",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "factory"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setSafeHarborRegistry",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "registry"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet letting a diamond adopt the SEAL Whitehat Safe Harbor agreement on-chain — the legal half of incident response, complementing {Emergency",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/governance/SafeHarborAdopter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/governance/SafeHarborAdopter.sol"
+  }
+}

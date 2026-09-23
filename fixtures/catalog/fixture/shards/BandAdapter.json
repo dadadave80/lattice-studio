@@ -1,0 +1,139 @@
+{
+  "name": "BandAdapter",
+  "abi": [
+    {
+      "name": "getFeed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "string",
+          "name": "base"
+        },
+        {
+          "type": "string",
+          "name": "quote"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ]
+    },
+    {
+      "name": "getReferenceData",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "rate"
+        },
+        {
+          "type": "uint256",
+          "name": "lastUpdatedBase"
+        },
+        {
+          "type": "uint256",
+          "name": "lastUpdatedQuote"
+        }
+      ]
+    },
+    {
+      "name": "latestAnswer",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int256",
+          "name": "answerWad"
+        }
+      ]
+    },
+    {
+      "name": "registerFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "string",
+          "name": "base"
+        },
+        {
+          "type": "string",
+          "name": "quote"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setReference",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "reference_"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "stdReference",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "unregisterFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet that reads Band Protocol reference data through the single global StdReference contract with per-feed staleness configuration and WAD-normalized a",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/band/BandAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/band/BandAdapter.sol"
+  }
+}

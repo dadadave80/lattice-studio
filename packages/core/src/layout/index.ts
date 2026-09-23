@@ -1,3 +1,4 @@
+export * from "./contested";
 export * from "./notes";
 export * from "./size";
 export * from "./slots";

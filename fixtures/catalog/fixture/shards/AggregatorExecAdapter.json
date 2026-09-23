@@ -1,0 +1,86 @@
+{
+  "name": "AggregatorExecAdapter",
+  "abi": [
+    {
+      "name": "execute",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "aggregator"
+        },
+        {
+          "type": "address",
+          "name": "inputToken"
+        },
+        {
+          "type": "uint256",
+          "name": "amount"
+        },
+        {
+          "type": "address",
+          "name": "outputToken"
+        },
+        {
+          "type": "bytes",
+          "name": "callData"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes",
+          "name": "ret"
+        }
+      ]
+    },
+    {
+      "name": "isAllowedCall",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "aggregator"
+        },
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setAllowedCall",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "aggregator"
+        },
+        {
+          "type": "bytes4",
+          "name": "selector"
+        },
+        {
+          "type": "bool",
+          "name": "allowed"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Generic swap/bridge EXECUTION facet: forwards user-supplied, off-chain-built calldata to an admin-ALLOW-LISTED `(aggregator, selector)` pair (the LI.FI Diamond ",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/defi/AggregatorExecAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/defi/AggregatorExecAdapter.sol"
+  }
+}

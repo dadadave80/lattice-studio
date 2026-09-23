@@ -1,25 +1,15 @@
-// WP-C9 replaces this file with its real tests: until it lands, every function here is a stub.
 import { expect, test } from "bun:test";
-import { API_OWNERS, type ApiName } from "../model/api";
-import { NotImplemented } from "../model/wp";
+import { API_OWNERS } from "../model/api";
 import * as mod from "./index";
 
-const stubs = Object.entries(mod).filter(([, value]) => typeof value === "function");
-
-test("the module exports its stubs", () => {
-  expect(stubs.length).toBeGreaterThan(0);
-});
-
-test.each(stubs)("%s throws NotImplemented naming WP-C9", (name, fn) => {
-  expect(API_OWNERS[name as ApiName]).toBe("C9");
-  let caught: unknown;
-  try {
-    (fn as (...args: unknown[]) => unknown)();
-  } catch (error) {
-    caught = error;
+test("the barrel exports exactly C9's public functions plus contestedSelectors, and no internal helper", () => {
+  const owned = Object.entries(API_OWNERS)
+    .filter(([, owner]) => owner === "C9")
+    .map(([name]) => name);
+  const expected = [...owned, "contestedSelectors"].sort();
+  expect(Object.keys(mod).sort()).toEqual(expected);
+  for (const name of expected) expect(typeof (mod as Record<string, unknown>)[name]).toBe("function");
+  for (const helper of ["collisions", "contestedByFacet", "visibleSelectors", "pinsPad", "nearestFree", "orthoRoute", "analysisWith"]) {
+    expect(helper in mod).toBe(false);
   }
-  expect(caught).toBeInstanceOf(NotImplemented);
-  expect((caught as NotImplemented).wp).toBe("C9");
-  expect((caught as NotImplemented).fn).toBe(name);
-  expect((caught as NotImplemented).message).toBe("Not built yet · WP-C9");
 });

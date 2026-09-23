@@ -1,0 +1,95 @@
+{
+  "name": "AcrossBridgeAdapter",
+  "abi": [
+    {
+      "name": "deposit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "uint32"
+            },
+            {
+              "type": "uint32"
+            },
+            {
+              "type": "uint32"
+            },
+            {
+              "type": "bytes"
+            }
+          ],
+          "name": "params"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "handleV3AcrossMessage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "tokenSent"
+        },
+        {
+          "type": "uint256",
+          "name": "amount"
+        },
+        {
+          "type": "address",
+          "name": "relayer"
+        },
+        {
+          "type": "bytes",
+          "name": "message"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "spokePool",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Across v3 intent/optimistic token-bridge facet: `deposit` escrows the input token on this chain toward an ERC-7930 recipient (a relayer fronts the output token ",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/across/AcrossBridgeAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/across/AcrossBridgeAdapter.sol"
+  }
+}

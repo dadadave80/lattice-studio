@@ -1,0 +1,93 @@
+{
+  "name": "CommitReveal",
+  "abi": [
+    {
+      "name": "commit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "commitment"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "commitmentInfo",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "commitment"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "computeCommitment",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "committer"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "isRevealed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "commitment"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "reveal",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "data"
+        },
+        {
+          "type": "bytes32",
+          "name": "salt"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet implementing a generic commit–reveal primitive — a building block for sealed-bid auctions, commit–reveal voting, and MEV mitigation.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/privacy/CommitReveal.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/CommitReveal.sol"
+  }
+}
