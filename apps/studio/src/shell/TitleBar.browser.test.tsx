@@ -3,7 +3,7 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
-  commandRef, doc, emptyAnalysis, provideAnalysis, putDeployment, runCommand, session,
+  commandRef, commandState, doc, emptyAnalysis, provideAnalysis, putDeployment, runCommand, session,
 } from "@/contracts";
 import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio, seedDeployState } from "../../test/harness";
 import { Shell } from "./Shell";
@@ -82,11 +82,18 @@ describe("the project name", () => {
 });
 
 describe("the status chip", () => {
-  test("says Not deployed, and why it can't open the Deployments list yet", async () => {
+  test("says Not deployed, and why it can't open the Deployments list while it can't", async () => {
     await renderWithStudio(<Shell />);
     const chip = bar().getByRole("button", { name: /^Not deployed/ });
-    await expect.element(chip).toHaveAttribute("aria-disabled", "true");
-    await expect.element(chip).toHaveAccessibleDescription("Not built yet · WP-S5c");
+    await expect.element(chip).toBeVisible();
+    // Whichever neighbors have landed: the chip is disabled exactly when Deployments can't open, and says why.
+    const show = commandState(commandRef("deployments.show"), "button");
+    if (show.ok) {
+      await expect.element(chip).not.toHaveAttribute("aria-disabled", "true");
+    } else {
+      await expect.element(chip).toHaveAttribute("aria-disabled", "true");
+      await expect.element(chip).toHaveAccessibleDescription(show.reason);
+    }
   });
 
   test("reads the live record on the selected chain", async () => {

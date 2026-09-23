@@ -2,7 +2,7 @@ import type { Analysis, Problem } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
-import { doc, emptyAnalysis, provideAnalysis, provideServices, session } from "@/contracts";
+import { doc, emptyAnalysis, isPlaceholder, provideAnalysis, provideServices, session } from "@/contracts";
 import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio } from "../../test/harness";
 import { App } from "./App";
 
@@ -57,10 +57,11 @@ describe("routes", () => {
     expect(document.getElementById("shell-sheet")?.firstElementChild).toBe(sheet);
   });
 
-  test("#/settings runs Settings, which says it isn't built yet", async () => {
+  test("#/settings runs Settings: its dialog opens, or, until S10 builds it, it says so", async () => {
     go("#/settings");
     await renderWithStudio(<App />);
-    await expect.poll(lastLine).toBe("Not built yet · WP-S10");
+    if (isPlaceholder("settings.open")) await expect.poll(lastLine).toBe("Not built yet · WP-S10");
+    else await expect.poll(() => session.get().dialogs.map((d) => d.id)).toContain("settings");
   });
 
   test("a share link goes to openShareLink whole, and stays in the address", async () => {

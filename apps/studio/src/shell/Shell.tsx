@@ -1,12 +1,10 @@
 import type { CSSProperties } from "react";
-import { commandRef, useRegion, useSession, type RegionId, type RegionProps } from "@/contracts";
+import { useRegion, useSession, type RegionId, type RegionProps } from "@/contracts";
 import { ConsolePanel } from "@/panels/console";
 import { InspectorPanel } from "@/panels/inspector";
 import { Sheet } from "@/sheet/canvas";
-import { CommandButton } from "@/ui/buttons/CommandButton";
 import { Splitter } from "@/ui/nav/Splitter";
 import { cx } from "@/ui/shared/cx";
-import { useNeedsFillIn } from "./fill-in";
 import { useFocusReturn } from "./focus-return";
 import { isDrawerTier, useLayoutTier, useWindowHeight } from "./layout-tier";
 import { LeftPane } from "./LeftPane";
@@ -52,7 +50,6 @@ export function Shell() {
   const tier = useLayoutTier();
   const panes = useSession((s) => s.panes);
   const height = useWindowHeight();
-  const fillIn = useNeedsFillIn();
   const regions = useRegions();
   usePaneFollow();
   useDrawerEscape(isDrawerTier(tier) ? panes.drawer : null);
@@ -132,13 +129,6 @@ export function Shell() {
           id={PANE_IDS.inspector}
           hidden={!seen.inspector}
         >
-          {phone && fillIn ? (
-            <div className={styles.fillIn}>
-              <CommandButton command={commandRef("init.open")} block>
-                Fill in
-              </CommandButton>
-            </div>
-          ) : null}
           <InspectorPanel />
         </aside>
       </div>

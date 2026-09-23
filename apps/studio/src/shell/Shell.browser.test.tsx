@@ -151,7 +151,10 @@ describe("drawers, 768-1279 px", () => {
     await bar().getByRole("button", { name: "Structure" }).click();
     await expect.poll(showing).toContain("left");
     expect(session.get().panes.left.tab).toBe("structure");
-    await expect.element(page.getByText("Not built yet · WP-S5b")).toBeVisible();
+    const tab = page.getByRole("tab", { name: "Structure" });
+    await expect.element(tab).toHaveAttribute("aria-selected", "true");
+    const panel = () => document.getElementById(tab.element().getAttribute("aria-controls") ?? "");
+    await expect.poll(() => panel()?.checkVisibility() && panel()?.childElementCount).toBeGreaterThan(0);
   });
 
   test("1024-1279 px: selecting a card opens the inspector", async () => {
