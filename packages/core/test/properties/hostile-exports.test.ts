@@ -19,6 +19,7 @@ import {
   keyedArg, lexSolidity, loadableTemplates, makeProject, mapStringArgs, markdownOutline, markdownProse, propertyCatalogs,
   scalarArgPaths, solidityShape, solidityStringBytes, stringArgPaths, wellFormed, type MarkdownOutline,
 } from "../../src/testing";
+import { escapedLine, oneLine } from "../../src/export/docs/markdown";
 
 const catalogs = propertyCatalogs();
 const ctx = { known: [], unconfirmed: [] };
@@ -79,7 +80,8 @@ function bytesOf(text: string): string {
   return Array.from(new TextEncoder().encode(text)).join(",");
 }
 
-type HostileCase = { base: Recipe; name: string; strings: readonly string[]; keyed: boolean; c: Case };
+/** `key` is the hostile field key when `keyed`, so the brief property can look for its escaped form (FX8). */
+type HostileCase = { base: Recipe; name: string; strings: readonly string[]; keyed: boolean; key: string; c: Case };
 
 for (const catalog of catalogs) {
   describe(`hostile names on catalog ${catalog.lattice.tag}`, () => {
@@ -100,16 +102,17 @@ for (const catalog of catalogs) {
           hostileString(),
           fc.array(hostileNonEmptyString(), { minLength: 12, maxLength: 12 }),
           fc.boolean(),
-          hostileKey(),
+          // FX8: `__proto__`, `constructor` and `prototype` too; exports must keep them as own keys.
+          hostileKey(8, { prototypeKeys: true }),
         )
         .chain(([base, name, strings, wantKeyed, key]) => {
           const built = caseOf(catalog, base, name, (i) => strings[i % strings.length] ?? "x");
           const paths = scalarArgPaths(built.recipe, catalog);
-          if (!wantKeyed || paths.length === 0) return fc.constant<HostileCase>({ base, name, strings, keyed: false, c: built });
+          if (!wantKeyed || paths.length === 0) return fc.constant<HostileCase>({ base, name, strings, keyed: false, key, c: built });
           return fc.constantFrom(...paths).map((path): HostileCase => {
             const recipe = keyedArg(built.recipe, catalog, path, key);
             const c: Case = { recipe, project: { ...built.project, recipe }, analysis: analyze(recipe, catalog, ctx) };
-            return { base, name, strings, keyed: true, c };
+            return { base, name, strings, keyed: true, key, c };
           });
         });
 
@@ -175,8 +178,7 @@ for (const catalog of catalogs) {
       let keyedRuns = 0;
       const outcome = checkProperty(
         `${catalog.lattice.tag}: hostile Markdown`,
-        fc.property(hostileCase(), ({ base, keyed, c }) => {
-          if (keyed) keyedRuns++;
+        fc.property(hostileCase(), ({ base, keyed, key, c }) => {
           const reference = markdownOutline(exportBrief({ ...(plain.get(base) as Case), catalog, studioVersion: STUDIO }).text);
           const brief = exportBrief({ recipe: c.recipe, catalog, analysis: c.analysis, studioVersion: STUDIO });
           expect(brief.filename).not.toMatch(/[/\\\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u);
@@ -186,6 +188,15 @@ for (const catalog of catalogs) {
           const json = outline.codeBlocks.find((block) => block.info === "json");
           expect(JSON.parse(json?.body ?? "null") as unknown).toEqual(JSON.parse(exportRecipeJson(c.recipe, catalog).text) as unknown);
           expect(markdownProse(brief.text)).not.toMatch(/[<>]/);
+          if (keyed) {
+            keyedRuns++;
+            // FX8: the hostile key itself is in the brief's prose, escaped exactly as a value is, every time;
+            // a regression that escapes values but not keys fails on any key with a character to escape, not
+            // only on draws whose raw `<` or `>` happen to reach markdownProse.
+            const prose = brief.text.replace(json?.body ?? "", "");
+            // A key that collapses to nothing (only whitespace or line breaks) leaves nothing to look for.
+            if (oneLine(key) !== "") expect([key, prose.includes(`${escapedLine(key)}: `)]).toEqual([key, true]);
+          }
         }),
       );
       // Not vacuous: makes sure the hostile-keyed object case (a scalar field holding one) actually reaches
