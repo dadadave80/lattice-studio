@@ -52,8 +52,21 @@ const call = (from: Address, to: Address, data: Hex): Promise<Hex> => rpc<Hex>("
 const code = (address: Address): Promise<Hex> => rpc<Hex>("eth_getCode", [address, "latest"]);
 const word = (data: Hex): Address => getAddress(slice(data, 12, 32));
 
+/** On this WP's port from `.env.local`; if that's taken (or unset), on one the OS picks. */
 async function startAnvil(binary: string): Promise<void> {
-  const port = process.env["ANVIL_PORT_BASE"] || "0";
+  const own = process.env["ANVIL_PORT_BASE"];
+  if (own) {
+    try {
+      await spawnAnvil(binary, own);
+      return;
+    } catch {
+      node?.kill();
+    }
+  }
+  await spawnAnvil(binary, "0");
+}
+
+async function spawnAnvil(binary: string, port: string): Promise<void> {
   node = Bun.spawn([binary, "--port", port, "--chain-id", "31337"], { stdout: "pipe", stderr: "ignore" });
   const reader = (node.stdout as ReadableStream<Uint8Array>).getReader();
   const decoder = new TextDecoder();
