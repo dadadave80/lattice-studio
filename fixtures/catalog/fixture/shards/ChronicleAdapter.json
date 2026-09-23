@@ -1,0 +1,104 @@
+{
+  "name": "ChronicleAdapter",
+  "abi": [
+    {
+      "name": "getFeed",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "chronicle"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ]
+    },
+    {
+      "name": "latestAnswer",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int256",
+          "name": "answerWad"
+        }
+      ]
+    },
+    {
+      "name": "readWithAge",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "value"
+        },
+        {
+          "type": "uint256",
+          "name": "age"
+        }
+      ]
+    },
+    {
+      "name": "registerFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "address",
+          "name": "chronicle"
+        },
+        {
+          "type": "uint48",
+          "name": "maxStaleness"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "unregisterFeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet that reads Chronicle oracle feeds through their per-feed oracle contracts with per-feed staleness configuration and WAD-normalized answers.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/chronicle/ChronicleAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/chronicle/ChronicleAdapter.sol"
+  }
+}

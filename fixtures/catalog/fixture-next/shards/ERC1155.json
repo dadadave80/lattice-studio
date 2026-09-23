@@ -1,0 +1,161 @@
+{
+  "name": "ERC1155",
+  "abi": [
+    {
+      "name": "balanceOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        },
+        {
+          "type": "uint256",
+          "name": "id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "balanceOfBatch",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address[]",
+          "name": "accounts"
+        },
+        {
+          "type": "uint256[]",
+          "name": "ids"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256[]"
+        }
+      ]
+    },
+    {
+      "name": "isApprovedForAll",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        },
+        {
+          "type": "address",
+          "name": "operator"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "safeBatchTransferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "from"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256[]",
+          "name": "ids"
+        },
+        {
+          "type": "uint256[]",
+          "name": "values"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "safeTransferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "from"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "id"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setApprovalForAll",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "operator"
+        },
+        {
+          "type": "bool",
+          "name": "approved"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "uri",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet for the ERC-1155 Multi-Token Standard.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC1155/ERC1155.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC1155/ERC1155.sol"
+  }
+}

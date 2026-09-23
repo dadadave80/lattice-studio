@@ -1,0 +1,238 @@
+{
+  "name": "CCTPBridgeAdapter",
+  "abi": [
+    {
+      "name": "configureDomain",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint32",
+          "name": "domain"
+        },
+        {
+          "type": "uint256",
+          "name": "maxFee"
+        },
+        {
+          "type": "uint32",
+          "name": "minFinalityThreshold"
+        },
+        {
+          "type": "bytes32",
+          "name": "destinationCaller"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "depositForBurn",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "amount"
+        },
+        {
+          "type": "bytes",
+          "name": "recipient"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "depositForBurnWithHook",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "amount"
+        },
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "hookData"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "domainOwner",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint32",
+          "name": "domain"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getDomain",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "name": "getDomainConfig",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint32",
+          "name": "domain"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "maxFee"
+        },
+        {
+          "type": "uint32",
+          "name": "minFinalityThreshold"
+        },
+        {
+          "type": "bytes32",
+          "name": "destinationCaller"
+        }
+      ]
+    },
+    {
+      "name": "hookExecutor",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "isChainRegistered",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "messageTransmitter",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "registerChainDomain",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "uint32",
+          "name": "domain"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "relayMessage",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "message"
+        },
+        {
+          "type": "bytes",
+          "name": "attestation"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "relayMessageWithHook",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "message"
+        },
+        {
+          "type": "bytes",
+          "name": "attestation"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "tokenMessenger",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "usdc",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Circle CCTP v2 USDC token-bridge facet: `depositForBurn` burns USDC on this chain toward an ERC-7930 recipient, `relayMessage` forwards an Iris-attested inbound",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/circle/CCTPBridgeAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/circle/CCTPBridgeAdapter.sol"
+  }
+}

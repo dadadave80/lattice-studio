@@ -1,0 +1,44 @@
+{
+  "name": "DiamondCutFacet",
+  "abi": [
+    {
+      "name": "diamondCut",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint8"
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "_diamondCut"
+        },
+        {
+          "type": "address",
+          "name": "_init"
+        },
+        {
+          "type": "bytes",
+          "name": "_calldata"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Simple single owner and multiroles authorization mixin.",
+    "functions": {}
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/facets/DiamondCutFacet.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/facets/DiamondCutFacet.sol"
+  }
+}

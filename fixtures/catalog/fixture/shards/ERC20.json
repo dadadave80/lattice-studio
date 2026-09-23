@@ -1,0 +1,157 @@
+{
+  "name": "ERC20",
+  "abi": [
+    {
+      "name": "allowance",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "owner"
+        },
+        {
+          "type": "address",
+          "name": "spender"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "approve",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "spender"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "balanceOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "decimals",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint8"
+        }
+      ]
+    },
+    {
+      "name": "name",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "symbol",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "totalSupply",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "transfer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "transferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "from"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet for the ERC-20 token standard.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC20/ERC20.sol"
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "name": "PrivateVoting",
+  "abi": [
+    {
+      "name": "createPoll",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "groupId"
+        },
+        {
+          "type": "uint32",
+          "name": "numChoices"
+        },
+        {
+          "type": "uint64",
+          "name": "startTime"
+        },
+        {
+          "type": "uint64",
+          "name": "endTime"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getPoll",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "pollId"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getVotes",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "pollId"
+        },
+        {
+          "type": "uint256",
+          "name": "choice"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "hasVoted",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "pollId"
+        },
+        {
+          "type": "uint256",
+          "name": "nullifier"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "pollCount",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "vote",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "pollId"
+        },
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "uint256[8]"
+            }
+          ],
+          "name": "proof"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet for anonymous one-person-one-vote polling over Semaphore groups: a member casts an anonymous ballot with a Semaphore proof (scope = poll",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/privacy/PrivateVoting.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/PrivateVoting.sol"
+  }
+}

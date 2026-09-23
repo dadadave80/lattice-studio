@@ -1,0 +1,67 @@
+{
+  "name": "ERC6900Validation",
+  "abi": [
+    {
+      "name": "validateUserOp",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes"
+            }
+          ],
+          "name": "userOp"
+        },
+        {
+          "type": "bytes32",
+          "name": "userOpHash"
+        },
+        {
+          "type": "uint256",
+          "name": "missingAccountFunds"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "validationData"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-6900 ERC-4337 validation facet: the EntryPoint's `validateUserOp` entrypoint, routing to the validation module named by the userOp signature prefix.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/accounts/erc6900/ERC6900Validation.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/accounts/erc6900/ERC6900Validation.sol"
+  }
+}

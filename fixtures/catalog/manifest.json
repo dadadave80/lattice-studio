@@ -1,0 +1,19 @@
+{
+  "default": "fixture",
+  "catalogs": [
+    {
+      "id": "fixture",
+      "tag": "fixture",
+      "commit": "f4a32c8330934d39bcfdffff87d35a04b7fa6a79",
+      "hash": "0x94515d79c0ac52c598970dcc704591debf5bcf52bbc1381f69b039786796ba33",
+      "path": "fixture/index.json"
+    },
+    {
+      "id": "fixture-next",
+      "tag": "fixture-next",
+      "commit": "f4a32c8330934d39bcfdffff87d35a04b7fa6a79",
+      "hash": "0xcd70d2a3026d6acd701eb8b220c909760b01e0e3f674ad15c7fdc2b89a7fd21d",
+      "path": "fixture-next/index.json"
+    }
+  ]
+}

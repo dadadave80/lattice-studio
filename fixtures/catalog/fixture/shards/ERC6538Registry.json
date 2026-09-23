@@ -1,0 +1,118 @@
+{
+  "name": "ERC6538Registry",
+  "abi": [
+    {
+      "name": "DOMAIN_SEPARATOR",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "ERC6538REGISTRY_ENTRY_TYPE_HASH",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "incrementNonce",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "nonceOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "registrant"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "registerKeys",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "schemeId"
+        },
+        {
+          "type": "bytes",
+          "name": "stealthMetaAddress"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerKeysOnBehalf",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "registrant"
+        },
+        {
+          "type": "uint256",
+          "name": "schemeId"
+        },
+        {
+          "type": "bytes",
+          "name": "signature"
+        },
+        {
+          "type": "bytes",
+          "name": "stealthMetaAddress"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "stealthMetaAddressOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "registrant"
+        },
+        {
+          "type": "uint256",
+          "name": "schemeId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet implementing the ERC-6538 stealth meta-address registry.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/privacy/ERC6538Registry.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/ERC6538Registry.sol"
+  }
+}

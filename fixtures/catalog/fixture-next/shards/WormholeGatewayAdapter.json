@@ -1,0 +1,222 @@
+{
+  "name": "WormholeGatewayAdapter",
+  "abi": [
+    {
+      "name": "getChainId",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint16",
+          "name": "wormhole"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getRemoteGateway",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "getWormholeChain",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint16"
+        }
+      ]
+    },
+    {
+      "name": "quoteRelay",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "uint256",
+          "name": "gasLimit"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "receiveWormholeMessages",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes[]"
+        },
+        {
+          "type": "bytes32",
+          "name": "bytes32"
+        },
+        {
+          "type": "uint16",
+          "name": "sourceChain"
+        },
+        {
+          "type": "bytes32",
+          "name": "deliveryHash"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerChainEquivalence",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "uint16",
+          "name": "wormhole"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "registerRemoteGateway",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "chainId"
+        },
+        {
+          "type": "address",
+          "name": "remote"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "relayer",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "requestRelay",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "sendId"
+        },
+        {
+          "type": "uint256",
+          "name": "gasLimit"
+        },
+        {
+          "type": "address",
+          "name": "refundRecipient"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "sendMessage",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "recipient"
+        },
+        {
+          "type": "bytes",
+          "name": "payload"
+        },
+        {
+          "type": "bytes[]",
+          "name": "attributes"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "supportsAttribute",
+      "type": "function",
+      "stateMutability": "pure",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "wormholeChainId",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint16"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Dual-mode ERC-7786 gateway facet over the Wormhole relayer.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/crosschain/wormhole/WormholeGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/wormhole/WormholeGatewayAdapter.sol"
+  }
+}

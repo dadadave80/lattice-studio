@@ -1,0 +1,84 @@
+{
+  "name": "ERC6900Executor",
+  "abi": [
+    {
+      "name": "execute",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "target"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "executeBatch",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint256"
+            },
+            {
+              "type": "bytes"
+            }
+          ],
+          "name": "calls"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes[]"
+        }
+      ]
+    },
+    {
+      "name": "executeWithRuntimeValidation",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "bytes",
+          "name": "data"
+        },
+        {
+          "type": "bytes",
+          "name": "authorization"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "ERC-6900 execution facet: the native `execute` / `executeBatch` (validation-gated, exec-hook-wrapped calls to arbitrary targets) and the explicit-auth `executeW",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/accounts/erc6900/ERC6900Executor.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/accounts/erc6900/ERC6900Executor.sol"
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "name": "API3QRNGAdapter",
+  "abi": [
+    {
+      "name": "fulfillRandomNumber",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "requestId"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getConfig",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "name": "getUserKey",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "requestId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "requestRandomNumber",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "userKey"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "requestId"
+        }
+      ]
+    },
+    {
+      "name": "setConfig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "address"
+            },
+            {
+              "type": "bytes32"
+            },
+            {
+              "type": "address"
+            }
+          ],
+          "name": "config"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setSelfSponsorship",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bool",
+          "name": "status"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet for API3 QRNG (quantum randomness) over the Airnode Request-Response Protocol (self-sponsoring).",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/api3/API3QRNGAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/api3/API3QRNGAdapter.sol"
+  }
+}

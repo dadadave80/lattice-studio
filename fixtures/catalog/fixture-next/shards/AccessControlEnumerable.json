@@ -1,0 +1,149 @@
+{
+  "name": "AccessControlEnumerable",
+  "abi": [
+    {
+      "name": "getRoleAdmin",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "name": "getRoleMember",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "role"
+        },
+        {
+          "type": "uint256",
+          "name": "index"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "getRoleMemberCount",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "role"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "getRoleMembers",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "role"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address[]"
+        }
+      ]
+    },
+    {
+      "name": "grantRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        },
+        {
+          "type": "address",
+          "name": "_account"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "hasRole",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        },
+        {
+          "type": "address",
+          "name": "_account"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "renounceRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        },
+        {
+          "type": "address",
+          "name": "_callerConfirmation"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "revokeRole",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_role"
+        },
+        {
+          "type": "address",
+          "name": "_account"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet exposing AccessControl + per-role address enumeration.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/access/AccessControlEnumerable.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/access/AccessControlEnumerable.sol"
+  }
+}

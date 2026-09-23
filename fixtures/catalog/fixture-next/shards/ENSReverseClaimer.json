@@ -1,0 +1,59 @@
+{
+  "name": "ENSReverseClaimer",
+  "abi": [
+    {
+      "name": "ensName",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "reverseRegistrar",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "setEnsName",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "name"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setReverseRegistrar",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "reverseRegistrar"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet letting a diamond claim and advertise its own primary ENS name via ENS reverse resolution.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/ens/ENSReverseClaimer.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/ens/ENSReverseClaimer.sol"
+  }
+}

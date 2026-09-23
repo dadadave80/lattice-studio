@@ -1,0 +1,119 @@
+{
+  "name": "CircuitBreaker",
+  "abi": [
+    {
+      "name": "getCumulative",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "cumulative"
+        },
+        {
+          "type": "uint48",
+          "name": "windowStart"
+        }
+      ]
+    },
+    {
+      "name": "getThreshold",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "threshold"
+        },
+        {
+          "type": "uint48",
+          "name": "windowSeconds"
+        }
+      ]
+    },
+    {
+      "name": "isTripped",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "recordObservation",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "uint256",
+          "name": "value"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "reset",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setThreshold",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "key"
+        },
+        {
+          "type": "uint256",
+          "name": "threshold"
+        },
+        {
+          "type": "uint48",
+          "name": "windowSeconds"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Thin Diamond facet that exposes multi-key threshold-based circuit breaking.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/security/CircuitBreaker.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/security/CircuitBreaker.sol"
+  }
+}

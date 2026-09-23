@@ -1,0 +1,343 @@
+{
+  "name": "GovernedSafeDiamondCut",
+  "abi": [
+    {
+      "name": "cancelCut",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_id"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "cutCount",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "emergencyRemoveCut",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint8"
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "_cuts"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "executeCut",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint8"
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "_diamondCut"
+        },
+        {
+          "type": "address",
+          "name": "_init"
+        },
+        {
+          "type": "bytes",
+          "name": "_calldata"
+        },
+        {
+          "type": "bytes32",
+          "name": "_salt"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "freezeSelectors",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes4[]",
+          "name": "_selectors"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "frozenSelectors",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes4[]"
+        }
+      ]
+    },
+    {
+      "name": "getCutRecord",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_version"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "getTimestamp",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "isOperationDone",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "isOperationPending",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "isOperationReady",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_id"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "isSelectorFrozen",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "_selector"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "minDelay",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "name": "previewCut",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint8"
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "_cuts"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool",
+          "name": "ok"
+        },
+        {
+          "type": "bytes4",
+          "name": "offendingSelector"
+        }
+      ]
+    },
+    {
+      "name": "safe",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "name": "scheduleCut",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "tuple[]",
+          "components": [
+            {
+              "type": "address"
+            },
+            {
+              "type": "uint8"
+            },
+            {
+              "type": "bytes4[]"
+            }
+          ],
+          "name": "_diamondCut"
+        },
+        {
+          "type": "address",
+          "name": "_init"
+        },
+        {
+          "type": "bytes",
+          "name": "_calldata"
+        },
+        {
+          "type": "bytes32",
+          "name": "_salt"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "id"
+        }
+      ]
+    },
+    {
+      "name": "setMinDelay",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_newDelay"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setSafe",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "_newSafe"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "verifyInterfaceRegistered",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes4",
+          "name": "_interfaceId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Stateless Diamond facet exposing a Safe-multisig-gated EIP-2535 cut WITH a self-contained timelock: the pinned Safe `scheduleCut`s an upgrade, it matures past `",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/governance/GovernedSafeDiamondCut.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/governance/GovernedSafeDiamondCut.sol"
+  }
+}
