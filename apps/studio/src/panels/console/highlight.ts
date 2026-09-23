@@ -14,8 +14,20 @@ let loading: Promise<Highlighter> | null = null;
 let ready: Highlighter | null = null;
 const listeners = new Set<() => void>();
 
+type ShikiModule = typeof import("./shiki");
+let importShiki: () => Promise<ShikiModule> = () => import("./shiki");
+
+/** @internal Tests: holds or replaces the chunk's import (to see the plain text first). Returns a disposer. */
+export function overrideShikiImport(next: () => Promise<ShikiModule>): () => void {
+  const previous = importShiki;
+  importShiki = next;
+  return () => {
+    importShiki = previous;
+  };
+}
+
 export function loadHighlighter(): Promise<Highlighter> {
-  loading ??= import("./shiki")
+  loading ??= importShiki()
     .then((module) => module.createHighlighter())
     .then(
       (highlighter) => {

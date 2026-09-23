@@ -48,7 +48,11 @@ export function ConsoleSummary() {
   });
 
   return (
-    <span className={cx(styles.summary, summary.accent && styles.accent)} data-summary={summary.kind}>
+    <span
+      className={cx(styles.summary, summary.accent && styles.accent)}
+      data-summary={summary.kind}
+      data-accent={summary.accent ? "" : undefined}
+    >
       <span className={styles.square} aria-hidden="true" />
       <span className={styles.summaryText}>{summary.text}</span>
     </span>

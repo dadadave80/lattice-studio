@@ -40,7 +40,7 @@ export function CodeLines({ text, lang, label, changed, stale = false }: CodeLin
         {lines.map((line, i) => {
           const row = current?.[i];
           return (
-          <span key={i} className={cx(styles.row, changed.has(i) && styles.changed)}>
+          <span key={i} className={cx(styles.row, changed.has(i) && styles.changed)} data-changed={changed.has(i) ? "" : undefined}>
             <span className={styles.gutter} aria-hidden="true">
               {i + 1}
             </span>
