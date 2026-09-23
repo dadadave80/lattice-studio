@@ -2,7 +2,7 @@
  * The drawer's body is its own chunk (FX17, spec L822). One file with one running order, so the module state
  * (whether the body's chunk has arrived) starts empty.
  */
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { initialSession } from "@/contracts";
 import { renderWithStudio } from "../../../test/harness";
@@ -35,6 +35,9 @@ describe("the console body's chunk", () => {
     await userEvent.click(exportMenu);
     await expect.element(page.getByRole("menuitem", { name: "Foundry script" }), { timeout: 15_000 }).toBeVisible();
     expect(consoleBodyLoaded()).toBe(true);
+    // Items that mounted after the popup opened still take the arrow keys.
+    await userEvent.keyboard("{ArrowDown}");
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("menuitem"));
     await userEvent.keyboard("{Escape}");
     await expect.element(page.getByRole("menu", { name: "Export" })).not.toBeInTheDocument();
 

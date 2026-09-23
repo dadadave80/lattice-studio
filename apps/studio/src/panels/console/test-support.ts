@@ -10,7 +10,6 @@ import { command, type Command } from "@/contracts";
 import { fixtureCatalog, onCleanup, overrideCommands } from "../../../test/harness";
 import { clearCommandHistory } from "./command-line";
 import { setDownloader } from "./download";
-import { loadConsoleBody } from "./load-body";
 import { resetConsoleLog } from "./log-store";
 
 /** The fixture catalog (K3), as `renderWithStudio` loads it. */
@@ -49,16 +48,16 @@ export function captureDownloads(): ExportFile[] {
 }
 
 /**
- * Waits for the drawer's body (its own chunk, requested once the open drawer has painted) to render: on a cold
- * Vite cache the first request compiles the chunk, which can take seconds.
+ * Waits for the drawer's body (its own chunk, which the open drawer requests once it has painted) to render: on
+ * a cold Vite cache the first request compiles the chunk, which can take seconds. It doesn't request the chunk
+ * itself, so a test that awaits it proves the drawer did.
  */
 export async function awaitConsoleBody(): Promise<void> {
-  await loadConsoleBody();
   await vi.waitFor(
     () => {
       if (!document.querySelector("[role='log'][aria-label='Log']")) throw new Error("The console body hasn't rendered.");
     },
-    { timeout: 15_000 },
+    { timeout: 10_000 },
   );
 }
 
