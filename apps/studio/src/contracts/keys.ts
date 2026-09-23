@@ -1,4 +1,4 @@
-import type { Platform } from "@lattice-studio/core";
+import type { CommandId, Json, Platform } from "@lattice-studio/core";
 
 /**
  * Where a shortcut is live (contracts §5.3). Elements declare theirs with `data-keyctx`; the nearest
@@ -24,3 +24,28 @@ export const KEY_CONTEXT_ATTRIBUTE = "data-keyctx";
  * shortcut to one platform: `{ keys: "Ctrl+y", platform: "other" }` is Redo on Windows and Linux.
  */
 export type KeySpec = string | { keys: string; platform: Platform };
+
+/**
+ * A shortcut that runs its command with arguments: ← runs `sheet.nudge {dir: "left", step: "small"}`,
+ * ⇧← the same with `step: "large"` (IR L23); ⌘← runs `sheet.focusDirection {dir: "left"}` (IR L19);
+ * "Go to inspector" runs `region.focus {region: "inspector"}` (IR L16).
+ */
+export type KeyBinding = {
+  /** Unique within the command; the binding's id is `<command id>#<name>` (see `bindingId`). */
+  name: string;
+  /** Default keys; remappable. */
+  keys: KeySpec[];
+  args?: Record<string, Json>;
+  /** Shown in Settings → Keyboard and the shortcuts dialog when it differs from the command's title. */
+  label?: string;
+};
+
+/**
+ * What a remap targets (settings `keymap` keys). A command's plain `keys` are the binding `<command id>`;
+ * each of its `bindings` is `<command id>#<name>`.
+ */
+export type BindingId = CommandId | `${CommandId}#${string}`;
+
+export function bindingId(command: CommandId, name?: string): BindingId {
+  return name === undefined ? command : `${command}#${name}`;
+}

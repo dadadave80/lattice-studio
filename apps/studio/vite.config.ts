@@ -15,12 +15,16 @@ import { appDir, localPort, repoRoot } from "./local-env.ts";
 /** Where catalogs come from, in lookup order: the generated catalog (CG8), then the fixtures (K3). */
 const catalogSources = [join(repoRoot, "catalog"), join(repoRoot, "fixtures", "catalog")];
 
-/** `VITE_STUDIO_E2E=1` adds the Anvil chain and the mock connector; a production build must never carry them (contracts §5.5). */
-function e2eGuard(mode: string, command: "build" | "serve", flag: string | undefined): void {
-  if (command === "build" && mode === "production" && flag === "1") {
+/**
+ * `VITE_STUDIO_E2E` adds the Anvil chain and the mock connector, which only an end-to-end build may carry
+ * (contracts §5.5). An allowlist: a build with the variable set to anything fails unless its mode is `e2e`.
+ * The dev server and Vitest (`serve`) may use it.
+ */
+export function e2eGuard(mode: string, command: "build" | "serve", flag: string | undefined): void {
+  if (command === "build" && flag !== undefined && flag !== "" && mode !== "e2e") {
     throw new Error(
-      "VITE_STUDIO_E2E is set, so this build would include the Anvil chain and the mock connector. " +
-        "Production builds can't: build with --mode e2e instead.",
+      `VITE_STUDIO_E2E is set, so this build would include the Anvil chain and the mock connector. ` +
+        `Only an end-to-end build can (this one's mode is "${mode}"): build with --mode e2e.`,
     );
   }
 }

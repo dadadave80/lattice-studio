@@ -2,14 +2,18 @@
  * The command registry's contract (contracts §5.3). Every `CommandId` starts as a placeholder, disabled with
  * `Not built yet · WP-<owner>`. Each module registers its real commands in its own `commands.ts` with
  * `defineCommands`; a real registration replaces the placeholder, and a second real registration throws.
- * S2 builds the keymap, console router and palette on `listCommands`, `commandState` and `runCommand`.
+ * S2 builds the keymap, console router and palette on `listCommands`, `listBindings`, `commandState` and
+ * `runCommand`; components render with `useCommandState`.
  */
 import type { Analysis, Catalog, CommandId, CommandRef, Json, Project, Result } from "@lattice-studio/core";
 import { COMMAND_IDS, COMMAND_OWNERS, isCommandId, isNotImplemented } from "@lattice-studio/core";
-import { getAnalysis } from "./analysis";
-import { getCatalog } from "./catalog";
-import type { KeyContext, KeySpec } from "./keys";
-import { announce, isOnline, log } from "./services";
+import { useSyncExternalStore } from "react";
+import { getAnalysis, subscribeAnalysis } from "./analysis";
+import { getCatalog, subscribeCatalog } from "./catalog";
+import { deployState, useDeployState, type DeployState } from "./deploy";
+import { log } from "./kernel";
+import { bindingId, type BindingId, type KeyBinding, type KeyContext, type KeySpec } from "./keys";
+import { announce, isOnline, useOnline } from "./services";
 import { doc, session, settings, type SessionState, type SettingsState } from "./stores";
 
 export type CommandArgs = Record<string, Json>;
@@ -24,6 +28,8 @@ export type CommandSource = "keys" | "palette" | "console" | "menu" | "button" |
 
 /** What `enabled` and `run` see: snapshots of the stores when the command was invoked. */
 export type CommandContext = {
+  /** The command being checked or run, with its arguments. */
+  ref: CommandRef;
   project: Project;
   session: SessionState;
   settings: SettingsState;
@@ -31,6 +37,8 @@ export type CommandContext = {
   catalog: Catalog | null;
   analysis: Analysis;
   online: boolean;
+  /** The deploy controller's mirrored state (`idle` until it loads). */
+  deploy: DeployState;
   source: CommandSource;
 };
 
@@ -50,9 +58,11 @@ export type Command<A = CommandArgs> = {
   /** "Place ERC20", "Route to HyperlaneGatewayAdapter". */
   title: (args: A) => string;
   category: CommandCategory;
-  /** Default shortcut(s); remappable. */
+  /** Default shortcut(s), run with no arguments; remappable as the binding `<command id>`. */
   keys?: KeySpec[];
-  /** Where the shortcut is live. */
+  /** Shortcuts that run the command with arguments (nudge left, go to inspector); each remappable on its own. */
+  bindings?: KeyBinding[];
+  /** Where the shortcuts are live. */
   keyContext?: KeyContext[];
   console?: CommandConsole<A>;
   /** Listed in the palette's Commands group. */
@@ -106,19 +116,26 @@ function placeholder(id: CommandId): Command {
   };
 }
 
-let entries = new Map<CommandId, Entry>();
-let order: CommandId[] = [];
-
-function resetEntries(): void {
-  entries = new Map(COMMAND_IDS.map((id) => [id, { command: placeholder(id), placeholder: true }]));
-  order = [...COMMAND_IDS];
+function pristine(): { entries: Map<CommandId, Entry>; order: CommandId[] } {
+  return {
+    entries: new Map(COMMAND_IDS.map((id) => [id, { command: placeholder(id), placeholder: true }])),
+    order: [...COMMAND_IDS],
+  };
 }
 
-resetEntries();
+let { entries, order } = pristine();
+let version = 0;
+const registryListeners = new Set<() => void>();
+
+function registryChanged(): void {
+  version += 1;
+  for (const listener of Array.from(registryListeners)) listener();
+}
 
 /**
  * Registers real commands, replacing their placeholders. Call it at module level in the module's
- * `commands.ts`. Throws when an id isn't a `CommandId` or already has a real registration.
+ * `commands.ts`. Throws when an id isn't a `CommandId`, already has a real registration, or two bindings of
+ * one command share a name.
  */
 export function defineCommands(commands: readonly Command[]): void {
   const seen = new Set<CommandId>();
@@ -128,6 +145,8 @@ export function defineCommands(commands: readonly Command[]): void {
     if ((existing && !existing.placeholder) || seen.has(c.id)) {
       throw new Error(`Command ${c.id} is already registered. WP-${COMMAND_OWNERS[c.id]} registers it once.`);
     }
+    const names = (c.bindings ?? []).map((b) => b.name);
+    if (new Set(names).size !== names.length) throw new Error(`Command ${c.id} has two bindings with one name.`);
     seen.add(c.id);
   }
   for (const c of commands) {
@@ -135,6 +154,7 @@ export function defineCommands(commands: readonly Command[]): void {
     // Registration order decides which command a shared console verb tries first.
     order = [...order.filter((id) => id !== c.id), c.id];
   }
+  if (commands.length) registryChanged();
 }
 
 export function getCommand(id: CommandId): Command {
@@ -153,34 +173,89 @@ export function isPlaceholder(id: CommandId): boolean {
   return entries.get(id)?.placeholder ?? true;
 }
 
+/** One remappable shortcut: what it runs, its default keys, and the keys in effect after the keymap. */
+export type ResolvedBinding = {
+  id: BindingId;
+  ref: CommandRef;
+  label?: string;
+  defaults: KeySpec[];
+  keys: KeySpec[];
+  keyContext?: KeyContext[];
+};
+
+/** Every shortcut binding, with `settings.keymap` applied (an empty list unbinds). */
+export function listBindings(keymap: SettingsState["keymap"] = settings.get().keymap): ResolvedBinding[] {
+  const out: ResolvedBinding[] = [];
+  for (const c of listCommands()) {
+    const context = c.keyContext ? { keyContext: c.keyContext } : {};
+    if (c.keys?.length) {
+      const id = bindingId(c.id);
+      out.push({ id, ref: { id: c.id }, defaults: c.keys, keys: keymap[id] ?? c.keys, ...context });
+    }
+    for (const b of c.bindings ?? []) {
+      const id = bindingId(c.id, b.name);
+      const ref: CommandRef = b.args ? { id: c.id, args: b.args } : { id: c.id };
+      out.push({ id, ref, defaults: b.keys, keys: keymap[id] ?? b.keys, ...(b.label ? { label: b.label } : {}), ...context });
+    }
+  }
+  return out;
+}
+
+/** Calls back whenever a registration changes the registry. */
+export function subscribeCommands(listener: () => void): () => void {
+  registryListeners.add(listener);
+  return () => {
+    registryListeners.delete(listener);
+  };
+}
+
 /**
  * @internal For tests that register commands: captures the registry and returns a function that restores
- * it, so one test's registrations don't leak into the next.
+ * it. With `{ pristine: true }` the registry starts over from placeholders for the test.
  */
-export function snapshotCommands(): () => void {
-  const savedEntries = new Map(entries);
-  const savedOrder = [...order];
-  const savedListeners = new Set(runListeners);
+export function snapshotCommands(options: { pristine?: boolean } = {}): () => void {
+  const saved = { entries: new Map(entries), order: [...order], listeners: new Set(runListeners) };
+  if (options.pristine) {
+    ({ entries, order } = pristine());
+    registryChanged();
+  }
   return () => {
-    entries = savedEntries;
-    order = savedOrder;
+    entries = saved.entries;
+    order = saved.order;
     runListeners.clear();
-    for (const listener of savedListeners) runListeners.add(listener);
+    for (const listener of saved.listeners) runListeners.add(listener);
+    registryChanged();
+  };
+}
+
+/** @internal The harness's `overrideCommands`: replaces commands, real or not, until the returned disposer runs. */
+export function overrideCommands(commands: readonly Command[]): () => void {
+  const saved = commands.map((c) => [c.id, entries.get(c.id)] as const);
+  for (const c of commands) {
+    if (!isCommandId(c.id)) throw new Error(`"${String(c.id)}" isn't a command id (contracts §5.3).`);
+    entries.set(c.id, { command: c, placeholder: false });
+  }
+  registryChanged();
+  return () => {
+    for (const [id, entry] of saved) if (entry) entries.set(id, entry);
+    registryChanged();
   };
 }
 
 // ---------------------------------------------------------------------------------------------------------
 // Running
 
-/** Snapshots of the stores for `enabled` and `run`. */
-export function commandContext(source: CommandSource): CommandContext {
+/** Snapshots of the stores for `enabled` and `run`. Not for render: read stores with hooks there. */
+export function commandContext(source: CommandSource, ref: CommandRef): CommandContext {
   return {
+    ref,
     project: doc.get(),
     session: session.get(),
     settings: settings.get(),
     catalog: getCatalog(),
     analysis: getAnalysis(),
     online: isOnline(),
+    deploy: deployState(),
     source,
   };
 }
@@ -189,20 +264,80 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** `enabled()`, where a throw disables the command: NotImplemented with its reason, anything else logged as an Error. */
 function check(c: Command, ctx: CommandContext, args: CommandArgs): Enablement {
   try {
     return c.enabled(ctx, args);
   } catch (error) {
     if (isNotImplemented(error)) return { ok: false, reason: error.message };
-    throw error;
+    const reason = reasonOf(error);
+    log({ tag: "Error", text: `${c.id}: ${reason}` });
+    console.error(error);
+    return { ok: false, reason };
   }
 }
 
-/** A command's title and whether it can run now, for buttons, menus, palette rows and tooltips. */
+function title(c: Command, args: CommandArgs): string {
+  try {
+    return c.title(args);
+  } catch {
+    return c.id;
+  }
+}
+
+/**
+ * A command's title and whether it can run now, for non-render code (the dispatcher, the console, tests).
+ * It reads the stores with `get()`, which render must not do (spec L902): components use `useCommandState`.
+ */
 export function commandState(ref: CommandRef, source: CommandSource = "api"): Enablement & { title: string } {
   const c = getCommand(ref.id);
   const args = ref.args ?? {};
-  return { ...check(c, commandContext(source), args), title: c.title(args) };
+  return { ...check(c, commandContext(source, ref), args), title: title(c, args) };
+}
+
+type CommandStateValue = Enablement & { title: string };
+
+function sameState(a: CommandStateValue, b: CommandStateValue): boolean {
+  if (a.ok !== b.ok || a.title !== b.title) return false;
+  if (a.ok || b.ok) return true;
+  return a.reason === b.reason && JSON.stringify(a.fix ?? null) === JSON.stringify(b.fix ?? null);
+}
+
+function subscribeEverything(onChange: () => void): () => void {
+  const stops = [
+    doc.subscribe(onChange),
+    session.subscribe(onChange),
+    settings.subscribe(onChange),
+    subscribeCatalog(onChange),
+    subscribeAnalysis(onChange),
+    subscribeCommands(onChange),
+  ];
+  return () => {
+    for (const stop of stops) stop();
+  };
+}
+
+/**
+ * A command's title and enablement, re-rendering when either changes: for buttons, menu items, palette rows
+ * and tooltips. `ref` may be a new object each render; it's compared by value.
+ */
+export function useCommandState(ref: CommandRef, source: CommandSource = "button"): CommandStateValue {
+  // Online and deploy state re-render through their own hooks; their values reach enabled() via the context.
+  useOnline();
+  useDeployState((s) => s.phase);
+  const key = `${source}|${JSON.stringify(ref)}`;
+  return useSyncExternalStore(subscribeEverything, () => stableState(key, ref, source));
+}
+
+/** The last value per ref and source, so equal states keep one identity (useSyncExternalStore needs it). */
+const stateCache = new Map<string, CommandStateValue>();
+
+function stableState(key: string, ref: CommandRef, source: CommandSource): CommandStateValue {
+  const next = commandState(ref, source);
+  const cached = stateCache.get(key);
+  if (cached && sameState(cached, next)) return cached;
+  stateCache.set(key, next);
+  return next;
 }
 
 const runListeners = new Set<(ref: CommandRef, source: CommandSource) => void>();
@@ -210,7 +345,9 @@ const runListeners = new Set<(ref: CommandRef, source: CommandSource) => void>()
 /** Subscribes to commands that ran (the palette's Recent group). */
 export function onCommandRun(listener: (ref: CommandRef, source: CommandSource) => void): () => void {
   runListeners.add(listener);
-  return () => runListeners.delete(listener);
+  return () => {
+    runListeners.delete(listener);
+  };
 }
 
 /**
@@ -220,7 +357,7 @@ export function onCommandRun(listener: (ref: CommandRef, source: CommandSource) 
 export async function runCommand(ref: CommandRef, source: CommandSource): Promise<Enablement> {
   const c = getCommand(ref.id);
   const args = ref.args ?? {};
-  const ctx = commandContext(source);
+  const ctx = commandContext(source, ref);
   const enablement = check(c, ctx, args);
   if (!enablement.ok) {
     log({ tag: "Note", text: enablement.reason });
@@ -235,6 +372,11 @@ export async function runCommand(ref: CommandRef, source: CommandSource): Promis
     if (!isNotImplemented(error)) console.error(error);
     return { ok: false, reason };
   }
-  for (const listener of runListeners) listener(ref, source);
+  for (const listener of Array.from(runListeners)) listener(ref, source);
   return { ok: true };
+}
+
+/** @internal Registry version, for tests. */
+export function commandsVersion(): number {
+  return version;
 }

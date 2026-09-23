@@ -17,6 +17,14 @@ export default defineConfig(async (env) => {
 
   return mergeConfig(base, {
     server: { port, strictPort: true },
+    // Pre-bundle the shared libraries up front: a dependency discovered mid-run makes Vite re-optimize and
+    // reload, which can leave a test file with a second copy of Vitest ("failed to find the runner").
+    optimizeDeps: {
+      include: [
+        "react", "react/jsx-dev-runtime", "react-dom/client", "zustand", "zustand/vanilla", "zustand/traditional",
+        "vitest-browser-react", "@base-ui/react/csp-provider", "@xyflow/react", "viem", "zod", "fflate",
+      ],
+    },
     test: {
       include: ["src/**/*.browser.test.{ts,tsx}", "test/**/*.browser.test.{ts,tsx}"],
       setupFiles: ["./test/harness/setup.ts"],

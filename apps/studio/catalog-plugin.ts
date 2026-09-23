@@ -5,7 +5,7 @@
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { ServerResponse } from "node:http";
-import { extname, join, normalize, sep } from "node:path";
+import { extname, join, normalize, resolve, sep } from "node:path";
 import type { Connect, Plugin } from "vite";
 
 type ManifestEntry = { id: string; tag: string; commit: string; hash: string; path: string };
@@ -87,7 +87,7 @@ export function studioCatalog(sources: readonly string[]): Plugin {
   return {
     name: "lattice-studio:catalog",
     configResolved(config) {
-      outDir = config.build.outDir;
+      outDir = resolve(config.root, config.build.outDir);
     },
     configureServer(server) {
       server.middlewares.use(catalogMiddleware(sources));

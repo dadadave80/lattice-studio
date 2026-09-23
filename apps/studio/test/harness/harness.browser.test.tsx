@@ -1,10 +1,17 @@
+import type { Analysis } from "@lattice-studio/core";
 import { layoutSizes } from "@lattice-studio/tokens";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
+import { createStore } from "zustand/vanilla";
 import {
-  chainService, getCatalog, layoutMetrics, log, useCatalog, useDocument, useSession, useSettings,
+  applyMotion, chainService, command, DEFAULT_SETTINGS, deployState, doc, emptyAnalysis, getCatalog, layoutMetrics,
+  log, provideAnalysis, provideStores, session, settings, useAnalysis, useCatalog, useCommandState, useDocument,
+  useSession, useSettings, type SettingsState,
 } from "@/contracts";
-import { bufferedServices, fakeChainService, fakeClock, fixtureCatalog, renderWithStudio } from ".";
+import {
+  bufferedServices, fakeChainService, fakeClock, fixtureCatalog, MULTICALL3_CODEHASH, onCleanup, overrideCommands,
+  renderWithStudio, seedDeployState,
+} from ".";
 
 function Probe() {
   const name = useDocument((s) => s.project.name);
@@ -15,10 +22,11 @@ function Probe() {
 }
 
 describe("renderWithStudio", () => {
-  test("seeds the document, catalog, settings, session and theme", async () => {
+  test("seeds the document, the fixture catalog, settings, session and theme", async () => {
     await renderWithStudio(<Probe />, { settings: { wheel: "zoom" }, session: { chainId: 84532 }, theme: "draft" });
     await expect.element(page.getByText("Untitled · fixture · zoom · 84532")).toBeVisible();
     expect(getCatalog()).toBe(fixtureCatalog());
+    expect(getCatalog()?.facets.length).toBe(100);
     expect(document.documentElement.dataset.theme).toBe("draft");
   });
 
@@ -26,6 +34,7 @@ describe("renderWithStudio", () => {
     await renderWithStudio(<Probe />);
     await expect.element(page.getByText("Untitled · fixture · pan · no chain")).toBeVisible();
     expect(document.documentElement.dataset.theme).toBe("shop");
+    expect(deployState()).toEqual({ phase: "idle" });
   });
 
   test("tokens are loaded: the theme's colors apply", async () => {
@@ -33,14 +42,96 @@ describe("renderWithStudio", () => {
     const ground = getComputedStyle(document.documentElement).getPropertyValue("--lx-ground").trim();
     expect(ground.toLowerCase()).toBe("#0c0d0f");
   });
+
+  test("mounted hooks follow stores provided after they subscribed", async () => {
+    await renderWithStudio(<Probe />);
+    await expect.element(page.getByText("Untitled · fixture · pan · no chain")).toBeVisible();
+    const replacement = createStore<SettingsState>(() => ({ ...structuredClone(DEFAULT_SETTINGS), wheel: "zoom" }));
+    const dispose = provideStores({ settings: replacement });
+    await expect.element(page.getByText("Untitled · fixture · zoom · no chain")).toBeVisible();
+    replacement.setState({ wheel: "pan" });
+    await expect.element(page.getByText("Untitled · fixture · pan · no chain")).toBeVisible();
+    dispose();
+  });
+});
+
+describe("reactive reads", () => {
+  function TidyButton() {
+    const state = useCommandState({ id: "layout.tidy" });
+    return (
+      <button type="button" aria-disabled={!state.ok} title={state.ok ? undefined : state.reason}>
+        {state.title}
+      </button>
+    );
+  }
+
+  test("useCommandState re-renders when enablement changes", async () => {
+    overrideCommands([
+      command({
+        id: "layout.tidy",
+        title: () => "Tidy",
+        category: "Sheet",
+        enabled: (ctx) => (ctx.session.readOnly ? { ok: false, reason: ctx.session.readOnly } : { ok: true }),
+        run: () => {},
+      }),
+    ]);
+    await renderWithStudio(<TidyButton />);
+    const button = page.getByRole("button", { name: "Tidy" });
+    await expect.element(button).toHaveAttribute("aria-disabled", "false");
+    session.set({ readOnly: "Read-only: another tab is editing this project." });
+    await expect.element(button).toHaveAttribute("aria-disabled", "true");
+    await expect.element(button).toHaveAttribute("title", "Read-only: another tab is editing this project.");
+  });
+
+  test("useAnalysis(selector) re-renders only when its selection changes", async () => {
+    const renders: string[] = [];
+    function Hash() {
+      const hash = useAnalysis((a) => a.recipeHash);
+      renders.push(hash);
+      return <p>{hash}</p>;
+    }
+    let current: Analysis = { ...emptyAnalysis(), recipeHash: "0x01" };
+    let notify: () => void = () => {};
+    onCleanup(provideAnalysis({ getAnalysis: () => current, subscribe: (l) => ((notify = l), () => {}) }));
+    await renderWithStudio(<Hash />);
+    await expect.element(page.getByText("0x01")).toBeVisible();
+    const before = renders.length;
+    current = { ...current, stats: { ...current.stats, facets: 3 } }; // same hash
+    notify();
+    current = { ...current, recipeHash: "0x02" };
+    notify();
+    await expect.element(page.getByText("0x02")).toBeVisible();
+    expect(renders.slice(before)).toEqual(["0x02"]);
+  });
+
+  test("seedDeployState sets what deployState() reads, and it's reset after the test", () => {
+    seedDeployState({ phase: "proposed", safe: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F", chainId: 11155111 });
+    expect(deployState().phase).toBe("proposed");
+  });
+
+  test("reduced motion follows the setting, not only the system", () => {
+    applyMotion("on");
+    expect(document.documentElement.dataset.motion).toBe("reduce");
+    applyMotion("off");
+    expect(document.documentElement.dataset.motion).toBeUndefined();
+    expect(settings.get().reduceMotion).toBe("system");
+  });
 });
 
 describe("fakes", () => {
-  test("fakeChainService stands behind chainService() for one test", async () => {
+  test("fakeChainService stands behind chainService() for one test, healthy for the fixture catalog", async () => {
     const chain = fakeChainService({ down: [84532] });
     await renderWithStudio(<Probe />, { chain });
     const service = await chainService();
-    expect(await service.probe(11155111)).toMatchObject({ ok: true, value: { name: "Sepolia", online: true } });
+    const probe = await service.probe(11155111);
+    if (!probe.ok) throw new Error(probe.error);
+    const catalog = fixtureCatalog();
+    const erc20 = catalog.facets.find((f) => f.name === "ERC20");
+    expect(probe.value).toMatchObject({ name: "Sepolia", online: true, simulate: true, gasCap: "16777216" });
+    expect(probe.value.multicall3?.codehash).toBe(MULTICALL3_CODEHASH);
+    expect(probe.value.shared.ERC20?.codehash).toBe(erc20?.release.codehash);
+    expect(probe.value.registry?.records[`ERC20@${erc20?.release.version}`]?.facet).toBe(erc20?.release.address);
+    expect(service.readiness(11155111).status).toBe("ready");
     expect(await service.probe(84532)).toEqual({ ok: false, error: "Base Sepolia's public RPC isn't answering." });
     expect(await service.connect()).toEqual({ ok: false, error: "No wallet found in this browser." });
     expect(chain.calls.map((c) => c.method)).toEqual(["probe", "probe", "connect"]);
@@ -65,6 +156,14 @@ describe("fakes", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  test("doc.subscribe sees what the harness loads", () => {
+    const kinds: string[] = [];
+    const stop = doc.subscribe((s) => kinds.push(s.lastChange?.kind ?? "none"));
+    doc.load(doc.get());
+    stop();
+    expect(kinds).toEqual(["load"]);
   });
 });
 

@@ -1,4 +1,5 @@
-/* A small reset. Colors, type and sizes come from tokens only (contracts §5.4). */
+/* A small reset. Colors, type and sizes come from tokens only (contracts §5.4). Reduced motion keys off
+   html[data-motion="reduce"] (global.css), which follows the in-app setting, not the media query. */
 
 *,
 *::before,
@@ -55,15 +56,4 @@ button {
 
 :focus:not(:focus-visible) {
   outline: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
 }

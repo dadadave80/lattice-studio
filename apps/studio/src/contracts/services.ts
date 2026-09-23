@@ -1,20 +1,25 @@
 /**
  * Services (contracts §5.2): plain functions with a registration seam, so a module can call a service before
- * its implementing WP lands. K2's defaults buffer (log, announce, toast, banners: replayed into the real
- * implementation when it registers) or do the least that works (connection, deployments, escape stack).
+ * its implementing WP lands. K2's defaults hold what they can't deliver (log, announce, toast, banners are
+ * replayed into the real implementation when it registers) or do the least that works (connection,
+ * deployments, escape stack, dialogs, drag and drop).
  *
- * Implementations register with `provideServices` at module evaluation, before the app renders: hooks
- * (`useRegion`, `useOnline`, `useSaveStatus`) call whichever implementation is current when they run.
+ * Implementations register with `provideServices` at module evaluation, in the module's `services.ts`
+ * (see `discover.ts`), before the app renders: hooks (`useRegion`, `useOnline`, `useSaveStatus`) call
+ * whichever implementation is current when they run.
  */
 import type {
-  CommandRef, ConsoleLine, Deployment, LineDraft, Project, ProblemCode, Random, Recipe, Result,
+  CommandRef, ConsoleLine, Deployment, Layout, Project, ProblemCode, Random, Recipe, Result,
 } from "@lattice-studio/core";
 import { NotImplemented } from "@lattice-studio/core";
 import { useSyncExternalStore, type HTMLAttributes, type RefCallback } from "react";
 import type { ChainService } from "./chain";
-import type { DialogId, DialogProps } from "./dialogs";
+import type { DialogEntry, DialogId, DialogPropsMap } from "./dialogs";
+import { clearLog, provideKernel, randomBytes, recordedLog, resetKernel as resetKernelForServices } from "./kernel";
 import { REGION_LABELS, type RegionId } from "./regions";
 import { doc, session, settings, type Viewport } from "./stores";
+
+export { log, now, randomBytes } from "./kernel";
 
 // ---------------------------------------------------------------------------------------------------------
 // Types
@@ -61,9 +66,17 @@ export type SaveStatus = {
   detail?: string;
 };
 
+/** What a new project starts with besides its recipe. */
+export type NewProjectOptions = {
+  /** Card positions, already tidied by the caller (spec L409). Default: empty. */
+  layout?: Layout;
+  /** Per argument path: "link" for a share link, "file" for an opened file (LINK-01). Default: empty. */
+  provenance?: Project["provenance"];
+};
+
 export type ProjectsService = {
   /** Creates a project around `recipe`, makes it the open document and saves it. */
-  createProject(recipe: Recipe, name: string): Promise<Result<Project, string>>;
+  createProject(recipe: Recipe, name: string, options?: NewProjectOptions): Promise<Result<Project, string>>;
   /** Opens a stored project as the document. */
   openProject(id: string): Promise<Result<Project, string>>;
   saveStatus(): SaveStatus;
@@ -76,6 +89,8 @@ export type ProjectsService = {
 export type DeploymentsService = {
   listDeployments(projectId: string): Promise<Deployment[]>;
   putDeployment(deployment: Deployment): Promise<void>;
+  /** Called after every write, from this tab or another; `projectId` names the project whose records changed. */
+  subscribe(listener: (projectId: string) => void): () => void;
 };
 
 /** A catalog row being dragged toward the sheet. */
@@ -135,26 +150,24 @@ export type Services = {
   randomBytes: Random;
 };
 
+type Rest = Omit<Services, "log" | "now" | "randomBytes">;
+
 // ---------------------------------------------------------------------------------------------------------
 // K2's defaults
 
-const LOG_BUFFER = 1000;
-const SMALL_BUFFER = 50;
+const RECORD_CAP = 200;
 
-type Buffers = {
-  log: ConsoleLine[];
+/** What was said, shown or announced (always recorded, capped), and what's still waiting for its service. */
+type Records = {
   announce: [string, AnnounceOptions | undefined][];
   toast: ToastInput[];
+  /** Banners showing now, by id. */
   banners: Map<string, BannerProps>;
 };
 
-function push<T>(list: T[], item: T, cap: number): void {
+function capped<T>(list: T[], item: T): void {
   list.push(item);
-  if (list.length > cap) list.splice(0, list.length - cap);
-}
-
-function notBuiltNote(wp: string): void {
-  impl.log({ tag: "Note", text: `Not built yet · WP-${wp}`, at: new Date(impl.now()).toISOString() });
+  if (list.length > RECORD_CAP) list.splice(0, list.length - RECORD_CAP);
 }
 
 function listeners<T>(): { add(fn: (v: T) => void): () => void; emit(v: T): void } {
@@ -162,10 +175,12 @@ function listeners<T>(): { add(fn: (v: T) => void): () => void; emit(v: T): void
   return {
     add(fn) {
       set.add(fn);
-      return () => set.delete(fn);
+      return () => {
+        set.delete(fn);
+      };
     },
     emit(v) {
-      for (const fn of set) fn(v);
+      for (const fn of Array.from(set)) fn(v);
     },
   };
 }
@@ -189,11 +204,14 @@ function browserConnection(): ConnectionService {
 
 function memoryDeployments(): DeploymentsService {
   const records = new Map<string, Deployment>();
+  const changed = listeners<string>();
   return {
     listDeployments: async (projectId) => [...records.values()].filter((d) => d.projectId === projectId),
     putDeployment: async (d) => {
       records.set(`${d.chainId}:${d.address.toLowerCase()}`, d);
+      changed.emit(d.projectId);
     },
+    subscribe: (listener) => changed.add(listener),
   };
 }
 
@@ -204,14 +222,14 @@ function hex(bytes: Uint8Array): `0x${string}` {
 function minimalProjects(): ProjectsService {
   const status: SaveStatus = { state: "not-saved", text: "Not saved", detail: "Not built yet · WP-S7a" };
   return {
-    async createProject(recipe, name) {
+    async createProject(recipe, name, options) {
       const project: Project = {
-        id: hex(impl.randomBytes(16)).slice(2),
+        id: hex(randomBytes(16)).slice(2),
         name,
         recipe,
-        layout: {},
-        deploy: { path: settings.get().defaultPath, entropy: hex(impl.randomBytes(11)), scope: "every-chain" },
-        provenance: {},
+        layout: options?.layout ?? {},
+        deploy: { path: settings.get().defaultPath, entropy: hex(randomBytes(11)), scope: "every-chain" },
+        provenance: options?.provenance ?? {},
         predicted: [],
       };
       doc.load(project);
@@ -269,20 +287,29 @@ function minimalDnd(): DndService {
     },
     registerDropTarget(target) {
       targets.add(target);
-      return () => targets.delete(target);
+      return () => {
+        targets.delete(target);
+      };
     },
     subscribeDrag: (listener) => drags.add(listener),
   };
 }
 
-function defaults(buffers: Buffers): Services {
+function freshRecords(): Records {
+  return { announce: [], toast: [], banners: new Map() };
+}
+
+let records = freshRecords();
+/** Held until the service registers. */
+let pending = freshRecords();
+
+function defaults(): Rest {
   const escapes: EscapeHandler[] = [];
   return {
-    log: (line) => push(buffers.log, line, LOG_BUFFER),
-    announce: (text, options) => push(buffers.announce, [text, options], SMALL_BUFFER),
-    toast: (input) => push(buffers.toast, input, SMALL_BUFFER),
-    showBanner: (id, props) => void buffers.banners.set(id, props),
-    hideBanner: (id) => void buffers.banners.delete(id),
+    announce: (text, options) => capped(pending.announce, [text, options]),
+    toast: (input) => capped(pending.toast, input),
+    showBanner: (id, props) => void pending.banners.set(id, props),
+    hideBanner: (id) => void pending.banners.delete(id),
     useRegion: (id) => ({
       role: "region",
       "aria-label": REGION_LABELS[id],
@@ -300,102 +327,115 @@ function defaults(buffers: Buffers): Services {
     deployments: memoryDeployments(),
     chain: () => Promise.reject(new NotImplemented("S8a", "chainService")),
     dnd: minimalDnd(),
-    openProblemDoc: () => notBuiltNote("S12"),
+    openProblemDoc: (code) => {
+      session.set((s) => ({ panes: { ...s.panes, inspector: { ...s.panes.inspector, open: true, view: { kind: "doc", code } } } }));
+    },
     connection: browserConnection(),
-    now: () => Date.now(),
-    randomBytes: (n) => crypto.getRandomValues(new Uint8Array(n)),
   };
 }
 
-function freshBuffers(): Buffers {
-  return { log: [], announce: [], toast: [], banners: new Map() };
-}
-
-let buffers = freshBuffers();
-let impl: Services = defaults(buffers);
+let impl: Rest = defaults();
 
 /**
- * Replaces services with real implementations. Buffered log lines, announcements, toasts and shown banners
- * are replayed into the new implementation. Returns a disposer that restores the previous services.
+ * Replaces services with real implementations. Held announcements, toasts and shown banners are replayed
+ * into the new implementation (log lines too, through the kernel). Returns a disposer that puts back only
+ * what this call provided and nobody has replaced since.
  */
 export function provideServices(provided: Partial<Services>): () => void {
+  const { log: providedLog, now: providedNow, randomBytes: providedRandom, ...rest } = provided;
+  const kernel: Parameters<typeof provideKernel>[0] = {};
+  if (providedLog) kernel.log = providedLog;
+  if (providedNow) kernel.now = providedNow;
+  if (providedRandom) kernel.randomBytes = providedRandom;
+  const disposeKernel = provideKernel(kernel);
+
   const previous = impl;
-  impl = { ...impl, ...provided };
-  if (provided.log) for (const line of buffers.log.splice(0)) provided.log(line);
-  if (provided.announce) for (const [text, options] of buffers.announce.splice(0)) provided.announce(text, options);
-  if (provided.toast) for (const input of buffers.toast.splice(0)) provided.toast(input);
-  if (provided.showBanner) {
-    for (const [id, props] of buffers.banners) provided.showBanner(id, props);
-    buffers.banners.clear();
+  impl = { ...impl, ...rest };
+  if (rest.announce) for (const [text, options] of pending.announce.splice(0)) rest.announce(text, options);
+  if (rest.toast) for (const input of pending.toast.splice(0)) rest.toast(input);
+  if (rest.showBanner) {
+    for (const [id, props] of pending.banners) rest.showBanner(id, props);
+    pending.banners.clear();
   }
   return () => {
-    // Put back only what this call provided and nobody has replaced since.
+    disposeKernel();
     const restored: Record<string, unknown> = { ...impl };
-    for (const key of Object.keys(provided) as (keyof Services)[]) {
-      if (impl[key] === provided[key]) restored[key] = previous[key];
+    for (const key of Object.keys(rest) as (keyof Rest)[]) {
+      if (impl[key] === rest[key]) restored[key] = previous[key];
     }
-    impl = restored as Services;
+    impl = restored as Rest;
   };
 }
 
-/** @internal The harness's reset between tests: K2's defaults, empty buffers. */
-export function resetServices(): void {
-  buffers = freshBuffers();
-  impl = defaults(buffers);
+/** @internal K2's defaults, empty records (contract tests). Returns a disposer that restores the previous state. */
+export function resetServices(): () => void {
+  const saved = { impl, records, pending };
+  const restoreKernel = resetKernelForServices();
+  impl = defaults();
+  records = freshRecords();
+  pending = freshRecords();
+  return () => {
+    restoreKernel();
+    impl = saved.impl;
+    records = saved.records;
+    pending = saved.pending;
+  };
 }
 
-/** @internal What the defaults have buffered so far (tests read it). */
-export function bufferedServices(): Readonly<Buffers> {
-  return buffers;
+/**
+ * @internal Everything logged, announced, toasted and shown so far, whether or not a real service took it
+ * (the harness's `bufferedServices()`).
+ */
+export function bufferedServices(): {
+  log: readonly ConsoleLine[];
+  announce: readonly [string, AnnounceOptions | undefined][];
+  toast: readonly ToastInput[];
+  banners: ReadonlyMap<string, BannerProps>;
+} {
+  return { log: recordedLog(), announce: records.announce, toast: records.toast, banners: records.banners };
 }
 
-/** @internal Empties the buffers and keeps every registered implementation (the harness, between tests). */
+/** @internal Empties the records and anything held; keeps every registered implementation (between tests). */
 export function clearServiceBuffers(): void {
-  buffers.log.length = 0;
-  buffers.announce.length = 0;
-  buffers.toast.length = 0;
-  buffers.banners.clear();
+  clearLog();
+  records = freshRecords();
+  pending = freshRecords();
 }
 
 // ---------------------------------------------------------------------------------------------------------
 // The calls
 
-/** Milliseconds since the epoch, from the injected clock. */
-export function now(): number {
-  return impl.now();
-}
-
-/** Random bytes, from the injected source. */
-export function randomBytes(n: number): Uint8Array {
-  return impl.randomBytes(n);
-}
-
-/** Appends a console line. A draft without `at` is stamped with the injected clock. */
-export function log(line: ConsoleLine | LineDraft): void {
-  impl.log("at" in line ? line : { ...line, at: new Date(impl.now()).toISOString() });
-}
-
 export function announce(text: string, options?: AnnounceOptions): void {
+  capped(records.announce, [text, options]);
   impl.announce(text, options);
 }
 
 export function toast(input: ToastInput): void {
+  capped(records.toast, input);
   impl.toast(input);
 }
 
 export function showBanner(id: string, props: BannerProps): void {
+  records.banners.set(id, props);
   impl.showBanner(id, props);
 }
 
 export function hideBanner(id: string): void {
+  records.banners.delete(id);
   impl.hideBanner(id);
 }
 
-/** Pushes `{ id, props }` onto the session's dialog stack. The dialog's owner renders it. */
-export function openDialog(id: DialogId, props: DialogProps = {}): void {
+let dialogKey = 0;
+
+/** Pushes the dialog onto the session's stack. Its owner renders it. */
+export function openDialog<I extends DialogId>(
+  id: I,
+  ...props: Record<string, never> extends DialogPropsMap[I] ? [props?: DialogPropsMap[I]] : [props: DialogPropsMap[I]]
+): void {
   dialogKey += 1;
   const key = dialogKey;
-  session.set((s) => ({ dialogs: [...s.dialogs, { id, props, key }] }));
+  const entry = { id, props: props[0] ?? {}, key } as unknown as DialogEntry;
+  session.set((s) => ({ dialogs: [...s.dialogs, entry] }));
 }
 
 /** Closes the topmost dialog with this id. */
@@ -405,8 +445,6 @@ export function closeDialog(id: DialogId): void {
     return at < 0 ? {} : { dialogs: s.dialogs.filter((_, i) => i !== at) };
   });
 }
-
-let dialogKey = 0;
 
 /** Props for a region container. A hook: call it in render. */
 export function useRegion(id: RegionId): RegionProps {
@@ -418,8 +456,8 @@ export function pushEscape(handler: EscapeHandler): () => void {
   return impl.pushEscape(handler);
 }
 
-export function createProject(recipe: Recipe, name: string): Promise<Result<Project, string>> {
-  return impl.projects.createProject(recipe, name);
+export function createProject(recipe: Recipe, name: string, options?: NewProjectOptions): Promise<Result<Project, string>> {
+  return impl.projects.createProject(recipe, name, options);
 }
 
 export function openProject(id: string): Promise<Result<Project, string>> {
@@ -454,6 +492,50 @@ export function putDeployment(deployment: Deployment): Promise<void> {
   return impl.deployments.putDeployment(deployment);
 }
 
+/** Subscribes to deployment-record writes; the listener gets the project id whose records changed. */
+export function subscribeDeployments(listener: (projectId: string) => void): () => void {
+  return impl.deployments.subscribe(listener);
+}
+
+type DeploymentsSnapshot = { status: "loading" } | { status: "ready"; deployments: Deployment[] };
+
+const deploymentCache = new Map<string, DeploymentsSnapshot>();
+const deploymentListeners = listeners<string>();
+const LOADING: DeploymentsSnapshot = { status: "loading" };
+
+function refreshDeployments(projectId: string): void {
+  impl.deployments.listDeployments(projectId).then(
+    (deployments) => {
+      deploymentCache.set(projectId, { status: "ready", deployments });
+      deploymentListeners.emit(projectId);
+    },
+    () => {
+      deploymentCache.set(projectId, { status: "ready", deployments: [] });
+      deploymentListeners.emit(projectId);
+    },
+  );
+}
+
+/** A project's deployment records, re-rendering after every write. `loading` until the first read returns. */
+export function useDeployments(projectId: string): DeploymentsSnapshot {
+  return useSyncExternalStore(
+    (onChange) => {
+      const stopWrites = impl.deployments.subscribe((changed) => {
+        if (changed === projectId) refreshDeployments(projectId);
+      });
+      const stopCache = deploymentListeners.add((changed) => {
+        if (changed === projectId) onChange();
+      });
+      if (!deploymentCache.has(projectId)) refreshDeployments(projectId);
+      return () => {
+        stopWrites();
+        stopCache();
+      };
+    },
+    () => deploymentCache.get(projectId) ?? LOADING,
+  );
+}
+
 /**
  * The lazy chain module. Rejects with `NotImplemented` (`Not built yet · WP-S8a`) until S8a registers, and
  * with the import's error when the chunk can't load.
@@ -474,6 +556,7 @@ export function subscribeCatalogDrag(listener: (drag: CatalogDrag | null) => voi
   return impl.dnd.subscribeDrag(listener);
 }
 
+/** Shows the problem's doc page in the inspector (K2's default routes there; S12 replaces it). */
 export function openProblemDoc(code: ProblemCode): void {
   impl.openProblemDoc(code);
 }
@@ -488,4 +571,9 @@ export function useOnline(): boolean {
     (onChange) => impl.connection.subscribe(onChange),
     () => impl.connection.isOnline(),
   );
+}
+
+/** @internal Forgets cached deployment lists (between tests). */
+export function clearDeploymentCache(): void {
+  deploymentCache.clear();
 }
