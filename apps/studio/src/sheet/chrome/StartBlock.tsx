@@ -1,5 +1,6 @@
 import { templateList } from "@lattice-studio/core";
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
+import { focusSheet } from "@/a11y/focus";
 import { commandRef, runCommand, useCatalog, useCommandState, useDocument } from "@/contracts";
 import { SHEET_FLOAT_ATTRIBUTE } from "@/sheet/canvas/sheet-view";
 import { BLANK_DIAMOND } from "@/state";
@@ -33,6 +34,32 @@ function RecipeCard({ name }: { name: string }) {
   );
 }
 
+/** Focus is lost when it sits on nothing, or on an element that has left the page. */
+function focusLost(): boolean {
+  const active = document.activeElement;
+  return active === null || active === document.body || !active.isConnected;
+}
+
+/**
+ * A load from the block (Enter on Blank diamond, a recipe card, Browse → Load) takes the block and the button that
+ * ran it away. Focus goes to the sheet then, so the next Tab continues from the sheet, not the page's top. Checked
+ * again a frame later, after a closing dialog has tried to hand focus back to the vanished Browse button. Only on
+ * the empty-to-placed change: a project that opens with cards never has its focus taken.
+ */
+function useKeepFocusOnSheet(empty: boolean): void {
+  const was = useRef(empty);
+  useLayoutEffect(() => {
+    const cleared = was.current && !empty;
+    was.current = empty;
+    if (!cleared) return;
+    if (focusLost()) focusSheet();
+    const frame = requestAnimationFrame(() => {
+      if (focusLost()) focusSheet();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [empty]);
+}
+
 /**
  * Start a diamond (spec L378, IR L108, Flows 1-2): on an empty sheet, in the card grid's place. Blank diamond
  * (core only), v1's three recipe cards, Browse all recipes, the hint and the tour line. Every choice runs a
@@ -49,6 +76,7 @@ export function StartBlock() {
     return START_RECIPES.filter((name) => loadable.has(name));
   }, [catalog]);
   const tour = useCommandState(TOUR, "button");
+  useKeepFocusOnSheet(empty);
   if (!empty) return null;
   return (
     <div className={styles.startLayer} data-chrome="start">

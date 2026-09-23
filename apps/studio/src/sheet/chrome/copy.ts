@@ -2,7 +2,8 @@
  * The sheet chrome's words, quoted from the spec where it writes them. Plain strings, so the commands (entry
  * chunk) and the lazy layers share one source, and tests assert against the same text.
  */
-import { plural } from "@lattice-studio/core";
+import { plural, type DeployPath } from "@lattice-studio/core";
+import type { DeployPhase } from "@/contracts";
 
 /** Spec L378: the empty sheet's Deploy reason. */
 export const PLACE_FACETS_FIRST = "Place facets first";
@@ -35,11 +36,13 @@ export const INIT_ORDER_CHIP = "Init order · Esc";
 export const ARRIVES_V11 = "Arrives in v1.1";
 /** Why init order mode can't open. */
 export const NO_INIT_STEPS = "The init plan has no steps";
-/** Flow 7 step 5: a bundle shows its fixed order and no controls. */
+/** Why a command waits on the catalog (the words S1 and S8b use). */
+export const CATALOG_LOADING = "The catalog hasn't loaded yet";
+/** Flow 7 step 5: a bundle shows its fixed order and no controls (legend line, no period, like a reason). */
 export function bundleFixed(bundle: string): string {
-  return `${bundle} is a bundle: its order is fixed.`;
+  return `${bundle} is a bundle: its order is fixed`;
 }
-export const DRAG_TO_REORDER = "Drag a badge to reorder.";
+export const DRAG_TO_REORDER = "Drag a badge to reorder";
 /** Flow 2 step 5: "1 parameter to fill". */
 export function toFill(count: number): string {
   return `${plural(count, "parameter")} to fill`;
@@ -51,3 +54,30 @@ export function confirmIn(wallet: string): string {
 export const YOUR_WALLET = "your wallet";
 /** Spec L362: the picker's chain before one is chosen. */
 export const NO_CHAIN = "Choose a chain";
+/** The visually hidden end of a link's name that opens a new tab. */
+export const NEW_TAB = " (opens in a new tab)";
+
+// Mirrors of S8b's words and phases (`chain/review/entry-copy.ts`, `progress-view.ts`), so a reshape of S8b's
+// internals can't break the chrome. `copy.test.ts` checks they still agree.
+
+/** Deploy's reason while a deploy is on its way. */
+export const ON_ITS_WAY = "This deploy is already on its way";
+/** A deploy on its way: Deploy… reopens the review at its progress (IR L207). */
+export const IN_FLIGHT_PHASES: ReadonlySet<DeployPhase> = new Set<DeployPhase>([
+  "awaitingSignature", "pending", "stale", "proposed", "confirmed", "verifying",
+]);
+/** The path's display name, as S8b writes it. */
+export function pathName(path: DeployPath): string {
+  return path === "createx" ? "CreateX" : "LatticeFactory";
+}
+/** How long a transaction has been pending since `since` (ISO), as "m:ss" ("0:12"); null when it isn't a time. */
+export function elapsedText(since: string | undefined, nowMs: number): string | null {
+  if (since === undefined) return null;
+  const start = Date.parse(since);
+  if (Number.isNaN(start)) return null;
+  const seconds = Math.max(0, Math.floor((nowMs - start) / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/** Phases after the transaction landed: the address is the diamond's, no longer a prediction. */
+export const LANDED_PHASES: ReadonlySet<DeployPhase> = new Set<DeployPhase>(["confirmed", "verifying"]);

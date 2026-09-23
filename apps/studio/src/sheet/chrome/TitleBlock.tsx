@@ -2,11 +2,10 @@ import type { Address, ProjectStatus } from "@lattice-studio/core";
 import { formatAddress, formatProblemSummary, recipeStats } from "@lattice-studio/core";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  chainService, commandRef, env, now, useAnalysis, useCatalog, useDeployState, useDocument, useOnline, type DeployState,
+  chainService, commandRef, env, now, useAnalysis, useCatalog, useDeployState, useDocument, useOnline, useSession,
+  type DeployState,
 } from "@/contracts";
 import { findChain } from "@/chain/infra/chains";
-import { elapsedText } from "@/chain/review/progress-view";
-import { IN_FLIGHT_PHASES, ON_ITS_WAY } from "@/chain/review/entry-copy";
 import { useLayoutTier } from "@/shell/layout-tier";
 import { chipWords, useProjectStatus, type StatusChipWords } from "@/shell/status";
 import { usePrediction } from "@/state";
@@ -14,9 +13,13 @@ import { Button } from "@/ui/buttons/Button";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { IconButton } from "@/ui/buttons/IconButton";
 import { copyText } from "@/ui/copy/copy-text";
+import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
 import { StatusChip } from "@/ui/status/StatusChip";
 import { ChainPathPicker } from "./ChainPathPicker";
-import { confirmIn, NO_ADDRESS, OFFLINE_MARK, PLACE_FACETS_FIRST, toFill, YOUR_WALLET } from "./copy";
+import {
+  confirmIn, elapsedText, IN_FLIGHT_PHASES, LANDED_PHASES, NEW_TAB, NO_ADDRESS, OFFLINE_MARK, ON_ITS_WAY,
+  PLACE_FACETS_FIRST, toFill, YOUR_WALLET,
+} from "./copy";
 import styles from "./chrome.module.css";
 
 /** The title block's form: in full, one collapsed row (1024 px and wider), or the strip (768-1023 px). */
@@ -27,6 +30,10 @@ export type AddressLine =
   | { kind: "none"; text: string }
   | { kind: "address"; address: Address; label: "Predicted" | "Deployed"; href?: string; offline: boolean };
 
+/**
+ * Whether the title block is collapsed, for the page's life. The frozen session store has no field for it yet
+ * (CCR: `panes.titleBlock.collapsed`); until then the canvas remounting keeps it here.
+ */
 let remembered = false;
 
 /** The wallet's name while a signature is awaited ("Confirm in MetaMask"), from the chain module. */
@@ -81,8 +88,12 @@ function explorerLink(chainId: number, address: Address): string | undefined {
   return explorer ? `${explorer}/address/${address}` : undefined;
 }
 
-/** Why the title block's Deploy can't run that the command itself doesn't know, or null (spec L378, L384). */
-export function localDeployReason(empty: boolean, phase: DeployState["phase"]): string | null {
+/**
+ * Why the title block's Deploy can't run that the command itself doesn't know, or null (spec L378, L384). A
+ * read-only session outranks an empty sheet: facets can't be placed either, so its reason is the one to act on.
+ */
+export function localDeployReason(empty: boolean, phase: DeployState["phase"], readOnly: string | null): string | null {
+  if (readOnly !== null) return readOnly;
   if (empty) return PLACE_FACETS_FIRST;
   // A Safe proposal keeps the command's own reason ("Waiting for the Safe to execute the batch").
   if (phase !== "proposed" && IN_FLIGHT_PHASES.has(phase)) return ON_ITS_WAY;
@@ -96,7 +107,8 @@ export function localDeployReason(empty: boolean, phase: DeployState["phase"]): 
  * is pending.
  */
 function DeployAction({ again, empty, phase, size }: { again: boolean; empty: boolean; phase: DeployState["phase"]; size?: "small" }) {
-  const local = localDeployReason(empty, phase);
+  const readOnly = useSession((s) => s.readOnly);
+  const local = localDeployReason(empty, phase, readOnly);
   const label = again && !empty ? "Deploy again…" : "Deploy…";
   if (local !== null) {
     return (
@@ -128,6 +140,7 @@ function AddressView({ line, short }: { line: AddressLine; short?: boolean }) {
       {line.href ? (
         <a className={styles.address} href={line.href} target="_blank" rel="noreferrer" title={line.address}>
           {text}
+          <VisuallyHidden>{NEW_TAB}</VisuallyHidden>
         </a>
       ) : (
         <span className={styles.address} title={line.address}>
@@ -179,7 +192,9 @@ function useTitleBlockFacts() {
   if (empty) {
     address = { kind: "none", text: NO_ADDRESS };
   } else if (deploy.address && deploy.chainId !== undefined && IN_FLIGHT_PHASES.has(deploy.phase) && deploy.phase !== "proposed") {
-    address = { kind: "address", address: deploy.address, label: "Predicted", offline: false };
+    // Once the transaction lands (confirmed, verifying) the address is the diamond's own.
+    const label = LANDED_PHASES.has(deploy.phase) ? "Deployed" : "Predicted";
+    address = { kind: "address", address: deploy.address, label, offline: false };
   } else if (status.state === "live" && deployed) {
     const href = explorerLink(deployed.chainId, deployed.address);
     address = { kind: "address", address: deployed.address, label: "Deployed", offline: false, ...(href ? { href } : {}) };
@@ -209,17 +224,19 @@ function Stamp({ stamp }: { stamp: StatusChipWords }) {
   );
 }
 
-function FullBlock({ facts, collapse }: { facts: Facts; collapse: () => void }) {
+type Toggle = { controls: string; onToggle: () => void };
+
+function FullBlock({ facts, toggle }: { facts: Facts; toggle: Toggle }) {
   const { name, empty, status, deploy, stamp, counts, address, mismatch } = facts;
-  const titleId = useId();
   return (
     <>
       <div className={styles.titleRow}>
         <span className={styles.label}>Project</span>
-        <span id={titleId} className={styles.projectName}>
-          {name}
-        </span>
-        <IconButton icon="chevron-down" label="Collapse title block" size="small" aria-expanded data-title-toggle="" onClick={collapse} />
+        <span className={styles.projectName}>{name}</span>
+        <IconButton
+          icon="chevron-down" label="Collapse title block" size="small" aria-expanded aria-controls={toggle.controls}
+          data-title-toggle="" onClick={toggle.onToggle}
+        />
       </div>
       <div className={styles.cell}>
         <ChainPathPicker />
@@ -257,7 +274,7 @@ function FullBlock({ facts, collapse }: { facts: Facts; collapse: () => void }) 
   );
 }
 
-function CollapsedBlock({ facts, expand }: { facts: Facts; expand: () => void }) {
+function CollapsedBlock({ facts, toggle }: { facts: Facts; toggle: Toggle }) {
   const { empty, status, deploy, stamp, address } = facts;
   return (
     <div className={styles.row}>
@@ -265,7 +282,8 @@ function CollapsedBlock({ facts, expand }: { facts: Facts; expand: () => void })
       <AddressView line={address} short />
       <DeployAction again={status.deployAgain} empty={empty} phase={deploy.phase} size="small" />
       <IconButton
-        icon="chevron-up" label="Expand title block" size="small" aria-expanded={false} data-title-toggle="" onClick={expand}
+        icon="chevron-up" label="Expand title block" size="small" aria-expanded={false} aria-controls={toggle.controls}
+        data-title-toggle="" onClick={toggle.onToggle}
       />
     </div>
   );
@@ -292,6 +310,7 @@ export function TitleBlockContent({ form: forced }: { form?: TitleBlockForm }) {
   const [collapsed, setCollapsed] = useState(remembered);
   const facts = useTitleBlockFacts();
   const root = useRef<HTMLElement>(null);
+  const id = useId();
   const toggled = useRef(false);
   const setForm = (next: boolean) => {
     remembered = next;
@@ -308,9 +327,9 @@ export function TitleBlockContent({ form: forced }: { form?: TitleBlockForm }) {
     forced ?? (tier === "phone" ? null : tier === "narrow" ? "strip" : collapsed ? "collapsed" : "full");
   if (form === null) return null;
   return (
-    <section ref={root} className={styles.titleBlock} aria-label="Title block" data-form={form} data-chrome="title-block">
-      {form === "full" ? <FullBlock facts={facts} collapse={() => setForm(true)} /> : null}
-      {form === "collapsed" ? <CollapsedBlock facts={facts} expand={() => setForm(false)} /> : null}
+    <section ref={root} id={id} className={styles.titleBlock} aria-label="Title block" data-form={form} data-chrome="title-block">
+      {form === "full" ? <FullBlock facts={facts} toggle={{ controls: id, onToggle: () => setForm(true) }} /> : null}
+      {form === "collapsed" ? <CollapsedBlock facts={facts} toggle={{ controls: id, onToggle: () => setForm(false) }} /> : null}
       {form === "strip" ? <StripBlock facts={facts} /> : null}
     </section>
   );

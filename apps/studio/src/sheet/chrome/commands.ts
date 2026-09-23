@@ -3,17 +3,17 @@
  * Browse all recipes (the Start block, Flow 2). In the entry chunk: registration and reasons only; the dialog
  * and everything the mode draws load with the sheet's chrome.
  */
-import type { Result } from "@lattice-studio/core";
+import type { CommandRef, Result } from "@lattice-studio/core";
 import {
-  announce, command, defineCommands, isPlaceholder, log, openDialog, runCommand, session, type CommandContext,
+  announce, command, commandState, defineCommands, log, openDialog, runCommand, session, type CommandContext,
   type Enablement,
 } from "@/contracts";
 import { currentTier } from "@/shell/layout-tier";
-import { NO_INIT_STEPS, PLACE_FACETS_FIRST } from "./copy";
+import { CATALOG_LOADING, NO_INIT_STEPS, PLACE_FACETS_FIRST } from "./copy";
 import { initOrderModel } from "./init-order-model";
 
 const OK: Enablement = { ok: true };
-export const CATALOG_LOADING = "The catalog hasn't loaded yet";
+const OPEN_PLAN: CommandRef = { id: "init.open" };
 
 function refuse(reason: string): Enablement {
   return { ok: false, reason };
@@ -43,8 +43,8 @@ export const INIT_ORDER_OFF = "Init order mode off.";
 
 const initOrderToggle = command({
   id: "initOrder.toggle",
-  // IR L110 and the menus' "Init order"; the tool strip and the Tools menu show it pressed while it's on.
-  title: () => "Init order",
+  // A verb and its object (contracts §6). The tool strip's button and the chip keep the short "Init order".
+  title: () => (session.get().modes.initOrder ? "Hide init order" : "Show init order"),
   category: "Sheet",
   keys: ["i"],
   keyContext: ["sheet"],
@@ -57,9 +57,10 @@ const initOrderToggle = command({
   run(ctx) {
     const on = !ctx.session.modes.initOrder;
     session.set((s) => ({ modes: { ...s.modes, initOrder: on } }));
-    // The inspector shows the init plan while the mode is on (spec L383, Flow 7 step 1). Under 768 px the
-    // sheet is its own pane, so the plan stays a tap away instead of replacing it.
-    if (on && currentTier() !== "phone" && !isPlaceholder("init.open")) void runCommand({ id: "init.open" }, "api");
+    // The inspector shows the init plan while the mode is on (spec L383, Flow 7 step 1), when it can open, so
+    // nothing but "Init order mode on." is said. Under 768 px the sheet is its own pane, so the plan stays a tap
+    // away instead of replacing it.
+    if (on && currentTier() !== "phone" && commandState(OPEN_PLAN).ok) void runCommand(OPEN_PLAN, "api");
     say(ctx, on ? INIT_ORDER_ON : INIT_ORDER_OFF);
   },
 });

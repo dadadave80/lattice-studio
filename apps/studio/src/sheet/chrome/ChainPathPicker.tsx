@@ -1,13 +1,12 @@
 import type { DeployPath } from "@lattice-studio/core";
 import { commandRef, env, runCommand, useCommandState, useDocument, useSession } from "@/contracts";
 import { chainName, pickerChains } from "@/chain/infra/chains";
-import { pathName } from "@/chain/review/entry-copy";
 import { Button } from "@/ui/buttons/Button";
 import { Menu } from "@/ui/overlays/Menu";
 import { MenuRadioGroup } from "@/ui/overlays/MenuRadioGroup";
 import { MenuRadioItem } from "@/ui/overlays/MenuRadioItem";
 import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
-import { NO_CHAIN } from "./copy";
+import { NO_CHAIN, pathName } from "./copy";
 import { cx } from "@/ui/shared/cx";
 import styles from "./chrome.module.css";
 

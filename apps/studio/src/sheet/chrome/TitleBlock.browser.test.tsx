@@ -170,7 +170,12 @@ describe("the title block in each state of the states table (spec L374-L389)", (
     await expectDeployDisabled("This deploy is already on its way");
     seedDeployState({ phase: "pending", chainId: SEPOLIA, since: "2026-09-23T12:00:00.000Z", address: DIAMOND });
     await expect.element(block().getByText("Pending · 0:12")).toBeVisible();
+    await expect.element(block().getByText("Predicted")).toBeVisible();
     await expectDeployDisabled("This deploy is already on its way");
+    // Landed: the address is the diamond's own from here.
+    seedDeployState({ phase: "verifying", chainId: SEPOLIA, address: DIAMOND });
+    await expect.element(block().getByText("Deployed")).toBeVisible();
+    await expect.element(block().getByTitle(DIAMOND)).toBeVisible();
   });
 
   test("Deploying after a live deploy: Deploy again… can't start a second deploy while one is pending", async () => {
@@ -195,7 +200,7 @@ describe("the title block in each state of the states table (spec L374-L389)", (
     await putDeployment(record());
     await renderBlock({ session: { chainId: SEPOLIA }, chain: true });
     await expect.element(block().getByText("Live · Sepolia · r1")).toBeVisible();
-    const link = block().getByRole("link", { name: DIAMOND });
+    const link = block().getByRole("link", { name: `${DIAMOND} (opens in a new tab)` });
     await expect.element(link).toHaveAttribute("href", `https://sepolia.etherscan.io/address/${DIAMOND}`);
     await expect.element(block().getByText("Deployed")).toBeVisible();
     await expect.element(deployButton()).toHaveAccessibleName("Deploy…");
@@ -241,6 +246,15 @@ describe("the title block in each state of the states table (spec L374-L389)", (
     await renderBlock({ session: { readOnly: "Another tab is editing this project" } });
     await expectDeployDisabled("Another tab is editing this project");
   });
+
+  test("Read-only on an empty sheet: the read-only reason outranks Place facets first", async () => {
+    useAnalysisOf({});
+    await renderBlock({
+      project: makeProject({ recipe: makeRecipe({}, deployableCatalog()) }),
+      session: { readOnly: "Another tab is editing this project" },
+    });
+    await expectDeployDisabled("Another tab is editing this project");
+  });
 });
 
 describe("the title block's forms (spec L362, L368)", () => {
@@ -250,6 +264,7 @@ describe("the title block's forms (spec L362, L368)", () => {
     await expect.element(block().getByTitle(/^0x[0-9a-fA-F]{40}$/)).toBeVisible();
     const collapse = block().getByRole("button", { name: "Collapse title block" });
     await expect.element(collapse).toHaveAttribute("aria-expanded", "true");
+    await expect.element(collapse).toHaveAttribute("aria-controls", block().element().id);
     await collapse.click();
     await expect.element(block()).toHaveAttribute("data-form", "collapsed");
     await expect.element(block().getByText("Not deployed")).toBeVisible();

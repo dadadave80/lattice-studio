@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { closeDialog, commandRef, runCommand, useCatalog, useCommandState, type DialogComponentProps } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { Dialog } from "@/ui/overlays/Dialog";
-import { BROWSE_ALL_RECIPES } from "./copy";
+import { ARRIVES_V11, BROWSE_ALL_RECIPES, CATALOG_LOADING } from "./copy";
 import styles from "./chrome.module.css";
 
 const CLOSE = () => closeDialog("browse-recipes");
@@ -13,7 +13,7 @@ const CLOSE = () => closeDialog("browse-recipes");
 function RecipeRow({ item }: { item: TemplateItem }) {
   const ref = commandRef("recipe.load", { name: item.name });
   const state = useCommandState(ref, "button");
-  const reason = item.loadable ? (state.ok ? null : state.reason) : (item.note ?? state.title);
+  const reason = item.loadable ? (state.ok ? null : state.reason) : (item.note ?? ARRIVES_V11);
   return (
     <li className={styles.browseRow} data-recipe={item.name}>
       <div className={styles.browseText}>
@@ -64,7 +64,7 @@ export function BrowseRecipesDialog({ top }: DialogComponentProps<"browse-recipe
           ))}
         </ul>
       ) : (
-        <p>The catalog hasn't loaded yet.</p>
+        <p>{CATALOG_LOADING}</p>
       )}
     </Dialog>
   );

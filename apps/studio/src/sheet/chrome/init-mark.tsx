@@ -33,5 +33,5 @@ export function useChromeInitMark(facet: string): InitMark {
   if (model.kind === "none") return NONE;
   const step = model.byFacet.get(facet);
   if (!step) return DIMMED;
-  return { badge: <Badge number={step.number} index={step.index} bundle={model.bundle} />, dimmed: false };
+  return { badge: <Badge number={step.number} index={step.index} />, dimmed: false };
 }

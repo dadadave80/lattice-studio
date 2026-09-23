@@ -272,10 +272,10 @@ a.address {
   overflow: auto;
 }
 
-/* Under the minimap (React Flow's default minimap is 150 px tall, with S4b's margin around it). */
+/* Under the minimap: `--minimap-bottom` is where it ends, measured from the sheet's top. */
 .legend[data-below-minimap] {
-  margin-block-start: calc(150px + var(--lx-space-4) * 2);
-  max-block-size: calc(100% - 150px - var(--lx-space-4) * 3);
+  margin-block-start: calc(var(--minimap-bottom) + var(--lx-space-4));
+  max-block-size: calc(100% - var(--minimap-bottom) - var(--lx-space-4) * 2);
 }
 
 .legend > section {

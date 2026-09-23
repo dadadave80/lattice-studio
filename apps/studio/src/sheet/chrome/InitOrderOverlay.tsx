@@ -1,4 +1,5 @@
 import { Panel, useStore, ViewportPortal, type ReactFlowState } from "@xyflow/react";
+import { useLayoutEffect, useState, type CSSProperties } from "react";
 import { commandRef, layoutMetrics, useCatalog, useDocument, useSession, useSettings } from "@/contracts";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { bundleFixed, DRAG_TO_REORDER, INIT_ORDER_CHIP } from "./copy";
@@ -32,16 +33,49 @@ function InitOrderPath({ model }: { model: InitOrderModel }) {
   );
 }
 
+/**
+ * How far down the sheet the minimap reaches, in px, while it shows (S4b draws it top-right, as a lazy chunk, at
+ * React Flow's size): measured, so the legend sits under it whatever size it has. Null while it doesn't show.
+ */
+function useMinimapBottom(on: boolean): number | null {
+  const root = useStore((s) => s.domNode);
+  const [bottom, setBottom] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!on || !root) return;
+    const measure = () => {
+      const minimap = root.querySelector(".react-flow__minimap");
+      setBottom(minimap ? Math.ceil(minimap.getBoundingClientRect().bottom - root.getBoundingClientRect().top) : null);
+    };
+    measure();
+    const sizes = new ResizeObserver(measure);
+    sizes.observe(root);
+    // The minimap mounts late (its own chunk) and can change size: follow both.
+    const children = new MutationObserver(() => {
+      const minimap = root.querySelector(".react-flow__minimap");
+      if (minimap) sizes.observe(minimap);
+      measure();
+    });
+    children.observe(root, { childList: true, subtree: true });
+    return () => {
+      sizes.disconnect();
+      children.disconnect();
+    };
+  }, [on, root]);
+  return on ? bottom : null;
+}
+
 /** The legend: the order, as the path visits it (the init order board), and how to change it. */
 function Legend({ model }: { model: InitOrderModel }) {
   // The minimap shares the top-right corner (S4b): the legend sits under it while it shows.
   const minimap = useSettings((s) => s.minimap);
+  const below = useMinimapBottom(minimap);
   return (
     <Panel
       position="top-right"
       className={styles.legend}
       data-chrome="init-legend"
-      data-below-minimap={minimap ? "" : undefined}
+      data-below-minimap={below === null ? undefined : ""}
+      style={below === null ? undefined : ({ "--minimap-bottom": `${below}px` } as CSSProperties)}
     >
       <section aria-labelledby="init-order-legend">
         <h2 id="init-order-legend" className={styles.legendTitle}>

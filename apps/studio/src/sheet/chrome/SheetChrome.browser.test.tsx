@@ -23,7 +23,7 @@ import { INIT_ORDER_ON } from "./commands";
 async function renderChrome(options: StudioOptions = {}) {
   const screen = await renderWithStudio(
     <>
-      <div data-region="sheet" style={{ position: "relative", width: 1000, height: 700 }}>
+      <div data-region="sheet" tabIndex={-1} style={{ position: "relative", width: 1000, height: 700 }}>
         <Sheet />
       </div>
       <DialogHost />
@@ -50,6 +50,12 @@ function stepsProject(): Project {
     columns: 3, rowPitch: 320,
   });
   return { ...project, recipe: { ...project.recipe, init: STEPS } };
+}
+
+function sheetRegion(): HTMLElement {
+  const el = document.querySelector<HTMLElement>('[data-region="sheet"]');
+  if (!el) throw new Error("No sheet region.");
+  return el;
 }
 
 function card(facet: string): HTMLElement {
@@ -109,6 +115,31 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
     await userEvent.keyboard("{Enter}");
     await expect.poll(() => doc.get().recipe.facets.length).toBeGreaterThan(0);
     expect(doc.get().id).toBe("empty");
+    // The block and its button are gone: focus stays in the sheet, so the next Tab continues from there.
+    await expect.poll(() => sheetRegion().contains(document.activeElement)).toBe(true);
+  });
+
+  test("Browse → Load on an empty sheet keeps focus in the sheet once the block is gone", async () => {
+    await renderChrome({ project: emptyProject("empty") });
+    await page.getByRole("button", { name: "Browse all recipes" }).click();
+    const dialog = page.getByRole("dialog", { name: "Browse all recipes" });
+    const load = dialog.getByRole("button", { name: "Load ERC20" });
+    await expect.element(load).toBeVisible();
+    (load.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => doc.get().recipe.facets.length).toBe(4);
+    await expect.element(dialog).not.toBeInTheDocument();
+    await expect.poll(() => sheetRegion().contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  test("a project that opens with cards keeps its focus", async () => {
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    onCleanup(() => outside.remove());
+    outside.focus();
+    await renderChrome({ project: stepsProject() });
+    expect(document.activeElement).toBe(outside);
   });
 
   test("the tour line starts the tour", async () => {
@@ -181,6 +212,28 @@ describe("init order mode (spec L383, Flow 7 step 5)", () => {
     await expect.element(page.getByRole("button", { name: "Init order · Esc" })).not.toBeInTheDocument();
   });
 
+  test("turning it on opens the init plan when it can, and says nothing more when it can't", async () => {
+    const opened: CommandRef[] = [];
+    let open = false;
+    overrideCommands([
+      command({
+        id: "init.open", title: () => "Open init plan", category: "Build",
+        enabled: () => (open ? { ok: true } : { ok: false, reason: "No plan yet" }),
+        run: (ctx) => void opened.push(ctx.ref),
+      }),
+    ]);
+    await renderChrome({ project: stepsProject() });
+    await initOrderOn();
+    expect(opened).toEqual([]);
+    expect(bufferedServices().log.some((l) => l.text === "No plan yet")).toBe(false);
+    expect(getCommand("initOrder.toggle").title({})).toBe("Hide init order");
+    await runCommand({ id: "initOrder.toggle" }, "button");
+    expect(getCommand("initOrder.toggle").title({})).toBe("Show init order");
+    open = true;
+    await initOrderOn();
+    await expect.poll(() => opened).toEqual([{ id: "init.open" }]);
+  });
+
   test("cards without a step dim to 35%; step badges number the order; a dashed path joins them; the legend lists it", async () => {
     await renderChrome({ project: stepsProject() });
     await initOrderOn();
@@ -197,7 +250,20 @@ describe("init order mode (spec L383, Flow 7 step 5)", () => {
     expect(legend.getByRole("listitem").elements().map((li) => li.textContent)).toEqual([
       "01ERC20Init", "02AccessControlInit", "03ERC4626Init", "04VaultCoreInit", "05Register ERC-165 interfaces (automatic)",
     ]);
-    await expect.element(legend.getByText("Drag a badge to reorder.")).toBeVisible();
+    await expect.element(legend.getByText("Drag a badge to reorder")).toBeVisible();
+  });
+
+  test("with the minimap showing, the legend sits under it", async () => {
+    await renderChrome({ project: stepsProject(), settings: { minimap: true } });
+    await initOrderOn();
+    const legend = page.getByRole("region", { name: "Init order" });
+    await expect.element(legend).toBeVisible();
+    await expect.poll(() => document.querySelector(".react-flow__minimap") !== null).toBe(true);
+    await expect.poll(() => {
+      const minimap = document.querySelector(".react-flow__minimap")?.getBoundingClientRect();
+      const box = legend.element().getBoundingClientRect();
+      return minimap !== undefined && box.top >= minimap.bottom;
+    }).toBe(true);
   });
 
   test("the chip leaves the mode, and the cards come back", async () => {
@@ -233,8 +299,8 @@ describe("init order mode (spec L383, Flow 7 step 5)", () => {
     expect(badge("AccessControl")?.classList.contains("nodrag")).toBe(false);
     await expect.poll(() => getComputedStyle(card("Receive")).opacity).toBe("0.35");
     const legend = page.getByRole("region", { name: "Init order" });
-    await expect.element(legend.getByText("GovernedVaultInit is a bundle: its order is fixed.")).toBeVisible();
-    await expect.element(legend.getByText("Drag a badge to reorder.")).not.toBeInTheDocument();
+    await expect.element(legend.getByText("GovernedVaultInit is a bundle: its order is fixed")).toBeVisible();
+    await expect.element(legend.getByText("Drag a badge to reorder")).not.toBeInTheDocument();
     const before = doc.get().recipe;
     await userEvent.dragAndDrop(page.elementLocator(badge("AccessControl") as HTMLElement), page.elementLocator(card("Governor")));
     expect(doc.get().recipe).toBe(before);
