@@ -204,7 +204,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
 
   const iso = (): string => new Date(clock.now()).toISOString();
 
-  const chainName = (_port: DeployChainPort | null, chainId: number): string => inputs.chainName(chainId);
+  const chainName = (chainId: number): string => inputs.chainName(chainId);
 
   /** A console line, announced as the deploy-announcements setting says (spec L778). */
   const emit = (line: LineDraft, level: Level = line.tag === "Error" ? "alert" : "info"): void => {
@@ -273,7 +273,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
         placed: project.recipe.facets,
         init,
         chainId,
-        chain: `Chain ${chainId}`,
+        chain: chainName(chainId),
         path: prediction.path,
         from: prediction.from,
         salt: prediction.salt,
@@ -387,7 +387,6 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       patch({ phase: "review", error: port.error });
       return;
     }
-    s.chain = chainName(port.value, s.chainId);
     const probed = await port.value.probe(s.chainId, { path: s.path });
     if (!alive()) return;
     if (!probed.ok) {
@@ -479,7 +478,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       if (drive) patch({ phase: "confirmed", error: port.ok ? "The catalog hasn't loaded." : port.error });
       return;
     }
-    const chain = chainName(port.value, record.chainId);
+    const chain = chainName(record.chainId);
     if (drive) {
       banner(false);
       patch({ phase: "confirmed", chainId: record.chainId, address: record.address, error: undefined });
@@ -533,7 +532,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       patch({ error: port.error });
       return;
     }
-    const chain = chainName(port.value, record.chainId);
+    const chain = chainName(record.chainId);
     const outcome = await port.value.watch(record.chainId, record.tx ?? "0x", {
       from: record.deployer,
       signal: t.abort.signal,
@@ -577,7 +576,11 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
   // Controller calls
 
   const open = (): void => {
-    if (disposed || IN_FLIGHT.includes(state.phase)) return;
+    if (disposed) return;
+    if (IN_FLIGHT.includes(state.phase)) {
+      note("A deploy is already in flight. Show deploy progress to follow it.");
+      return;
+    }
     epoch += 1;
     flightPlan = null;
     const chainId = inputs.chainId();
@@ -586,16 +589,12 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       snapshot: inputs.analysis().recipeHash,
       ...(chainId === null ? {} : { chainId }),
     });
-    void track(announceReview(chainId));
+    if (chainId !== null) {
+      emit(lines.reviewOpened({ chain: chainName(chainId), path: inputs.project().deploy.path, facets: inputs.analysis().plan.length }));
+    }
     void track(simulate());
   };
 
-  const announceReview = async (chainId: number | null): Promise<void> => {
-    if (chainId === null) return;
-    const port = await loadPort();
-    const name = chainName(port.ok ? port.value : null, chainId);
-    emit(lines.reviewOpened({ chain: name, path: inputs.project().deploy.path, facets: inputs.analysis().plan.length }));
-  };
 
   const changed = (): void => {
     if (disposed || !REVIEWING.includes(state.phase)) return;
@@ -646,7 +645,6 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       patch({ error: port.error });
       return;
     }
-    s.chain = chainName(port.value, s.chainId);
     const account = port.value.account();
     if (!account) {
       patch({ error: CONNECT_A_WALLET });
@@ -658,7 +656,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       return;
     }
     if (account.chainId !== s.chainId) {
-      patch({ error: walletOn(chainName(port.value, account.chainId)) });
+      patch({ error: walletOn(chainName(account.chainId)) });
       return;
     }
     patch({ phase: "awaitingSignature", since: iso(), error: undefined, changedSinceReview: undefined });
@@ -746,7 +744,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       const port = await loadPort();
       if (!port.ok) return note(port.error, "warn");
       const status = await port.value.transactionStatus(chainId, hash);
-      note(status.ok ? checkWalletText(status.value, chainName(port.value, chainId)) : status.error, "warn");
+      note(status.ok ? checkWalletText(status.value, chainName(chainId)) : status.error, "warn");
     })());
   };
 
@@ -770,7 +768,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       await port.value.probe(record.chainId, { refresh: true, path: record.path });
       const code = await port.value.codeAt(record.chainId, record.address);
       if (code.ok && code.value !== "0x") {
-        note(landedAfterAll(record.address, chainName(port.value, record.chainId)));
+        note(landedAfterAll(record.address, chainName(record.chainId)));
         await settle(record, source, true);
         return;
       }
@@ -804,8 +802,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     publish({ phase: "proposed", chainId: batch.chainId, address: record.address, safe: record.deployer, since: record.at, snapshot: analysis.recipeHash });
     void track((async () => {
       await save(record);
-      const port = await loadPort();
-      emit(lines.proposed({ safe: record.deployer, chain: chainName(port.ok ? port.value : null, batch.chainId) }));
+      emit(lines.proposed({ safe: record.deployer, chain: chainName(batch.chainId) }));
       await recheckProposal(record, true);
     })());
   };
@@ -821,7 +818,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       const code = await port.value.codeAt(record.chainId, record.address);
       if (!code.ok || code.value === "0x") return;
       const driving = drive && state.phase === "proposed" && state.address !== undefined && sameAddress(state.address, record.address);
-      note(proposalExecuted(record.address, chainName(port.value, record.chainId)));
+      note(proposalExecuted(record.address, chainName(record.chainId)));
       await settle(record, driving ? flightPlan : null, driving);
     } finally {
       checking.delete(key);
@@ -841,8 +838,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     void track((async () => {
       // No delete in the records service yet (CCR): a discarded proposal is kept as failed, never proposed.
       if (found) await save({ ...found, status: "failed" });
-      const port = await loadPort();
-      note(discardedProposal(safe, chainName(port.ok ? port.value : null, chainId)));
+      note(discardedProposal(safe, chainName(chainId)));
     })());
     publish({ phase: "review", snapshot: inputs.analysis().recipeHash, chainId });
     void track(simulate());
@@ -981,10 +977,10 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const port = await loadPort();
     if (!alive()) return;
     if (!port.ok) return stop(port.error);
-    const chain = chainName(port.value, chainId);
+    const chain = chainName(chainId);
     const account = port.value.account();
     if (!account) return stop(CONNECT_A_WALLET);
-    if (account.chainId !== chainId) return stop(walletOn(chainName(port.value, account.chainId)));
+    if (account.chainId !== chainId) return stop(walletOn(chainName(account.chainId)));
 
     const wanted = withDependencies(catalog, names);
     const byName = new Map<string, MissingItem>(missing.items.map((item) => [item.name, item]));

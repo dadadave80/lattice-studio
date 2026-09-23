@@ -397,6 +397,9 @@ describe("tracking", () => {
     r.m.close();
     expect(r.m.state().phase).toBe("pending");
     expect(r.h.port.watching()).toContain(hash);
+    r.m.open();
+    expect(r.m.state().phase).toBe("pending");
+    expect(r.h.said.texts().at(-1)).toBe("A deploy is already in flight. Show deploy progress to follow it.");
   });
 });
 
