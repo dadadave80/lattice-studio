@@ -1,0 +1,269 @@
+{
+  "name": "AccessControlDiamondCut",
+  "abi": [
+    {
+      "type": "function",
+      "name": "diamondCut",
+      "inputs": [
+        {
+          "name": "_diamondCut",
+          "type": "tuple[]",
+          "internalType": "struct FacetCut[]",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "_init",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_calldata",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "event",
+      "name": "AdminUpgradeExecuted",
+      "inputs": [
+        {
+          "name": "executor",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "facetCutCount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "init",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "DiamondCut",
+      "inputs": [
+        {
+          "name": "diamondCut",
+          "type": "tuple[]",
+          "indexed": false,
+          "internalType": "struct FacetCut[]",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "init",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotAddFunctionToDiamondThatAlreadyExists",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotAddSelectorsToZeroAddress",
+      "inputs": [
+        {
+          "name": "selectors",
+          "type": "bytes4[]",
+          "internalType": "bytes4[]"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotAddThisAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "CannotRemoveFunctionThatDoesNotExist",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotRemoveImmutableFunction",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotReplaceFunctionWithTheSameFunctionFromTheSameFacet",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EmergencyStopActive",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InitializeDiamondCutReverted",
+      "inputs": [
+        {
+          "name": "initAddress",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NoBytecodeAtAddress",
+      "inputs": [
+        {
+          "name": "contractAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NoSelectorsGivenToAdd",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NoSelectorsProvidedForFacetCut",
+      "inputs": [
+        {
+          "name": "facetAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RemoveFacetAddressMustBeZeroAddress",
+      "inputs": [
+        {
+          "name": "facetAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x1f931c1c": {
+        "notice": "Add/replace/remove any number of functions and optionally execute a function with delegatecall — but only when not emergency-stopped and the caller holds `DEFAULT_ADMIN_ROLE`. The host recipe's init seeds that role (usually to its `admin` parameter), so the module admin is the upgrade authority — no separate Ownable owner.",
+        "params": {
+          "_calldata": "The calldata passed to `_init`.",
+          "_diamondCut": "The facet addresses, cut actions, and function selectors.",
+          "_init": "The address of the contract or facet to delegatecall after the cut (0 to skip)."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet exposing the EIP-2535 `diamondCut` function at the canonical selector `0x1f931c1c`, gated behind EmergencyStop + `DEFAULT_ADMIN_ROLE`. Drop-in replacement for diamond-lib's owner-gated `DiamondCutFacet` in an ADMIN-OWNED deployment: the module admin every Lattice recipe already seeds is also the upgrade authority — one authority model, no parallel Ownable owner to initialize or track.",
+    "dev": "All logic lives in {AccessControlDiamondCutLib}. This contract is stateless and forwards its single call to the library. Never cut this facet AND another `diamondCut`-carrying facet ({GovernedDiamondCut}, {SafeDiamondCut}, diamond-lib's `DiamondCutFacet`) into the same diamond — they all own selector `0x1f931c1c`. For governance-held diamonds (upgrade registry, frozen selectors, guardian escape hatch) cut {GovernedDiamondCut} instead."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/governance/AccessControlDiamondCut.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/governance/AccessControlDiamondCut.sol"
+  }
+}

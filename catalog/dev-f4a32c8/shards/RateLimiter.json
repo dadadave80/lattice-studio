@@ -1,0 +1,247 @@
+{
+  "name": "RateLimiter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "configure",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "capacity",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "refillRate",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "consume",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getAvailable",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "available",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getConfig",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "capacity",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "refillRate",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "RateLimitConfigured",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "capacity",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "refillRate",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RateLimitConsumed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "consumer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "remaining",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RateLimitExceeded",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "requested",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "available",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RateLimitInvalidAmount",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RateLimitInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RateLimitNotConfigured",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xbe0b31ab": {
+        "notice": "Configures or reconfigures a rate limit bucket.",
+        "dev": "Requires DEFAULT_ADMIN_ROLE. Sets `tokens = capacity` and `lastRefill = now`. Reverts with `RateLimitInvalidConfig` if `capacity == 0` OR `refillRate == 0`. Emits `RateLimitConfigured`.",
+        "params": {
+          "capacity": "The maximum token capacity (must be > 0).",
+          "key": "The rate limit key.",
+          "refillRate": "The tokens-per-second refill rate (must be > 0)."
+        }
+      },
+      "0x98017489": {
+        "notice": "Consumes `amount` tokens from the bucket for `key`.",
+        "dev": "Refills the bucket first based on elapsed time, then deducts `amount`. Reverts with `RateLimitInvalidAmount` if `amount == 0`. Reverts with `RateLimitNotConfigured` if the key has no configuration. Reverts with `RateLimitExceeded` if fewer than `amount` tokens are available. Emits `RateLimitConsumed`.",
+        "params": {
+          "amount": "The number of tokens to consume (must be > 0).",
+          "key": "The rate limit key."
+        }
+      },
+      "0xd121f72c": {
+        "notice": "Returns the currently available tokens for `key` (accounts for elapsed time).",
+        "dev": "This is a pure read — it does NOT update storage.",
+        "params": {
+          "key": "The rate limit key to query."
+        }
+      },
+      "0x6dd5b69d": {
+        "notice": "Returns the capacity and refill rate configured for `key`.",
+        "params": {
+          "key": "The rate limit key to query."
+        }
+      }
+    },
+    "notice": "Thin Diamond facet that exposes token-bucket rate limiting keyed by bytes32.",
+    "dev": "All logic lives in {RateLimiterLib}. This contract is stateless and forwards every call to the library. Inherit this in your Diamond facet to add rate limiting."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/security/RateLimiter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/security/RateLimiter.sol"
+  }
+}

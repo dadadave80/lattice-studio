@@ -1,0 +1,75 @@
+{
+  "name": "SafeHarborAdopterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "registry",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "factory",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "SafeHarborAdopterZeroRegistry",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x184b9559": {
+        "notice": "Runs the access-control + safe-harbor module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (administers `SAFE_HARBOR_ADMIN_ROLE`).",
+          "factory": "The SEAL AgreementFactory for this chain (zero allowed; disables `createAndAdopt`).",
+          "registry": "The SEAL SafeHarborRegistry for this chain (must be non-zero)."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a SafeHarborAdopter diamond — seeds AccessControl so the adoption + configuration setters are `SAFE_HARBOR_ADMIN_ROLE`-gated (that role is administered by `DEFAULT_ADMIN_ROLE`, granted to `admin`) and wires the SEAL registry + factory while registering the ISafeHarborAdopter interface (ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to the {ERC2981Init} pattern — a first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/governance/SafeHarborAdopterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/governance/SafeHarborAdopterInit.sol"
+  }
+}

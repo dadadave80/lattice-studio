@@ -1,0 +1,833 @@
+{
+  "name": "LatticeRegistry",
+  "abi": [
+    {
+      "type": "function",
+      "name": "acceptOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "attest",
+      "inputs": [
+        {
+          "name": "deployed",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "get",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "record",
+          "type": "tuple",
+          "internalType": "struct ILatticeRegistry.Record",
+          "components": [
+            {
+              "name": "facet",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "version",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "registeredAt",
+              "type": "uint48",
+              "internalType": "uint48"
+            },
+            {
+              "name": "codehash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "selectorsHash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "get",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "record",
+          "type": "tuple",
+          "internalType": "struct ILatticeRegistry.Record",
+          "components": [
+            {
+              "name": "facet",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "version",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "registeredAt",
+              "type": "uint48",
+              "internalType": "uint48"
+            },
+            {
+              "name": "codehash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "selectorsHash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getCut",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "cut",
+          "type": "tuple",
+          "internalType": "struct FacetCut",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getCut",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "cut",
+          "type": "tuple",
+          "internalType": "struct FacetCut",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getSelectors",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "selectors",
+          "type": "bytes4[]",
+          "internalType": "bytes4[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getSelectors",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "selectors",
+          "type": "bytes4[]",
+          "internalType": "bytes4[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latest",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "record",
+          "type": "tuple",
+          "internalType": "struct ILatticeRegistry.Record",
+          "components": [
+            {
+              "name": "facet",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "version",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "registeredAt",
+              "type": "uint48",
+              "internalType": "uint48"
+            },
+            {
+              "name": "codehash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "selectorsHash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latest",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "record",
+          "type": "tuple",
+          "internalType": "struct ILatticeRegistry.Record",
+          "components": [
+            {
+              "name": "facet",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "version",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "registeredAt",
+              "type": "uint48",
+              "internalType": "uint48"
+            },
+            {
+              "name": "codehash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "selectorsHash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "nameHash",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pendingOwner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "register",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "facet",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "register",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "facet",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "resolve",
+      "inputs": [
+        {
+          "name": "codehash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "deployed",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setLatest",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setLatest",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferOwnership",
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Attested",
+      "inputs": [
+        {
+          "name": "codehash",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "deployed",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "LatestSet",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": true,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferStarted",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferred",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Registered",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": true,
+          "internalType": "uint64"
+        },
+        {
+          "name": "facet",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "codehash",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "selectorsHash",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__CodeDrift",
+      "inputs": [
+        {
+          "name": "facet",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__EmptyCode",
+      "inputs": [
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__InvalidVersion",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__LatestUnset",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__NotERC8153",
+      "inputs": [
+        {
+          "name": "facet",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__NotPendingOwner",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__RecordExists",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__RecordNotFound",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "version",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__SelectorDrift",
+      "inputs": [
+        {
+          "name": "facet",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__Unauthorized",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeRegistry__ZeroAddress",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x79ba5097": {
+        "notice": "Complete a pending ownership handover (pending-owner-only)."
+      },
+      "0xeb31403f": {
+        "notice": "Permissionlessly record that `deployed` carries a given runtime codehash (first-write-wins).",
+        "dev": "Self-verifying: reads `deployed.codehash` on-chain; reverts {LatticeRegistry__EmptyCode} for an EOA / empty account. Re-attesting an already-mapped codehash is a documented silent no-op — the mapping is immutable once set, so the first attester wins and no event re-fires.",
+        "params": {
+          "deployed": "The address whose runtime code should be indexed."
+        }
+      },
+      "0x2f5625e0": {
+        "notice": "Read the exact record for `(nameHash, version)`.",
+        "dev": "Reverts {LatticeRegistry__RecordNotFound} if unregistered."
+      },
+      "0xa16d0745": {
+        "notice": "{get} the exact record for a canonical name string."
+      },
+      "0x14d9fa6d": {
+        "notice": "Live-read, drift-verify, and assemble a ready-to-apply `Add` {FacetCut} for `(nameHash, version)`.",
+        "dev": "Same code + selector drift verification as {getSelectors}; the returned cut uses `FacetCutAction.Add`."
+      },
+      "0x8aef7f35": {
+        "notice": "{getCut} for a canonical name string."
+      },
+      "0x95d57595": {
+        "notice": "Live-read and drift-verify the facet's selectors for `(nameHash, version)`.",
+        "dev": "Reverts {LatticeRegistry__RecordNotFound} if unregistered, {LatticeRegistry__CodeDrift} if `facet.codehash` no longer equals the pinned codehash, and {LatticeRegistry__SelectorDrift} if `keccak256(exportSelectors())` no longer equals the pinned `selectorsHash`. A facet that reverts, self-destructs, or returns a malformed blob is caught by the code/selector pins (an unmatchable or undecodable live read never satisfies both pins), so the call always reverts rather than returning a stale cut. Then unpacks the blob to `bytes4[]`."
+      },
+      "0x1ca0bf05": {
+        "notice": "{getSelectors} for a canonical name string."
+      },
+      "0x79feb107": {
+        "notice": "Read the record currently flagged as `latest` for a name.",
+        "dev": "Reverts {LatticeRegistry__LatestUnset} if {setLatest} was never called for `nameHash`."
+      },
+      "0x95305680": {
+        "notice": "{latest} record for a canonical name string."
+      },
+      "0x61e40016": {
+        "notice": "Compute the registry key for a canonical facet name: `keccak256(bytes(name))`.",
+        "dev": "For callers interacting DIRECTLY with the contract (Etherscan, etc.) so they need not pre-hash a name off-chain. The registry hashes the RAW string and applies NO prefix, so the string overloads below and the `bytes32` overloads are interchangeable when passed the same full canonical name. By CONVENTION Lattice facets are registered under `\"lattice.<FacetName>\"` (e.g. `\"lattice.ERC20\"`).",
+        "params": {
+          "name": "The full canonical facet name."
+        }
+      },
+      "0x8da5cb5b": {
+        "notice": "Owner of the curated Tier-B namespace (two-step; see {transferOwnership} / {acceptOwnership})."
+      },
+      "0xe30c3978": {
+        "notice": "Address permitted to complete a pending ownership handover (`address(0)` when none pending)."
+      },
+      "0x7940177c": {
+        "notice": "Register a new curated facet under `(nameHash, version)` (owner-only, append-only).",
+        "dev": "Reverts {LatticeRegistry__RecordExists} if the record already exists (I1), {LatticeRegistry__InvalidVersion} for version `0`, {LatticeRegistry__EmptyCode} for a codeless facet, and {LatticeRegistry__NotERC8153} if `IERC8153(facet).exportSelectors()` fails the ERC-8153 contract. Pins `keccak256(selectors)`, mirrors the codehash into Tier A, and emits {Registered}.",
+        "params": {
+          "facet": "The canonical facet address (must have code and implement ERC-8153).",
+          "nameHash": "The curated name key.",
+          "version": "The semver-packed version (must be non-zero)."
+        }
+      },
+      "0xbb9ebe80": {
+        "notice": "{register} by canonical name string instead of its precomputed hash (owner-only)."
+      },
+      "0x5c23bdf5": {
+        "notice": "Resolve a runtime `codehash` to the first address attested with it (0 if none).",
+        "params": {
+          "codehash": "The runtime codehash to look up."
+        }
+      },
+      "0xf12b5db4": {
+        "notice": "Point `latest(nameHash)` at an already-registered `version` (owner-only).",
+        "dev": "The target record must exist ({LatticeRegistry__RecordNotFound} otherwise). Moving the pointer to an OLDER version is allowed — it is only a convenience pointer, never the pinned record (I3).",
+        "params": {
+          "nameHash": "The curated name key.",
+          "version": "The registered version to flag as latest."
+        }
+      },
+      "0x95e6f08a": {
+        "notice": "{setLatest} by canonical name string (owner-only)."
+      },
+      "0xf2fde38b": {
+        "notice": "Begin a two-step ownership handover to `newOwner` (owner-only; pass `address(0)` to cancel)."
+      }
+    },
+    "notice": "Two-tier, immutable, deploy-once on-chain registry of canonical Lattice facets (issue #118). Tier A is a permissionless, self-verifying codehash → address resolver; Tier B is a curated, append-only `(name, version)` catalog governed by two-step ownership. Because Lattice facets are stateless (all state lives in the caller diamond's ERC-7201 slots), one deployed facet safely serves unlimited diamonds via `delegatecall`, so recording addresses here replaces re-`CREATE`ing byte-identical bytecode on every deployment.",
+    "dev": "DELIBERATELY NOT A DIAMOND. This is a minimal, standalone, NON-upgradeable plain contract: plain storage (no ERC-7201 — there is no upgrade path by design), no facets, no proxy. It is the single thing every deployment depends on, so it carries the smallest possible trust surface and is meant to be deployed once per chain (via CreateX at a fixed salt → same address everywhere). Only the curated namespace is admin-governed; Tier A and all reads are trustless. Original Lattice work."
+  },
+  "source": {
+    "path": "src/LatticeRegistry.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/LatticeRegistry.sol"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "name": "ENSResolverInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "registry",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "ENSResolverZeroRegistry",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf09a4016": {
+        "notice": "Runs the ENS resolver + access-control module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls role assignment).",
+          "registry": "The external ENS registry the facet reads resolvers from."
+        }
+      }
+    },
+    "notice": "One-shot initializer for an ENS forward-resolution diamond — seeds AccessControl (so the registry setter is `ENS_MANAGER_ROLE`-gated), registers the IENSResolver interface (ERC-165), and wires the external ENS registry the facet reads resolvers from. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Reverts {ENSResolverZeroRegistry} for a zero registry."
+  },
+  "source": {
+    "path": "src/ens/ENSResolverInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/ens/ENSResolverInit.sol"
+  }
+}

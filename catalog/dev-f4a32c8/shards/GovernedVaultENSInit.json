@@ -1,0 +1,226 @@
+{
+  "name": "GovernedVaultENSInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "p",
+          "type": "tuple",
+          "internalType": "struct GovernedVaultENSParams",
+          "components": [
+            {
+              "name": "vault",
+              "type": "tuple",
+              "internalType": "struct GovernedVaultParams",
+              "components": [
+                {
+                  "name": "asset",
+                  "type": "address",
+                  "internalType": "address"
+                },
+                {
+                  "name": "name",
+                  "type": "string",
+                  "internalType": "string"
+                },
+                {
+                  "name": "symbol",
+                  "type": "string",
+                  "internalType": "string"
+                },
+                {
+                  "name": "decimalsOffset",
+                  "type": "uint8",
+                  "internalType": "uint8"
+                },
+                {
+                  "name": "minDelay",
+                  "type": "uint256",
+                  "internalType": "uint256"
+                },
+                {
+                  "name": "votingDelay",
+                  "type": "uint48",
+                  "internalType": "uint48"
+                },
+                {
+                  "name": "votingPeriod",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                },
+                {
+                  "name": "proposalThreshold",
+                  "type": "uint256",
+                  "internalType": "uint256"
+                },
+                {
+                  "name": "quorumNumerator",
+                  "type": "uint256",
+                  "internalType": "uint256"
+                }
+              ]
+            },
+            {
+              "name": "reverseRegistrar",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "ensName",
+              "type": "string",
+              "internalType": "string"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "EnsNameSet",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MinDelayChange",
+      "inputs": [
+        {
+          "name": "oldDuration",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "newDuration",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleAdminChanged",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "previousAdminRole",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "newAdminRole",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidName",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidVersion",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ENSReverseClaimerZeroRegistrar",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "GovernorInvalidQuorumFraction",
+      "inputs": [
+        {
+          "name": "quorumNumerator",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "quorumDenominator",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GovernorInvalidVotingPeriod",
+      "inputs": [
+        {
+          "name": "votingPeriod",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StringTooLong",
+      "inputs": [
+        {
+          "name": "str",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ENS-named self-governed ERC-4626 vault diamond: runs {GovernedVaultInit}'s EXACT module sequence (AccessControl seeded ONCE with the diamond itself, share token, EIP-712 domain, vote checkpoints, timelock, governor), then wires the ENS module — the reverse registrar is stored, `ENS_MANAGER_ROLE` is granted to the DIAMOND ONLY (so renames pass exclusively through a passed, timelock-executed governance proposal), and, when `ensName` is non-empty, the reverse name is claimed inline. The claim works because this contract is delegatecalled by {Diamond.initialize}: `address(this)` IS the diamond, so the registrar sees the DIAMOND as `msg.sender` — exactly the self-claim that makes the diamond's `addr.reverse` record resolve to `ensName`.",
+    "dev": "Delegatecalled inside the diamond's initializing window — each `__*_init` guard passes because the window is already open; it must NOT open its own pre/postInitializer. The inline claim mirrors {ENSReverseClaimerLib.setEnsName} minus its `ENS_MANAGER_ROLE` gate (which checks `msg.sender` — the deployer during init, deliberately NOT a role holder): cache the name (CEI), forward `setName` to the registrar, emit {IENSReverseClaimer.EnsNameSet}. It must NOT call {ENSReverseClaimerInit}, which would re-run `__AccessControl_init` and clobber the self-admin wiring."
+  },
+  "source": {
+    "path": "src/defi/GovernedVaultENSInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/defi/GovernedVaultENSInit.sol"
+  }
+}

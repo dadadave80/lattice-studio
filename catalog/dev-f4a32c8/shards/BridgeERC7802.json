@@ -1,0 +1,239 @@
+{
+  "name": "BridgeERC7802",
+  "abi": [
+    {
+      "type": "function",
+      "name": "crosschainTransfer",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "processMessage",
+      "inputs": [
+        {
+          "name": "receiveId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "token",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "CrosschainFungibleTransferReceived",
+      "inputs": [
+        {
+          "name": "receiveId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "from",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "CrosschainFungibleTransferSent",
+      "inputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "BridgeAmountMismatch",
+      "inputs": [
+        {
+          "name": "requested",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "received",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BridgeInvalidRecipient",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "BridgeTransferFailed",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BridgeUnauthorizedCaller",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BridgeZeroToken",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressEmptyReferenceAndAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SafeCastOverflowedUintDowncast",
+      "inputs": [
+        {
+          "name": "bits",
+          "type": "uint8",
+          "internalType": "uint8"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x28dcc8d8": {
+        "notice": "Bridge `amount` of the configured token to a crosschain recipient.",
+        "params": {
+          "amount": "The amount to lock/burn here and release/mint on the destination chain.",
+          "to": "The full ERC-7930 interoperable address of the recipient (chain ref + address)."
+        }
+      },
+      "0x902d5027": {
+        "notice": "Process a validated, de-duplicated cross-chain message.",
+        "params": {
+          "payload": "The message payload with the leading 4-byte handler tag stripped.",
+          "receiveId": "The gateway-assigned unique message id (already checked for replay by the facet).",
+          "sender": "The ERC-7930 interoperable address of the source (includes the source chain)."
+        }
+      },
+      "0xfc0c546a": {
+        "notice": "The bridged ERC-7802 token."
+      }
+    },
+    "notice": "Mint/burn bridge facet for ERC-7802 tokens: burns on `crosschainTransfer`, mints on an inbound message. Registered as a handler on a co-mounted {CrosschainLink} facet.",
+    "dev": "Stateless delegator — logic/storage live in {BridgeERC7802Lib}. `processMessage` is callable only via the Diamond's own authenticated `receiveMessage` dispatch (`msg.sender == address(this)`)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/BridgeERC7802.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/BridgeERC7802.sol"
+  }
+}

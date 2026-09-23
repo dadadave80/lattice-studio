@@ -1,0 +1,172 @@
+{
+  "name": "ENSResolver",
+  "abi": [
+    {
+      "type": "function",
+      "name": "ensRegistry",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "resolve",
+      "inputs": [
+        {
+          "name": "node",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "resolverOf",
+      "inputs": [
+        {
+          "name": "node",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setEnsRegistry",
+      "inputs": [
+        {
+          "name": "ensRegistry_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "subnode",
+      "inputs": [
+        {
+          "name": "parentNode",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "event",
+      "name": "EnsRegistrySet",
+      "inputs": [
+        {
+          "name": "ensRegistry",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ENSResolverZeroRegistry",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x7d73b231": {
+        "notice": "Returns the configured ENS registry."
+      },
+      "0x5c23bdf5": {
+        "notice": "Resolves an ENS `node` to its address (forward resolution).",
+        "dev": "Reads `registry.resolver(node)` then `resolver.addr(node)`. Returns zero ONLY when `node` has no resolver configured; MAY revert if a configured resolver does not implement `addr(bytes32)` or itself reverts. The resolved address is set by the node's owner (a third party), so treat it as untrusted; use {resolverOf} to distinguish \"no resolver\" from \"zero\".",
+        "params": {
+          "node": "The ENS node (namehash) to resolve."
+        }
+      },
+      "0xc677966d": {
+        "notice": "Returns the resolver configured for `node` in the ENS registry.",
+        "params": {
+          "node": "The ENS node (namehash) to query."
+        }
+      },
+      "0xe7c65687": {
+        "notice": "Sets or rotates the ENS registry (per-chain configuration).",
+        "dev": "Gated on `ENS_MANAGER_ROLE`. Reverts {ENSResolverZeroRegistry} for a zero address.",
+        "params": {
+          "ensRegistry": "The ENS registry to use."
+        }
+      },
+      "0x568f0953": {
+        "notice": "Computes the namehash of `label`.<parent> from the parent node and label.",
+        "dev": "One ENS namehash recursion step: `keccak256(parentNode ++ keccak256(label))`.",
+        "params": {
+          "label": "The subname label.",
+          "parentNode": "The parent name's node."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet for on-chain ENS forward resolution: resolves an ENS node to its address via the configured ENS registry.",
+    "dev": "All logic lives in {ENSResolverLib}. The ENS registry is supplied at init and rotated per chain via {setEnsRegistry} (gated on `ENS_MANAGER_ROLE`, managed through the diamond's AccessControl)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/ens/ENSResolver.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/ens/ENSResolver.sol"
+  }
+}

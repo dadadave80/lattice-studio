@@ -1,0 +1,392 @@
+{
+  "name": "CrosschainLink",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getHandler",
+      "inputs": [
+        {
+          "name": "tag",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "handler",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getLink",
+      "inputs": [
+        {
+          "name": "chain",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "counterpart",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isProcessed",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "receiveId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "receiveMessage",
+      "inputs": [
+        {
+          "name": "receiveId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "sender",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "sendMessage",
+      "inputs": [
+        {
+          "name": "chain",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "attributes",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setHandler",
+      "inputs": [
+        {
+          "name": "tag",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        },
+        {
+          "name": "handler",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setLink",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "counterpart",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "allowOverride",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "HandlerRegistered",
+      "inputs": [
+        {
+          "name": "tag",
+          "type": "bytes4",
+          "indexed": true,
+          "internalType": "bytes4"
+        },
+        {
+          "name": "handler",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "LinkRegistered",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "counterpart",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MessageProcessed",
+      "inputs": [
+        {
+          "name": "receiveId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "tag",
+          "type": "bytes4",
+          "indexed": true,
+          "internalType": "bytes4"
+        },
+        {
+          "name": "handler",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CrosschainHandlerNotRegistered",
+      "inputs": [
+        {
+          "name": "tag",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CrosschainInvalidPayload",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "CrosschainLinkAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chain",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CrosschainMessageAlreadyProcessed",
+      "inputs": [
+        {
+          "name": "receiveId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CrosschainUnauthorizedGateway",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CrosschainZeroGateway",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressEmptyReferenceAndAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SafeCastOverflowedUintDowncast",
+      "inputs": [
+        {
+          "name": "bits",
+          "type": "uint8",
+          "internalType": "uint8"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x6dd99bde": {
+        "notice": "Returns the handler registered for a message tag (zero if none)."
+      },
+      "0x09b0b794": {
+        "notice": "Returns the gateway and counterpart registered for a source chain.",
+        "params": {
+          "chain": "A \"chain-only\" ERC-7930 interoperable address (empty address)."
+        }
+      },
+      "0xffe32a6e": {
+        "notice": "Returns whether a `receiveId` from `gateway` has already been processed (keyed per-gateway, as ERC-7786 only guarantees receiveId uniqueness for the calling gateway)."
+      },
+      "0x2432ef26": {
+        "dev": "Endpoint for receiving cross-chain message. This function may be called directly by the gateway."
+      },
+      "0xcdfe7f5c": {
+        "notice": "Sends a message to the counterpart registered for `chain` via its ERC-7786 gateway.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "attributes": "ERC-7786 gateway attributes (may be empty).",
+          "chain": "A \"chain-only\" interoperable address selecting the destination link.",
+          "payload": "The message payload (handlers expect a leading 4-byte tag on the receiving side)."
+        }
+      },
+      "0x42b26650": {
+        "notice": "Registers a handler for inbound messages whose payload starts with `tag` (zero to clear).",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`."
+      },
+      "0xf54640d0": {
+        "notice": "Registers (or overrides) the gateway + counterpart for the counterpart's source chain.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. Reverts `CrosschainLinkAlreadyRegistered` if a link exists and `allowOverride` is false.",
+        "params": {
+          "allowOverride": "Whether to overwrite an existing link for the chain.",
+          "counterpart": "The full interoperable address of the remote counterpart.",
+          "gateway": "The ERC-7786 gateway for this chain (must implement `supportsAttribute`)."
+        }
+      }
+    },
+    "notice": "Diamond facet that owns the single ERC-7786 `receiveMessage` selector. It authenticates the calling gateway + source against a per-chain link registry, de-duplicates `receiveId`, and routes the message to a handler registered for the payload's leading 4-byte tag. Also exposes the send path (`sendMessage`) to a registered counterpart.",
+    "dev": "Stateless delegator — all logic and storage live in {CrosschainLinkLib}. Consumers inherit this facet and add AccessControl + an initializer that calls `CrosschainLinkLib.__CrosschainLink_init`."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/CrosschainLink.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/CrosschainLink.sol"
+  }
+}

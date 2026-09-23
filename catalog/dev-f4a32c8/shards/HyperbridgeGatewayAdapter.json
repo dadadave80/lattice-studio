@@ -1,0 +1,1116 @@
+{
+  "name": "HyperbridgeGatewayAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "chainIdOfStateMachine",
+      "inputs": [
+        {
+          "name": "stateMachineId",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "configureDestinationTimeout",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "timeout",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "hyperbridgeDestTimeoutOf",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "hyperbridgeFeeToken",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "hyperbridgeRemoteModuleOf",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "ismpHost",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "onAccept",
+      "inputs": [
+        {
+          "name": "incoming",
+          "type": "tuple",
+          "internalType": "struct IncomingPostRequest",
+          "components": [
+            {
+              "name": "request",
+              "type": "tuple",
+              "internalType": "struct PostRequest",
+              "components": [
+                {
+                  "name": "source",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "dest",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "nonce",
+                  "type": "uint64",
+                  "internalType": "uint64"
+                },
+                {
+                  "name": "from",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "to",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "timeoutTimestamp",
+                  "type": "uint64",
+                  "internalType": "uint64"
+                },
+                {
+                  "name": "body",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                }
+              ]
+            },
+            {
+              "name": "relayer",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "onGetResponse",
+      "inputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IncomingGetResponse",
+          "components": [
+            {
+              "name": "response",
+              "type": "tuple",
+              "internalType": "struct GetResponse",
+              "components": [
+                {
+                  "name": "request",
+                  "type": "tuple",
+                  "internalType": "struct GetRequest",
+                  "components": [
+                    {
+                      "name": "source",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    },
+                    {
+                      "name": "dest",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    },
+                    {
+                      "name": "nonce",
+                      "type": "uint64",
+                      "internalType": "uint64"
+                    },
+                    {
+                      "name": "from",
+                      "type": "address",
+                      "internalType": "address"
+                    },
+                    {
+                      "name": "timeoutTimestamp",
+                      "type": "uint64",
+                      "internalType": "uint64"
+                    },
+                    {
+                      "name": "keys",
+                      "type": "bytes[]",
+                      "internalType": "bytes[]"
+                    },
+                    {
+                      "name": "height",
+                      "type": "uint64",
+                      "internalType": "uint64"
+                    },
+                    {
+                      "name": "context",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    }
+                  ]
+                },
+                {
+                  "name": "values",
+                  "type": "tuple[]",
+                  "internalType": "struct StorageValue[]",
+                  "components": [
+                    {
+                      "name": "key",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    },
+                    {
+                      "name": "value",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "relayer",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "onGetTimeout",
+      "inputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct GetRequest",
+          "components": [
+            {
+              "name": "source",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "dest",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "nonce",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "from",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "timeoutTimestamp",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "keys",
+              "type": "bytes[]",
+              "internalType": "bytes[]"
+            },
+            {
+              "name": "height",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "context",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "onPostRequestTimeout",
+      "inputs": [
+        {
+          "name": "request",
+          "type": "tuple",
+          "internalType": "struct PostRequest",
+          "components": [
+            {
+              "name": "source",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "dest",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "nonce",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "from",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "to",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "timeoutTimestamp",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "body",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "onPostResponse",
+      "inputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IncomingPostResponse",
+          "components": [
+            {
+              "name": "response",
+              "type": "tuple",
+              "internalType": "struct PostResponse",
+              "components": [
+                {
+                  "name": "request",
+                  "type": "tuple",
+                  "internalType": "struct PostRequest",
+                  "components": [
+                    {
+                      "name": "source",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    },
+                    {
+                      "name": "dest",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    },
+                    {
+                      "name": "nonce",
+                      "type": "uint64",
+                      "internalType": "uint64"
+                    },
+                    {
+                      "name": "from",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    },
+                    {
+                      "name": "to",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    },
+                    {
+                      "name": "timeoutTimestamp",
+                      "type": "uint64",
+                      "internalType": "uint64"
+                    },
+                    {
+                      "name": "body",
+                      "type": "bytes",
+                      "internalType": "bytes"
+                    }
+                  ]
+                },
+                {
+                  "name": "response",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "timeoutTimestamp",
+                  "type": "uint64",
+                  "internalType": "uint64"
+                }
+              ]
+            },
+            {
+              "name": "relayer",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "onPostResponseTimeout",
+      "inputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct PostResponse",
+          "components": [
+            {
+              "name": "request",
+              "type": "tuple",
+              "internalType": "struct PostRequest",
+              "components": [
+                {
+                  "name": "source",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "dest",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "nonce",
+                  "type": "uint64",
+                  "internalType": "uint64"
+                },
+                {
+                  "name": "from",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "to",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "timeoutTimestamp",
+                  "type": "uint64",
+                  "internalType": "uint64"
+                },
+                {
+                  "name": "body",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                }
+              ]
+            },
+            {
+              "name": "response",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "timeoutTimestamp",
+              "type": "uint64",
+              "internalType": "uint64"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "quoteDispatchFee",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "relayerFee",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerRemoteModule",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "registerStateMachine",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "registerStateMachineRaw",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "stateMachineId",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "sendMessage",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "attributes",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "sendMessageWithFee",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "relayerFee",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "stateMachineIdOf",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "supportsAttribute",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "event",
+      "name": "ConfiguredDestinationTimeout",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "timeout",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "HyperbridgeMessageDispatched",
+      "inputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "commitment",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "destChainId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "HyperbridgeRequestTimedOut",
+      "inputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "sender",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MessageSent",
+      "inputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "sender",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "attributes",
+          "type": "bytes[]",
+          "indexed": false,
+          "internalType": "bytes[]"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemoteModule",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredStateMachine",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "stateMachineId",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AdapterSafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BridgeAmountMismatch",
+      "inputs": [
+        {
+          "name": "requested",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "received",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BridgeTransferFailed",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeEmptyRemoteModule",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeEmptyStateMachineId",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeMessageAlreadyExecuted",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "dedupKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeNotHost",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeRecipientExecutionFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeStateMachineAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "stateMachineId",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeUnexpectedValue",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeUnknownDestinationChain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeUnknownSource",
+      "inputs": [
+        {
+          "name": "source",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeUnsupportedHook",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeUntrustedModule",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeWrongDestinationChain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeZeroChainId",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeZeroHost",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedAttribute",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe9771716": {
+        "notice": "The EVM chainId registered for the state machine id `stateMachineId` (0 = unset)."
+      },
+      "0xbb0f2a9c": {
+        "notice": "Configures a destination's dispatch timeout in seconds. TUNABLE; 0 = no explicit timeout (the host's default handling). Admin only."
+      },
+      "0x496df793": {
+        "notice": "The configured dispatch timeout (seconds) for `chainId` (0 = no explicit timeout — the host's default handling)."
+      },
+      "0x08d24c0e": {
+        "notice": "The host's CURRENT ERC-20 fee token (live passthrough of `IIsmpDispatcher.feeToken()` — never cached; the host can migrate it)."
+      },
+      "0x3a52ea6e": {
+        "notice": "The trusted remote ISMP module (counterpart adapter) registered for `chainId` (empty = unset)."
+      },
+      "0x134b37c9": {
+        "notice": "The Hyperbridge IsmpHost the adapter dispatches to and accepts module callbacks from."
+      },
+      "0x0fee32ce": {
+        "notice": "Called by the `IsmpHost` to notify the module of a new proof-verified POST request."
+      },
+      "0x44ab20f8": {
+        "notice": "Called by the `IsmpHost` to notify the module of a GET response to a previously sent request.",
+        "dev": "Never used — the adapter dispatches no GET requests."
+      },
+      "0xd0fff366": {
+        "notice": "Called by the `IsmpHost` to notify the module of a previously sent GET request that timed out.",
+        "dev": "Never used — the adapter dispatches no GET requests that could time out."
+      },
+      "0xbc0dd447": {
+        "notice": "Called by the `IsmpHost` to notify the module of a previously sent POST request that timed out."
+      },
+      "0xb2a01bf5": {
+        "notice": "Called by the `IsmpHost` to notify the module of a POST response to a previously sent request.",
+        "dev": "Never used — the adapter dispatches no requests that expect responses."
+      },
+      "0x0bc37bab": {
+        "notice": "Called by the `IsmpHost` to notify the module of a previously sent POST response that timed out.",
+        "dev": "Never used — the adapter dispatches no responses that could time out."
+      },
+      "0xee6ef22a": {
+        "notice": "Quotes the TOTAL `feeToken` cost of sending `payload` to `recipient` (ERC-7930) with `relayerFee`: `perByteFee(destStateMachineId) * body.length + relayerFee`, where `body` is the exact wire envelope a real send would dispatch (same builder — the envelope length is sender/nonce-independent, so the quote matches the send-time charge)."
+      },
+      "0xa1d0dd63": {
+        "notice": "Sets the trusted remote ISMP module (counterpart adapter) for a chain. TUNABLE (updatable), but never empty — clearing a corridor is not supported in v1. Admin only."
+      },
+      "0x4763e06e": {
+        "notice": "Registers the EVM chainId ⇄ state machine equivalence for `chainId`, deriving the id INTERNALLY as the canonical `bytes(\"EVM-\" + chainId)` — never caller-supplied (fail-closed). FAIL-LOUD identity admin: an already-mapped chainId OR id reverts (both directions, via the keccak reverse map) — identities are never remapped. Admin only."
+      },
+      "0x784f0d55": {
+        "notice": "Registers a RAW (non-EVM) state machine id — POLKADOT/SUBSTRATE/KUSAMA destinations — mapped to a local routing `chainId` handle. Same fail-loud both-direction rules as {registerStateMachine}; empty ids and chainId 0 are rejected. The `chainId` is a LOCAL routing key (it appears in the ERC-7930 recipient), so the admin must pick one that collides with no real EVM chainId. Admin only."
+      },
+      "0xcdfe7f5c": {
+        "dev": "`payable` is forced by the interface; the native-token fee path is DEFERRED — stray value reverts."
+      },
+      "0x7c6bed39": {
+        "notice": "ERC-7786 send with an explicit ISMP relayer fee (charged in the host's `feeToken` on top of the per-byte protocol fee; both pulled from the caller). The relayer fee lives OUTSIDE the `IERC7786GatewaySource` ABI — same pattern as the LZ/Hyperlane fee-outside-the-ABI precedent — and the plain `sendMessage` delegates here with `relayerFee = 0` (unfunded/self-relay, valid in ISMP)."
+      },
+      "0xaa6f97d5": {
+        "notice": "The state machine id registered for `chainId` (empty = unset)."
+      },
+      "0xdc680a0f": {
+        "dev": "Getter to check whether an attribute is supported or not."
+      }
+    },
+    "notice": "ERC-7786 cross-chain gateway facet over Hyperbridge's ISMP (proof-verified interop: consensus + state proofs aggregated on a Polkadot-secured coprocessor, delivered by permissionless proof-carrying relayers — NO attestation committee). `sendMessage` dispatches a POST request via the IsmpHost, paying the per-byte protocol fee + optional relayer fee in the host's ERC-20 `feeToken()` (never `msg.value`); the host-invoked `IIsmpModule` hooks are the inbound surface.",
+    "dev": "Stateless delegator — logic/storage live in {HyperbridgeGatewayAdapterLib}. Implements ALL SIX {IIsmpModule} hooks so the host can notify the module: `onAccept` (delivery) and `onPostRequestTimeout` (native timeout/refund notification — the fee refund itself is host-side to `DispatchPost.payer`, the sending user) are live; the four response/GET hooks revert {HyperbridgeUnsupportedHook} (the adapter dispatches neither GETs nor responses — silently accepting them would be a spoofable no-op surface). EVM recipients only in v1; non-EVM (POLKADOT-/SUBSTRATE-) state machines can be registered raw for inbound auth."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/hyperbridge/HyperbridgeGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/hyperbridge/HyperbridgeGatewayAdapter.sol"
+  }
+}

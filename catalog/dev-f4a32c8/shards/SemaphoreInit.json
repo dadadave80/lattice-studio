@@ -1,0 +1,69 @@
+{
+  "name": "SemaphoreInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "verifier",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "SemaphoreVerifierIsZero",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf09a4016": {
+        "notice": "Runs the access-control + Semaphore module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls `setVerifier`).",
+          "verifier": "The {ISemaphoreVerifier} contract address used to check Semaphore proofs."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a Semaphore diamond — seeds AccessControl (so the `setVerifier` admin setter is `DEFAULT_ADMIN_ROLE`-gated) and registers the ISemaphore interface (ERC-165) with its off-chain proof verifier. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open)."
+  },
+  "source": {
+    "path": "src/privacy/SemaphoreInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/SemaphoreInit.sol"
+  }
+}
