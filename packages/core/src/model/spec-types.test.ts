@@ -207,9 +207,11 @@ export type SpecTypeAssertions = [
   Assert<Mutual<Pick<Item<M.Analysis["plan"]>, "facet" | "address" | "selectors">, Item<Analysis["plan"]>>>,
   Assert<Equals<Keys<Value<M.Analysis["routing"]>>, Keys<Value<Analysis["routing"]>>>>,
   Assert<Equals<Keys<M.Analysis["stats"]>, Keys<Analysis["stats"]>>>,
-  // AnalysisContext (L268-L272) + chain (contracts §3.1) + refs
-  Assert<Equals<Keys<M.AnalysisContext>, Keys<AnalysisContext> | "chain" | "refs">>,
-  Assert<Mutual<Omit<M.AnalysisContext, "chain" | "refs">, AnalysisContext>>,
+  // AnalysisContext (L268-L272) + chain (contracts §3.1) + refs, unconfirmedFrom, knownFrom
+  Assert<Equals<Keys<M.AnalysisContext>, Keys<AnalysisContext> | "chain" | "refs" | "unconfirmedFrom" | "knownFrom">>,
+  Assert<Mutual<Omit<M.AnalysisContext, "chain" | "refs" | "unconfirmedFrom" | "knownFrom">, AnalysisContext>>,
+  Assert<Equals<M.AnalysisContext["unconfirmed"], string[]>>,
+  Assert<Equals<M.AnalysisContext["known"], M.Address[]>>,
   Assert<Equals<Keys<Present<M.AnalysisContext["deploy"]>>, Keys<Present<AnalysisContext["deploy"]>>>>,
   // Problem (L273-L278) + code, params, ack (contracts §3.1)
   Assert<Equals<Keys<M.Problem>, Keys<Problem> | "code" | "params" | "ack">>,

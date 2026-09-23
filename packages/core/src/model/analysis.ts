@@ -23,7 +23,7 @@ export type Analysis = {
 
 /**
  * What lives beside the recipe (spec L268-L272).
- * Additions: `chain` (contracts §3.1) and `refs`. `known` holds `project.predicted` and every recorded deployment address;
+ * Additions: `chain` (contracts §3.1), `refs`, `unconfirmedFrom` and `knownFrom`. `known` holds `project.predicted` and every recorded deployment address;
  * `unconfirmed` holds authority paths whose provenance is `link` or `file`.
  */
 export type AnalysisContext = {
@@ -33,6 +33,16 @@ export type AnalysisContext = {
   known: Address[];
   /** Argument paths that came from a link or file (LINK-01). */
   unconfirmed: string[];
+  /**
+   * Where each `unconfirmed` path came from, keyed by argument path (S1 fills it from `project.provenance`).
+   * LINK-01 names the source from it.
+   */
+  unconfirmedFrom?: Record<string, "link" | "file">;
+  /**
+   * What each `known` address is, keyed by lowercase address (S1 fills it from `project.predicted` and the
+   * deployment records). AUTH-02 words its message from it.
+   */
+  knownFrom?: Record<string, { source: "prediction" | "deployment"; chainId: number; chain?: string }>;
   /** The selected chain's probes, for the NET checks. */
   chain?: ChainState;
   /**

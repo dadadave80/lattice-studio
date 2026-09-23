@@ -1,4 +1,5 @@
 import type { CommandId, CommandRef } from "./commands";
+import type { Unit } from "./catalog";
 import type { Address, Hex, Hex4 } from "./hex";
 import type { Json } from "./json";
 import type { WpId } from "./wp";
@@ -68,8 +69,11 @@ export type ProblemParams = {
   "SEL-03": { facet: string; count: number; why: "seams" | "owned" | "excluded" | "mixed"; servedBy: string[]; movable: Hex4[] };
   /** "`exportSelectors()` is never cut into a diamond." `facet`: the owner the import named, if any. */
   "SEL-04": SelectorParams & { facet?: string };
-  /** "GovernedVault isn't on the sheet, so it can't own `transfer` 0xa9059cbb." Or: it doesn't export it. */
-  "SEL-05": SelectorParams & { facet: string; reason: "not-placed" | "not-exported" };
+  /**
+   * "GovernedVault isn't on the sheet, so it can't own `transfer` 0xa9059cbb." Or: it doesn't export it.
+   * `signature` is absent when no catalog facet exports the selector; the message then names the hex alone.
+   */
+  "SEL-05": { selector: Hex4; signature?: string; facet: string; reason: "not-placed" | "not-exported" };
   /**
    * "`transfer(address,uint256)` must be served by a version that updates vote checkpoints (GovernedVault or
    * ERC20Votes), not ERC20Pausable." `reason`: the seam's reason. `owner`: the stale explicit owner; absent
@@ -83,8 +87,12 @@ export type ProblemParams = {
   "CORE-01": SelectorParams & { missing: Hex4[]; facet: string; excluded: boolean };
   /** "Nothing can change this diamond after deploy." */
   "CORE-02": Record<string, never>;
-  /** "One upgrade mechanism per diamond: A would let the admin skip B's delay." The two members, catalog order. */
-  "CORE-03": { facets: string[] };
+  /**
+   * "One upgrade mechanism per diamond: AccessControlDiamondCut would let the admin skip GovernedSafeDiamondCut's
+   * delay." `facets`: the two members, catalog order. `reason`: the consequence clause after the colon, which C3
+   * fills ("AccessControlDiamondCut would let the admin skip GovernedSafeDiamondCut's delay").
+   */
+  "CORE-03": { facets: string[]; reason: string };
   /** "Plain ETH sent to this diamond will revert." `facet`: the one to place ("Receive"). */
   "CORE-04": { facet: string };
   /** "`supportsInterface()` won't exist; …" `facet`: the one to place ("ERC165Facet"). */
@@ -94,9 +102,12 @@ export type ProblemParams = {
   /**
    * A convention: a companion ("GovernedDiamondCut usually ships with EmergencyStop, so a guardian can halt
    * upgrades.") or a namespace written with no manager ("Roles are written at init, but without AccessControl
-   * nobody can manage them later.").
+   * nobody can manage them later."). `reason` is required for a companion; for a namespace, when it's absent,
+   * C10 words it generically: "`<namespace>` is written at init, but without <anyOf> nobody can manage it later."
    */
-  "DEP-02": { kind: "companion" | "namespace"; facet?: string; namespace?: string; anyOf: string[]; reason: string };
+  "DEP-02":
+    | { kind: "companion"; facet: string; anyOf: string[]; reason: string }
+    | { kind: "namespace"; namespace: string; anyOf: string[]; reason?: string; facet?: string };
   /** "AccountSigner and ERC6900Validation are different account models; one diamond holds one." */
   "DEP-03": { facets: string[]; family: "access" | "account" };
   /** "`lattice.storage.X` is claimed by A and B." */
@@ -127,26 +138,38 @@ export type ProblemParams = {
   /**
    * "ERC20 has no init step, so `name()` and `symbol()` would be empty." `facet`: the placed facet needing it,
    * or absent for a `sameCall` module with no init (`sameCallWith`). `spec`: the init step to add.
+   * Without `consequence`, C10 words it generically: "<facet> has no init step, so <module> is never initialized."
    */
   "INIT-04": { module: string; spec: string; facet?: string; consequence?: string; sameCallWith?: string };
-  /** "5 fields still use example values, including voting period (600 s) and quorum (4%)." */
-  "INIT-05": { count: number; paths: string[]; examples: { path: string; label: string; value: Json }[] };
+  /**
+   * "5 fields still use example values, including voting period (600 s) and quorum (4%)." Each example carries
+   * its field's unit (C4a copies it from the field model) so C10 can write "600 s" and "4%".
+   */
+  "INIT-05": { count: number; paths: string[]; examples: { path: string; label: string; value: Json; unit?: Unit }[] };
   /**
    * "`diamondCut` and `DEFAULT_ADMIN_ROLE` rest with 0xAb12…34c7, a single key. If it's a Safe that isn't
    * deployed yet, deploy it first." `delegated`: an EIP-7702 account.
    */
   "AUTH-01": { holder: Address; roles: string[]; paths: string[]; delegated: boolean; chain: string };
-  /** "The admin is 0x4B20…9eF1, where this diamond would have been before the salt changed." */
+  /**
+   * "The admin is 0x4B20…9eF1, where this diamond would have been before the salt changed." `source`,
+   * `chainId` and `chain` come from `AnalysisContext.knownFrom`; when it has no entry, C10 words it
+   * generically: "The admin is 0x4B20…9eF1, an address this diamond had or a recorded deployment holds."
+   */
   "AUTH-02": {
     path: string;
     role: string;
     address: Address;
-    source: "prediction" | "deployment";
+    source?: "prediction" | "deployment";
     chainId?: number;
     chain?: string;
   };
-  /** "The upgrade role goes to 0x71C7…976F, which came from a shared link." */
-  "LINK-01": { path: string; role: string; address: Address; source: "link" | "file" };
+  /**
+   * "The upgrade role goes to 0x71C7…976F, which came from a shared link." `source` comes from
+   * `AnalysisContext.unconfirmedFrom`; when absent, C10 words it generically: "…, which came from a link or a
+   * file and hasn't been confirmed."
+   */
+  "LINK-01": { path: string; role: string; address: Address; source?: "link" | "file" };
   /** "The contract at CreateX's address on {chain} isn't CreateX: its codehash differs from 0xbd8a7ea8…b53f." */
   "NET-01": { chain: string; case: "missing" | "codehash"; expected: Hex; actual?: Hex };
   /** "Arachnid's deployment proxy isn't on {chain}, so missing contracts can't be deployed at their release addresses." */
@@ -182,6 +205,25 @@ export type ProblemOptions<C extends ProblemCode> = C extends VariableSeverityCo
 /**
  * Builds a problem with typed params: severity and `ack` from `PROBLEMS`, id from `problemId(code, where)`
  * unless given, and `message: ""` for `runChecks` to render.
+ *
+ * The id must name what makes the problem one problem (its identity anchor), and nothing more, so it stays
+ * stable across edits. When `where` carries more than that (a SEL-01 anchors every contender), pass `id`:
+ *
+ * | Codes | Identity anchor | Example |
+ * | --- | --- | --- |
+ * | SEL-01, SEL-04, SEL-05, SEM-01, CORE-01 | the selector only | `SEL-01:0xcdfe7f5c` |
+ * | SEL-02, SEL-03, STO-02 | the facet | `SEL-03:ERC20Pausable` |
+ * | CORE-02, CORE-04, CORE-05 | the diamond | `CORE-02:diamond` |
+ * | CORE-03, DEP-03 | both facets, catalog order | `CORE-03:AccessControlDiamondCut+GovernedDiamondCut` |
+ * | DEP-01, DEP-02 | the facet and the requirement (its first `anyOf` option, or the namespace), since one facet can miss two | `DEP-01:VaultCore+ERC4626` |
+ * | STO-01 | the namespace id | `STO-01:lattice.storage.ERC20` |
+ * | INIT-01, AUTH-02, LINK-01 | the argument path | `INIT-01:bundle.p.asset` |
+ * | INIT-02 | the step path | `INIT-02:steps[2]` |
+ * | INIT-03 | the module | `INIT-03:EIP712` |
+ * | INIT-04 | the module | `INIT-04:ERC20` |
+ * | INIT-05 | the diamond | `INIT-05:diamond` |
+ * | AUTH-01 | the holder, lowercase | `AUTH-01:0xab12…` |
+ * | NET-01 to NET-08 | the chain id | `NET-03:11155111` |
  */
 export function problem<C extends ProblemCode>(
   code: C,
@@ -286,7 +328,8 @@ export function anchorKey(anchor: Anchor | string): string {
 /**
  * Stable problem ids (spec L305): `SEL-01:0xcdfe7f5c`, `DEP-01:VaultCore`, `INIT-01:bundle.p.asset`,
  * `CORE-02:diamond`, `NET-03:11155111`. Several anchors join with "+" in the order given
- * (`CORE-03:AccessControlDiamondCut+GovernedDiamondCut`); callers pass them in catalog order.
+ * (`CORE-03:AccessControlDiamondCut+GovernedDiamondCut`, `DEP-01:VaultCore+ERC4626`); callers pass them in
+ * catalog order. Pass each code's identity anchor, listed on `problem()`, not every anchor in `where`.
  */
 export function problemId(code: ProblemCode, anchor: Anchor | string | readonly (Anchor | string)[]): string {
   const list: readonly (Anchor | string)[] = isAnchorList(anchor) ? anchor : [anchor];

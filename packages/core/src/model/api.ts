@@ -21,7 +21,7 @@ import type {
 } from "./io";
 import type { Json, JsonObject } from "./json";
 import type {
-  CardSize, CardSizeOptions, Layout, LayoutMetrics, NotePlacement, Placement, PlaceNotesArgs, Point, Push, Rect,
+  CardSize, CardSizeOptions, Layout, LayoutMetrics, NotePlacement, PlaceNotesArgs, Point, Rect,
   RouteTracesArgs, Size, Sizes, Trace,
 } from "./layout";
 import type { ProblemCode, Problem } from "./problems";
@@ -224,8 +224,11 @@ export type LintCopyFn = (text: string) => CopyIssue[];
 
 // ── edit (C11): every op returns EditResult ────────────────────────────────────────────────────────
 
-/** Snaps `placement.at` and moves it to the nearest free slot (spec L425) with C9's `freeSlot`. */
-export type PlaceFacetFn = (project: Project, catalog: Catalog, name: string, placement: Placement) => EditResult;
+/**
+ * Places the card at `at`, as given. The caller has already snapped it and moved it to a free slot with C9's
+ * `freeSlot` (spec L425): edit ops stay free of geometry.
+ */
+export type PlaceFacetFn = (project: Project, catalog: Catalog, name: string, at: Point) => EditResult;
 /** Drops their owners, init steps and now-orphaned exclusions. */
 export type RemoveFacetsFn = (project: Project, catalog: Catalog, names: readonly string[]) => EditResult;
 export type RouteSelectorFn = (project: Project, catalog: Catalog, selector: Hex4, facet: string) => EditResult;
@@ -249,8 +252,11 @@ export type RenameProjectFn = (project: Project, name: string) => EditResult;
 export type MoveCardsFn = (project: Project, facets: readonly string[], by: Point) => EditResult;
 export type SetCardPositionFn = (project: Project, facet: string, at: Point) => EditResult;
 export type FlipPinsFn = (project: Project, facets: readonly string[]) => EditResult;
-/** Expanding pushes the cards below it in the same column down by `push.dy` (spec L479); collapsing moves nothing. */
-export type SetExpandedFn = (project: Project, facet: string, expanded: boolean, push: Push) => EditResult;
+/**
+ * Sets the card's `expanded` flag only. Pushing the cards below it down (spec L479) is S1's composition:
+ * C9's `pushBelow` plus `applyLayout`, in the same `doc.apply` step.
+ */
+export type SetExpandedFn = (project: Project, facet: string, expanded: boolean) => EditResult;
 /** Never touches the recipe. */
 export type ApplyLayoutFn = (project: Project, layout: Layout) => EditResult;
 /** Appends to `project.predicted` unless the pair is there (addresses compared case-insensitively). */

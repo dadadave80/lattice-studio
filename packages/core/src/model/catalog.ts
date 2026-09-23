@@ -3,6 +3,9 @@ import type { Address, Hex, Hex4 } from "./hex";
 import type { Json } from "./json";
 import type { Recipe } from "./recipe";
 
+/** An init parameter's unit (spec L180): durations in seconds, percentages out of 100, amounts in wei. */
+export type Unit = "seconds" | "percent" | "wei";
+
 /** Catalog areas (contracts §3.1). */
 export type Area =
   | "access" | "accounts" | "amm" | "crosschain" | "defi" | "diamond" | "ens"
@@ -135,7 +138,7 @@ export type InitParam = {
    */
   type: string;
   doc: string;
-  unit?: "seconds" | "percent" | "wei";
+  unit?: Unit;
   /** Grammar in contracts §4: range(a,b), gt(n), gte(n), nonzero, maxlen(n), code(safe|token|contract), enum(a|b|c), joined with &. */
   rule?: string;
   /** A template's demo value, flagged until changed (INIT-05). */

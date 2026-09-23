@@ -8,7 +8,7 @@
  * - Hex is accepted in any letter case; an address that isn't all lowercase must be its EIP-55 checksum.
  * - Hashes, salts and slots are exactly 32 bytes (`Hash32Schema`); selectors 4; entropy 11.
  * - JSON nested deeper than `MAX_JSON_DEPTH` is refused before Zod sees it.
- * - Issues come back as `{ path, message }`: `facets[0]` / "is a number; expected a string."
+ * - Issues come back as `{ path, message }`: `facets[0]` / "is 1; expected text."
  */
 import * as z from "zod";
 import type { AbiItem, Catalog, CatalogManifest, FacetDetail, InitParam } from "./catalog";
@@ -186,7 +186,7 @@ export const EntropySchema = z.templateLiteral(["0x", z.string().regex(/^[0-9a-f
   error: expected("11 bytes of entropy (0x followed by 22 hex digits)"),
 });
 
-/** A 20-byte address; a mixed-case one must carry a valid EIP-55 checksum. */
+/** A 20-byte address: all lowercase, or exactly its EIP-55 checksum (so all-uppercase fails). */
 export const AddressSchema = z
   .templateLiteral(["0x", z.string().regex(/^[0-9a-fA-F]{40}$/)], {
     error: expected("an address (0x followed by 40 hex digits)"),

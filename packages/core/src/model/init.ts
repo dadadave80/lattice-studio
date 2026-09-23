@@ -1,3 +1,4 @@
+import type { Unit } from "./catalog";
 import type { ChainState } from "./chain";
 import type { Address, Hex } from "./hex";
 import type { Json } from "./json";
@@ -56,7 +57,7 @@ export type FieldModel = {
   kind: FieldKind;
   /** Help text from NatSpec or the overlay. */
   doc: string;
-  unit?: "seconds" | "percent" | "wei";
+  unit?: Unit;
   /** The raw rule, as the overlay writes it. */
   rule?: string;
   /** Inclusive lower bound, decimal string. */

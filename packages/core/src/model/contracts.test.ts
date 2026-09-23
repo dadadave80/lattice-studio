@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { Unit } from "./catalog";
 import { codeAtFor, type ChainState } from "./chain";
 import type { Json } from "./json";
 import type { LayoutMetrics } from "./layout";
@@ -17,6 +18,16 @@ export type ParamsAssertions = [
   // Chain-bearing codes name the chain.
   Assert<Equals<ProblemParams["NET-03"]["chain"], string>>,
   Assert<Equals<ProblemParams["NET-06"]["gas"], string>>,
+  // INIT-05 examples carry their unit; the same union as InitParam.unit.
+  Assert<Equals<ProblemParams["INIT-05"]["examples"][number]["unit"], Unit | undefined>>,
+  Assert<Equals<Unit, "seconds" | "percent" | "wei">>,
+  // Optional where the context may have no source (generic wording then).
+  Assert<Equals<ProblemParams["LINK-01"]["source"], "link" | "file" | undefined>>,
+  Assert<Equals<ProblemParams["AUTH-02"]["source"], "prediction" | "deployment" | undefined>>,
+  Assert<Equals<ProblemParams["SEL-05"]["signature"], string | undefined>>,
+  Assert<Equals<ProblemParams["CORE-03"]["reason"], string>>,
+  Assert<Equals<Extract<ProblemParams["DEP-02"], { kind: "companion" }>["reason"], string>>,
+  Assert<Equals<Extract<ProblemParams["DEP-02"], { kind: "namespace" }>["reason"], string | undefined>>,
 ];
 
 /**
