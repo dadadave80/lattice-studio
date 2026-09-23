@@ -122,10 +122,12 @@ for (const catalog of catalogs) {
     });
 
     test.skipIf(templates.length === 0)("Solidity: a hostile name or argument changes only string literals and comments, each argument arrives intact, and a hostile-keyed object is refused, not encoded", () => {
+      let keyedRuns = 0;
       const outcome = checkProperty(
         `${catalog.lattice.tag}: hostile Solidity`,
         fc.property(hostileCase(), ({ base, keyed, c }) => {
           if (keyed) {
+            keyedRuns++;
             // No ABI type accepts an object where it expects a scalar; C4b's encoder refuses it by name,
             // so Solidity export never runs on a value it hasn't validated.
             expect(foundryResult(catalog, c).ok).toBe(false);
@@ -156,7 +158,12 @@ for (const catalog of catalogs) {
         }),
       );
       // On the fixture no hostile text is refused; a real catalog's rules may refuse some, and those runs skip.
-      if (fixture) expect(outcome.skipped).toBeLessThan(outcome.runs / 10);
+      if (fixture) {
+        expect(outcome.skipped).toBeLessThan(outcome.runs / 10);
+        // Not vacuous: every fixture template has a scalar leaf, so about half of hostileCase()'s fc.boolean()
+        // draws a keyed case; a floor well under that catches scalarArgPaths (or the coin) going quiet.
+        expect(keyedRuns).toBeGreaterThan(outcome.runs / 4);
+      }
     });
 
     // FX5: replaces FX3's `test.todo`. A hostile name, string argument or object-arg field key (`<img src=x
@@ -165,9 +172,11 @@ for (const catalog of catalogs) {
     // brief's, the embedded recipe.json block is exactly `exportRecipeJson`'s text, and no raw `<` or `>`
     // (spec L21, L857: "every generated string is escaped") survives outside a fence or an inline code span.
     test.skipIf(templates.length === 0)("Markdown brief: headings, tables and fences are the plain brief's, its recipe.json block is the export, and hostile text never opens a raw HTML tag", () => {
-      checkProperty(
+      let keyedRuns = 0;
+      const outcome = checkProperty(
         `${catalog.lattice.tag}: hostile Markdown`,
-        fc.property(hostileCase(), ({ base, c }) => {
+        fc.property(hostileCase(), ({ base, keyed, c }) => {
+          if (keyed) keyedRuns++;
           const reference = markdownOutline(exportBrief({ ...(plain.get(base) as Case), catalog, studioVersion: STUDIO }).text);
           const brief = exportBrief({ recipe: c.recipe, catalog, analysis: c.analysis, studioVersion: STUDIO });
           expect(brief.filename).not.toMatch(/[/\\\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u);
@@ -179,9 +188,13 @@ for (const catalog of catalogs) {
           expect(markdownProse(brief.text)).not.toMatch(/[<>]/);
         }),
       );
+      // Not vacuous: makes sure the hostile-keyed object case (a scalar field holding one) actually reaches
+      // describeArg's object branch, not just the string-leaf case escapeHtml already covered before FX5.
+      if (fixture) expect(keyedRuns).toBeGreaterThan(outcome.runs / 4);
     });
 
     test.skipIf(templates.length === 0)("JSON: recipe.json, the project file and the Safe batch parse, carry the text exactly, keep one-line fields plain, and refuse a hostile-keyed object cleanly", () => {
+      let keyedRuns = 0;
       const outcome = checkProperty(
         `${catalog.lattice.tag}: hostile JSON`,
         fc.property(hostileCase(), ({ base, name, keyed, c }) => {
@@ -193,6 +206,7 @@ for (const catalog of catalogs) {
           expect(projectFile.filename).not.toMatch(/[/\\\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u);
           expect((JSON.parse(projectFile.text) as { project: Project }).project).toEqual(c.project);
           if (keyed) {
+            keyedRuns++;
             // Same refusal as Solidity: the Safe batch also encodes the init through C4b, so a hostile-keyed
             // object never reaches a transaction. recipe.json and the project file above still carry it,
             // because they store the recipe as data and never encode it.
@@ -210,7 +224,10 @@ for (const catalog of catalogs) {
           expect(file.transactions.map((t) => [t.to, t.value])).toEqual(reference.transactions.map((t) => [t.to, t.value]));
         }),
       );
-      if (fixture) expect(outcome.skipped).toBeLessThan(outcome.runs / 10);
+      if (fixture) {
+        expect(outcome.skipped).toBeLessThan(outcome.runs / 10);
+        expect(keyedRuns).toBeGreaterThan(outcome.runs / 4);
+      }
     });
   });
 }
