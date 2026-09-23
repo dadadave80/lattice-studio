@@ -46,13 +46,15 @@ describe("planJson", () => {
     expect(object.facetCuts.map((cut) => [cut.facet, cut.action, cut.functionSelectors.length])).toEqual(
       analysis.plan.map((entry) => [entry.facet, "Add", entry.selectors.length]),
     );
+    const first = analysis.plan[0];
+    if (!first) throw new Error("The plan is empty.");
     expect(object.facetCuts[0]).toEqual({
-      facet: analysis.plan[0]?.facet,
-      version: analysis.plan[0]?.version,
-      facetAddress: analysis.plan[0]?.address,
-      codehash: analysis.plan[0]?.codehash,
+      facet: first.facet,
+      version: first.version,
+      facetAddress: first.address,
+      codehash: first.codehash,
       action: "Add",
-      functionSelectors: analysis.plan[0]?.selectors,
+      functionSelectors: [...first.selectors],
     });
     const text = planJson(analysis);
     expect(text.endsWith("}\n")).toBe(true);

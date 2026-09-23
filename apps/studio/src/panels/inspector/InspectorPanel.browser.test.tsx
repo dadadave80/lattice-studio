@@ -202,7 +202,8 @@ describe("cut plan footer", () => {
     const items = cuts.getByRole("listitem");
     expect(items.elements().length).toBe(2);
     // Text matchers take strings here: a RegExp from the test's realm doesn't survive into the matcher.
-    const axelar = fixtureCatalog().facets.find((f) => f.name === "AxelarGatewayAdapter")?.release.address ?? "";
+    const axelar = fixtureCatalog().facets.find((f) => f.name === "AxelarGatewayAdapter")?.release.address;
+    if (!axelar) throw new Error("The fixture catalog lost AxelarGatewayAdapter.");
     expect(items.nth(0).element().textContent).toBe(`[00]ADDAxelarGatewayAdapter${formatAddress(axelar)}7/9 selectors⟂contested`);
     expect(items.nth(1).element().textContent).toMatch(/^\[01\]ADDHyperlaneGatewayAdapter0x.+10\/12 selectors⟂contested$/);
     await expect.element(page.getByText("2 · cut order")).toBeVisible();

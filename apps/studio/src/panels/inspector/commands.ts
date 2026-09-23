@@ -4,7 +4,6 @@
  */
 import type { InspectorView, SessionState } from "@/contracts";
 import { command, defineCommands, session, type CommandArgsMap, type Enablement } from "@/contracts";
-import { copyText } from "@/ui";
 import { requestInspectorFocus, type FocusTarget } from "./focus-request";
 import { planJson } from "./plan/plan-json";
 
@@ -90,7 +89,10 @@ defineCommands([
     palette: true,
     enabled: (ctx) => (ctx.analysis.plan.length === 0 ? { ok: false, reason: "Place facets first" } : OK),
     run: async (ctx) => {
-      await copyText(planJson(ctx.analysis), { label: "plan" });
+      const text = planJson(ctx.analysis);
+      // Loaded on use: the copy helper brings the toast and fallback styles, which the entry chunk doesn't need.
+      const { copyText } = await import("@/ui/copy/copy-text");
+      await copyText(text, { label: "plan" });
     },
   }),
 ]);

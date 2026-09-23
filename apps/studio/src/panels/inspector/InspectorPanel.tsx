@@ -1,7 +1,6 @@
 import { Suspense, useMemo } from "react";
 import { useAnalysis, useDocument, useSession } from "@/contracts";
-import { CutPlanFooter } from "./plan/CutPlanFooter";
-import { NarrowFillIn } from "./NarrowFillIn";
+import { CutPlanFooter, NarrowFillIn } from "./lazy-views";
 import { resolveView } from "./resolve-view";
 import { ViewBoundary } from "./ViewBoundary";
 import { ViewSwitch } from "./ViewSwitch";
@@ -12,7 +11,8 @@ const joinIds = (ids: readonly string[]): string => ids.join("\n");
 /**
  * The inspector (spec L358, IR L115-L126): the spec sheet for whatever is selected (Diamond, Facet, Selection),
  * or what a command routed here (Catalog preview, Problem, Comparison, and the seam's Init plan, problem docs
- * and Confirm addresses…), with the cut plan pinned at the foot. The region container is the shell's.
+ * and Confirm addresses…), with the cut plan pinned at the foot. The region container is the shell's. Only this
+ * frame is in the entry chunk; the views and the footer load on first render.
  */
 export function InspectorPanel() {
   const view = useSession((s) => s.panes.inspector.view);
@@ -27,7 +27,9 @@ export function InspectorPanel() {
 
   return (
     <div className={styles.panel} data-inspector-view={resolved.kind}>
-      <NarrowFillIn />
+      <Suspense fallback={null}>
+        <NarrowFillIn />
+      </Suspense>
       <div className={styles.body}>
         <ViewBoundary key={key}>
           <Suspense fallback={<p className={styles.placeholder}>Loading…</p>}>
@@ -35,7 +37,11 @@ export function InspectorPanel() {
           </Suspense>
         </ViewBoundary>
       </div>
-      <CutPlanFooter />
+      <ViewBoundary>
+        <Suspense fallback={null}>
+          <CutPlanFooter />
+        </Suspense>
+      </ViewBoundary>
     </div>
   );
 }
