@@ -5,6 +5,7 @@ import type { Result } from "../model/result";
 import { makeProject } from "../testing";
 import { recipeHash } from "./hash";
 import { canonicalJson } from "./json";
+import { normalizeRecipe } from "./normalize";
 import { formatParseIssue, parseProject, parseProjectFile, parseRecipe } from "./parse";
 import { ADMIN, ADMIN_LOWER, MAX_UINT256, catalog, stepsRecipe } from "./test-support";
 
@@ -59,11 +60,54 @@ describe("parseRecipe", () => {
     const json = fromText(stepsRecipe());
     const recipe = json as { init: { steps: { args: Record<string, unknown> }[] } };
     const step = recipe.init.steps[1];
-    if (step) step.args["supply"] = 2 ** 60;
-    const [issue] = issuesOf(parseRecipe(json, file));
-    expect(issue?.path).toBe("init.steps[1].args.supply");
-    expect(issue?.message).toContain("integers as decimal strings");
-    expect(issue?.file).toBe("recipe.json");
+    for (const value of [2 ** 60, 16]) {
+      if (step) step.args["supply"] = value;
+      const [issue] = issuesOf(parseRecipe(json, file));
+      expect(issue?.path).toBe("init.steps[1].args.supply");
+      expect(issue?.message).toBe(
+        `is ${value}; expected text (integers as decimal strings), true or false, a list, an object or {"$ref": "self" | "deployer"}.`,
+      );
+      expect(issue?.file).toBe("recipe.json");
+    }
+  });
+
+  test("a recipe opens with the same value and hash whether or not its catalog is bundled", () => {
+    const recipe = stepsRecipe({
+      init: {
+        kind: "steps",
+        steps: [
+          { spec: "AccessControlInit", args: { admin: ADMIN_LOWER } },
+          { spec: "LabelInit", args: { label: "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01", code: `0x${"AB".repeat(20)}`, keeper: ADMIN } },
+        ],
+      },
+    });
+    const normalized = normalizeRecipe(recipe, catalog);
+    const { init } = normalized;
+    expect(init.kind === "steps" && init.steps[1]?.args).toEqual({
+      label: "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01",
+      code: `0x${"ab".repeat(20)}`,
+      keeper: ADMIN,
+    });
+    const bundled = parseRecipe(fromText(normalized), file);
+    const unbundled = parseRecipe(fromText(normalized), { catalogs: [], source: "link" });
+    expect(bundled.ok && unbundled.ok).toBe(true);
+    if (!bundled.ok || !unbundled.ok) return;
+    expect(unbundled.value.catalog).toBeNull();
+    expect(unbundled.value.value).toEqual(normalized);
+    expect(bundled.value.value).toEqual(normalized);
+    expect(recipeHash(unbundled.value.value)).toBe(recipeHash(recipe, catalog));
+    expect(recipeHash(bundled.value.value)).toBe(recipeHash(recipe, catalog));
+  });
+
+  test("owner keys that differ only in case must agree on the facet", () => {
+    const conflict = fromText(stepsRecipe({ owners: { "0xA9059CBB": "ERC20", "0xa9059cbb": "ERC20Votes" } }));
+    expect(issuesOf(parseRecipe(conflict, file)).map(formatParseIssue)).toEqual([
+      'recipe.json: owners["0xA9059CBB"] routes 0xa9059cbb to ERC20, but owners["0xa9059cbb"] routes it to ERC20Votes. Choose one owner.',
+    ]);
+    const unbundled = issuesOf(parseRecipe(conflict, { catalogs: [], source: "link" }));
+    expect(unbundled.map((found) => found.path)).toEqual(['owners["0xA9059CBB"]']);
+    const agreeing = parseRecipe(fromText(stepsRecipe({ owners: { "0xA9059CBB": "ERC20Votes", "0xa9059cbb": "ERC20Votes" } })), file);
+    expect(agreeing.ok && agreeing.value.value.owners).toEqual({ "0xa9059cbb": "ERC20Votes" });
   });
 
   test("unknown fields round-trip, are listed and stay out of the hash", () => {

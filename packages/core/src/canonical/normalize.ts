@@ -1,6 +1,6 @@
 import type { NormalizeRecipeFn } from "../model/api";
 import type { Catalog, InitParam } from "../model/catalog";
-import { isHexAnyCase, toChecksum, toLowerHex, type Hex, type Hex4 } from "../model/hex";
+import { isHexAnyCase, toChecksum, toLowerHex, type Hex4 } from "../model/hex";
 import type { Arg, InitStep, Recipe, RecipeInit } from "../model/recipe";
 
 /** What argument normalization needs to know about a parameter: its ABI type and, for tuples, components. */
@@ -21,20 +21,24 @@ function isRef(value: Arg): value is { $ref: "self" | "deployer" } {
   return isArgObject(value) && Object.hasOwn(value, "$ref");
 }
 
-function checksum(value: string): Hex {
-  return toChecksum(value.toLowerCase());
+/**
+ * EIP-55 for an address written in one case (all lowercase or all uppercase). A mixed-case address is either
+ * already its checksum or a mistyped one; either way it stays as written, so INIT-01's checksum validation
+ * (spec L462) still sees the mistake.
+ */
+function checksum(value: string): string {
+  const digits = value.slice(2);
+  if (digits !== digits.toLowerCase() && digits !== digits.toUpperCase()) return value;
+  return toChecksum(`0x${digits.toLowerCase()}`);
 }
 
 /**
- * An argument whose parameter type isn't known (its init or parameter isn't in the catalog): addresses
- * EIP-55, other hex lowercase, everything else as it is (spec L225).
+ * An argument whose parameter type isn't known (its init or parameter isn't in the catalog, or the catalog
+ * isn't bundled): structure only. Strings stay exactly as written, because without the type Studio can't
+ * tell an address or bytes from text, and the hash must not depend on which catalogs a build bundles.
  */
 function normalizeUntyped(value: Arg): Arg {
-  if (typeof value === "string") {
-    if (ADDRESS_SHAPE.test(value)) return checksum(value);
-    return isHexAnyCase(value) ? toLowerHex(value) : value;
-  }
-  if (typeof value === "boolean") return value;
+  if (typeof value === "string" || typeof value === "boolean") return value;
   if (Array.isArray(value)) return value.map(normalizeUntyped);
   if (isRef(value)) return { $ref: value.$ref };
   return mapFields(value, () => undefined);
@@ -127,7 +131,8 @@ function orderFacets(facets: readonly string[], catalog: Catalog | null): string
 
 /**
  * Keys lowercase, emitted in sorted order. Two keys that differ only in case resolve deterministically:
- * keys are applied in code-unit order, so the lowercase spelling (which sorts last) wins.
+ * keys are applied in code-unit order, so the lowercase spelling (which sorts last) wins. Parsing refuses
+ * case variants that name different facets (`ownerCaseConflicts`), so only same-facet duplicates get here.
  */
 function normalizeOwners(owners: Record<Hex4, string>): Record<Hex4, string> {
   const byKey = new Map<Hex4, string>();
@@ -150,7 +155,7 @@ const RECIPE_ORDER = [
 
 /**
  * `normalizeRecipe` with the catalog optional: without one (a recipe pinned to a catalog this build doesn't
- * bundle, spec L290), facets keep their input order and arguments normalize by shape alone.
+ * bundle, spec L290), facets keep their input order and argument strings stay as written.
  */
 export function normalizeWith(recipe: Recipe, catalog: Catalog | null): Recipe {
   const known: Partial<Recipe> = {
@@ -178,7 +183,8 @@ export function normalizeWith(recipe: Recipe, catalog: Catalog | null): Recipe {
  * The recipe as it is hashed and stored (spec L283): facets deduplicated into catalog order, `owners` keys
  * lowercase in sorted order, `exclude` lowercase, sorted and deduplicated, catalog and template hashes
  * lowercase, and init arguments by their parameter types (integers as decimal strings, `bytes` lowercase,
- * addresses EIP-55; text untouched). References stay `{"$ref": …}`. Unknown fields are kept. Idempotent.
+ * addresses written in one case EIP-55; text untouched). An argument whose type the catalog doesn't give
+ * keeps its strings as written. References stay `{"$ref": …}`. Unknown fields are kept. Idempotent.
  * Facets the catalog lacks follow the known ones in input order (parsing refuses them).
  */
 export const normalizeRecipe: NormalizeRecipeFn = (recipe, catalog) => normalizeWith(recipe, catalog);

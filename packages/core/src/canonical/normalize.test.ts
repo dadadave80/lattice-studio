@@ -100,21 +100,30 @@ describe("normalizeRecipe", () => {
     expect(init.kind === "steps" && init.steps[0]?.args["supply"]).toBe("1e18");
   });
 
-  test("an init or parameter the catalog lacks normalizes by shape: addresses EIP-55, other hex lowercase", () => {
-    const recipe = stepsRecipe({
-      init: {
-        kind: "steps",
-        steps: [{ spec: "UnknownInit", args: { who: ADMIN_LOWER, data: "0xABCD", n: "0007", list: [ADMIN_LOWER, true], nested: { x: "0xFF" } } }],
-      },
-    });
+  test("an init or parameter the catalog lacks keeps its strings exactly as written", () => {
+    const args = { who: ADMIN_LOWER, data: "0xABCD", n: "0007", list: [ADMIN_LOWER, true], nested: { x: "0xFF", r: { $ref: "self" } } };
+    const recipe = stepsRecipe({ init: { kind: "steps", steps: [{ spec: "UnknownInit", args }] } });
     const init = normalizeRecipe(recipe, catalog).init;
-    expect(init.kind === "steps" && init.steps[0]?.args).toEqual({
-      who: ADMIN,
-      data: "0xabcd",
-      n: "0007",
-      list: [ADMIN, true],
-      nested: { x: "0xff" },
-    });
+    expect(init.kind === "steps" && init.steps[0]?.args).toEqual(args);
+    const known = stepsRecipe({ init: { kind: "steps", steps: [{ spec: "LabelInit", args: { label: "L", extra: "0xABCD" } }] } });
+    const knownInit = normalizeRecipe(known, catalog).init;
+    expect(knownInit.kind === "steps" && knownInit.steps[0]?.args["extra"]).toBe("0xABCD");
+  });
+
+  test("addresses in one case are checksummed; a mixed-case address stays as written for INIT-01 to check", () => {
+    // ADMIN with its first letter's case flipped ("71C7" → "71c7"): mixed case, wrong checksum.
+    const wrongChecksum = `0x71c7${ADMIN.slice(6)}`;
+    const keeper = (value: string): unknown => {
+      const recipe = stepsRecipe({ init: { kind: "steps", steps: [{ spec: "LabelInit", args: { keeper: value } }] } });
+      const init = normalizeRecipe(recipe, catalog).init;
+      return init.kind === "steps" ? init.steps[0]?.args["keeper"] : undefined;
+    };
+    expect(keeper(ADMIN_LOWER)).toBe(ADMIN);
+    expect(keeper(`0x${ADMIN_LOWER.slice(2).toUpperCase()}`)).toBe(ADMIN);
+    expect(keeper(ADMIN)).toBe(ADMIN);
+    expect(wrongChecksum).not.toBe(ADMIN);
+    expect(wrongChecksum.toLowerCase()).toBe(ADMIN_LOWER);
+    expect(keeper(wrongChecksum)).toBe(wrongChecksum);
   });
 
   test("unknown fields survive at every level, after the known ones", () => {

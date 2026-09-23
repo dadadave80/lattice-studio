@@ -63,6 +63,33 @@ function semanticIssues(recipe: Recipe, catalog: Catalog, at: readonly string[],
   return out;
 }
 
+/**
+ * Owner keys are selectors in any case, so `0xA9059CBB` and `0xa9059cbb` are one selector. Case variants that
+ * name the same facet collapse quietly in normalization; ones that name different facets would silently lose a
+ * routing, so each losing key is an issue. The key normalization keeps (the lowercase spelling, which sorts
+ * last) is the one the message points to.
+ */
+function ownerCaseConflicts(recipe: Recipe, at: readonly string[], opts: ParseOptions): ParseIssue[] {
+  const groups = new Map<string, string[]>();
+  for (const key of Object.keys(recipe.owners).sort()) {
+    const lower = key.toLowerCase();
+    groups.set(lower, [...(groups.get(lower) ?? []), key]);
+  }
+  const out: ParseIssue[] = [];
+  for (const [selector, keys] of groups) {
+    const kept = keys.at(-1);
+    if (kept === undefined) continue;
+    const keptOwner = recipe.owners[kept as Hex];
+    for (const key of keys.slice(0, -1)) {
+      const owner = recipe.owners[key as Hex];
+      if (owner === keptOwner) continue;
+      const message = `routes ${selector} to ${owner ?? ""}, but ${formatPath([...at, "owners", kept])} routes it to ${keptOwner ?? ""}. Choose one owner.`;
+      out.push(issue(formatPath([...at, "owners", key]), message, opts));
+    }
+  }
+  return out;
+}
+
 function checksum(value: Hex): Hex {
   return toChecksum(value.toLowerCase());
 }
@@ -107,10 +134,11 @@ function parseAs<T>(shape: Shape<T>, json: unknown, opts: ParseOptions): Result<
   if (!validated.ok) return err(withFile(validated.error, opts));
   const recipe = shape.recipeOf(validated.value.value);
   const catalog = findCatalog(recipe, opts.catalogs);
-  if (catalog !== null) {
-    const issues = semanticIssues(recipe, catalog, shape.recipePath, opts);
-    if (issues.length > 0) return err(issues);
-  }
+  const issues = [
+    ...(catalog === null ? [] : semanticIssues(recipe, catalog, shape.recipePath, opts)),
+    ...ownerCaseConflicts(recipe, shape.recipePath, opts),
+  ];
+  if (issues.length > 0) return err(issues);
   const parsed: Parsed<T> = {
     value: shape.normalize(validated.value.value, normalizeWith(recipe, catalog)),
     unknownFields: validated.value.unknownFields,

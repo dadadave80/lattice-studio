@@ -36,6 +36,15 @@ export const catalog: Catalog = makeCatalog({
       params: [{ name: "admin", type: "address", doc: "Admin", authority: true }],
     }),
     makeInit({
+      name: "LabelInit",
+      fn: "init(string,bytes20,address)",
+      params: [
+        { name: "label", type: "string", doc: "Label" },
+        { name: "code", type: "bytes20", doc: "Code" },
+        { name: "keeper", type: "address", doc: "Keeper", authority: true },
+      ],
+    }),
+    makeInit({
       name: "VaultInit",
       kind: "bundle",
       fn: "init((address,string,uint256,bytes32),address[],uint48[])",
