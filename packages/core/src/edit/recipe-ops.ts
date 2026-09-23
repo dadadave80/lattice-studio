@@ -108,7 +108,8 @@ function routedOwners(recipe: Recipe, catalog: Catalog, selector: Hex4, facet: s
   const exporters = exportersOf(recipe, catalog, selector);
   const explicit = recipe.owners[selector];
   if (exporters.length > 1) {
-    if (currentOwner(recipe, catalog, selector, exporters) === facet) return recipe.owners;
+    const settled = explicit === undefined || explicit === facet;
+    if (settled && currentOwner(recipe, catalog, selector, exporters) === facet) return recipe.owners;
     return { ...recipe.owners, [selector]: facet };
   }
   // The only exporter serves it: an owner entry naming anyone else is stale.

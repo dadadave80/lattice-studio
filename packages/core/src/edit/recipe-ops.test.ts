@@ -186,6 +186,12 @@ describe("routeSelector", () => {
     expect(after.recipe.owners).toEqual({ [SEL.name]: "ERC20" });
   });
 
+  test("routing to the default owner replaces an owner that isn't on the sheet (SEL-05)", () => {
+    const before = projectWith({ facets: ["ERC20", "GovernedVault"], owners: { [SEL.name]: "Axelar" } });
+    const after = expectChanged(routeSelector(before, catalog, SEL.name, "GovernedVault"), before, "Routed `name · 0x06fdde03` to GovernedVault");
+    expect(after.recipe.owners).toEqual({ [SEL.name]: "GovernedVault" });
+  });
+
   test("a seam says why it can't move, and allows its other allowed facets", () => {
     const before = projectWith({ facets: ["ERC20", "ERC20Votes", "GovernedVault"] });
     expectNoOp(
