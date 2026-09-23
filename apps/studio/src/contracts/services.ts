@@ -9,7 +9,7 @@
  * whichever implementation is current when they run.
  */
 import type {
-  CommandRef, ConsoleLine, Deployment, Layout, Project, ProblemCode, Random, Recipe, Result,
+  Address, CommandRef, ConsoleLine, Deployment, Layout, Project, ProblemCode, Random, Recipe, Result,
 } from "@lattice-studio/core";
 import { NotImplemented } from "@lattice-studio/core";
 import { useSyncExternalStore, type HTMLAttributes, type RefCallback } from "react";
@@ -95,6 +95,11 @@ export type ProjectsService = {
 export type DeploymentsService = {
   listDeployments(projectId: string): Promise<Deployment[]>;
   putDeployment(deployment: Deployment): Promise<void>;
+  /**
+   * Drops one record (Discard proposal, spec Flow 12). Optional until S7a's persistence implements it
+   * (CCR from S8c); the memory store does. `deleteDeployment()` below writes `status: "failed"` when it's missing.
+   */
+  deleteDeployment?(chainId: number, address: Address): Promise<void>;
   /** Called after every write, from this tab or another; `projectId` names the project whose records changed. */
   subscribe(listener: (projectId: string) => void): () => void;
 };
@@ -245,6 +250,13 @@ function memoryDeployments(): DeploymentsService & { clear(): void } {
     putDeployment: async (d) => {
       records.set(`${d.chainId}:${d.address.toLowerCase()}`, d);
       changed.emit(d.projectId);
+    },
+    deleteDeployment: async (chainId, address) => {
+      const key = `${chainId}:${address.toLowerCase()}`;
+      const gone = records.get(key);
+      if (gone === undefined) return;
+      records.delete(key);
+      changed.emit(gone.projectId);
     },
     subscribe: (listener) => changed.add(listener),
     clear: () => records.clear(),
@@ -581,6 +593,13 @@ export function listDeployments(projectId: string): Promise<Deployment[]> {
 
 export function putDeployment(deployment: Deployment): Promise<void> {
   return impl.deployments.putDeployment(deployment);
+}
+
+/** Drops a record; where the store can't yet, marks it failed instead (see `DeploymentsService.deleteDeployment`). */
+export async function deleteDeployment(record: Deployment): Promise<void> {
+  const store = impl.deployments;
+  if (store.deleteDeployment) return store.deleteDeployment(record.chainId, record.address);
+  return store.putDeployment({ ...record, status: "failed" });
 }
 
 /**

@@ -17,6 +17,7 @@ import * as z from "zod";
 z.config({ jitless: true });
 import type { AbiItem, Catalog, CatalogManifest, FacetDetail, InitParam } from "./catalog";
 import { isAddress } from "./hex";
+import { formatPath, MAX_JSON_DEPTH } from "./path";
 import type { ParseIssue } from "./io";
 import type { Json } from "./json";
 import type { Deployment, Project, ProjectFile } from "./project";
@@ -96,18 +97,6 @@ const issueMessage: z.core.$ZodErrorMap = (issue) => {
 
 // ── paths and issues ───────────────────────────────────────────────────────────────────────────────
 
-const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
-
-/** `["facets", 3]` → `facets[3]`; `["owners", "0xcdfe7f5c"]` → `owners["0xcdfe7f5c"]`; `[]` → "". */
-export function formatPath(path: readonly PropertyKey[]): string {
-  let out = "";
-  for (const key of path) {
-    if (typeof key === "number") out += `[${key}]`;
-    else if (typeof key === "string" && IDENTIFIER.test(key)) out += out ? `.${key}` : key;
-    else out += `[${JSON.stringify(String(key))}]`;
-  }
-  return out;
-}
 
 /** How deep a union branch got before failing: the branch that got furthest explains the failure best. */
 function branchDepth(branch: readonly z.core.$ZodIssue[]): number {
@@ -558,8 +547,6 @@ export function listUnknownFields(schema: z.core.$ZodType, value: unknown): stri
 
 // ── validation entry points ────────────────────────────────────────────────────────────────────────
 
-/** No file, link or record Studio reads nests anywhere near this deep; hostile input that does is refused. */
-export const MAX_JSON_DEPTH = 64;
 
 /** The path of the first object or list nested deeper than `MAX_JSON_DEPTH`, or null. Iterative, so it can't overflow. */
 function tooDeep(json: unknown): PropertyKey[] | null {

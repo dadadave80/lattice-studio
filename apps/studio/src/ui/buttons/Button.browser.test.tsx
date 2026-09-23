@@ -1,3 +1,4 @@
+import { useEffect, useState, type ReactNode } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { command, settings } from "@/contracts";
@@ -165,5 +166,90 @@ describe("CommandButton", () => {
     await expect.element(tidy).toHaveAttribute("aria-keyshortcuts", "T");
     settings.set({ singleKeys: false });
     await expect.poll(() => tidy.element().hasAttribute("aria-keyshortcuts")).toBe(false);
+  });
+});
+
+/**
+ * Renders `render(reason)` with a reason the test turns on and off (a rerender, not a remount). `turn` waits
+ * until the control shows the new state.
+ */
+function flippable(render: (reason: string | null) => ReactNode) {
+  const control = { set: (_reason: string | null) => {} };
+  function Flipped() {
+    const [reason, setReason] = useState<string | null>(null);
+    useEffect(() => {
+      control.set = setReason;
+    }, []);
+    return render(reason);
+  }
+  return { Flipped, set: (reason: string | null) => control.set(reason) };
+}
+
+/** Focuses `control`, then turns its reason on, off and on again: the same element keeps focus each time. */
+async function expectFocusKept(control: () => ReturnType<typeof page.getByRole>, set: (reason: string | null) => void) {
+  await control().click();
+  await expect.element(control()).toHaveFocus();
+  const before = control().element();
+  for (const reason of ["Nothing to undo", null, "Nothing to undo"]) {
+    set(reason);
+    if (reason) await expect.element(control()).toHaveAttribute("aria-disabled", "true");
+    else await expect.element(control()).not.toHaveAttribute("aria-disabled");
+    expect(control().element()).toBe(before);
+    await expect.element(control()).toHaveFocus();
+  }
+}
+
+describe("a reason coming or going keeps the control and its focus (spec L753)", () => {
+  test("Button", async () => {
+    const { Flipped, set } = flippable((reason) => <Button disabledReason={reason}>Undo</Button>);
+    await renderWithStudio(<Flipped />);
+    await expectFocusKept(() => page.getByRole("button", { name: "Undo" }), set);
+  });
+
+  test("Button with a tooltip: once enabled again, hover shows the tooltip and a click activates", async () => {
+    const onClick = vi.fn();
+    const { Flipped, set } = flippable((reason) => (
+      <Button disabledReason={reason} tooltip="Undo the last change" onClick={onClick}>
+        Undo
+      </Button>
+    ));
+    await renderWithStudio(<Flipped />);
+    const button = () => page.getByRole("button", { name: "Undo" });
+    await expectFocusKept(button, set);
+    set(null);
+    await expect.element(button()).not.toHaveAttribute("aria-disabled");
+    await button().click();
+    expect(onClick).toHaveBeenCalledTimes(2);
+    await page.getByRole("button", { name: "Undo" }).unhover();
+    await button().hover();
+    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent).toContain("Undo the last change");
+  });
+
+  test("IconButton", async () => {
+    const { Flipped, set } = flippable((reason) => <IconButton icon="undo" label="Undo" disabledReason={reason} />);
+    await renderWithStudio(<Flipped />);
+    await expectFocusKept(() => page.getByRole("button", { name: "Undo" }), set);
+  });
+
+  test("CommandButton, as its command turns off and on", async () => {
+    let reason: string | null = null;
+    overrideCommands([
+      command({
+        id: "history.undo",
+        title: () => "Undo",
+        category: "Sheet",
+        enabled: () => (reason ? { ok: false, reason } : { ok: true }),
+        run: () => {},
+      }),
+    ]);
+    await renderWithStudio(<CommandButton command={{ id: "history.undo" }} />);
+    // Any store change makes commands re-read their state; the settings store is the handiest.
+    let nudge = false;
+    const set = (next: string | null) => {
+      reason = next;
+      nudge = !nudge;
+      settings.set({ singleKeys: nudge });
+    };
+    await expectFocusKept(() => page.getByRole("button", { name: "Undo" }), set);
   });
 });

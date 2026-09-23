@@ -1,0 +1,119 @@
+/*
+ * The Structure tab (spec L747, IR L90-L97; PA L78: not designed yet). Built from the tree primitive and the
+ * catalog board's recipe list: names in the body face, counts and hexes in code, states in words. Tokens only.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  block-size: 100%;
+  background: var(--lx-panel);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--lx-space-2) var(--lx-space-3);
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.tree {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+.name {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.aside {
+  flex: none;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.code {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+/* Not in the diamond: the name recedes and is struck, as the pin's is (IR L104). */
+.code[data-state="excluded"] {
+  color: var(--lx-text-faint);
+  text-decoration: line-through;
+}
+
+/* Contested: accent, as the pin's name in a collision. */
+.code[data-state="contested"] {
+  color: var(--lx-accent-strong);
+}
+
+.mark {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-1);
+  color: var(--lx-text-muted);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.problem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lx-space-2);
+  padding-block: var(--lx-space-1);
+  min-inline-size: 0;
+}
+
+.severity {
+  flex: none;
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.severity[data-severity="blocker"] {
+  color: var(--lx-accent-strong);
+}
+
+.message {
+  min-inline-size: 0;
+}
+
+.inline {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.index {
+  flex: none;
+  min-inline-size: var(--lx-space-4);
+  color: var(--lx-text-muted);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.lock {
+  flex: none;
+  color: var(--lx-text-muted);
+}
+
+@media (forced-colors: active) {
+  .code[data-state="contested"],
+  .severity[data-severity="blocker"] {
+    color: CanvasText;
+  }
+
+  .code[data-state="excluded"] {
+    color: GrayText;
+  }
+}

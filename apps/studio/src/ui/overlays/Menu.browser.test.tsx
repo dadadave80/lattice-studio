@@ -139,6 +139,17 @@ describe("Menu", () => {
     }
   });
 
+  test("the menu is named by its label, not the trigger's own accessible name", async () => {
+    await renderWithStudio(
+      <Menu trigger={<Button>Lattice Studio</Button>} label="App menu">
+        <MenuItem label="Settings" onSelect={() => {}} />
+      </Menu>,
+    );
+    await page.getByRole("button", { name: "Lattice Studio" }).click();
+    await expect.element(page.getByRole("menu", { name: "App menu" })).toBeVisible();
+    expect(page.getByRole("menu", { name: "Lattice Studio" }).elements()).toHaveLength(0);
+  });
+
   test("works with an IconButton trigger", async () => {
     await renderWithStudio(
       <Menu trigger={<IconButton icon="menu" label="App menu" />} label="App menu">

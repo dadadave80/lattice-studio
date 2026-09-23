@@ -5,7 +5,8 @@ import type { ParseIssue, ParseOptions, ParseSource, Parsed } from "../model/io"
 import type { Deployment, Project, ProjectFile } from "../model/project";
 import type { Recipe } from "../model/recipe";
 import { err, ok, type Result } from "../model/result";
-import { formatPath, MAX_JSON_DEPTH, validateProject, validateProjectFile, validateRecipe, type Validated } from "../model/schema";
+import { formatPath, MAX_JSON_DEPTH } from "../model/path";
+import { validateProject, validateProjectFile, validateRecipe, type Validated } from "../model/schema";
 import { LONE_SURROGATE } from "./json";
 import { runMigrations, type MigrateTarget } from "./migrate";
 import { normalizeWith } from "./normalize";

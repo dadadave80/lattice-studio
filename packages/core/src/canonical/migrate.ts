@@ -3,7 +3,7 @@ import type { Migrated } from "../model/io";
 import type { Json, JsonObject } from "../model/json";
 import { RECIPE_SCHEMA_VERSION } from "../model/recipe";
 import { err, ok, type Result } from "../model/result";
-import { formatPath } from "../model/schema";
+import { formatPath } from "../model/path";
 import { findProtoKey } from "./proto-key";
 
 /**
