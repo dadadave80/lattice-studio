@@ -97,8 +97,12 @@ function frame(): Promise<void> {
  * A mouse drag on a card from its header by `by` screen px, in `steps` moves, holding at the end for `hold`
  * frames before letting go (edge auto-scroll runs while it's held).
  */
-export async function dragCard(facet: string, by: Point, options: Modifiers & { steps?: number; hold?: number; from?: Point } = {}): Promise<void> {
-  const { steps = 6, hold = 0, from, ...modifiers } = options;
+export async function dragCard(
+  facet: string,
+  by: Point,
+  options: Modifiers & { steps?: number; hold?: number; from?: Point; release?: boolean } = {},
+): Promise<void> {
+  const { steps = 6, hold = 0, from, release = true, ...modifiers } = options;
   const target = cardNode(facet);
   const start = client(from ?? cardPoint(facet));
   const base = { bubbles: true, cancelable: true, view: window, button: 0, ...modifiers };
@@ -110,7 +114,15 @@ export async function dragCard(facet: string, by: Point, options: Modifiers & { 
     await frame();
   }
   for (let i = 0; i < hold; i++) await frame();
-  window.dispatchEvent(new MouseEvent("mouseup", { ...base, buttons: 0, clientX: start.clientX + by.x, clientY: start.clientY + by.y }));
+  lastDrag = { clientX: start.clientX + by.x, clientY: start.clientY + by.y };
+  if (release) await releaseDrag();
+}
+
+let lastDrag = { clientX: 0, clientY: 0 };
+
+/** Lets go of a card drag started with `release: false`. */
+export async function releaseDrag(): Promise<void> {
+  window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window, button: 0, buttons: 0, ...lastDrag }));
   await frame();
 }
 

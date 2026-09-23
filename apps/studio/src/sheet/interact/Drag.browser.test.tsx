@@ -6,7 +6,8 @@ import { describe, expect, test } from "vitest";
 import { doc, session } from "@/contracts";
 import { bufferedServices } from "../../../test/harness";
 import {
-  announced, cardNode, client, cardPoint, clickCard, dragCard, drawnViewport, position, renderInteractSheet, selection,
+  announced, cardNode, client, cardPoint, clickCard, dragCard, drawnViewport, position, releaseDrag, renderInteractSheet,
+  selection,
   sheetProject, storedViewport,
 } from "./testing/interact-harness";
 
@@ -82,7 +83,12 @@ describe("dragging a card", () => {
   test("read-only: nothing moves, and the reason is logged", async () => {
     const [a] = await sheet();
     session.set({ readOnly: "Read-only: this is a shared link" });
-    await dragCard(a, { x: 80, y: 80 });
+    const before = cardNode(a).getBoundingClientRect();
+    await dragCard(a, { x: 80, y: 80 }, { hold: 2, release: false });
+    // Mid-drag, the card hasn't followed the pointer either.
+    const during = cardNode(a).getBoundingClientRect();
+    expect([during.left, during.top]).toEqual([before.left, before.top]);
+    await releaseDrag();
     expect(position(a)).toEqual({ x: 24, y: 24 });
     expect(bufferedServices().log.some((line) => line.text === "Read-only: this is a shared link")).toBe(true);
   });
