@@ -245,7 +245,8 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
         schedule();
       }),
     ];
-    schedule();
+    // The first baseline: what's open when narration starts.
+    baseline = getAnalysis();
     return () => {
       started = false;
       scheduled = false;
