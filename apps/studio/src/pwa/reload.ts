@@ -9,7 +9,7 @@ import type { CommandRef, LineDraft } from "@lattice-studio/core";
 import type { Enablement, SaveStatus } from "@/contracts";
 import { RELOAD_WAITS } from "./copy";
 import type { UpdateHandle } from "./state";
-import { safeToReload } from "./updates";
+import { safeToReload, settledSave } from "./saved";
 
 const SAVE_A_COPY: CommandRef = { id: "project.saveCopy" };
 const SAVE_AND_RELOAD: CommandRef = { id: "app.saveAndReload" };
@@ -43,18 +43,32 @@ export type ReloadDeps = {
   waitMs?: number;
 };
 
-async function reload(deps: ReloadDeps): Promise<void> {
-  const updates = deps.updates();
-  if (updates) await updates.reload();
-  else deps.reloadPage();
-}
-
 function refuse(deps: ReloadDeps, text: string): void {
   deps.log({ tag: "Note", text });
   deps.announce(text);
 }
 
 export type ReloadOutcome = "reloaded" | "not-saved" | "still-saving";
+
+const STILL_SAVING = "Didn't reload: the project is still saving. Try Save and reload again.";
+
+/** Reloads through the update controller when one runs (it activates a waiting worker first). */
+async function reload(deps: ReloadDeps): Promise<ReloadOutcome> {
+  const updates = deps.updates();
+  if (!updates) {
+    deps.reloadPage();
+    return "reloaded";
+  }
+  if (await updates.reload()) return "reloaded";
+  // An edit arrived while the new worker took over, and its save didn't settle.
+  const status = deps.saveStatus();
+  if (status.state === "not-saved") {
+    refuse(deps, `Didn't reload: ${notSavedReason(status)}.`);
+    return "not-saved";
+  }
+  refuse(deps, STILL_SAVING);
+  return "still-saving";
+}
 
 /** Reloads now if nothing would be lost, else says why not. */
 export async function reloadStudio(deps: ReloadDeps): Promise<ReloadOutcome> {
@@ -63,38 +77,19 @@ export async function reloadStudio(deps: ReloadDeps): Promise<ReloadOutcome> {
     refuse(deps, `Didn't reload: ${status.state === "not-saved" ? notSavedReason(status) : RELOAD_WAITS.toLowerCase()}.`);
     return status.state === "not-saved" ? "not-saved" : "still-saving";
   }
-  await reload(deps);
-  return "reloaded";
+  return reload(deps);
 }
 
 /** Waits for the pending save (up to `waitMs`), then reloads; says why when it can't. */
 export async function saveAndReload(deps: ReloadDeps): Promise<ReloadOutcome> {
-  const settled = await new Promise<SaveStatus | null>((resolve) => {
-    const first = deps.saveStatus();
-    if (first.state !== "saving") {
-      resolve(first);
-      return;
-    }
-    let timer: unknown = null;
-    const stop = deps.subscribeSaveStatus((status) => {
-      if (status.state === "saving") return;
-      finish(status);
-    });
-    function finish(status: SaveStatus | null): void {
-      stop();
-      if (timer !== null) deps.clearTimeout(timer);
-      resolve(status);
-    }
-    timer = deps.setTimeout(() => finish(null), deps.waitMs ?? 10_000);
-  });
+  const settled = await settledSave(deps, deps.waitMs ?? 10_000);
   if (settled === null) {
-    refuse(deps, "Didn't reload: the project is still saving. Try Save and reload again.");
+    refuse(deps, STILL_SAVING);
     return "still-saving";
   }
   if (!safeToReload(settled)) {
     refuse(deps, `Didn't reload: ${notSavedReason(settled)}.`);
     return "not-saved";
   }
-  await reload(deps);
-  return "reloaded";
+  return reload(deps);
 }

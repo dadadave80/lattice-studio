@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 import type { BannerProps } from "@/contracts";
 import { BANNERS } from "./copy";
-import { createUpdates, safeToReload, type UpdateDeps } from "./updates";
+import { safeToReload } from "./saved";
+import { createUpdates, type UpdateDeps } from "./updates";
 import {
   fakeSaveStatus, fakeWorkbox, manualTimers, READ_ONLY, SAVED, SAVING, STORAGE_FULL, type FakeWorkbox,
 } from "./test-support";
@@ -62,11 +63,18 @@ describe("the update banner", () => {
     expect(banners.has(BANNERS.update.id)).toBe(false);
     save.set(SAVED);
     expect(banners.has(BANNERS.update.id)).toBe(true);
-    // An edit starts a save: the banner steps back until it's saved again.
-    save.set(SAVING);
-    expect(banners.has(BANNERS.update.id)).toBe(false);
-    save.set(SAVED);
-    expect(banners.has(BANNERS.update.id)).toBe(true);
+  });
+
+  test("once shown, stays up through autosaves: no flicker, and focus stays on Reload", () => {
+    const { workbox, save, banners } = setup(SAVED);
+    const shown: string[] = [];
+    workbox.emitWaiting();
+    shown.push(banners.has(BANNERS.update.id) ? "shown" : "hidden");
+    for (const status of [SAVING, SAVED, SAVING, SAVED]) {
+      save.set(status);
+      shown.push(banners.has(BANNERS.update.id) ? "shown" : "hidden");
+    }
+    expect(shown).toEqual(["shown", "shown", "shown", "shown", "shown"]);
   });
 
   test("never shows while the project can't be saved", () => {
@@ -124,8 +132,33 @@ describe("reload", () => {
     expect(workbox.skipWaitingCalls).toBe(1);
     expect(reloadPage).not.toHaveBeenCalled();
     workbox.emitControlling(false);
-    await done;
+    expect(await done).toBe(true);
     expect(reloadPage).toHaveBeenCalledTimes(1);
+  });
+
+  test("an edit made while the new worker takes over is saved before the page reloads", async () => {
+    const { workbox, save, reloadPage, updates } = setup(SAVED);
+    workbox.emitWaiting();
+    const done = updates.reload();
+    save.set(SAVING);
+    workbox.emitControlling(false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(reloadPage).not.toHaveBeenCalled();
+    save.set(SAVED);
+    expect(await done).toBe(true);
+    expect(reloadPage).toHaveBeenCalledTimes(1);
+  });
+
+  test("doesn't reload when that save fails", async () => {
+    const { workbox, save, reloadPage, updates } = setup(SAVED);
+    workbox.emitWaiting();
+    const done = updates.reload();
+    save.set(SAVING);
+    workbox.emitControlling(false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    save.set(STORAGE_FULL);
+    expect(await done).toBe(false);
+    expect(reloadPage).not.toHaveBeenCalled();
   });
 
   test("reloads anyway if the new worker hasn't taken over in 3 s, and only once", async () => {
@@ -135,14 +168,14 @@ describe("reload", () => {
     timers.advance(2999);
     expect(reloadPage).not.toHaveBeenCalled();
     timers.advance(1);
-    await done;
+    expect(await done).toBe(true);
     workbox.emitControlling(false);
     expect(reloadPage).toHaveBeenCalledTimes(1);
   });
 
   test("just reloads when nothing is waiting", async () => {
     const { workbox, reloadPage, updates } = setup(SAVED);
-    await updates.reload();
+    expect(await updates.reload()).toBe(true);
     expect(workbox.skipWaitingCalls).toBe(0);
     expect(reloadPage).toHaveBeenCalledTimes(1);
   });

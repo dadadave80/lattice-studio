@@ -95,7 +95,6 @@ export function securityHeaders(csp: string): Header[] {
     { key: "Content-Security-Policy", value: csp },
     { key: "Cross-Origin-Opener-Policy", value: CROSS_ORIGIN_OPENER_POLICY },
     { key: "X-Content-Type-Options", value: "nosniff" },
-    { key: "Referrer-Policy", value: "no-referrer" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
   ];
 }

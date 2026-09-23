@@ -28,6 +28,8 @@ export type ConnectionDeps = {
 export type Connection = ConnectionService & {
   /** A request failed in a way that could mean the network is gone: probe Studio's origin. */
   reportFailure(): void;
+  /** Probes now (or joins the probe in flight) and resolves with whether Studio is online afterwards. */
+  check(): Promise<boolean>;
   /** Removes the listeners and any pending probe. */
   dispose(): void;
 };
@@ -37,7 +39,7 @@ export function createConnection(deps: ConnectionDeps): Connection {
   const listeners = new Set<(online: boolean) => void>();
   let browserOnline = deps.onLine();
   let reachable = true;
-  let probing = false;
+  let probing: Promise<boolean> | null = null;
   let retry: unknown = null;
   let last = browserOnline && reachable;
 
@@ -52,25 +54,27 @@ export function createConnection(deps: ConnectionDeps): Connection {
     if (retry !== null) deps.clearTimeout(retry);
     retry = null;
   };
-  const check = () => {
-    if (probing || !browserOnline) return;
-    probing = true;
+  const check = (): Promise<boolean> => {
+    if (!browserOnline) return Promise.resolve(false);
+    if (probing) return probing;
     cancelRetry();
-    void deps
+    probing = deps
       .probe()
       .catch(() => false)
       .then((ok) => {
-        probing = false;
+        probing = null;
         reachable = ok;
         emit();
-        if (!ok && browserOnline) retry = deps.setTimeout(check, retryMs);
+        if (!ok && browserOnline) retry = deps.setTimeout(() => void check(), retryMs);
+        return current();
       });
+    return probing;
   };
 
   const onOnline = () => {
     browserOnline = true;
     emit();
-    if (!reachable) check();
+    if (!reachable) void check();
   };
   const onOffline = () => {
     browserOnline = false;
@@ -78,7 +82,7 @@ export function createConnection(deps: ConnectionDeps): Connection {
     emit();
   };
   const onVisible = () => {
-    if (deps.page?.visibilityState === "visible" && !reachable) check();
+    if (deps.page?.visibilityState === "visible" && !reachable) void check();
   };
   deps.target.addEventListener("online", onOnline);
   deps.target.addEventListener("offline", onOffline);
@@ -92,7 +96,8 @@ export function createConnection(deps: ConnectionDeps): Connection {
         listeners.delete(listener);
       };
     },
-    reportFailure: check,
+    reportFailure: () => void check(),
+    check,
     dispose() {
       cancelRetry();
       deps.target.removeEventListener("online", onOnline);
@@ -125,7 +130,13 @@ export function probeOrigin(url: string, timeoutMs = 8000): () => Promise<boolea
 /** The connection the app runs on: the window's events, `navigator.onLine` and a probe of `sw.js`. */
 export function browserConnection(): Connection {
   if (typeof window === "undefined") {
-    return { isOnline: () => true, subscribe: () => () => {}, reportFailure: () => {}, dispose: () => {} };
+    return {
+      isOnline: () => true,
+      subscribe: () => () => {},
+      reportFailure: () => {},
+      check: () => Promise.resolve(true),
+      dispose: () => {},
+    };
   }
   return createConnection({
     target: window,

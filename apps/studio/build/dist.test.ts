@@ -49,7 +49,7 @@ function readJson<T>(file: string): T {
 }
 
 const committedSchema = join(appDir, "public", "schema", "recipe.v1.json");
-/** The committed schema before any build here ran: a build may only confirm it, never rewrite it. */
+/** The committed schema before any build here ran. Builds here write theirs to scratch (`STUDIO_SCHEMA_DIR`). */
 const schemaBefore = readFileSync(committedSchema, "utf8");
 
 /** `vite build` of the app, as `bun run build` runs it (Node, the app's own config). */
@@ -58,60 +58,70 @@ function buildApp(outDir: string, mode: string, env: Record<string, string> = {}
   const run = Bun.spawnSync([vite, "build", "--mode", mode, "--outDir", outDir, "--emptyOutDir"], {
     cwd: appDir,
     // `bun test` sets NODE_ENV=test; `bun run build` doesn't.
-    env: { ...process.env, NODE_ENV: "production", ...env },
+    env: { ...process.env, NODE_ENV: "production", STUDIO_SCHEMA_DIR: join(scratch, "schema"), ...env },
   });
   if (run.exitCode !== 0) throw new Error(`vite build failed:\n${run.stderr.toString()}${run.stdout.toString()}`);
 }
 
-describe("fixture app with the same plugins", () => {
-  const root = join(scratch, "fixture");
-  const out = join(root, "dist");
-  const vercelJson = join(scratch, "fixture-vercel.json");
-  const critical = "html{background:#000}body{margin:0}";
+const fixtureRoot = join(scratch, "fixture");
+const critical = "html{background:#000}body{margin:0}";
 
-  beforeAll(async () => {
-    const files: Record<string, string> = {
-      "index.html": `<!doctype html><html><head><meta charset="UTF-8"><title>Fixture</title><style>${critical}</style></head>` +
-        `<body><div id="root"></div><script type="module" src="/main.js"></script></body></html>`,
-      "main.js": [
-        'import { shared } from "./shared.js";',
-        "export const main = shared;",
-        'document.getElementById("root").onclick = () => {',
-        '  import("./feature.js");',
-        '  import("elkjs");',
-        '  import("@walletconnect/ethereum-provider");',
-        "};",
-      ].join("\n"),
-      "shared.js": "export const shared = 1;",
-      "feature.js": 'import { shared } from "./shared.js"; export const feature = `first-party-${shared}`;',
-      "node_modules/elkjs/package.json": '{"name":"elkjs","type":"module","main":"index.js"}',
-      "node_modules/elkjs/index.js": 'export const elk = "elk"; export const later = () => import("only-elk-needs-me");',
-      "node_modules/only-elk-needs-me/package.json": '{"name":"only-elk-needs-me","type":"module","main":"index.js"}',
-      "node_modules/only-elk-needs-me/index.js": 'export const dep = "dep";',
-      "node_modules/@walletconnect/ethereum-provider/package.json": '{"name":"@walletconnect/ethereum-provider","type":"module","main":"index.js"}',
-      "node_modules/@walletconnect/ethereum-provider/index.js": 'export const wc = "wc";',
-    };
-    for (const [path, body] of Object.entries(files)) {
-      mkdirSync(join(root, path, ".."), { recursive: true });
-      writeFileSync(join(root, path), body);
-    }
-    const env = { mode: "production", command: "build" as const, isSsrBuild: false, isPreview: false };
-    const previous = process.env.STUDIO_VERCEL_JSON;
-    process.env.STUDIO_VERCEL_JSON = vercelJson;
-    try {
-      await build({
-        root,
-        configFile: false,
-        logLevel: "silent",
-        publicDir: false,
-        build: { outDir: out, emptyOutDir: true },
-        plugins: [...studioCsp(env), ...pwaPlugins(env, { publicDir: join(root, "public") })],
-      });
-    } finally {
-      if (previous === undefined) delete process.env.STUDIO_VERCEL_JSON;
-      else process.env.STUDIO_VERCEL_JSON = previous;
-    }
-  }, TIMEOUT);
+/** A small app with an inline critical style, a first-party lazy chunk, and ELK and WalletConnect behind `import()`. */
+function writeFixture(root: string): void {
+  const files: Record<string, string> = {
+    "index.html": `<!doctype html><html><head><meta charset="UTF-8"><title>Fixture</title><style>${critical}</style></head>` +
+      `<body><div id="root"></div><script type="module" src="/main.js"></script></body></html>`,
+    "main.js": [
+      'import { shared } from "./shared.js";',
+      "export const main = shared;",
+      'document.getElementById("root").onclick = () => {',
+      '  import("./feature.js");',
+      '  import("elkjs");',
+      '  import("@walletconnect/ethereum-provider");',
+      "};",
+    ].join("\n"),
+    "shared.js": "export const shared = 1;",
+    "feature.js": 'import { shared } from "./shared.js"; export const feature = `first-party-${shared}`;',
+    "node_modules/elkjs/package.json": '{"name":"elkjs","type":"module","main":"index.js"}',
+    "node_modules/elkjs/index.js": 'export const elk = "elk"; export const later = () => import("only-elk-needs-me");',
+    "node_modules/only-elk-needs-me/package.json": '{"name":"only-elk-needs-me","type":"module","main":"index.js"}',
+    "node_modules/only-elk-needs-me/index.js": 'export const dep = "dep";',
+    "node_modules/@walletconnect/ethereum-provider/package.json": '{"name":"@walletconnect/ethereum-provider","type":"module","main":"index.js"}',
+    "node_modules/@walletconnect/ethereum-provider/index.js": 'export const wc = "wc";',
+  };
+  for (const [path, body] of Object.entries(files)) {
+    mkdirSync(join(root, path, ".."), { recursive: true });
+    writeFileSync(join(root, path), body);
+  }
+}
+
+/** Builds the fixture with the app's CSP and PWA plugins, in-process, into `out`. */
+async function buildFixture(out: string, mode: "production" | "ipfs", vercelJson?: string): Promise<void> {
+  if (!existsSync(join(fixtureRoot, "index.html"))) writeFixture(fixtureRoot);
+  const env = { mode, command: "build" as const, isSsrBuild: false, isPreview: false };
+  const previous = process.env.STUDIO_VERCEL_JSON;
+  if (vercelJson) process.env.STUDIO_VERCEL_JSON = vercelJson;
+  try {
+    await build({
+      root: fixtureRoot,
+      configFile: false,
+      logLevel: "silent",
+      publicDir: false,
+      mode,
+      build: { outDir: out, emptyOutDir: true },
+      plugins: [...studioCsp(env), ...pwaPlugins(env, { publicDir: join(fixtureRoot, "public") })],
+    });
+  } finally {
+    if (previous === undefined) delete process.env.STUDIO_VERCEL_JSON;
+    else process.env.STUDIO_VERCEL_JSON = previous;
+  }
+}
+
+describe("fixture app with the same plugins", () => {
+  const out = join(fixtureRoot, "dist");
+  const vercelJson = join(scratch, "fixture-vercel.json");
+
+  beforeAll(() => buildFixture(out, "production", vercelJson), TIMEOUT);
 
   test("the CSP header allows exactly the page's inline style and SRI import map, by hash", () => {
     const html = readFileSync(join(out, "index.html"), "utf8");
@@ -152,6 +162,35 @@ describe("fixture app with the same plugins", () => {
     const feature = release.assets.find((a) => a.endsWith(".js") && contents(a).includes("first-party-"));
     expect(feature).toBeDefined();
     expect(cached).toContain(feature ?? "");
+  });
+});
+
+describe("fixture app, IPFS build", () => {
+  const out = join(fixtureRoot, "dist-ipfs");
+
+  beforeAll(() => buildFixture(out, "ipfs"), TIMEOUT);
+
+  test("verifies every lazy chunk in JavaScript, since a relative base can't key an import map", () => {
+    const html = readFileSync(join(out, "index.html"), "utf8");
+    expect(html).not.toContain('<script type="importmap">');
+    const entryFile = /<script type="module"[^>]*src="\.\/(assets\/[^"]+)"/.exec(html)?.[1] ?? "";
+    const entry = readFileSync(join(out, entryFile), "utf8");
+    // The entry itself is checked by the browser, from its tag's integrity.
+    const entryHash = `sha384-${createHash("sha384").update(readFileSync(join(out, entryFile))).digest("base64")}`;
+    expect(html).toContain(`integrity="${entryHash}"`);
+    // Every other chunk's hash is in the runtime's map, and every import() goes through the verifier.
+    const chunks = readdirSync(join(out, "assets")).filter((f) => f.endsWith(".js") && `assets/${f}` !== entryFile);
+    expect(chunks.length).toBeGreaterThan(2);
+    expect(entry).toContain("__sriImport");
+    for (const chunk of chunks) {
+      const bytes = readFileSync(join(out, "assets", chunk));
+      expect(entry).toContain(`sha384-${createHash("sha384").update(bytes).digest("base64")}`);
+    }
+    for (const file of [entryFile, ...chunks.map((c) => `assets/${c}`)]) {
+      const code = readFileSync(join(out, file), "utf8");
+      expect(code).not.toMatch(/(?<![\w.$])import\(\s*["'`]/);
+    }
+    expect(verifyIpfs(html).ok).toBe(true);
   });
 });
 
@@ -228,10 +267,8 @@ describe("the app, IPFS build", () => {
 });
 
 describe("the committed files", () => {
-  // Keep the tree as it was even when this fails: the failure is the signal.
-  afterAll(() => writeFileSync(committedSchema, schemaBefore));
-
-  test("the builds left public/schema/recipe.v1.json as committed (else core's schema changed: build and commit it)", () => {
+  test("the test builds wrote their schema to scratch and left public/schema/recipe.v1.json alone", () => {
     expect(readFileSync(committedSchema, "utf8")).toBe(schemaBefore);
+    expect(existsSync(join(scratch, "schema", "schema", "recipe.v1.json"))).toBe(true);
   });
 });

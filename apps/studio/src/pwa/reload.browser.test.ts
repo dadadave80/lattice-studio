@@ -75,7 +75,7 @@ describe("saveAndReload", () => {
   });
 
   test("activates the waiting update through the update controller", async () => {
-    const reload = vi.fn(async () => {});
+    const reload = vi.fn(async () => true);
     const { d, reloadPage } = deps(SAVED, () => ({ reload }));
     await saveAndReload(d);
     expect(reload).toHaveBeenCalledTimes(1);
@@ -103,6 +103,17 @@ describe("saveAndReload", () => {
 });
 
 describe("reloadStudio", () => {
+  test("says why when the update controller couldn't reload after an edit", async () => {
+    const { d, save, log } = deps(SAVED, () => ({
+      reload: async () => {
+        save.set(STORAGE_FULL);
+        return false;
+      },
+    }));
+    expect(await reloadStudio(d)).toBe("not-saved");
+    expect(log).toHaveBeenCalledWith({ tag: "Note", text: "Didn't reload: Not saved: browser storage is full." });
+  });
+
   test("refuses with the reason while saving", async () => {
     const { d, reloadPage, log } = deps(SAVING);
     expect(await reloadStudio(d)).toBe("still-saving");
@@ -137,7 +148,7 @@ describe("the commands", () => {
 
   test("Reload runs the update controller's reload when the project is saved", async () => {
     withSaveStatus(SAVED);
-    const reload = vi.fn(async () => {});
+    const reload = vi.fn(async () => true);
     pwaState.setUpdates({ reload });
     expect(await runCommand({ id: "app.reload" }, "button")).toEqual({ ok: true });
     expect(reload).toHaveBeenCalledTimes(1);

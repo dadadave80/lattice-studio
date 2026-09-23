@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { isOnline, provideServices, subscribeOnline } from "@/contracts";
+import { reportConnectionFailure } from "@/contracts/services";
 import { onCleanup } from "../../test/harness";
 import { createConnection, probeOrigin, type ConnectionDeps } from "./connection";
 import { manualTimers } from "./test-support";
@@ -136,5 +137,24 @@ describe("as the app's connection service", () => {
     await settle();
     expect(isOnline()).toBe(false);
     expect(heard).toContain(false);
+  });
+
+  test("the contracts' reportConnectionFailure() (S8a's failed RPC calls) runs the origin probe", async () => {
+    const s = setup({ reachable: false });
+    onCleanup(provideServices({ connection: s.connection }));
+    reportConnectionFailure();
+    await settle();
+    expect(s.probe).toHaveBeenCalledTimes(1);
+    expect(isOnline()).toBe(false);
+  });
+
+  test("check() resolves with the state after the probe, sharing one probe between callers", async () => {
+    const s = setup({ reachable: false });
+    const [a, b] = await Promise.all([s.connection.check(), s.connection.check()]);
+    expect([a, b]).toEqual([false, false]);
+    expect(s.probe).toHaveBeenCalledTimes(1);
+    s.goOffline();
+    expect(await s.connection.check()).toBe(false);
+    expect(s.probe).toHaveBeenCalledTimes(1);
   });
 });

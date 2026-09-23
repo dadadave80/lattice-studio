@@ -26,20 +26,30 @@ function switchableConnection(online: boolean): ConnectionService & { set(online
   return service;
 }
 
-function inertConnection(): Connection {
-  return createConnection({
+/** The PWA module's own connection: the browser says online; the probe of Studio's origin answers or not. */
+function probedConnection(options: { onLine?: boolean; reachable?: boolean } = {}): Connection & { probes: () => number } {
+  let probes = 0;
+  const connection = createConnection({
     target: new EventTarget(),
-    onLine: () => true,
-    probe: async () => true,
+    onLine: () => options.onLine ?? true,
+    probe: async () => {
+      probes += 1;
+      return options.reachable ?? true;
+    },
     setTimeout: () => 0,
     clearTimeout: () => {},
   });
+  onCleanup(() => connection.dispose());
+  return Object.assign(connection, { probes: () => probes });
 }
 
-function boot(load: () => Promise<{ startPwa(connection: Connection): () => void }> = () => new Promise(() => {})) {
+function boot(
+  load: () => Promise<{ startPwa(connection: Connection): () => void }> = () => new Promise(() => {}),
+  connection: Connection = probedConnection(),
+) {
   const target = new EventTarget();
   onCleanup(isolatePwaState(vi.fn()));
-  const stop = bootPwa(inertConnection(), { target, load });
+  const stop = bootPwa(connection, { target, load });
   onCleanup(stop);
   return { target, stop };
 }
@@ -77,15 +87,17 @@ describe("the Offline banner", () => {
 });
 
 describe("chunk-load failures", () => {
-  test('a failed chunk shows "Studio was updated. Save and reload to continue." with Save and reload', () => {
+  test('online, a failed chunk shows "Studio was updated. Save and reload to continue." with Save and reload', async () => {
     switchableConnection(true);
     const { target } = boot();
     target.dispatchEvent(preloadError(new TypeError("Failed to fetch dynamically imported module: /assets/Deploy-abc.js")));
-    expect(bufferedServices().banners.get(BANNERS.updated.id)).toEqual({
-      text: "Studio was updated. Save and reload to continue.",
-      tone: "warning",
-      actions: [{ id: "app.saveAndReload" }],
-    });
+    await vi.waitFor(() =>
+      expect(bufferedServices().banners.get(BANNERS.updated.id)).toEqual({
+        text: "Studio was updated. Save and reload to continue.",
+        tone: "warning",
+        actions: [{ id: "app.saveAndReload" }],
+      }),
+    );
     expect(pwaState.chunkFailed()).toBe(true);
     expect(bufferedServices().log.at(-1)).toMatchObject({
       tag: "Error",
@@ -93,7 +105,45 @@ describe("chunk-load failures", () => {
     });
   });
 
-  test("an uncaught failed import() counts too; other rejections don't", () => {
+  test("offline, it's the network, not an update: logged, no update banner (spec L832)", async () => {
+    switchableConnection(false);
+    const connection = probedConnection({ onLine: false });
+    const { target } = boot(undefined, connection);
+    target.dispatchEvent(preloadError(new TypeError("Failed to fetch dynamically imported module: /assets/elk-1.js")));
+    await vi.waitFor(() =>
+      expect(bufferedServices().log.at(-1)).toMatchObject({
+        tag: "Note",
+        text: "Couldn't load part of Studio while offline: Failed to fetch dynamically imported module: /assets/elk-1.js",
+      }),
+    );
+    expect(bufferedServices().banners.has(BANNERS.updated.id)).toBe(false);
+    expect(pwaState.chunkFailed()).toBe(false);
+  });
+
+  test("when the browser claims online but the origin probe fails, it goes offline instead", async () => {
+    switchableConnection(true);
+    const connection = probedConnection({ reachable: false });
+    const { target } = boot(undefined, connection);
+    target.dispatchEvent(preloadError(new TypeError("Failed to fetch dynamically imported module: /assets/wc-1.js")));
+    await vi.waitFor(() => expect(bufferedServices().log.at(-1)?.tag).toBe("Note"));
+    expect(connection.probes()).toBe(1);
+    expect(connection.isOnline()).toBe(false);
+    expect(bufferedServices().banners.has(BANNERS.updated.id)).toBe(false);
+  });
+
+  test("one failure reported twice by Vite (preload error, then the rethrown rejection) logs once", async () => {
+    switchableConnection(true);
+    const { target } = boot();
+    const error = new TypeError("Failed to fetch dynamically imported module: /assets/a-1.js");
+    target.dispatchEvent(preloadError(error));
+    target.dispatchEvent(Object.assign(new Event("unhandledrejection"), { reason: error }));
+    await vi.waitFor(() => expect(bufferedServices().banners.has(BANNERS.updated.id)).toBe(true));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const lines = bufferedServices().log.filter((l) => l.text.includes("/assets/a-1.js"));
+    expect(lines).toHaveLength(1);
+  });
+
+  test("an uncaught failed import() counts too; other rejections don't", async () => {
     switchableConnection(true);
     const { target } = boot();
     const reject = (reason: unknown) => {
@@ -101,9 +151,10 @@ describe("chunk-load failures", () => {
       target.dispatchEvent(event);
     };
     reject(new Error("Something else broke"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(bufferedServices().banners.has(BANNERS.updated.id)).toBe(false);
     reject(new TypeError("Importing a module script failed."));
-    expect(bufferedServices().banners.has(BANNERS.updated.id)).toBe(true);
+    await vi.waitFor(() => expect(bufferedServices().banners.has(BANNERS.updated.id)).toBe(true));
   });
 
   test("failing to load the module's own lazy half is a chunk failure", async () => {

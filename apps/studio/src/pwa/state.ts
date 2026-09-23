@@ -4,8 +4,8 @@
  * page reloads (tests replace it).
  */
 
-/** The update controller's side of a reload: activates a waiting worker first when there is one. */
-export type UpdateHandle = { reload(): Promise<void> };
+/** The update controller's side of a reload: activates a waiting worker first; false when it didn't reload. */
+export type UpdateHandle = { reload(): Promise<boolean> };
 
 let chunkFailed = false;
 let updates: UpdateHandle | null = null;

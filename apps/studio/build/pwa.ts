@@ -42,7 +42,10 @@ export const CATALOG_SHARDS_CACHE = "lattice-catalog-shards";
 export type PwaOptions = {
   /** Which modules and files load only on an explicit action. Default: ELK and WalletConnect. */
   lazyOnly?: ExcludeRules;
-  /** Where `schema/recipe.v1.json` is written. Default: the app's `public/`. */
+  /**
+   * Where `schema/recipe.v1.json` is written. Default: `STUDIO_SCHEMA_DIR` when set (test builds, so they
+   * never write into the committed file), else the app's `public/`.
+   */
   publicDir?: string;
 };
 
@@ -90,7 +93,7 @@ export function pwaPlugins(env: ConfigEnv, options: PwaOptions = {}): PluginOpti
     name: "lattice-studio:pwa",
     apply: "build",
     buildStart() {
-      const publicDir = options.publicDir ?? join(appDir, "public");
+      const publicDir = options.publicDir || process.env.STUDIO_SCHEMA_DIR || join(appDir, "public");
       const result = writeRecipeSchema(publicDir);
       if (result.status === "skipped") this.warn(`${result.file} not written: ${result.reason}`);
       if (result.status === "written") this.info(`Wrote ${result.file}.`);
@@ -144,9 +147,15 @@ export function pwaPlugins(env: ConfigEnv, options: PwaOptions = {}): PluginOpti
           },
         },
       ],
-      cleanupOutdatedCaches: true,
       // The first install controls the page at once, so this session already works offline and warms shards.
       // Updates still wait for Reload: prompt mode never skips waiting on its own.
+      //
+      // The limit (spec L831): once any tab reloads into a new version, that worker controls every open tab and
+      // this cleanup drops the old precache. An old tab still running the old build then fetches its lazy
+      // chunks from the network, where each release carries the previous release's chunks. Online that works,
+      // or shows "Studio was updated. Save and reload to continue." Offline the chunk can't load at all, and
+      // `src/pwa/boot.ts` logs it on the offline path instead of claiming an update (L832).
+      cleanupOutdatedCaches: true,
       clientsClaim: true,
       // The wallet stack is ~60 KB gz but larger raw; nothing precached may be skipped for size.
       maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,

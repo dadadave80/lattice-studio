@@ -22,12 +22,26 @@ export function isChunkLoadError(reason: unknown): boolean {
 
 type PreloadErrorEvent = Event & { payload?: unknown };
 
-/** Calls `onFailure` for every chunk-load failure `target` (the window) reports. Returns a disposer. */
+/**
+ * Calls `onFailure` once per chunk-load failure `target` (the window) reports. Vite reports a failed
+ * `import()` as `vite:preloadError` and then rethrows it, so an uncaught one also arrives as an unhandled
+ * rejection with the same error: each error object is reported once. The event isn't cancelled: cancelling
+ * makes Vite resolve the `import()` with `undefined`, and the caller's own error handling would never run.
+ * Returns a disposer.
+ */
 export function watchChunkErrors(target: EventTarget, onFailure: (reason: unknown) => void): () => void {
-  const preload = (event: Event) => onFailure((event as PreloadErrorEvent).payload ?? event);
+  const seen = new WeakSet<object>();
+  const report = (reason: unknown) => {
+    if (typeof reason === "object" && reason !== null) {
+      if (seen.has(reason)) return;
+      seen.add(reason);
+    }
+    onFailure(reason);
+  };
+  const preload = (event: Event) => report((event as PreloadErrorEvent).payload ?? event);
   const rejection = (event: Event) => {
     const reason = (event as PromiseRejectionEvent).reason;
-    if (isChunkLoadError(reason)) onFailure(reason);
+    if (isChunkLoadError(reason)) report(reason);
   };
   target.addEventListener("vite:preloadError", preload);
   target.addEventListener("unhandledrejection", rejection);

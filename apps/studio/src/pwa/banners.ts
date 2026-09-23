@@ -28,10 +28,23 @@ export function watchOffline(
   };
 }
 
+function detailOf(reason: unknown): string {
+  return reason instanceof Error ? reason.message : typeof reason === "string" ? reason : "";
+}
+
 /** What a failed chunk says in the console, after the banner. */
 export function chunkFailureLine(reason: unknown): LineDraft {
-  const detail = reason instanceof Error ? reason.message : typeof reason === "string" ? reason : "";
+  const detail = detailOf(reason);
   return { tag: "Error", text: detail ? `Couldn't load part of Studio: ${detail}` : "Couldn't load part of Studio." };
+}
+
+/** A chunk that failed because the network is gone: the Offline banner already says so (spec L832). */
+export function offlineChunkLine(reason: unknown): LineDraft {
+  const detail = detailOf(reason);
+  return {
+    tag: "Note",
+    text: detail ? `Couldn't load part of Studio while offline: ${detail}` : "Couldn't load part of Studio while offline.",
+  };
 }
 
 /** Shows "Studio was updated. Save and reload to continue." with **Save and reload**. */
