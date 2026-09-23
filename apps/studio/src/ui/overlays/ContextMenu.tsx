@@ -65,11 +65,22 @@ export function ContextMenu({
   };
 
   // Disabling closes an open menu for good, so it can't reopen by itself when the menu is enabled again: its
-  // own state resets here, and an owner that controls `open` is asked to close.
+  // own state resets here, and the owner hears it close (a controlled owner is asked to close). It's asked once
+  // per change of `disabled` or `open`, not on every render, so an owner that notes the ask but stays open
+  // (or passes a new callback each render) can't loop.
   if (disabled && innerOpen) setInnerOpen(false);
+  const onOpenChangeRef = useRef(onOpenChange);
+  /** Whether the menu showed at the last commit: an uncontrolled one has already reset by the time we ask. */
+  const shownRef = useRef(open);
   useEffect(() => {
-    if (disabled && openProp) onOpenChange?.(false);
-  }, [disabled, openProp, onOpenChange]);
+    onOpenChangeRef.current = onOpenChange;
+  });
+  useEffect(() => {
+    if (disabled && (openProp === true || shownRef.current)) onOpenChangeRef.current?.(false);
+  }, [disabled, openProp]);
+  useEffect(() => {
+    shownRef.current = open;
+  });
 
   /** The element the menu sits below, or null to sit at the pointer. */
   const anchorElement: Element | null =

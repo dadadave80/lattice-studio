@@ -382,6 +382,73 @@ describe("ContextMenu, disabled", () => {
     await expect.element(row).toHaveAttribute("data-menu-open", "false");
   });
 
+  test("a keyboard-opened menu that closes because it's disabled leaves focus on its target", async () => {
+    const control = { set: (_disabled: boolean) => {} };
+    function Toggled() {
+      const [disabled, setDisabled] = useState(false);
+      useEffect(() => {
+        control.set = setDisabled;
+      }, []);
+      return <Card disabled={disabled} />;
+    }
+    await renderWithStudio(<Toggled />);
+    await userEvent.tab();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    await expect.element(page.getByRole("menuitem", { name: "Open in inspector" })).toHaveFocus();
+    control.set(true);
+    await expect.element(menu()).not.toBeInTheDocument();
+    await expect.element(card()).toHaveFocus();
+  });
+
+  /** A menu whose owner watches it; the test disables it and rerenders the owner at will. */
+  function watched(controlled: "controlled" | "uncontrolled", obey: boolean) {
+    const control = { set: (_disabled: boolean) => {}, rerender: () => {} };
+    const asks: boolean[] = [];
+    function Owner() {
+      const [disabled, setDisabled] = useState(false);
+      const [open, setOpen] = useState(false);
+      const [, setTick] = useState(0);
+      useEffect(() => {
+        control.set = setDisabled;
+        control.rerender = () => setTick((tick) => tick + 1);
+      }, []);
+      return (
+        <ContextMenu
+          label="Row actions"
+          disabled={disabled}
+          {...(controlled === "controlled" ? { open } : {})}
+          // A new callback every render, as an inline owner passes.
+          onOpenChange={(next) => {
+            asks.push(next);
+            if (next || obey) setOpen(next);
+          }}
+          items={<MenuItem label="Rename" onSelect={() => {}} />}
+        >
+          <div role="treeitem" aria-selected="false" tabIndex={0}>
+            ERC20
+          </div>
+        </ContextMenu>
+      );
+    }
+    return { Owner, control, asks };
+  }
+
+  for (const mode of ["controlled", "uncontrolled"] as const) {
+    test(`disabling an open ${mode} menu tells its owner once, even as the owner rerenders`, async () => {
+      const { Owner, control, asks } = watched(mode, mode === "uncontrolled");
+      await renderWithStudio(<Owner />);
+      await page.getByRole("treeitem", { name: "ERC20" }).click({ button: "right" });
+      await expect.element(page.getByRole("menu", { name: "Row actions" })).toBeVisible();
+      control.set(true);
+      await expect.element(page.getByRole("menu", { name: "Row actions" })).not.toBeInTheDocument();
+      for (let i = 0; i < 3; i += 1) {
+        control.rerender();
+        await wait(20);
+      }
+      expect(asks).toEqual([true, false]);
+    });
+  }
+
   test("the target keeps its element and focus as its menu is disabled and enabled", async () => {
     const control = { set: (_disabled: boolean) => {} };
     function Toggled() {
