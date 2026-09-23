@@ -353,9 +353,14 @@ describe("Tree item menus", () => {
     await userEvent.keyboard("{Escape}");
     await expect.element(disabled).toHaveFocus();
     await expect.element(disabled).toHaveAccessibleDescription("Served by GovernedVault");
+    // Focus opened the tooltip (L354); clicking away starts its close transition. Wait for it to finish
+    // closing before hovering, so the hover isn't racing a tooltip that's already mid-close (flaky otherwise).
     await page.getByRole("button", { name: "Before" }).click();
+    await expect.poll(() => document.querySelector("[data-tooltip]")).toBeNull();
     await disabled.hover();
-    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent).toBe("Served by GovernedVault");
+    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent, { timeout: 2_000 }).toBe(
+      "Served by GovernedVault",
+    );
   });
 
   /** A tree whose ERC20 item's menu the test turns on and off (a rerender, not a remount). */
