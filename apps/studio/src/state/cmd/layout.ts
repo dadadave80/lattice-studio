@@ -72,14 +72,23 @@ export const toggleExpandCommand = command<ExpandArgs>({
   },
 });
 
+/**
+ * The facets Tidy placed: the selection, or (the whole sheet) every card the tidied layout ends up with, which
+ * includes a recipe facet Tidy is giving its first layout entry (spec L476; an imported recipe can be missing
+ * one). The undo label and the console line count the same thing (S1 review, WP-FX6).
+ */
+function tidiedCount(selection: readonly string[] | undefined, result: EditResult): number {
+  return selection ? selection.length : Object.keys(result.project.layout).length;
+}
+
 function tidyLayout(ctx: CommandContext, selection?: readonly string[]): EditResult | null {
   const catalog = ctx.catalog;
   if (!catalog) return null;
   return edit(
     (p) => applyLayout(p, tidy(p, catalog, ctx.analysis, layoutMetrics, selection)),
     {
-      label: `Tidied ${plural(selection ? selection.length : Object.keys(ctx.project.layout).length || ctx.project.recipe.facets.length, "facet")}`,
-      say: (r) => [lines.tidied({ facets: selection ? selection.length : Object.keys(r.project.layout).length })],
+      label: (r) => `Tidied ${plural(tidiedCount(selection, r), "facet")}`,
+      say: (r) => [lines.tidied({ facets: tidiedCount(selection, r) })],
     },
   );
 }
