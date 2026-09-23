@@ -145,6 +145,9 @@ export function pwaPlugins(env: ConfigEnv, options: PwaOptions = {}): PluginOpti
         },
       ],
       cleanupOutdatedCaches: true,
+      // The first install controls the page at once, so this session already works offline and warms shards.
+      // Updates still wait for Reload: prompt mode never skips waiting on its own.
+      clientsClaim: true,
       // The wallet stack is ~60 KB gz but larger raw; nothing precached may be skipped for size.
       maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
     },
