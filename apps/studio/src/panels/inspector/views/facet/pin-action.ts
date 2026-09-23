@@ -68,11 +68,17 @@ export function pinAction({ facet, selector, route, exclude, seams, placed }: Pi
   }
 
   if (owner === facet && route.via === "default") {
+    // Click to change changes the owner (contracts §6): with one other contender, route to it; with more, choose.
+    const others = route.contenders.filter((name) => name !== facet);
+    const [other] = others;
     return {
       state: "default",
       label: "owner by default",
       tooltip: "Owner by default. Click to change.",
-      command: { id: "collision.choosePerSelector", args: { selectors: [selectorArg] } },
+      command:
+        others.length === 1 && other !== undefined
+          ? { id: "selector.route", args: { selector: selectorArg, facet: other } }
+          : { id: "collision.choosePerSelector", args: { selectors: [selectorArg] } },
     };
   }
 

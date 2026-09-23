@@ -134,7 +134,8 @@ describe("selectors list", () => {
     expect(choose).not.toHaveBeenCalled();
   });
 
-  test("owner by default: Choose per selector for that one selector", async () => {
+  test("owner by default: Click to change routes it to the one other contender", async () => {
+    const route = spy("selector.route", "Route");
     const choose = spy("collision.choosePerSelector", "Choose per selector…");
     await renderWithStudio(<FacetView view={{ kind: "facet", facet: "ERC4626" }} />, {
       project: project({ facets: ["ERC20", "ERC4626"] }, "facet-default"),
@@ -144,7 +145,8 @@ describe("selectors list", () => {
     expect(owner.textContent).toContain("owner by default");
     await expect.element(owner).toHaveAccessibleDescription("Owner by default. Click to change.");
     await userEvent.click(owner);
-    expect(argsOf(choose)).toEqual({ selectors: [DECIMALS] });
+    expect(argsOf(route)).toEqual({ selector: DECIMALS, facet: "ERC20" });
+    expect(choose).not.toHaveBeenCalled();
   });
 
   test("not in the diamond: include it", async () => {

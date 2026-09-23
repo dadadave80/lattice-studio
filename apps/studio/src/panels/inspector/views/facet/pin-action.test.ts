@@ -51,15 +51,28 @@ describe("pinAction", () => {
     expect(shared.command).toEqual({ id: "selector.include", args: { selector: DECIMALS, facet: "ERC20" } });
   });
 
-  test("owner by default: change it per selector", () => {
+  test("owner by default with one other contender: Click to change routes it to that one", () => {
     const c = catalog();
     const action = pin(c, makeRecipe({ facets: ["ERC20", "ERC4626"] }, c), "ERC4626", DECIMALS);
     expect(action).toEqual({
       state: "default",
       label: "owner by default",
       tooltip: "Owner by default. Click to change.",
-      command: { id: "collision.choosePerSelector", args: { selectors: [DECIMALS] } },
+      command: { id: "selector.route", args: { selector: DECIMALS, facet: "ERC20" } },
     });
+  });
+
+  test("owner by default with two or more others: Click to change chooses per selector", () => {
+    const action = pinAction({
+      facet: "A",
+      selector: { hex: DECIMALS, signature: "decimals()" },
+      route: { owner: "A", contenders: ["A", "B", "C"], via: "default" },
+      exclude: [],
+      seams: [],
+      placed: ["A", "B", "C"],
+    });
+    expect(action.command).toEqual({ id: "collision.choosePerSelector", args: { selectors: [DECIMALS] } });
+    expect(action.tooltip).toBe("Owner by default. Click to change.");
   });
 
   test("served by another facet: route it here instead", () => {
