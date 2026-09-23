@@ -20,15 +20,14 @@ describe("App", () => {
     });
   }
 
-  test("each region not built yet says which work package builds it", async () => {
+  test("each region's view that isn't built yet says which work package builds it", async () => {
     await renderWithStudio(<App />);
-    for (const [region, wp] of [
-      ["Left pane", "S5a"], ["Sheet", "S4b"], ["Inspector", "S5c"], ["Console", "S5e"],
-    ] as const) {
-      await expect
-        .element(page.getByRole("region", { name: region, exact: true }).getByText(`Not built yet · WP-${wp}`))
-        .toBeVisible();
-    }
+    for (const name of REGIONS) await expect.element(page.getByRole("region", { name, exact: true })).toBeVisible();
+    // Whichever neighbors have landed: every placeholder still showing in a region names its work package.
+    const placeholders = [...document.querySelectorAll<HTMLElement>("[data-region] [data-placeholder]")].filter((el) =>
+      el.checkVisibility(),
+    );
+    for (const placeholder of placeholders) expect(placeholder.textContent).toMatch(/Not built yet · WP-[A-Z0-9]+/);
   });
 
   test("Skip to sheet comes first in Tab order", async () => {
