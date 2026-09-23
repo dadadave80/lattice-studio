@@ -3,7 +3,7 @@
  * opens the palette (S6) and the console runs a verb (S5e). Specs whose work package hasn't landed skip with its
  * name.
  */
-import { skipUnlessBuilt } from "../built.ts";
+import { showsNotBuilt, skipUnlessBuilt } from "../built.ts";
 import { expect, test } from "../fixtures.ts";
 import {
   REGIONS, commandLine, focusedRegion, nextProblem, nextRegion, openPalette, pagePlatform, previousRegion, runConsole,
@@ -32,8 +32,12 @@ test.describe("keyboard helpers @smoke", () => {
   test("F8 moves focus to a problem's note", async ({ page }) => {
     await seedProject(page, { project: collisionsProject() });
     await nextProblem(page);
+    // Either focus lands on a note, or a placeholder answers (S4c's is announced once F8 runs it).
+    const settled = async () =>
+      (await focusedRegion(page)) === "Sheet" || (await showsNotBuilt(page, "S4b")) || (await showsNotBuilt(page, "S4c"));
+    await expect.poll(settled).toBe(true);
     await skipUnlessBuilt(page, "S4b", "S4c");
-    await expect.poll(() => focusedRegion(page)).toBe("Sheet");
+    expect(await focusedRegion(page)).toBe("Sheet");
   });
 
   test("⌘K opens the palette", async ({ page }) => {
