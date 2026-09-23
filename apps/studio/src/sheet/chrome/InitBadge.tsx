@@ -23,6 +23,16 @@ export function dropTargetAt(x: number, y: number, from: Element | null): { card
   return null;
 }
 
+/** Pointer capture keeps the drag's moves on the badge; a pointer the browser no longer tracks just can't be captured. */
+function capture(element: Element, pointer: number, on: boolean): void {
+  try {
+    if (on) element.setPointerCapture(pointer);
+    else if (element.hasPointerCapture(pointer)) element.releasePointerCapture(pointer);
+  } catch {
+    // InvalidPointerId: the moves still arrive while the pointer stays over the badge's page.
+  }
+}
+
 function markDrop(card: HTMLElement | null): void {
   for (const marked of document.querySelectorAll(`[${DROP_ATTRIBUTE}]`)) if (marked !== card) marked.removeAttribute(DROP_ATTRIBUTE);
   card?.setAttribute(DROP_ATTRIBUTE, "");
@@ -57,7 +67,7 @@ export function InitBadge(props: BadgeProps) {
   const end = (event: ReactPointerEvent<HTMLSpanElement>, drop: boolean) => {
     if (!drag || event.pointerId !== drag.pointer) return;
     event.stopPropagation();
-    face.current?.releasePointerCapture?.(event.pointerId);
+    if (face.current) capture(face.current, event.pointerId, false);
     setDrag(null);
     markDrop(null);
     if (!drop || !drag.moved) return;
@@ -78,7 +88,7 @@ export function InitBadge(props: BadgeProps) {
           if (event.button !== 0) return;
           event.stopPropagation();
           event.preventDefault();
-          event.currentTarget.setPointerCapture?.(event.pointerId);
+          capture(event.currentTarget, event.pointerId, true);
           const { clientX: x, clientY: y } = event;
           setDrag({ pointer: event.pointerId, startX: x, startY: y, x, y, moved: false });
         }}
