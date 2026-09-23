@@ -1,0 +1,46 @@
+/** Flow 14's words (spec L586-L606) and the chain rows' (spec L697), as the spec writes them. */
+import { describe, expect, test } from "bun:test";
+import { lintCopy } from "@lattice-studio/core";
+import { catalogDeployBlock } from ".";
+import { chainFromText, pickerChains } from "./chains";
+import {
+  CANCELED_IN_WALLET, CHAIN_CHECKS_NEED_CONNECTION, checking, couldntRead, LOADING_WALLET_SUPPORT, needsFunds, NO_WALLET,
+  rpcNotAnswering, walletOn,
+} from "./copy";
+
+describe("Flow 14", () => {
+  test("each situation in the spec's words", () => {
+    expect(NO_WALLET).toBe("No wallet found in this browser.");
+    expect(walletOn("Base Sepolia")).toBe("Your wallet is on Base Sepolia.");
+    expect(needsFunds(12_000_000_000_000_000n, 4_000_000_000_000_000n)).toBe("Needs about 0.012 ETH; this account has 0.004.");
+    expect(rpcNotAnswering("Sepolia")).toBe("Sepolia's public RPC isn't answering.");
+    expect(CANCELED_IN_WALLET).toBe("You canceled in your wallet.");
+  });
+
+  test("chain rows and the lazy boundary", () => {
+    expect(checking("Sepolia")).toBe("Checking Sepolia…");
+    expect(couldntRead("Sepolia")).toBe("Couldn't read Sepolia: the RPC didn't answer.");
+    expect(CHAIN_CHECKS_NEED_CONNECTION).toBe("Chain checks need a connection.");
+    expect(LOADING_WALLET_SUPPORT).toBe("Loading wallet support…");
+  });
+
+  test("pass C10's copy lint", () => {
+    for (const text of [NO_WALLET, walletOn("Sepolia"), needsFunds(1n, 0n), rpcNotAnswering("Sepolia"), couldntRead("Sepolia"), LOADING_WALLET_SUPPORT]) {
+      expect(lintCopy(text)).toEqual([]);
+    }
+  });
+});
+
+describe("chains", () => {
+  test("v1 testnets in the picker; Anvil only in end-to-end builds", () => {
+    expect(pickerChains(false).map((c) => c.id)).toEqual([11155111, 84532]);
+    expect(pickerChains(true).map((c) => c.id)).toEqual([11155111, 84532, 31337]);
+    expect(chainFromText("anvil", false)).toBeUndefined();
+    expect(chainFromText("anvil", true)?.id).toBe(31337);
+  });
+
+  test("a fixture catalog can't deploy (contracts §4)", () => {
+    expect(catalogDeployBlock({ lattice: { tag: "fixture", commit: "f4a32c8" } })).toBe("Fixture catalog: build the real catalog first");
+    expect(catalogDeployBlock({ lattice: { tag: "v0.4.0", commit: "abc" } })).toBeNull();
+  });
+});
