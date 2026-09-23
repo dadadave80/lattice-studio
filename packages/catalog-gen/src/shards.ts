@@ -34,6 +34,33 @@ export function jsonFileBytes(value: unknown): Uint8Array {
   return new TextEncoder().encode(`${JSON.stringify(value, null, 2)}\n`);
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== "object") return false;
+  const proto: unknown = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+/** Every plain object's keys sorted (the same order C1's `canonicalJson` uses: default string sort). */
+function sortKeysDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeysDeep);
+  if (isPlainObject(value)) {
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(value).sort()) sorted[key] = sortKeysDeep(value[key]);
+    return sorted;
+  }
+  return value;
+}
+
+/**
+ * A written JSON file's exact bytes, with every object's keys in canonical (sorted) order: two-space indent,
+ * trailing newline, UTF-8. Used for `index.json` (contracts §4, orchestrator ruling 2026-09-23) so the file
+ * doesn't depend on the order the catalog's input objects happened to be built in — the CI drift check
+ * (`bun run catalog` then `git diff --exit-code catalog/`, spec L928) compares bytes, not just data.
+ */
+export function sortedJsonFileBytes(value: unknown): Uint8Array {
+  return new TextEncoder().encode(`${JSON.stringify(sortKeysDeep(value), null, 2)}\n`);
+}
+
 /** A written text file's exact bytes (creation code hex: the literal string, no added newline). */
 export function textFileBytes(text: string): Uint8Array {
   return new TextEncoder().encode(text);

@@ -30,7 +30,7 @@ import {
   validateCatalog,
   validateCatalogManifest,
 } from "@lattice-studio/core";
-import { codePath, detailPath, jsonFileBytes, shardRefFor, standardJsonPath, textFileBytes } from "./shards";
+import { codePath, detailPath, jsonFileBytes, shardRefFor, sortedJsonFileBytes, standardJsonPath, textFileBytes } from "./shards";
 
 /** A shared contract's release data, with `creationCode` and `detail` as raw content instead of `ShardRef`s. */
 export type SharedContractInput = Omit<SharedContract, "creationCode" | "detail"> & {
@@ -207,7 +207,9 @@ export function assembleCatalog(input: CatalogInput): AssembledCatalog {
   const hash = catalogHash({ ...withoutHash, hash: ZERO_HASH });
   const catalog: Catalog = { ...withoutHash, hash };
 
-  const indexBytes = jsonFileBytes(catalog);
+  // Sorted keys, so index.json's bytes don't depend on the order the caller's input objects were built in
+  // (orchestrator ruling 2026-09-23, contracts §4): the CI drift check compares bytes, not just data.
+  const indexBytes = sortedJsonFileBytes(catalog);
   const allFiles = files.entries();
   allFiles.push({ path: "index.json", bytes: indexBytes });
   return { catalog, files: allFiles };
@@ -217,16 +219,44 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function atomicWriteFile(path: string, bytes: Uint8Array): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  const tmp = `${path}.tmp-${randomUUID()}`;
-  await writeFile(tmp, bytes);
-  await rename(tmp, path);
+function isEnoent(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT";
 }
 
-async function readManifest(manifestPath: string): Promise<CatalogManifest> {
+/** Cleans up a leftover directory best-effort: it's already scratch (a temp or backup dir), so a failure here never overrides the primary `Result`. */
+async function bestEffortRm(fs: CatalogFs, path: string): Promise<void> {
   try {
-    const text = await readFile(manifestPath, "utf8");
+    await fs.rm(path, { recursive: true, force: true });
+  } catch {
+    // Leftover directory; the caller's result stands either way.
+  }
+}
+
+/**
+ * The filesystem calls `writeCatalog` and `updateManifest` make, narrowed to the exact shapes used here.
+ * Injectable so a failure partway through placing a catalog (the case "Write atomically" exists for) can be
+ * tested without touching the real filesystem's failure modes.
+ */
+export type CatalogFs = {
+  mkdir(path: string, opts: { recursive: true }): Promise<string | undefined>;
+  writeFile(path: string, data: Uint8Array): Promise<void>;
+  rename(from: string, to: string): Promise<void>;
+  rm(path: string, opts: { recursive: true; force: true }): Promise<void>;
+  readFile(path: string, encoding: "utf8"): Promise<string>;
+};
+
+const nodeFs: CatalogFs = { mkdir, writeFile, rename, rm, readFile };
+
+async function atomicWriteFile(fs: CatalogFs, path: string, bytes: Uint8Array): Promise<void> {
+  await fs.mkdir(dirname(path), { recursive: true });
+  const tmp = `${path}.tmp-${randomUUID()}`;
+  await fs.writeFile(tmp, bytes);
+  await fs.rename(tmp, path);
+}
+
+async function readManifest(fs: CatalogFs, manifestPath: string): Promise<CatalogManifest> {
+  try {
+    const text = await fs.readFile(manifestPath, "utf8");
     const parsed = validateCatalogManifest(JSON.parse(text));
     if (parsed.ok) return parsed.value;
   } catch {
@@ -237,15 +267,17 @@ async function readManifest(manifestPath: string): Promise<CatalogManifest> {
 
 /**
  * Upserts one entry into `catalog/manifest.json` (by `id`), written atomically. The manifest's `default` is
- * set to this id when the manifest has none yet, or when `makeDefault` says to.
+ * set to this id when the manifest has none yet, or when `makeDefault` says to. `fs` defaults to the real
+ * filesystem; `writeCatalog` passes its own so a fault it's testing (e.g. a failing `rename`) reaches here too.
  */
 export async function updateManifest(
   catalogDir: string,
   entry: CatalogManifest["catalogs"][number],
   opts?: { makeDefault?: boolean },
+  fs: CatalogFs = nodeFs,
 ): Promise<CatalogManifest> {
   const manifestPath = join(catalogDir, "manifest.json");
-  const manifest = await readManifest(manifestPath);
+  const manifest = await readManifest(fs, manifestPath);
   const catalogs = manifest.catalogs.filter((c) => c.id !== entry.id);
   catalogs.push(entry);
   catalogs.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -253,22 +285,66 @@ export async function updateManifest(
     default: opts?.makeDefault === true || manifest.default === "" ? entry.id : manifest.default,
     catalogs,
   };
-  await atomicWriteFile(manifestPath, jsonFileBytes(next));
+  await atomicWriteFile(fs, manifestPath, jsonFileBytes(next));
   return next;
 }
 
 /**
+ * Replaces `targetDir` with `tmpDir`, without ever leaving neither directory present: the existing `targetDir`
+ * (if any) is renamed aside first, `tmpDir` is renamed into its place, and only then is the old, backed-up
+ * directory removed. If the second rename fails, the backup is renamed back, so a failed placement leaves the
+ * previous catalog exactly as it was rather than discarding it (contracts §4 "write atomically").
+ */
+async function replaceDirectory(fs: CatalogFs, tmpDir: string, targetDir: string): Promise<Result<void, string>> {
+  const backupDir = `${targetDir}.bak-${randomUUID()}`;
+  let backedUp = false;
+  try {
+    await fs.rename(targetDir, backupDir);
+    backedUp = true;
+  } catch (error) {
+    if (!isEnoent(error)) return err(`failed to set aside the existing catalog: ${errorMessage(error)}`);
+  }
+
+  try {
+    await fs.rename(tmpDir, targetDir);
+  } catch (error) {
+    const placeFailure = `failed to place the new catalog: ${errorMessage(error)}`;
+    if (!backedUp) return err(placeFailure);
+    try {
+      await fs.rename(backupDir, targetDir);
+    } catch (rollbackError) {
+      // The rollback itself failed: the previous catalog is stranded at `backupDir`, not at `targetDir`.
+      // Say where it went, since nothing else can recover it.
+      return err(`${placeFailure}; the previous catalog couldn't be restored and is at ${backupDir}: ${errorMessage(rollbackError)}`);
+    }
+    return err(placeFailure);
+  }
+
+  if (backedUp) await bestEffortRm(fs, backupDir);
+  return ok(undefined);
+}
+
+/**
  * Writes one catalog to `<catalogDir>/<id>/`, atomically: every file lands in a temporary sibling directory
- * first, which is renamed into place only once everything is written, so a reader never sees a half-written
- * catalog. `catalog/manifest.json` is updated last, itself atomically (`updateManifest`).
+ * first, which replaces the target only once everything is written and only by renames (`replaceDirectory`),
+ * so a reader never sees a half-written catalog and a failed placement never discards the previous one.
+ * `catalog/manifest.json` is updated last, itself atomically (`updateManifest`).
  */
 export async function writeCatalog(
   catalogDir: string,
   id: string,
   input: CatalogInput,
   opts?: { makeDefault?: boolean },
+  fs: CatalogFs = nodeFs,
 ): Promise<Result<{ catalog: Catalog; dir: string; manifest: CatalogManifest }, string>> {
-  const { catalog, files } = assembleCatalog(input);
+  let assembled: AssembledCatalog;
+  try {
+    assembled = assembleCatalog(input);
+  } catch (error) {
+    return err(`catalog-gen: failed assembling catalog "${id}": ${errorMessage(error)}`);
+  }
+  const { catalog, files } = assembled;
+
   const valid = validateCatalog(catalog);
   if (!valid.ok) {
     const detail = valid.error.map((issue) => `${issue.path || "(root)"} ${issue.message}`).join("; ");
@@ -280,20 +356,29 @@ export async function writeCatalog(
   try {
     for (const file of files) {
       const dest = join(tmpDir, file.path);
-      await mkdir(dirname(dest), { recursive: true });
-      await writeFile(dest, file.bytes);
+      await fs.mkdir(dirname(dest), { recursive: true });
+      await fs.writeFile(dest, file.bytes);
     }
-    await rm(targetDir, { recursive: true, force: true });
-    await rename(tmpDir, targetDir);
   } catch (error) {
-    await rm(tmpDir, { recursive: true, force: true });
+    await bestEffortRm(fs, tmpDir);
     return err(`catalog-gen: failed writing catalog "${id}": ${errorMessage(error)}`);
   }
 
-  const manifest = await updateManifest(
-    catalogDir,
-    { id, tag: catalog.lattice.tag, commit: catalog.lattice.commit, hash: catalog.hash, path: `${id}/index.json` },
-    opts,
-  );
-  return ok({ catalog, dir: targetDir, manifest });
+  const placed = await replaceDirectory(fs, tmpDir, targetDir);
+  if (!placed.ok) {
+    await bestEffortRm(fs, tmpDir);
+    return err(`catalog-gen: ${placed.error}`);
+  }
+
+  try {
+    const manifest = await updateManifest(
+      catalogDir,
+      { id, tag: catalog.lattice.tag, commit: catalog.lattice.commit, hash: catalog.hash, path: `${id}/index.json` },
+      opts,
+      fs,
+    );
+    return ok({ catalog, dir: targetDir, manifest });
+  } catch (error) {
+    return err(`catalog-gen: wrote catalog "${id}" but failed updating manifest.json: ${errorMessage(error)}`);
+  }
 }

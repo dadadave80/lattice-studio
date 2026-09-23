@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Address, catalogHash, type Hex, type Hex4 } from "@lattice-studio/core";
 import {
   assembleCatalog,
+  type CatalogFs,
   type CatalogInput,
   type FacetInput,
   type SharedContractInput,
@@ -62,6 +63,27 @@ async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+/** The real filesystem, except its `nth` call to `rename` throws instead of renaming. */
+function fsFailingOnRenameCall(nth: number, message = "synthetic rename failure"): CatalogFs {
+  return fsFailingOnRenameCalls([nth], message);
+}
+
+/** The real filesystem, except each call to `rename` in `calls` throws instead of renaming. */
+function fsFailingOnRenameCalls(calls: number[], message = "synthetic rename failure"): CatalogFs {
+  let n = 0;
+  return {
+    mkdir,
+    writeFile,
+    rm,
+    readFile,
+    rename: async (from, to) => {
+      n++;
+      if (calls.includes(n)) throw new Error(message);
+      await rename(from, to);
+    },
+  };
 }
 
 describe("assembleCatalog", () => {
@@ -213,6 +235,142 @@ describe("writeCatalog", () => {
       expect(result.ok).toBe(false);
       expect(await Bun.file(join(dir, "fixture", "index.json")).exists()).toBe(false);
     });
+  });
+
+  test("an assembly failure (conflicting content) comes back as an err Result, not a thrown exception", async () => {
+    await withTempDir(async (dir) => {
+      const input = minimalCatalogInput({
+        inits: [
+          { name: "X.a", contract: "X", fn: "a()", kind: "step", params: [], initializes: [], after: [], sameCall: [], release: sharedContractInput({ creationCode: "0xaaaa" }) },
+          { name: "X.b", contract: "X", fn: "b()", kind: "step", params: [], initializes: [], after: [], sameCall: [], release: sharedContractInput({ creationCode: "0xbbbb" }) },
+        ],
+      });
+      const result = await writeCatalog(dir, "fixture", input);
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error("expected a failure");
+      expect(result.error).toContain("different contents");
+      expect(await Bun.file(join(dir, "fixture", "index.json")).exists()).toBe(false);
+    });
+  });
+
+  test("a failure updating manifest.json comes back as an err Result, after the catalog itself was written", async () => {
+    await withTempDir(async (dir) => {
+      const failing = fsFailingOnRenameCall(3); // 1: backup (ENOENT, no-op), 2: place, 3: manifest.json
+      const result = await writeCatalog(dir, "fixture", minimalCatalogInput(), undefined, failing);
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error("expected a failure");
+      expect(result.error).toContain("failed updating manifest.json");
+      expect(await Bun.file(join(dir, "fixture", "index.json")).exists()).toBe(true);
+    });
+  });
+});
+
+describe("writeCatalog: atomic replacement (write atomically)", () => {
+  test("a failed rename while placing the new catalog leaves the previous one exactly as it was", async () => {
+    await withTempDir(async (dir) => {
+      const first = await writeCatalog(dir, "fixture", minimalCatalogInput({ facets: [facetInput("ERC20")] }));
+      if (!first.ok) throw new Error(first.error);
+
+      const failing = fsFailingOnRenameCall(2); // 1: backup (succeeds), 2: place (fails)
+      const second = await writeCatalog(dir, "fixture", minimalCatalogInput({ facets: [facetInput("ERC721")] }), undefined, failing);
+      expect(second.ok).toBe(false);
+      if (second.ok) throw new Error("expected a failure");
+      expect(second.error).toContain("failed to place the new catalog");
+
+      const stillThere = JSON.parse(await readFile(join(dir, "fixture", "index.json"), "utf8")) as { facets: { name: string }[] };
+      expect(stillThere.facets.map((f) => f.name)).toEqual(["ERC20"]);
+
+      const entries = await readdir(dir);
+      expect(entries.sort()).toEqual(["fixture", "manifest.json"]);
+    });
+  });
+
+  test("when the rollback itself also fails, the error names where the previous catalog is stranded", async () => {
+    await withTempDir(async (dir) => {
+      const first = await writeCatalog(dir, "fixture", minimalCatalogInput({ facets: [facetInput("ERC20")] }));
+      if (!first.ok) throw new Error(first.error);
+
+      // 1: backup (succeeds), 2: place (fails), 3: roll the backup back (also fails).
+      const failing = fsFailingOnRenameCalls([2, 3]);
+      const second = await writeCatalog(dir, "fixture", minimalCatalogInput({ facets: [facetInput("ERC721")] }), undefined, failing);
+      expect(second.ok).toBe(false);
+      if (second.ok) throw new Error("expected a failure");
+      expect(second.error).toContain("failed to place the new catalog");
+      expect(second.error).toContain("couldn't be restored and is at");
+      expect(second.error).toContain(`${join(dir, "fixture")}.bak-`);
+    });
+  });
+
+  test("a failed rename while setting the previous catalog aside is reported, and the previous catalog stays", async () => {
+    await withTempDir(async (dir) => {
+      const first = await writeCatalog(dir, "fixture", minimalCatalogInput({ facets: [facetInput("ERC20")] }));
+      if (!first.ok) throw new Error(first.error);
+
+      const failing = fsFailingOnRenameCall(1); // 1: backup (fails, not ENOENT since the dir exists)
+      const second = await writeCatalog(dir, "fixture", minimalCatalogInput({ facets: [facetInput("ERC721")] }), undefined, failing);
+      expect(second.ok).toBe(false);
+      if (second.ok) throw new Error("expected a failure");
+      expect(second.error).toContain("failed to set aside the existing catalog");
+
+      const stillThere = JSON.parse(await readFile(join(dir, "fixture", "index.json"), "utf8")) as { facets: { name: string }[] };
+      expect(stillThere.facets.map((f) => f.name)).toEqual(["ERC20"]);
+
+      const entries = await readdir(dir);
+      expect(entries.sort()).toEqual(["fixture", "manifest.json"]);
+    });
+  });
+
+  test("writing a fresh id (nothing to back up) still succeeds: the backup rename's ENOENT isn't an error", async () => {
+    await withTempDir(async (dir) => {
+      const result = await writeCatalog(dir, "fixture", minimalCatalogInput());
+      expect(result.ok).toBe(true);
+    });
+  });
+});
+
+describe("index.json's canonical key order (contracts §4)", () => {
+  test("every object's keys, at every depth, are sorted", async () => {
+    await withTempDir(async (dir) => {
+      const result = await writeCatalog(dir, "fixture", minimalCatalogInput());
+      if (!result.ok) throw new Error(result.error);
+      const parsed = JSON.parse(await readFile(join(result.value.dir, "index.json"), "utf8")) as Record<string, unknown>;
+      expect(Object.keys(parsed)).toEqual(Object.keys(parsed).sort());
+      const facets = parsed["facets"] as Record<string, unknown>[];
+      const facet = facets[0];
+      if (facet === undefined) throw new Error("expected a facet");
+      expect(Object.keys(facet)).toEqual(Object.keys(facet).sort());
+      const release = facet["release"] as Record<string, unknown>;
+      expect(Object.keys(release)).toEqual(Object.keys(release).sort());
+    });
+  });
+
+  test("index.json's bytes don't depend on the order a facet's own fields were given in", async () => {
+    const base = facetInput("ERC20");
+    const reordered: FacetInput = {
+      detail: base.detail,
+      touches: base.touches,
+      name: base.name,
+      release: base.release,
+      selectors: base.selectors,
+      requires: base.requires,
+      area: base.area,
+      source: base.source,
+      summary: base.summary,
+    };
+    const dirA = await mkdtemp(join(tmpdir(), "cg7-order-a-"));
+    const dirB = await mkdtemp(join(tmpdir(), "cg7-order-b-"));
+    try {
+      const a = await writeCatalog(dirA, "fixture", minimalCatalogInput({ facets: [base] }));
+      const b = await writeCatalog(dirB, "fixture", minimalCatalogInput({ facets: [reordered] }));
+      if (!a.ok) throw new Error(a.error);
+      if (!b.ok) throw new Error(b.error);
+      const textA = await readFile(join(a.value.dir, "index.json"), "utf8");
+      const textB = await readFile(join(b.value.dir, "index.json"), "utf8");
+      expect(textA).toBe(textB);
+    } finally {
+      await rm(dirA, { recursive: true, force: true });
+      await rm(dirB, { recursive: true, force: true });
+    }
   });
 });
 
