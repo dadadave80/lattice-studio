@@ -1,8 +1,8 @@
 import type { CommandRef, Rect } from "@lattice-studio/core";
 import { memo, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { announce, getAnalysis } from "@/contracts";
+import { announce, getAnalysis, layoutMetrics } from "@/contracts";
 import { ensureElementVisible, sheetSize } from "@/sheet/canvas";
-import { CommandButton } from "@/ui/buttons/CommandButton";
+import { FixButton } from "./FixButton";
 import { ContextMenu } from "@/ui/overlays/ContextMenu";
 import { cx } from "@/ui/shared/cx";
 import { CodeText } from "./CodeText";
@@ -56,7 +56,7 @@ function Actions({ note, fixes, ownerOpen, onOwnerOpen }: {
     return (
       <>
         {fixes.map((fix) => (
-          <CommandButton key={JSON.stringify(fix)} command={fix} size="small" />
+          <FixButton key={JSON.stringify(fix)} command={fix} />
         ))}
       </>
     );
@@ -74,10 +74,7 @@ function Actions({ note, fixes, ownerOpen, onOwnerOpen }: {
         <OwnerMenu selectors={selectors} contenders={note.contenders} open={ownerOpen} onOpenChange={onOwnerOpen} />
       )}
       {selectors.length > 1 ? (
-        <CommandButton
-          command={{ id: "collision.choosePerSelector", args: { selectors } }}
-          size="small"
-        />
+        <FixButton command={{ id: "collision.choosePerSelector", args: { selectors } }} />
       ) : null}
     </>
   );
@@ -109,7 +106,7 @@ export const Note = memo(function Note({ note, rect, frame, fixes, card, leaving
   // The layer places notes by their real height (the estimate only holds the first frame).
   useLayoutEffect(() => {
     const height = ref.current?.offsetHeight ?? 0;
-    if (height > 0) onHeight(note.id, height);
+    if (height > 0 && Math.abs(height - rect.height) > layoutMetrics.grid) onHeight(note.id, height);
   });
 
   // F8, problem.focus and Resolve collision… hand focus here, now or when the note shows.

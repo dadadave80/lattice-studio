@@ -66,6 +66,8 @@ export function focusProblem(problemId: string, options: { open?: boolean; sourc
     return false;
   }
   setProblemCursor(problem.id);
+  // Typed in the console (`next`), the answer is a line there too (IR L153).
+  if (options.source === "console") log({ tag: "Note", text: `${SEVERITY_WORD[problem.severity]}: ${problem.message}` });
   const placed = doc.get().recipe.facets;
   const note = noteOf(buildNotes(getAnalysis(), getCatalog()), problem.id);
   const card = [...(note?.facets ?? []), ...anchorFacets(problem)].find((facet) => placed.includes(facet));
