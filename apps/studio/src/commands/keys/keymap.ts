@@ -54,15 +54,20 @@ function overlap(a: ResolvedBinding, b: ResolvedBinding): boolean {
 /**
  * `"Shift+1"` names ⇧1 by the character it types; `"Shift+[Digit1]"` names it by physical key, and the
  * dispatcher always prefers a code-tier match (IR L1). A character spec shaped like Shift+digit could
- * therefore never fire where the code spec for the same digit is already live, so `findConflicts` treats them
- * as the same keypress too (FX13 item j).
+ * therefore never fire where the code spec for the same digit is already live, and the reverse holds too
+ * (remapping to the code spec while a character one is already live), so `findConflicts` treats either
+ * direction as the same keypress (FX13 item j, CR4).
  */
-const SHIFT_DIGIT = /^Shift\+(\d)$/;
+const SHIFT_DIGIT_CHAR = /^Shift\+(\d)$/;
+const SHIFT_DIGIT_CODE = /^Shift\+\[Digit(\d)]$/;
 
-function codeShadow(spec: KeySpec): KeySpec | null {
+/** `spec`'s other spelling for the same digit, character ↔ code, or null when it isn't one of these. */
+function digitShadow(spec: KeySpec): KeySpec | null {
   if (typeof spec !== "string") return null;
-  const digit = SHIFT_DIGIT.exec(spec)?.[1];
-  return digit === undefined ? null : `Shift+[Digit${digit}]`;
+  const char = SHIFT_DIGIT_CHAR.exec(spec)?.[1];
+  if (char !== undefined) return `Shift+[Digit${char}]`;
+  const code = SHIFT_DIGIT_CODE.exec(spec)?.[1];
+  return code === undefined ? null : `Shift+${code}`;
 }
 
 /**
@@ -81,7 +86,7 @@ export function findConflicts(
   for (const other of all) {
     if (other.id === id || !overlap(self, other)) continue;
     const shared = keys.find((k) => {
-      const shadow = codeShadow(k);
+      const shadow = digitShadow(k);
       return other.keys.some((o) => sameKeys(k, o) || (shadow !== null && sameKeys(shadow, o)));
     });
     if (shared !== undefined) out.push({ binding: other, title: bindingTitle(other), keys: shared });

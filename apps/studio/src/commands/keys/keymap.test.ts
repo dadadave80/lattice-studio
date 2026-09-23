@@ -80,6 +80,15 @@ describe("conflicts", () => {
     expect(checkRemap("tool.hand", ["Shift+1"], { platform: "mac" })?.reason).toBe("⇧1 is already used for Zoom to fit. Replace it or choose another key.");
     expect(findConflicts("tool.hand", ["Shift+1"]).map((c) => c.binding.id)).toEqual(["sheet.zoomFit"]);
   });
+
+  test("the Shift+digit shadow works the other way too: remapping to the code spec while a character one is live (CR4)", () => {
+    // Digit 2 is free in the fixture, so this only exercises the shadow, not an exact-match conflict too.
+    const keymap = { "tool.hand": ["Shift+2"] };
+    expect(findConflicts("layout.tidy", ["Shift+[Digit2]"], keymap).map((c) => c.binding.id)).toEqual(["tool.hand"]);
+    expect(checkRemap("layout.tidy", ["Shift+[Digit2]"], { keymap, platform: "mac" })?.reason).toBe(
+      "⇧2 is already used for Hand tool. Replace it or choose another key.",
+    );
+  });
 });
 
 describe("remapping", () => {
