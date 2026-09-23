@@ -1,4 +1,3 @@
-export { NavGallery } from "./NavGallery";
 export { Splitter } from "./Splitter";
 export type { SplitterProps } from "./Splitter";
 export { clampSize, dragSize, narrower, splitterKey, wider } from "./splitter-model";

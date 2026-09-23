@@ -22,7 +22,6 @@ export { MenuRadioItem } from "./MenuRadioItem";
 export type { MenuRadioItemProps } from "./MenuRadioItem";
 export { MenuSeparator } from "./MenuSeparator";
 export { NotBuiltDialog } from "./NotBuiltDialog";
-export { OverlaysGallery } from "./OverlaysGallery";
 export { Popover } from "./Popover";
 export type { PopoverProps } from "./Popover";
 export { Submenu } from "./Submenu";

@@ -26,10 +26,18 @@ function loadAxe(): typeof AxeCore {
  * off: the system palette replaces ours, and axe resolves the authored text color against the forced
  * Canvas. Every other rule still runs.
  */
-export async function axeViolations(root: Element, { forced = false } = {}): Promise<string[]> {
-  const result = await loadAxe().run(root, {
-    runOnly: { type: "tag", values: WCAG22_AA },
-    rules: { "target-size": { enabled: true }, ...(forced ? { "color-contrast": { enabled: false } } : {}) },
+export async function axeViolations(
+  context: AxeCore.ElementContext,
+  options: { forced?: boolean; bestPractice?: boolean; rules?: AxeCore.RuleObject } = {},
+): Promise<string[]> {
+  const { forced = false, bestPractice = false, rules = {} } = options;
+  const result = await loadAxe().run(context, {
+    runOnly: { type: "tag", values: bestPractice ? [...WCAG22_AA, "best-practice"] : WCAG22_AA },
+    rules: {
+      "target-size": { enabled: true },
+      ...(forced ? { "color-contrast": { enabled: false } } : {}),
+      ...rules,
+    },
     resultTypes: ["violations"],
   });
   return result.violations.flatMap((v) =>

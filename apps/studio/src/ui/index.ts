@@ -34,6 +34,10 @@ export type { IconName } from "./icons/icon-paths";
 export { copyHint, copyLabel, copyText, copyValue } from "./copy/copy-text";
 export type { CopyOptions, CopyResult } from "./copy/copy-text";
 
+export * from "./fields";
+export * from "./overlays";
+export * from "./nav";
+
 export { cx } from "./shared/cx";
 export { detectPlatform, platform, usePlatform } from "./shared/platform";
 export { VisuallyHidden } from "./shared/VisuallyHidden";

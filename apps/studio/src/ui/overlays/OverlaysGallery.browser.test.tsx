@@ -1,7 +1,7 @@
-import axe from "axe-core";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { renderWithStudio } from "../../../test/harness";
+import { axeViolations } from "../testing/axe";
 import { OverlaysGallery } from "./OverlaysGallery";
 
 /**
@@ -12,8 +12,7 @@ import { OverlaysGallery } from "./OverlaysGallery";
 async function violations(open = false): Promise<string[]> {
   const rules = open ? { region: { enabled: false } } : {};
   const context = { include: [document.body], exclude: [["[data-base-ui-focus-guard]"]] };
-  const result = await axe.run(context, { resultTypes: ["violations"], rules });
-  return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+  return axeViolations(context, { bestPractice: true, rules });
 }
 
 describe("OverlaysGallery", () => {

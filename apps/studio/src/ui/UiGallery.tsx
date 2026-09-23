@@ -2,18 +2,32 @@ import type { Platform } from "@lattice-studio/core";
 import type { ThemeId } from "@lattice-studio/tokens";
 import { useEffect, useState } from "react";
 import { applyTheme, settings } from "@/contracts";
+import { FieldsGallery } from "./fields/FieldsGallery";
+import { SegmentedToggle } from "./fields/SegmentedToggle";
 import { FoundationGallery } from "./gallery/FoundationGallery";
 import styles from "./gallery/Gallery.module.css";
+import { NavGallery } from "./nav/NavGallery";
+import { OverlaysGallery } from "./overlays/OverlaysGallery";
 import { overridePlatform, usePlatform } from "./shared/platform";
 
 function currentTheme(): ThemeId {
   return document.documentElement.dataset.theme === "draft" ? "draft" : "shop";
 }
 
+const THEMES = [
+  { value: "shop", label: "Shop" },
+  { value: "draft", label: "Draft" },
+] as const;
+
+const KEY_LABELS = [
+  { value: "mac", label: "macOS" },
+  { value: "other", label: "Windows and Linux" },
+] as const;
+
 /**
  * The `#/__ui` gallery (dev only, contracts §5.5): every primitive in every state, in the theme and key
  * labels chosen at the top. Q3 takes its screenshot baselines from here. Load it lazily; it isn't part of
- * the app's entry chunk.
+ * the app's entry chunk (the `@/ui` barrel doesn't export it).
  */
 export function UiGallery() {
   const [theme, setTheme] = useState<ThemeId>(currentTheme);
@@ -33,23 +47,14 @@ export function UiGallery() {
       <header className={styles.header}>
         <h1 className={styles.title}>Primitives</h1>
         <div className={styles.row}>
-          <div role="group" aria-label="Theme" className={styles.row}>
-            {(["shop", "draft"] as const).map((t) => (
-              <button key={t} type="button" aria-pressed={theme === t} className={styles.choice} onClick={() => chooseTheme(t)}>
-                {t === "shop" ? "Shop" : "Draft"}
-              </button>
-            ))}
-          </div>
-          <div role="group" aria-label="Key labels" className={styles.row}>
-            {(["mac", "other"] as const).map((p) => (
-              <button key={p} type="button" aria-pressed={keys === p} className={styles.choice} onClick={() => setKeys(p)}>
-                {p === "mac" ? "macOS" : "Windows and Linux"}
-              </button>
-            ))}
-          </div>
+          <SegmentedToggle label="Theme" value={theme} onValueChange={chooseTheme} options={THEMES} />
+          <SegmentedToggle label="Key labels" value={keys} onValueChange={setKeys} options={KEY_LABELS} />
         </div>
       </header>
       <FoundationGallery />
+      <FieldsGallery />
+      <OverlaysGallery />
+      <NavGallery />
     </div>
   );
 }

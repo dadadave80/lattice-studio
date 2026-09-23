@@ -51,17 +51,6 @@
   gap: var(--lx-space-4);
 }
 
-.choice {
-  composes: button from "../buttons/Button.module.css";
-  composes: secondary from "../buttons/Button.module.css";
-}
-
-.choice[aria-pressed="true"] {
-  border-color: var(--lx-accent);
-  color: var(--lx-accent);
-  background: var(--lx-accent-soft);
-}
-
 .stack {
   display: flex;
   flex-direction: column;

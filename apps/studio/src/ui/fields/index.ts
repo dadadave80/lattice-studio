@@ -1,6 +1,5 @@
 export { Checkbox, type CheckboxProps } from "./Checkbox";
 export { stepDecimal, toStep, type DecimalBound, type DecimalStepOptions } from "./decimal-step";
-export { FieldsGallery } from "./FieldsGallery";
 export { NumberField, type NumberFieldProps } from "./NumberField";
 export { RadioGroup, type RadioGroupProps, type RadioOption } from "./RadioGroup";
 export { SegmentedToggle, type SegmentedOption, type SegmentedToggleProps } from "./SegmentedToggle";
