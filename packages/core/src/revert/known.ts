@@ -7,6 +7,8 @@ import type { AbiItem } from "../model/catalog";
  * - CreateX (not a Lattice contract): `FailedContractInitialisation(address,bytes)` 0xa57ca239 and
  *   `FailedContractCreation(address)` 0xc05cee7a, both with CreateX's own address as the emitter, plus the rest of
  *   CreateX's custom errors.
+ * - LatticeRegistry and LatticeFactory (lattice/src/interfaces/ILatticeRegistry.sol L86-L121,
+ *   ILatticeFactory.sol L37-L80), until catalogs carry their `SharedContract.detail` shards.
  * - MultiInit (lattice/lib/diamond-lib/src/initializers/MultiInit.sol L6-L8).
  * - Lattice, the proxy: DiamondLib's errors (lattice/lib/diamond-lib/src/libraries/DiamondLib.sol L19-L64), which
  *   `Lattice.initialize` raises while it cuts and runs the init. `catalog.proxy.detail`, when a catalog has it,
@@ -28,6 +30,28 @@ export const KNOWN_ERRORS: Readonly<Record<string, readonly AbiItem[]>> = {
     "error CannotRemoveImmutableFunction(bytes4 selector)",
     "error InitializeDiamondCutReverted(address initAddress, bytes data)",
     "error FunctionDoesNotExist(bytes4 functionSelector)",
+  ]),
+  LatticeRegistry: parseAbi([
+    "error LatticeRegistry__ZeroAddress()",
+    "error LatticeRegistry__Unauthorized(address caller)",
+    "error LatticeRegistry__NotPendingOwner(address caller)",
+    "error LatticeRegistry__EmptyCode(address target)",
+    "error LatticeRegistry__InvalidVersion()",
+    "error LatticeRegistry__RecordExists(bytes32 nameHash, uint64 version)",
+    "error LatticeRegistry__RecordNotFound(bytes32 nameHash, uint64 version)",
+    "error LatticeRegistry__LatestUnset(bytes32 nameHash)",
+    "error LatticeRegistry__NotERC8153(address facet)",
+    "error LatticeRegistry__SelectorDrift(address facet)",
+    "error LatticeRegistry__CodeDrift(address facet)",
+  ]),
+  LatticeFactory: parseAbi([
+    "error LatticeFactory__EmptyRecipe()",
+    "error LatticeFactory__ExportSelectorForbidden()",
+    "error LatticeFactory__MissingLoupeCoverage(bytes4 missingSelector)",
+    "error LatticeFactory__LoupeSelectorNotReplaceable(bytes4 loupeSelector)",
+    "error LatticeFactory__ZeroRegistry()",
+    "error LatticeFactory__IncompleteENSConfiguration()",
+    "error LatticeFactory__InvalidReverseRegistrar(address registrar)",
   ]),
   CreateX: parseAbi([
     "error FailedContractCreation(address emitter)",
