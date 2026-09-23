@@ -1,0 +1,33 @@
+# The default, immutable overload of DeployERC20.buildCuts: ERC165Facet, ERC20, DiamondLoupeFacet and Receive, with
+# ERC20Init. The script wraps it in MultiInit with DiamondIntrospectionInit.initImmutable, the automatic ERC-165
+# step the planner appends, so the template stores ERC20Init alone.
+name: ERC20
+order: 2
+script: script/base/tokens/DeployERC20.s.sol
+buildCuts: buildCuts(string,string)
+source: script/base/tokens/DeployERC20.s.sol#L30-L37
+proxy: Lattice
+phase: v1
+immutable: true
+cuts:
+  - add: ERC165Facet
+    source: script/base/tokens/DeployERC20.s.sol#L60-L60
+  - add: ERC20
+    source: script/base/tokens/DeployERC20.s.sol#L61-L61
+  - add: DiamondLoupeFacet
+    source: script/base/tokens/DeployERC20.s.sol#L62-L62
+  - add: Receive
+    source: script/base/tokens/DeployERC20.s.sol#L63-L63
+init:
+  kind: steps
+  steps:
+    # Lattice has no caller with values, so these are Studio's (ERC20Init's overlay examples, flagged by INIT-05).
+    - spec: ERC20Init
+      args:
+        name_: "Example Token"
+        symbol_: "EXT"
+  source: script/base/tokens/DeployERC20.s.sol#L35-L36
+notes: >-
+  The admin overload, buildCuts(string,string,address) at L41-L55, adds AccessControl and AccessControlDiamondCut
+  and runs AccessControlInit before the introspection step. Studio reaches it from this template through
+  Choose an upgrade mechanism, so it isn't a template of its own.

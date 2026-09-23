@@ -1,0 +1,73 @@
+# What DeployGovernedVault.buildCuts builds at the pin: 14 facets, the reconciled selectors excluded from the
+# base facets with _cutExcept and served once by GovernedVault (or VaultCore, ERC4626, ERC20Votes), and
+# GovernedVaultInit as one bundle. The script's note on clock and CLOCK_MODE ("the Votes clock serves both",
+# L34) is wrong: Votes and Governor both exclude them, so GovernedVault serves them (golden routing).
+name: GovernedVault
+order: 1
+script: script/base/defi/DeployGovernedVault.s.sol
+buildCuts: buildCuts((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256))
+source: script/base/defi/DeployGovernedVault.s.sol#L38-L46
+proxy: Lattice
+phase: v1
+cuts:
+  - add: ERC165Facet
+    source: script/base/defi/DeployGovernedVault.s.sol#L78-L78
+  - add: AccessControl
+    source: script/base/defi/DeployGovernedVault.s.sol#L79-L79
+  - add: TimelockController
+    source: script/base/defi/DeployGovernedVault.s.sol#L80-L80
+  - add: ERC20
+    except: ["name()", "decimals()", "transfer(address,uint256)", "transferFrom(address,address,uint256)"]
+    source: script/base/defi/DeployGovernedVault.s.sol#L81-L81
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L117-L123
+  - add: ERC4626
+    except:
+      - "totalAssets()"
+      - "deposit(uint256,address)"
+      - "mint(uint256,address)"
+      - "withdraw(uint256,address,address)"
+      - "redeem(uint256,address,address)"
+    source: script/base/defi/DeployGovernedVault.s.sol#L82-L82
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L126-L133
+  - add: VaultCore
+    except: ["deposit(uint256,address)", "mint(uint256,address)", "withdraw(uint256,address,address)", "redeem(uint256,address,address)"]
+    source: script/base/defi/DeployGovernedVault.s.sol#L83-L83
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L136-L142
+  - add: Votes
+    except: ["delegate(address)", "delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)", "clock()", "CLOCK_MODE()"]
+    source: script/base/defi/DeployGovernedVault.s.sol#L84-L84
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L145-L151
+  - add: ERC20Votes
+    except: ["transfer(address,uint256)", "transferFrom(address,address,uint256)"]
+    source: script/base/defi/DeployGovernedVault.s.sol#L85-L85
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L154-L158
+  - add: Governor
+    except: ["name()", "clock()", "CLOCK_MODE()", "castVoteBySig(uint256,uint8,address,bytes)"]
+    source: script/base/defi/DeployGovernedVault.s.sol#L86-L86
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L161-L167
+  - add: GovernedVault
+    source: script/base/defi/DeployGovernedVault.s.sol#L87-L87
+  - add: DiamondLoupeFacet
+    source: script/base/defi/DeployGovernedVault.s.sol#L88-L88
+  - add: EmergencyStop
+    source: script/base/defi/DeployGovernedVault.s.sol#L89-L89
+  - add: GovernedDiamondCut
+    source: script/base/defi/DeployGovernedVault.s.sol#L90-L90
+  - add: Receive
+    source: script/base/defi/DeployGovernedVault.s.sol#L91-L91
+init:
+  kind: bundle
+  spec: GovernedVaultInit
+  # GrantExample's values (script/base/defi/GrantExample.s.sol#L26-L26), the same as GovernedVaultInit's overlay
+  # examples. `asset` is left empty: GrantExample deploys a fresh test token, so the user fills it in (INIT-01).
+  args:
+    p:
+      name: "Grant vault"
+      symbol: "gVLT"
+      decimalsOffset: "0"
+      minDelay: "300"
+      votingDelay: "60"
+      votingPeriod: "600"
+      proposalThreshold: "0"
+      quorumNumerator: "4"
+  source: script/base/defi/DeployGovernedVault.s.sol#L44-L45
