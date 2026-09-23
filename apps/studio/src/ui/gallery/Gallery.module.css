@@ -50,3 +50,48 @@
   align-items: center;
   gap: var(--lx-space-4);
 }
+
+.choice {
+  composes: button from "../buttons/Button.module.css";
+  composes: secondary from "../buttons/Button.module.css";
+}
+
+.choice[aria-pressed="true"] {
+  border-color: var(--lx-accent);
+  color: var(--lx-accent);
+  background: var(--lx-accent-soft);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  inline-size: 100%;
+}
+
+.swatch {
+  inline-size: calc(var(--lx-space-12) * 2);
+  block-size: var(--lx-space-8);
+  border: var(--lx-stroke-hair) solid var(--lx-accent);
+}
+
+.code {
+  composes: mono from "../shared/controls.module.css";
+}
+
+.icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--lx-space-12) * 2), 1fr));
+  gap: var(--lx-space-4);
+  padding: 0;
+  margin: 0;
+}
+
+.iconCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lx-space-2);
+  font: var(--lx-font-code-sm);
+  color: var(--lx-text-muted);
+}
