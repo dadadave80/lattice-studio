@@ -59,7 +59,7 @@ type SelectorParams = { selector: Hex4; signature: string };
 export type ProblemParams = {
   /** "`sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c is exported by A and B. Choose one owner." Contenders in catalog order. */
   "SEL-01": SelectorParams & { contenders: string[] };
-  /** "ERC20 gives 4 selectors to GovernedVault and ERC4626." `to`: the owners, in catalog order. */
+  /** "ERC20 gives 4 selectors to GovernedVault and ERC4626." `to`: the owners, most selectors first, then catalog order (spec L312). */
   "SEL-02": { facet: string; count: number; selectors: Hex4[]; to: string[] };
   /**
    * "ERC20Pausable cuts nothing: both its selectors are seams that GovernedVault serves. Remove it."
@@ -212,10 +212,12 @@ export type ProblemOptions<C extends ProblemCode> = C extends VariableSeverityCo
  * | Codes | Identity anchor | Example |
  * | --- | --- | --- |
  * | SEL-01, SEL-04, SEL-05, SEM-01, CORE-01 | the selector only | `SEL-01:0xcdfe7f5c` |
- * | SEL-02, SEL-03, STO-02 | the facet | `SEL-03:ERC20Pausable` |
+ * | SEL-02, SEL-03 | the facet | `SEL-03:ERC20Pausable` |
+ * | STO-02 | the facet and the shared namespace (pass `id` explicitly), since one facet can share two | `STO-02:ERC20Votes+lattice.storage.ERC20` |
  * | CORE-02, CORE-04, CORE-05 | the diamond | `CORE-02:diamond` |
  * | CORE-03, DEP-03 | both facets, catalog order | `CORE-03:AccessControlDiamondCut+GovernedDiamondCut` |
- * | DEP-01, DEP-02 | the facet and the requirement (its first `anyOf` option, or the namespace), since one facet can miss two | `DEP-01:VaultCore+ERC4626` |
+ * | DEP-01, DEP-02 (companion) | the facet and the requirement (its first `anyOf` option), since one facet can miss two | `DEP-01:VaultCore+ERC4626` |
+ * | DEP-02 (namespace) | the diamond and the namespace (pass `id` explicitly): several facets, or only an init, may write it | `DEP-02:diamond+lattice.storage.AccessControl` |
  * | STO-01 | the namespace id | `STO-01:lattice.storage.ERC20` |
  * | INIT-01, AUTH-02, LINK-01 | the argument path | `INIT-01:bundle.p.asset` |
  * | INIT-02 | the step path | `INIT-02:steps[2]` |
