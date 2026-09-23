@@ -1,0 +1,114 @@
+/* The Facet view and the Catalog preview (IR L118-L122, board 06), on top of shared/sheet.module.css. */
+
+.code {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  overflow-wrap: anywhere;
+}
+
+.contested {
+  color: var(--lx-accent);
+  font-weight: 600;
+}
+
+/* Selectors list: 24 px rows, the target-size equivalent of the 20 px pin rows (spec L770). */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rowItem {
+  display: flex;
+  border-bottom: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.rowItem:last-child {
+  border-bottom: none;
+}
+
+.row {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-2);
+  min-width: 0;
+  min-height: var(--lx-space-6);
+  margin: 0;
+  padding: var(--lx-space-1) var(--lx-space-1);
+  border: none;
+  border-radius: var(--lx-radius);
+  background: transparent;
+  color: var(--lx-text);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  text-align: left;
+}
+
+button.row {
+  cursor: pointer;
+}
+
+button.row:hover {
+  background: var(--lx-raised);
+}
+
+button.row[aria-disabled="true"] {
+  cursor: default;
+}
+
+.signature {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.excluded .signature {
+  color: var(--lx-text-muted);
+  text-decoration: line-through;
+}
+
+.state {
+  flex: none;
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  color: var(--lx-text-muted);
+}
+
+.routed .state,
+.default .state {
+  color: var(--lx-accent);
+}
+
+.contestedRow .state {
+  color: var(--lx-accent);
+  font-weight: 600;
+}
+
+/* Problems anchored to the facet. */
+
+.problem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+}
+
+.severity {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.blocker {
+  color: var(--lx-accent);
+}
+
+.requirement {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+}
