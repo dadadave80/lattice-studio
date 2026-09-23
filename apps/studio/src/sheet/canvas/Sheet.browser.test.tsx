@@ -20,7 +20,7 @@ function storedViewports(saved = new Map<string, Viewport>()): Map<string, Viewp
   const projects: ProjectsService = {
     createProject: () => Promise.reject(new Error("not in this test")),
     openProject: () => Promise.reject(new Error("not in this test")),
-    saveStatus: () => "saved",
+    saveStatus: () => ({ state: "saved", text: "Saved" }),
     subscribeSaveStatus: () => () => undefined,
     loadViewport: (id) => Promise.resolve(saved.get(id) ?? null),
     saveViewport: (id, viewport) => void saved.set(id, viewport),
