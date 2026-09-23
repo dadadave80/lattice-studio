@@ -1,8 +1,8 @@
-import type { Analysis, Deployment, Hex, Problem, ProblemCode, Severity } from "@lattice-studio/core";
+import type { Analysis, CommandRef, Deployment, Hex, Problem, ProblemCode, Severity } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { command, emptyAnalysis, provideAnalysis, putDeployment, type CommandRef } from "@/contracts";
+import { command, emptyAnalysis, provideAnalysis, putDeployment } from "@/contracts";
 import { account, ALICE, deployableCatalog, goOffline, SEPOLIA } from "@/chain/review/test-support";
 import {
   bufferedServices, fakeChainService, fakeClock, onCleanup, overrideCommands, renderWithStudio, seedDeployState,

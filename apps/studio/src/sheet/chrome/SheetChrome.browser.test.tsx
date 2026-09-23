@@ -1,10 +1,9 @@
-import type { Project, Recipe } from "@lattice-studio/core";
+import type { CommandRef, Project, Recipe } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
-  command, commandState, doc, getCommand, history, provideServices, runCommand, session, settings, type CommandRef,
-  type ProjectsService,
+  command, commandState, doc, getCommand, history, provideServices, runCommand, session, settings, type ProjectsService,
 } from "@/contracts";
 import { focusCard } from "@/a11y/focus";
 import { runEscape } from "@/commands/escape";
