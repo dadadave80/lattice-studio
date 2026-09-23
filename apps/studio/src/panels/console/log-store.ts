@@ -82,13 +82,27 @@ export function subscribeLog(listener: () => void): () => void {
   };
 }
 
-/** The newest of `list` with one of `tags`, or null. */
-export function latestWith(list: readonly LogEntry[], tags: readonly LogTag[]): LogEntry | null {
+/** The newest of `list` with one of `tags` and an id of at least `since`, or null. */
+export function latestWith(list: readonly LogEntry[], tags: readonly LogTag[], since = 0): LogEntry | null {
   for (let i = list.length - 1; i >= 0; i -= 1) {
     const entry = list[i];
-    if (entry && tags.includes(entry.tag)) return entry;
+    if (entry && entry.id >= since && tags.includes(entry.tag)) return entry;
   }
   return null;
+}
+
+/** The first entry id of the current deploy: lines before it (an earlier deploy, a kept log) don't describe it. */
+let deployMark = 1;
+
+/** A deploy left idle or review: its lines are the ones logged from now on. */
+export function markDeployStart(): void {
+  if (deployMark === nextId) return;
+  deployMark = nextId;
+  emit();
+}
+
+export function deployLinesSince(): number {
+  return deployMark;
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -215,6 +229,8 @@ export function restoreLog(): number {
   }
   if (!kept.length) return 0;
   entries = capped([...kept, ...entries]);
+  // Kept lines are an earlier session's: a deploy resumed after the reload streams only its new lines.
+  deployMark = nextId;
   emit();
   return kept.length;
 }
@@ -226,5 +242,6 @@ export function resetConsoleLog(): void {
   entries = [];
   keep = false;
   storage = null;
+  deployMark = nextId;
   emit();
 }

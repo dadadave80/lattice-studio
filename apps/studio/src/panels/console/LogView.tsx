@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { plural } from "@lattice-studio/core";
 import { getAnalysis } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { copyText } from "@/ui/copy/copy-text";
@@ -93,10 +94,10 @@ export function LogView() {
   };
 
   const copyLine = () => {
-    if (selected) void copyText(lineText(selected), { label: "line" });
+    if (selected) void copyText(lineText(selected));
   };
   const copyAll = () => {
-    void copyText(shown.map((e) => `${e.tag}\t${lineText(e)}`).join("\n"), { label: "the log" });
+    void copyText(shown.map((e) => `${e.tag}\t${lineText(e)}`).join("\n"), { label: plural(shown.length, "line") });
   };
 
   return (
@@ -118,7 +119,7 @@ export function LogView() {
           className={styles.list}
           role="log"
           aria-label="Log"
-          aria-live="polite"
+          aria-live="off"
           onScroll={onScroll}
         >
           {shown.map((entry) => (

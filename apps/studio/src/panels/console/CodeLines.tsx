@@ -7,7 +7,7 @@ import styles from "./CodeView.module.css";
 export type CodeLinesProps = {
   text: string;
   lang: CodeLang;
-  /** The file's name: the scrollable code's accessible name. */
+  /** The file's name (the tab panel around the code is named by its tab). */
   label: string;
   /** 0-based indexes of lines to mark as changed. */
   changed: ReadonlySet<number>;
@@ -35,7 +35,7 @@ export function CodeLines({ text, lang, label, changed, stale = false }: CodeLin
   const lines = text.split("\n");
 
   return (
-    <pre className={cx(styles.code, stale && styles.stale)} aria-label={label} data-highlighted={current ? "" : undefined}>
+    <pre className={cx(styles.code, stale && styles.stale)} data-file={label} data-highlighted={current ? "" : undefined}>
       <code className={styles.lines}>
         {lines.map((line, i) => {
           const row = current?.[i];

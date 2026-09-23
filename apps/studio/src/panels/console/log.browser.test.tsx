@@ -133,9 +133,10 @@ describe("Log (IR L134)", () => {
     await userEvent.click(line(/^Note/));
     await userEvent.click(copyLine);
     expect(writeText).toHaveBeenLastCalledWith("Tidied 4 facets.");
-    expect(bufferedServices().toast.at(-1)).toEqual({ text: "Copied line" });
+    expect(bufferedServices().toast.at(-1)).toEqual({ text: "Copied Tidied 4 facets." });
     await userEvent.click(page.getByRole("button", { name: "Log menu" }));
     await userEvent.click(page.getByRole("menuitem", { name: "Copy all" }));
+    await vi.waitFor(() => expect(bufferedServices().toast.at(-1)).toEqual({ text: "Copied 4 lines" }));
     expect(writeText.mock.calls.at(-1)?.[0]).toMatch(/^Placed\tPlaced ERC20[\s\S]*\nError\tDeploy reverted/);
     await userEvent.click(page.getByRole("button", { name: "Clear the log" }));
     await hasText(logRegion(), EMPTY_LOG);
@@ -166,6 +167,28 @@ describe("Log (IR L134)", () => {
 
     settings.set({ keepLog: false });
     expect(store.has(LOG_STORAGE_KEY)).toBe(false);
+  });
+
+  test("the log isn't read twice: role=log with aria-live off; deploy output is announced per the setting", async () => {
+    await renderConsole();
+    expect(logRegion().element().getAttribute("aria-live")).toBe("off");
+    const before = bufferedServices().announce.length;
+    const said = () => bufferedServices().announce.slice(before).map(([text, options]) => [text, options?.politeness ?? "polite"]);
+
+    // Default "errors": a revert interrupts; progress stays quiet.
+    log({ tag: "Deploy", text: "Submitted 0x1234…abcd on Sepolia." });
+    log({ tag: "Error", text: "Deploy reverted in LatticeRegistry: `X()`." });
+    expect(said()).toEqual([["Deploy reverted in LatticeRegistry: `X()`.", "assertive"]]);
+
+    settings.set({ deployAnnouncements: "all" });
+    log({ tag: "Verify", text: "Verified on Sourcify (exact match)." });
+    log({ tag: "Note", text: "Tidied 4 facets." });
+    expect(said().at(-1)).toEqual(["Verified on Sourcify (exact match).", "polite"]);
+    expect(said()).toHaveLength(2);
+
+    settings.set({ deployAnnouncements: "none" });
+    log({ tag: "Error", text: "Deploy reverted again." });
+    expect(said()).toHaveLength(2);
   });
 
   for (const theme of ["shop", "draft"] as const satisfies readonly ThemeChoice[]) {

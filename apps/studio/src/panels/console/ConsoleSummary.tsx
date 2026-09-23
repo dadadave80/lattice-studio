@@ -3,7 +3,7 @@ import { env, useAnalysis, useDeployState, useDocument, useOnline } from "@/cont
 import { cx } from "@/ui/shared/cx";
 import { chainName } from "@/chain/infra/chains";
 import styles from "./ConsolePanel.module.css";
-import { latestWith, logEntries, subscribeLog } from "./log-store";
+import { deployLinesSince, latestWith, logEntries, subscribeLog } from "./log-store";
 import { consoleSummary, STREAMING } from "./summary";
 
 function counts(problems: readonly { severity: string }[]): string {
@@ -27,8 +27,9 @@ export function ConsoleSummary() {
   const chainId = useDeployState((d) => d.chainId);
   const safe = useDeployState((d) => d.safe);
   const entries = useSyncExternalStore(subscribeLog, logEntries);
+  const since = useSyncExternalStore(subscribeLog, deployLinesSince);
   const streaming = STREAMING.has(phase);
-  const latest = streaming ? (latestWith(entries, ["Deploy", "Verify", "Error"])?.text ?? null) : null;
+  const latest = streaming ? (latestWith(entries, ["Deploy", "Verify", "Error"], since)?.text ?? null) : null;
   const [blockers = 0, warnings = 0] = tally.split(":").map(Number);
 
   const summary = consoleSummary({

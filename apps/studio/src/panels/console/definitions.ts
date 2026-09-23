@@ -12,7 +12,7 @@ import { helpLines, listVerbs } from "@/commands/console/router";
 import {
   alwaysExportable, briefFile, CATALOG_NOT_LOADED, deployableExport, exportFailed, exportSafe, saveExport,
 } from "./actions";
-import { chainFromText } from "@/chain/infra/chains";
+import { chainFromText, pickerChains } from "@/chain/infra/chains";
 import { setConsoleMaximized, setConsoleOpen, showConsoleTab } from "./drawer";
 import { findOnSheet, findSummary, firstAnchor, foundFacets } from "./find";
 import { locatable, selectAndLocate } from "./locate";
@@ -44,6 +44,11 @@ type SafeArgs = CommandArgsOf<"export.safe">;
 function say(text: string): void {
   log({ tag: "Note", text });
   announce(text);
+}
+
+/** "sepolia, base-sepolia": the picker's chains as `export safe` takes them. */
+function chainWords(): string {
+  return pickerChains(env.e2e).map((c) => c.name.toLowerCase().replace(/\s+/g, "-")).join(", ");
 }
 
 let verbCache: VerbWords[] | null = null;
@@ -98,7 +103,7 @@ function help(verb: string | undefined): void {
 export const S5E_COMMANDS: readonly Command[] = [
   command({
     id: "console.toggle",
-    title: () => "Collapse or expand the console",
+    title: () => "Collapse or expand console",
     category: "Console",
     palette: true,
     enabled: () => OK,
@@ -110,7 +115,7 @@ export const S5E_COMMANDS: readonly Command[] = [
   }),
   command({
     id: "console.maximize",
-    title: () => "Maximize or restore the console",
+    title: () => "Maximize or restore console",
     category: "Console",
     palette: true,
     enabled: () => OK,
@@ -243,7 +248,7 @@ export const S5E_COMMANDS: readonly Command[] = [
         }
         if (!isAddress(address)) return err(`${address} isn't an address. Enter the Safe's full address.`);
         const picked = chainFromText(chain, env.e2e);
-        if (!picked) return err(`${chain} isn't a chain Studio deploys to. Name one: sepolia, base-sepolia.`);
+        if (!picked) return err(`${chain} isn't a chain Studio deploys to. Name one: ${chainWords()}.`);
         return ok({ safe: toChecksum(address as Address), chainId: picked.id });
       },
     },

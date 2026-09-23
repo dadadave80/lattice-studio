@@ -59,6 +59,18 @@ export function CommandLine() {
       setValue(/\s/.test(suggestion) ? suggestion : `${suggestion} `);
       return;
     }
+    // Esc clears a typed line, else does what Esc does elsewhere (IR L15); the dispatcher leaves text fields alone.
+    if (event.key === "Escape" && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (value !== "") {
+        setValue("");
+        setRecall(null);
+      } else {
+        void runCommand({ id: "ui.escape" }, "keys");
+      }
+      return;
+    }
     if (event.key.toLowerCase() === "l" && event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && platform() === "mac") {
       event.preventDefault();
       void runCommand({ id: "console.clear" }, "keys");

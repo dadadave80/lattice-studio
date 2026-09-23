@@ -4,8 +4,8 @@
  *
  * Precedence, first match wins:
  * 1. Offline: "Offline. Composing works; deploy needs a connection."
- * 2. A deploy in flight (signature, pending, stale, confirmed, verifying, failed): the latest deploy line
- *    ("Deploy lines stream in").
+ * 2. A deploy in flight (signature, pending, stale, confirmed, verifying, failed): the latest line this deploy
+ *    logged (Deploy, Verify or Error), empty until the first one ("Deploy lines stream in").
  * 3. The deploy's outcome for the recipe on the sheet: Proposed, Live, Mismatch. Once the sheet differs from
  *    the recipe the deploy was reviewed with, the outcome no longer describes it and the rows below apply.
  * 4. Empty sheet.
@@ -47,16 +47,6 @@ export const STREAMING: ReadonlySet<DeployPhase> = new Set<DeployPhase>([
   "awaitingSignature", "pending", "stale", "confirmed", "verifying", "failed",
 ]);
 
-/** Words for a streaming phase before its first line arrives. */
-const PHASE_WORDS: Partial<Record<DeployPhase, string>> = {
-  awaitingSignature: "Confirm in your wallet",
-  pending: "Pending",
-  stale: "Pending",
-  confirmed: "Deployed; checking the diamond",
-  verifying: "Verifying",
-  failed: "Deploy failed",
-};
-
 function sameHash(a: Hex | undefined, b: Hex): boolean {
   return a === undefined || b === "0x" || a.toLowerCase() === b.toLowerCase();
 }
@@ -70,7 +60,8 @@ export function consoleSummary(input: SummaryInput): Summary {
   const { deploy } = input;
   if (!input.online) return { kind: "offline", text: OFFLINE_SUMMARY, accent: false };
   if (STREAMING.has(deploy.phase)) {
-    return { kind: "deploying", text: input.latestDeployLine ?? PHASE_WORDS[deploy.phase] ?? "Deploying", accent: false };
+    // Until this deploy logs its first line the words stay empty: the title block carries "Confirm in {wallet}".
+    return { kind: "deploying", text: input.latestDeployLine ?? "", accent: false };
   }
   if (sameHash(deploy.snapshot, input.recipeHash)) {
     const chain = deploy.chainId === undefined ? undefined : input.chainName(deploy.chainId);

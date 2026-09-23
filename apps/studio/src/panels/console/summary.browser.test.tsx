@@ -58,9 +58,12 @@ describe("console summary, one state per row of the table (spec L376-L389)", () 
 
   test("Deploying: the deploy lines stream in", async () => {
     analysisWith([]);
+    // A line from an earlier deploy (a kept log, say) never heads this one.
+    log({ tag: "Deploy", text: "Deployed at 0x5FbD…0aa3 in block 9,123,460. Matches the sheet." });
     seedDeployState({ phase: "pending", chainId: 11155111, snapshot: HASH } satisfies DeployState);
     await renderConsole();
-    await expectSummary("Pending", false);
+    await expectSummary("", false);
+    expect(summary()?.dataset.summary).toBe("deploying");
     log({ tag: "Deploy", text: "Submitted 0x1234…abcd on Sepolia." });
     await expectSummary("Submitted 0x1234…abcd on Sepolia.", false);
     log({ tag: "Note", text: "Tidied 4 facets." });

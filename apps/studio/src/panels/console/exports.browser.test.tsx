@@ -1,5 +1,6 @@
 import type { ExportFile } from "@lattice-studio/core";
-import { exportBrief, exportFoundry, exportRecipeJson, exportSafeBatch } from "@lattice-studio/core";
+import { exportBrief, exportFoundry, exportRecipeJson, exportSafeBatch, loadTemplate } from "@lattice-studio/core";
+import { makeProject } from "@lattice-studio/core/testing";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
@@ -8,7 +9,7 @@ import {
 import { DialogHost } from "@/ui/overlays/DialogHost";
 import { axeViolations } from "@/ui/testing/axe";
 import studio from "../../../package.json" with { type: "json" };
-import { bufferedServices, onCleanup, renderWithStudio } from "../../../test/harness";
+import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio } from "../../../test/harness";
 import { scriptChainIds } from "./chains";
 import { ConsolePanel } from "./ConsolePanel";
 import { downloadFile } from "./download";
@@ -161,6 +162,36 @@ describe("Export menu (spec L509-L518, IR L132)", () => {
     expect(JSON.parse(file.text)).toMatchObject({ version: "1.0", chainId: "84532" });
     await vi.waitFor(() => expect(proposals).toHaveLength(1));
     expect(proposals[0]).toMatchObject({ safe: SAFE, chainId: 84532 });
+  });
+
+  test("the Safe batch carries the project's context: a predicted address and a linked argument refuse it", async () => {
+    const recipe = loadTemplate(fixtureCatalog(), "SafeDiamondCut");
+    if (!recipe.ok) throw new Error(recipe.error);
+    const predicted = "0x5FbDB2315678afecb367f032d93F642f64180aa3" as const;
+    const linked = "0x1234567890123456789012345678901234567890" as const;
+    const init = recipe.value.init;
+    if (init.kind !== "steps" || !init.steps[0]) throw new Error("SafeDiamondCut has steps");
+    const step = { ...init.steps[0], args: { ...init.steps[0].args, safe: linked, admin: predicted } };
+    const project = makeProject({
+      id: "p-safe", name: "Safe cut",
+      recipe: { ...recipe.value, init: { ...init, steps: [step] } },
+      predicted: [{ chainId: 84532, address: predicted }],
+      provenance: { "steps[0].safe": "link" },
+    });
+    await renderConsole(project);
+    const now = Date.parse("2026-09-23T12:00:00Z");
+    const { safeBatch } = await import("./exporters/safe");
+    const built = await safeBatch({ project: doc.get(), catalog: catalog(), safe: SAFE, chainId: 84532, now });
+    // Without the context the same inputs would build; with it, AUTH-02 and LINK-01 refuse the batch.
+    const bare = exportSafeBatch({
+      recipe: doc.get().recipe, catalog: catalog(), safe: SAFE, chainId: 84532, entropy: doc.get().deploy.entropy,
+      scope: doc.get().deploy.scope, path: doc.get().deploy.path, now, studioVersion: studio.version,
+    });
+    expect(bare.ok).toBe(true);
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.error).toMatch(/^Resolve \d+ blockers? to export: .*AUTH-02/);
+    expect(built.error).toMatch(/LINK-01/);
   });
 
   test("the Safe batch dialog closes with Cancel and changes nothing", async () => {

@@ -90,7 +90,7 @@ export async function copyExport(file: ExportFile): Promise<void> {
 /** Says why an export didn't happen: a console line and the status region. */
 export function exportFailed(reason: string): void {
   log({ tag: "Error", text: reason });
-  announce(reason, { politeness: "assertive" });
+  announce(reason);
 }
 
 /**

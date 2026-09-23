@@ -1,10 +1,10 @@
 import type { Address } from "@lattice-studio/core";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { doc, provideDeployController, session, type DeployController, type DeployState } from "@/contracts";
+import { command, doc, provideDeployController, session, type DeployController, type DeployState } from "@/contracts";
 import { listVerbs } from "@/commands/console/router";
 import { overridePlatform } from "@/ui/shared/platform";
-import { onCleanup, renderWithStudio } from "../../../test/harness";
+import { onCleanup, overrideCommands, renderWithStudio } from "../../../test/harness";
 import { COMMAND_LABEL } from "./CommandLine";
 import { ConsolePanel } from "./ConsolePanel";
 import { logEntries } from "./log-store";
@@ -145,6 +145,20 @@ describe("command line (IR L137)", () => {
     await expect.element(input()).toHaveValue("fin");
   });
 
+  test("Esc clears a typed line, then runs ui.escape", async () => {
+    const escapes: string[] = [];
+    overrideCommands([
+      command({ id: "ui.escape", title: () => "Escape", category: "Session", enabled: () => ({ ok: true }), run: () => void escapes.push("esc") }),
+    ]);
+    await renderConsole();
+    await userEvent.fill(input(), "place erc");
+    await userEvent.keyboard("{Escape}");
+    await expect.element(input()).toHaveValue("");
+    expect(escapes).toEqual([]);
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(escapes).toEqual(["esc"]));
+  });
+
   test("Tab accepts a visible suggestion; otherwise it moves focus", async () => {
     await renderConsole();
     await userEvent.fill(input(), "probl");
@@ -208,5 +222,7 @@ describe("console verbs for exports", () => {
     await vi.waitFor(() => expect(session.get().dialogs.map((d) => d.id)).toEqual(["safe-batch"]));
     await run("export safe 0x1234 sepolia");
     await logged("0x1234 isn't an address. Enter the Safe's full address.");
+    await run(`export safe ${safe} mars`);
+    await logged("mars isn't a chain Studio deploys to. Name one: sepolia, base-sepolia.");
   });
 });
