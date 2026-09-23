@@ -40,7 +40,8 @@ export type Catalog = {
   /** "v0.4.0" and the commit that tag points to. */
   lattice: { tag: string; commit: string };
   /** "1.8.1", "0.8.36". */
-  toolchain: { foundry: string; solc: string };
+  /** `solcLong` is solc's full version ("0.8.36+commit.…"), which Sourcify's v2 API wants (S8d); catalogs written before FX20 lack it. */
+  toolchain: { foundry: string; solc: string; solcLong?: string };
   /** keccak256 of the canonical index. */
   hash: Hex;
   /** Arachnid's deterministic deployment proxy, 0x4e59…956C. */

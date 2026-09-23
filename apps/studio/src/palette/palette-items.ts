@@ -168,10 +168,13 @@ function categoryRank(category: CommandCategory): number {
   return at < 0 ? CATEGORY_ORDER.length : at;
 }
 
+/** A title without its trailing ellipsis, so "Deploy…" sorts before "Deploy again…" ("…" collates after a space). */
+const plainTitle = (row: PaletteRow): string => row.title.replace(/…$/u, "");
+
 /** Commands (IR L164): Sheet, Build, Session, then Export, Deploy, Console and Chain; by title within each. */
 function commands(rows: readonly PaletteRow[]): PaletteItem[] {
   return [...rows]
-    .sort((a, b) => categoryRank(a.category) - categoryRank(b.category) || a.title.localeCompare(b.title, "en"))
+    .sort((a, b) => categoryRank(a.category) - categoryRank(b.category) || plainTitle(a).localeCompare(plainTitle(b), "en"))
     .map((row) =>
       item("commands", row.ref, {
         title: row.title,

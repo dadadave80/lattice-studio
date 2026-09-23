@@ -1,48 +1,16 @@
 /**
  * What the Export menu, the console verbs and the code tabs do with an export (spec L507-L518): build it through
  * the exporter's lazy chunk, then download it or copy it, and say so in the console. Nothing here imports an
- * exporter directly.
+ * exporter directly. Behind the console body's boundary: the commands reach it through `loadConsoleBody()`; when
+ * an export can run is `export-enablement.ts`'s, in the entry.
  */
 import type { Address, Analysis, Catalog, ExportFile, Hex, Project, Result } from "@lattice-studio/core";
-import { isNotImplemented, lines, plural } from "@lattice-studio/core";
-import {
-  announce, deployController, doc, getAnalysis, getCatalog, log, now, type CommandContext, type Enablement,
-} from "@/contracts";
+import { isNotImplemented, lines } from "@lattice-studio/core";
+import { announce, deployController, doc, getAnalysis, getCatalog, log, now } from "@/contracts";
 import { copyText } from "@/ui/copy/copy-text";
 import { downloadFile } from "./download";
+import { CATALOG_NOT_LOADED } from "./export-enablement";
 import { loadExporter } from "./exporters";
-
-/** While the catalog loads or after it failed. */
-export const CATALOG_NOT_LOADED = "The catalog hasn't loaded yet";
-/** An empty sheet has nothing to export (spec L378's "Place facets first"). */
-export const PLACE_FACETS_FIRST = "Place facets first";
-/** The Script and Recipe JSON tabs on an empty sheet (spec L699). */
-export const PLACE_FACETS_TO_GENERATE = "Place facets to generate a script.";
-
-/** "Resolve 2 blockers to export · F8" (spec L513, L699). */
-export function resolveToExport(blockers: number): string {
-  return `Resolve ${plural(blockers, "blocker")} to export · F8`;
-}
-
-export function blockerCount(analysis: Pick<Analysis, "problems">): number {
-  return analysis.problems.filter((p) => p.severity === "blocker").length;
-}
-
-const OK: Enablement = { ok: true };
-
-/** Enabled when the catalog is in; the brief and recipe.json export whatever the sheet holds (spec L514-L515). */
-export function alwaysExportable(ctx: Pick<CommandContext, "catalog">): Enablement {
-  return ctx.catalog ? OK : { ok: false, reason: CATALOG_NOT_LOADED };
-}
-
-/** The Foundry script and the Safe batch: facets placed and no blockers (spec L513, L517). */
-export function deployableExport(ctx: Pick<CommandContext, "catalog" | "project" | "analysis">): Enablement {
-  if (!ctx.catalog) return { ok: false, reason: CATALOG_NOT_LOADED };
-  if (ctx.project.recipe.facets.length === 0) return { ok: false, reason: PLACE_FACETS_FIRST };
-  const blockers = blockerCount(ctx.analysis);
-  if (blockers > 0) return { ok: false, reason: resolveToExport(blockers), fix: { id: "problem.next" } };
-  return OK;
-}
 
 type Sources = { project: Project; catalog: Catalog; analysis: Analysis };
 

@@ -48,7 +48,8 @@ export function CardSheet({ zoom = 1, width = 1400, height = 860, onInit }: Card
           aria-label="Diamond sheet"
           {...(onInit ? { onInit } : {})}
         >
-          {sheetLayers().map(({ id, Component }) => (
+          {/* S4a's own layer only: the chrome and the notes are other owners' screenshots. */}
+          {sheetLayers().filter(({ id }) => id === "card-zoom").map(({ id, Component }) => (
             <Component key={id} />
           ))}
         </ReactFlow>

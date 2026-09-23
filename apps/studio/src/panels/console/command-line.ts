@@ -5,7 +5,7 @@
  */
 import { log } from "@/contracts";
 import { route, runConsoleLine, tokenize } from "@/commands/console/router";
-import { unknownVerb } from "./definitions";
+import { unknownVerb } from "./verbs";
 import { showConsoleTab } from "./drawer";
 
 /** The echo of a typed line: dim, so output stands out under it. */

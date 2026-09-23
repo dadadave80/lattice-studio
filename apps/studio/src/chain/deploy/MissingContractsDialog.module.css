@@ -1,0 +1,129 @@
+/*
+ * Deploy missing contracts (Flow 12 step 3). No board yet (PA L74): built from the dialog primitive, the review's
+ * section rows and the status chip's marks, where the words carry the state and the mark repeats it.
+ */
+.status {
+  display: block;
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  color: var(--lx-text-muted);
+}
+
+.error {
+  margin: 0;
+  margin-block-start: var(--lx-space-2);
+  padding: var(--lx-space-2) var(--lx-space-3);
+  border-inline-start: var(--lx-stroke-heavy) solid var(--lx-accent);
+  background: var(--lx-accent-soft);
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text);
+}
+
+.rows {
+  margin: 0;
+  margin-block-start: var(--lx-space-3);
+  padding: 0;
+  list-style: none;
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+/* Name, address, gas, state and Retry on one line; the reason wraps under them. */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  grid-template-areas: "name address gas state retry" "reason reason reason reason reason";
+  align-items: center;
+  column-gap: var(--lx-space-3);
+  min-block-size: var(--lx-row-height);
+  padding-block: var(--lx-space-1);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text);
+}
+
+.name {
+  grid-area: name;
+  overflow-wrap: anywhere;
+}
+
+.address {
+  grid-area: address;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+}
+
+.gas {
+  grid-area: gas;
+  font: var(--lx-font-code-sm);
+  color: var(--lx-text-muted);
+}
+
+.state {
+  grid-area: state;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.retry {
+  grid-area: retry;
+}
+
+.reason {
+  grid-area: reason;
+  margin: 0;
+  margin-block-start: var(--lx-space-1);
+  color: var(--lx-text-muted);
+}
+
+.mark {
+  flex: none;
+  inline-size: var(--lx-space-2);
+  block-size: var(--lx-space-2);
+  border: var(--lx-stroke-hair) solid currentColor;
+}
+
+/* Missing: hollow. Pending: half filled. Deployed: filled. Failed: accent, because it needs a decision. */
+.row[data-status="pending"] .mark {
+  background: linear-gradient(to top, currentColor 50%, transparent 50%);
+}
+
+.row[data-status="deployed"] .mark {
+  background: currentColor;
+}
+
+.row[data-status="failed"] .state {
+  color: var(--lx-accent);
+  font-weight: 600;
+}
+
+.row[data-status="failed"] .mark {
+  background: currentColor;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduce"]) .row[data-status="pending"] .mark {
+    animation: pulse 1.2s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 767px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name state" "address retry" "gas gas" "reason reason";
+  }
+}
