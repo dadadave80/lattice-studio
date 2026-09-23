@@ -3,9 +3,7 @@ import * as z from "zod";
 import type { Recipe } from "./recipe";
 import {
   AbiItemSchema,
-  formatPath,
   listUnknownFields,
-  MAX_JSON_DEPTH,
   RecipeSchema,
   validate,
   validateCatalogManifest,
@@ -16,6 +14,7 @@ import {
   validateRecipe,
   validateSharePayload,
 } from "./schema";
+import { formatPath, MAX_JSON_DEPTH } from "./path";
 
 const HASH = `0x${"3f".repeat(32)}` as const;
 const ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
