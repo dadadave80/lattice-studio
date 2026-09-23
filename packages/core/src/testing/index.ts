@@ -6,3 +6,4 @@ export * from "./ids";
 export * from "./property";
 export * from "./shape";
 export * from "./templates";
+export * from "./mutate";
