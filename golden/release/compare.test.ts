@@ -16,6 +16,7 @@ import {
   expectedFromCatalog,
   failed,
   formatComparison,
+  knownGapNames,
   parseReleaseLogs,
 } from "./compare.ts";
 
@@ -26,11 +27,20 @@ const hash = (label: string): Hex => keccak256(stringToHex(label));
 /** A synthetic shared contract: its salt as DeployRelease derives it, a made-up init code and codehash. */
 function shared(name: string, extra: Partial<SharedRelease> = {}): SharedRelease {
   const salt = sharedSalt(name, VERSION);
-  const initCodeHash = hash(`init:${name}`);
+  const initCodeHash = extra.initCodeHash ?? hash(`init:${name}`);
   return { salt, version: VERSION, initCodeHash, address: arachnidAddress(salt, initCodeHash), codehash: hash(`code:${name}`), ...extra };
 }
 
-const PROVISIONAL = "Links PoseidonT3, which Lattice doesn't pin yet.";
+/** Studio's PoseidonT3 (the catalog links it) and the one forge linked at the pin. */
+const POSEIDON_CATALOG = shared("PoseidonT3").address;
+const POSEIDON_FORGE: Address = "0x792B818F95dD1cb390C09d0F483e774471C2FBF1";
+
+/** Creation code that links `lib` twice (PUSH20 <lib> ... PUSH20 <lib>), like a contract calling a library. */
+function linkedCode(lib: Address, middle = "5af450"): Hex {
+  const at = lib.slice(2).toLowerCase();
+  return `0x608060405273${at}${middle}73${at}5af400` as Hex;
+}
+const SEMAPHORE_CODE = linkedCode(POSEIDON_CATALOG);
 
 /** A small catalog: registry, factory, three facets, one of them linking an unpinned library. */
 function catalog(): CatalogRelease {
@@ -42,11 +52,16 @@ function catalog(): CatalogRelease {
     facets: [
       { name: "ERC20", release: shared("ERC20") },
       { name: "DiamondLoupeFacet", release: shared("DiamondLoupeFacet") },
-      { name: "Semaphore", release: shared("Semaphore", { dependsOn: ["PoseidonT3"], provisional: PROVISIONAL }) },
+      {
+        name: "Semaphore",
+        release: shared("Semaphore", { initCodeHash: keccak256(SEMAPHORE_CODE), dependsOn: ["PoseidonT3"], provisional: "Links PoseidonT3." }),
+      },
     ],
     libraries: [{ name: "PoseidonT3", release: shared("PoseidonT3", { provisional: "Lattice doesn't release PoseidonT3." }) }],
   };
 }
+
+const withCode = () => expectedFromCatalog(catalog(), new Map([["Semaphore", SEMAPHORE_CODE]]));
 
 /** What DeployRelease would report if it deployed the catalog exactly, under `model`. */
 function faithfulReport(model: DeployerModel, c: CatalogRelease = catalog()): ReleaseReport {
@@ -59,7 +74,9 @@ function faithfulReport(model: DeployerModel, c: CatalogRelease = catalog()): Re
     version: VERSION,
     owner: OWNER,
     deployerCodehash: ARACHNID_PROXY_CODEHASH,
+    createx: model === "createx-raw" ? "mock-createx" : "no-createx",
     contracts: all.map(([name, s]) => ({ name, address: addressUnder(model, s.salt, s.initCodeHash), codehash: s.codehash })),
+    creationCodes: {},
   };
 }
 
@@ -67,7 +84,21 @@ function withContract(report: ReleaseReport, name: string, change: Partial<Relea
   return { ...report, contracts: report.contracts.map((c) => (c.name === name ? { ...c, ...change } : c)) };
 }
 
+/**
+ * The release as forge produced it: Semaphore built from `forgeCode` (default: the catalog's code linking forge's
+ * PoseidonT3) and deployed where that code lands, and its creation code logged unless `log` is false.
+ */
+function gapReport(model: DeployerModel, forgeCode: Hex = linkedCode(POSEIDON_FORGE), opts: { at?: Address; log?: boolean } = {}): ReleaseReport {
+  const salt = sharedSalt("Semaphore", VERSION);
+  const report = withContract(faithfulReport(model), "Semaphore", {
+    address: opts.at ?? addressUnder(model, salt, keccak256(forgeCode)),
+    codehash: hash("forge-linked runtime"),
+  });
+  return opts.log === false ? report : { ...report, creationCodes: { Semaphore: forgeCode } };
+}
+
 const statusOf = (c: Comparison, name: string) => c.rows.find((r) => r.name === name)?.status;
+const detailOf = (c: Comparison, name: string) => c.rows.find((r) => r.name === name)?.detail ?? "";
 
 describe("SKIP_REASON", () => {
   test("is the brief's wording", () => {
@@ -76,16 +107,18 @@ describe("SKIP_REASON", () => {
 });
 
 describe("createxRawAddress", () => {
-  // The catalog's LatticeRegistry at dev f4a32c8 (owner 0x…dEaD) and where DeployRelease put it through the
-  // CreateX mock in a forge test at that pin, and where Arachnid's proxy puts it (the catalog's address).
+  // The catalog's LatticeRegistry at dev f4a32c8 (owner 0x…dEaD): its salt and init-code hash from
+  // catalog/dev-f4a32c8/index.json. The CreateX address is the one forge reported: this suite's harness logged
+  // `STUDIO_RELEASE contract LatticeRegistry 0x303aabD5fD0AF342095DA749b62aE651c1c9be79 …` after DeployRelease
+  // deployed through MockCreateX at that pin (2026-09-23). It's copied from forge's output, not computed with viem.
   const salt: Hex = "0xc78231000c48b308a55c9ed0de492d4ee766bc920c611d52ef984a4d9baa3a9c";
   const initCodeHash: Hex = "0xf7efc65848d4b86379f7b2c82cc1738b823f21adc67589b9ab3dc1b8821c63ab";
 
-  test("matches CreateXDeployer.predictRaw at the pin", () => {
+  test("matches where DeployRelease put the registry through CreateX at the pin", () => {
     expect(createxRawAddress(salt, initCodeHash)).toBe("0x303aabD5fD0AF342095DA749b62aE651c1c9be79");
   });
 
-  test("differs from Arachnid's proxy for the same salt and init code", () => {
+  test("differs from Arachnid's proxy (the catalog's address) for the same salt and init code", () => {
     expect(arachnidAddress(salt, initCodeHash)).toBe("0x1fFbaCbec0F47e91E80Af6F54B7163dBf23CB7AF");
     expect(salt).toBe(sharedSalt("LatticeRegistry", VERSION));
   });
@@ -106,23 +139,27 @@ describe("detectDeployer", () => {
 });
 
 describe("parseReleaseLogs", () => {
-  const header = `STUDIO_RELEASE header 0.2.0 ${OWNER} ${ARACHNID_PROXY_CODEHASH}`;
+  const header = `STUDIO_RELEASE header 0.2.0 ${OWNER} ${ARACHNID_PROXY_CODEHASH} mock-createx`;
   const line = (name: string, address: string, codehash: string) => `STUDIO_RELEASE contract ${name} ${address} ${codehash}`;
   const reg = line("LatticeRegistry", "0x303aabd5fd0af342095da749b62ae651c1c9be79", hash("r"));
+  const code = `STUDIO_RELEASE code Semaphore ${SEMAPHORE_CODE.toUpperCase().replace("0X", "0x")}`;
 
-  test("reads the header and contracts, ignoring what release() prints itself", () => {
-    const parsed = parseReleaseLogs(["LatticeRegistry deployed: 0x303a…", header, reg, "Facets deployed: 100 | skipped (already deployed): 0"]);
+  test("reads the header, contracts and creation code, ignoring what release() prints itself", () => {
+    const parsed = parseReleaseLogs(["LatticeRegistry deployed: 0x303a…", header, reg, code, "Facets deployed: 100 | skipped (already deployed): 0"]);
     expect(parsed).toEqual({
       ok: true,
       value: {
         version: "0.2.0",
         owner: OWNER,
         deployerCodehash: ARACHNID_PROXY_CODEHASH,
+        createx: "mock-createx",
         contracts: [{ name: "LatticeRegistry", address: "0x303aabD5fD0AF342095DA749b62aE651c1c9be79", codehash: hash("r") }],
+        creationCodes: { Semaphore: SEMAPHORE_CODE },
       },
     });
   });
 
+  const long = `STUDIO_RELEASE code Semaphore 0x${"ab".repeat(200)}z`;
   test.each([
     ["no header", ["Facets deployed: 100"], "the harness logged no header."],
     ["no contracts", [header], "the harness reported no contracts."],
@@ -131,7 +168,13 @@ describe("parseReleaseLogs", () => {
     ["a contract before the header", [reg, header], `a contract line came before the header: "${reg}".`],
     ["a bad address", [header, line("ERC20", "0x1234", hash("e"))], `malformed contract line "${line("ERC20", "0x1234", hash("e"))}".`],
     ["a short codehash", [header, line("ERC20", OWNER, "0xabcd")], `malformed contract line "${line("ERC20", OWNER, "0xabcd")}".`],
-    ["a header missing a field", ["STUDIO_RELEASE header 0.2.0 " + OWNER], `malformed header line "STUDIO_RELEASE header 0.2.0 ${OWNER}".`],
+    [
+      "a header missing the CreateX field",
+      [`STUDIO_RELEASE header 0.2.0 ${OWNER} ${ARACHNID_PROXY_CODEHASH}`],
+      `malformed header line "STUDIO_RELEASE header 0.2.0 ${OWNER} ${ARACHNID_PROXY_CODEHASH}".`,
+    ],
+    ["a duplicate code line", [header, reg, code, code], "the harness logged Semaphore's creation code twice."],
+    ["code that isn't hex, shortened", [header, reg, long], `malformed code line "${long.slice(0, 237)}...".`],
     ["an unknown kind", [header, "STUDIO_RELEASE facet ERC20"], `unknown line "STUDIO_RELEASE facet ERC20".`],
   ])("rejects %s", (_label, lines, error) => {
     expect(parseReleaseLogs(lines)).toEqual({ ok: false, error });
@@ -149,17 +192,19 @@ describe("expectedFromCatalog", () => {
     ]);
   });
 
-  test("marks a contract linking an unpinned library as a known Lattice gap, and nothing else", () => {
-    const expected = expectedFromCatalog(catalog());
-    const gaps = expected.contracts.filter((c) => c.knownGap !== undefined);
-    expect(gaps.map((c) => c.name)).toEqual(["Semaphore"]);
-    expect(gaps[0]?.knownGap).toBe("links PoseidonT3, which Lattice doesn't pin yet, so the catalog links Studio's own release of it");
+  test("marks a contract linking an unpinned library as a known gap, with the library's catalog address", () => {
+    const expected = withCode();
+    expect(knownGapNames(expected)).toEqual(["Semaphore"]);
+    expect(expected.contracts.find((c) => c.name === "Semaphore")?.knownGap).toEqual({
+      libraries: [{ name: "PoseidonT3", address: POSEIDON_CATALOG }],
+      creationCode: SEMAPHORE_CODE,
+    });
   });
 
   test("a dependency that isn't a provisional library isn't a known gap", () => {
     const c = catalog();
     c.libraries = [{ name: "PoseidonT3", release: shared("PoseidonT3") }];
-    expect(expectedFromCatalog(c).contracts.some((e) => e.knownGap !== undefined)).toBe(false);
+    expect(knownGapNames(expectedFromCatalog(c))).toEqual([]);
   });
 
   test("falls back to the D6 placeholder owner", () => {
@@ -169,7 +214,7 @@ describe("expectedFromCatalog", () => {
 });
 
 describe("compareRelease after Lattice A1 (Arachnid's proxy)", () => {
-  const expected = expectedFromCatalog(catalog());
+  const expected = withCode();
 
   test("passes when every contract is at the catalog's address with its codehash", () => {
     const c = compareRelease(expected, faithfulReport("arachnid"), "arachnid");
@@ -201,22 +246,68 @@ describe("compareRelease after Lattice A1 (Arachnid's proxy)", () => {
     });
   });
 
-  test("reports a divergence on a contract linking an unpinned library as a known Lattice gap and still passes", () => {
-    const report = withContract(faithfulReport("arachnid"), "Semaphore", {
-      address: "0xfA211605A3b034aFfB4C93Ab89Ae39d99766efBd",
-      codehash: hash("forge-linked"),
-    });
-    const c = compareRelease(expected, report, "arachnid");
+  test("accepts a divergence caused only by forge linking its own PoseidonT3 as a known Lattice gap", () => {
+    const c = compareRelease(expected, gapReport("arachnid"), "arachnid");
     expect(failed(c)).toBe(false);
     expect(statusOf(c, "Semaphore")).toBe("known-gap");
     const lines = formatComparison(c);
     expect(lines[0]).toBe("4 of 5 shared contracts are at the catalog's addresses.");
     expect(lines[1]).toStartWith("  Semaphore: known Lattice gap: address ");
-    expect(lines[1]).toEndWith("; links PoseidonT3, which Lattice doesn't pin yet, so the catalog links Studio's own release of it");
+    expect(lines[1]).toEndWith(
+      `; forge links PoseidonT3 at ${POSEIDON_FORGE} instead of ${POSEIDON_CATALOG}, which Lattice doesn't pin yet; the creation code is otherwise the catalog's`,
+    );
   });
 
   test("a known-gap contract that matches is just a match", () => {
     expect(statusOf(compareRelease(expected, faithfulReport("arachnid"), "arachnid"), "Semaphore")).toBe("match");
+  });
+
+  test("fails when a known-gap facet also drifts for another reason", () => {
+    const drifted = linkedCode(POSEIDON_FORGE, "5af451");
+    const c = compareRelease(expected, gapReport("arachnid", drifted), "arachnid");
+    expect(failed(c)).toBe(true);
+    expect(statusOf(c, "Semaphore")).toBe("mismatch");
+    expect(detailOf(c, "Semaphore")).toEndWith(
+      "; not only the unpinned library: forge's creation code differs from the catalog's at byte 28, outside the linked library addresses",
+    );
+    expect(formatComparison(c)[1]).toStartWith("  Semaphore: differs: address ");
+  });
+
+  test.each([
+    ["forge's creation code isn't logged", () => gapReport("arachnid", undefined, { log: false }), withCode, "the harness didn't log forge's creation code, so the gap can't be checked"],
+    ["the catalog's creation code isn't loaded", () => gapReport("arachnid"), () => expectedFromCatalog(catalog()), "the catalog's creation code wasn't loaded, so the gap can't be checked"],
+    ["the lengths differ", () => gapReport("arachnid", `${linkedCode(POSEIDON_FORGE)}00` as Hex), withCode, "forge's creation code is 54 bytes, the catalog's 53"],
+    [
+      "forge links two different addresses",
+      () => gapReport("arachnid", `0x608060405273${POSEIDON_FORGE.slice(2).toLowerCase()}5af45073${"11".repeat(20)}5af400` as Hex),
+      withCode,
+      "forge's creation code links PoseidonT3 at 2 different addresses",
+    ],
+    [
+      "DeployRelease didn't deploy forge's code",
+      () => gapReport("arachnid", undefined, { at: "0x0000000000000000000000000000000000000Bad" }),
+      withCode,
+      "DeployRelease put it at 0x0000000000000000000000000000000000000Bad, not where forge's creation code lands",
+    ],
+  ])("fails a known gap when %s", (_label, report, exp, reason) => {
+    const c = compareRelease(exp(), report(), "arachnid");
+    expect(failed(c)).toBe(true);
+    expect(statusOf(c, "Semaphore")).toBe("mismatch");
+    expect(detailOf(c, "Semaphore")).toContain(`; not only the unpinned library: ${reason}`);
+  });
+
+  test("fails a known gap when the catalog's code doesn't hash to its init-code hash, or doesn't link the library", () => {
+    const wrongHash = expectedFromCatalog(catalog(), new Map([["Semaphore", linkedCode(POSEIDON_CATALOG, "5af451")]]));
+    expect(detailOf(compareRelease(wrongHash, gapReport("arachnid"), "arachnid"), "Semaphore")).toContain(
+      "the catalog's creation code hashes to ",
+    );
+
+    const unlinked: Hex = `0x608060405273${"22".repeat(20)}5af45073${"22".repeat(20)}5af400`;
+    const c = catalog();
+    const semaphore = c.facets[2];
+    if (semaphore) semaphore.release = shared("Semaphore", { initCodeHash: keccak256(unlinked), dependsOn: ["PoseidonT3"] });
+    const result = compareRelease(expectedFromCatalog(c, new Map([["Semaphore", unlinked]])), gapReport("arachnid"), "arachnid");
+    expect(detailOf(result, "Semaphore")).toContain(`the catalog's creation code doesn't link PoseidonT3 at ${POSEIDON_CATALOG}`);
   });
 
   test("fails on a contract the release didn't deploy, and on one the catalog lacks", () => {
@@ -256,7 +347,7 @@ describe("compareRelease after Lattice A1 (Arachnid's proxy)", () => {
 });
 
 describe("compareRelease at the pin (CreateX raw salts)", () => {
-  const expected = expectedFromCatalog(catalog());
+  const expected = withCode();
 
   test("checks salts and init-code hashes through CreateX's formula and leaves the factory out", () => {
     const c = compareRelease(expected, faithfulReport("createx-raw"), "createx-raw");
@@ -278,6 +369,13 @@ describe("compareRelease at the pin (CreateX raw salts)", () => {
     const c = compareRelease(expected, report, "createx-raw");
     expect(failed(c)).toBe(true);
     expect(statusOf(c, "ERC20")).toBe("mismatch");
+  });
+
+  test("checks known gaps through CreateX's formula too", () => {
+    expect(statusOf(compareRelease(expected, gapReport("createx-raw"), "createx-raw"), "Semaphore")).toBe("known-gap");
+    const drifted = compareRelease(expected, gapReport("createx-raw", linkedCode(POSEIDON_FORGE, "5af451")), "createx-raw");
+    expect(failed(drifted)).toBe(true);
+    expect(statusOf(drifted, "Semaphore")).toBe("mismatch");
   });
 
   test("an Arachnid-shaped report read as CreateX doesn't pass", () => {

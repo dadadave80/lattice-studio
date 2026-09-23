@@ -7,14 +7,15 @@ pragma solidity ^0.8.30;
 // does, never `run()`, which writes deployments/<chainid>/release-<version>.json into the checkout.
 //
 // It reports, as single-string log lines that run.ts parses:
-//   STUDIO_RELEASE header <version> <registry owner> <codehash at Arachnid's proxy address>
+//   STUDIO_RELEASE header <version> <registry owner> <codehash at Arachnid's proxy address> <mock-createx|no-createx>
 //   STUDIO_RELEASE contract <Name> <address> <runtime codehash>
-// one `contract` line for LatticeRegistry, LatticeFactory and every FacetInventory facet, in that order.
+//   STUDIO_RELEASE code <Name> <creation code>
+// one `contract` line for LatticeRegistry, LatticeFactory and every FacetInventory facet, in that order, then one
+// `code` line (the creation code DeployRelease takes from `vm.getCode`) for each facet named in
+// STUDIO_RELEASE_CODE (comma-separated): the ones whose catalog address links a library Lattice doesn't pin.
 
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
-import {CreateXDeployer} from "@lattice-script/lib/CreateXDeployer.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
-import {MockCreateX} from "@lattice-test/helpers/MockCreateX.sol";
 import {LatticeVersion} from "@lattice/LatticeVersion.sol";
 import {Test, console} from "forge-std/Test.sol";
 
@@ -26,33 +27,68 @@ contract StudioGoldenReleaseTest is Test, DeployRelease {
     bytes private constant _ARACHNID_RUNTIME =
         hex"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3";
 
+    /// @dev CreateX's canonical address, and the start of DeployRelease's revert when nothing is there (at the pin).
+    address private constant _CREATEX = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
+    string private constant _NO_CREATEX = "DeployRelease: CreateX has no code";
+
     function setUp() public {
-        // DeployRelease requires CreateX's code at its canonical address at the pin; the Lattice tests etch the
-        // mock there too. Arachnid's proxy is etched only when the test chain lacks it.
-        vm.etch(address(CreateXDeployer.CREATEX), address(new MockCreateX()).code);
         if (_ARACHNID.code.length == 0) vm.etch(_ARACHNID, _ARACHNID_RUNTIME);
     }
 
     /// @dev The release at the library's own version, with the owner run.ts passes (the catalog's registry owner),
-    ///      else HANDOFF D6's placeholder so the file also runs on its own under `forge test`.
+    ///      else HANDOFF D6's placeholder so the file also runs on its own under `forge test`. Lattice's MockCreateX
+    ///      is etched at CreateX's address only when DeployRelease refuses to run without CreateX's code.
     function test_Release() public {
         address owner = vm.envOr("STUDIO_RELEASE_OWNER", address(0x000000000000000000000000000000000000dEaD));
         string memory version = LatticeVersion.VERSION;
-        _log(string.concat("header ", version, " ", vm.toString(owner), " ", vm.toString(_ARACHNID.codehash)));
 
-        DeployRelease.ReleaseOutput memory out = this.release(version, owner);
+        DeployRelease.ReleaseOutput memory out;
+        string memory createx = "no-createx";
+        try this.release(version, owner) returns (DeployRelease.ReleaseOutput memory released) {
+            out = released;
+        } catch Error(string memory reason) {
+            require(_startsWith(reason, _NO_CREATEX), reason);
+            vm.etch(_CREATEX, deployCode("MockCreateX.sol:MockCreateX").code);
+            createx = "mock-createx";
+            out = this.release(version, owner);
+        }
 
+        _log(string.concat("header ", version, " ", vm.toString(owner), " ", vm.toString(_ARACHNID.codehash), " ", createx));
         _contract("LatticeRegistry", out.registry);
         _contract("LatticeFactory", out.factory);
-        (string[] memory names,) = FacetInventory.inventory();
+        (string[] memory names, string[] memory paths) = FacetInventory.inventory();
         assertEq(out.facets.length, names.length, "release returned a facet list that doesn't match the inventory");
         for (uint256 i; i < names.length; ++i) {
             _contract(names[i], out.facets[i]);
+        }
+
+        string[] memory codeFor = vm.envOr("STUDIO_RELEASE_CODE", ",", new string[](0));
+        for (uint256 j; j < codeFor.length; ++j) {
+            if (bytes(codeFor[j]).length == 0) continue;
+            uint256 i = _indexOf(names, codeFor[j]);
+            _log(string.concat("code ", names[i], " ", vm.toString(vm.getCode(paths[i]))));
         }
     }
 
     function _contract(string memory name, address at) private {
         _log(string.concat("contract ", name, " ", vm.toString(at), " ", vm.toString(at.codehash)));
+    }
+
+    function _indexOf(string[] memory names, string memory name) private pure returns (uint256) {
+        for (uint256 i; i < names.length; ++i) {
+            if (keccak256(bytes(names[i])) == keccak256(bytes(name))) return i;
+        }
+        revert(string.concat("STUDIO_RELEASE_CODE names ", name, ", which isn't in FacetInventory"));
+    }
+
+    function _startsWith(string memory s, string memory prefix) private pure returns (bool) {
+        bytes memory a = bytes(s);
+        bytes memory b = bytes(prefix);
+        if (a.length < b.length) return false;
+        for (uint256 i; i < b.length; ++i) {
+            if (a[i] != b[i]) return false;
+        }
+        return true;
     }
 
     function _log(string memory line) private pure {

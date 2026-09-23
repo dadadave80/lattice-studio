@@ -6,11 +6,11 @@
 // 2 bad arguments, a missing tool, checkout or catalog, or a catalog built from another commit.
 
 import { existsSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
-import { CatalogManifestSchema, CatalogSchema } from "@lattice-studio/core";
+import { dirname, join, relative } from "node:path";
+import { type Catalog, CatalogManifestSchema, CatalogSchema, type Hex } from "@lattice-studio/core";
 import { REPO_ROOT, SetupError, latticeDir, runForgeHarness } from "../lib/forge.ts";
 import {
-  type CatalogRelease,
+  FACTORY,
   REGISTRY,
   SKIP_REASON,
   compareRelease,
@@ -18,6 +18,7 @@ import {
   expectedFromCatalog,
   failed,
   formatComparison,
+  knownGapNames,
   parseReleaseLogs,
 } from "./compare.ts";
 
@@ -56,7 +57,7 @@ console.log(`${PREFIX} shared-contract addresses took ${((performance.now() - st
 process.exit(code);
 
 async function main(): Promise<number> {
-  const { id, catalog } = loadCatalog();
+  const { id, dir, catalog } = loadCatalog();
   const lattice = latticeDir();
   const head = gitOutput(lattice, ["rev-parse", "HEAD"]);
   if (head === null) {
@@ -68,9 +69,13 @@ async function main(): Promise<number> {
     );
   }
 
-  const expected = expectedFromCatalog(catalog);
+  // Known-gap contracts are checked against the catalog's creation code, so the harness logs forge's for them.
+  const gaps = knownGapNames(expectedFromCatalog(catalog));
+  const expected = expectedFromCatalog(catalog, readCreationCodes(dir, catalog, gaps));
   console.log(`${PREFIX} releasing Lattice at ${lattice} with DeployRelease (FOUNDRY_PROFILE=ci), catalog ${id}…`);
   process.env["STUDIO_RELEASE_OWNER"] = expected.registryOwner;
+  if (gaps.length > 0) process.env["STUDIO_RELEASE_CODE"] = gaps.join(",");
+  else delete process.env["STUDIO_RELEASE_CODE"];
   const before = gitOutput(lattice, ["status", "--porcelain"]);
   const run = await runForgeHarness({ lattice, files: [HARNESS], folder: `.studio-golden-release-${process.pid}` });
   const after = gitOutput(lattice, ["status", "--porcelain"]);
@@ -109,8 +114,8 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  if (model === "createx-raw") {
-    console.log(`${PREFIX} skipped: ${SKIP_REASON}. DeployRelease still deploys through CreateX raw salts.`);
+  if (report.value.createx === "mock-createx") {
+    console.log(`${PREFIX} DeployRelease requires CreateX's code, so the harness etched Lattice's MockCreateX at its address.`);
   }
   const comparison = compareRelease(expected, report.value, model);
   const bad = failed(comparison);
@@ -118,29 +123,65 @@ async function main(): Promise<number> {
   const [summary, ...details] = formatComparison(comparison);
   log(`${PREFIX} ${summary}`);
   for (const line of details) log(line);
-  if (!bad) return 0;
-  console.error(
-    model === "createx-raw"
-      ? `${PREFIX} the catalog's salts or init-code hashes don't match what DeployRelease deploys.`
-      : `${PREFIX} catalog ${id} doesn't predict where DeployRelease deploys. If Lattice changed on purpose, rebuild it with bun run catalog.`,
-  );
-  return 1;
+  if (bad) {
+    console.error(
+      model === "createx-raw"
+        ? `${PREFIX} the catalog's salts or init-code hashes don't match what DeployRelease deploys (DeployRelease still deploys through CreateX raw salts, so only these were checked).`
+        : `${PREFIX} catalog ${id} doesn't predict where DeployRelease deploys. If Lattice changed on purpose, rebuild it with bun run catalog.`,
+    );
+    return 1;
+  }
+  if (model === "createx-raw") {
+    console.log(
+      `${PREFIX} skipped: ${SKIP_REASON}. DeployRelease still deploys through CreateX raw salts, so only the salts and init-code hashes were checked.`,
+    );
+  }
+  return 0;
 }
 
-/** The default catalog from `catalog/manifest.json`, validated. */
-function loadCatalog(): { id: string; catalog: CatalogRelease & { lattice: { tag: string; commit: string } } } {
+/** The default catalog from `catalog/manifest.json`, validated, and the folder its index is in. */
+function loadCatalog(): { id: string; dir: string; catalog: Catalog } {
   const manifestPath = join(CATALOG, "manifest.json");
-  if (!existsSync(manifestPath)) throw new SetupError(`No ${relative(REPO_ROOT, manifestPath)}. Run bun run catalog.`);
-  const manifest = CatalogManifestSchema.safeParse(JSON.parse(readFileSync(manifestPath, "utf8")));
+  const manifest = CatalogManifestSchema.safeParse(readJson(manifestPath));
   if (!manifest.success) throw new SetupError(`${relative(REPO_ROOT, manifestPath)} isn't a catalog manifest: ${manifest.error.message}`);
   const id = manifest.data.default;
   const entry = manifest.data.catalogs.find((c) => c.id === id);
   if (!entry) throw new SetupError(`catalog/manifest.json names default catalog ${id} but doesn't list it.`);
   const indexPath = join(CATALOG, entry.path);
-  if (!existsSync(indexPath)) throw new SetupError(`No ${relative(REPO_ROOT, indexPath)}. Run bun run catalog.`);
-  const catalog = CatalogSchema.safeParse(JSON.parse(readFileSync(indexPath, "utf8")));
+  const catalog = CatalogSchema.safeParse(readJson(indexPath));
   if (!catalog.success) throw new SetupError(`${relative(REPO_ROOT, indexPath)} isn't a catalog: ${catalog.error.message}`);
-  return { id, catalog: catalog.data };
+  return { id, dir: dirname(indexPath), catalog: catalog.data };
+}
+
+/** A JSON file's value; a missing or unparsable file is a setup error (exit 2). */
+function readJson(path: string): unknown {
+  const rel = relative(REPO_ROOT, path);
+  if (!existsSync(path)) throw new SetupError(`No ${rel}. Run bun run catalog.`);
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (e) {
+    throw new SetupError(`${rel} isn't valid JSON: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+/** The catalog's creation code of each named contract, from its `code/<Name>.creation.hex` file. */
+function readCreationCodes(dir: string, catalog: Catalog, names: readonly string[]): Map<string, Hex> {
+  const codes = new Map<string, Hex>();
+  for (const name of names) {
+    const ref =
+      name === REGISTRY
+        ? catalog.registry.creationCode
+        : name === FACTORY
+          ? catalog.factory.creationCode
+          : catalog.facets.find((f) => f.name === name)?.release.creationCode;
+    if (!ref) throw new SetupError(`the catalog has no creation code entry for ${name}.`);
+    const path = join(dir, ref.path);
+    if (!existsSync(path)) throw new SetupError(`No ${relative(REPO_ROOT, path)}. Run bun run catalog.`);
+    const text = readFileSync(path, "utf8").trim();
+    if (!/^0x(?:[0-9a-fA-F]{2})+$/.test(text)) throw new SetupError(`${relative(REPO_ROOT, path)} isn't hex creation code.`);
+    codes.set(name, text as Hex);
+  }
+  return codes;
 }
 
 /** `git -C <dir> <args>` output, or null when git can't say (not a git checkout). */
