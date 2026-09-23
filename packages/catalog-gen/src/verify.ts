@@ -30,8 +30,14 @@ export const EXIT_MISMATCH = 3;
 export type CatalogDifference = {
   /** Relative to `catalog/<id>/`, or `manifest.json` for the manifest's entry. */
   path: string;
-  /** `missing`: committed, not rebuilt. `extra`: rebuilt, not committed. `changed`: both, different bytes. */
-  problem: "missing" | "extra" | "changed";
+  /**
+   * `missing`: committed, not rebuilt. `extra`: rebuilt, not committed. `changed`: both, different bytes.
+   * `unreadable`: the committed file can't be read or doesn't validate (only `manifest.json`), so nothing can be
+   * compared with it.
+   */
+  problem: "missing" | "extra" | "changed" | "unreadable";
+  /** Why a committed file is `unreadable`. */
+  reason?: string;
   /** keccak256 of the committed and the rebuilt bytes, when there are both. */
   committed?: Hex;
   rebuilt?: Hex;
@@ -92,14 +98,27 @@ export function compareCatalogFiles(committed: ReadonlyMap<string, Uint8Array>, 
   return differences.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
-/** The committed manifest's hash for `id`: `undefined` when it lists none or can't be read. */
-async function manifestHash(catalogDir: string, id: string): Promise<Hex | undefined> {
+/**
+ * The committed manifest's hash for `id`: `ok(undefined)` when the manifest doesn't list it (or doesn't exist, so
+ * lists nothing), an error saying why when `manifest.json` can't be read or doesn't validate.
+ */
+async function manifestHash(catalogDir: string, id: string): Promise<Result<Hex | undefined, string>> {
+  let text: string;
   try {
-    const parsed = validateCatalogManifest(JSON.parse(await readFile(join(catalogDir, "manifest.json"), "utf8")));
-    return parsed.ok ? parsed.value.catalogs.find((c) => c.id === id)?.hash : undefined;
-  } catch {
-    return undefined;
+    text = await readFile(join(catalogDir, "manifest.json"), "utf8");
+  } catch (e) {
+    if (typeof e === "object" && e !== null && (e as { code?: unknown }).code === "ENOENT") return ok(undefined);
+    return err(`it can't be read: ${e instanceof Error ? e.message : String(e)}`);
   }
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return err("it isn't JSON.");
+  }
+  const parsed = validateCatalogManifest(json);
+  if (!parsed.ok) return err(`it doesn't match the manifest schema (${parsed.error.map((i) => `${i.path || "(root)"} ${i.message}`).join("; ")}).`);
+  return ok(parsed.value.catalogs.find((c) => c.id === id)?.hash);
 }
 
 /** Compares a rebuilt catalog with `<catalogDir>/<id>/` and the manifest's entry for it. */
@@ -108,12 +127,15 @@ export async function compareWithCommitted(catalogDir: string, generated: Pick<G
   const committed = await readCatalogFiles(join(catalogDir, id));
   const differences = compareCatalogFiles(committed, assembled.files);
   const hash = assembled.catalog.hash;
-  const committedHash = await manifestHash(catalogDir, id);
-  if (committedHash !== hash) {
+  const listed = await manifestHash(catalogDir, id);
+  const committedHash = listed.ok ? listed.value : undefined;
+  if (!listed.ok) {
+    differences.push({ path: "manifest.json", problem: "unreadable", reason: listed.error, rebuilt: hash });
+  } else if (committedHash !== hash) {
     // No entry for this id: the rebuilt catalog is one the manifest doesn't list ("extra").
     differences.push({ path: "manifest.json", problem: committedHash === undefined ? "extra" : "changed", ...(committedHash !== undefined ? { committed: committedHash } : {}), rebuilt: hash });
-    differences.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   }
+  differences.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   return { id, hash, ...(committedHash !== undefined ? { committedHash } : {}), differences, matches: differences.length === 0 };
 }
 
@@ -161,7 +183,14 @@ export function formatVerifyReport(report: VerifyReport): string {
   ];
   for (const d of report.differences) {
     const hashes = [d.committed !== undefined ? `committed ${d.committed}` : "", d.rebuilt !== undefined ? `rebuilt ${d.rebuilt}` : ""].filter((x) => x !== "");
-    const what = d.problem === "missing" ? "committed but not rebuilt" : d.problem === "extra" ? "rebuilt but not committed" : "differs";
+    const what =
+      d.problem === "missing"
+        ? "committed but not rebuilt"
+        : d.problem === "extra"
+          ? "rebuilt but not committed"
+          : d.problem === "unreadable"
+            ? `the committed file can't be compared: ${d.reason ?? "it's unreadable."}`
+            : "differs";
     lines.push(`  ${d.path}: ${what}${hashes.length > 0 ? ` (${hashes.join(", ")})` : ""}`);
   }
   return lines.join("\n");

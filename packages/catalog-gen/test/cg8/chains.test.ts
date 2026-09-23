@@ -113,6 +113,18 @@ describe("release manifests", () => {
     ]);
   });
 
+  test("a manifest facet the catalog doesn't have gets its own gap, not 'moved', and the chain is left out", async () => {
+    const m = manifest(8453);
+    (m["facets"] as Record<string, unknown>)["Gadget"] = { name: "Gadget", address: a("77"), codehash: B32 };
+    const res = await readChainReleases(checkout({ "deployments/8453/release-0.2.0.json": m }), EXPECTED);
+    if (!res.ok) throw new Error(res.error);
+    expect(res.value.chains).toEqual([]);
+    expect(res.value.gaps).toEqual([
+      "Chain 8453: deployments/8453/release-0.2.0.json lists 1 facet the catalog doesn't have (Gadget).",
+      "Chain 8453 is left out of the catalog's chains.",
+    ]);
+  });
+
   test("a release missing a catalog facet is left out", async () => {
     const m = manifest(10);
     delete (m["facets"] as Record<string, unknown>)["Receive"];

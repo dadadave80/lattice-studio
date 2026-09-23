@@ -161,7 +161,37 @@ describe("verifyCatalog", () => {
     const generated = await committedAsGenerated();
     const res = await verifyCatalog({ latticeDir: "/lattice", catalogDir: CATALOG, generate: async () => ok({ ...generated, id: "dev-0000000" }) });
     expect(verifyExitCode(res)).toBe(EXIT_MISMATCH);
-    expect(res.ok && res.value.differences.every((d) => d.problem === "extra" || d.path === "manifest.json")).toBe(true);
+    if (!res.ok) throw new Error(res.error);
+    const { differences } = res.value;
+    expect(differences.map((d) => d.path)).toContain("manifest.json");
+    expect(differences.filter((d) => d.problem !== "extra")).toEqual([]);
+    expect(differences.length).toBe(generated.assembled.files.length + 1);
+    expect(formatVerifyReport(res.value)).toContain("manifest.json: rebuilt but not committed");
+  });
+
+  test("an unreadable or invalid manifest.json is its own difference, not a missing entry: exit 3", async () => {
+    const generated = await committedAsGenerated();
+    for (const [text, reason] of [
+      ["{not json", "it isn't JSON."],
+      [JSON.stringify({ default: 1, catalogs: "no" }), "it doesn't match the manifest schema"],
+    ] as const) {
+      // A copy of the committed catalog with only manifest.json replaced.
+      const dir = mkdtempSync(join(tmpdir(), "cg8-verify-manifest-"));
+      temps.push(dir);
+      for (const f of generated.assembled.files) {
+        mkdirSync(join(dir, generated.id, f.path, ".."), { recursive: true });
+        writeFileSync(join(dir, generated.id, f.path), f.bytes);
+      }
+      writeFileSync(join(dir, "manifest.json"), text);
+      const res = await verifyCatalog({ latticeDir: "/lattice", catalogDir: dir, generate: async () => ok(generated) });
+      expect(verifyExitCode(res)).toBe(EXIT_MISMATCH);
+      if (!res.ok) throw new Error(res.error);
+      expect(res.value.differences).toHaveLength(1);
+      expect(res.value.differences[0]).toMatchObject({ path: "manifest.json", problem: "unreadable", rebuilt: res.value.hash });
+      expect(res.value.differences[0]?.reason).toStartWith(reason);
+      expect(res.value.committedHash).toBeUndefined();
+      expect(formatVerifyReport(res.value)).toContain(`manifest.json: the committed file can't be compared: ${reason}`);
+    }
   });
 
   test("a rebuild that can't run: exit 2, with the reason", async () => {

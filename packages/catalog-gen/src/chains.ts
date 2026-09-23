@@ -116,13 +116,21 @@ export function chainReleasesFrom(
     if (!sameAddress(manifest.registry, expected.registry)) {
       chainGaps.push(`Chain ${chainId}: its LatticeRegistry ${manifest.registry} isn't the catalog's ${expected.registry}.`);
     }
-    const moved = Object.entries(manifest.facets)
-      .filter(([name, entry]) => {
-        const want = expected.facets[entry.name] ?? expected.facets[name];
-        return want === undefined || !sameAddress(entry.address, want);
-      })
-      .map(([name]) => name)
-      .sort();
+    const moved: string[] = [];
+    const unknown: string[] = [];
+    for (const [name, entry] of Object.entries(manifest.facets)) {
+      const want = expected.facets[entry.name] ?? expected.facets[name];
+      if (want === undefined) unknown.push(name);
+      else if (!sameAddress(entry.address, want)) moved.push(name);
+    }
+    moved.sort();
+    unknown.sort();
+    if (unknown.length > 0) {
+      chainGaps.push(
+        `Chain ${chainId}: ${file} lists ${unknown.length} facet${unknown.length === 1 ? "" : "s"} the catalog doesn't ` +
+          `have (${unknown.slice(0, 5).join(", ")}${unknown.length > 5 ? ", …" : ""}).`,
+      );
+    }
     if (moved.length > 0) {
       chainGaps.push(
         `Chain ${chainId}: ${moved.length} of ${Object.keys(manifest.facets).length} facets in ${file} aren't at the ` +
