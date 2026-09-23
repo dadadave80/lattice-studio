@@ -211,6 +211,19 @@ describe("verifyRecord", () => {
     expect(records.all()).toEqual([]);
     expect(bufferedServices().log.length).toBe(0);
   });
+
+  test("a write the browser refuses is logged and announced, an interrupt (spec L785)", async () => {
+    clearServiceBuffers();
+    const { fetchImpl } = scriptedFetch([() => json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } })]);
+    const base = memoryRecords([confirmed()]);
+    const records = { ...base, put: async () => { throw new Error("storage full"); } };
+    const clock = manualClock();
+    await run(verifyRecord(deps(fetchImpl, records, clock), confirmed()), clock, []);
+    expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Error", text: "The verification result wasn't saved: storage full" });
+    expect(bufferedServices().announce.at(-1)).toEqual([
+      "The verification result wasn't saved: storage full", { politeness: "assertive" },
+    ]);
+  });
 });
 
 describe("verifyIfNeeded", () => {

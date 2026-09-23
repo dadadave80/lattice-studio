@@ -12,7 +12,7 @@
  */
 import type { Address, Deployment, LineDraft } from "@lattice-studio/core";
 import { sameAddress } from "@lattice-studio/core";
-import { log } from "@/contracts";
+import { announce, log, settings } from "@/contracts";
 import { appVerifyDeps } from "./app-deps";
 import { couldntVerifyLine, verifiedLine } from "./copy";
 import type { VerifyDeps } from "./ports";
@@ -39,7 +39,8 @@ function wait(deps: VerifyDeps, ms: number): Promise<void> {
 
 /**
  * Re-reads the record and writes `verification` onto whatever's freshest; null when there's nothing left to write
- * to (discarded, or the record moved off `confirmed` since, e.g. Deploy again started a new one at this key).
+ * to (discarded, or the record moved off `confirmed` since, e.g. Deploy again started a new one at this key), or
+ * when the write itself failed (the caller then knows not to log an outcome that never landed).
  */
 async function writeVerification(
   deps: VerifyDeps, target: Pick<Deployment, "projectId" | "chainId" | "address">, verification: Deployment["verification"],
@@ -56,8 +57,13 @@ async function writeVerification(
   try {
     await deps.records.put(next);
   } catch (error) {
-    log({ tag: "Error", text: `Couldn't save the verification result. ${error instanceof Error ? error.message : String(error)}` });
-    return fresh;
+    const text = `The verification result wasn't saved: ${error instanceof Error ? error.message : String(error)}`;
+    log({ tag: "Error", text });
+    // A plain "Error" line the console wouldn't otherwise announce (its own text doesn't start with "Deploy",
+    // and nothing here is "streaming"): announce it directly, an interrupt unless announcements are off
+    // (spec L785), mirroring `chain/deploy/machine.ts`'s `save()` for the same kind of write failure.
+    if (settings.get().deployAnnouncements !== "none") announce(text, { politeness: "assertive" });
+    return null;
   }
   return next;
 }
@@ -114,19 +120,21 @@ export function verifyingNow(target: Pick<Deployment, "chainId" | "address">): b
 /** Retry verification (contracts §5.3 `deploy.retryVerification`): reopens a failed record for another job. */
 export async function retryVerification(target: { chainId: number; address: Address }, deps: VerifyDeps = appVerifyDeps()): Promise<void> {
   const found = (await deps.records.list(deps.projectId())).find((d) => d.chainId === target.chainId && sameAddress(d.address, target.address));
+  // Plain refusals (contracts §5.3): a "Verify" line, like the deploy machine's own "Deploy" notes, so the
+  // console decides whether to announce it (the deployAnnouncements setting), rather than this module deciding.
   if (!found) {
-    log({ tag: "Error", text: "Couldn't find that deployment record to retry." });
+    log({ tag: "Verify", text: "Couldn't find that deployment record to retry." });
     return;
   }
   if (found.status !== "confirmed") {
-    log({ tag: "Error", text: "Only a confirmed deployment can be verified." });
+    log({ tag: "Verify", text: "Only a confirmed deployment can be verified." });
     return;
   }
   const pending: Deployment = { ...found, verification: "pending" };
   try {
     await deps.records.put(pending);
   } catch (error) {
-    log({ tag: "Error", text: `Couldn't start verification again. ${error instanceof Error ? error.message : String(error)}` });
+    log({ tag: "Verify", text: `Couldn't start verification again: ${error instanceof Error ? error.message : String(error)}` });
     return;
   }
   void verifyIfNeeded(deps, pending);
