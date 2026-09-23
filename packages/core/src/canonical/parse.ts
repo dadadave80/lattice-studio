@@ -5,7 +5,8 @@ import type { ParseIssue, ParseOptions, ParseSource, Parsed } from "../model/io"
 import type { Deployment, Project, ProjectFile } from "../model/project";
 import type { Recipe } from "../model/recipe";
 import { err, ok, type Result } from "../model/result";
-import { formatPath, validateProject, validateProjectFile, validateRecipe, type Validated } from "../model/schema";
+import { formatPath, MAX_JSON_DEPTH, validateProject, validateProjectFile, validateRecipe, type Validated } from "../model/schema";
+import { LONE_SURROGATE } from "./json";
 import { runMigrations, type MigrateTarget } from "./migrate";
 import { normalizeWith } from "./normalize";
 
@@ -117,6 +118,31 @@ function normalizeDeployment(record: Deployment): Deployment {
   return out;
 }
 
+/**
+ * The path to the first string (key or value) holding a lone UTF-16 surrogate, depth-first in key order; null
+ * when none does. A bad key is reported at its parent's path, since the key itself has no path of its own.
+ * Stops descending at `MAX_JSON_DEPTH` (matching `validate`'s own iterative guard) so hostile input nested far
+ * past that can't overflow the stack here; such input still comes back refused, just by that guard instead.
+ */
+function findLoneSurrogate(value: unknown, path: readonly (string | number)[]): readonly (string | number)[] | null {
+  if (typeof value === "string") return LONE_SURROGATE.test(value) ? path : null;
+  if (value === null || typeof value !== "object") return null;
+  if (path.length >= MAX_JSON_DEPTH) return null;
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index++) {
+      const found = findLoneSurrogate(value[index], [...path, index]);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+  for (const key of Object.keys(value)) {
+    if (LONE_SURROGATE.test(key)) return path;
+    const found = findLoneSurrogate((value as Record<string, unknown>)[key], [...path, key]);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
 /** How one document type is validated, where its recipe sits and how a normalized recipe goes back in. */
 type Shape<T> = {
   target: MigrateTarget;
@@ -128,6 +154,10 @@ type Shape<T> = {
 
 /** Migrate, validate, check names against the pinned catalog, normalize. Never throws. */
 function parseAs<T>(shape: Shape<T>, json: unknown, opts: ParseOptions): Result<Parsed<T>, ParseIssue[]> {
+  const badPath = findLoneSurrogate(json, []);
+  if (badPath !== null) {
+    return err([issue(formatPath(badPath), "has a broken character. Fix the text and try again.", opts)]);
+  }
   const migrated = runMigrations(json, shape.target);
   if (!migrated.ok) return err([issue("", migrated.error.replace(/^This file /, `This ${NOUN[opts.source]} `), opts)]);
   const validated = shape.validate(migrated.value.value);

@@ -1,7 +1,10 @@
 import type { CanonicalJsonFn } from "../model/api";
 
-/** A lone UTF-16 surrogate: RFC 8785 §3.2.2.2 requires an error, since it has no UTF-8 encoding. */
-const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+/**
+ * A lone UTF-16 surrogate: RFC 8785 §3.2.2.2 requires an error, since it has no UTF-8 encoding. Shared with
+ * `parse.ts`, which is the gate for hostile input (FX2); this stays the guard against programmer misuse.
+ */
+export const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
 function describePath(path: readonly (string | number)[]): string {
   if (path.length === 0) return "the value";
