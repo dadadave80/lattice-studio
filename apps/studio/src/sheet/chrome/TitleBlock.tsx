@@ -145,22 +145,34 @@ function useTitleBlockFacts() {
   const name = useDocument((s) => s.project.name);
   const empty = useDocument((s) => s.project.recipe.facets.length === 0);
   const { status, chainName } = useProjectStatus();
-  const deploy = useDeployState((s) => s);
+  const phase = useDeployState((s) => s.phase);
+  const deployChain = useDeployState((s) => s.chainId);
+  const deployAddress = useDeployState((s) => s.address);
+  const since = useDeployState((s) => s.since);
+  const deploy = useMemo<DeployState>(
+    () => ({
+      phase,
+      ...(deployChain === undefined ? {} : { chainId: deployChain }),
+      ...(deployAddress === undefined ? {} : { address: deployAddress }),
+      ...(since === undefined ? {} : { since }),
+    }),
+    [phase, deployChain, deployAddress, since],
+  );
   const prediction = usePrediction();
   const online = useOnline();
   const catalog = useCatalog();
-  const analysis = useAnalysis((a) => a);
+  const problems = useAnalysis((a) => a.problems);
+  const stats = useAnalysis((a) => (catalog ? recipeStats(a, catalog).text : null));
   const wallet = useWalletName(deploy.phase === "awaitingSignature");
   const at = useTicking(deploy.phase === "pending");
 
   const stamp = stampWords(status, deploy, chainName, wallet, at);
   const counts = useMemo(() => {
-    const blockers = analysis.problems.filter((p) => p.severity === "blocker").length;
-    const warnings = analysis.problems.filter((p) => p.severity === "warning").length;
-    const toFillCount = analysis.problems.filter((p) => p.code === "INIT-01").length;
-    const stats = catalog ? recipeStats(analysis, catalog).text : null;
+    const blockers = problems.filter((p) => p.severity === "blocker").length;
+    const warnings = problems.filter((p) => p.severity === "warning").length;
+    const toFillCount = problems.filter((p) => p.code === "INIT-01").length;
     return { blockers, problems: formatProblemSummary({ blockers, warnings }), toFillCount, stats };
-  }, [analysis, catalog]);
+  }, [problems, stats]);
 
   let address: AddressLine;
   const deployed = status.deployment;
