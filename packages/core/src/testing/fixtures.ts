@@ -49,6 +49,35 @@ export function loadFixtureCatalog(id = "fixture"): Result<Catalog, string> {
   return catalog.ok ? catalog : err(describeIssues(`${id}/index.json`, catalog.error));
 }
 
+const BUILT = new URL("../../../../catalog/", import.meta.url);
+
+/**
+ * The real catalog `bun run catalog` builds (`catalog/manifest.json`'s default), validated. An error while it
+ * hasn't been built (WP-CG8), so suites can run on it when it's there and skip it when it isn't.
+ */
+export function loadBuiltCatalog(): Result<Catalog, string> {
+  const manifest = readJson(new URL("manifest.json", BUILT));
+  if (!manifest.ok) return manifest;
+  const value = manifest.value as { default?: unknown; catalogs?: unknown };
+  const entries = Array.isArray(value.catalogs) ? (value.catalogs as { id?: unknown; path?: unknown }[]) : [];
+  const entry = entries.find((candidate) => candidate.id === value.default);
+  if (entry === undefined || typeof entry.path !== "string") return err("catalog/manifest.json names no default catalog.");
+  const json = readJson(new URL(entry.path, BUILT));
+  if (!json.ok) return json;
+  const catalog = validateCatalog(json.value);
+  return catalog.ok ? catalog : err(describeIssues(`catalog/${entry.path}`, catalog.error));
+}
+
+/** The catalogs property suites run over: the fixture catalog, and the real one when it's built. */
+export function propertyCatalogs(): Catalog[] {
+  const out: Catalog[] = [];
+  const fixture = loadFixtureCatalog();
+  if (fixture.ok) out.push(fixture.value);
+  const built = loadBuiltCatalog();
+  if (built.ok) out.push(built.value);
+  return out;
+}
+
 /** One facet shard of a fixture catalog (`fixtures/catalog/<id>/shards/<name>.json`), validated. */
 export function loadFixtureShard(name: string, id = "fixture"): Result<FacetDetail, string> {
   const url = new URL(`${id}/shards/${name}.json`, FIXTURES);

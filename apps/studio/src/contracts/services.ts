@@ -65,6 +65,8 @@ export type SaveStatus = {
   text: string;
   /** What "click for details" shows. */
   detail?: string;
+  /** A command shown next to the status, e.g. Save a copy… when storage is full (spec L498); CCR from S7a. */
+  action?: CommandRef;
 };
 
 /** What a new project starts with besides its recipe. */
@@ -116,6 +118,11 @@ export type DndService = {
 export type ConnectionService = {
   isOnline(): boolean;
   subscribe(listener: (online: boolean) => void): () => void;
+  /**
+   * A network request failed (an RPC call, a shard fetch): re-check reachability now instead of waiting for a
+   * browser event (CCR from S11a). K2's default does nothing.
+   */
+  reportFailure?(): void;
 };
 
 /** Everything `provideServices` can replace. */
@@ -210,6 +217,7 @@ function serviceRelay<T>(
 function browserConnection(): ConnectionService {
   return {
     isOnline: () => (typeof navigator === "undefined" ? true : navigator.onLine),
+    reportFailure: () => {},
     subscribe(listener) {
       if (typeof window === "undefined") return () => {};
       const on = () => listener(true);
@@ -651,6 +659,11 @@ export function openProblemDoc(code: ProblemCode): void {
 
 export function isOnline(): boolean {
   return impl.connection.isOnline();
+}
+
+/** Tells the connection service a network request failed, so it re-checks reachability (S8a's RPC calls). */
+export function reportConnectionFailure(): void {
+  impl.connection.reportFailure?.();
 }
 
 /** Whether the browser is online, re-rendering when it changes. */

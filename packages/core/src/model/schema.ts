@@ -11,6 +11,10 @@
  * - Issues come back as `{ path, message }`: `facets[0]` / "is 1; expected text."
  */
 import * as z from "zod";
+
+// Studio ships a strict CSP with no 'unsafe-eval'; Zod's JIT probes `new Function` (caught, but it still files a
+// CSP report). Validation without the JIT is fast enough for Studio's documents (CCR from S11a).
+z.config({ jitless: true });
 import type { AbiItem, Catalog, CatalogManifest, FacetDetail, InitParam } from "./catalog";
 import { isAddress } from "./hex";
 import type { ParseIssue } from "./io";

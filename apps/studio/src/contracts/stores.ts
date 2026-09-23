@@ -229,7 +229,7 @@ function untitledProject(): Project {
     name: "Untitled",
     recipe: {
       schemaVersion: 1,
-      catalog: { tag: "", hash: "0x" },
+      catalog: { tag: "", hash: `0x${"00".repeat(32)}` },
       facets: [],
       owners: {},
       exclude: [],

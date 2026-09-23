@@ -1,4 +1,5 @@
 import { createxPredict, factoryPredict } from "../address/diamond";
+import { gasShare } from "../deploy/measure";
 import type { Check, CheckInput } from "../model/analysis";
 import type { Catalog, InitSpec, SharedContract } from "../model/catalog";
 import type { ChainState, DeployContext } from "../model/chain";
@@ -14,10 +15,6 @@ import { buildPlan } from "../plan/build";
  * (NET-01, spec L335).
  */
 export const CREATEX_CODEHASH: Hex = "0xbd8a7ea8cfca7b4e5f5041d7d4b17bc317c5ce42cfbc42066a00cf26b43eb53f";
-
-/** NET-06 warns from this share of the chain's per-transaction cap (spec L340). */
-const WARN_NUMERATOR = 4n;
-const WARN_DENOMINATOR = 5n;
 
 /** A shared contract the deploy needs on the chain, under the name `ChainState.shared` keys it by. */
 type Needed = { name: string; address: Address; codehash: Hex; version: string; facet?: string };
@@ -191,16 +188,16 @@ export const checkNet: Check = (input) => {
     problems.push(problem("NET-05", where, { chain: name, path: deploy.path, address }, [{ id: "deploy.newSalt" }]));
   }
 
-  // NET-06: the estimate against the chain's per-transaction cap (spec R16): a blocker over it, a warning from 80%.
+  // NET-06: the estimate against the chain's per-transaction cap (spec R16, C5c's `gasShare`): a blocker over the
+  // cap, a warning from 80%.
   const gas = parseGas(chain.gasEstimate);
   const cap = parseGas(chain.gasCap);
   if (gas !== undefined && cap !== undefined && cap > 0n) {
-    const over = gas > cap;
-    if (over || gas * WARN_DENOMINATOR >= cap * WARN_NUMERATOR) {
-      const share = Math.round((Number(gas) / Number(cap)) * 10_000) / 10_000;
+    const { share, level } = gasShare(gas, cap);
+    if (level !== "ok") {
       problems.push(
         problem("NET-06", where, { chain: name, gas: gas.toString(), cap: cap.toString(), share }, [{ id: "deploy.removeFacets" }], {
-          severity: over ? "blocker" : "warning",
+          severity: level === "over" ? "blocker" : "warning",
         }),
       );
     }

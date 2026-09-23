@@ -14,7 +14,7 @@ import { deployState, subscribeDeployState, type DeployState } from "./deploy";
 import { log } from "./kernel";
 import { bindingId, type BindingId, type KeyBinding, type KeyContext, type KeySpec } from "./keys";
 import { listenerSet } from "./relay";
-import { announce, isOnline, subscribeOnline } from "./services";
+import { announce, isOnline, subscribeOnline, subscribeSaveStatus } from "./services";
 import { doc, session, settings, type SessionState, type SettingsState } from "./stores";
 
 export type CommandArgs = Record<string, Json>;
@@ -360,6 +360,8 @@ function subscribeEverything(onChange: () => void): () => void {
     // enabled() reads ctx.deploy and ctx.online in full.
     subscribeDeployState(onChange),
     subscribeOnline(onChange),
+    // Reload and Save a copy… read the save status (CCR from S11a).
+    subscribeSaveStatus(onChange),
   ];
   return () => {
     for (const stop of stops) stop();

@@ -27,7 +27,10 @@ export default defineConfig(async (env) => {
     optimizeDeps: {
       include: [
         "react", "react/jsx-dev-runtime", "react-dom/client", "zustand", "zustand/vanilla",
-        "vitest-browser-react", "@base-ui/react/csp-provider", "@xyflow/react", "viem", "zod", "fflate",
+        "vitest-browser-react", "@xyflow/react", "viem", "zod", "fflate", "fast-check",
+        ...["csp-provider", "button", "tooltip", "toggle", "toggle-group", "switch", "checkbox", "radio", "radio-group",
+          "select", "input", "menu", "context-menu", "popover", "dialog", "toast", "tabs", "toolbar"]
+          .map((part) => `@base-ui/react/${part}`),
       ],
     },
     test: {
