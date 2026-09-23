@@ -1,2 +1,2 @@
-export * from "./mechanism";
-export * from "./table";
+export { mechanismOptions, planMechanismChange } from "./mechanism";
+export { authorityTable } from "./table";
