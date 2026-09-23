@@ -78,6 +78,11 @@ describe("Esc layering (IR L17)", () => {
 });
 
 describe("S2's commands", () => {
+  test("ui.escape is live in a list or a menu too, but not a dialog, the palette or a text field (FX13 item b)", () => {
+    const escape = S2_COMMANDS.find((c) => c.id === "ui.escape");
+    expect(escape?.keyContext).toEqual(["global", "sheet", "card-rows", "tree", "list", "menu", "console"]);
+  });
+
   test("ui.escape run with nothing to leave says so", async () => {
     await runCommand({ id: "ui.escape" }, "api");
     expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Note", text: NOTHING_TO_CLOSE });

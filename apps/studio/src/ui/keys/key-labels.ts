@@ -19,6 +19,13 @@ export function firstKeys(specs: readonly KeySpec[] | KeySpec | undefined, platf
   return null;
 }
 
+/** Modifiers, then the key: `"+"` and `"Mod++"` name the + key (mirrors `commands/keys/key-spec.ts`'s `splitKeys`). */
+function splitTokens(keys: string): string[] {
+  if (keys === "+") return ["+"];
+  if (keys.endsWith("++")) return [...keys.slice(0, -2).split("+").filter(Boolean), "+"];
+  return keys.split("+");
+}
+
 const NAMED: Record<string, string> = {
   Escape: "Esc",
   Space: "Space",
@@ -42,9 +49,7 @@ function displayToken(token: string): string {
  * `"Shift+[Digit1]"` is ⇧1 or Shift+1.
  */
 export function keyLabel(keys: string, platform: Platform): string {
-  const tokens = keys.split("+");
-  // "Mod++" (a literal plus): the last token is empty after the split.
-  if (keys.endsWith("++")) tokens.splice(-2, 2, "+");
+  const tokens = splitTokens(keys);
   const last = tokens.pop() ?? "";
   return formatKeys([...tokens, displayToken(last)].join("+"), platform);
 }
@@ -68,7 +73,7 @@ export function ariaKeyShortcuts(specs: readonly KeySpec[] | KeySpec | undefined
   for (const spec of list) {
     const keys = specKeys(spec, platform);
     if (!keys) continue;
-    const tokens = keys.split("+");
+    const tokens = splitTokens(keys);
     const key = tokens.pop() ?? "";
     const code = /^\[(.+)]$/.exec(key)?.[1];
     const mapped = tokens.map((t) => ARIA_MODIFIERS[t]?.(platform) ?? t);
@@ -83,7 +88,7 @@ export function ariaKeyShortcuts(specs: readonly KeySpec[] | KeySpec | undefined
  * Shift. F-keys, Enter, Esc, Delete and arrows aren't; `Mod+k` isn't.
  */
 export function isSingleKey(keys: string): boolean {
-  const tokens = keys.endsWith("++") ? [...keys.slice(0, -2).split("+").filter(Boolean), "+"] : keys.split("+");
+  const tokens = splitTokens(keys);
   const key = tokens.at(-1) ?? "";
   const modifiers = tokens.slice(0, -1);
   if (modifiers.some((m) => m !== "Shift")) return false;

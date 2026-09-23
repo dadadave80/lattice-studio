@@ -40,7 +40,7 @@ export function ShortcutsDialog({ entry, top }: DialogComponentProps<"keyboard-s
       <output className={styles.status}>{searching ? `Showing ${shown} of ${rows.length}` : ""}</output>
       {singleKeys ? null : <p className={styles.note}>Single-key shortcuts are off. Settings → Keyboard turns them on.</p>}
       {groups.length === 0 ? (
-        <p className={styles.empty}>{searching ? `No shortcuts match “${query.trim()}”.` : "No shortcuts."}</p>
+        <p className={styles.empty}>{searching ? `No shortcuts match “${query.trim()}”. Clear the search.` : "No shortcuts."}</p>
       ) : (
         groups.map((group) => {
           const id = `${headingId}-${group.category}`;
