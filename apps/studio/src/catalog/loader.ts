@@ -12,7 +12,7 @@ import { keccak256 } from "viem";
 import type { CatalogLoader, CatalogStatus, FacetDetailState } from "@/contracts";
 import { getCatalogStatus, log, setCatalogStatus, subscribeCatalog } from "@/contracts";
 import type { Catalog, CatalogManifest, FacetDetail, Hex, Result, ShardRef } from "@lattice-studio/core";
-import { err, findProtoKey, isHex, lines, ok, validateCatalog, validateFacetDetail } from "@lattice-studio/core";
+import { err, findProtoKey, isHex, lines, ok } from "@lattice-studio/core";
 import { catalogDirFor, defaultEntry, entryDir, fetchManifest, type ManifestEntry } from "./lookup";
 import { shardRef } from "./resolve";
 
@@ -93,6 +93,13 @@ export function createCatalogLoader(): CatalogLoaderInstance {
       return err(`${name}'s shard isn't valid JSON.`);
     }
     if (findProtoKey(json) !== null) return err(`${name}'s shard doesn't match the shard schema.`);
+    // Validation stays out of first load (FX15): the schema chunk loads with the first catalog read.
+    let validateFacetDetail: typeof import("@lattice-studio/core/schema").validateFacetDetail;
+    try {
+      ({ validateFacetDetail } = await import("@lattice-studio/core/schema"));
+    } catch (error) {
+      return err(error instanceof Error ? error.message : String(error));
+    }
     const parsed = validateFacetDetail(json);
     return parsed.ok ? parsed : err(`${name}'s shard doesn't match the shard schema.`);
   }
@@ -126,6 +133,7 @@ export function createCatalogLoader(): CatalogLoaderInstance {
     try {
       const response = await fetch(`${dir}index.json`);
       if (!response.ok) return err(`${id}/index.json answered ${response.status}.`);
+      const { validateCatalog } = await import("@lattice-studio/core/schema");
       const parsed = validateCatalog(await response.json());
       return parsed.ok ? parsed : err(`${id}/index.json doesn't match the catalog schema.`);
     } catch (error) {
