@@ -28,13 +28,14 @@ describe("public API", () => {
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
     const path = join(dir, entry);
-    if (statSync(path).isDirectory()) return sources(path);
+    // testing/ is test support (C12 adds fast-check there), not core source.
+    if (statSync(path).isDirectory()) return entry === "testing" ? [] : sources(path);
     return entry.endsWith(".ts") && !entry.endsWith(".test.ts") ? [path] : [];
   });
 }
 
 describe("dependencies", () => {
-  test("core source imports only packages its package.json declares", () => {
+  test("every bare import in core source (tests and testing/ aside) is a declared dependency", () => {
     const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "package.json"), "utf8")) as { dependencies: Record<string, string> };
     const allowed = new Set(Object.keys(pkg.dependencies));
     const imported = new Set<string>();
@@ -48,7 +49,5 @@ describe("dependencies", () => {
     }
     expect(imported.size).toBeGreaterThan(0);
     for (const name of imported) expect([name, allowed.has(name)]).toEqual([name, true]);
-    // At K1, core imports only viem and zod; fflate arrives with C8's share codec.
-    expect([...imported].filter((name) => name !== "fflate").sort()).toEqual(["viem", "zod"]);
   });
 });

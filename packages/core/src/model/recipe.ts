@@ -32,6 +32,8 @@ export type Recipe = {
 /**
  * An init argument (spec L224-L227). Integers as decimal strings, hex lowercase, addresses EIP-55.
  * `{ $ref: "self" | "deployer" }` is this diamond or the deploying account, resolved at build time.
+ * A tuple argument is a nested object keyed by component name: the path `bundle.p.asset` addresses
+ * `init.args.p.asset`, and `steps[2].admin` addresses `init.steps[2].args.admin`. Arrays are lists.
  */
 export type Arg =
   | string

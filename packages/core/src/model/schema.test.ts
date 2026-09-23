@@ -5,6 +5,7 @@ import {
   AbiItemSchema,
   formatPath,
   listUnknownFields,
+  MAX_JSON_DEPTH,
   RecipeSchema,
   validate,
   validateCatalogManifest,
@@ -132,8 +133,37 @@ describe("recipe schema", () => {
     expect(issues(validateRecipe({ ...governedVault, exclude: ["0xa9059cbb00"] }))[0]?.path).toBe("exclude[0]");
     expect(issues(validateRecipe({ ...governedVault, catalog: { tag: "v0.4.0", hash: "0xabc" } }))[0]).toEqual({
       path: "catalog.hash",
-      message: 'is "0xabc"; expected hex bytes (0x followed by pairs of hex digits).',
+      message: 'is "0xabc"; expected a 32-byte hash (0x followed by 64 hex digits).',
     });
+  });
+
+  test("hashes are exactly 32 bytes: 0x alone and short hex fail", () => {
+    for (const hash of ["0x", "0xabcd", `0x${"ab".repeat(33)}`]) {
+      expect(issues(validateRecipe({ ...governedVault, catalog: { tag: "v0.4.0", hash } }))[0]?.path).toBe("catalog.hash");
+    }
+    expect(validateRecipe({ ...governedVault, catalog: { tag: "v0.4.0", hash: `0x${"AB".repeat(32)}` } }).ok).toBe(true);
+  });
+
+  test("keys named like Object.prototype members are listed as unknown", () => {
+    const json: unknown = JSON.parse(
+      JSON.stringify({ ...governedVault, constructor: 1, toString: "x" }).replace(/^\{/, '{"__proto__":{"a":1},'),
+    );
+    const result = validateRecipe(json);
+    expect(result.ok && [...result.value.unknownFields].sort()).toEqual(["__proto__", "constructor", "toString"]);
+  });
+
+  test("JSON nested past the depth limit is refused quickly, with a path", () => {
+    let deep: unknown = "x";
+    for (let i = 0; i < 3000; i++) deep = [deep];
+    const hostile = { ...governedVault, init: { kind: "bundle", spec: "X", args: { a: deep } } };
+    const started = performance.now();
+    const [issue] = issues(validateRecipe(hostile));
+    expect(performance.now() - started).toBeLessThan(250);
+    expect(issue?.message).toBe(`nests deeper than ${MAX_JSON_DEPTH} levels.`);
+    expect(issue?.path.startsWith("init.args.a[0][0]")).toBe(true);
+    let fine: unknown = "x";
+    for (let i = 0; i < 40; i++) fine = [fine];
+    expect(validateRecipe({ ...governedVault, init: { kind: "bundle", spec: "X", args: { a: fine } } }).ok).toBe(true);
   });
 
   test("numbers aren't arguments: integers travel as decimal strings", () => {

@@ -8,7 +8,7 @@ import type { Recipe } from "./recipe";
 
 /**
  * One validation problem in a file, link or stored record: `path` renders like `facets[3]` or
- * `init.steps[0].args.admin` ("" is the root), `message` reads after it: "is a number; expected a string."
+ * `init.steps[0].args.admin` ("" is the root), `message` reads after it: `facets[3]` "is 3; expected text."
  */
 export type ParseIssue = { path: string; message: string; file?: string };
 
@@ -49,6 +49,12 @@ export type FoundryExportArgs = {
   studioVersion: string;
   /** Chains with per-chain constants: the catalog's `chains`, plus 31337 in e2e builds (contracts §5.5). */
   chainIds: number[];
+  /**
+   * The `Lattice` proxy's creation code, embedded as a hex literal for the CreateX path (the script has no
+   * Lattice dependency). The caller loads it; the callee checks `keccak256(bytes) === catalog.proxy.initCodeHash`
+   * and returns an error on a mismatch, or when the project's path is CreateX and it's missing.
+   */
+  proxyCreationCode?: Hex;
 };
 
 /** C7b `exportBrief`. */
@@ -71,6 +77,12 @@ export type SafeBatchArgs = {
   now: number;
   /** Registry records for whole-facet `RecipeEntry` cuts. */
   chain?: ChainState;
+  /**
+   * The `Lattice` proxy's creation code, for the CreateX batch. The caller loads it; the callee checks
+   * `keccak256(bytes) === catalog.proxy.initCodeHash` and returns an error on a mismatch, or on the CreateX
+   * path when it's missing.
+   */
+  proxyCreationCode?: Hex;
 };
 
 /** C8 `encodeShareLink`'s result. Studio warns above 2,000 characters (spec L291). */

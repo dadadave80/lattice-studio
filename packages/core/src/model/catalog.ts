@@ -45,8 +45,11 @@ export type Catalog = {
   /** Versionless salts; constructor arguments are in the creation code. */
   registry: SharedContract;
   factory: SharedContract;
-  /** Lattice at this tag. */
-  proxy: { creationCode: ShardRef; initCodeHash: Hex; standardJson: ShardRef };
+  /**
+   * Lattice at this tag. Addition: `detail`, the proxy's ABI shard (its errors, for revert decoding, spec L75),
+   * written by catalog-gen.
+   */
+  proxy: { creationCode: ShardRef; initCodeHash: Hex; standardJson: ShardRef; detail?: ShardRef };
   facets: Facet[];
   inits: InitSpec[];
   recipes: RecipeTemplate[];
@@ -74,6 +77,11 @@ export type SharedContract = {
   initCodeHash: Hex;
   /** Enough for anyone to deploy it byte for byte. */
   creationCode: ShardRef;
+  /**
+   * Addition: the ABI shard (its errors, for revert decoding, spec L75) of a contract that isn't a facet:
+   * LatticeRegistry, LatticeFactory, init contracts. Facets carry theirs in `Facet.detail`.
+   */
+  detail?: ShardRef;
 };
 
 /** A facet in `FacetInventory` (spec L156-L168). */
@@ -116,10 +124,15 @@ export type Seam = {
 /**
  * One parameter of an init function (spec L178-L183).
  * Additions: `components` (contracts §3.1, tuple parameters; paths address them with a dot, `bundle.p.asset`)
- * and `role` (contracts §4 overlay: the role an `authority` parameter receives; C4c's authority table reads it).
+ * `role` (contracts §4 overlay: the role an `authority` parameter receives; C4c's authority table reads it) and
+ * `exampleSource` (contracts §4: where the example comes from, so Studio-written examples are flagged).
  */
 export type InitParam = {
   name: string;
+  /**
+   * The ABI JSON type, as viem takes it: "address", "uint48", "string", and "tuple" or "tuple[]" when
+   * `components` is set (never the "(address,string)" form).
+   */
   type: string;
   doc: string;
   unit?: "seconds" | "percent" | "wei";
@@ -127,6 +140,8 @@ export type InitParam = {
   rule?: string;
   /** A template's demo value, flagged until changed (INIT-05). */
   example?: Json;
+  /** Where `example` comes from: "studio" when Studio wrote it, else `<path>#L<a>-L<b>` in Lattice at the pin. */
+  exampleSource?: string;
   /** Receives a role, ownership or upgrade rights. */
   authority?: true;
   /** Overlay: the role it receives, e.g. "DEFAULT_ADMIN_ROLE". */

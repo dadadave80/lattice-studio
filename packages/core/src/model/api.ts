@@ -20,7 +20,10 @@ import type {
   SharedRecipe, ShareLink,
 } from "./io";
 import type { Json, JsonObject } from "./json";
-import type { CardSize, CardSizeOptions, Layout, NotePlacement, PlaceNotesArgs, Point, Rect, RouteTracesArgs, Sizes, Trace } from "./layout";
+import type {
+  CardSize, CardSizeOptions, Layout, LayoutMetrics, NotePlacement, Placement, PlaceNotesArgs, Point, Push, Rect,
+  RouteTracesArgs, Size, Sizes, Trace,
+} from "./layout";
 import type { ProblemCode, Problem } from "./problems";
 import type { Deployment, EditResult, Project, ProjectFile, ProjectStatus } from "./project";
 import type { Arg, InitStep, RefName, Recipe } from "./recipe";
@@ -29,13 +32,18 @@ import type { WpId } from "./wp";
 
 // ── canonical (C1) ─────────────────────────────────────────────────────────────────────────────────
 
-/** RFC 8785 canonical JSON: keys sorted by UTF-16 code units, ES number serialization, no whitespace. */
-export type CanonicalJsonFn = (value: Json) => string;
+/**
+ * RFC 8785 canonical JSON: keys sorted by UTF-16 code units, ES number serialization, no whitespace.
+ * Takes `unknown` so readonly structures (a viem ABI) pass in; values that aren't JSON (undefined, bigint,
+ * functions, non-finite numbers) are rejected at runtime.
+ */
+export type CanonicalJsonFn = (value: unknown) => string;
 /** Facets in catalog order, integers as decimal strings, hex lowercase, addresses EIP-55, refs symbolic (spec L283). */
 export type NormalizeRecipeFn = (recipe: Recipe, catalog: Catalog) => Recipe;
 /**
  * keccak256 of the canonical recipe without `$schema`, `name`, `template` and unknown fields (spec L283).
- * With `catalog` it normalizes first; without, `recipe` must already be `normalizeRecipe`'s output.
+ * With `catalog` it normalizes first. Without `catalog`, the input MUST already be `normalizeRecipe`'s output:
+ * the hash of an unnormalized recipe (facets out of catalog order, uppercase hex) is a different hash.
  */
 export type RecipeHashFn = (recipe: Recipe, catalog?: Catalog) => Hex;
 /** keccak256 of the canonical catalog index without its `hash` field. */
@@ -113,7 +121,8 @@ export type ProjectStatusFn = (
   recipeHash: Hex,
   chainName?: (chainId: number) => string,
 ) => ProjectStatus;
-export type RecipeStatsFn = (analysis: Analysis) => RecipeStats;
+/** Per-facet exported counts come from the catalog. */
+export type RecipeStatsFn = (analysis: Analysis, catalog: Catalog) => RecipeStats;
 
 // ── address (C5b) ──────────────────────────────────────────────────────────────────────────────────
 
@@ -163,12 +172,25 @@ export type ImportFileFn = (text: string, filename: string, catalogs: readonly C
 // ── layout (C9) ────────────────────────────────────────────────────────────────────────────────────
 
 export type CardSizeFn = (facet: Facet, opts: CardSizeOptions) => CardSize;
-/** Snapped to 8 px, spiraling out from `at`, never overlapping. */
-export type FreeSlotFn = (layout: Layout, sizes: Sizes, at: Point) => Point;
+/**
+ * Where a card (or a group) of `size` goes: snapped to `metrics.snap`, spiraling out from `at`, overlapping no
+ * card in `layout`. `size` is the card's, or the bounding box of a multi-card drop. Cards being moved must be
+ * left out of `layout` by the caller, so they don't block their own landing spot.
+ */
+export type FreeSlotFn = (layout: Layout, sizes: Sizes, at: Point, size: Size, metrics: LayoutMetrics) => Point;
 /** Cards below `facet` in the same column move down by `dy`; a negative `dy` pulls nothing up (spec L479). */
-export type PushBelowFn = (layout: Layout, sizes: Sizes, facet: string, dy: number) => Layout;
-/** Deterministic dependency bands; with a selection, only those cards around their current center. */
-export type TidyFn = (project: Project, catalog: Catalog, analysis: Analysis, selection?: readonly string[]) => Layout;
+export type PushBelowFn = (layout: Layout, sizes: Sizes, facet: string, dy: number, metrics: LayoutMetrics) => Layout;
+/**
+ * Deterministic dependency bands; with a selection, only those cards around their current center.
+ * Sizes come from `cardSize` with `metrics` and the analysis's contested selectors.
+ */
+export type TidyFn = (
+  project: Project,
+  catalog: Catalog,
+  analysis: Analysis,
+  metrics: LayoutMetrics,
+  selection?: readonly string[],
+) => Layout;
 export type RouteTracesFn = (args: RouteTracesArgs) => Trace[];
 export type PlaceNotesFn = (args: PlaceNotesArgs) => NotePlacement[];
 /** Null for an empty sheet. */
@@ -202,15 +224,20 @@ export type LintCopyFn = (text: string) => CopyIssue[];
 
 // ── edit (C11): every op returns EditResult ────────────────────────────────────────────────────────
 
-export type PlaceFacetFn = (project: Project, catalog: Catalog, name: string, at?: Point) => EditResult;
+/** Snaps `placement.at` and moves it to the nearest free slot (spec L425) with C9's `freeSlot`. */
+export type PlaceFacetFn = (project: Project, catalog: Catalog, name: string, placement: Placement) => EditResult;
 /** Drops their owners, init steps and now-orphaned exclusions. */
 export type RemoveFacetsFn = (project: Project, catalog: Catalog, names: readonly string[]) => EditResult;
 export type RouteSelectorFn = (project: Project, catalog: Catalog, selector: Hex4, facet: string) => EditResult;
-export type ClearOwnerFn = (project: Project, selector: Hex4) => EditResult;
+/** `catalog` gives the summary the selector's signature ("transfer · 0xa9059cbb"). */
+export type ClearOwnerFn = (project: Project, catalog: Catalog, selector: Hex4) => EditResult;
 export type ExcludeSelectorFn = (project: Project, catalog: Catalog, selector: Hex4) => EditResult;
 export type IncludeSelectorFn = (project: Project, catalog: Catalog, selector: Hex4, facet?: string) => EditResult;
-/** Replaces the recipe (and the layout, when given) as one step. */
-export type LoadRecipeFn = (project: Project, catalog: Catalog, recipe: Recipe, layout?: Layout) => EditResult;
+/**
+ * Replaces the recipe and the layout as one step. The caller passes the tidied layout (C9's `tidy` needs the
+ * analysis of the new recipe, which C11 doesn't compute).
+ */
+export type LoadRecipeFn = (project: Project, catalog: Catalog, recipe: Recipe, layout: Layout) => EditResult;
 /** `value` undefined clears the argument. */
 export type SetInitArgFn = (project: Project, catalog: Catalog, path: string, value: Arg | undefined) => EditResult;
 export type AddInitStepFn = (project: Project, catalog: Catalog, spec: string, index?: number) => EditResult;
@@ -222,7 +249,8 @@ export type RenameProjectFn = (project: Project, name: string) => EditResult;
 export type MoveCardsFn = (project: Project, facets: readonly string[], by: Point) => EditResult;
 export type SetCardPositionFn = (project: Project, facet: string, at: Point) => EditResult;
 export type FlipPinsFn = (project: Project, facets: readonly string[]) => EditResult;
-export type SetExpandedFn = (project: Project, facet: string, expanded: boolean) => EditResult;
+/** Expanding pushes the cards below it in the same column down by `push.dy` (spec L479); collapsing moves nothing. */
+export type SetExpandedFn = (project: Project, facet: string, expanded: boolean, push: Push) => EditResult;
 /** Never touches the recipe. */
 export type ApplyLayoutFn = (project: Project, layout: Layout) => EditResult;
 /** Appends to `project.predicted` unless the pair is there (addresses compared case-insensitively). */

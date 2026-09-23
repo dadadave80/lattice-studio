@@ -51,7 +51,7 @@ export type FieldModel = {
   name: string;
   /** Visible label: "Voting period". */
   label: string;
-  /** Solidity type: "uint48", "(address,string)". */
+  /** The param's ABI JSON type: "uint48", "address", and "tuple" or "tuple[]" for a struct (see `components`). */
   type: string;
   kind: FieldKind;
   /** Help text from NatSpec or the overlay. */
@@ -76,6 +76,8 @@ export type FieldModel = {
   authority: boolean;
   role?: string;
   example?: Json;
+  /** Where `example` comes from: "studio" (flagged as written by Studio) or `<path>#L<a>-L<b>` in Lattice. */
+  exampleSource?: string;
   /** Tuples: one field per component, with dotted paths. */
   components?: FieldModel[];
   /** Arrays: the element's model. */
@@ -112,12 +114,17 @@ export type DecodedInitStep = {
 
 /**
  * C4c `authorityTable`: who holds each role after init (spec L469, L568).
- * `holder` is null when nobody does ("Guardian → none").
+ * `holder` is null when nobody does ("Guardian → none"), or when everyone does (`anyone`).
  */
 export type AuthorityRow = {
   /** "DEFAULT_ADMIN_ROLE", "Upgrade", "Guardian", "Proposer", "Executor". */
   role: string;
   holder: Arg | null;
+  /**
+   * The role is granted to address(0), which opens it to everyone ("Executor → anyone"); `holder` is null.
+   * AUTH-01 and AUTH-02 skip these rows.
+   */
+  anyone?: true;
   /** The holder once references resolve for a deploy context. */
   resolved?: Address;
   /** How the holder gets it: "AccessControlInit(admin)", "SafeDiamondCut (pinned Safe)". */

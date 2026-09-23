@@ -155,10 +155,13 @@ export type SpecTypeAssertions = [
   Assert<Equals<Keys<M.Catalog>, Keys<Catalog> | "provisional">>,
   Assert<Mutual<Omit<M.Catalog, "provisional" | "facets" | "inits" | "recipes" | "chains">, Omit<Catalog, "facets" | "inits" | "recipes" | "chains">>>,
   Assert<Equals<M.Catalog["provisional"], string | undefined>>,
-  Assert<Equals<Keys<M.Catalog["proxy"]>, Keys<Catalog["proxy"]>>>,
-  // SharedContract (L149-L155)
-  Assert<Equals<Keys<M.SharedContract>, Keys<SharedContract>>>,
-  Assert<Mutual<M.SharedContract, SharedContract>>,
+  // proxy gains `detail` (its ABI shard, for revert decoding)
+  Assert<Equals<Keys<M.Catalog["proxy"]>, Keys<Catalog["proxy"]> | "detail">>,
+  Assert<Mutual<Omit<M.Catalog["proxy"], "detail">, Catalog["proxy"]>>,
+  // SharedContract (L149-L155) + detail (ABI shard of a non-facet contract)
+  Assert<Equals<Keys<M.SharedContract>, Keys<SharedContract> | "detail">>,
+  Assert<Mutual<Omit<M.SharedContract, "detail">, SharedContract>>,
+  Assert<Equals<M.SharedContract["detail"], M.ShardRef | undefined>>,
   // Facet (L156-L168)
   Assert<Equals<Keys<M.Facet>, Keys<Facet>>>,
   Assert<Mutual<M.Facet, Facet>>,
@@ -171,8 +174,8 @@ export type SpecTypeAssertions = [
   // InitSpec (L175-L191); params gain `components` (contracts §3.1) and `role` (contracts §4 overlay)
   Assert<Equals<Keys<M.InitSpec>, Keys<InitSpec>>>,
   Assert<Mutual<Omit<M.InitSpec, "params">, Omit<InitSpec, "params">>>,
-  Assert<Equals<Keys<Item<M.InitSpec["params"]>>, Keys<Item<InitSpec["params"]>> | "components" | "role">>,
-  Assert<Mutual<Omit<Item<M.InitSpec["params"]>, "components" | "role">, Item<InitSpec["params"]>>>,
+  Assert<Equals<Keys<Item<M.InitSpec["params"]>>, Keys<Item<InitSpec["params"]>> | "components" | "role" | "exampleSource">>,
+  Assert<Mutual<Omit<Item<M.InitSpec["params"]>, "components" | "role" | "exampleSource">, Item<InitSpec["params"]>>>,
   Assert<Equals<Present<Item<M.InitSpec["params"]>["components"]>, M.InitParam[]>>,
   Assert<Equals<Keys<Item<M.InitSpec["initializes"]>>, Keys<Item<InitSpec["initializes"]>>>>,
   // RecipeTemplate (L192-L197)
@@ -204,9 +207,9 @@ export type SpecTypeAssertions = [
   Assert<Mutual<Pick<Item<M.Analysis["plan"]>, "facet" | "address" | "selectors">, Item<Analysis["plan"]>>>,
   Assert<Equals<Keys<Value<M.Analysis["routing"]>>, Keys<Value<Analysis["routing"]>>>>,
   Assert<Equals<Keys<M.Analysis["stats"]>, Keys<Analysis["stats"]>>>,
-  // AnalysisContext (L268-L272) + chain (contracts §3.1)
-  Assert<Equals<Keys<M.AnalysisContext>, Keys<AnalysisContext> | "chain">>,
-  Assert<Mutual<Omit<M.AnalysisContext, "chain">, AnalysisContext>>,
+  // AnalysisContext (L268-L272) + chain (contracts §3.1) + refs
+  Assert<Equals<Keys<M.AnalysisContext>, Keys<AnalysisContext> | "chain" | "refs">>,
+  Assert<Mutual<Omit<M.AnalysisContext, "chain" | "refs">, AnalysisContext>>,
   Assert<Equals<Keys<Present<M.AnalysisContext["deploy"]>>, Keys<Present<AnalysisContext["deploy"]>>>>,
   // Problem (L273-L278) + code, params, ack (contracts §3.1)
   Assert<Equals<Keys<M.Problem>, Keys<Problem> | "code" | "params" | "ack">>,
@@ -265,8 +268,10 @@ export type ContractAssertions = [
   Assert<Equals<Keys<M.FacetDetail>, Keys<ContractFacetDetail>>>,
   Assert<Mutual<M.FacetDetail, ContractFacetDetail>>,
   Assert<Equals<M.Severity, "blocker" | "warning" | "info">>,
-  Assert<Equals<Keys<M.ChainState>, Keys<ContractChainState>>>,
-  Assert<Mutual<M.ChainState, ContractChainState>>,
+  // ChainState gains `name`, the display name
+  Assert<Equals<Keys<M.ChainState>, Keys<ContractChainState> | "name">>,
+  Assert<Mutual<Omit<M.ChainState, "name">, ContractChainState>>,
+  Assert<Equals<M.ChainState["name"], string>>,
   Assert<Equals<Keys<M.PlanEntry>, Keys<ContractPlanEntry>>>,
   Assert<Mutual<M.PlanEntry, ContractPlanEntry>>,
   Assert<Mutual<M.PlanComparison, ContractPlanComparison>>,

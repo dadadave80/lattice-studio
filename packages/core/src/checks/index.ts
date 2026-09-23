@@ -4,6 +4,7 @@
  */
 import type { Check, CheckName } from "../model/analysis";
 import type { RunChecksFn } from "../model/api";
+import { renderProblem } from "../narrate/problem";
 import { checkAuth } from "./auth";
 import { checkCore } from "./core";
 import { checkDep } from "./dep";
@@ -29,9 +30,10 @@ export const CHECKS: readonly { name: CheckName; run: Check }[] = [
 
 /**
  * Runs `checks` (the registry's, by default) in order and concatenates their problems, unsorted:
- * C2's `sortProblems` orders them. Tests inject fakes through `checks`.
+ * C2's `sortProblems` orders them. Every problem's `message` is rendered here, and only here, with
+ * `renderProblem(code, params)`; checks leave it "". Tests inject fakes through `checks`.
  */
 export const runChecks: RunChecksFn = (input, checks = CHECKS.map((check) => check.run)) =>
-  checks.flatMap((check) => check(input));
+  checks.flatMap((check) => check(input)).map((p) => ({ ...p, message: renderProblem(p.code, p.params) }));
 
 export { checkAuth, checkCore, checkDep, checkInit, checkLink, checkNet, checkSel, checkSem, checkSto };

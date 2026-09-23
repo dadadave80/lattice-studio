@@ -1,5 +1,5 @@
 import type { Catalog } from "./catalog";
-import type { ChainState } from "./chain";
+import type { ChainState, Refs } from "./chain";
 import type { Address, Hex, Hex4 } from "./hex";
 import type { Problem } from "./problems";
 import type { Recipe } from "./recipe";
@@ -23,7 +23,7 @@ export type Analysis = {
 
 /**
  * What lives beside the recipe (spec L268-L272).
- * Addition (contracts §3.1): `chain`. `known` holds `project.predicted` and every recorded deployment address;
+ * Additions: `chain` (contracts §3.1) and `refs`. `known` holds `project.predicted` and every recorded deployment address;
  * `unconfirmed` holds authority paths whose provenance is `link` or `file`.
  */
 export type AnalysisContext = {
@@ -35,6 +35,11 @@ export type AnalysisContext = {
   unconfirmed: string[];
   /** The selected chain's probes, for the NET checks. */
   chain?: ChainState;
+  /**
+   * What "This diamond" and "Deploying account" resolve to for `deploy` (S1 fills it). C4c uses it for
+   * `AuthorityRow.resolved` and to never raise AUTH-01 for this diamond's own predicted address.
+   */
+  refs?: Refs;
 };
 
 /** `Analysis["routing"]` (contracts §3.1). */
@@ -79,7 +84,11 @@ export type CheckInput = {
   ctx: AnalysisContext;
 };
 
-/** A check: sel, sem, core, dep, sto, init, auth, link or net (contracts §3.4). */
+/**
+ * A check: sel, sem, core, dep, sto, init, auth, link or net (contracts §3.4). Checks build problems with
+ * `message: ""` (the `problem()` builder does); `runChecks` renders every message in one place with
+ * narrate's `renderProblem(code, params)`.
+ */
 export type Check = (input: CheckInput) => Problem[];
 
 /** The check files, in the order `runChecks` calls them. */

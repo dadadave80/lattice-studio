@@ -47,6 +47,16 @@ caller passes them in. It depends on `viem` (utilities only), `zod` and `fflate`
   `z.toJSONSchema(RecipeSchema, { io: "input" })` works.
 - **Problem ids** are `CODE:anchor` from `problemId`: `SEL-01:0xcdfe7f5c`, `DEP-01:VaultCore`,
   `INIT-01:bundle.p.asset`, `CORE-02:diamond`, `NET-03:11155111`; several anchors join with `+`.
+- **Problems.** Checks build them with `problem(code, where, params, fixes)`: `params` is typed per code by
+  `ProblemParams` (the keys C10's templates read), severity and `ack` come from `PROBLEMS`, and `message` is
+  left "". `runChecks` renders every message with `renderProblem(code, params)`. Until C10 lands,
+  `renderProblem` is a placeholder (`<code> <params as JSON>`) that doesn't throw.
+- **Bytes core can't fetch.** Creation code lives in catalog files (`code/<Name>.creation.hex`). Callers load it
+  and pass it in (`CreationCode`, `proxyCreationCode`); callees check it against the catalog's
+  `initCodeHash` and return an error when it's missing or doesn't match.
+- **Layout lengths.** Geometry takes `LayoutMetrics`; the app passes the tokens package's `layoutSizes`, which
+  fits it as it is. Core never imports the tokens package.
+- **Chain state.** `ChainState.codeAt` keys are lowercase addresses; read them with `codeAtFor`.
 - **Console lines.** `narrate` and `lines.*` return `LineDraft`s (a `ConsoleLine` without `at`); the caller
   stamps the time.
 

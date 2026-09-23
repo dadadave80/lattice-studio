@@ -17,8 +17,34 @@ export type Rect = { x: number; y: number; width: number; height: number };
 /** Card sizes by facet name. */
 export type Sizes = Record<string, Size>;
 
+/**
+ * The lengths layout geometry uses, in sheet units (px at 100%). Core can't import the tokens package
+ * (spec L102), so the app passes these in: `layoutSizes` from `@lattice-studio/tokens` has these key names
+ * and satisfies this type as it is.
+ */
+export type LayoutMetrics = {
+  /** Grid pitch (8). */
+  readonly grid: number;
+  /** Snap step for positions (8). */
+  readonly snap: number;
+  readonly cardWidth: number;
+  readonly headerHeight: number;
+  readonly rowHeight: number;
+  readonly footerHeight: number;
+  /** Rows a collapsed card shows (6). */
+  readonly collapsedRows: number;
+  /** More selectors than this collapse (9). */
+  readonly expandThreshold: number;
+  /** Below this zoom cards draw compact (0.4). */
+  readonly compactZoom: number;
+  readonly noteWidth: number;
+  /** From this zoom trace labels show (0.75). */
+  readonly traceLabelZoom: number;
+};
+
 /** C9 `cardSize` options (spec L479-L481). */
 export type CardSizeOptions = {
+  metrics: LayoutMetrics;
   expanded: boolean;
   pins: "left" | "right";
   /** Below 40% zoom: header plus a tick strip. */
@@ -58,6 +84,7 @@ export type RouteTracesArgs = {
   recipe: Recipe;
   catalog: Catalog;
   analysis: Analysis;
+  metrics: LayoutMetrics;
 };
 
 /** A margin note to place: a problem's note box, beside its ties or cards. */
@@ -77,6 +104,28 @@ export type PlaceNotesArgs = {
   sizes: Sizes;
   traces: Trace[];
   notes: NoteRequest[];
+  metrics: LayoutMetrics;
+};
+
+/**
+ * C11 `placeFacet`'s placement: the drop point (or the view's center, or beside the selected card) plus what
+ * `freeSlot` needs. The caller computes sizes with `cardSize`, which needs the analysis C11 doesn't have.
+ */
+export type Placement = {
+  at: Point;
+  /** Sizes of the cards already on the sheet. */
+  sizes: Sizes;
+  /** The new card's size. */
+  size: Size;
+  metrics: LayoutMetrics;
+};
+
+/** C11 `setExpanded`'s push: the card's height change and what `pushBelow` needs (spec L479). */
+export type Push = {
+  /** New height minus old height; a negative `dy` moves nothing. */
+  dy: number;
+  sizes: Sizes;
+  metrics: LayoutMetrics;
 };
 
 /** Where a note goes, never over a card, with its leader. */

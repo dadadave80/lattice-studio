@@ -36,7 +36,8 @@ export function isHex4AnyCase(value: unknown): value is Hex4 {
 }
 
 /**
- * A 20-byte address: all lowercase, all uppercase, or mixed case with a valid EIP-55 checksum.
+ * A 20-byte address: all lowercase, or any other case only when it is the valid EIP-55 checksum
+ * (an all-uppercase address fails unless it happens to be its own checksum).
  */
 export function isAddress(value: unknown): value is Address {
   return typeof value === "string" && viemIsAddress(value, { strict: true });

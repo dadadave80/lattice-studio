@@ -5,7 +5,9 @@
  * - Objects are loose: unknown fields survive parsing, and `listUnknownFields` reports their paths (spec L289).
  * - No transforms: normalization (lowercase hex, checksums, catalog order) is C1's `normalizeRecipe`, and
  *   `z.toJSONSchema(RecipeSchema)` must work for the published recipe schema (C7b).
- * - Hex and addresses are accepted in any letter case; mixed-case addresses must carry a valid checksum.
+ * - Hex is accepted in any letter case; an address that isn't all lowercase must be its EIP-55 checksum.
+ * - Hashes, salts and slots are exactly 32 bytes (`Hash32Schema`); selectors 4; entropy 11.
+ * - JSON nested deeper than `MAX_JSON_DEPTH` is refused before Zod sees it.
  * - Issues come back as `{ path, message }`: `facets[0]` / "is a number; expected a string."
  */
 import * as z from "zod";
@@ -166,6 +168,14 @@ export const HexSchema = z.templateLiteral(["0x", z.string().regex(/^(?:[0-9a-fA
   error: expected("hex bytes (0x followed by pairs of hex digits)"),
 });
 
+/**
+ * A 32-byte value, any letter case: hashes (recipe, catalog, code, init code, shards), salts, storage slots,
+ * transaction hashes. `"0x"` and short values fail.
+ */
+export const Hash32Schema = z.templateLiteral(["0x", z.string().regex(/^[0-9a-fA-F]{64}$/)], {
+  error: expected("a 32-byte hash (0x followed by 64 hex digits)"),
+});
+
 /** A 4-byte selector, any letter case. */
 export const Hex4Schema = z.templateLiteral(["0x", z.string().regex(/^[0-9a-fA-F]{8}$/)], {
   error: expected("a 4-byte selector (0x followed by 8 hex digits)"),
@@ -248,8 +258,8 @@ export const RecipeSchema = z.looseObject({
   $schema: opt(text),
   schemaVersion: SchemaVersionSchema,
   name: opt(text),
-  catalog: z.looseObject({ tag: text, hash: HexSchema }),
-  template: opt(z.looseObject({ name: text, catalogHash: HexSchema })),
+  catalog: z.looseObject({ tag: text, hash: Hash32Schema }),
+  template: opt(z.looseObject({ name: text, catalogHash: Hash32Schema })),
   facets: z.array(text),
   owners: z.record(Hex4Schema, text),
   exclude: z.array(Hex4Schema),
@@ -289,14 +299,14 @@ export const DeploymentSchema = z.looseObject({
   address: AddressSchema,
   path: z.enum(["factory", "createx"]),
   deployer: AddressSchema,
-  salt: HexSchema,
+  salt: Hash32Schema,
   status: z.enum(["pending", "proposed", "confirmed", "mismatch", "failed"]),
-  tx: opt(HexSchema),
-  safeTxHash: opt(HexSchema),
+  tx: opt(Hash32Schema),
+  safeTxHash: opt(Hash32Schema),
   callsId: opt(text),
   block: opt(z.int().nonnegative()),
-  recipeHash: HexSchema,
-  catalogHash: HexSchema,
+  recipeHash: Hash32Schema,
+  catalogHash: Hash32Schema,
   at: text,
   verification: z.enum(["pending", "match", "exact_match", "failed"]),
   revision: z.int().positive(),
@@ -316,15 +326,16 @@ export const AREAS = [
   "governance", "oracles", "privacy", "security", "tokens", "utils",
 ] as const;
 
-export const ShardRefSchema = z.looseObject({ path: text, bytes: z.int().nonnegative(), hash: HexSchema });
+export const ShardRefSchema = z.looseObject({ path: text, bytes: z.int().nonnegative(), hash: Hash32Schema });
 
 export const SharedContractSchema = z.looseObject({
-  salt: HexSchema,
+  salt: Hash32Schema,
   version: text,
   address: AddressSchema,
-  codehash: HexSchema,
-  initCodeHash: HexSchema,
+  codehash: Hash32Schema,
+  initCodeHash: Hash32Schema,
   creationCode: ShardRefSchema,
+  detail: opt(ShardRefSchema),
 });
 
 export const FacetSchema = z.looseObject({
@@ -333,7 +344,7 @@ export const FacetSchema = z.looseObject({
   source: text,
   summary: text,
   selectors: z.array(z.looseObject({ hex: Hex4Schema, signature: text })),
-  storage: opt(z.looseObject({ id: text, slot: HexSchema })),
+  storage: opt(z.looseObject({ id: text, slot: Hash32Schema })),
   touches: z.array(text),
   release: SharedContractSchema,
   requires: z.array(z.looseObject({ anyOf: z.array(text), strength: z.enum(["hard", "convention"]), reason: text })),
@@ -353,6 +364,7 @@ export const InitParamSchema: z.ZodType<InitParam> = z.lazy(() =>
     unit: opt(z.enum(["seconds", "percent", "wei"])),
     rule: opt(text),
     example: opt(JsonValueSchema),
+    exampleSource: opt(text),
     authority: opt(z.literal(true)),
     role: opt(text),
     components: opt(z.array(InitParamSchema)),
@@ -387,10 +399,10 @@ export const ChainReleaseSchema = z.looseObject({
   factory: opt(
     z.looseObject({
       address: AddressSchema,
-      codehash: HexSchema,
+      codehash: Hash32Schema,
       buildCommit: text,
       proxyStandardJson: ShardRefSchema,
-      proxyInitCodeHash: HexSchema,
+      proxyInitCodeHash: Hash32Schema,
     }),
   ),
 });
@@ -399,11 +411,16 @@ export const ChainReleaseSchema = z.looseObject({
 export const CatalogSchema = z.looseObject({
   lattice: z.looseObject({ tag: text, commit: text }),
   toolchain: z.looseObject({ foundry: text, solc: text }),
-  hash: HexSchema,
-  deployer: z.looseObject({ address: AddressSchema, codehash: HexSchema }),
+  hash: Hash32Schema,
+  deployer: z.looseObject({ address: AddressSchema, codehash: Hash32Schema }),
   registry: SharedContractSchema,
   factory: SharedContractSchema,
-  proxy: z.looseObject({ creationCode: ShardRefSchema, initCodeHash: HexSchema, standardJson: ShardRefSchema }),
+  proxy: z.looseObject({
+    creationCode: ShardRefSchema,
+    initCodeHash: Hash32Schema,
+    standardJson: ShardRefSchema,
+    detail: opt(ShardRefSchema),
+  }),
   facets: z.array(FacetSchema),
   inits: z.array(InitSpecSchema),
   recipes: z.array(RecipeTemplateSchema),
@@ -415,7 +432,7 @@ export const CatalogSchema = z.looseObject({
 /** `catalog/manifest.json` (contracts §4). */
 export const CatalogManifestSchema = z.looseObject({
   default: text,
-  catalogs: z.array(z.looseObject({ id: text, tag: text, commit: text, hash: HexSchema, path: text })),
+  catalogs: z.array(z.looseObject({ id: text, tag: text, commit: text, hash: Hash32Schema, path: text })),
 }) satisfies z.ZodType<CatalogManifest>;
 
 const MUTABILITY = new Set(["pure", "view", "nonpayable", "payable"]);
@@ -483,7 +500,11 @@ export const FacetDetailSchema = z.looseObject({
 
 // ── unknown fields ─────────────────────────────────────────────────────────────────────────────────
 
+/** Schemas that accept any key, so nothing under them is ever unknown; the walk stops there. */
+const OPEN_SCHEMAS: ReadonlySet<z.core.$ZodType> = new Set<z.core.$ZodType>([ArgSchema, JsonValueSchema, RefSchema]);
+
 function walkUnknown(schema: z.core.$ZodType, value: unknown, path: PropertyKey[], out: string[]): void {
+  if (OPEN_SCHEMAS.has(schema)) return;
   if (schema instanceof z.ZodLazy) return walkUnknown(schema.unwrap(), value, path, out);
   if (schema instanceof z.ZodExactOptional || schema instanceof z.ZodOptional) {
     if (value !== undefined) walkUnknown(schema.unwrap(), value, path, out);
@@ -493,7 +514,7 @@ function walkUnknown(schema: z.core.$ZodType, value: unknown, path: PropertyKey[
     if (!isRecord(value)) return;
     const shape: Record<string, z.core.$ZodType> = schema.shape;
     for (const key of Object.keys(value)) {
-      const field = shape[key];
+      const field = Object.hasOwn(shape, key) ? shape[key] : undefined;
       if (field === undefined) out.push(formatPath([...path, key]));
       else walkUnknown(field, value[key], [...path, key], out);
     }
@@ -529,8 +550,26 @@ export function listUnknownFields(schema: z.core.$ZodType, value: unknown): stri
 
 // ── validation entry points ────────────────────────────────────────────────────────────────────────
 
-/** Validates `json` against `schema`; issues as `{ path, message }`. */
+/** No file, link or record Studio reads nests anywhere near this deep; hostile input that does is refused. */
+export const MAX_JSON_DEPTH = 64;
+
+/** The path of the first object or list nested deeper than `MAX_JSON_DEPTH`, or null. Iterative, so it can't overflow. */
+function tooDeep(json: unknown): PropertyKey[] | null {
+  const stack: { value: unknown; path: PropertyKey[] }[] = [{ value: json, path: [] }];
+  for (let item = stack.pop(); item !== undefined; item = stack.pop()) {
+    const { value, path } = item;
+    if (value === null || typeof value !== "object") continue;
+    if (path.length >= MAX_JSON_DEPTH) return path;
+    if (Array.isArray(value)) value.forEach((child: unknown, index) => stack.push({ value: child, path: [...path, index] }));
+    else for (const [key, child] of Object.entries(value)) stack.push({ value: child, path: [...path, key] });
+  }
+  return null;
+}
+
+/** Validates `json` against `schema`; issues as `{ path, message }`. Refuses JSON nested past `MAX_JSON_DEPTH`. */
 export function validate<S extends z.ZodType>(schema: S, json: unknown): Result<z.output<S>, ParseIssue[]> {
+  const deep = tooDeep(json);
+  if (deep) return err([{ path: formatPath(deep), message: `nests deeper than ${MAX_JSON_DEPTH} levels.` }]);
   const parsed = schema.safeParse(json, { error: issueMessage });
   return parsed.success ? ok(parsed.data) : err(toParseIssues(parsed.error));
 }
