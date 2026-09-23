@@ -1,4 +1,3 @@
-import type { Platform } from "@lattice-studio/core";
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   announce, getCommand, listBindings, pushEscape, settings, useSettings, type BindingId, type KeySpec,

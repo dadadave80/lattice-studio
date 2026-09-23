@@ -29,8 +29,13 @@ function ChainRow({
 }) {
   const stored = useSettings((s) => s.rpc[chain.id] ?? "");
   const [draft, setDraft] = useState(stored);
-  // The setting can change from outside this field (another tab, a reset): follow it when it does.
-  useEffect(() => setDraft(stored), [stored]);
+  // The setting can change from outside this field (another tab, a reset): adjusted during render (the
+  // documented React pattern), not an effect, so it never shows a stale value for even one frame.
+  const [syncedWith, setSyncedWith] = useState(stored);
+  if (stored !== syncedWith) {
+    setSyncedWith(stored);
+    setDraft(stored);
+  }
   const valid = draft === "" || isRpcUrl(draft);
 
   const subscribe = useCallback(
@@ -92,10 +97,9 @@ export function NetworksGroup({ loader = chainLoader }: { loader?: ChainLoader }
   const [service, setService] = useState<ChainService | null>(null);
 
   useEffect(() => {
-    if (load.status !== "ready") {
-      setService(null);
-      return;
-    }
+    // Ready is terminal (a loaded runtime is never unloaded): once `service` is set there's nothing further
+    // to synchronize, so this never needs to reset it back to null.
+    if (load.status !== "ready" || service) return;
     let cancelled = false;
     void loader.load().then((svc) => {
       if (!cancelled) setService(svc);
@@ -103,7 +107,7 @@ export function NetworksGroup({ loader = chainLoader }: { loader?: ChainLoader }
     return () => {
       cancelled = true;
     };
-  }, [load.status, loader]);
+  }, [load.status, service, loader]);
 
   const chains = pickerChains(env.e2e);
 
