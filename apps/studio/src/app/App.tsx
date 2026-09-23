@@ -3,9 +3,8 @@ import { SkipLink } from "@/a11y";
 import { Toasts } from "@/feedback";
 import { CommandPalette } from "@/palette";
 import { Shell, shellToasts } from "@/shell";
+import { LazyPart, lazyNamed } from "@/shell/LazyPart";
 import { Tour } from "@/tour";
-import { DialogHost } from "@/ui/overlays/DialogHost";
-import { ToastRegion } from "@/ui/overlays/ToastRegion";
 import { useDocumentTitle } from "./document-title";
 import { useRoute, useRouter } from "./router";
 import styles from "./App.module.css";
@@ -14,6 +13,14 @@ import styles from "./App.module.css";
 const UiGallery = import.meta.env.DEV
   ? lazy(() => import("@/ui/UiGallery").then((m) => ({ default: m.UiGallery })))
   : null;
+
+/**
+ * The dialog stack and the toast region render nothing at first paint, so each loads in its own chunk right
+ * after it (spec L822). Opening a dialog or adding a toast before then only waits for the chunk: both read
+ * their state from stores that exist from the first render (the session's dialog stack, `shellToasts`).
+ */
+const DialogHost = lazyNamed(() => import("@/ui/overlays/DialogHost"), "DialogHost");
+const ToastRegion = lazyNamed(() => import("@/ui/overlays/ToastRegion"), "ToastRegion");
 
 /**
  * The app: "Skip to sheet" first in Tab order (spec L743), the shell, then what floats over it: the dialog
@@ -37,8 +44,12 @@ export function App() {
     <>
       <SkipLink />
       <Shell />
-      <DialogHost />
-      <ToastRegion manager={shellToasts.manager} />
+      <LazyPart>
+        <DialogHost />
+      </LazyPart>
+      <LazyPart>
+        <ToastRegion manager={shellToasts.manager} />
+      </LazyPart>
       <div className={styles.overlays}>
         <CommandPalette />
         <Tour />
