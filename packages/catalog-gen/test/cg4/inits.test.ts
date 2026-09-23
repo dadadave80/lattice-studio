@@ -338,6 +338,49 @@ describe("initFactsFor", () => {
     expect(statelessInitContracts(r.value.facts).map((c) => c.contract)).toEqual(["SoloInit"]);
   });
 
+  test("registersInterfaces: writing DiamondLib's ERC165_MAP_* slot in assembly counts; a like-named slot elsewhere doesn't", async () => {
+    const d = new File(DIAMOND_LIB_PATH, "bytes32 constant ERC165_MAP_ILOUPE_SLOT = 0x01;\n", 9200);
+    const diamond = d.unit([{ nodeType: "VariableDeclaration", id: d.id(), name: "ERC165_MAP_ILOUPE_SLOT", src: d.src("ERC165_MAP_ILOUPE_SLOT") }]);
+    const o = new File("src/OtherLib.sol", "bytes32 constant ERC165_MAP_X = 0x02;\n", 9300);
+    const other = o.unit([{ nodeType: "VariableDeclaration", id: o.id(), name: "ERC165_MAP_X", src: o.src("ERC165_MAP_X") }]);
+    const source = `import {ERC165_MAP_ILOUPE_SLOT} from "lib/diamond-lib/src/libraries/DiamondLib.sol";
+import {ERC165_MAP_X} from "src/OtherLib.sol";
+contract FlagInit {
+    function loupeOnly() external {
+        assembly { sstore(ERC165_MAP_ILOUPE_SLOT, true) }
+    }
+    function lookalike() external {
+        assembly { sstore(ERC165_MAP_X, true) }
+    }
+}
+`;
+    const f = new File("src/FlagInit.sol", source, 7100);
+    const asm = (name: string) => ({ nodeType: "InlineAssembly", id: f.id(), externalReferences: [{ declaration: 1, src: f.src(name, 1) }] });
+    const unit = f.unit([
+      f.import(DIAMOND_LIB_PATH, ["ERC165_MAP_ILOUPE_SLOT"]),
+      f.import("src/OtherLib.sol", ["ERC165_MAP_X"]),
+      f.contract("FlagInit", [
+        f.fn({ name: "loupeOnly", visibility: "external", selector: "aaaaaaaa", snippet: "function loupeOnly() external {", statements: [asm("ERC165_MAP_ILOUPE_SLOT")] }),
+        f.fn({ name: "lookalike", visibility: "external", selector: "bbbbbbbb", snippet: "function lookalike() external {", statements: [asm("ERC165_MAP_X")] }),
+      ]),
+    ]);
+    const artifact = artifactOf(
+      "FlagInit",
+      "src/FlagInit.sol",
+      [
+        { type: "function", name: "loupeOnly", stateMutability: "nonpayable", inputs: [], outputs: [] },
+        { type: "function", name: "lookalike", stateMutability: "nonpayable", inputs: [], outputs: [] },
+      ],
+      { "loupeOnly()": "0xaaaaaaaa", "lookalike()": "0xbbbbbbbb" },
+    );
+    const r = await initFactsFor(artifact, unit, loaderOf([unit, diamond, other]));
+    if (!r.ok) throw new Error(r.error);
+    expect(r.value.facts.map((x) => [x.spec.name, x.spec.registersInterfaces])).toEqual([
+      ["FlagInit.loupeOnly", true],
+      ["FlagInit.lookalike", undefined],
+    ]);
+  });
+
   test("stateless contracts leave out inits with constructor arguments, once per contract", async () => {
     expect(statelessInitContracts((await foo()).facts)).toEqual([]);
   });
