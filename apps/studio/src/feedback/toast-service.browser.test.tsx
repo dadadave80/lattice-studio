@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { command, toast } from "@/contracts";
+import { shellToasts } from "@/shell";
+import { ToastRegion } from "@/ui";
 import { bufferedServices, fakeClock, overrideCommands, renderWithStudio, type FakeClock } from "../../test/harness";
-import { Toasts } from "./Toasts";
-import { toasts } from "./toast-service";
 
 let clock: FakeClock;
+
+function Toasts() {
+  return <ToastRegion manager={shellToasts.manager} />;
+}
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
@@ -13,12 +17,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  toasts.clear();
+  shellToasts.clear();
   vi.useRealTimers();
 });
 
 describe("the toast() service (contracts §5.2, spec L731-L735)", () => {
-  test("shows the toast and logs it as a console line, whether or not it shows", async () => {
+  test("adds to the shell's one toast manager and logs it as a console line, whether or not it shows", async () => {
     await renderWithStudio(<Toasts />);
     toast({ text: "Link copied" });
     await expect.element(page.getByText("Link copied")).toBeVisible();

@@ -1,17 +1,13 @@
 import { isNotImplemented } from "@lattice-studio/core";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { chainService, settings, useSettings, type ChainInfo, type ChainReadiness, type ChainService } from "@/contracts";
+import { isRpcUrl } from "@/chain/infra";
 import { TextField } from "@/ui";
 import styles from "./NetworksGroup.module.css";
 
-function looksLikeRpcUrl(value: string): boolean {
-  if (!value) return true;
-  try {
-    const { protocol } = new URL(value);
-    return protocol === "http:" || protocol === "https:" || protocol === "ws:" || protocol === "wss:";
-  } catch {
-    return false;
-  }
+/** Whether the override is worth keeping quiet about: unset, or a URL the chain module would actually use. */
+function acceptableOverride(value: string): boolean {
+  return value === "" || isRpcUrl(value);
 }
 
 function readinessText(readiness: ChainReadiness, name: string): string {
@@ -58,7 +54,7 @@ function ChainRow({ chain, service }: { chain: ChainInfo; service: ChainService 
         label={`${chain.name} RPC override`}
         value={value}
         onValueChange={onChange}
-        {...(looksLikeRpcUrl(value) ? {} : { description: "This won't be used: it needs an http(s) or ws(s) URL." })}
+        {...(acceptableOverride(value) ? {} : { description: "This won't be used: it needs a valid http(s) URL." })}
       />
       <p className={styles.readiness}>{readinessText(readiness, chain.name)}</p>
     </div>

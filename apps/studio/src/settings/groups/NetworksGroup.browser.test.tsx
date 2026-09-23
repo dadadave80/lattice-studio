@@ -27,6 +27,6 @@ describe("NetworksGroup", () => {
     await renderWithStudio(<NetworksGroup />, { chain });
     const field = page.getByRole("textbox", { name: "Sepolia RPC override" });
     await field.fill("not a url");
-    await expect.element(page.getByText("This won't be used: it needs an http(s) or ws(s) URL.")).toBeVisible();
+    await expect.element(page.getByText("This won't be used: it needs a valid http(s) URL.")).toBeVisible();
   });
 });
