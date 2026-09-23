@@ -1,0 +1,454 @@
+/*
+ * The facet card (IR L103-L105; boards: module card, selector pin; Composer-Final's card markup). Every length
+ * comes from the layout tokens, so the drawn card is exactly C9's `cardSize` and traces land on the pins
+ * without measuring. Strokes scale with 1/zoom below 100% (spec L772): the card-zoom layer sets
+ * --lx-sheet-zoom on the sheet, and lines that carry meaning stay at least 1.5 px on screen.
+ */
+
+.card {
+  --card-zoom: min(var(--lx-sheet-zoom, 1), 1);
+  --card-hair: calc(var(--lx-stroke-hair) / var(--card-zoom));
+  --card-mark: calc(1.5px / var(--card-zoom));
+  --card-heavy: calc(var(--lx-stroke-heavy) / var(--card-zoom));
+  --card-frame-width: var(--card-hair);
+  --card-frame-style: solid;
+  --card-frame-color: var(--lx-border);
+
+  position: relative;
+  box-sizing: border-box;
+  background: var(--lx-panel);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+/* The frame is drawn over the content, so a heavier border never moves a row off its trace. */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: var(--card-frame-width) var(--card-frame-style) var(--card-frame-color);
+  pointer-events: none;
+  forced-color-adjust: none;
+}
+
+/* Hover: the rule thickens by a hair (board: module card, Hover). */
+.default:not(.selected):hover {
+  --card-frame-color: var(--lx-border-strong);
+  --card-frame-width: var(--card-mark);
+}
+
+/* Selected: the accent, with corner ticks (Draft) or lit screws (Shop). */
+.selected {
+  --card-frame-color: var(--lx-accent);
+  --card-frame-width: var(--card-mark);
+}
+
+/* Caution: dashed (a missing dependency, a convention, a warning). */
+.caution {
+  --card-frame-style: dashed;
+  --card-frame-color: var(--lx-accent);
+  --card-frame-width: var(--card-mark);
+}
+
+/* Conflict: 2 px accent, no fill (a collision, a seam, a namespace, one family's slot). */
+.conflict {
+  --card-frame-color: var(--lx-accent);
+  --card-frame-width: var(--card-heavy);
+}
+
+/* Init order mode: cards without a step recede (S4d). */
+.dimmed {
+  opacity: 0.35;
+}
+
+/* Off-screen cards skip painting; the size stays the token-computed one (spec L824). */
+.paint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  content-visibility: auto;
+}
+
+.header {
+  flex: none;
+  box-sizing: border-box;
+  block-size: var(--lx-header-height);
+  padding: var(--lx-space-1) var(--lx-space-3) 0;
+  border-block-end: var(--card-hair) solid var(--lx-border-subtle);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  min-inline-size: 0;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip {
+  flex: none;
+  padding-inline: var(--lx-space-1);
+  border: var(--card-hair) solid var(--lx-border);
+  font: var(--lx-font-label);
+  color: var(--lx-text);
+  white-space: nowrap;
+}
+
+.path {
+  overflow: hidden;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rows {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding-block: var(--lx-grid);
+}
+
+.footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  block-size: var(--lx-footer-height);
+  margin-block-start: auto;
+  padding-inline: var(--lx-space-3);
+  overflow: hidden;
+  border-block-start: var(--card-hair) solid var(--lx-border-subtle);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-faint);
+  white-space: nowrap;
+}
+
+/* Pin rows: 20 px for density (spec L770); tick and node on the pin side, then name and hex. */
+.pin {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: var(--lx-row-height);
+  margin: 0;
+  padding: 0 var(--lx-space-3) 0 0;
+  border: 0;
+  background-color: transparent;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text);
+  text-align: start;
+  cursor: pointer;
+}
+
+.pinRight {
+  flex-direction: row-reverse;
+  padding: 0 0 0 var(--lx-space-3);
+}
+
+/* The ring sits inside the row: the card clips anything outside it. */
+.pin:focus-visible,
+.more:focus-visible {
+  outline-offset: calc(-1 * var(--lx-stroke-heavy));
+}
+
+.tick {
+  position: relative;
+  flex: none;
+  inline-size: var(--lx-space-3);
+  block-size: 0;
+  border-block-start: var(--card-hair) solid var(--lx-border);
+  forced-color-adjust: none;
+}
+
+.pin:hover .tick {
+  inline-size: var(--lx-space-4);
+}
+
+.node {
+  position: absolute;
+  inset-block-start: calc(-1 * var(--lx-space-1));
+  inset-inline-start: calc(-1 * var(--lx-space-1));
+  box-sizing: border-box;
+  inline-size: var(--lx-space-2);
+  block-size: var(--lx-space-2);
+  border: var(--card-hair) solid var(--lx-border);
+  background: var(--lx-panel);
+  forced-color-adjust: none;
+}
+
+.pinRight .node {
+  inset-inline-start: auto;
+  inset-inline-end: calc(-1 * var(--lx-space-1));
+}
+
+.label {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--lx-space-2);
+  min-inline-size: 0;
+}
+
+.pinRight .label {
+  flex-direction: row-reverse;
+}
+
+.name {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mark {
+  flex: none;
+  color: var(--lx-text-faint);
+  white-space: nowrap;
+}
+
+/* "→ GovernedVault" and "stays on GovernedVault" give way before the name does. */
+.markShrink {
+  flex: 0 100 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lock {
+  flex: none;
+  color: var(--lx-text-muted);
+}
+
+/* Owner by default: a dot before the hex. */
+.dot {
+  flex: none;
+  inline-size: var(--lx-space-1);
+  block-size: var(--lx-space-1);
+  border-radius: 50%;
+  background: var(--lx-accent);
+  forced-color-adjust: none;
+}
+
+/* Routed here (a seam this facet serves too): filled accent, with a short accent stub. */
+.here .node {
+  border-color: var(--lx-accent);
+  background: var(--lx-accent);
+}
+
+.here .tick {
+  border-block-start: var(--card-mark) solid var(--lx-accent);
+}
+
+/* Not in the diamond: hollow, grey, struck. */
+.excluded .name {
+  color: var(--lx-text-faint);
+  text-decoration: line-through;
+}
+
+.excluded .tick {
+  border-block-start-style: dashed;
+  border-block-start-color: var(--lx-text-faint);
+}
+
+.excluded .node,
+.elsewhere .node,
+.seam:not(.here) .node {
+  border-color: var(--lx-text-faint);
+}
+
+/* Served by another facet, or a seam that stays elsewhere: hollow and receded, with who serves it. */
+.elsewhere .name,
+.seam:not(.here) .name {
+  color: var(--lx-text-muted);
+}
+
+/* Contested: hatched (the row carries hatchedClass), the name and hex in the accent, a dotted groove. */
+.contested .name,
+.contested .mark {
+  color: var(--lx-accent);
+  font-weight: 600;
+}
+
+.contested .tick {
+  border-block-start: var(--card-heavy) dotted var(--lx-accent);
+}
+
+.contested .node {
+  border-color: var(--lx-accent);
+  background: var(--lx-accent);
+}
+
+.more {
+  flex: none;
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: var(--lx-row-height);
+  margin: 0;
+  padding: 0 var(--lx-space-3);
+  border: 0;
+  background: transparent;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+  text-align: start;
+  cursor: pointer;
+}
+
+.moreRight {
+  text-align: end;
+}
+
+.more:hover {
+  color: var(--lx-text);
+}
+
+/* Compact (below 40% zoom): the header, then one tick per export. */
+.strip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--lx-space-1) / 2);
+  block-size: var(--lx-row-height);
+  padding-inline: var(--lx-space-3);
+  overflow: hidden;
+}
+
+.stripRight {
+  flex-direction: row-reverse;
+}
+
+.stripTick {
+  flex: none;
+  box-sizing: border-box;
+  inline-size: calc(var(--lx-space-1) * 0.75);
+  block-size: var(--lx-space-3);
+  forced-color-adjust: none;
+}
+
+.stripHere {
+  background: var(--lx-accent);
+}
+
+.stripAway {
+  border: var(--card-hair) solid var(--lx-text-faint);
+}
+
+.stripContested {
+  border: var(--card-hair) solid var(--lx-accent);
+  background: var(--lx-hatch);
+}
+
+/* Handles are anchors only: the row draws the pin. */
+.card .handle {
+  inline-size: 1px;
+  block-size: 1px;
+  min-inline-size: 0;
+  min-block-size: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Corner furniture. */
+.screw,
+.corner {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  forced-color-adjust: none;
+}
+
+.screw {
+  display: none;
+  inline-size: calc(var(--lx-space-1) + 1px);
+  block-size: calc(var(--lx-space-1) + 1px);
+  border: var(--card-hair) solid var(--lx-text-faint);
+  border-radius: 50%;
+}
+
+.selected .screw {
+  border-color: var(--lx-accent);
+}
+
+.screw.topLeft { inset-block-start: var(--lx-space-1); inset-inline-start: var(--lx-space-1); }
+.screw.topRight { inset-block-start: var(--lx-space-1); inset-inline-end: var(--lx-space-1); }
+.screw.bottomLeft { inset-block-end: var(--lx-space-1); inset-inline-start: var(--lx-space-1); }
+.screw.bottomRight { inset-block-end: var(--lx-space-1); inset-inline-end: var(--lx-space-1); }
+
+.corner {
+  inline-size: calc(var(--lx-space-2) + 1px);
+  block-size: calc(var(--lx-space-2) + 1px);
+  border: 0 solid var(--lx-accent);
+}
+
+.corner.topLeft {
+  inset-block-start: calc(-1 * var(--lx-space-1));
+  inset-inline-start: calc(-1 * var(--lx-space-1));
+  border-block-start-width: var(--card-mark);
+  border-inline-start-width: var(--card-mark);
+}
+
+.corner.topRight {
+  inset-block-start: calc(-1 * var(--lx-space-1));
+  inset-inline-end: calc(-1 * var(--lx-space-1));
+  border-block-start-width: var(--card-mark);
+  border-inline-end-width: var(--card-mark);
+}
+
+.corner.bottomLeft {
+  inset-block-end: calc(-1 * var(--lx-space-1));
+  inset-inline-start: calc(-1 * var(--lx-space-1));
+  border-block-end-width: var(--card-mark);
+  border-inline-start-width: var(--card-mark);
+}
+
+.corner.bottomRight {
+  inset-block-end: calc(-1 * var(--lx-space-1));
+  inset-inline-end: calc(-1 * var(--lx-space-1));
+  border-block-end-width: var(--card-mark);
+  border-inline-end-width: var(--card-mark);
+}
+
+/* Shop: an engraved faceplate with four screws, uppercase labels and round jacks instead of square pins. */
+:global(:root[data-theme="shop"]) .screw {
+  display: block;
+}
+
+:global(:root[data-theme="shop"]) .corner {
+  display: none;
+}
+
+:global(:root[data-theme="shop"]) .title {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+}
+
+:global(:root[data-theme="shop"]) .pin .name {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+}
+
+:global(:root[data-theme="shop"]) .node {
+  border-radius: 50%;
+}

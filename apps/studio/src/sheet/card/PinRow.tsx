@@ -1,0 +1,76 @@
+import { memo, useId, type MouseEvent, type ReactNode } from "react";
+import { runCommand } from "@/contracts";
+import { cx, hatchedClass, Icon, ReasonTooltip } from "@/ui";
+import type { PinView } from "./card-model";
+import styles from "./FacetCard.module.css";
+
+export type PinRowProps = {
+  pin: PinView;
+  /** The session's read-only reason: every pin is disabled with it. */
+  readOnly: string | null;
+  side: "left" | "right";
+};
+
+/** What the tooltip says a click does (Flow 6), with the signature as code. */
+function tooltipContent(pin: PinView): ReactNode {
+  return (
+    <>
+      {pin.tooltip.code ? <code>{pin.tooltip.code}</code> : null}
+      {pin.tooltip.text}
+    </>
+  );
+}
+
+/**
+ * One selector row (IR L104): tick, node, name, and the hex or who serves it. A click or Space does what the
+ * tooltip says through the command registry; it never changes the selection (IR L47). A seam offers no route,
+ * so its row is disabled with the seam's reason. Rows are reached by S4e's roving focus (`data-card-row`).
+ */
+export const PinRow = memo(function PinRow({ pin, readOnly, side }: PinRowProps) {
+  const describedBy = useId();
+  const reason = pin.action === null ? pin.tooltip.text : readOnly;
+  const run = (event: MouseEvent) => {
+    event.stopPropagation();
+    if (pin.action) void runCommand(pin.action, "button");
+  };
+  const row = (
+    <button
+      type="button"
+      tabIndex={-1}
+      className={cx(
+        styles.pin, styles[pin.state], pin.here && styles.here, side === "right" && styles.pinRight,
+        pin.state === "contested" && hatchedClass, "nodrag", "nopan",
+      )}
+      data-card-row=""
+      data-selector={pin.selector}
+      data-state={pin.state}
+      aria-label={pin.label}
+      aria-describedby={pin.action === null ? undefined : describedBy}
+      onClick={run}
+    >
+      <span className={styles.tick} aria-hidden="true">
+        <span className={styles.node} />
+      </span>
+      <span className={styles.label} aria-hidden="true">
+        <span className={styles.name}>{pin.name}</span>
+        {pin.state === "seam" ? <Icon name="lock" size="small" className={styles.lock} /> : null}
+        {pin.state === "default" ? <span className={styles.dot} /> : null}
+        <span className={cx(styles.mark, pin.mark !== pin.selector && styles.markShrink)}>{pin.mark}</span>
+      </span>
+      {pin.action === null ? null : (
+        <span id={describedBy} hidden>
+          {pin.tooltip.code ? `${pin.tooltip.code}${pin.tooltip.text}` : pin.tooltip.text}
+        </span>
+      )}
+    </button>
+  );
+  return (
+    <ReasonTooltip
+      reason={reason}
+      content={pin.action === null ? undefined : tooltipContent(pin)}
+      side={side === "right" ? "right" : "left"}
+    >
+      {row}
+    </ReasonTooltip>
+  );
+});
