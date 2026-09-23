@@ -7,7 +7,7 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { openDB } from "idb";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
-  createProject, doc, getCatalogStatus, listDeployments, loadViewport, openProject, putDeployment, saveStatus,
+  createProject, deleteDeployment, doc, getCatalogStatus, listDeployments, loadViewport, openProject, putDeployment, saveStatus,
   saveViewport, setCatalogStatus, subscribeDeployments, type SaveStatus,
 } from "@/contracts";
 import { isUnpinned, UNPINNED_HASH } from "@/state/document-store";
@@ -650,6 +650,82 @@ describe("boot", () => {
     expect(await booting).toBeNull();
     expect(doc.get().id).not.toBe(a.id);
   });
+
+  /** A wallet that reconnects on load: the prediction `state/prediction.ts` records, and nothing else. */
+  function recordPrediction(): void {
+    doc.record("Recorded the predicted address", (p) => ({
+      project: { ...p, predicted: [...p.predicted, { chainId: 11155111, address: address(3) }] }, changed: true,
+      summary: "Recorded the predicted address",
+    }));
+  }
+
+  async function storedIds(store: Persistence): Promise<string[]> {
+    return (await store.listProjects()).map((p) => p.id);
+  }
+
+  test.each([
+    ["a recorded prediction", recordPrediction],
+    ["the catalog pin", (loadCatalog: () => Catalog) => void loadCatalog()],
+  ])("%s 750 ms before storage answers leaves no stray Untitled project", async (_, change) => {
+    const earlier = testPersistence();
+    const a = await created("Alpha");
+    await earlier.close();
+
+    const loadCatalog = bootUntitled();
+    const tab = testPersistence({ dbName: earlier.dbName, start: false });
+    const storage = slowStorage(tab);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const booting = bootPersistence();
+    await storage.asked;
+    await until(() => editLockState().state === "held", "the boot document's lock");
+    const before = doc.get();
+    change(loadCatalog);
+    await until(() => doc.get() !== before, "the change");
+    expect(saveStatus()).toEqual({ state: "saved", text: "Saved" });
+    // Autosave's quiet period ends while storage is still being read.
+    vi.advanceTimersByTime(750);
+    await tab.flush();
+    expect(await storedIds(tab)).toEqual([a.id]);
+
+    storage.answer();
+    expect(await booting).toMatchObject({ ok: true, value: { id: a.id, name: "Alpha" } });
+    await tab.flush();
+    expect(await storedIds(tab)).toEqual([a.id]);
+  });
+
+  test("a first visit stores the untitled document once the visitor edits it, not for a prediction", async () => {
+    doc.load(makeProject({ id: "untitled", name: "Untitled", recipe }));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const store = testPersistence();
+    await until(() => editLockState().state === "held", "the untitled document's lock");
+    recordPrediction();
+    vi.advanceTimersByTime(750);
+    await store.flush();
+    expect(await storedIds(store)).toEqual([]);
+    expect(saveStatus()).toEqual({ state: "saved", text: "Saved" });
+
+    rename("My own");
+    expect(saveStatus()).toEqual({ state: "saving", text: "Saving…" });
+    const saved = nextStatus(store, "saved");
+    vi.advanceTimersByTime(750);
+    await saved;
+    const stored = await store.listProjects();
+    expect(stored.map((p) => p.name)).toEqual(["My own"]);
+    // The prediction recorded before the edit is kept with it.
+    expect(stored[0]?.project.predicted).toEqual([{ chainId: 11155111, address: address(3) }]);
+  });
+
+  test("an untitled document with only a prediction isn't written when another project replaces it", async () => {
+    doc.load(makeProject({ id: "untitled", name: "Untitled", recipe }));
+    const store = testPersistence();
+    await until(() => editLockState().state === "held", "the untitled document's lock");
+    recordPrediction();
+    const linked = makeProject({ id: "linked", name: "GovernedVault (shared)", recipe });
+    doc.load(linked);
+    await until(() => JSON.stringify(editLockState()) === JSON.stringify({ state: "held", projectId: "linked" }), "the new project's lock");
+    await store.flush();
+    expect(await storedIds(store)).toEqual(["linked"]);
+  });
 });
 
 describe("viewports and storage", () => {
@@ -1163,5 +1239,70 @@ describe("edge cases from the last review", () => {
     at("#/settings");
     expect(await bootPersistence()).toMatchObject({ ok: true, value: { id: alpha.id, name: "Alpha" } });
     expect(doc.get()).toMatchObject({ id: alpha.id, name: "Alpha" });
+  });
+});
+
+describe("deleting a deployment record (Discard proposal, spec L580)", () => {
+  test("the contracts' deleteDeployment deletes the record instead of marking it failed, and both tabs hear it", async () => {
+    const first = testPersistence();
+    const project = await created("Vault");
+    const { tab: second } = await otherTab(first, project);
+    const proposed = deployment(project.id, 7, { status: "proposed" });
+    const kept = deployment(project.id, 8);
+    const heardThere: string[] = [];
+    onCleanup(second.deployments.subscribe((id) => heardThere.push(id)));
+    await putDeployment(proposed);
+    await putDeployment(kept);
+    await until(() => heardThere.length === 2, "the other tab to hear both writes");
+    heardThere.length = 0;
+
+    const heardHere: string[] = [];
+    onCleanup(subscribeDeployments((id) => heardHere.push(id)));
+    // Whatever case the address arrives in.
+    await deleteDeployment({ ...proposed, address: proposed.address.toLowerCase() as `0x${string}` });
+
+    expect(await listDeployments(project.id)).toEqual([kept]);
+    expect(await second.deployments.listDeployments(project.id)).toEqual([kept]);
+    expect(heardHere).toEqual([project.id]);
+    await until(() => heardThere.length > 0, "the other tab to hear the delete");
+    expect(heardThere).toEqual([project.id]);
+  });
+
+  test("a record that isn't stored: nothing changes and nobody is told", async () => {
+    testPersistence();
+    const project = await created();
+    const kept = deployment(project.id, 8);
+    await putDeployment(kept);
+    const heard: string[] = [];
+    onCleanup(subscribeDeployments((id) => heard.push(id)));
+    await deleteDeployment(deployment(project.id, 9));
+    expect(await listDeployments(project.id)).toEqual([kept]);
+    expect(heard).toEqual([]);
+  });
+
+  test("after a newer Studio upgraded the database, a record is still deleted", async () => {
+    const store = testPersistence();
+    const project = await created();
+    const proposed = deployment(project.id, 7, { status: "proposed" });
+    await putDeployment(proposed);
+    const upgraded = await openDB(store.dbName, 2);
+    onCleanup(() => upgraded.close());
+    await until(() => bufferedServices().banners.has("persist.updated"), "the reload banner");
+    await deleteDeployment(proposed);
+    expect(await upgraded.getAll("deployments")).toEqual([]);
+  });
+
+  test("after an upgrade that dropped the deployments store, a record isn't deleted and it says why", async () => {
+    const store = testPersistence();
+    const project = await created();
+    const upgraded = await openDB(store.dbName, 2, {
+      upgrade(db) {
+        db.deleteObjectStore("deployments");
+      },
+    });
+    onCleanup(() => upgraded.close());
+    await until(() => bufferedServices().banners.has("persist.updated"), "the reload banner");
+    const error = await deleteDeployment(deployment(project.id, 9)).then(() => null, (e: Error) => e.message);
+    expect(error).toBe("A new version of Studio is ready. Reload to delete deployment records. This deployment record wasn't deleted.");
   });
 });

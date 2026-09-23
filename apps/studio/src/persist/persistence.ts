@@ -8,7 +8,7 @@
  * per test and two to play two tabs. Nothing opens until first used.
  */
 import {
-  exportProjectFile, type Deployment, type ExportFile, type Project, type Recipe, type Result,
+  exportProjectFile, type Address, type Deployment, type ExportFile, type Project, type Recipe, type Result,
 } from "@lattice-studio/core";
 import { openDB } from "idb";
 import {
@@ -21,6 +21,7 @@ import { DB_NAME, isQuotaError, META, openStudioDb, type StudioDb, type StudioSc
 import { createEditLock, type EditLockState } from "./lock";
 import * as records from "./records";
 import type { ClearDataCounts, ProjectSummary, RecordCounts, Restored, StoredEntry, TrashSummary } from "./records";
+import { untouched } from "./untouched";
 
 /** The document store as persistence uses it (`doc` from the contracts; a stand-in for a second test tab). */
 export type DocPort = {
@@ -73,15 +74,22 @@ export type ExplicitSave = {
 
 export type StorageInfo = { usage: number | null; quota: number | null; persisted: boolean | null };
 
+/** Deployment records, with the delete the contracts leave optional (Discard proposal, spec L580). */
+export type PersistedDeployments = DeploymentsService & {
+  /** Removes the record stored under `[chainId, address]` (any case) and tells subscribers; none there: nothing. */
+  deleteDeployment(chainId: number, address: Address): Promise<void>;
+};
+
 export type Persistence = {
   readonly dbName: string;
   projects: ProjectsService;
-  deployments: DeploymentsService;
+  deployments: PersistedDeployments;
   /**
    * Follows the document: autosave, the page's hide events and the other tabs. Idempotent. When nothing was
    * opened through this instance yet, the document (never stored: the boot's untitled project) gets its own id,
-   * so it can't overwrite a stored project or share a lock with another fresh tab. Returns the document's id
-   * afterwards.
+   * so it can't overwrite a stored project or share a lock with another fresh tab. That document isn't stored
+   * until it has edits of its own: a recorded prediction or the catalog pin alone never makes it a project.
+   * Returns the document's id afterwards.
    */
   start(): string;
   /** The id of the project the document shows now. */
@@ -92,9 +100,8 @@ export type Persistence = {
   flush(): Promise<void>;
   /**
    * Opens the project last opened in this browser (else the last saved); null when there's none, or when
-   * `proceed` says no once it's known which (the document changed meanwhile). When `proceed` says yes, the
-   * never-stored document it vouched for (the boot's, with a recorded prediction at most) is left unsaved, so
-   * it doesn't become a stray project.
+   * `proceed` says no once it's known which (the document changed meanwhile). The boot's document, left
+   * without edits of its own, stays unsaved (see `start`), so it doesn't become a stray project.
    */
   openLastProject(proceed?: () => boolean): Promise<Result<Project, string> | null>;
   editLock(): EditLockState;
@@ -304,7 +311,8 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
 
   /** The document holds changes to the open project that aren't stored. */
   function unsaved(): boolean {
-    return doc.get().id === openId && doc.get() !== persisted;
+    const project = doc.get();
+    return project.id === openId && project !== persisted && ownEdits(project);
   }
 
   function refreshStatus(): void {
@@ -332,6 +340,11 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   let lastWrite: Promise<void> = Promise.resolve();
   /** Set while this instance loads the document itself, so the load isn't broadcast as an edit. */
   let quiet = 0;
+  /**
+   * The document `start()` gave its own id (the boot's untitled project), while it's open and not stored: it's
+   * saved only once it has edits of its own. Null once another project opens.
+   */
+  let boot: Project | null = null;
   /** Set when this tab refused a handover because its saves failed; cleared by the next successful save. */
   let holdingBack: string | null = null;
   /** The lock claim in flight for the open project; a save waits for it to know whether it may write. */
@@ -356,10 +369,18 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     return state.state === "held" && state.projectId === id;
   };
 
+  /**
+   * Whether `project` holds anything worth storing. The boot's never-stored document doesn't until the visitor
+   * edits it: a wallet that reconnects on load records a prediction, and the catalog pins it, within the 750 ms
+   * the boot may still spend reading storage (spec L401).
+   */
+  const ownEdits = (project: Project) =>
+    boot === null || stored || project.id !== boot.id || !untouched(boot, project);
+
   const dirty = () => {
     const project = doc.get();
     return openId !== null && detached === null && !updated && project.id === openId
-      && project !== persisted && project !== submitted;
+      && project !== persisted && project !== submitted && ownEdits(project);
   };
 
   function detach(reason: string): void {
@@ -508,12 +529,13 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     clearTimer();
     let before: Promise<unknown> = Promise.resolve();
     if (openId !== null && previous.id === openId && detached === null && !updated
-      && previous !== persisted && previous !== submitted && holds(openId)) {
+      && previous !== persisted && previous !== submitted && ownEdits(previous) && holds(openId)) {
       const mustExist = stored;
       const views = takeViewports();
       before = track(handle ? write(handle, previous, mustExist, views) : db().then((c) => write(c, previous, mustExist, views)));
     }
     openId = project.id;
+    boot = null;
     persisted = null;
     stored = false;
     detached = null;
@@ -614,28 +636,35 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   };
 
   /**
-   * After a newer Studio closed the database, a record still gets written: on a connection at whatever version
-   * the database has now. Never creates a database (it was deleted) or writes where there's no deployments store.
+   * After a newer Studio closed the database, records are still written and deleted: on a connection at whatever
+   * version the database has now. Null when the database is gone (deleted); never creates one.
    */
-  async function putAfterUpdate(deployment: Deployment): Promise<void> {
-    const unsaved = "This deployment record wasn't saved.";
-    const deleted = new Error(`${STORAGE_DELETED} ${unsaved}`);
-    if (upgradedTo === null) throw deleted;
+  async function connectionAfterUpdate(): Promise<StudioDb | null> {
+    if (upgradedTo === null) return null;
     // A fast path where the browser lists its databases (Firefox before 126 doesn't).
     const listed = typeof indexedDB.databases === "function" ? await indexedDB.databases() : null;
-    if (listed && !listed.some((info) => info.name === dbName)) throw deleted;
+    if (listed && !listed.some((info) => info.name === dbName)) return null;
     // Opening with no version creates a missing database at version 1: abort that creation instead.
     let missing = false;
-    const connection = await openDB<StudioSchema>(dbName, undefined, {
-      // With no version asked for, only a missing database needs an upgrade.
-      upgrade(_db, _oldVersion, _newVersion, transaction) {
-        missing = true;
-        transaction.done.catch(() => {});
-        transaction.abort();
-      },
-    }).catch((error: unknown) => {
-      throw missing ? deleted : error;
-    });
+    try {
+      return await openDB<StudioSchema>(dbName, undefined, {
+        // With no version asked for, only a missing database needs an upgrade.
+        upgrade(_db, _oldVersion, _newVersion, transaction) {
+          missing = true;
+          transaction.done.catch(() => {});
+          transaction.abort();
+        },
+      });
+    } catch (error) {
+      if (missing) return null;
+      throw error;
+    }
+  }
+
+  async function putAfterUpdate(deployment: Deployment): Promise<void> {
+    const unsaved = "This deployment record wasn't saved.";
+    const connection = await connectionAfterUpdate();
+    if (!connection) throw new Error(`${STORAGE_DELETED} ${unsaved}`);
     try {
       if (!connection.objectStoreNames.contains("deployments")) {
         throw new Error(`${UPDATED_TEXT}. Reload to save deployment records. ${unsaved}`);
@@ -646,7 +675,21 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     }
   }
 
-  const deployments: DeploymentsService = {
+  /** Deletes a record after a newer Studio closed the database. A database deleted since holds none. */
+  async function deleteAfterUpdate(chainId: number, address: Address): Promise<Deployment | undefined> {
+    const connection = await connectionAfterUpdate();
+    if (!connection) return undefined;
+    try {
+      if (!connection.objectStoreNames.contains("deployments")) {
+        throw new Error(`${UPDATED_TEXT}. Reload to delete deployment records. This deployment record wasn't deleted.`);
+      }
+      return await records.deleteDeployment(connection, chainId, address);
+    } finally {
+      connection.close();
+    }
+  }
+
+  const deployments: PersistedDeployments = {
     async listDeployments(projectId) {
       return records.listDeployments(await db(), projectId);
     },
@@ -654,6 +697,12 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       if (updated) await putAfterUpdate(deployment);
       else await records.putDeployment(await db(), deployment);
       emitDeployments(deployment.projectId);
+    },
+    async deleteDeployment(chainId, address) {
+      const gone = updated
+        ? await deleteAfterUpdate(chainId, address)
+        : await records.deleteDeployment(await db(), chainId, address);
+      if (gone) emitDeployments(gone.projectId);
     },
     subscribe(listener) {
       deploymentListeners.add(listener);
@@ -714,6 +763,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   async function open(project: Project, save: boolean): Promise<void> {
     clearTimer();
     openId = project.id;
+    boot = null;
     persisted = save ? null : project;
     stored = !save;
     detached = null;
@@ -798,6 +848,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       if (openId !== null) return doc.get().id;
       const fresh: Project = { ...doc.get(), id: newId() };
       openId = fresh.id;
+      boot = fresh;
       persisted = fresh;
       stored = false;
       loadQuietly(fresh);
@@ -815,11 +866,6 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
           ? last
           : (await records.listProjects(connection, unreadable))[0]?.id;
         if (id === undefined || (proceed && !proceed())) return null;
-        const current = doc.get();
-        if (proceed && current.id === openId && !stored && detached === null) {
-          clearTimer();
-          persisted = current;
-        }
         return await projects.openProject(id);
       } catch (error) {
         return { ok: false, error: message(error) };
