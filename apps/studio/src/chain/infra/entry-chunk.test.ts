@@ -15,8 +15,11 @@ import { appDir } from "../../../local-env";
 const WALLET_MARKERS = ["@wagmi/core@", "eip6963:requestProvider", "eth_requestAccounts", "wallet_switchEthereumChain", "wallet_addEthereumChain"];
 /** WalletConnect's SDK: its relay and its modal. */
 const WALLETCONNECT_MARKERS = ["relay.walletconnect", "@walletconnect/", "w3m-modal"];
-/** The probes' own code: the codehash program and the Multicall3 codehash. */
-const PROBE_MARKERS = ["610025803803809160003960005b", "d5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891"];
+/**
+ * The probes' own code: the codehash program. (The Multicall3 codehash is core's constant now, and core ships in
+ * the entry chunk, so it's no marker of the chain module.)
+ */
+const PROBE_MARKERS = ["610025803803809160003960005b"];
 
 let out = "";
 let firstLoad = "";

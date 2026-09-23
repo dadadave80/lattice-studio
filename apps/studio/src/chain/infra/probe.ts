@@ -12,7 +12,7 @@
  * - `eth_simulateV1` support, the per-transaction gas cap, and the code at the addresses Studio asked about.
  */
 import type { Address, Catalog, ChainState, Hex } from "@lattice-studio/core";
-import { ARACHNID_PROXY, CREATEX, MULTICALL3, packVersion, registryNameHash, toChecksum } from "@lattice-studio/core";
+import { ARACHNID_PROXY, CREATEX, MULTICALL3, MULTICALL3_CODEHASH, packVersion, registryNameHash, toChecksum } from "@lattice-studio/core";
 import {
   BaseError, concat, ContractFunctionRevertedError, HttpRequestError, keccak256, LimitExceededRpcError, pad, parseAbi,
   TimeoutError,
@@ -23,8 +23,8 @@ import type { ChainClient } from "./clients";
 /** CreateX's runtime codehash (NET-01, spec L335): C6's constant. */
 export { CREATEX_CODEHASH } from "@lattice-studio/core";
 
-/** Multicall3's canonical runtime codehash at 0xcA11bde05977b3631167028862bE2a173976CA11. */
-export const MULTICALL3_CODEHASH: Hex = "0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891";
+/** Multicall3's canonical runtime codehash at 0xcA11bde05977b3631167028862bE2a173976CA11: core's constant. */
+export { MULTICALL3_CODEHASH };
 
 /** `EXTCODEHASH` of an account that exists but has no code: keccak256 of empty bytes. */
 export const EMPTY_CODEHASH: Hex = "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470";
