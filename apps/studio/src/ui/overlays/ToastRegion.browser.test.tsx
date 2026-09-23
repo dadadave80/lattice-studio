@@ -78,6 +78,54 @@ describe("ToastRegion", () => {
     await expect.element(error).not.toBeInTheDocument();
   });
 
+  test("the viewport is the toasts F6 region, named by the region", async () => {
+    await render();
+    toasts.add({ text: "Link copied" });
+    await expect.element(page.getByText("Link copied")).toBeVisible();
+    const viewport = document.querySelector<HTMLElement>('[data-region="toasts"]');
+    expect(viewport).not.toBeNull();
+    expect(viewport?.contains(page.getByText("Link copied").element())).toBe(true);
+    await expect.element(page.getByRole("region", { name: "Notifications" })).toBeInTheDocument();
+    expect(viewport?.tabIndex).toBe(-1);
+  });
+
+  test("a new toast waits while an error shows, and shows once the error is closed", async () => {
+    const clock = await render();
+    toasts.add({ text: "Couldn't write the file", kind: "error" });
+    const error = page.getByText("Couldn't write the file");
+    await expect.element(error).toBeVisible();
+    toasts.add({ text: "Link copied" });
+    toasts.add({ text: "File saved" });
+    clock.advance(30_000);
+    await expect.element(error).toBeVisible();
+    expect(document.body.textContent).not.toContain("Link copied");
+    expect(document.body.textContent).not.toContain("File saved");
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect.element(error).not.toBeInTheDocument();
+    // What waited shows now, in order (one at a time), and times out from when it shows.
+    const saved = page.getByText("File saved");
+    await expect.element(saved).toBeVisible();
+    clock.advance(5_900);
+    await expect.element(saved).toBeVisible();
+    clock.advance(200);
+    await expect.element(saved).not.toBeInTheDocument();
+  });
+
+  test("a second error waits for the first", async () => {
+    await render();
+    toasts.add({ text: "Couldn't write the file", kind: "error" });
+    toasts.add({ text: "Couldn't reach the RPC", kind: "error" });
+    toasts.add({ text: "Link copied" });
+    await expect.element(page.getByText("Couldn't write the file")).toBeVisible();
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect.element(page.getByText("Couldn't write the file")).not.toBeInTheDocument();
+    const second = page.getByRole("dialog", { name: "Couldn't reach the RPC" });
+    await expect.element(second).toBeVisible();
+    expect(document.body.textContent).not.toContain("Link copied");
+    await second.getByRole("button", { name: "Close" }).click();
+    await expect.element(page.getByText("Link copied")).toBeVisible();
+  });
+
   test("one at a time: a new toast replaces the one showing", async () => {
     await render();
     toasts.add({ text: "Link copied" });

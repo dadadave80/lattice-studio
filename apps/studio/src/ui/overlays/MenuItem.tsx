@@ -4,16 +4,15 @@ import type { KeySpec } from "@/contracts";
 import { Icon } from "../icons/Icon";
 import type { IconName } from "../icons/icon-paths";
 import { ShortcutChip } from "../keys/ShortcutChip";
-import { ariaKeyShortcuts } from "../keys/key-labels";
+import { useAriaKeyShortcuts } from "../keys/use-aria-key-shortcuts";
 import { cx } from "../shared/cx";
-import { usePlatform } from "../shared/platform";
 import styles from "./Menu.module.css";
 
 export type MenuItemProps = {
   /** What the item does, in sentence case ("Move to…", "Flip pins"). */
   label: string;
   onSelect: () => void;
-  /** Keys shown at the row's end and set as `aria-keyshortcuts`, per platform. */
+  /** Keys shown at the row's end and set as `aria-keyshortcuts`, per platform and the single-key setting. */
   shortcut?: KeySpec | readonly KeySpec[];
   icon?: IconName;
   /**
@@ -28,8 +27,7 @@ export type MenuItemProps = {
 /** One action in a `Menu` or `ContextMenu`. */
 export function MenuItem({ label, onSelect, shortcut, icon, disabledReason, keepOpen = false }: MenuItemProps) {
   const id = useId();
-  const platform = usePlatform();
-  const keyshortcuts = ariaKeyShortcuts(shortcut, platform);
+  const keyshortcuts = useAriaKeyShortcuts(shortcut);
   const labelId = `${id}-label`;
   const reasonId = `${id}-reason`;
   const disabled = Boolean(disabledReason);
@@ -44,7 +42,7 @@ export function MenuItem({ label, onSelect, shortcut, icon, disabledReason, keep
       }}
       aria-labelledby={labelId}
       {...(disabled ? { "aria-describedby": reasonId } : {})}
-      {...(keyshortcuts ? { "aria-keyshortcuts": keyshortcuts } : {})}
+      {...keyshortcuts}
     >
       {icon ? (
         <span className={styles.slot}>

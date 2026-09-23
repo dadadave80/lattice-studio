@@ -46,8 +46,8 @@ export function OverlaysGallery() {
           <MenuItem label="Copy link" onSelect={noop} shortcut="Mod+Shift+c" icon="link" />
         </Menu>
         <Menu trigger={<IconButton icon="menu" label="App menu" />} label="App menu">
-          <MenuGroup label="Canvas">
-            <MenuCheckboxItem label="Show minimap" checked={minimap} onCheckedChange={setMinimap} />
+          <MenuGroup label="Sheet">
+            <MenuCheckboxItem label="Minimap" checked={minimap} onCheckedChange={setMinimap} />
           </MenuGroup>
           <MenuSeparator />
           <MenuRadioGroup label="Theme" value={theme} onValueChange={setTheme}>

@@ -24,16 +24,11 @@
   opacity: 0;
 }
 
+/* Keyboard focus lands on the item itself; the shared `.item` draws its inset ring. Never remove it here. */
 .item {
   composes: item from "../shared/controls.module.css";
   gap: var(--lx-space-2);
   padding-block: var(--lx-space-1);
-}
-
-/* Keyboard focus lands on the item itself: the accent edge and fill show it, forced colors add an outline. */
-.item:focus-visible {
-  outline: var(--lx-stroke-heavy) solid var(--lx-border-focus);
-  outline-offset: calc(var(--lx-stroke-heavy) * -1);
 }
 
 .slot {

@@ -63,6 +63,18 @@ describe("Menu", () => {
     await expect.element(trigger()).toHaveFocus();
   });
 
+  test("a keyboard-focused item shows a solid 2 px focus ring", async () => {
+    await renderWithStudio(<ExportMenu />);
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard("{ArrowDown}");
+    const brief = item("Agent brief");
+    await expect.element(brief).toHaveFocus();
+    const style = getComputedStyle(brief.element());
+    expect(style.outlineStyle).toBe("solid");
+    expect(style.outlineWidth).toBe("2px");
+  });
+
   test("typing moves to the matching item", async () => {
     await renderWithStudio(<ExportMenu />);
     await userEvent.tab();
@@ -103,6 +115,20 @@ describe("Menu", () => {
     await userEvent.keyboard("{Enter}");
     await userEvent.keyboard("{Enter}");
     expect(onFoundry).toHaveBeenCalledTimes(2);
+  });
+
+  test("a single-key shortcut isn't announced while single-key shortcuts are off", async () => {
+    onCleanup(overridePlatform("mac"));
+    await renderWithStudio(
+      <Menu trigger={<Button>Sheet</Button>} label="Sheet">
+        <MenuItem label="Tidy layout" onSelect={() => {}} shortcut="Shift+t" />
+        <MenuItem label="Save" onSelect={() => {}} shortcut="Mod+s" />
+      </Menu>,
+      { settings: { singleKeys: false } },
+    );
+    await page.getByRole("button", { name: "Sheet" }).click();
+    expect(item("Tidy layout").element().hasAttribute("aria-keyshortcuts")).toBe(false);
+    expect(item("Save").element().getAttribute("aria-keyshortcuts")).toBe("Meta+S");
   });
 
   test("items are at least 24 px tall", async () => {
@@ -167,8 +193,8 @@ describe("Menu groups, checkbox and radio items, submenus", () => {
     const [theme, setTheme] = useState("shop");
     return (
       <Menu trigger={<Button>View</Button>} label="View">
-        <MenuGroup label="Canvas">
-          <MenuCheckboxItem label="Show minimap" checked={minimap} onCheckedChange={setMinimap} />
+        <MenuGroup label="Sheet">
+          <MenuCheckboxItem label="Minimap" checked={minimap} onCheckedChange={setMinimap} />
         </MenuGroup>
         <MenuRadioGroup label="Theme" value={theme} onValueChange={setTheme}>
           <MenuRadioItem value="shop" label="Shop" />
@@ -184,8 +210,8 @@ describe("Menu groups, checkbox and radio items, submenus", () => {
   test("checkbox and radio items toggle and keep the menu open; groups are labelled", async () => {
     await renderWithStudio(<ViewMenu />);
     await page.getByRole("button", { name: "View" }).click();
-    await expect.element(page.getByRole("group", { name: "Canvas" })).toBeVisible();
-    const minimap = page.getByRole("menuitemcheckbox", { name: "Show minimap" });
+    await expect.element(page.getByRole("group", { name: "Sheet" })).toBeVisible();
+    const minimap = page.getByRole("menuitemcheckbox", { name: "Minimap" });
     await expect.element(minimap).not.toBeChecked();
     await minimap.click();
     await expect.element(minimap).toBeChecked();

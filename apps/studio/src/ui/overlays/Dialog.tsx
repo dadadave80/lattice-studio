@@ -15,9 +15,10 @@ export type DialogProps = {
   description?: ReactNode;
   /**
    * Where focus goes on open (IR L170-L185: "The review heading", "Cancel", "File name"). A ref or a function
-   * returning the element; null falls back to the first focusable element. A heading needs `tabIndex={-1}`.
+   * returning the element; null falls back to the first focusable element. `"title"` focuses the dialog's own
+   * heading (made focusable with tabIndex -1), for a dialog that is read before it's acted on (Deploy review).
    */
-  initialFocus?: RefObject<HTMLElement | null> | (() => HTMLElement | null);
+  initialFocus?: RefObject<HTMLElement | null> | (() => HTMLElement | null) | "title";
   /**
    * True when closing loses nothing: a click on the scrim then closes it too. Esc always closes (IR L187).
    */
@@ -52,6 +53,7 @@ export function Dialog({
   children, className,
 }: DialogProps) {
   const popupRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   /** The element focused before this dialog opened: where focus returns on close. */
   const openerRef = useRef<HTMLElement | null>(null);
   /** The last element focused inside the popup: where focus returns when a dialog above this one closes. */
@@ -81,6 +83,7 @@ export function Dialog({
 
   const initial = (): HTMLElement | null | boolean => {
     if (!initialFocus) return null;
+    if (initialFocus === "title") return titleRef.current;
     return typeof initialFocus === "function" ? initialFocus() : initialFocus.current;
   };
 
@@ -113,7 +116,13 @@ export function Dialog({
             {...(top ? {} : { "aria-hidden": true })}
           >
             <header className={styles.header}>
-              <BaseDialog.Title className={styles.title}>{title}</BaseDialog.Title>
+              <BaseDialog.Title
+                ref={titleRef}
+                className={styles.title}
+                {...(initialFocus === "title" ? { tabIndex: -1 } : {})}
+              >
+                {title}
+              </BaseDialog.Title>
               {description === undefined ? null : (
                 <BaseDialog.Description className={styles.description}>{description}</BaseDialog.Description>
               )}

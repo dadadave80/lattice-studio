@@ -61,6 +61,37 @@ describe("Dialog", () => {
     await expect.element(page.getByRole("textbox", { name: "File name" })).toHaveFocus();
   });
 
+  test('initialFocus="title" focuses the heading, which stays out of the Tab order', async () => {
+    function Review() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button onClick={() => setOpen(true)}>Deploy…</Button>
+          <Dialog
+            open={open}
+            onOpenChange={setOpen}
+            title="Deploy review"
+            initialFocus="title"
+            size="wide"
+            footer={<Button variant="primary">Sign & deploy</Button>}
+          >
+            <p>3 facets, 42 selectors.</p>
+          </Dialog>
+        </>
+      );
+    }
+    await renderWithStudio(<Review />);
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    const heading = page.getByRole("heading", { name: "Deploy review" });
+    await expect.element(heading).toHaveFocus();
+    expect(heading.element().getAttribute("tabindex")).toBe("-1");
+    await userEvent.tab();
+    await expect.element(page.getByRole("button", { name: "Sign & deploy" })).toHaveFocus();
+    await userEvent.tab();
+    await expect.element(heading).not.toHaveFocus();
+  });
+
   test("traps Tab and Shift+Tab inside", async () => {
     await renderWithStudio(<Harness />);
     await openWithKeyboard();
