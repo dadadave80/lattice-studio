@@ -200,13 +200,21 @@ describe("Go to commands", () => {
   });
 
   test("a hidden region whose pane can't be shown is disabled with the pane's reason and fix", async () => {
+    const reason = "The inspector can't show right now";
+    overrideCommands([
+      command({
+        id: "pane.show",
+        title: () => "Show pane",
+        category: "Session",
+        enabled: () => ({ ok: false, reason }),
+        run: () => undefined,
+      }),
+    ]);
     await renderWithStudio(<RegionFrame hidden={["inspector"]} />);
     const ref = { id: "region.focus", args: { region: "inspector" } } as const;
     const paneShow = { id: "pane.show", args: { pane: "inspector" } };
-    expect(commandState(ref)).toEqual({
-      ok: false, reason: "Not built yet · WP-S3", fix: paneShow, title: "Go to inspector",
-    });
-    expect(await runCommand(ref, "palette")).toEqual({ ok: false, reason: "Not built yet · WP-S3", fix: paneShow });
+    expect(commandState(ref)).toEqual({ ok: false, reason, fix: paneShow, title: "Go to inspector" });
+    expect(await runCommand(ref, "palette")).toEqual({ ok: false, reason, fix: paneShow });
   });
 
   test("a hidden region whose pane can be shown is shown, then focused", async () => {
