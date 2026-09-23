@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import fc from "fast-check";
-import { keccak256, stringToHex, type Hex } from "viem";
+import { keccak256, stringToHex, toFunctionSelector, type Hex } from "viem";
 import { analyze } from "../../analysis";
 import type { Catalog } from "../../model/catalog";
 import type { Recipe } from "../../model/recipe";
@@ -84,6 +84,18 @@ describe("exportFoundry", () => {
     expect(textOf(fixture)).toBe(first);
     expect(textOf(structuredClone(fixture))).toBe(first);
     expect(JSON.stringify(fixture)).toBe(before);
+  });
+
+  test("the inlined interfaces have the selectors Lattice and CreateX use (C5c's 0x533677de and 0x00d84acb)", () => {
+    expect(toFunctionSelector("deploy((bytes32,uint64)[],(address,uint8,bytes4[])[],address,bytes,bytes32)")).toBe("0x533677de");
+    expect(toFunctionSelector("deployCreate3AndInit(bytes32,bytes,bytes,(uint256,uint256))")).toBe("0x00d84acb");
+    expect(toFunctionSelector("predict(address,bytes32)")).toBe("0x64fb6f5e");
+    const factory = textOf(fixtureProject(catalog, "ERC20"));
+    expect(factory).toContain("    function deploy(\n        RecipeEntry[] calldata entries,\n        FacetCut[] calldata customCuts,");
+    expect(factory).toContain("struct RecipeEntry {\n    bytes32 nameHash;\n    uint64 version;\n}");
+    expect(factory).toContain("struct FacetCut {\n    address facetAddress;\n    FacetCutAction action;\n    bytes4[] functionSelectors;\n}");
+    const createx = textOf(fixtureProject(catalog, "ERC20", { path: "createx" }), { proxyCreationCode: PROXY_CODE });
+    expect(createx).toContain("function deployCreate3AndInit(bytes32 salt, bytes memory initCode, bytes memory data, Values memory values)");
   });
 
   test("imports only forge-std and uses no FFI", () => {

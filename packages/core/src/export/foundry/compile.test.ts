@@ -14,7 +14,8 @@ import { encodeAbiParameters, encodeFunctionData, keccak256, parseAbi, stringToH
 import { buildSalt, createxPredict, factoryPredict } from "../../address";
 import { encodeInit } from "../../init/encode/encode";
 import { planInit } from "../../init/plan/plan";
-import type { Catalog } from "../../model/catalog";
+import type { Catalog, InitParam, InitSpec } from "../../model/catalog";
+import type { Arg, Recipe } from "../../model/recipe";
 import { toChecksum, type Address } from "../../model/hex";
 import { commentText, solidityString } from "../escape";
 import { exportFoundry } from "./foundry";
@@ -233,6 +234,69 @@ ${mocks("MockDeployShort")}
 `;
 }
 
+/**
+ * The ERC20 recipe with an invented init of every ABI shape the script writes (nested tuples, dynamic and fixed
+ * arrays, bytes, bytesN, signed and unsigned integers, booleans, hostile strings, references inside tuples and
+ * arrays) before its own steps, so the script's `abi.encodeWithSelector` must equal viem's for all of them.
+ */
+function kitchenSink(fixture: Fixture): Fixture {
+  const inner: InitParam[] = [
+    { name: "label", type: "string", doc: "" },
+    { name: "weights", type: "uint8[2]", doc: "" },
+  ];
+  const params: InitParam[] = [
+    {
+      name: "config",
+      type: "tuple",
+      doc: "",
+      components: [
+        { name: "owner", type: "address", doc: "" },
+        { name: "roots", type: "bytes32[]", doc: "" },
+        { name: "tick", type: "int24", doc: "" },
+        { name: "open", type: "bool", doc: "" },
+        { name: "blob", type: "bytes", doc: "" },
+        { name: "tiers", type: "tuple[]", doc: "", components: inner },
+      ],
+    },
+    { name: "admins", type: "address[]", doc: "" },
+    { name: "names", type: "string[]", doc: "" },
+    { name: "tag", type: "bytes4", doc: "" },
+    { name: "delta", type: "int256", doc: "" },
+    { name: "grid", type: "uint256[][]", doc: "" },
+    { name: "empty", type: "bytes", doc: "" },
+  ];
+  const fn = "init((address,bytes32[],int24,bool,bytes,(string,uint8[2])[]),address[],string[],bytes4,int256,uint256[][],bytes)";
+  const contract = "KitchenSinkInit";
+  const code = stringToHex(`fixture:${contract}:runtime`);
+  const release = { ...fixture.catalog.inits.find((spec) => spec.release)?.release, address: toChecksum("0x00000000000000000000000000000000000c0dE5"), codehash: keccak256(code) } as NonNullable<InitSpec["release"]>;
+  const spec: InitSpec = { name: contract, contract, fn, kind: "step", params, initializes: [], after: [], sameCall: [], release };
+  const catalog: Catalog = { ...fixture.catalog, inits: [...fixture.catalog.inits, spec] };
+  const args: Record<string, Arg> = {
+    config: {
+      owner: { $ref: "self" },
+      roots: [keccak256("0x01"), keccak256("0x02")],
+      tick: "-8388608",
+      open: true,
+      blob: "0xdeadbeef",
+      tiers: [
+        { label: 'gold"; } /*', weights: ["1", "255"] },
+        { label: "‮silver\n", weights: ["0", "7"] },
+      ],
+    },
+    admins: [{ $ref: "deployer" }, "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"],
+    names: ["", "café \u{1F600}", "back\\slash"],
+    tag: "0x0000abcd",
+    delta: "-57896044618658097711785492504343953926634992332820282019728792003956564819968",
+    grid: [[], ["1", "115792089237316195423570985008687907853269984665640564039457584007913129639935"]],
+    empty: "0x",
+  };
+  const init = fixture.project.recipe.init;
+  const steps = init.kind === "steps" ? init.steps : [];
+  const recipe: Recipe = { ...fixture.project.recipe, init: { kind: "steps", steps: [{ spec: contract, args }, ...steps] } };
+  const analysis = { ...analyze(recipe, catalog, { known: [], unconfirmed: [] }), problems: [] };
+  return { catalog, project: { ...fixture.project, recipe }, analysis };
+}
+
 /** A project name and vault name that try to break out of every string and comment they land in. */
 const HOSTILE_NAME = 'Vault"; } contract Evil { /* */ \n// ‮evil⁦ \\" café \u{1F600}';
 
@@ -328,29 +392,29 @@ describe.skipIf(!ENABLED)("generated scripts under forge", () => {
       `[profile.default]\nsrc = "script"\ntest = "test"\nout = "out"\nlibs = ["lib"]\nsolc_version = "${catalog.toolchain.solc}"\noffline = true\nremappings = ["forge-std/=lib/forge-std/src/"]\n`,
     );
     const creation = proxyCode();
-    // Every v1 recipe on both paths, plus one with a hostile project name and string argument.
-    const runs = [
+    // Every v1 recipe on both paths, plus a hostile project and vault name, plus an init with every ABI shape.
+    const runs: { name: string; path: "factory" | "createx"; title: string; variant?: "hostile" | "sink" }[] = [
       ...v1Recipes(catalog).flatMap((name) => (["factory", "createx"] as const).map((path) => ({ name, path, title: `${name} ${path}` }))),
-      { name: "GovernedVault", path: "factory" as const, title: HOSTILE_NAME },
+      { name: "GovernedVault", path: "factory", title: HOSTILE_NAME, variant: "hostile" },
+      { name: "ERC20", path: "createx", title: "Kitchen sink", variant: "sink" },
     ];
-    for (const { name, path, title } of runs) {
-      {
-        const scope = path === "factory" ? "every-chain" : "this-chain";
-        const fixture = fixtureProject(catalog, name, { path, scope });
-        fixture.project.name = title;
-        if (title === HOSTILE_NAME && fixture.project.recipe.init.kind === "bundle") {
-          const p = fixture.project.recipe.init.args["p"] as Record<string, string>;
-          p["name"] = HOSTILE_NAME;
-          fixture.analysis = analyze(fixture.project.recipe, catalog, { known: [], unconfirmed: [] });
-        }
-        const out = exportFoundry({ ...fixture, studioVersion: "0.0.0-test", chainIds: CHAINS, ...(path === "createx" ? { proxyCreationCode: creation } : {}) });
-        if (!out.ok) throw new Error(`${name} ${path}: ${out.error}`);
-        const contract = out.value.filename.replace(/\.s\.sol$/, "");
-        const item: Case = { key: `${name}/${path}`, fixture, text: out.value.text, contract, path, ...(path === "createx" ? { creation } : {}) };
-        cases.push(item);
-        writeFileSync(join(dir, "script", out.value.filename), out.value.text);
-        writeFileSync(join(dir, "test", `${contract}.t.sol`), harness(item, catalog));
+    for (const { name, path, title, variant } of runs) {
+      const scope = path === "factory" ? "every-chain" : "this-chain";
+      let fixture = fixtureProject(catalog, name, { path, scope });
+      fixture.project.name = title;
+      if (variant === "hostile" && fixture.project.recipe.init.kind === "bundle") {
+        const p = fixture.project.recipe.init.args["p"] as Record<string, string>;
+        p["name"] = HOSTILE_NAME;
+        fixture.analysis = analyze(fixture.project.recipe, catalog, { known: [], unconfirmed: [] });
       }
+      if (variant === "sink") fixture = kitchenSink(fixture);
+      const out = exportFoundry({ ...fixture, studioVersion: "0.0.0-test", chainIds: CHAINS, ...(path === "createx" ? { proxyCreationCode: creation } : {}) });
+      if (!out.ok) throw new Error(`${title}: ${out.error}`);
+      const contract = out.value.filename.replace(/\.s\.sol$/, "");
+      const item: Case = { key: title, fixture, text: out.value.text, contract, path, ...(path === "createx" ? { creation } : {}) };
+      cases.push(item);
+      writeFileSync(join(dir, "script", out.value.filename), out.value.text);
+      writeFileSync(join(dir, "test", `${contract}.t.sol`), harness(item, fixture.catalog));
     }
     const hostile = [...HOSTILE, ...fc.sample(fc.string({ unit: "binary", maxLength: 24 }), { seed: 3, numRuns: 40 })];
     writeFileSync(join(dir, "test", "Escape.t.sol"), escapeContract(hostile));
@@ -375,7 +439,7 @@ describe.skipIf(!ENABLED)("generated scripts under forge", () => {
   });
 
   test("every v1 recipe's script compiles with forge-std on the pinned solc", () => {
-    expect(cases.length).toBe(v1Recipes(catalog).length * 2 + 1);
+    expect(cases.length).toBe(v1Recipes(catalog).length * 2 + 2);
     expect(build.out).not.toContain("Error");
     expect(build.code).toBe(0);
   });
