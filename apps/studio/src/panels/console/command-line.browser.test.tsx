@@ -8,7 +8,7 @@ import { onCleanup, overrideCommands, renderWithStudio } from "../../../test/har
 import { COMMAND_LABEL } from "./CommandLine";
 import { ConsolePanel } from "./ConsolePanel";
 import { logEntries } from "./log-store";
-import { captureDownloads, collisionProject, erc20Project, recordLocate, resetConsole } from "./test-support";
+import { awaitConsoleBody, captureDownloads, collisionProject, erc20Project, recordLocate, resetConsole } from "./test-support";
 
 beforeEach(() => resetConsole());
 
@@ -16,7 +16,9 @@ const input = () => page.getByRole("textbox", { name: COMMAND_LABEL });
 const texts = () => logEntries().map((e) => e.text);
 
 async function renderConsole(project = erc20Project()) {
-  return renderWithStudio(<div style={{ height: "400px", display: "flex" }}><ConsolePanel /></div>, { project });
+  const rendered = await renderWithStudio(<div style={{ height: "400px", display: "flex" }}><ConsolePanel /></div>, { project });
+  await awaitConsoleBody();
+  return rendered;
 }
 
 async function run(line: string) {

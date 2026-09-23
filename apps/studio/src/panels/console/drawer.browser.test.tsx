@@ -4,12 +4,13 @@ import { runCommand, session } from "@/contracts";
 import { bufferedServices, renderWithStudio } from "../../../test/harness";
 import { ConsolePanel } from "./ConsolePanel";
 import { PANE_SIZES } from "./drawer";
-import { erc20Project, resetConsole } from "./test-support";
+import { awaitConsoleBody, erc20Project, resetConsole } from "./test-support";
 
 beforeEach(() => resetConsole());
 
 async function renderConsole() {
   await renderWithStudio(<div style={{ height: "400px", display: "flex" }}><ConsolePanel /></div>, { project: erc20Project() });
+  await awaitConsoleBody();
 }
 
 describe("console header (IR L132, L252)", () => {

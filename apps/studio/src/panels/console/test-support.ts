@@ -5,10 +5,12 @@
 import type { Catalog, ExportFile, Hex4, Project } from "@lattice-studio/core";
 import { blankDiamond, loadTemplate } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
+import { vi } from "vitest";
 import { command, type Command } from "@/contracts";
 import { fixtureCatalog, onCleanup, overrideCommands } from "../../../test/harness";
 import { clearCommandHistory } from "./command-line";
 import { setDownloader } from "./download";
+import { loadConsoleBody } from "./load-body";
 import { resetConsoleLog } from "./log-store";
 
 /** The fixture catalog (K3), as `renderWithStudio` loads it. */
@@ -44,6 +46,20 @@ export function captureDownloads(): ExportFile[] {
   const files: ExportFile[] = [];
   onCleanup(setDownloader((file) => void files.push(file)));
   return files;
+}
+
+/**
+ * Waits for the drawer's body (its own chunk, requested once the open drawer has painted) to render: on a cold
+ * Vite cache the first request compiles the chunk, which can take seconds.
+ */
+export async function awaitConsoleBody(): Promise<void> {
+  await loadConsoleBody();
+  await vi.waitFor(
+    () => {
+      if (!document.querySelector("[role='log'][aria-label='Log']")) throw new Error("The console body hasn't rendered.");
+    },
+    { timeout: 15_000 },
+  );
 }
 
 /** An empty log and history before each test. */
