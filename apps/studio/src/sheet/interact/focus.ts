@@ -1,34 +1,16 @@
 /**
- * Keyboard focus on the sheet (spec L744, L751, L755; IR L19-L22): which card has focus, how a card takes it
- * (panned clear of the floating UI first, then focused: S9's `provideCardFocus`), and the rows inside a card,
- * where ↑ ↓ move, Space does what clicking the pin does and Esc comes back out.
+ * Keyboard focus on the sheet (spec L744, L751, L755; IR L19-L22): which card has focus, and the rows inside a
+ * card, where ↑ ↓ move, Space does what clicking the pin does and Esc comes back out. How a card takes focus is
+ * `card-focus.ts`, in the first load for S9.
  */
 import { doc, pushEscape, session } from "@/contracts";
 import { cardElement } from "@/a11y/focus";
-import { ensureVisible } from "@/sheet/canvas/sheet-view";
+import { focusCardInView } from "./card-focus";
 
 const FRAMES = 10;
 
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
-
-/**
- * How a card takes focus on the sheet (S9's `provideCardFocus`): pan it clear of everything floating over the
- * sheet, then focus React Flow's node wrapper once it's rendered (after an undo it comes back a render later).
- * A keyboard move to an off-screen card pans first, then focuses (spec L755).
- */
-export async function focusCardInView(facet: string): Promise<boolean> {
-  ensureVisible(facet);
-  for (let i = 0; i <= FRAMES; i++) {
-    const el = cardElement(facet);
-    if (el) {
-      el.focus({ preventScroll: true });
-      return document.activeElement === el;
-    }
-    await nextFrame();
-  }
-  return false;
 }
 
 /** The facet whose card holds `el` (the card itself or anything inside it). */

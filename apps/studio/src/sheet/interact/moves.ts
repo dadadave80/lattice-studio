@@ -1,9 +1,12 @@
 /**
- * Moving cards as document edits (Flow 8): a group moved by an offset, settled so it never lands on another
- * card, and what the move says in words, never pixels (spec L672, L776).
+ * Moving cards as document edits (Flow 8): a drag's frames, a nudge, a group moved by an offset and settled so it
+ * never lands on another card, and what the move says in words, never pixels (spec L672, L776).
+ *
+ * The same layout edits as core's `moveCards` and `applyLayout` (C11), written here so the sheet's runtime chunk
+ * doesn't share core's project ops with the first load (a shared module costs a chunk of its own there).
  */
 import type { EditResult, Layout, Point, Project } from "@lattice-studio/core";
-import { applyLayout, moveCards, plural } from "@lattice-studio/core";
+import { plural } from "@lattice-studio/core";
 import { layoutMetrics, type EditOp } from "@/contracts";
 import { positionInWords, readingOrder } from "@/a11y/positions";
 import { settledOffset, without } from "./geometry";
@@ -14,7 +17,7 @@ export function cardsWord(names: readonly string[]): string {
   return names.length === 1 ? (names[0] ?? "") : plural(names.length, "card");
 }
 
-/** The undo label a move of `names` gets: core's `moveCards` summary ("Moved ERC20", "Moved 3 cards"). */
+/** The undo label a move of `names` gets, as core's `moveCards` words it: "Moved ERC20", "Moved 3 cards". */
 export function moveLabel(names: readonly string[]): string {
   return `Moved ${cardsWord(names)}`;
 }
@@ -29,9 +32,24 @@ export function shifted(base: Layout, layout: Layout, names: readonly string[], 
   return out;
 }
 
+function moved(project: Project, layout: Layout, names: readonly string[]): EditResult {
+  const changed = names.filter((name) => {
+    const a = project.layout[name];
+    const b = layout[name];
+    return a !== undefined && b !== undefined && (a.x !== b.x || a.y !== b.y);
+  });
+  if (changed.length === 0) return { project, changed: false, summary: "Nothing moved." };
+  return { project: { ...project, layout }, changed: true, summary: moveLabel(changed) };
+}
+
 /** Sets `names` to where `base` had them, moved by `by`: one frame of a drag. */
 export function placeFrom(base: Layout, names: readonly string[], by: Point): EditOp {
-  return (project: Project): EditResult => applyLayout(project, shifted(base, project.layout, names, by));
+  return (project: Project): EditResult => moved(project, shifted(base, project.layout, names, by), names);
+}
+
+/** Moves `names` by `by` from where they are: a nudge (IR L23); the store merges a burst into one step. */
+export function nudged(names: readonly string[], by: Point): EditOp {
+  return (project: Project): EditResult => moved(project, shifted(project.layout, project.layout, names, by), names);
 }
 
 /**
@@ -41,7 +59,7 @@ export function placeFrom(base: Layout, names: readonly string[], by: Point): Ed
 export function moveGroup(names: readonly string[], by: Point): EditOp {
   return (project: Project): EditResult => {
     const offset = settledOffset(project.layout, currentSizes(), names, by, layoutMetrics);
-    return moveCards(project, names, offset);
+    return moved(project, shifted(project.layout, project.layout, names, offset), names);
   };
 }
 

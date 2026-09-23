@@ -5,7 +5,8 @@
  */
 import type { Point } from "@lattice-studio/core";
 import { announce, doc, log, session } from "@/contracts";
-import { activeCard, focusCardInView } from "./focus";
+import { focusCardInView } from "./card-focus";
+import { activeCard } from "./focus";
 import { cardsWord, moveGroup, moveLabel, movedWords } from "./moves";
 import { placedSelection } from "./selection";
 

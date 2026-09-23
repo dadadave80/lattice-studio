@@ -5,7 +5,7 @@
  */
 import { provideSheetInteractions, registerSheetLayer } from "@/contracts";
 import { provideCardFocus } from "@/a11y/focus";
-import { focusCardInView } from "./focus";
+import { focusCardInView } from "./card-focus";
 import { InteractionsLayer } from "./InteractionsLayer";
 import { useSheetInteractionProps } from "./use-sheet-interactions";
 

@@ -2,6 +2,8 @@ import { DropGhost } from "./DropGhost";
 import { Marquee } from "./Marquee";
 import { MoveToLayer } from "./MoveToLayer";
 import { SheetMenu } from "./SheetMenu";
+// The handlers and command runs load with the layer.
+import "./runtime-impl";
 import styles from "./interact.module.css";
 
 /**
