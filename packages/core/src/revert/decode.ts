@@ -182,10 +182,12 @@ function addressArg(values: readonly unknown[], index: number): Address | undefi
 function noCodeModule(scope: Scope, address: string): string | undefined {
   const init = scope.context.init;
   const steps = init?.steps ?? [];
-  if (init?.kind === "steps" && steps.some((step) => step.target !== undefined && sameAddress(step.target, address))) return "MultiInit";
+  const isStep = steps.some((step) => step.target !== undefined && sameAddress(step.target, address));
+  // Two or more steps go through MultiInit, which checks each step for code. One step (a direct call, contracts
+  // §3.1 init encoding ruling) or a bundle is the init target, which DiamondLib checks (DiamondLib.sol L358, L370).
+  if (isStep) return init?.kind === "steps" && steps.length >= 2 ? "MultiInit" : "Lattice";
   const multiInit = scope.catalog.inits.find((entry) => entry.contract === "MultiInit")?.release?.address;
   if (multiInit !== undefined && sameAddress(multiInit, address)) return "Lattice";
-  if (init?.kind === "bundle" && steps.some((step) => step.target !== undefined && sameAddress(step.target, address))) return "Lattice";
   if (scope.catalog.facets.some((facet) => sameAddress(facet.release.address, address))) return "Lattice";
   return undefined;
 }

@@ -304,6 +304,16 @@ describe("NET-05 address already used (spec R8)", () => {
     );
   });
 
+  test("never dropped when the prediction fails: This diamond, else the deploying account", () => {
+    const malformed: DeployContext = { ...deploy, salt: "0x1234" };
+    const chain = readyChain({ predictedHasCode: true });
+    const self = addr(0x5e1f);
+    const withRefs: AnalysisContext = { known: [], unconfirmed: [], chain, deploy: malformed, refs: { self } };
+    const fromRefs = checkNet({ recipe, catalog, routing: routingFor(recipe), ctx: withRefs });
+    expect(only(fromRefs, "NET-05").params).toEqual({ chain: "Sepolia", path: "factory", address: self });
+    expect(only(run(chain, { deploy: malformed }), "NET-05").params).toEqual({ chain: "Sepolia", path: "factory", address: deploy.from });
+  });
+
   test("CreateX path: worded for CreateX, at CreateX's prediction", () => {
     const createx: DeployContext = { ...deploy, path: "createx" };
     const p = only(run(readyChain({ predictedHasCode: true }), { deploy: createx }), "NET-05");

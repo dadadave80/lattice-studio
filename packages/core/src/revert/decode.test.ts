@@ -233,11 +233,28 @@ describe("MultiInit and bundle attribution", () => {
     expect(decoded.signature).toBe("AddressAndCalldataLengthMismatch()");
   });
 
-  test("NoBytecodeAtAddress: MultiInit for a step's address, Lattice for a facet's", () => {
-    const init = steps([["ERC20Init", erc20Target]]);
+  test("NoBytecodeAtAddress at a step of two or more: MultiInit checked it", () => {
+    const init = steps([["ERC20Init", erc20Target], ["AccessControlInit", accessTarget]]);
     const step = decodeRevert(encode("NoBytecodeAtAddress(address initAddress)", [erc20Target]), catalog, { details, init });
     expect(step).toMatchObject({ module: "MultiInit", shared: [], target: erc20Target });
     expect(step.hint).toBe("ERC20Init has no code on this chain: deploy the missing contracts first.");
+  });
+
+  test("NoBytecodeAtAddress at a single step (a direct call): DiamondLib's check, so Lattice", () => {
+    const init = steps([["ERC20Init", erc20Target]]);
+    const step = decodeRevert(encode("NoBytecodeAtAddress(address contractAddress)", [erc20Target]), catalog, { details, init });
+    expect(step).toMatchObject({ module: "Lattice", shared: [], target: erc20Target });
+    expect(step.hint).toBe("ERC20Init has no code on this chain: deploy the missing contracts first.");
+  });
+
+  test("NoBytecodeAtAddress at a bundle's target: Lattice", () => {
+    const init: DecodedInit = { kind: "bundle", steps: [{ spec: "VaultCoreInit", target: vaultTarget, fn: "init", args: {}, fromRef: {} }] };
+    const bundle = decodeRevert(encode("NoBytecodeAtAddress(address contractAddress)", [vaultTarget]), catalog, { details, init });
+    expect(bundle).toMatchObject({ module: "Lattice", shared: [], target: vaultTarget });
+  });
+
+  test("NoBytecodeAtAddress at a facet: Lattice; at an unknown address: both named", () => {
+    const init = steps([["ERC20Init", erc20Target], ["AccessControlInit", accessTarget]]);
     const facetAddress = catalog.facets[1]?.release.address ?? addr(0);
     const facet = decodeRevert(encode("NoBytecodeAtAddress(address contractAddress)", [facetAddress]), catalog, { details, init });
     expect(facet).toMatchObject({ module: "Lattice", target: facetAddress });

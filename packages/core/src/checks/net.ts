@@ -183,9 +183,12 @@ export const checkNet: Check = (input) => {
   }
 
   // NET-05: the predicted address already has code (spec R8), worded per path by narrate.
+  // The problem is never dropped. The address is Studio's own prediction, else "This diamond" as S1 resolved it.
+  // When both are missing (a salt or sender too malformed to predict from, and no refs), it falls back to the
+  // deploying account whose salt is taken. The message doesn't show the address; only a fix would use it.
   if (chain.predictedHasCode === true) {
-    const address = predictedAddress(catalog, deploy);
-    if (address) problems.push(problem("NET-05", where, { chain: name, path: deploy.path, address }, [{ id: "deploy.newSalt" }]));
+    const address = predictedAddress(catalog, deploy) ?? ctx.refs?.self ?? deploy.from;
+    problems.push(problem("NET-05", where, { chain: name, path: deploy.path, address }, [{ id: "deploy.newSalt" }]));
   }
 
   // NET-06: the estimate against the chain's per-transaction cap (spec R16): a blocker over it, a warning from 80%.
