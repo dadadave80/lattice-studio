@@ -1,12 +1,5 @@
-import type { Hex } from "@lattice-studio/core";
+import { CREATEX_CODEHASH } from "@lattice-studio/core";
 import type { ProblemDocEntry } from "./types";
-
-/**
- * C6's own pin (`packages/core/src/checks/net.ts` `CREATEX_CODEHASH`), copied rather than imported: the
- * checks module has no public subpath for it. `content.test.ts` checks this literal against that file's
- * source, so the two can't drift silently.
- */
-const CREATEX_CODEHASH: Hex = "0xbd8a7ea8cfca7b4e5f5041d7d4b17bc317c5ce42cfbc42066a00cf26b43eb53f";
 
 /** NET-01 .. NET-08 (spec L335-L342; Rules R8, R16, R21). */
 export const NET: readonly ProblemDocEntry[] = [

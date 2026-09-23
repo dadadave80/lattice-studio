@@ -1,0 +1,101 @@
+/*
+ * Keyboard shortcuts (IR L186). No board yet: built from the dialog primitive, the palette's rows (title,
+ * shortcut chip, console syntax in grey) and the small-caps group heads of the design system.
+ */
+.status {
+  display: block;
+  margin: 0;
+  margin-block-start: var(--lx-space-2);
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text-muted);
+}
+
+/* Stays rendered while empty, so screen readers hear the first count. */
+.status:empty {
+  margin: 0;
+}
+
+.note,
+.empty {
+  margin: 0;
+  margin-block-start: var(--lx-space-3);
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text-muted);
+}
+
+.group {
+  margin-block-start: var(--lx-space-4);
+}
+
+.heading {
+  margin: 0;
+  padding-block-end: var(--lx-space-1);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Title, keys, syntax on one line; the syntax wraps under the title when the dialog is narrow. */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title keys"
+    "syntax syntax";
+  align-items: baseline;
+  column-gap: var(--lx-space-3);
+  padding-block: var(--lx-space-1);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  min-block-size: var(--lx-row-height);
+}
+
+@media (min-width: 768px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 12em) auto;
+    grid-template-areas: "title syntax keys";
+  }
+}
+
+.title {
+  grid-area: title;
+  font: var(--lx-font-body);
+  letter-spacing: var(--lx-tracking-body);
+  color: var(--lx-text);
+  overflow-wrap: anywhere;
+}
+
+.keys {
+  grid-area: keys;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--lx-space-1);
+}
+
+.key {
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  border-radius: var(--lx-radius);
+}
+
+.syntax {
+  grid-area: syntax;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+  overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+  .key {
+    border-color: CanvasText;
+  }
+}

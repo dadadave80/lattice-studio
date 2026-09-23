@@ -1,0 +1,143 @@
+/*
+ * The catalog panel (spec L356, IR L76-L100). Rows are two lines (current-catalog-row.png); ghosted rows
+ * dim their text, not the row's own hover and selection states, which stay usable (a ghosted row still
+ * locates on click).
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  block-size: 100%;
+  min-block-size: 0;
+  padding: var(--lx-space-2);
+  box-sizing: border-box;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  flex: none;
+}
+
+.search {
+  flex: none;
+}
+
+.tree {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--lx-space-2);
+  padding: var(--lx-space-4) var(--lx-space-2);
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.errorText {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lx-space-1);
+  color: var(--lx-text);
+  margin: 0;
+}
+
+.placeholderRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  inline-size: 100%;
+}
+
+.placeholderRow {
+  block-size: var(--lx-space-8);
+  border-radius: var(--lx-radius);
+  background: var(--lx-raised);
+  animation: catalog-pulse 1.6s ease-in-out infinite;
+}
+
+:global([data-motion="reduce"]) .placeholderRow {
+  animation: none;
+}
+
+@keyframes catalog-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.rowContent {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--lx-space-1) / 2);
+  min-inline-size: 0;
+  flex: 1 1 auto;
+  padding-block: var(--lx-space-1);
+}
+
+.ghost {
+  color: var(--lx-text-faint);
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-2);
+  min-inline-size: 0;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.muted {
+  flex: none;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+}
+
+.badge {
+  flex: none;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+}
+
+.meta {
+  color: var(--lx-text-muted);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.namespace {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip {
+  flex: none;
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  border-radius: var(--lx-radius);
+}
+
+.verified {
+  flex: none;
+  color: var(--lx-accent);
+}
