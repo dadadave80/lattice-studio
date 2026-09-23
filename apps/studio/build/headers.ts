@@ -56,11 +56,26 @@ export function inlineAttributeProblems(html: string): string[] {
 /** The WalletConnect verify and auth frames (spec L873). */
 const FRAME_SOURCES = "https://verify.walletconnect.org https://secure.walletconnect.org";
 
+/** The local Anvil nodes an end-to-end build's page talks to (contracts §5.5). Loopback only. */
+export const E2E_CONNECT_SOURCE = "http://127.0.0.1:*";
+
+export type PolicyOptions = {
+  /** Off for the IPFS `<meta>`, which can't carry `frame-ancestors`. */
+  frameAncestors: boolean;
+  /**
+   * The end-to-end build (`csp.ts`'s `isE2EBuild`: `--mode e2e` with `VITE_STUDIO_E2E` set): `connect-src` also
+   * allows `E2E_CONNECT_SOURCE`. Default false, so every other caller gets the production policy.
+   */
+  e2e?: boolean;
+};
+
 /**
  * The policy of spec L871-L875, with the page's hashes. `frameAncestors: false` for the IPFS `<meta>`, which
- * can't carry `frame-ancestors` (browsers ignore it there).
+ * can't carry `frame-ancestors` (browsers ignore it there). In `--mode e2e` only, `connect-src` also allows the
+ * loopback Anvil nodes the end-to-end tests start (Q0).
  */
-export function contentSecurityPolicy(hashes: InlineHashes, options: { frameAncestors: boolean }): string {
+export function contentSecurityPolicy(hashes: InlineHashes, options: PolicyOptions): string {
+  const e2e = options.e2e ?? false;
   const sources = (list: string[]) => list.map((h) => ` '${h}'`).join("");
   const directives = [
     "default-src 'self'",
@@ -73,7 +88,7 @@ export function contentSecurityPolicy(hashes: InlineHashes, options: { frameAnce
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'none'",
-    "connect-src 'self' https: wss:",
+    `connect-src 'self' https: wss:${e2e ? ` ${E2E_CONNECT_SOURCE}` : ""}`,
     `frame-src ${FRAME_SOURCES}`,
   ];
   if (options.frameAncestors) directives.push("frame-ancestors 'none'");
@@ -175,7 +190,7 @@ export function metaCspOf(html: string): string | null {
 }
 
 /** Recomputes the policy from the built page; null when `sent` matches, else why not. */
-export function cspMismatch(html: string, sent: string | null, options: { frameAncestors: boolean }): string | null {
+export function cspMismatch(html: string, sent: string | null, options: PolicyOptions): string | null {
   const expected = contentSecurityPolicy(inlineHashes(html), options);
   if (sent === null) return "No Content-Security-Policy is set.";
   if (sent === expected) return null;

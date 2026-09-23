@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { CommandId } from "@lattice-studio/core";
 import type { KeyContext, KeySpec, ResolvedBinding } from "@/contracts";
 import type { KeyInput } from "./key-spec";
-import { reservedByBrowser, reservedReason, resolveKey, type KeyEnvironment } from "./resolve";
+import { reservedByBrowser, reservedOn, reservedReason, resolveKey, type KeyEnvironment } from "./resolve";
 
 function binding(id: CommandId, keys: KeySpec[], keyContext?: KeyContext[], name?: string): ResolvedBinding {
   return {
@@ -153,6 +153,25 @@ describe("what Studio leaves alone or always takes", () => {
     expect(reservedReason("Tab")).toBe("tab");
     expect(reservedReason("Mod+Shift+f")).toBeNull();
     expect(reservedReason("t")).toBeNull();
+  });
+
+  test("Mod+W/T/N/Q never reach Studio; Mod+R/P would block reload and print (FX13 item f)", () => {
+    expect(reservedReason("Mod+w")).toBe("closeTab");
+    expect(reservedReason("Mod+t")).toBe("newTab");
+    expect(reservedReason("Mod+n")).toBe("newWindow");
+    expect(reservedReason("Mod+q")).toBe("quit");
+    expect(reservedReason("Mod+r")).toBe("reload");
+    expect(reservedReason("Mod+p")).toBe("print");
+  });
+
+  test("reservedOn checks one platform: ⌃L is fine on macOS but stays the address bar elsewhere (FX13 item a)", () => {
+    expect(reservedOn("Ctrl+l", "mac")).toBeNull();
+    expect(reservedOn("Ctrl+l", "other")).toBe("address");
+    expect(reservedOn("Ctrl+f", "mac")).toBeNull();
+    expect(reservedOn("Ctrl+f", "other")).toBe("find");
+    expect(reservedOn("Ctrl+0", "mac")).toBeNull();
+    expect(reservedOn("Ctrl+0", "other")).toBe("zoom");
+    expect(reservedOn("Mod+l", "mac")).toBe("address");
   });
 
   test("⌘+arrow is consumed on the sheet even when nothing runs", () => {

@@ -1,0 +1,62 @@
+/* Compare options…: the options side by side, scrolling horizontally inside the view when it's narrow. */
+
+.compare {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(calc(var(--lx-space-8) * 6), 1fr);
+  gap: var(--lx-space-3);
+  padding: var(--lx-space-3) var(--lx-space-4);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  min-width: 0;
+  padding: var(--lx-space-3);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  border-radius: var(--lx-radius);
+  background: var(--lx-panel);
+}
+
+.name {
+  margin: 0;
+  font: var(--lx-font-subheading);
+  letter-spacing: var(--lx-tracking-subheading);
+  color: var(--lx-text);
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+}
+
+.factLabel {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.factValue {
+  margin: 0;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text);
+  overflow-wrap: anywhere;
+}
+
+.place {
+  margin-top: auto;
+}
