@@ -37,6 +37,8 @@ No analytics and no error reporting unless enabled by the person using Studio. S
 
 ## Reporting a problem
 
-Email **daveproxy80@gmail.com** with a description and, where you have one, a reproduction. Don't open a public issue for a vulnerability that isn't already public. This repository isn't yet hosted anywhere with private vulnerability reporting; that's the plan once it is (see `docs/release.md`), and this section will name it then.
+Email **daveproxy80@gmail.com** with a description and, where you have one, a reproduction. Don't open a public issue for a vulnerability that isn't already public.
+
+**Needs David:** once this repository has a GitHub remote (`docs/release.md`), turn on private vulnerability reporting for it, and this section switches to naming that instead of an email address.
 
 Studio never asks for a seed phrase, a private key, or an RPC URL with a credential in it, and a real report never needs to include one either.

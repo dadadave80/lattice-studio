@@ -16,7 +16,7 @@ Studio is a static app with two homes: Vercel, the primary origin with security 
 
 The Vercel project's root directory is `apps/studio`, with **Include source files outside of the Root Directory** turned on in the project settings — the committed `apps/studio/vercel.json`'s build command starts with `cd ../..` to reach the workspace root, and that setting is what lets it see the rest of the monorepo.
 
-`apps/studio/vercel.json` is generated, not hand-edited (`packages/core/src/format` and `apps/studio/build/headers.ts` compute its Content Security Policy from the exact chunks a build produces). To release:
+`apps/studio/vercel.json` is generated, not hand-edited (`apps/studio/build/csp.ts` and `apps/studio/build/headers.ts` compute its Content Security Policy from the exact chunks a build produces). To release:
 
 1. Regenerate it against the release build: `STUDIO_VERCEL_JSON=1 bun run build`. This writes `apps/studio/vercel.json` with the CSP hash for that build's inline style and import map.
 2. Commit `apps/studio/vercel.json`.
@@ -36,7 +36,7 @@ bun apps/studio/build/verify-headers.ts apps/studio/dist
 
 The last command, run with only the `dist` folder and no `vercel.json` path, checks the built `index.html`'s `<meta>` CSP against its own inline style and import map instead of a headers file.
 
-**Needs David:** where the built folder is pinned, and the ENS name or other stable origin the IPFS mirror is served behind, are both undecided (see `.handoff` decision D11 in the internal plan — there's no public tracker for this yet). Until a domain is chosen, exported `recipe.json` files carry a placeholder `$schema` URL (`https://lattice-studio.invalid/schema/recipe.v1.json`); it still validates locally, it just doesn't resolve.
+**Needs David:** where the built folder is pinned, and the ENS name or other stable origin the IPFS mirror is served behind, are both undecided. Until a domain is chosen, exported `recipe.json` files carry a placeholder `$schema` URL (`https://lattice-studio.invalid/schema/recipe.v1.json`); it still validates locally, it just doesn't resolve.
 
 ## CI
 
@@ -47,7 +47,7 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 - Create the GitHub repository and push. None of these workflows run before that.
 - Add the `SEPOLIA_RPC_URL` repository secret. Without it, `fork.yml`'s gate job checks for the secret, finds it missing, and stops there — the pull request gate's own `chain` job still runs against a local Anvil node either way, so this only adds the fork suite, it doesn't block anything by its absence.
 - Add the `NPM_TOKEN` repository secret, scoped to publish `lattice-studio` with provenance. Needed before `publish-cli.yml` can run at all.
-- Foundry's `foundry-toolchain` action installs Foundry 1.8.3 for the `golden`, `chain`, and `catalog-drift` jobs; it installs solc 0.8.36 as part of that (Lattice's pin), so no separate solc setup step is needed once that action runs — but check this holds the first time CI actually runs, since it's untested against a live GitHub Actions run until the repository exists.
+- Install solc 0.8.36 (Lattice's pin) before the `golden`, `chain`, and `catalog-drift` jobs run, so `forge build` inside the pinned Lattice checkout has it available.
 
 ## Publishing the CLI
 
@@ -59,7 +59,7 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 
 The catalog in `catalog/` is currently built from Lattice's `dev` branch, not a tagged release, and every shared-contract address in it will change once it's rebuilt from a real tag — see `docs/architecture.md` and `README.md`'s "Rebuilding and verifying the catalog".
 
-**Needs David:** once Lattice `v0.4.0` is tagged and released through Arachnid's proxy, update the pinned submodule commit and run `bun run catalog` to rebuild. That rebuild is what clears the "Provisional catalog" notice the app and CLI print today.
+**Needs David:** once Lattice `v0.4.0` is tagged and released through Arachnid's proxy, update the pinned submodule commit and run `bun run catalog` to rebuild. That rebuild is what clears the "Provisional catalog" notice the app and CLI print today. `docs/examples/erc20.recipe.json` is pinned to the current catalog's hash, so regenerate it from the rebuilt catalog's ERC20 template at the same time, or `lattice-studio check` on that example starts exiting 3 (catalog mismatch).
 
 ## Wallet connections
 

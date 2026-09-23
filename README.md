@@ -58,7 +58,7 @@ flowchart LR
 
 | Package | Holds |
 | --- | --- |
-| `packages/catalog-gen` | Builds the catalog inside a Lattice checkout at a release tag, after `forge build --profile ci`: facets, selectors, ABIs, ERC-7201 storage ids, init contracts, recipe templates, seams, and per-chain shared-contract addresses |
+| `packages/catalog-gen` | Builds the catalog inside a Lattice checkout at a release tag, after `FOUNDRY_PROFILE=ci forge build`: facets, selectors, ABIs, ERC-7201 storage ids, init contracts, recipe templates, seams, and per-chain shared-contract addresses |
 | `packages/core` | Types and schema, canonical recipe hash, analysis and checks, ownership and seam resolution, cut plan, init encoding, address prediction, exporters, share-link codec, layout. No DOM, no React, no network |
 | `packages/tokens` | The design system's `tokens.json` turned into CSS variables, a TypeScript constants file, and a Shiki theme |
 | `packages/cli` | `lattice-studio check \| plan \| predict \| export \| verify-catalog`, the same analysis Studio runs in the browser, built for CI and coding agents |

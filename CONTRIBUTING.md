@@ -21,7 +21,7 @@ Versions and changelogs come from [`release-please`](https://github.com/googleap
 Run `bun run check`, `bun test`, and whichever of `bun run test:browser`, `bun run e2e`, `bun run golden`, or `bun run test:chain` cover what changed (README's command table says what each needs). The pull request template asks you to check off:
 
 - **Accessibility states.** Every state a change touches that's drawn on the design boards gets a browser test and a screenshot baseline in both themes: keyboard-only reachability, focus visible after every action, an accessible name on every control, `aria-disabled` with a stated reason (never a bare disabled control), both themes rendering correctly, and reduced motion respected.
-- **Budgets.** `bun scripts/ci/size.ts --build` passes, or the pull request explains what grew and why. No new dependency: the project pins its dependency set deliberately (see `docs/release.md`'s "what needs David" note on dependencies), so add a note asking for one rather than adding it.
+- **Budgets.** `bun scripts/ci/size.ts --build` passes, or the pull request explains what grew and why. No new dependency: the project's dependency set is a deliberate, reviewed list, so a pull request that needs one asks for it rather than adding it.
 - **Testing.** `bun run check` and `bun test` pass; the pull request names which browser, e2e, golden, or chain suites were run locally.
 
 ## How golden tests pin recipes to Lattice's scripts
