@@ -184,6 +184,7 @@ describe("commands", () => {
     expect(inspectorView()).toEqual({ kind: "diamond", section: "deployments" });
     expect(session.get().panes.inspector.open).toBe(true);
     await vi.waitFor(() => expect(shownKind()).toBe("diamond"));
+    await expect.element(page.getByRole("heading", { level: 3, name: "Deployments" })).toHaveFocus();
   });
 
   test("a focus request that never finds its element expires, so it can't steal focus later", () => {
