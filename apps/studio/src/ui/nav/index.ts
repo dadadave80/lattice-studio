@@ -18,3 +18,5 @@ export {
   scrollToReveal, tabbableIndex, toggleId, typeAheadIndex, VIRTUALIZE_AFTER, windowRange,
 } from "./tree-model";
 export type { TreeMove, TreeNode, TreeRow } from "./tree-model";
+export { PaneSizeMenu } from "./PaneSizeMenu";
+export type { PaneSizeMenuProps } from "./PaneSizeMenu";

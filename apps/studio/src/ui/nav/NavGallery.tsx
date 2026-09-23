@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GallerySection, Specimen } from "../gallery/GallerySection";
+import { PaneSizeMenu } from "./PaneSizeMenu";
 import { Splitter } from "./Splitter";
 import { TabPanel, Tabs } from "./Tabs";
 import { Toolbar, ToolbarGroup, ToolbarSeparator } from "./Toolbar";
@@ -264,6 +265,16 @@ function SplitterSpecimens() {
             Inspector · {inspector} px
           </div>
         </div>
+      </Specimen>
+      <Specimen label="Pane header menu: Narrower, Wider, Collapse">
+        <PaneSizeMenu
+          pane="Inspector"
+          value={inspector}
+          min={280}
+          max={420}
+          onChange={setInspector}
+          onCollapse={() => setInspectorCollapsed(true)}
+        />
       </Specimen>
       <Specimen label="Horizontal">
         <div className={styles.column}>
