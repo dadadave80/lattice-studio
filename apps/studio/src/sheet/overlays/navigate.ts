@@ -10,7 +10,7 @@
  */
 import type { Anchor, Problem } from "@lattice-studio/core";
 import {
-  announce, doc, getAnalysis, getCatalog, isPlaceholder, log, runCommand, session, type CommandSource,
+  announce, doc, getAnalysis, getCatalog, log, runCommand, session, type CommandSource,
 } from "@/contracts";
 import { ensureVisible } from "@/sheet/canvas";
 import { anchorFacets, buildNotes, noteOf } from "./note-model";
@@ -92,11 +92,8 @@ export function focusProblem(problemId: string, options: { open?: boolean; sourc
       return true;
     }
   }
-  // Nothing on the sheet to focus: the inspector shows it, and the status region reads it.
+  // Nothing on the sheet to focus: the inspector shows it, and the status region reads it; focus stays put.
   announce(`${SEVERITY_WORD[problem.severity]}: ${problem.message}`);
-  if (card === undefined && !isPlaceholder("region.focus")) {
-    void runCommand({ id: "region.focus", args: { region: "inspector" } }, options.source ?? "api");
-  }
   return true;
 }
 

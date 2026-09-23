@@ -7,6 +7,7 @@ import { useReducedMotion } from "@/a11y/preferences";
 import { edgesOf } from "./edge-data";
 import { Note } from "./Note";
 import { buildNotes, type NoteModel } from "./note-model";
+import { reuse } from "./stable";
 import styles from "./Note.module.css";
 
 /** Grid steps a Place fix lands to the right of the note's card (C9's gap beside a card). */
@@ -102,7 +103,10 @@ export function OverlayLayer() {
 
   const sizes = useMemo(() => sizesOf(layout, catalog, analysis, compact), [layout, catalog, analysis, compact]);
   const traces = useMemo(() => tracesOf(layout, sizes, recipe, catalog, analysis), [layout, sizes, recipe, catalog, analysis]);
-  const edges = useMemo(() => edgesOf(traces, layout, sizes), [traces, layout, sizes]);
+  const rawEdges = useMemo(() => edgesOf(traces, layout, sizes), [traces, layout, sizes]);
+  const [edgeState, setEdgeState] = useState({ raw: rawEdges, edges: rawEdges });
+  if (edgeState.raw !== rawEdges) setEdgeState({ raw: rawEdges, edges: reuse(edgeState.edges, rawEdges) });
+  const edges = edgeState.edges;
   // The sheet passes neither `edges` nor `defaultEdges`, and without either React Flow's `setEdges` drops the
   // update. Setting them as default edges (what the `defaultEdges` prop does) makes them React Flow's own.
   useEffect(() => {
@@ -112,7 +116,7 @@ export function OverlayLayer() {
   const notes = useMemo(() => buildNotes(analysis, catalog), [analysis, catalog]);
   const [heights, setHeights] = useState<Readonly<Record<string, number>>>({});
 
-  const entries = useMemo((): Entry[] => {
+  const rawEntries = useMemo((): Entry[] => {
     const placed = (name: string) => layout[name] !== undefined && sizes[name] !== undefined;
     const requests = notes.map((note) => {
       const facets = note.facets.filter(placed);
@@ -148,14 +152,19 @@ export function OverlayLayer() {
     });
   }, [notes, layout, sizes, traces, heights]);
 
-  // A resolved note stays a moment to fade (spec L438), unless motion is reduced (spec L784).
-  const [shown, setShown] = useState<{ entries: Entry[]; leaving: Entry[] }>({ entries, leaving: [] });
-  if (shown.entries !== entries) {
+  // Unchanged notes keep their objects, so an edit re-renders only the notes it touched. A resolved note stays
+  // a moment to fade (spec L438), unless motion is reduced (spec L784).
+  const [shown, setShown] = useState<{ raw: Entry[]; entries: Entry[]; leaving: Entry[] }>({
+    raw: rawEntries, entries: rawEntries, leaving: [],
+  });
+  if (shown.raw !== rawEntries) {
+    const entries = reuse(shown.entries, rawEntries);
     const ids = new Set(entries.map((e) => e.note.id));
     const gone = reduced ? [] : shown.entries.filter((e) => !ids.has(e.note.id));
     const still = reduced ? [] : shown.leaving.filter((e) => !ids.has(e.note.id));
-    setShown({ entries, leaving: [...still, ...gone] });
+    setShown({ raw: rawEntries, entries, leaving: [...still, ...gone] });
   }
+  const entries = shown.entries;
   const leaving = reduced ? [] : shown.leaving;
 
   const onHeight = useMemo(

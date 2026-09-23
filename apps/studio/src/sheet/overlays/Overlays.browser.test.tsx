@@ -5,7 +5,7 @@
  */
 import type { Hex4, Problem, Project, Recipe } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
-import { page, userEvent } from "vitest/browser";
+import { cdp, page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { command, doc, emptyAnalysis, getAnalysis, history, provideAnalysis, runCommand, session } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
@@ -207,6 +207,40 @@ describe("seam and missing-dependency notes (Flow 5, spec L441-L449)", () => {
     await expect.poll(() => document.querySelector("[data-edge='needs:VaultCore:ERC4626']")).not.toBeNull();
     await expect.poll(() => document.querySelector("[data-trace-label='needs:VaultCore:ERC4626']")?.textContent).toBe("needs ERC4626");
     await expect.poll(() => note("missing")).toBeNull();
+  });
+});
+
+describe("traces and ties (IR L106-L107)", () => {
+  test("a trace's reason shows from 75% zoom, below that while an end is selected, which also lights it", async () => {
+    await sheet(project(["VaultCore", "ERC4626"], { columns: 2 }));
+    const id = "needs:VaultCore:ERC4626";
+    const trace = () => document.querySelector<SVGGElement>(`g[data-edge='${id}']`);
+    const label = () => document.querySelector(`[data-trace-label='${id}']`);
+    await expect.poll(trace).not.toBeNull();
+    const line = trace()?.querySelector("path:last-child") as SVGPathElement;
+    expect(parseFloat(getComputedStyle(line).strokeWidth)).toBeCloseTo(1.5, 1);
+    await expect.poll(label).not.toBeNull();
+    await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.5 } }, "api");
+    await expect.poll(label).toBeNull();
+    session.set({ selection: ["ERC4626"] });
+    await expect.poll(label).not.toBeNull();
+    expect(trace()?.hasAttribute("data-live")).toBe(true);
+    session.set({ selection: [] });
+    await expect.poll(label).toBeNull();
+  });
+
+  test("ties are 2 px accent, dashed in forced colors", async () => {
+    await sheet(project([AXELAR, HYPERLANE]));
+    await expect.poll(() => document.querySelectorAll("path[data-edge^='tie:']").length).toBe(2);
+    const tie = document.querySelector<SVGPathElement>("path[data-edge^='tie:']") as SVGPathElement;
+    expect(parseFloat(getComputedStyle(tie).strokeWidth)).toBe(2);
+    expect(getComputedStyle(tie).strokeDasharray).toBe("none");
+    await cdp().send("Emulation.setEmulatedMedia", { features: [{ name: "forced-colors", value: "active" }] });
+    try {
+      await expect.poll(() => getComputedStyle(tie).strokeDasharray).not.toBe("none");
+    } finally {
+      await cdp().send("Emulation.setEmulatedMedia", { features: [{ name: "forced-colors", value: "none" }] });
+    }
   });
 });
 
