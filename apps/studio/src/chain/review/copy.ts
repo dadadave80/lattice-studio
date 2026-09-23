@@ -1,21 +1,11 @@
 /**
  * The deploy review's words (Flow 12-14, spec L530-L606, IR L221-L243), quoted from the spec where it writes
  * them. Where the spec is silent the wording follows its voice rules (spec L667-L676) and is listed in S8b's
- * report. Light: the commands read it from the entry chunk.
+ * report. Only the review's lazy chunk imports it; the commands' few words are in `entry-copy.ts`.
  */
-import { plural } from "@lattice-studio/core";
 import type { AccountKind } from "@/contracts";
 
-/** Spec L561, IR L13: Deploy offline; ⌘/Ctrl+Enter only announces it. */
-export const DEPLOY_NEEDS_CONNECTION = "Deploy needs a connection";
-
-/** Spec L382, L661: Deploy disabled while blockers remain. */
-export function resolveBlockers(count: number): string {
-  return `Resolve ${plural(count, "blocker")} · F8`;
-}
-
-/** Spec L385: Deploy while a Safe proposal waits. */
-export const WAITING_FOR_SAFE = "Waiting for the Safe to execute the batch";
+export { DEPLOY_NEEDS_CONNECTION, WAITING_FOR_SAFE, resolveBlockers } from "./entry-copy";
 
 /** Spec L562, L601: any edit, account switch or chain switch while the review is open. */
 export const CHANGED_SINCE_REVIEW = "Changed since review. Simulating again.";

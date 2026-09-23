@@ -13,6 +13,9 @@ import {
   CHANGED_SINCE_REVIEW, DEPLOY_NEEDS_CONNECTION, SAFE_SIGNS_BY_BATCH, SIMULATING, TYPE_THE_NAME, resolveBlockers, tickFirst,
   type SectionId, type SectionStatus,
 } from "./copy";
+import { pathName } from "./entry-copy";
+
+export { IN_FLIGHT_PHASES, pathName } from "./entry-copy";
 
 /** The deploy controller isn't built yet (K2's idle default): its own words. */
 export const CONTROLLER_NOT_BUILT = "Not built yet · WP-S8c";
@@ -67,11 +70,6 @@ export function worse(a: SectionStatus, b: SectionStatus): SectionStatus {
 
 // ---------------------------------------------------------------------------------------------------------
 // Network
-
-/** The path's display name. */
-export function pathName(path: DeployPath): string {
-  return path === "createx" ? "CreateX" : "LatticeFactory";
-}
 
 /**
  * The shared contracts this deploy needs besides the path's own (spec L563): the facets the plan cuts and the
@@ -161,11 +159,6 @@ export function cantSimulate(simulation: DeployState["simulation"]): boolean {
 /** Phases after Sign & deploy (or a Safe batch): the review shows the deploy's progress instead of its sections. */
 export const PROGRESS_PHASES: ReadonlySet<DeployPhase> = new Set<DeployPhase>([
   "awaitingSignature", "pending", "stale", "proposed", "confirmed", "verifying", "live", "mismatch",
-]);
-
-/** A deploy on its way: Deploy… reopens the review at its progress instead of starting a new one (IR L207). */
-export const IN_FLIGHT_PHASES: ReadonlySet<DeployPhase> = new Set<DeployPhase>([
-  "awaitingSignature", "pending", "stale", "proposed", "confirmed", "verifying",
 ]);
 
 /** Before signing: an edit, account or chain change sends the review back to simulating (spec L562). */

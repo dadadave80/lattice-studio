@@ -114,6 +114,17 @@ describe("Deployer (spec L564, Flow 14)", () => {
     await expect.element(signButton()).toHaveAccessibleDescription("Connect a wallet first.");
   });
 
+  test("the end-to-end build's mock connector (contracts §5.5) is listed with the browser wallets", async () => {
+    const connectors = [{ id: "mock", name: "Mock Connector", kind: "mock" as const }, FAKE_CONNECTORS[1]!];
+    const chain = fakeChainService({ account: null, catalog: deployableCatalog(), connectors });
+    await renderReview({ project: templateProject("ERC20"), chain });
+    const deployer = section("Deployer");
+    await expect.element(deployer.getByRole("button").nth(0)).toHaveAccessibleName("Mock Connector");
+    await expect.element(deployer.getByText(/No wallet found/)).not.toBeInTheDocument();
+    await deployer.getByRole("button", { name: "Mock Connector" }).click();
+    await expect.poll(() => chain.calls.filter((c) => c.method === "connect").map((c) => c.args[0])).toEqual(["mock"]);
+  });
+
   test("no wallet in the browser says so and links to one", async () => {
     const chain = fakeChainService({ account: null, catalog: deployableCatalog(), connectors: [FAKE_CONNECTORS[1]!] });
     await renderReview({ project: templateProject("ERC20"), chain });

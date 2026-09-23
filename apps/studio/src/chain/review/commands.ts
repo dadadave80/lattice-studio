@@ -15,8 +15,7 @@ import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
 import { predict, prediction } from "@/state";
 import { copyText } from "@/ui/copy/copy-text";
-import { DEPLOY_NEEDS_CONNECTION, WAITING_FOR_SAFE, resolveBlockers } from "./copy";
-import { IN_FLIGHT_PHASES, pathName } from "./model";
+import { DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, WAITING_FOR_SAFE, pathName, resolveBlockers } from "./entry-copy";
 import { requestPickerFocus, setPreview } from "./review-state";
 
 const OK: Enablement = { ok: true };
