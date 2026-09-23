@@ -114,6 +114,52 @@ describe("Tour (spec L400, IR L188)", () => {
     await expect.element(page.getByText(TOUR_STEPS[consoleIndex]!.text)).toBeVisible();
   });
 
+  test("focus moves to the card on start and each step, and back to what had it once the tour ends", async () => {
+    function App() {
+      return (
+        <>
+          <button>Outside</button>
+          <Tour />
+        </>
+      );
+    }
+    await renderWithStudio(<App />);
+    const outside = page.getByRole("button", { name: "Outside" });
+    (outside.element() as HTMLElement).focus();
+    startTour();
+    await expect.element(card(TOUR_STEPS[0]!.title)).toHaveFocus();
+    await next().click();
+    await expect.element(card(TOUR_STEPS[1]!.title)).toHaveFocus();
+    await endBtn().click();
+    await expect.element(outside).toHaveFocus();
+  });
+
+  test("a control outside the card still takes focus and clicks while the tour runs: nothing traps it", async () => {
+    let clicked = false;
+    function App() {
+      return (
+        <>
+          <button
+            onClick={() => {
+              clicked = true;
+            }}
+          >
+            Outside
+          </button>
+          <Tour />
+        </>
+      );
+    }
+    await renderWithStudio(<App />);
+    startTour();
+    await expect.element(card(TOUR_STEPS[0]!.title)).toHaveFocus();
+    const outside = page.getByRole("button", { name: "Outside" });
+    await outside.click();
+    expect(clicked).toBe(true);
+    await expect.element(outside).toHaveFocus();
+    await expect.element(card()).toBeVisible();
+  });
+
   test("resetTour and endTour both leave the tour stopped", async () => {
     await renderWithStudio(<Tour />);
     startTour();
