@@ -4,11 +4,11 @@ import { parseProjectFile, parseRecipe, recipeHash } from "../../canonical";
 import { formatSelector, lintCopy } from "../../format";
 import type { Catalog } from "../../model/catalog";
 import type { Deployment, Project } from "../../model/project";
-import type { Recipe } from "../../model/recipe";
+import type { Arg, Recipe } from "../../model/recipe";
 import { blankDiamond, buildPlan, loadTemplate, templateList } from "../../plan";
 import { addr, hex, makeCatalog, makeFacet, makeInit, makeRecipe, loadFixtureCatalog } from "../../testing";
 import { analyze } from "../../analysis";
-import { cell, codeBlock, fenceFor, oneLine, table } from "./markdown";
+import { cell, codeBlock, escapeHtml, escapedLine, fenceFor, oneLine, table } from "./markdown";
 import { acceptanceSection, exportBrief, leavesOutSection, SECTION_HEADINGS } from "./brief";
 import { exportRecipeJson } from "./recipe-json";
 import { exportProjectFile } from "./project-file";
@@ -67,6 +67,11 @@ function proseOnly(markdown: string): string {
     .join("\n");
 }
 
+/** Everything a Markdown renderer would read as HTML markup: fenced blocks and inline code stay literal. */
+function outsideCode(markdown: string): string {
+  return markdown.replace(/`{3,}[\s\S]*?`{3,}/g, "").replace(/`[^`\n]*`/g, "");
+}
+
 describe("markdown helpers", () => {
   test("cell escapes pipes, backslashes and collapses newlines", () => {
     expect(cell("a | b")).toBe("a \\| b");
@@ -94,6 +99,21 @@ describe("markdown helpers", () => {
 
   test("table renders a header, a rule and the rows", () => {
     expect(table(["A", "B"], [["1", "2"]])).toBe("| A | B |\n| --- | --- |\n| 1 | 2 |");
+  });
+
+  test("escapeHtml escapes & before < and >, so its own entities never get re-escaped (spec L21, L857)", () => {
+    expect(escapeHtml("<img src=x onerror=alert(1)>")).toBe("&lt;img src=x onerror=alert(1)&gt;");
+    expect(escapeHtml("<script>alert(1)</script>")).toBe("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(escapeHtml("&lt;")).toBe("&amp;lt;");
+    expect(escapeHtml("plain text")).toBe("plain text");
+  });
+
+  test("escapedLine collapses newlines, then HTML-escapes what they leave on one line", () => {
+    expect(escapedLine("<a>\nb")).toBe("&lt;a&gt; b");
+  });
+
+  test("cell HTML-escapes before its own pipe and backslash escaping", () => {
+    expect(cell("<a|b>&")).toBe("&lt;a\\|b&gt;&amp;");
   });
 });
 
@@ -364,6 +384,91 @@ describe("exportBrief", () => {
     // line of their own: this is a stronger check than scanning for a bare "```" line, which the brief's own
     // legitimate fences (the embedded recipe JSON, the acceptance command) also produce.
     expect(hostileBrief.text).toContain("Evil ## Injected heading | a | b | | --- | --- | ``` fenced ```");
+  });
+
+  test("a hostile recipe name, a facet-free label and an init argument render HTML-escaped; the heading skeleton and the embedded recipe.json are unchanged (spec L21, L857)", () => {
+    const hostileCatalog: Catalog = makeCatalog({
+      lattice: { tag: "test", commit: "0".repeat(40) },
+      facets: [makeFacet({ name: "DiamondLoupeFacet", area: "diamond", selectors: ["facets()"] })],
+      inits: [
+        makeInit({
+          name: "AdminInit",
+          contract: "AdminInit",
+          fn: "init(address,string)",
+          kind: "step",
+          // "admin"'s role is an overlay string, not a facet name: a label the fix must escape even
+          // though no facet owns it.
+          params: [
+            { name: "admin", type: "address", doc: "Gets the role.", authority: true, role: "<script>alert(1)</script>" },
+            { name: "name_", type: "string", doc: "Token name." },
+          ],
+        }),
+      ],
+    });
+    const hostile: Recipe = makeRecipe(
+      {
+        name: "<img src=x onerror=alert(1)>",
+        facets: ["DiamondLoupeFacet"],
+        init: { kind: "steps", steps: [{ spec: "AdminInit", args: { admin: { $ref: "self" }, name_: "&lt;" } }] },
+      },
+      hostileCatalog,
+    );
+    const hostileAnalysis = analyze(hostile, hostileCatalog);
+    const hostileBrief = exportBrief({ recipe: hostile, catalog: hostileCatalog, analysis: hostileAnalysis, studioVersion });
+
+    // the recipe name, in the heading
+    expect(hostileBrief.text.startsWith("# &lt;img src=x onerror=alert(1)&gt; agent brief")).toBe(true);
+    // the role, a label no facet owns, in the authority table's Role cell
+    expect(hostileBrief.text).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    // the init argument, a describeArg leaf; its own entity-looking text is escaped again, not left half-done
+    expect(hostileBrief.text).toContain("&amp;lt;");
+
+    // nothing survives as a raw tag outside a fence or an inline code span
+    const prose = outsideCode(hostileBrief.text);
+    expect(prose).not.toContain("<");
+    expect(prose).not.toContain(">");
+    expect(prose).not.toMatch(/&(?!amp;|lt;|gt;)/);
+
+    // the section skeleton is unchanged
+    let cursor = -1;
+    for (const heading of SECTION_HEADINGS) {
+      const at = hostileBrief.text.indexOf(heading);
+      expect(at).toBeGreaterThan(cursor);
+      cursor = at;
+    }
+
+    // the embedded recipe.json is exportRecipeJson's own text, byte-identical (the hostile name included, unescaped there)
+    expect(hostileBrief.text).toContain(exportRecipeJson(hostile, hostileCatalog).text.trimEnd());
+  });
+
+  test("an object arg's own field key is escaped too (ArgSchema only forbids the literal \"$ref\", not HTML)", () => {
+    const stringArgCatalog: Catalog = makeCatalog({
+      lattice: { tag: "test", commit: "0".repeat(40) },
+      facets: [makeFacet({ name: "DiamondLoupeFacet", area: "diamond", selectors: ["facets()"] })],
+      inits: [
+        makeInit({
+          name: "ERC20Init",
+          contract: "ERC20Init",
+          fn: "init(string)",
+          kind: "step",
+          params: [{ name: "name_", type: "string", doc: "Token name." }],
+        }),
+      ],
+    });
+    // name_ is a string field; a wrong-shaped object value still reaches describeArg's object branch, invalid,
+    // with the field key exactly as the file supplied it.
+    const hostile: Recipe = makeRecipe(
+      {
+        name: "Hostile key",
+        facets: ["DiamondLoupeFacet"],
+        init: { kind: "steps", steps: [{ spec: "ERC20Init", args: { name_: { "<b>k</b>": "v" } as unknown as Arg } }] },
+      },
+      stringArgCatalog,
+    );
+    const hostileAnalysis = analyze(hostile, stringArgCatalog);
+    const hostileBrief = exportBrief({ recipe: hostile, catalog: stringArgCatalog, analysis: hostileAnalysis, studioVersion });
+    expect(hostileBrief.text).toContain("&lt;b&gt;k&lt;/b&gt;: v");
+    expect(outsideCode(hostileBrief.text)).not.toContain("<b>");
   });
 });
 

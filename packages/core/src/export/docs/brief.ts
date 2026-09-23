@@ -10,7 +10,7 @@ import type { FieldModel, InitPlan, InitStepView } from "../../model/init";
 import type { Problem } from "../../model/problems";
 import type { Arg, Recipe } from "../../model/recipe";
 import { buildPlan } from "../../plan";
-import { cell, codeBlock, oneLine, table } from "./markdown";
+import { cell, codeBlock, escapedLine, table } from "./markdown";
 import { exportRecipeJson } from "./recipe-json";
 import { slug } from "./slug";
 
@@ -20,27 +20,30 @@ function isRef(value: Arg): value is { $ref: "self" | "deployer" } {
 
 /**
  * An init argument in prose: `{$ref}` reads as what it names (spec L285); a tuple lists its fields. Every
- * string leaf goes through `oneLine` (spec L21, L857: "every generated string is escaped") so a value can't
- * carry a literal newline into the Markdown list this renders into and inject a heading, a table row or a
- * fenced block of its own.
+ * string leaf goes through `escapedLine` (spec L21, L857: "every generated string is escaped") so a value
+ * can't carry a literal newline into the Markdown list this renders into and inject a heading, a table row
+ * or a fenced block of its own, and can't render as HTML (`<img onerror>`) where this list is read as prose.
  */
 function describeArg(value: Arg): string {
   if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "string") return oneLine(value);
+  if (typeof value === "string") return escapedLine(value);
   if (Array.isArray(value)) return value.length === 0 ? "[]" : `[${value.map(describeArg).join(", ")}]`;
   if (isRef(value)) return value.$ref === "self" ? "This diamond" : "Deploying account";
   const fields = Object.entries(value);
-  return fields.length === 0 ? "{}" : fields.map(([field, v]) => `${field}: ${describeArg(v)}`).join("; ");
+  // A tuple's field key is normally an ABI name, but the schema only forbids the literal "$ref" (model/schema.ts
+  // ArgSchema), so a share link or file can still put hostile text here for a scalar-typed field or an
+  // array element rendered as "invalid" (fields.ts): escape it exactly as a describeArg leaf.
+  return fields.length === 0 ? "{}" : fields.map(([field, v]) => `${escapedLine(field)}: ${describeArg(v)}`).join("; ");
 }
 
 /** One field line, recursing into a tuple's components; a required field with no value is flagged missing. */
 function fieldLines(field: FieldModel, value: Arg | undefined, missing: ReadonlySet<string>, indent: string): string[] {
   if (field.components && field.components.length > 0 && value !== undefined && !isRef(value) && !Array.isArray(value) && typeof value === "object") {
     const object = value as Record<string, Arg>;
-    return [`${indent}- **${field.label}**:`, ...field.components.flatMap((c) => fieldLines(c, object[c.name], missing, `${indent}  `))];
+    return [`${indent}- **${escapedLine(field.label)}**:`, ...field.components.flatMap((c) => fieldLines(c, object[c.name], missing, `${indent}  `))];
   }
   const shown = value === undefined ? "missing" : missing.has(field.path) ? `${describeArg(value)} — invalid` : describeArg(value);
-  return [`${indent}- **${field.label}** (\`${field.name}\`): ${shown}`];
+  return [`${indent}- **${escapedLine(field.label)}** (\`${field.name}\`): ${shown}`];
 }
 
 function stepHeading(step: InitStepView): string {
@@ -64,7 +67,9 @@ function initPlanSection(plan: InitPlan, initTarget: string | undefined): string
       ? `One call, direct${only ? ` to \`${only.contract}\`` : ""}${initTarget ? ` at \`${initTarget}\`` : ""}.`
       : `${plan.steps.length} calls through \`multiInit(address[],bytes[])\`${initTarget ? ` at \`${initTarget}\`` : ""}.`;
   const sequenceLine =
-    plan.kind === "bundle" && plan.sequence ? `Locked bundle; internal order (read-only): ${plan.sequence.join(", ")}.` : undefined;
+    plan.kind === "bundle" && plan.sequence
+      ? `Locked bundle; internal order (read-only): ${escapedLine(plan.sequence.join(", "))}.`
+      : undefined;
   const missingLine = missing.size > 0 ? `${plural(missing.size, "field needs", "fields need")} a value before this diamond can deploy.` : undefined;
   return [shape, sequenceLine, ...lines, missingLine].filter((line): line is string => line !== undefined).join("\n\n");
 }
@@ -101,7 +106,8 @@ function cutPlanSection(
     cell(selectorsOf(byName.get(entry.facet), entry.selectors)),
   ]);
   const head = table(["Cut", "Facet", "Address", "Codehash", "Version", "Selectors"], rows);
-  const omittedLine = omitted.length > 0 ? `Placed but routes nothing, so no Add is cut for it: ${omitted.join(", ")}.` : undefined;
+  const omittedLine =
+    omitted.length > 0 ? `Placed but routes nothing, so no Add is cut for it: ${escapedLine(omitted.join(", "))}.` : undefined;
   return [head, omittedLine].filter((line): line is string => line !== undefined).join("\n\n");
 }
 
@@ -116,7 +122,7 @@ function authoritySection(recipe: Recipe, catalog: BriefExportArgs["catalog"]): 
 
 function problemsSection(problems: readonly Problem[]): string {
   if (problems.length === 0) return "No open problems.";
-  return problems.map((p) => `- **${p.severity}** \`${p.code}\` ${p.message}`).join("\n");
+  return problems.map((p) => `- **${p.severity}** \`${p.code}\` ${escapedLine(p.message)}`).join("\n");
 }
 
 /**
@@ -165,7 +171,7 @@ export const exportBrief: ExportBriefFn = (args) => {
   const { catalog, analysis, studioVersion } = args;
   const recipe = normalizeRecipe(args.recipe, catalog);
   const byName = new Map(catalog.facets.map((f) => [f.name, f]));
-  const title = recipe.name ? oneLine(recipe.name) : "Untitled diamond";
+  const title = recipe.name ? escapedLine(recipe.name) : "Untitled diamond";
   const facetVersions =
     recipe.facets.length === 0
       ? "none"
@@ -176,7 +182,7 @@ export const exportBrief: ExportBriefFn = (args) => {
       `- Recipe hash: \`${analysis.recipeHash}\``,
       `- Catalog: \`${catalog.lattice.tag}\``,
       `- Studio: ${studioVersion}`,
-      `- Facets: ${facetVersions}`,
+      `- Facets: ${escapedLine(facetVersions)}`,
     ].join("\n"),
   ].join("\n\n");
   const plan = planInit(recipe, catalog);
