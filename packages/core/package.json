@@ -1,0 +1,15 @@
+{
+  "name": "@lattice-studio/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "viem": "^2.56.8",
+    "zod": "^4.6.5"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@lattice-studio/catalog-gen",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/main.ts",
+    "./verify": "./src/verify.ts"
+  },
+  "dependencies": {
+    "@lattice-studio/core": "workspace:*",
+    "viem": "^2.56.8",
+    "zod": "^4.6.5"
+  }
+}

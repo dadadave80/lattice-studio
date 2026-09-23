@@ -1,0 +1,2 @@
+# Chain tests (WP-Q5). Run with `bun run test:chain`; the root bunfig keeps them out of `bun test`.
+[test]

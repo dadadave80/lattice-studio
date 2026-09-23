@@ -1,0 +1,65 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "react",
+    "jsx-a11y",
+    "import"
+  ],
+  "jsPlugins": [
+    {
+      "name": "react-compiler",
+      "specifier": "eslint-plugin-react-hooks"
+    }
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react-compiler/purity": "error",
+    "react-compiler/refs": "error",
+    "react-compiler/set-state-in-render": "error",
+    "react-compiler/immutability": "error",
+    "react-compiler/static-components": "error",
+    "react-compiler/use-memo": "error",
+    "react-compiler/globals": "error",
+    "react-compiler/error-boundaries": "error",
+    "react-compiler/preserve-manual-memoization": "warn",
+    "react-compiler/incompatible-library": "warn",
+    "react-compiler/unsupported-syntax": "warn",
+    "typescript/no-explicit-any": "error",
+    "import/no-default-export": "error",
+    "react/purity": "off"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.config.ts",
+        "**/vite.config.ts",
+        "**/vitest.config.ts",
+        "**/playwright.config.ts",
+        "**/lighthouserc.*"
+      ],
+      "rules": {
+        "import/no-default-export": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "lattice/**",
+    "**/dist/**",
+    ".claude/**",
+    ".handoff/**",
+    ".integration/**",
+    "catalog/**",
+    "fixtures/catalog/**",
+    "**/node_modules/**",
+    "apps/studio/dev-dist/**",
+    "playwright-report/**",
+    "test-results/**"
+  ]
+}

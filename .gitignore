@@ -1,0 +1,37 @@
+# Dependencies and builds
+node_modules/
+dist/
+dist-e2e-*/
+!packages/tokens/dist/
+apps/studio/dev-dist/
+*.tsbuildinfo
+
+# Local only
+.env
+.env.*
+.DS_Store
+*.log
+
+# The handoff bundle (spec, plan, ledger) lives in ~/.codex/specs and is copied here; worktrees link to it. Never committed.
+/.handoff
+
+# merge.ts runs gates in this integration worktree
+/.integration/
+
+# Claude Code worktrees and local settings
+.claude/worktrees/
+.claude/settings.local.json
+
+# Test output (baselines under __screenshots__ are committed)
+test-results/
+playwright-report/
+blob-report/
+.vitest-attachments/
+.lighthouseci/
+coverage/
+
+# Foundry output outside the Lattice checkout
+golden/out/
+golden/cache/
+e2e-chain/out/
+e2e-chain/cache/

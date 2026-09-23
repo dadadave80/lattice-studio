@@ -1,0 +1,31 @@
+{
+  "name": "lattice-studio-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev": "bun run --cwd apps/studio dev",
+    "build": "bun run --cwd apps/studio build",
+    "preview": "bun run --cwd apps/studio preview",
+    "test:browser": "bun scripts/dev/test-browser.ts",
+    "e2e": "bun scripts/dev/e2e.ts",
+    "test:chain": "bun test --config=e2e-chain/chain.bunfig.toml ./e2e-chain",
+    "golden": "bun golden/run.ts",
+    "catalog": "bun packages/catalog-gen/src/main.ts",
+    "typecheck": "bun scripts/dev/typecheck.ts",
+    "typecheck:ts6": "bun scripts/dev/typecheck.ts --ts6",
+    "lint": "oxlint",
+    "check": "bun scripts/ci/check.ts",
+    "tokens:pull": "bun run --cwd packages/tokens pull"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "fast-check": "^4.10.2",
+    "oxlint": "^1.85.0",
+    "prool": "^0.2.16",
+    "typescript": "~6.0.3"
+  },
+  "trustedDependencies": []
+}

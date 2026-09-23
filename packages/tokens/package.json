@@ -1,0 +1,17 @@
+{
+  "name": "@lattice-studio/tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./dist/tokens.ts",
+    "./dist/tokens.css": "./dist/tokens.css",
+    "./tokens.css": "./dist/tokens.css",
+    "./shiki-shop.json": "./dist/shiki-shop.json",
+    "./shiki-draft.json": "./dist/shiki-draft.json"
+  },
+  "scripts": {
+    "build": "bun src/build.ts",
+    "pull": "bun src/pull.ts"
+  }
+}

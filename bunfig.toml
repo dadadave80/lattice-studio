@@ -1,0 +1,8 @@
+[install]
+# Classic node_modules layout: Vitest, Playwright and the hooks expect tools in node_modules/.bin at the root.
+linker = "hoisted"
+# Lifecycle scripts run only for packages listed in package.json "trustedDependencies", which stays empty.
+
+[test]
+# `bun test` covers pure TypeScript. Browser tests (Vitest), Playwright specs, chain tests and the Lattice checkout run elsewhere.
+pathIgnorePatterns = ["**/*.browser.test.ts", "**/*.browser.test.tsx", "**/e2e/**", "e2e-chain/**", "lattice/**", "**/node_modules/**", ".claude/**", ".integration/**"]

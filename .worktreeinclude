@@ -1,0 +1,2 @@
+# Gitignored files that every Claude Code worktree needs. .handoff/ holds the spec, the plan and the briefs.
+.handoff/

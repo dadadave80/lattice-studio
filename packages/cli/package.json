@@ -1,0 +1,23 @@
+{
+  "name": "lattice-studio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Check, plan, predict and export Lattice diamond recipes from the command line.",
+  "type": "module",
+  "bin": {
+    "lattice-studio": "./dist/main.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun build src/main.ts --target=node --outfile dist/main.js --banner \"#!/usr/bin/env node\"",
+    "dev": "bun src/main.ts"
+  },
+  "dependencies": {
+    "@lattice-studio/catalog-gen": "workspace:*",
+    "@lattice-studio/core": "workspace:*",
+    "viem": "^2.56.8"
+  }
+}
