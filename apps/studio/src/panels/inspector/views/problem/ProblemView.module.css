@@ -1,0 +1,39 @@
+/* The Problem view: severity as a word and an icon, the message, where it is, the fixes. */
+
+.severity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-1);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  color: var(--lx-text);
+}
+
+/* A blocker carries weight as well as its word and icon, never color alone. */
+.blocker {
+  font-weight: 600;
+}
+
+.message {
+  margin: 0;
+  font: var(--lx-font-body);
+  letter-spacing: var(--lx-tracking-body);
+  color: var(--lx-text);
+  overflow-wrap: anywhere;
+}
+
+.anchor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-2);
+  padding: var(--lx-space-2) 0;
+  border-bottom: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.anchor:last-child {
+  border-bottom: none;
+}
