@@ -1,6 +1,6 @@
 import type { Analysis, Catalog, CommandRef, Layout, NotePlacement, Rect, Recipe, Sizes, Trace } from "@lattice-studio/core";
 import { cardSize, contestedSelectors, isNotImplemented, placeNotes, routeTraces } from "@lattice-studio/core";
-import { useReactFlow, useStore } from "@xyflow/react";
+import { useStore, useStoreApi } from "@xyflow/react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { layoutMetrics, useAnalysis, useCatalog, useDocument } from "@/contracts";
 import { useReducedMotion } from "@/a11y/preferences";
@@ -98,14 +98,16 @@ export function OverlayLayer() {
   const analysis = useAnalysis();
   const compact = useStore((s) => s.transform[2] < layoutMetrics.compactZoom);
   const reduced = useReducedMotion();
-  const { setEdges } = useReactFlow();
+  const store = useStoreApi();
 
   const sizes = useMemo(() => sizesOf(layout, catalog, analysis, compact), [layout, catalog, analysis, compact]);
   const traces = useMemo(() => tracesOf(layout, sizes, recipe, catalog, analysis), [layout, sizes, recipe, catalog, analysis]);
   const edges = useMemo(() => edgesOf(traces, layout, sizes), [traces, layout, sizes]);
+  // The sheet passes neither `edges` nor `defaultEdges`, and without either React Flow's `setEdges` drops the
+  // update. Setting them as default edges (what the `defaultEdges` prop does) makes them React Flow's own.
   useEffect(() => {
-    setEdges(edges);
-  }, [edges, setEdges]);
+    store.getState().setDefaultNodesAndEdges(undefined, edges);
+  }, [edges, store]);
 
   const notes = useMemo(() => buildNotes(analysis, catalog), [analysis, catalog]);
   const [heights, setHeights] = useState<Readonly<Record<string, number>>>({});
