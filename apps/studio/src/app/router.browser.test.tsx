@@ -95,7 +95,8 @@ describe("routes", () => {
     go("#/__ui");
     await renderWithStudio(<App />);
     await expect.element(page.getByRole("region", { name: "Title bar", exact: true })).not.toBeInTheDocument();
-    await expect.poll(() => document.querySelectorAll("section, h1, h2").length).toBeGreaterThan(0);
+    // The gallery is a lazy chunk the dev server compiles on first request.
+    await expect.poll(() => document.querySelectorAll("section, h1, h2").length, { timeout: 10_000 }).toBeGreaterThan(0);
   });
 });
 

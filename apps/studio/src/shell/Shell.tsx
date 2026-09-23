@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useRegion, useSession, type RegionId, type RegionProps } from "@/contracts";
+import { KEY_CONTEXT_ATTRIBUTE, useRegion, useSession, type RegionId, type RegionProps } from "@/contracts";
 import { ConsolePanel } from "@/panels/console";
 import { InspectorPanel } from "@/panels/inspector";
 import { Sheet } from "@/sheet/canvas";
@@ -104,7 +104,13 @@ export function Shell() {
             className={styles.leftSplitter}
           />
         ) : null}
-        <main {...regionProps(regions.sheet, styles.sheet)} id={PANE_IDS.sheet} hidden={!seen.sheet}>
+        {/* The sheet's key context covers the region itself, so its keys work as soon as F6 lands on it. */}
+        <main
+          {...regionProps(regions.sheet, styles.sheet)}
+          {...{ [KEY_CONTEXT_ATTRIBUTE]: "sheet" }}
+          id={PANE_IDS.sheet}
+          hidden={!seen.sheet}
+        >
           <Sheet />
         </main>
         {inspectorSplitter ? (

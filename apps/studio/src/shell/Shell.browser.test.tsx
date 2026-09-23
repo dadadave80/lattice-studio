@@ -6,6 +6,7 @@ import {
   commandRef, doc, emptyAnalysis, provideAnalysis, provideServices, runCommand, session, type ProjectsService,
   type SaveStatus,
 } from "@/contracts";
+import { keyContextOf } from "@/commands/keys/key-context";
 import { fixtureCatalog, onCleanup, renderWithStudio, seedDeployState } from "../../test/harness";
 import { Shell } from "./Shell";
 
@@ -154,7 +155,9 @@ describe("drawers, 768-1279 px", () => {
     const tab = page.getByRole("tab", { name: "Structure" });
     await expect.element(tab).toHaveAttribute("aria-selected", "true");
     const panel = () => document.getElementById(tab.element().getAttribute("aria-controls") ?? "");
-    await expect.poll(() => panel()?.checkVisibility() && panel()?.childElementCount).toBeGreaterThan(0);
+    // The dev server compiles the lazy Structure chunk on first request.
+    const filled = () => panel()?.checkVisibility() && panel()?.childElementCount;
+    await expect.poll(filled, { timeout: 10_000 }).toBeGreaterThan(0);
   });
 
   test("1024-1279 px: selecting a card opens the inspector", async () => {
@@ -440,6 +443,16 @@ describe("splitters", () => {
     await userEvent.keyboard("{ArrowRight}");
     expect(doc.state().lastChange).toBe(before);
     expect(doc.state().canUndo).toBe(false);
+  });
+});
+
+describe("the sheet's keys", () => {
+  test("work as soon as F6 lands on the sheet region", async () => {
+    await renderAt(1440);
+    const region = pane("sheet");
+    region.focus();
+    expect(document.activeElement).toBe(region);
+    expect(keyContextOf(region)).toBe("sheet");
   });
 });
 
