@@ -63,7 +63,7 @@ export type { BindingId, KeyBinding, KeyContext, KeySpec } from "./keys";
 export { REGION_IDS, REGION_LABELS } from "./regions";
 export type { RegionId } from "./regions";
 
-export { DIALOG_IDS, dialogComponent, registerDialog } from "./dialogs";
+export { DIALOG_IDS, dialogComponent, overrideDialog, registerDialog } from "./dialogs";
 export type {
   DialogComponentProps, DialogEntry, DialogId, DialogProps, DialogPropsMap, SettingsGroup,
 } from "./dialogs";
