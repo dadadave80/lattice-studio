@@ -48,18 +48,18 @@ describe("resolveRefs", () => {
   test("an unused reference may be unknown; a used one may not", () => {
     expect(resolveRefs({ admin: { $ref: "deployer" } }, { deployer: ME })).toEqual({ ok: true, value: { admin: ME } });
     expect(resolveRefs({ p: { owner: { $ref: "self" } } }, { deployer: ME })).toEqual({
-      ok: false, error: "p.owner is This diamond, whose address isn't known yet.",
+      ok: false, error: "p.owner is this diamond, whose address isn't known yet. Choose a chain and account first.",
     });
     expect(resolveRefs({ list: [{ $ref: "deployer" }] }, {})).toEqual({
-      ok: false, error: "list[0] is Deploying account, whose address isn't known yet.",
+      ok: false, error: "list[0] is the deploying account, whose address isn't known yet. Choose an account first.",
     });
   });
 
   test("unknown reference names and bad addresses are errors", () => {
     expect(resolveRefs({ a: { $ref: "owner" } as never }, {})).toEqual({
-      ok: false, error: 'a refers to "owner"; references are "self" or "deployer".',
+      ok: false, error: 'a refers to "owner", which isn\'t a reference Studio knows. Choose this diamond or the deploying account.',
     });
-    expect(resolveRefs({}, { self: "0x1234" })).toEqual({ ok: false, error: "This diamond is 0x1234, which isn't an address." });
+    expect(resolveRefs({}, { self: "0x1234" })).toEqual({ ok: false, error: "This diamond resolves to 0x1234, which isn't an address. Choose a chain and account first." });
   });
 });
 

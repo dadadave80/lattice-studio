@@ -55,10 +55,10 @@ export function specSelector(spec: InitSpec): Result<Hex4, string> {
   try {
     declared = toFunctionSelector(`function ${spec.fn}`);
   } catch {
-    return err(`${spec.name} declares ${spec.fn}, which isn't a valid function signature.`);
+    return err(`${spec.name} declares ${spec.fn}, which isn't a valid function signature. Rebuild the catalog.`);
   }
   if (fromParams !== declared) {
-    return err(`${spec.name} declares ${spec.fn}, but its parameters encode as a different function.`);
+    return err(`${spec.name} declares ${spec.fn}, but its parameters encode as a different function. Rebuild the catalog.`);
   }
   return ok(fromParams);
 }
@@ -66,7 +66,8 @@ export function specSelector(spec: InitSpec): Result<Hex4, string> {
 const ARRAY = /^(.*)\[(\d*)\]$/;
 const INTEGER = /^(u?)int(\d*)$/;
 const FIXED_BYTES = /^bytes(\d+)$/;
-const DECIMAL = /^-?(?:0|[1-9]\d*)$/;
+/** Canonical decimal: no sign on zero, no leading zeros, no plus sign. */
+const DECIMAL = /^(?:0|-?[1-9]\d*)$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -76,8 +77,14 @@ function isRef(value: unknown): boolean {
   return isRecord(value) && "$ref" in value;
 }
 
-function show(value: Arg): string {
-  return typeof value === "string" ? `"${value}"` : JSON.stringify(value);
+/** A value for an error message; never throws, whatever a mistyped argument holds. */
+function show(value: unknown): string {
+  if (typeof value === "string") return `"${value}"`;
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return typeof value === "bigint" ? value.toString() : "an unreadable value";
+  }
 }
 
 /**
@@ -85,13 +92,13 @@ function show(value: Arg): string {
  * ("bundle.p.decimalsOffset"). A reference that is still symbolic is an error: resolve it first.
  */
 export function toAbiValue(param: AbiParameter, value: Arg, path: string): Result<unknown, string> {
-  if (isRef(value)) return err(`${path} is still a reference; resolve it before encoding.`);
+  if (isRef(value)) return err(`${path} is still a reference. Resolve references before encoding.`);
   const array = ARRAY.exec(param.type);
   if (array) {
-    if (!Array.isArray(value)) return err(`${path} must be a list for ${param.type}.`);
+    if (!Array.isArray(value)) return err(`${path} must be a list for ${param.type}. Enter a list.`);
     const length = array[2];
     if (length !== undefined && length !== "" && value.length !== Number(length)) {
-      return err(`${path} must hold exactly ${length} items; it holds ${value.length}.`);
+      return err(`${path} must hold exactly ${length} items; it holds ${value.length}. Enter ${length} items.`);
     }
     const element = { ...param, type: array[1] ?? "" } as AbiParameter;
     const out: unknown[] = [];
@@ -104,15 +111,15 @@ export function toAbiValue(param: AbiParameter, value: Arg, path: string): Resul
   }
   if (param.type === "tuple") {
     const components = "components" in param ? param.components : [];
-    if (!isRecord(value)) return err(`${path} must be an object with ${components.map((c) => c.name).join(", ")}.`);
+    if (!isRecord(value)) return err(`${path} must be an object with ${components.map((c) => c.name).join(", ")}. Fill in each field.`);
     const known = new Set(components.map((c) => c.name));
     const extra = Object.keys(value).find((key) => !known.has(key));
-    if (extra !== undefined) return err(`${path}.${extra} isn't a field of ${path}.`);
+    if (extra !== undefined) return err(`${path}.${extra} isn't a field of ${path}. Remove it.`);
     const out: Record<string, unknown> = {};
     for (const component of components) {
       const name = component.name ?? "";
       const item = (value as Record<string, Arg>)[name];
-      if (item === undefined) return err(`${path}.${name} is missing.`);
+      if (item === undefined) return err(`${path}.${name} is missing. Fill it in.`);
       const converted = toAbiValue(component, item, `${path}.${name}`);
       if (!converted.ok) return converted;
       out[name] = converted.value;
@@ -122,37 +129,37 @@ export function toAbiValue(param: AbiParameter, value: Arg, path: string): Resul
   const integer = INTEGER.exec(param.type);
   if (integer) {
     if (typeof value !== "string" || !DECIMAL.test(value)) {
-      return err(`${path} must be a whole number written in decimal; it is ${show(value)}.`);
+      return err(`${path} must be a whole number written in decimal; it is ${show(value)}. Enter digits only.`);
     }
     const bits = BigInt(integer[2] === "" ? "256" : (integer[2] ?? "256"));
     const n = BigInt(value);
     const signed = integer[1] === "";
     const min = signed ? -(1n << (bits - 1n)) : 0n;
     const max = signed ? (1n << (bits - 1n)) - 1n : (1n << bits) - 1n;
-    if (n < min || n > max) return err(`${path} is ${value}, outside ${param.type}'s range ${min} to ${max}.`);
+    if (n < min || n > max) return err(`${path} is ${value}, outside ${param.type}'s range ${min} to ${max}. Use ${min} to ${max}.`);
     return ok(n);
   }
   if (param.type === "address") {
-    if (typeof value !== "string" || !isAddress(value)) return err(`${path} must be an address; it is ${show(value)}.`);
+    if (typeof value !== "string" || !isAddress(value)) return err(`${path} must be an address; it is ${show(value)}. Enter 0x and 40 hex digits.`);
     return ok(toChecksum(value));
   }
   if (param.type === "bool") {
-    if (typeof value !== "boolean") return err(`${path} must be true or false; it is ${show(value)}.`);
+    if (typeof value !== "boolean") return err(`${path} must be true or false; it is ${show(value)}. Choose true or false.`);
     return ok(value);
   }
   if (param.type === "string") {
-    if (typeof value !== "string") return err(`${path} must be text; it is ${show(value)}.`);
+    if (typeof value !== "string") return err(`${path} must be text; it is ${show(value)}. Enter text.`);
     return ok(value);
   }
   if (param.type === "bytes" || FIXED_BYTES.test(param.type)) {
-    if (typeof value !== "string" || !isHexAnyCase(value)) return err(`${path} must be hex bytes; it is ${show(value)}.`);
+    if (typeof value !== "string" || !isHexAnyCase(value)) return err(`${path} must be hex bytes; it is ${show(value)}. Enter 0x and pairs of hex digits.`);
     const size = FIXED_BYTES.exec(param.type)?.[1];
     if (size !== undefined && (value.length - 2) / 2 !== Number(size)) {
-      return err(`${path} must be exactly ${size} bytes for ${param.type}.`);
+      return err(`${path} must be exactly ${size} bytes for ${param.type}. Enter ${Number(size) * 2} hex digits after 0x.`);
     }
     return ok(value.toLowerCase());
   }
-  return err(`${path} has type ${param.type}, which Studio can't encode.`);
+  return err(`${path} has type ${param.type}, which Studio can't encode. Use another init.`);
 }
 
 /** A decoded ABI value back as a recipe `Arg`: bigints as decimal strings, addresses EIP-55, hex lowercase. */

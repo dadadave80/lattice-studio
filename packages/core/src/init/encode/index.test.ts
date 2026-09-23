@@ -132,12 +132,28 @@ describe.skipIf(!fixture.ok)("encodeInit", () => {
     expect(result).toEqual({ ok: true, value: { target: address("MultiInit"), data } });
   });
 
-  test("the automatic step resolves by contract and entry point when its spec names the contract", () => {
-    const auto = { ...stepView(spec("DiamondIntrospectionInit.initImmutable"), "auto", 0, {}), spec: "DiamondIntrospectionInit" };
-    const result = encodeInit({ kind: "steps", steps: [auto] }, catalog(), {});
-    expect(result.ok && decodeInit(result.value.data, catalog())).toEqual({
-      ok: true,
-      value: { kind: "steps", steps: [{ target: address("DiamondIntrospectionInit.initImmutable"), spec: "DiamondIntrospectionInit.initImmutable", fn: "initImmutable()", args: {}, fromRef: {} }] },
+  test("a single call goes straight to its init, not through MultiInit", () => {
+    const auto = stepView(spec("DiamondIntrospectionInit.initImmutable"), "auto", 0, {});
+    expect(encodeInit({ kind: "steps", steps: [auto] }, catalog(), {})).toEqual({
+      ok: true, value: { target: address("DiamondIntrospectionInit.initImmutable"), data: "0xd1a4dbd8" },
+    });
+    const ghost = { ...auto, spec: "DiamondIntrospectionInit" };
+    expect(encodeInit({ kind: "steps", steps: [ghost] }, catalog(), {})).toEqual({
+      ok: false, error: "auto runs DiamondIntrospectionInit, which this catalog doesn't have. Remove it.",
+    });
+  });
+
+  test("a bundle plan runs a bundle spec, and a steps plan never does", () => {
+    const erc20 = stepView(spec("ERC20Init"), "bundle", 0, { name_: "A", symbol_: "B" });
+    expect(encodeInit({ kind: "bundle", steps: [erc20] }, catalog(), {})).toEqual({
+      ok: false, error: "bundle runs ERC20Init, which is a step init, not a bundle. Add it as a step instead.",
+    });
+    const plan: InitPlan = {
+      kind: "steps",
+      steps: [stepView(spec("GovernedVaultInit"), "steps[0]", 0, vault), stepView(spec("DiamondIntrospectionInit.initUpgradeable"), "auto", 1, {})],
+    };
+    expect(encodeInit(plan, catalog(), {})).toEqual({
+      ok: false, error: "steps[0] runs GovernedVaultInit, a bundle that must be the diamond's whole init. Use it on its own.",
     });
   });
 
@@ -145,18 +161,18 @@ describe.skipIf(!fixture.ok)("encodeInit", () => {
     const template = catalog().recipes.find((r) => r.name === "GovernedVault")?.recipe.init;
     if (template?.kind !== "bundle") throw new Error("fixture GovernedVault isn't a bundle");
     const vaultPlan: InitPlan = { kind: "bundle", steps: [stepView(spec("GovernedVaultInit"), "bundle", 0, template.args)] };
-    expect(encodeInit(vaultPlan, catalog(), {})).toEqual({ ok: false, error: "bundle.p.asset is missing." });
+    expect(encodeInit(vaultPlan, catalog(), {})).toEqual({ ok: false, error: "bundle.p.asset is missing. Fill it in." });
     const safePlan: InitPlan = {
       kind: "steps",
       steps: [stepView(spec("SafeDiamondCutInit"), "steps[0]", 0, { admin: { $ref: "deployer" }, minThreshold: "2" })],
     };
-    expect(encodeInit(safePlan, catalog(), { deployer: DEPLOYER })).toEqual({ ok: false, error: "steps[0].safe is missing." });
+    expect(encodeInit(safePlan, catalog(), { deployer: DEPLOYER })).toEqual({ ok: false, error: "steps[0].safe is missing. Fill it in." });
   });
 
   test("an unresolved reference is an error, never a symbolic value in calldata", () => {
     const plan: InitPlan = { kind: "steps", steps: [stepView(spec("AccessControlInit"), "steps[0]", 0, { admin: { $ref: "self" } })] };
     expect(encodeInit(plan, catalog(), { deployer: DEPLOYER })).toEqual({
-      ok: false, error: "steps[0].admin is This diamond, whose address isn't known yet.",
+      ok: false, error: "steps[0].admin is this diamond, whose address isn't known yet. Choose a chain and account first.",
     });
   });
 
@@ -171,13 +187,13 @@ describe.skipIf(!fixture.ok)("encodeInit", () => {
     const run = (p: Record<string, Arg>) =>
       encodeInit({ kind: "bundle", steps: [stepView(spec("GovernedVaultInit"), "bundle", 0, { p })] }, catalog(), {});
     const base = vault.p as Record<string, Arg>;
-    expect(run({ ...base, decimalsOffset: "256" })).toEqual({ ok: false, error: "bundle.p.decimalsOffset is 256, outside uint8's range 0 to 255." });
-    expect(run({ ...base, minDelay: "1e3" })).toEqual({ ok: false, error: 'bundle.p.minDelay must be a whole number written in decimal; it is "1e3".' });
-    expect(run({ ...base, minDelay: "-1" })).toEqual({ ok: false, error: "bundle.p.minDelay is -1, outside uint256's range 0 to 115792089237316195423570985008687907853269984665640564039457584007913129639935." });
-    expect(run({ ...base, asset: "0xnope" })).toEqual({ ok: false, error: 'bundle.p.asset must be an address; it is "0xnope".' });
-    expect(run({ ...base, extra: "1" })).toEqual({ ok: false, error: "bundle.p.extra isn't a field of bundle.p." });
+    expect(run({ ...base, decimalsOffset: "256" })).toEqual({ ok: false, error: "bundle.p.decimalsOffset is 256, outside uint8's range 0 to 255. Use 0 to 255." });
+    expect(run({ ...base, minDelay: "1e3" })).toEqual({ ok: false, error: 'bundle.p.minDelay must be a whole number written in decimal; it is "1e3". Enter digits only.' });
+    expect(run({ ...base, minDelay: "-1" })).toEqual({ ok: false, error: "bundle.p.minDelay is -1, outside uint256's range 0 to 115792089237316195423570985008687907853269984665640564039457584007913129639935. Use 0 to 115792089237316195423570985008687907853269984665640564039457584007913129639935." });
+    expect(run({ ...base, asset: "0xnope" })).toEqual({ ok: false, error: 'bundle.p.asset must be an address; it is "0xnope". Enter 0x and 40 hex digits.' });
+    expect(run({ ...base, extra: "1" })).toEqual({ ok: false, error: "bundle.p.extra isn't a field of bundle.p. Remove it." });
     const step = encodeInit({ kind: "steps", steps: [stepView(spec("ERC20Init"), "steps[0]", 0, { name_: "A", symbol_: "B", decimals: "18" })] }, catalog(), {});
-    expect(step).toEqual({ ok: false, error: "steps[0].decimals isn't a parameter of ERC20Init.init(string,string)." });
+    expect(step).toEqual({ ok: false, error: "steps[0].decimals isn't a parameter of ERC20Init.init(string,string). Remove it." });
   });
 
   test("addresses are accepted in lowercase and encoded checksummed", () => {
@@ -186,7 +202,7 @@ describe.skipIf(!fixture.ok)("encodeInit", () => {
   });
 
   test("a bundle plan must be exactly one call", () => {
-    expect(encodeInit({ kind: "bundle", steps: [] }, catalog(), {})).toEqual({ ok: false, error: "A bundle init is one call; this plan has 0." });
+    expect(encodeInit({ kind: "bundle", steps: [] }, catalog(), {})).toEqual({ ok: false, error: "A bundle init is one call, but this plan has 0. Plan the init again." });
   });
 
   test("steps with no calls are the zero target, like none", () => {
@@ -195,7 +211,7 @@ describe.skipIf(!fixture.ok)("encodeInit", () => {
 
   test("an unknown spec is an error", () => {
     const ghost = { ...stepView(spec("ERC20Init"), "steps[0]", 0, {}), spec: "GhostInit" };
-    expect(encodeInit({ kind: "steps", steps: [ghost] }, catalog(), {})).toEqual({ ok: false, error: "steps[0] runs GhostInit, which this catalog doesn't have." });
+    expect(encodeInit({ kind: "steps", steps: [ghost] }, catalog(), {})).toEqual({ ok: false, error: "steps[0] runs GhostInit, which this catalog doesn't have. Remove it." });
   });
 });
 
@@ -210,32 +226,38 @@ describe("never a zero address inside MultiInit", () => {
   test("a step whose init has the zero address fails instead of silently skipping later steps", () => {
     const test = makeCatalog({ inits: [multi, zeroed, later] });
     const plan: InitPlan = { kind: "steps", steps: [stepView(zeroed, "steps[0]", 0, {}), stepView(later, "steps[1]", 1, {})] };
-    expect(encodeInit(plan, test, {})).toEqual({ ok: false, error: "ZeroInit (steps[0]) has the zero address, which would end MultiInit before it runs." });
+    expect(encodeInit(plan, test, {})).toEqual({ ok: false, error: "ZeroInit (steps[0]) has the zero address, which would end MultiInit before it runs. Rebuild the catalog." });
   });
 
   test("a zero MultiInit address fails too", () => {
     const test = makeCatalog({ inits: [{ ...multi, release: { ...makeShared("MultiInit"), address: ZERO } }, later] });
-    const plan: InitPlan = { kind: "steps", steps: [stepView(later, "steps[0]", 0, {})] };
-    expect(encodeInit(plan, test, {}).ok).toBe(false);
+    const plan: InitPlan = { kind: "steps", steps: [stepView(later, "steps[0]", 0, {}), stepView(later, "steps[1]", 1, {})] };
+    expect(encodeInit(plan, test, {})).toEqual({
+      ok: false, error: "MultiInit (MultiInit) has the zero address, which would end MultiInit before it runs. Rebuild the catalog.",
+    });
   });
 
-  test("a catalog without MultiInit can't run steps", () => {
-    const plan: InitPlan = { kind: "steps", steps: [stepView(later, "steps[0]", 0, {})] };
-    expect(encodeInit(plan, makeCatalog({ inits: [later] }), {})).toEqual({ ok: false, error: "This catalog has no MultiInit to run init steps through." });
+  test("a catalog without MultiInit can't run two steps, but runs one directly", () => {
+    const one: InitPlan = { kind: "steps", steps: [stepView(later, "steps[0]", 0, {})] };
+    expect(encodeInit(one, makeCatalog({ inits: [later] }), {}).ok).toBe(true);
+    const two: InitPlan = { kind: "steps", steps: [stepView(later, "steps[0]", 0, {}), stepView(later, "steps[1]", 1, {})] };
+    expect(encodeInit(two, makeCatalog({ inits: [later] }), {})).toEqual({
+      ok: false, error: "This catalog has no MultiInit to run init steps through. Rebuild the catalog.",
+    });
   });
 
   test("a zero reference address is refused", () => {
     const admin = makeInit({ name: "AdminInit", fn: "init(address)", params: [{ name: "admin", type: "address", doc: "" }] });
     const plan: InitPlan = { kind: "steps", steps: [stepView(admin, "steps[0]", 0, { admin: { $ref: "deployer" } })] };
     const result = encodeInit(plan, makeCatalog({ inits: [multi, admin] }), { deployer: ZERO });
-    expect(result).toEqual({ ok: false, error: "Deploying account can't be the zero address." });
+    expect(result).toEqual({ ok: false, error: "The deploying account resolves to the zero address. Choose an account first." });
   });
 
   test("a spec whose fn disagrees with its params is refused", () => {
     const wrong = makeInit({ name: "WrongInit", fn: "init(uint256)", params: [{ name: "admin", type: "address", doc: "" }] });
     const plan: InitPlan = { kind: "steps", steps: [stepView(wrong, "steps[0]", 0, { admin: addr(1) })] };
     expect(encodeInit(plan, makeCatalog({ inits: [multi, wrong] }), {})).toEqual({
-      ok: false, error: "WrongInit declares init(uint256), but its parameters encode as a different function.",
+      ok: false, error: "WrongInit declares init(uint256), but its parameters encode as a different function. Rebuild the catalog.",
     });
   });
 });
@@ -269,7 +291,10 @@ describe.skipIf(!fixture.ok)("decodeInit", () => {
       },
     });
     // Text that spells a reference's address isn't a reference.
-    const named = encodeInit({ kind: "steps", steps: [stepView(spec("ERC20Init"), "steps[0]", 0, { name_: DIAMOND, symbol_: "D" })] }, catalog(), refs);
+    const named = encodeInit({
+      kind: "steps",
+      steps: [stepView(spec("ERC20Init"), "steps[0]", 0, { name_: DIAMOND, symbol_: "D" }), stepView(spec("DiamondIntrospectionInit.initImmutable"), "auto", 1, {})],
+    }, catalog(), refs);
     const namedBack = named.ok ? decodeInit(named.value.data, catalog(), refs) : named;
     expect(namedBack.ok && namedBack.value.steps[0]?.fromRef).toEqual({});
     // Without refs nothing is marked.
@@ -290,15 +315,46 @@ describe.skipIf(!fixture.ok)("decodeInit", () => {
     });
   });
 
+  test("a direct step call decodes, naming its spec when the selector is unique", () => {
+    const refs = { self: DIAMOND, deployer: DEPLOYER };
+    const safe = encodeInit({ kind: "steps", steps: [stepView(spec("SafeDiamondCutInit"), "steps[0]", 0, { admin: { $ref: "deployer" }, safe: SAFE, minThreshold: "2" })] }, catalog(), refs);
+    if (!safe.ok) throw new Error(safe.error);
+    expect(safe.value.target).toBe(address("SafeDiamondCutInit"));
+    expect(decodeInit(safe.value.data, catalog(), refs)).toEqual({
+      ok: true,
+      value: { kind: "steps", steps: [{ spec: "SafeDiamondCutInit", fn: "init(address,address,uint256)", args: { admin: DEPLOYER, safe: SAFE, minThreshold: "2" }, fromRef: { admin: "deployer" } }] },
+    });
+  });
+
+  test("a direct init(address) call is ambiguous without its target, so it decodes by position", () => {
+    const one = encodeInit({ kind: "steps", steps: [stepView(spec("AccessControlInit"), "steps[0]", 0, { admin: { $ref: "self" } })] }, catalog(), { self: DIAMOND });
+    if (!one.ok) throw new Error(one.error);
+    expect(decodeInit(one.value.data, catalog(), { self: DIAMOND })).toEqual({
+      ok: true, value: { kind: "steps", steps: [{ fn: "init(address)", args: { "0": DIAMOND }, fromRef: { "0": "self" } }] },
+    });
+  });
+
+  test("decoding stops at a zero MultiInit target, as MultiInit does", () => {
+    const erc20 = encodeFunctionData({ abi: parseAbi(["function init(string,string)"]), args: ["A", "B"] });
+    const data = encodeFunctionData({
+      abi: multiInit,
+      args: [[address("ERC20Init"), ZERO, address("DiamondIntrospectionInit.initImmutable")], [erc20, "0x", "0xd1a4dbd8"]],
+    });
+    expect(decodeInit(data, catalog())).toEqual({
+      ok: true,
+      value: { kind: "steps", steps: [{ target: address("ERC20Init"), spec: "ERC20Init", fn: "init(string,string)", args: { name_: "A", symbol_: "B" }, fromRef: {} }] },
+    });
+  });
+
   test("an unknown MultiInit step keeps its target and selector", () => {
     const data = encodeFunctionData({ abi: multiInit, args: [[addr(7)], ["0x12345678aa"]] });
     expect(decodeInit(data, catalog())).toEqual({ ok: true, value: { kind: "steps", steps: [{ target: addr(7), fn: "0x12345678", args: {}, fromRef: {} }] } });
   });
 
   test("malformed data is an error, not a throw", () => {
-    expect(decodeInit("0x12", catalog())).toEqual({ ok: false, error: "Init data is shorter than a function selector." });
-    expect(decodeInit("0xdeadbeef", catalog())).toEqual({ ok: false, error: "Init data calls 0xdeadbeef, which matches no bundle init in this catalog." });
+    expect(decodeInit("0x12", catalog())).toEqual({ ok: false, error: "Init data is shorter than a function selector. Check where the data came from." });
+    expect(decodeInit("0xdeadbeef", catalog())).toEqual({ ok: false, error: "Init data calls 0xdeadbeef, which matches no init in this catalog. Check the catalog version." });
     expect(decodeInit("0x6e02fa3c00", catalog()).ok).toBe(false);
-    expect(decodeInit("0xzz" as `0x${string}`, catalog())).toEqual({ ok: false, error: "Init data isn't hex bytes." });
+    expect(decodeInit("0xzz" as `0x${string}`, catalog())).toEqual({ ok: false, error: "Init data isn't hex bytes. Check where the data came from." });
   });
 });

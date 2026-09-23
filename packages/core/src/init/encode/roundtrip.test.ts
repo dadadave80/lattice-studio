@@ -7,7 +7,7 @@ import type { InitPlan, InitStepView } from "../../model/init";
 import type { Arg } from "../../model/recipe";
 import { loadFixtureCatalog, makeCatalog, makeInit } from "../../testing";
 import { specAbi } from "./abi";
-import { decodeInit, encodeInit } from "./index";
+import { decodeInit, encodeInit, resolveRefs } from "./index";
 
 /** A canonical Arg for `param`: decimal strings, EIP-55 addresses, lowercase hex, tuples keyed by component. */
 function valueOf(param: InitParam): fc.Arbitrary<Arg> {
@@ -130,6 +130,119 @@ describe("decode(encode(x)) = x", () => {
         }
       }),
       { numRuns: 100 },
+    );
+  });
+});
+
+/** Values of the wrong JS type for anything but `keep`: numbers, null, lists, plain objects, booleans, text. */
+function foreign(keep: "string" | "boolean" | "array" | "object"): fc.Arbitrary<unknown> {
+  const all: [string, fc.Arbitrary<unknown>][] = [
+    ["number", fc.oneof(fc.integer(), fc.double())],
+    ["null", fc.constant(null)],
+    ["array", fc.array(fc.integer(), { maxLength: 2 })],
+    ["object", fc.record({ x: fc.integer() })],
+    ["boolean", fc.boolean()],
+    ["string", fc.string()],
+    ["bigint", fc.bigInt()],
+  ];
+  return fc.oneof(...all.filter(([kind]) => kind !== keep).map(([, arb]) => arb));
+}
+
+/** A value that is wrong for `param`, whatever form the mistake takes. */
+function wrongFor(param: InitParam): fc.Arbitrary<unknown> {
+  const array = /^(.*)\[(\d*)\]$/.exec(param.type);
+  if (array) {
+    const length = array[2] === "" || array[2] === undefined ? undefined : Number(array[2]);
+    const element = { ...param, type: array[1] ?? "" };
+    const badItem = fc.tuple(wrongFor(element), fc.array(valueOf(element), { maxLength: 1 })).map(([bad, rest]) => [bad, ...rest]);
+    const wrongLength = length === undefined ? [] : [fc.array(valueOf(element), { minLength: length + 1, maxLength: length + 2 })];
+    return fc.oneof(foreign("array"), badItem, ...wrongLength);
+  }
+  if (param.type === "tuple") {
+    const components = param.components ?? [];
+    const first = components[0];
+    const variants: fc.Arbitrary<unknown>[] = [foreign("object")];
+    if (first !== undefined) {
+      const rest = argsOf(components.slice(1));
+      variants.push(rest);
+      variants.push(fc.tuple(wrongFor(first), rest).map(([bad, others]) => ({ ...others, [first.name]: bad })));
+    }
+    return fc.oneof(...variants);
+  }
+  const integer = /^(u?)int(\d*)$/.exec(param.type);
+  if (integer) {
+    const bits = BigInt(integer[2] || "256");
+    const [min, max] = integer[1] === "u" ? [0n, (1n << bits) - 1n] : [-(1n << (bits - 1n)), (1n << (bits - 1n)) - 1n];
+    return fc.oneof(
+      foreign("string"),
+      fc.bigInt({ min: max + 1n, max: max * 4n + 4n }).map(String),
+      fc.bigInt({ min: min * 4n - 4n, max: min - 1n }).map(String),
+      fc.constantFrom("1.5", "0x10", " 1", "01", "", "1e3", "-0", "+1"),
+    );
+  }
+  if (param.type === "address") {
+    return fc.oneof(
+      foreign("string"),
+      fc.string().filter((s) => !/^0x[0-9a-fA-F]{40}$/.test(s)),
+      fc.constantFrom("0x6b175474e89094C44Da98b954EedeAC495271d0F", "0x6B175474E89094C44DA98B954EEDEAC495271D0F0"),
+    );
+  }
+  if (param.type === "bool") return fc.oneof(foreign("boolean"), fc.constantFrom("true", "false"));
+  if (param.type === "string") return foreign("string");
+  if (param.type === "bytes") return fc.oneof(foreign("string"), fc.constantFrom("0xabc", "0xzz", "abcd", "0x0"));
+  const fixed = /^bytes(\d+)$/.exec(param.type);
+  if (fixed) {
+    const n = Number(fixed[1]);
+    return fc.oneof(foreign("string"), fc.uint8Array({ minLength: n + 1, maxLength: n + 3 }).map((b) => bytesToHex(b)), fc.constant("0xabc"));
+  }
+  throw new Error(`no generator for ${param.type}`);
+}
+
+describe("mistyped arguments are refused, never thrown", () => {
+  const unknownRef = fc.oneof(
+    fc.string().filter((name) => name !== "self" && name !== "deployer").map(($ref) => ({ $ref })),
+    fc.constant({ $ref: "self" }),
+  );
+  const DEPLOYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+
+  test("for generated parameters, one argument wrong at a time: wrong type, range, hex, length or reference", () => {
+    const cases = params
+      .filter((list) => list.length > 0)
+      .chain((list) =>
+        fc.tuple(
+          fc.constant(list),
+          argsOf(list),
+          fc.nat({ max: list.length - 1 }).chain((i) => fc.tuple(fc.constant(i), fc.oneof(wrongFor(list[i] as InitParam), unknownRef))),
+          fc.constantFrom<"step" | "bundle">("step", "bundle"),
+        ),
+      );
+    fc.assert(
+      fc.property(cases, ([list, args, [i, bad], kind]) => {
+        const spec = generated(list, kind);
+        const catalog = makeCatalog({ inits: [multi, spec] });
+        const mistyped = { ...args, [(list[i] as InitParam).name]: bad as Arg };
+        const plan: InitPlan = kind === "step"
+          ? { kind: "steps", steps: [view(spec, "steps[0]", 0, mistyped)] }
+          : { kind: "bundle", steps: [view(spec, "bundle", 0, mistyped)] };
+        const result = encodeInit(plan, catalog, { deployer: DEPLOYER });
+        expect(result.ok).toBe(false);
+        // Every error says what's wrong, then what to do.
+        if (!result.ok) expect(result.error).toMatch(/\. [A-Z][^]*\.$/);
+      }),
+      { numRuns: 500 },
+    );
+  });
+
+  test("resolveRefs and decodeInit return a Result for anything", () => {
+    fc.assert(
+      fc.property(fc.dictionary(fc.string(), fc.anything()), fc.uint8Array({ maxLength: 200 }), fc.boolean(), (args, bytes, viaMulti) => {
+        const resolved = resolveRefs(args as Record<string, Arg>, { self: "0x5FbDB2315678afecb367f032d93F642f64180aa3" });
+        expect(typeof resolved.ok).toBe("boolean");
+        const data = `${viaMulti ? "0x6e02fa3c" : "0x"}${bytesToHex(bytes).slice(2)}` as `0x${string}`;
+        const decoded = decodeInit(data, makeCatalog({ inits: [multi] }));
+        expect(typeof decoded.ok).toBe("boolean");
+      }),
+      { numRuns: 300 },
     );
   });
 });

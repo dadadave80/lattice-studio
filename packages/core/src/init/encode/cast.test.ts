@@ -77,16 +77,16 @@ describe.skipIf(CAST === null || !fixture.ok)("cast calldata", () => {
     expect(encodeInit(plan, catalog(), {})).toEqual({ ok: true, value: { target: at("MultiInit"), data: expected as `0x${string}` } });
   });
 
-  test("SafeDiamondCut: one step, which registers the interfaces itself (no automatic step)", () => {
+  test("SafeDiamondCut: one step that registers the interfaces itself, called directly as DeploySafeDiamondCut does", () => {
     const plan: InitPlan = {
       kind: "steps",
       steps: [view(spec("SafeDiamondCutInit"), "steps[0]", 0, { admin: { $ref: "deployer" }, safe: SAFE, minThreshold: "2" })],
     };
     expect(spec("SafeDiamondCutInit").registersInterfaces).toBe(true);
-    const inner = cast("calldata", "init(address,address,uint256)", DEPLOYER, SAFE, "2");
-    const expected = cast("calldata", "multiInit(address[],bytes[])", `[${at("SafeDiamondCutInit")}]`, `[${inner}]`);
+    // DeploySafeDiamondCut.buildCuts: init = SafeDiamondCutInit, initCalldata = abi.encodeCall(SafeDiamondCutInit.init, (admin, safe, minThreshold)).
+    const expected = cast("calldata", "init(address,address,uint256)", DEPLOYER, SAFE, "2");
     expect(encodeInit(plan, catalog(), { deployer: DEPLOYER })).toEqual({
-      ok: true, value: { target: at("MultiInit"), data: expected as `0x${string}` },
+      ok: true, value: { target: at("SafeDiamondCutInit"), data: expected as `0x${string}` },
     });
   });
 });

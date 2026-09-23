@@ -5,7 +5,11 @@ import type { Arg, RefName } from "../../model/recipe";
 import { err, ok, type Result } from "../../model/result";
 import { ZERO_ADDRESS } from "./abi";
 
-export const REF_LABEL: Record<RefName, string> = { self: "This diamond", deployer: "Deploying account" };
+/** How a reference reads mid-sentence (spec L285, L567), and what makes its address known. */
+const REF_TEXT: Record<RefName, { label: string; subject: string; fix: string }> = {
+  self: { label: "this diamond", subject: "This diamond", fix: "Choose a chain and account first." },
+  deployer: { label: "the deploying account", subject: "The deploying account", fix: "Choose an account first." },
+};
 
 function refName(value: Arg): RefName | "invalid" | null {
   if (typeof value !== "object" || value === null || Array.isArray(value) || !("$ref" in value)) return null;
@@ -27,11 +31,12 @@ export function walkRefs(value: Arg, visit: (name: RefName) => void): void {
 function resolveValue(value: Arg, refs: Refs, path: string): Result<Arg, string> {
   const name = refName(value);
   if (name === "invalid") {
-    return err(`${path} refers to ${JSON.stringify((value as { $ref: unknown }).$ref)}; references are "self" or "deployer".`);
+    const named = String((value as { $ref: unknown }).$ref);
+    return err(`${path} refers to "${named}", which isn't a reference Studio knows. Choose this diamond or the deploying account.`);
   }
   if (name !== null) {
     const address = refs[name];
-    if (address === undefined) return err(`${path} is ${REF_LABEL[name]}, whose address isn't known yet.`);
+    if (address === undefined) return err(`${path} is ${REF_TEXT[name].label}, whose address isn't known yet. ${REF_TEXT[name].fix}`);
     return ok(toChecksum(address));
   }
   if (Array.isArray(value)) {
@@ -50,6 +55,9 @@ function resolveValue(value: Arg, refs: Refs, path: string): Result<Arg, string>
 }
 
 export function resolveArgsAt(args: Record<string, Arg>, refs: Refs, prefix: string): Result<Record<string, Arg>, string> {
+  if (typeof args !== "object" || args === null || Array.isArray(args)) {
+    return err(`${prefix === "" ? "The arguments" : prefix} must be named values. Fill in each field.`);
+  }
   const out: Record<string, Arg> = {};
   for (const [key, value] of Object.entries(args)) {
     const resolved = resolveValue(value, refs, prefix === "" ? key : `${prefix}.${key}`);
@@ -63,8 +71,9 @@ export function checkRefs(refs: Refs): Result<Refs, string> {
   for (const name of ["self", "deployer"] as const) {
     const address = refs[name];
     if (address === undefined) continue;
-    if (!isAddress(address)) return err(`${REF_LABEL[name]} is ${address}, which isn't an address.`);
-    if (sameAddress(address, ZERO_ADDRESS)) return err(`${REF_LABEL[name]} can't be the zero address.`);
+    const { subject, fix } = REF_TEXT[name];
+    if (!isAddress(address)) return err(`${subject} resolves to ${String(address)}, which isn't an address. ${fix}`);
+    if (sameAddress(address, ZERO_ADDRESS)) return err(`${subject} resolves to the zero address. ${fix}`);
   }
   return ok(refs);
 }
