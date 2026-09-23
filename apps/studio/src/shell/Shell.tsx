@@ -1,10 +1,10 @@
 import type { CSSProperties } from "react";
-import { commandRef, useRegion, useSession, type RegionId, type RegionProps } from "@/contracts";
+import { KEY_CONTEXT_ATTRIBUTE, useRegion, useSession, type RegionId, type RegionProps } from "@/contracts";
 import { ConsolePanel } from "@/panels/console";
 import { InspectorPanel } from "@/panels/inspector";
 import { Sheet } from "@/sheet/canvas";
-import { CommandButton, cx, Splitter } from "@/ui";
-import { useNeedsFillIn } from "./fill-in";
+import { Splitter } from "@/ui/nav/Splitter";
+import { cx } from "@/ui/shared/cx";
 import { useFocusReturn } from "./focus-return";
 import { isDrawerTier, useLayoutTier, useWindowHeight } from "./layout-tier";
 import { LeftPane } from "./LeftPane";
@@ -50,7 +50,6 @@ export function Shell() {
   const tier = useLayoutTier();
   const panes = useSession((s) => s.panes);
   const height = useWindowHeight();
-  const fillIn = useNeedsFillIn();
   const regions = useRegions();
   usePaneFollow();
   useDrawerEscape(isDrawerTier(tier) ? panes.drawer : null);
@@ -105,7 +104,13 @@ export function Shell() {
             className={styles.leftSplitter}
           />
         ) : null}
-        <main {...regionProps(regions.sheet, styles.sheet)} id={PANE_IDS.sheet} hidden={!seen.sheet}>
+        {/* The sheet's key context covers the region itself, so its keys work as soon as F6 lands on it. */}
+        <main
+          {...regionProps(regions.sheet, styles.sheet)}
+          {...{ [KEY_CONTEXT_ATTRIBUTE]: "sheet" }}
+          id={PANE_IDS.sheet}
+          hidden={!seen.sheet}
+        >
           <Sheet />
         </main>
         {inspectorSplitter ? (
@@ -130,13 +135,6 @@ export function Shell() {
           id={PANE_IDS.inspector}
           hidden={!seen.inspector}
         >
-          {phone && fillIn ? (
-            <div className={styles.fillIn}>
-              <CommandButton command={commandRef("init.open")} block>
-                Fill in
-              </CommandButton>
-            </div>
-          ) : null}
           <InspectorPanel />
         </aside>
       </div>

@@ -1,7 +1,10 @@
 import type { CommandRef } from "@lattice-studio/core";
 import { memo, useId, type MouseEvent, type ReactNode } from "react";
 import { runCommand, useCommandState } from "@/contracts";
-import { cx, hatchedClass, Icon, ReasonTooltip } from "@/ui";
+import { Icon } from "@/ui/icons/Icon";
+import { cx } from "@/ui/shared/cx";
+import { hatchedClass } from "@/ui/status/hatch";
+import { ReasonTooltip } from "@/ui/tooltip/ReasonTooltip";
 import type { PinView } from "./card-model";
 import styles from "./FacetCard.module.css";
 
