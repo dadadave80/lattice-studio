@@ -1,5 +1,6 @@
 import { commandRef, runCommand, useCommandState } from "@/contracts";
-import { ReasonTooltip, StatusChip } from "@/ui";
+import { StatusChip } from "@/ui/status/StatusChip";
+import { ReasonTooltip } from "@/ui/tooltip/ReasonTooltip";
 import type { StatusChipWords } from "./status";
 import styles from "./TitleBar.module.css";
 

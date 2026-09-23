@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   chainService, useAnalysis, useDeployments, useDeployState, useDocument, useSession, type DeployState,
 } from "@/contracts";
-import type { StatusTone } from "@/ui";
+import type { StatusTone } from "@/ui/status/StatusChip";
 
 export type StatusChipWords = { tone: StatusTone; text: string };
 

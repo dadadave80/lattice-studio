@@ -1,4 +1,4 @@
-import { cx } from "@/ui";
+import { cx } from "@/ui/shared/cx";
 import type { PinView } from "./card-model";
 import styles from "./FacetCard.module.css";
 

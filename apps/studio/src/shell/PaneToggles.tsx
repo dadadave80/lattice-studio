@@ -1,5 +1,5 @@
 import { commandRef, runCommand, useSession } from "@/contracts";
-import { ToggleButton } from "@/ui";
+import { ToggleButton } from "@/ui/fields/ToggleButton";
 import { DRAWER_TOGGLE_ATTRIBUTE, focusDrawer } from "./focus-return";
 import type { LayoutTier } from "./layout-tier";
 import { paneShowing } from "./panes";

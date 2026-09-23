@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { commandRef, useDocument, useSaveStatus } from "@/contracts";
-import { CommandButton } from "@/ui";
+import { CommandButton } from "@/ui/buttons/CommandButton";
 import { AppMenu } from "./AppMenu";
 import { DeployButton } from "./DeployButton";
 import { isDrawerTier, useLayoutTier } from "./layout-tier";

@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import { commandRef, runCommand, useCommandState } from "@/contracts";
-import { cx, ReasonTooltip } from "@/ui";
+import { cx } from "@/ui/shared/cx";
+import { ReasonTooltip } from "@/ui/tooltip/ReasonTooltip";
 import styles from "./FacetCard.module.css";
 
 export type MoreButtonProps = {
