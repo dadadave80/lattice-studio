@@ -1,0 +1,50 @@
+CommitRevealInit:
+  kind: step
+  source: src/privacy/CommitRevealInit.sol#L15-L17
+
+ERC5564AnnouncerInit:
+  kind: step
+  source: src/privacy/ERC5564AnnouncerInit.sol#L15-L17
+
+ERC6538RegistryInit:
+  kind: step
+  source: src/privacy/ERC6538RegistryInit.sol#L18-L21
+
+Groth16VerifierInit:
+  kind: step
+  source: src/privacy/Groth16VerifierInit.sol#L16-L18
+
+PlonkVerifierInit:
+  kind: step
+  source: src/privacy/PlonkVerifierInit.sol#L16-L18
+
+PrivateVotingInit:
+  kind: step
+  source: src/privacy/PrivateVotingInit.sol#L18-L21
+  params:
+    verifier:
+      rule: nonzero
+      source: src/privacy/libraries/SemaphoreLib.sol#L85-L85
+
+SemaphoreInit:
+  kind: step
+  source: src/privacy/SemaphoreInit.sol#L18-L21
+  params:
+    admin:
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/privacy/SemaphoreInit.sol#L19-L19
+    verifier:
+      rule: nonzero
+      source: src/privacy/libraries/SemaphoreLib.sol#L85-L85
+
+ShieldedPoolInit:
+  kind: step
+  source: src/privacy/ShieldedPoolInit.sol#L17-L20
+  params:
+    admin:
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/privacy/ShieldedPoolInit.sol#L18-L18

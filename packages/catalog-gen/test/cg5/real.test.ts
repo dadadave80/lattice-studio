@@ -81,12 +81,35 @@ const FACET_DIFFERENCES: Record<string, { field: "init" | "defaultOwnerOf" | "re
   VaultCore: [{ field: "defaultOwnerOf", why: "DeployVaultCore replaces ERC4626's deposit/mint/withdraw/redeem with VaultCore's (#L21-L23)" }],
 };
 
+/**
+ * Hard requirements the source states that the fixture doesn't carry (K3 wrote only what v1 flows touch). Each
+ * cites a "mount alongside" / "must be present" line in the facet's NatSpec; see the overlay entry.
+ */
+const REQUIRES_ADDED: Record<string, string[][]> = {
+  BridgeERC20: [["CrosschainLink"]],
+  BridgeERC7802: [["CrosschainLink"]],
+  CrosschainTimelockHandler: [["CrosschainLink"], ["TimelockController"]],
+  ERC20Crosschain: [["ERC20"], ["CrosschainLink"]],
+  ERC20Votes: [["ERC20"]],
+  ERC4626: [["ERC20"]],
+  ERC7802: [["ERC20"]],
+  PrivateVoting: [["Semaphore"]],
+};
+
 describe("agrees with K3's fixture", () => {
+  test("every added requirement is hard (conventions that restate a namespace touch are C3's, contracts §4)", () => {
+    for (const [name, anyOfs] of Object.entries(REQUIRES_ADDED)) {
+      const added = facetOverlayFields(overlay.facets[name]).requires.filter((r) => anyOfs.some((a) => a.join() === r.anyOf.join()));
+      expect(added.map((r) => [r.anyOf, r.strength])).toEqual(anyOfs.map((a) => [a, "hard"]));
+    }
+  });
+
   for (const f of fixture.facets) {
     test(`${f.name}: requires, family, defaultOwnerOf and init`, () => {
       const got = facetOverlayFields(overlay.facets[f.name]);
       const differs = new Set((FACET_DIFFERENCES[f.name] ?? []).map((d) => d.field));
-      expect(got.requires).toEqual(f.requires);
+      const added = REQUIRES_ADDED[f.name] ?? [];
+      expect(got.requires.filter((r) => !added.some((a) => a.join() === r.anyOf.join()))).toEqual(f.requires);
       expect(got.family).toEqual(f.family);
       if (differs.has("defaultOwnerOf")) expect(got.defaultOwnerOf).toEqual(expect.arrayContaining(f.defaultOwnerOf ?? []));
       else expect(got.defaultOwnerOf).toEqual(f.defaultOwnerOf);

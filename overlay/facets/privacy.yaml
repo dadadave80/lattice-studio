@@ -1,0 +1,66 @@
+CommitReveal:
+  requires: []
+  init:
+    name: CommitRevealInit
+    source: src/privacy/CommitRevealInit.sol#L15-L15
+
+ERC5564Announcer:
+  requires: []
+  init:
+    name: ERC5564AnnouncerInit
+    source: src/privacy/ERC5564AnnouncerInit.sol#L15-L15
+
+ERC6538Registry:
+  requires: []
+  init:
+    name: ERC6538RegistryInit
+    source: src/privacy/ERC6538RegistryInit.sol#L18-L18
+  seamReview: >-
+    DOMAIN_SEPARATOR is shared with ERC20Permit; both read the diamond's one EIP-712 domain, no script combines
+    them, so the user chooses (SEL-01) and INIT-03 flags the two inits' conflicting domain names.
+  notes: >-
+    Wallets discover its EIP-712 domain through the EIP712 facet's eip712Domain() (src/privacy/ERC6538Registry.sol#L13-L16).
+    No requires entry: it touches EIP712's namespace, so C3's namespace rule already warns (contracts §4).
+
+Groth16Verifier:
+  requires: []
+  init:
+    name: Groth16VerifierInit
+    source: src/privacy/Groth16VerifierInit.sol#L16-L16
+
+PlonkVerifier:
+  requires: []
+  init:
+    name: PlonkVerifierInit
+    source: src/privacy/PlonkVerifierInit.sol#L16-L16
+
+PrivateVoting:
+  requires:
+    - anyOf: [Semaphore]
+      strength: hard
+      reason: its polls run over Semaphore groups, which must be created in the same diamond
+      source: src/privacy/PrivateVoting.sol#L13-L14
+  init:
+    name: PrivateVotingInit
+    source: src/privacy/PrivateVotingInit.sol#L18-L18
+
+Semaphore:
+  requires: []
+  init:
+    name: SemaphoreInit
+    source: src/privacy/SemaphoreInit.sol#L18-L18
+  notes: >-
+    SemaphoreLib's membership tree uses zk-kit's LeanIMT, which links the external PoseidonT3 library: a deployment
+    concern, not an overlay requirement. PrivateVotingInit also initializes the Semaphore module (without
+    AccessControl), so the PrivateVoting recipe runs no SemaphoreInit. The proof verifier is an external contract,
+    not a facet.
+
+ShieldedPool:
+  requires: []
+  init:
+    name: ShieldedPoolInit
+    source: src/privacy/ShieldedPoolInit.sol#L17-L17
+  notes: >-
+    Each pool's commitment tree uses zk-kit's LeanIMT, which links the external PoseidonT3 library: a deployment
+    concern, not an overlay requirement. Each pool's ERC-20 token and withdraw verifier are external contracts
+    registered at createPool, not facets.

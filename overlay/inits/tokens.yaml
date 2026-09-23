@@ -1,0 +1,161 @@
+ERC1155Init:
+  kind: step
+  source: src/tokens/ERC1155/ERC1155Init.sol#L14-L16
+  params:
+    uri_:
+      doc: The token URI template shared by every token type.
+
+ERC20BurnableInit:
+  kind: step
+  source: src/tokens/ERC20/ERC20BurnableInit.sol#L12-L14
+
+ERC20CappedInit:
+  kind: step
+  source: src/tokens/ERC20/ERC20CappedInit.sol#L13-L15
+  params:
+    cap_:
+      doc: The maximum total supply, in the token's smallest unit; it must be nonzero.
+      rule: nonzero
+      unit: wei
+      source: src/tokens/ERC20/libraries/ERC20CappedLib.sol#L54-L55
+
+ERC20CrosschainInit:
+  kind: step
+  source: src/tokens/ERC20/ERC20CrosschainInit.sol#L24-L29
+  params:
+    admin:
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/ERC20/ERC20CrosschainInit.sol#L25-L25
+
+ERC20FlashMintInit:
+  kind: step
+  source: src/tokens/ERC20/ERC20FlashMintInit.sol#L12-L14
+
+ERC20Init:
+  kind: step
+  source: src/tokens/ERC20/ERC20Init.sol#L13-L15
+  params:
+    name_:
+      doc: Token name.
+      example: "Example Token"
+      exampleSource: studio
+    symbol_:
+      doc: Token symbol.
+      example: "EXT"
+      exampleSource: studio
+
+ERC20PausableInit:
+  kind: step
+  source: src/tokens/ERC20/ERC20PausableInit.sol#L16-L19
+  params:
+    admin_:
+      doc: The address granted DEFAULT_ADMIN_ROLE, which gates pause and unpause.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/ERC20/ERC20PausableInit.sol#L18-L18
+
+ERC20PermitInit:
+  kind: step
+  source: src/tokens/ERC20/ERC20PermitInit.sol#L16-L20
+  params:
+    name_:
+      doc: "The EIP-712 domain name: the token name."
+
+ERC20VotesInit:
+  kind: step
+  source: src/tokens/ERC20/ERC20VotesInit.sol#L18-L24
+  params:
+    name_:
+      doc: "The EIP-712 domain name: the token name."
+    admin_:
+      doc: The address granted DEFAULT_ADMIN_ROLE, which gates a consumer's minting authority.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/ERC20/ERC20VotesInit.sol#L23-L23
+  sameCall:
+    - module: ERC20
+      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38
+    - module: EIP712
+      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38
+    - module: Nonces
+      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38
+    - module: Votes
+      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38
+
+ERC20WrapperInit:
+  kind: step
+  source: src/tokens/ERC20/ERC20WrapperInit.sol#L14-L16
+  params:
+    underlying_:
+      doc: The ERC-20 token the wrapper holds 1:1; it can't be the wrapper itself.
+
+ERC2981Init:
+  kind: step
+  source: src/tokens/ERC2981/ERC2981Init.sol#L18-L21
+  params:
+    admin:
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/ERC2981/ERC2981Init.sol#L19-L19
+
+ERC4626Init:
+  kind: step
+  source: src/tokens/ERC4626/ERC4626Init.sol#L22-L25
+  notes: >-
+    asset_'s rule is K3's and Studio's own check: ERC4626Lib stores the asset and falls back to 18 decimals when
+    decimals() fails, without rejecting zero or a codeless address.
+  params:
+    asset_:
+      rule: nonzero&code(token)
+      source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L74-L81
+
+ERC721Init:
+  kind: step
+  source: src/tokens/ERC721/ERC721Init.sol#L13-L16
+  params:
+    name_:
+      doc: Token name.
+    symbol_:
+      doc: Token symbol.
+
+ERC721URIStorageInit:
+  kind: step
+  source: src/tokens/ERC721/ERC721URIStorageInit.sol#L17-L20
+  params:
+    admin_:
+      doc: The metadata admin granted DEFAULT_ADMIN_ROLE, who may call setTokenURI.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/ERC721/ERC721URIStorageInit.sol#L19-L19
+
+ERC7802Init:
+  kind: step
+  source: src/tokens/ERC7802/ERC7802Init.sol#L23-L28
+  params:
+    admin:
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/ERC7802/ERC7802Init.sol#L24-L24
+    bridge:
+      rule: nonzero
+      authority: true
+      role: CROSSCHAIN_BRIDGE_ROLE
+      source: src/tokens/ERC7802/ERC7802Init.sol#L27-L27
+
+MarketplaceZoneInit:
+  kind: step
+  source: src/tokens/MarketplaceZoneInit.sol#L15-L18
+  params:
+    admin_:
+      doc: The address granted DEFAULT_ADMIN_ROLE, which gates setPaused, setRoyaltyRequired and MARKETPLACE_BLOCKED_ROLE grants.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/MarketplaceZoneInit.sol#L16-L16

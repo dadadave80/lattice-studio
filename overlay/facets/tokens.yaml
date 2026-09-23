@@ -1,0 +1,157 @@
+ERC1155:
+  requires: []
+  init:
+    name: ERC1155Init
+    source: src/tokens/ERC1155/ERC1155Init.sol#L14-L14
+  seamReview: >-
+    isApprovedForAll and setApprovalForAll are shared with ERC721, a different token standard; no Lattice script
+    combines the two, so the user chooses (SEL-01).
+
+ERC20:
+  requires: []
+  init:
+    name: ERC20Init
+    source: src/tokens/ERC20/ERC20Init.sol#L13-L13
+  seamReview: >-
+    With ERC20Votes placed, transfer and transferFrom must be GovernedVault's or ERC20Votes' (DeployERC20Votes.s.sol
+    L21-22, spec R19); in GovernedVault, decimals must be ERC4626's (DeployGovernedVault.s.sol L28), which also owns
+    it by default (compose guide L40), and name is GovernedVault's by default (compose guide L41-42).
+    DeployERC20Pausable replaces transfer and transferFrom with ERC20Pausable's, but no doc names a default, so
+    without ERC20Votes the user chooses (SEL-01). approve, balanceOf, name, symbol and transferFrom also collide with
+    ERC721, a different token standard no script combines with ERC20.
+
+ERC20Burnable:
+  requires: []
+  init:
+    name: ERC20BurnableInit
+    source: src/tokens/ERC20/ERC20BurnableInit.sol#L12-L12
+
+ERC20Capped:
+  requires: []
+  init:
+    name: ERC20CappedInit
+    source: src/tokens/ERC20/ERC20CappedInit.sol#L13-L13
+
+ERC20Crosschain:
+  requires:
+    - anyOf: [ERC20]
+      strength: hard
+      reason: it burns and mints the ERC20 facet's balances and is mounted alongside it
+      source: src/tokens/ERC20/ERC20Crosschain.sol#L12-L15
+    - anyOf: [CrosschainLink]
+      strength: hard
+      reason: it sends through CrosschainLink and accepts inbound messages only through its receiveMessage dispatch
+      source: src/tokens/ERC20/ERC20Crosschain.sol#L12-L17
+  init:
+    name: ERC20CrosschainInit
+    source: src/tokens/ERC20/ERC20CrosschainInit.sol#L24-L24
+  seamReview: >-
+    crosschainTransfer and processMessage are shared with BridgeERC20 and BridgeERC7802, and processMessage with
+    CrosschainTimelockHandler too; each is an alternative ERC-7786 handler for one diamond and no script combines
+    them, so the user chooses (SEL-01).
+
+ERC20FlashMint:
+  requires: []
+  init:
+    name: ERC20FlashMintInit
+    source: src/tokens/ERC20/ERC20FlashMintInit.sol#L12-L12
+  notes: >-
+    maxFlashLoan doesn't reflect an ERC20Capped supply cap (ERC20FlashMint.sol L12-13); pair it with a cap-aware
+    flash-mint library if both are placed.
+
+ERC20Pausable:
+  requires: []
+  init:
+    name: ERC20PausableInit
+    source: src/tokens/ERC20/ERC20PausableInit.sol#L16-L16
+  seamReview: >-
+    Both its selectors, transfer and transferFrom, are seams once ERC20Votes is placed: they must be GovernedVault's
+    or ERC20Votes' (DeployERC20Votes.s.sol L21-22, spec R19), so ERC20Pausable routes nothing there (SEL-03).
+    Without ERC20Votes, DeployERC20Pausable replaces ERC20's transfer and transferFrom with these, but no doc names
+    a default, so the user chooses (SEL-01); transferFrom also collides with ERC721.
+  notes: >-
+    Usually cut with Pausable, whose pause and unpause it obeys (src/tokens/ERC20/ERC20Pausable.sol#L10-L11). No
+    requires entry: it touches Pausable's namespace, so C3's namespace rule already warns (contracts §4).
+
+ERC20Permit:
+  requires: []
+  init:
+    name: ERC20PermitInit
+    source: src/tokens/ERC20/ERC20PermitInit.sol#L16-L16
+  seamReview: >-
+    DOMAIN_SEPARATOR is shared with ERC6538Registry; both read the diamond's one EIP-712 domain, no script combines
+    them, so the user chooses (SEL-01) and INIT-03 flags the two inits' conflicting domain names.
+
+ERC20Votes:
+  requires:
+    - anyOf: [ERC20]
+      strength: hard
+      reason: the token's ERC-20 surface comes from a separately cut ERC20 facet
+      source: src/tokens/ERC20/ERC20Votes.sol#L15-L17
+  defaultOwnerOf:
+    - selectors: ["0x5c19a95c", "0xc3cda520"]
+      source: docs/guides/compose-your-own-diamond.md#L41-L41
+  init:
+    name: ERC20VotesInit
+    source: src/tokens/ERC20/ERC20VotesInit.sol#L18-L18
+  seamReview: >-
+    transfer and transferFrom are seams whenever ERC20Votes is placed: they must be GovernedVault's or ERC20Votes'
+    so vote checkpoints move with balances (DeployERC20Votes.s.sol L21-22, spec R19). delegate and delegateBySig
+    must be ERC20Votes', not Votes', whose versions leave checkpoints at zero (Votes.sol L43-44); ERC20Votes also
+    owns them by default (compose guide L41). transferFrom also collides with ERC721.
+  notes: >-
+    Votes' read surface (voting power, delegates, clock) comes from the Votes facet
+    (src/tokens/ERC20/ERC20Votes.sol#L15-L17). No requires entry for it: ERC20Votes touches Votes' namespace, so C3's
+    namespace rule already warns (contracts §4).
+
+ERC2981:
+  requires: []
+  init:
+    name: ERC2981Init
+    source: src/tokens/ERC2981/ERC2981Init.sol#L18-L18
+
+ERC4626:
+  requires:
+    - anyOf: [ERC20]
+      strength: hard
+      reason: the vault's share token surface comes from a separately cut ERC20 facet
+      source: src/tokens/ERC4626/ERC4626.sol#L14-L16
+  defaultOwnerOf:
+    - selectors: ["0x313ce567"]
+      source: docs/guides/compose-your-own-diamond.md#L40-L40
+  init:
+    name: ERC4626Init
+    source: src/tokens/ERC4626/ERC4626Init.sol#L22-L22
+  seamReview: >-
+    In GovernedVault, decimals must be ERC4626's (DeployGovernedVault.s.sol L28, spec R19), and it owns decimals by
+    default against ERC20 (compose guide L40); totalAssets must be VaultCore's, and deposit, mint, withdraw and
+    redeem must be GovernedVault's (DeployGovernedVault.s.sol L30-32). Outside GovernedVault, DeployVaultCore
+    replaces all five with VaultCore's (DeployVaultCore.s.sol L22-23); VaultCore owns totalAssets by default (compose
+    guide L40), and no doc names a default for the four movers, so the user chooses (SEL-01).
+
+ERC721:
+  requires: []
+  init:
+    name: ERC721Init
+    source: src/tokens/ERC721/ERC721Init.sol#L13-L13
+  seamReview: >-
+    Its shared selectors (approve, balanceOf, name, symbol, transferFrom with ERC20 and its extensions,
+    GovernedVault and Governor; isApprovedForAll and setApprovalForAll with ERC1155) come from other token standards
+    that no Lattice script combines with ERC721, so the user chooses (SEL-01); if ERC20Votes is placed too,
+    transferFrom is its seam and must be GovernedVault's or ERC20Votes' (DeployERC20Votes.s.sol L21-22).
+
+ERC7802:
+  requires:
+    - anyOf: [ERC20]
+      strength: hard
+      reason: its crosschain mints and burns move the ERC20 facet's balances and it is mounted alongside it
+      source: src/tokens/ERC7802/ERC7802.sol#L10-L13
+  init:
+    name: ERC7802Init
+    source: src/tokens/ERC7802/ERC7802Init.sol#L23-L23
+
+MarketplaceZone:
+  requires: []
+  init:
+    name: MarketplaceZoneInit
+    source: src/tokens/MarketplaceZoneInit.sol#L15-L15
