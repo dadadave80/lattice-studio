@@ -125,22 +125,38 @@ export const deploymentsService: DeploymentsService = {
   },
 };
 
-/** Whether the page was opened on a route that picks its own project (a share link, `#open=`). */
+/**
+ * Whether the page was opened on a route that picks its own project: a share link (`#s=`) or `#open=`. Other
+ * hash routes (`#/settings`, and every route of the IPFS build, `env.hashRouting`) still land in the last one.
+ */
 function routeOpensProject(hash: string): boolean {
-  return !(hash === "" || hash === "#" || hash === "#/");
+  return hash.startsWith("#s=") || hash.startsWith("#open=");
+}
+
+/**
+ * Whether the document is still the one the boot started on. A recorded prediction doesn't count: a wallet
+ * that reconnects on load records one (`state/prediction.ts`) without the visitor doing anything.
+ */
+function untouched(booted: Project, now: Project): boolean {
+  if (now === booted) return true;
+  const keys = new Set([...Object.keys(booted), ...Object.keys(now)] as (keyof Project)[]);
+  for (const key of keys) if (key !== "predicted" && booted[key] !== now[key]) return false;
+  return true;
 }
 
 /**
  * Starts persistence in the app: autosave follows the document, and a returning visitor lands in their last
- * project (spec L401) unless the route opens one or another project was opened meanwhile.
+ * project (spec L401) unless the route opens one, or the document changed (an edit, another project opened)
+ * while storage was read.
  */
 export function bootPersistence(): Promise<Result<Project, string> | null> {
   return persistence()
     .then(async (p) => {
-      // The boot document's id as `start()` leaves it (it gives an unsaved document its own id).
-      const booted = p.start();
+      p.start();
+      // The boot document as `start()` leaves it (it gives an unsaved document its own id).
+      const booted = p.document();
       if (typeof location !== "undefined" && routeOpensProject(location.hash)) return null;
-      const opened = await p.openLastProject(() => p.documentId() === booted);
+      const opened = await p.openLastProject(() => untouched(booted, p.document()));
       if (opened && !opened.ok) log({ tag: "Error", text: `Couldn't open your last project. ${opened.error}` });
       return opened;
     })

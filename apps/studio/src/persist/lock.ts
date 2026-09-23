@@ -4,7 +4,8 @@
  * once (`lock-ack`), saves until nothing is pending, then lets go. When its saves keep failing it keeps the
  * lock and says so (`lock-refused`), because the taker would load an older save. Only a holder that doesn't
  * answer within `stealAfter` ms (a frozen tab) has the lock stolen; one that answered is waited for up to
- * `ackedPatience` ms, then the taker gives up and says so.
+ * `ackedPatience` ms, then the taker gives up, says so and withdraws its request (`lock-withdraw`): the holder
+ * keeps the lock once it has saved, or takes it back if it had let go already, so one tab still edits.
  */
 import type { Result } from "@lattice-studio/core";
 import type { Channel } from "./channel";
@@ -74,6 +75,10 @@ export function createEditLock(options: EditLockOptions): EditLock {
   let epoch = 0;
   /** Take overs waiting for the holder's answer, by project id. */
   const waiting = new Map<string, Waiting>();
+  /** The tabs asking for the lock this tab holds (peer ids). One that withdrew isn't handed it. */
+  const requesters = new Set<string>();
+  /** The tab this one last handed a project to: if it withdraws after all, this tab takes the lock back. */
+  let handedTo: { projectId: string; peer: string } | null = null;
 
   const set = (next: EditLockState) => {
     current = next;
@@ -128,7 +133,18 @@ export function createEditLock(options: EditLockOptions): EditLock {
   const letGo = () => {
     const held = holding;
     holding = null;
+    requesters.clear();
     held?.letGo();
+  };
+
+  /** `peer` stopped waiting for `projectId`. Had this tab let go for it, it takes the lock back if it's free. */
+  const withdrawn = (projectId: string, peer: string) => {
+    requesters.delete(peer);
+    if (current.state !== "handed-over" || current.projectId !== projectId) return;
+    if (handedTo?.projectId !== projectId || handedTo.peer !== peer) return;
+    handedTo = null;
+    epoch += 1;
+    void hold(projectId, { ifAvailable: true }, epoch).catch(() => {});
   };
 
   const stopListening = channel.subscribe((message) => {
@@ -141,21 +157,30 @@ export function createEditLock(options: EditLockOptions): EditLock {
       waiting.get(message.id)?.refused(message.reason);
       return;
     }
+    if (message.kind === "lock-withdraw") {
+      withdrawn(message.id, message.from);
+      return;
+    }
     if (message.kind !== "lock-request") return;
     const held = holding;
     if (!held || held.projectId !== message.id) return;
     const projectId = held.projectId;
-    channel.post({ kind: "lock-ack", from: peerId, id: projectId, to: message.from });
+    const taker = message.from;
+    requesters.add(taker);
+    channel.post({ kind: "lock-ack", from: peerId, id: projectId, to: taker });
     options.beforeHandover(projectId).then(
       () => {
-        if (holding?.projectId !== projectId) return;
+        // The taker gave up while this tab saved: keep editing rather than leave nobody holding the lock.
+        if (holding?.projectId !== projectId || !requesters.has(taker)) return;
         letGo();
         epoch += 1;
+        handedTo = { projectId, peer: taker };
         set({ state: "handed-over", projectId });
       },
       (error: unknown) => {
+        requesters.delete(taker);
         const reason = error instanceof Error ? error.message : String(error);
-        channel.post({ kind: "lock-refused", from: peerId, id: projectId, to: message.from, reason });
+        channel.post({ kind: "lock-refused", from: peerId, id: projectId, to: taker, reason });
       },
     );
   });
@@ -225,6 +250,8 @@ export function createEditLock(options: EditLockOptions): EditLock {
       } finally {
         clearTimeout(timer);
         waiting.delete(projectId);
+        // Not holding it after all: the holder mustn't let go for this request any more.
+        if (holding?.projectId !== projectId) channel.post({ kind: "lock-withdraw", from: peerId, id: projectId });
       }
     },
     release() {
