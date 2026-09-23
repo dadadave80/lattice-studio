@@ -42,7 +42,10 @@ function say(text: string): void {
 export async function applyRoute(route: Route): Promise<void> {
   switch (route.kind) {
     case "home":
+      return;
     case "gallery":
+      // Dev builds show the gallery instead of the composer; elsewhere there's none to show.
+      if (!env.dev) say("There's no page at /__ui. Showing the sheet.");
       return;
     case "share":
       // S13 opens share links; contracts have no seam to hand one over yet (the report's CCR).
