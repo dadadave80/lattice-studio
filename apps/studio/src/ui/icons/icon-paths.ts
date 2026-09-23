@@ -34,6 +34,9 @@ export const ICON_PATHS = {
   "init-order": ["M4 6h2", "M10 6h10", "M4 12h2", "M10 12h10", "M4 18h2", "M10 18h10"],
   tidy: ["M4 4h6v6H4z", "M14 4h6v6h-6z", "M4 14h6v6H4z", "M14 14h6v6h-6z"],
   minimap: ["M3 5h18v14H3z", "M13 12h6v5h-6z"],
+  "auto-layout": ["M4 4h6v5H4z", "M14 15h6v5h-6z", "M14 4h6v5h-6z", "M7 9v8.5h7", "M10 6.5h4"],
+  maximize: ["M4 4h16v16H4z", "M4 8h16"],
+  restore: ["M4 12h12v8H4z", "M8 12V4h12v12h-4"],
   locate: ["M12 3v5", "M12 16v5", "M3 12h5", "M16 12h5", "M9 9h6v6H9z"],
   grip: ["M9 6h.01", "M15 6h.01", "M9 12h.01", "M15 12h.01", "M9 18h.01", "M15 18h.01"],
   // Things
@@ -52,6 +55,7 @@ export const ICON_PATHS = {
   deploy: ["M12 20V6", "M6 12l6-6 6 6", "M5 3h14"],
   export: ["M12 4v11", "M8 11l4 4 4-4", "M4 20h16"],
   // Status: severity is a shape and a word, never color alone (spec L674 rule 7)
+  verified: ["M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z", "M8.5 12l2.5 2.5 4.5-5"],
   info: ["M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18z", "M12 11v6", "M12 7.5h.01"],
   warning: ["M12 3l10 18H2z", "M12 10v5", "M12 18h.01"],
   error: ["M8 3h8l5 5v8l-5 5H8l-5-5V8z", "M9 9l6 6", "M15 9l-6 6"],

@@ -7,7 +7,8 @@ import { ICON_NAMES } from "../icons/icon-paths";
 import { Kbd } from "../keys/Kbd";
 import { ShortcutChip } from "../keys/ShortcutChip";
 import { Banner } from "../status/Banner";
-import { HATCH_FILL, HatchPattern, hatchedClass } from "../status/Hatch";
+import { HATCH_FILL, hatchedClass } from "../status/hatch";
+import { HatchPattern } from "../status/HatchPattern";
 import { StatusChip } from "../status/StatusChip";
 import { VisuallyHidden } from "../shared/VisuallyHidden";
 import styles from "./Gallery.module.css";
@@ -48,7 +49,7 @@ export function FoundationGallery() {
           <IconButton icon="undo" label="Undo" shortcut="Mod+z" />
           <IconButton icon="redo" label="Redo" shortcut={[{ keys: "Ctrl+y", platform: "other" }, "Mod+Shift+z"]} />
           <IconButton icon="zoom-in" label="Zoom in" shortcut="=" />
-          <IconButton icon="fit" label="Fit to view" shortcut="Shift+[Digit1]" disabledReason="Place facets first" />
+          <IconButton icon="fit" label="Fit" shortcut="Shift+[Digit1]" disabledReason="Place facets first" />
           <IconButton icon="close" label="Close" size="small" />
         </Specimen>
         <p aria-live="polite" className={styles.specimenLabel}>

@@ -3,6 +3,7 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import type { KeySpec } from "@/contracts";
 import { Icon } from "../icons/Icon";
 import type { IconName } from "../icons/icon-paths";
+import { useAriaKeyShortcuts } from "../keys/use-aria-key-shortcuts";
 import { cx } from "../shared/cx";
 import { ReasonTooltip } from "../tooltip/ReasonTooltip";
 import styles from "./Button.module.css";
@@ -25,7 +26,7 @@ export type ButtonProps = Omit<ComponentPropsWithRef<"button">, "disabled" | "cl
   disabledReason?: string | null | undefined;
   /** A tooltip for an enabled button: what a click will do. */
   tooltip?: ReactNode;
-  /** Keys shown in the tooltip and set as `aria-keyshortcuts` by the caller. */
+  /** Keys shown in the tooltip and set as `aria-keyshortcuts` (per platform; single keys only while they are on). */
   shortcut?: KeySpec | readonly KeySpec[];
   className?: string;
   children: ReactNode;
@@ -36,9 +37,11 @@ export function Button({
   variant = "secondary", size = "medium", block = false, icon, disabledReason, tooltip, shortcut, className,
   children, type = "button", ...rest
 }: ButtonProps) {
+  const keyshortcuts = useAriaKeyShortcuts(shortcut);
   const button = (
     <BaseButton
       {...rest}
+      {...keyshortcuts}
       type={type}
       data-variant={variant}
       className={cx(styles.button, styles[variant], size === "small" && styles.small, block && styles.block, className)}

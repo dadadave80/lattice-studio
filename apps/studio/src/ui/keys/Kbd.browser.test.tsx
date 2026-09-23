@@ -10,6 +10,7 @@ function paletteAndTidy() {
   overrideCommands([
     command({ id: "palette.open", title: () => "Open the command palette", category: "Session", keys: ["Mod+k"], enabled: () => ({ ok: true }), run: () => {} }),
     command({ id: "layout.tidy", title: () => "Tidy layout", category: "Sheet", keys: ["t"], enabled: () => ({ ok: true }), run: () => {} }),
+    command({ id: "layout.flipPins", title: () => "Flip pins", category: "Sheet", enabled: () => ({ ok: true }), run: () => {} }),
     command({
       id: "region.focus",
       title: () => "Go to a region",
@@ -56,7 +57,7 @@ describe("ShortcutChip", () => {
     await renderWithStudio(
       <p data-testid="chips">
         <ShortcutChip binding="layout.tidy" />
-        <ShortcutChip binding="history.undo" />
+        <ShortcutChip binding="layout.flipPins" />
       </p>,
     );
     await expect.element(page.getByText("T", { exact: true })).toBeVisible();

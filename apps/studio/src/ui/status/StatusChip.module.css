@@ -55,6 +55,16 @@
   border-color: var(--lx-accent);
 }
 
+/* The chip as a button: the same look, a pointer, and the accent edge on hover. */
+.button {
+  cursor: pointer;
+  background: transparent;
+}
+
+.button:hover {
+  border-color: var(--lx-accent);
+}
+
 .full {
   overflow: hidden;
   text-overflow: ellipsis;

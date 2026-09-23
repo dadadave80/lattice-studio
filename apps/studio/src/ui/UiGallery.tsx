@@ -1,7 +1,7 @@
 import type { Platform } from "@lattice-studio/core";
 import type { ThemeId } from "@lattice-studio/tokens";
 import { useEffect, useState } from "react";
-import { applyTheme, settings } from "@/contracts";
+import { applyTheme } from "@/contracts";
 import { FieldsGallery } from "./fields/FieldsGallery";
 import { SegmentedToggle } from "./fields/SegmentedToggle";
 import { FoundationGallery } from "./gallery/FoundationGallery";
@@ -36,8 +36,8 @@ export function UiGallery() {
 
   useEffect(() => overridePlatform(keys), [keys]);
 
+  // The page's theme only: the gallery never writes the person's Settings.
   const chooseTheme = (next: ThemeId) => {
-    settings.set({ theme: next });
     applyTheme(next);
     setTheme(next);
   };

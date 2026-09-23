@@ -99,7 +99,15 @@
   color: var(--lx-text);
   cursor: default;
   user-select: none;
-  outline: none;
+}
+
+/*
+ * Menus and lists move real focus onto their rows, so a keyboard-focused row keeps the focus ring (spec
+ * L771). Inset, because the popup clips anything drawn outside its rows.
+ */
+.item:focus-visible {
+  outline: var(--lx-stroke-heavy) solid var(--lx-border-focus);
+  outline-offset: calc(-1 * var(--lx-stroke-heavy));
 }
 
 .item[data-highlighted] {
@@ -124,5 +132,10 @@
     background: Highlight;
     color: HighlightText;
     forced-color-adjust: none;
+  }
+
+  /* The ring must not vanish into a Highlight row. */
+  .item:focus-visible {
+    outline-color: HighlightText;
   }
 }

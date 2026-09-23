@@ -19,12 +19,15 @@ export type { KbdProps } from "./keys/Kbd";
 export { ShortcutChip } from "./keys/ShortcutChip";
 export type { ShortcutChipProps } from "./keys/ShortcutChip";
 export { ariaKeyShortcuts, firstKeys, isSingleKey, keyLabel, specKeys } from "./keys/key-labels";
+export { liveSpecs, useAriaKeyShortcuts } from "./keys/use-aria-key-shortcuts";
 
-export { StatusChip } from "./status/StatusChip";
+export { shortStamp, StatusChip } from "./status/StatusChip";
 export type { StatusChipProps, StatusTone } from "./status/StatusChip";
 export { Banner } from "./status/Banner";
 export type { BannerProps, BannerTone } from "./status/Banner";
-export { HATCH_FILL, HATCH_PATTERN_ID, HatchDefs, HatchPattern, hatchedClass } from "./status/Hatch";
+export { HATCH_FILL, HATCH_PATTERN_ID, hatchedClass } from "./status/hatch";
+export { HatchDefs } from "./status/HatchDefs";
+export { HatchPattern } from "./status/HatchPattern";
 
 export { Icon } from "./icons/Icon";
 export type { IconProps } from "./icons/Icon";

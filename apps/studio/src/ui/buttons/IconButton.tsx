@@ -3,9 +3,8 @@ import type { ComponentPropsWithRef } from "react";
 import type { KeySpec } from "@/contracts";
 import { Icon } from "../icons/Icon";
 import type { IconName } from "../icons/icon-paths";
-import { ariaKeyShortcuts } from "../keys/key-labels";
+import { useAriaKeyShortcuts } from "../keys/use-aria-key-shortcuts";
 import { cx } from "../shared/cx";
-import { usePlatform } from "../shared/platform";
 import type { TooltipSide } from "../tooltip/Tooltip";
 import { ReasonTooltip } from "../tooltip/ReasonTooltip";
 import styles from "./Button.module.css";
@@ -28,15 +27,14 @@ export type IconButtonProps = Omit<ComponentPropsWithRef<"button">, "disabled" |
 export function IconButton({
   icon, label, shortcut, size = "medium", disabledReason, tooltipSide, className, type = "button", ...rest
 }: IconButtonProps) {
-  const platform = usePlatform();
-  const keyshortcuts = ariaKeyShortcuts(shortcut, platform);
+  const keyshortcuts = useAriaKeyShortcuts(shortcut);
   return (
     <ReasonTooltip reason={disabledReason} content={label} shortcut={shortcut} {...(tooltipSide ? { side: tooltipSide } : {})}>
       <BaseButton
         {...rest}
         type={type}
         aria-label={label}
-        {...(keyshortcuts ? { "aria-keyshortcuts": keyshortcuts } : {})}
+        {...keyshortcuts}
         className={cx(styles.button, styles.icon, size === "small" && styles.small, className)}
       >
         <Icon name={icon} />

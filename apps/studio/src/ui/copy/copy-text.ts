@@ -15,6 +15,11 @@ export type CopyOptions = {
    * as `0x1234…abcd`, a short value as itself, a long one truncated in the middle.
    */
   label?: string;
+  /**
+   * The whole toast text when "Copied {label}" doesn't fit: a share link's "Link copied · 732 characters"
+   * (spec L503). Used for both the clipboard and the ⌘C fallback.
+   */
+  message?: string;
   /** The clipboard to write to (tests). Default: `navigator.clipboard`. */
   clipboard?: Pick<Clipboard, "writeText"> | null;
 };
@@ -50,7 +55,20 @@ export function dismissCopyFallback(): void {
   fallback?.dispose();
 }
 
-function showFallback(text: string, label: string): void {
+/**
+ * Where the fallback goes: inside the modal dialog that holds the control, or the topmost open one, so its
+ * presses aren't outside presses that close the dialog and its focus stays inside the dialog's trap.
+ */
+function fallbackHost(from: Element | null): HTMLElement {
+  const own = from?.closest<HTMLElement>('[role="dialog"], [role="alertdialog"]');
+  if (own) return own;
+  const open = [...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"], [role="alertdialog"]')].filter(
+    (el) => !el.closest("[inert]"),
+  );
+  return open.at(-1) ?? document.body;
+}
+
+function showFallback(text: string, toastText: string): void {
   if (typeof document === "undefined") return;
   dismissCopyFallback();
   const restore = document.activeElement;
@@ -77,7 +95,7 @@ function showFallback(text: string, label: string): void {
   area.spellcheck = false;
   element.setAttribute("aria-labelledby", hintId);
   element.append(hint, area);
-  document.body.append(element);
+  fallbackHost(restore).append(element);
 
   // Below the control that asked, kept inside the window.
   const box = element.getBoundingClientRect();
@@ -96,7 +114,7 @@ function showFallback(text: string, label: string): void {
     if (!element.contains(event.target as Node)) close(false);
   };
   area.addEventListener("copy", () => {
-    toast({ text: `Copied ${label}` });
+    toast({ text: toastText });
     queueMicrotask(() => close(true));
   });
   area.addEventListener("keydown", (event) => {
@@ -120,15 +138,15 @@ function showFallback(text: string, label: string): void {
  */
 export async function copyText(value: string, options: CopyOptions = {}): Promise<CopyResult> {
   const text = copyValue(value);
-  const label = copyLabel(text, options.label);
+  const toastText = options.message ?? `Copied ${copyLabel(text, options.label)}`;
   const clipboard = options.clipboard === undefined ? globalThis.navigator?.clipboard : options.clipboard;
   try {
     if (!clipboard) throw new Error("No clipboard.");
     await clipboard.writeText(text);
   } catch {
-    showFallback(text, label);
+    showFallback(text, toastText);
     return { ok: false, text, reason: "blocked" };
   }
-  toast({ text: `Copied ${label}` });
+  toast({ text: toastText });
   return { ok: true, text };
 }

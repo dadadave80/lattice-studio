@@ -2,7 +2,8 @@ import { listBindings, useSettings, type BindingId, type KeySpec } from "@/contr
 import { cx } from "../shared/cx";
 import { usePlatform } from "../shared/platform";
 import styles from "./Kbd.module.css";
-import { firstKeys, isSingleKey, keyLabel, specKeys } from "./key-labels";
+import { firstKeys, keyLabel } from "./key-labels";
+import { liveSpecs } from "./use-aria-key-shortcuts";
 
 export type ShortcutChipProps = {
   /** A command's binding (`"palette.open"`, `"region.focus#inspector"`): shows its keys as remapped in Settings. */
@@ -23,12 +24,7 @@ export function ShortcutChip({ binding, keys, className }: ShortcutChipProps) {
   const singleKeys = useSettings((s) => s.singleKeys);
   let specs: readonly KeySpec[] | KeySpec | undefined = keys;
   if (binding !== undefined) specs = listBindings(keymap).find((b) => b.id === binding)?.keys;
-  const list = specs === undefined ? [] : Array.isArray(specs) ? specs : [specs as KeySpec];
-  const usable = list.filter((s) => {
-    const k = specKeys(s, platform);
-    return k !== null && (singleKeys || !isSingleKey(k));
-  });
-  const shown = firstKeys(usable, platform);
+  const shown = firstKeys(liveSpecs(specs, platform, singleKeys), platform);
   if (!shown) return null;
   return <kbd className={cx(styles.chip, className)}>{keyLabel(shown, platform)}</kbd>;
 }

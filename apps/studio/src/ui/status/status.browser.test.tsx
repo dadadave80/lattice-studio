@@ -3,7 +3,8 @@ import { page, userEvent } from "vitest/browser";
 import { command } from "@/contracts";
 import { overrideCommands, renderWithStudio } from "../../../test/harness";
 import { Banner } from "./Banner";
-import { HATCH_FILL, HatchDefs, hatchedClass } from "./Hatch";
+import { HATCH_FILL, hatchedClass } from "./hatch";
+import { HatchDefs } from "./HatchDefs";
 import { StatusChip } from "./StatusChip";
 
 describe("StatusChip", () => {
@@ -14,12 +15,37 @@ describe("StatusChip", () => {
     expect(dot?.getAttribute("aria-hidden")).toBe("true");
   });
 
-  test("compact shows the dot and one word but keeps the full text readable", async () => {
+  test("compact shows the dot and one word but keeps the full text readable, with a tooltip", async () => {
     await renderWithStudio(<StatusChip tone="attention" text="Modified since r1" compact />);
     await expect.element(page.getByText("Modified", { exact: true })).toBeVisible();
     const chip = document.querySelector("[data-tone=attention]") as HTMLElement;
     expect(chip.textContent).toContain("Modified since r1");
-    expect(chip.title).toBe("Modified since r1");
+    expect(chip.hasAttribute("title")).toBe(false);
+    await page.getByText("Modified", { exact: true }).hover();
+    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent, { timeout: 3000 }).toContain("Modified since r1");
+  });
+
+  test("compact keeps Not deployed whole, and short overrides", async () => {
+    await renderWithStudio(
+      <p>
+        <StatusChip tone="idle" text="Not deployed" compact />
+        <StatusChip tone="pending" text="Proposed · Sepolia (Safe)" compact short="Safe" />
+      </p>,
+    );
+    await expect.element(page.getByText("Not deployed", { exact: true }).first()).toBeVisible();
+    await expect.element(page.getByText("Safe", { exact: true })).toBeVisible();
+  });
+
+  test("with onClick it's a button named by the full state", async () => {
+    const onClick = vi.fn();
+    await renderWithStudio(<StatusChip tone="live" text="Live · Sepolia · r1" compact onClick={onClick} />);
+    const button = page.getByRole("button", { name: "Live · Sepolia · r1" });
+    await userEvent.tab();
+    await expect.element(button).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(onClick).toHaveBeenCalledTimes(1);
+    const rect = button.element().getBoundingClientRect();
+    expect(rect.height).toBeGreaterThanOrEqual(24);
   });
 });
 

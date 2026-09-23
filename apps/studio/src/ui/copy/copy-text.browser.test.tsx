@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { bufferedServices, onCleanup, renderWithStudio } from "../../../test/harness";
 import { Button } from "../buttons/Button";
+import { Dialog } from "../overlays/Dialog";
 import { overridePlatform } from "../shared/platform";
 import { copyText, dismissCopyFallback } from "./copy-text";
 
@@ -82,6 +83,45 @@ describe("copyText", () => {
     await expect.poll(() => document.querySelector("[data-copy-fallback]")).toBeNull();
     await expect.element(opener).toHaveFocus();
     expect(bufferedServices().toast).toEqual([]);
+  });
+
+  test("message replaces the toast text, on the clipboard and in the fallback", async () => {
+    onCleanup(dismissCopyFallback);
+    const link = "https://studio.lattice.dev/#r=AbC";
+    await copyText(link, { clipboard: fakeClipboard(), message: "Link copied · 732 characters" });
+    expect(bufferedServices().toast.at(-1)).toEqual({ text: "Link copied · 732 characters" });
+
+    await renderWithStudio(
+      <Button onClick={() => void copyText(link, { clipboard: null, message: "Link copied · 732 characters" })}>Copy link</Button>,
+    );
+    await page.getByRole("button", { name: "Copy link" }).click();
+    const area = document.querySelector<HTMLTextAreaElement>("[data-copy-fallback] textarea");
+    area?.dispatchEvent(new Event("copy", { bubbles: true }));
+    expect(bufferedServices().toast.at(-1)).toEqual({ text: "Link copied · 732 characters" });
+  });
+
+  test("inside a modal dialog the fallback stays in the dialog and doesn't close it", async () => {
+    onCleanup(overridePlatform("mac"));
+    onCleanup(dismissCopyFallback);
+    const onOpenChange = vi.fn();
+    await renderWithStudio(
+      <Dialog open onOpenChange={onOpenChange} title="Share" lossless>
+        <Button onClick={() => void copyText(LOWER, { clipboard: null })}>Copy address</Button>
+      </Dialog>,
+    );
+    const dialog = page.getByRole("dialog", { name: "Share" });
+    await page.getByRole("button", { name: "Copy address" }).click();
+    const field = page.getByRole("textbox", { name: "Press ⌘C to copy" });
+    await expect.element(field).toHaveFocus();
+    expect(dialog.element().contains(field.element())).toBe(true);
+    await field.click();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(onOpenChange).not.toHaveBeenCalled();
+    await expect.element(field).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(() => document.querySelector("[data-copy-fallback]")).toBeNull();
+    await expect.element(page.getByRole("button", { name: "Copy address" })).toHaveFocus();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   test("returns blocked so callers can tell", async () => {
