@@ -23,6 +23,11 @@ export type TooltipProps = {
   closeOnClick?: boolean;
   /** Hover delay in ms (default 600). */
   delay?: number;
+  /**
+   * Never open, and close if open. The trigger keeps its element either way, so a tooltip that comes and goes
+   * with state (a reason) should stay rendered and toggle this rather than unwrap its trigger (spec L753).
+   */
+  disabled?: boolean;
 };
 
 /**
@@ -31,12 +36,12 @@ export type TooltipProps = {
  * control's reason reaches assistive technology through `ReasonTooltip`'s description.
  */
 export function Tooltip({
-  content, reason, shortcut, children, side = "top", open, onOpenChange, closeOnClick = true, delay,
+  content, reason, shortcut, children, side = "top", open, onOpenChange, closeOnClick = true, delay, disabled = false,
 }: TooltipProps) {
   const control = open === undefined ? {} : { open };
   const handler = onOpenChange ? { onOpenChange: (next: boolean) => onOpenChange(next) } : {};
   return (
-    <BaseTooltip.Root {...control} {...handler}>
+    <BaseTooltip.Root {...control} {...handler} disabled={disabled}>
       <BaseTooltip.Trigger render={children} closeOnClick={closeOnClick} {...(delay === undefined ? {} : { delay })} />
       <BaseTooltip.Portal>
         <BaseTooltip.Positioner className={styles.positioner} side={side} sideOffset={8} collisionPadding={8}>

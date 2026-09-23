@@ -1,0 +1,64 @@
+/*
+ * Choose an upgrade mechanism (Flow 17). No board yet (PA L76): built from the dialog primitive, the ruled
+ * inspector sheet and the cut plan's sunken list. Tokens only (contracts §5.4).
+ */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-4);
+  min-inline-size: 0;
+}
+
+.inputs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  padding-inline-start: var(--lx-space-3);
+  border-inline-start: var(--lx-stroke-heavy) solid var(--lx-accent-line);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+}
+
+.eyebrow {
+  margin: 0;
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.changes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  margin: 0;
+  padding: var(--lx-space-2) var(--lx-space-3);
+  list-style: none;
+  background: var(--lx-sunken);
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  overflow-wrap: anywhere;
+}
+
+.changes li::before {
+  content: "· ";
+  color: var(--lx-text-muted);
+}
+
+.changes li[data-kind="remove"]::before {
+  content: "− ";
+}
+
+.changes li[data-kind="place"]::before {
+  content: "+ ";
+}
+
+.note {
+  margin: 0;
+  color: var(--lx-text-muted);
+}

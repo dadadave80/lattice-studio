@@ -13,5 +13,6 @@ export * from "./problems";
 export * from "./project";
 export * from "./recipe";
 export * from "./result";
+export * from "./path";
 export * from "./schema";
 export * from "./wp";

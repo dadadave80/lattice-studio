@@ -3,7 +3,7 @@
  * deleted, retyped or given a hostile key, and the path an error about it should name.
  */
 import fc from "fast-check";
-import { formatPath } from "../model/schema";
+import { formatPath } from "../model/path";
 
 /** A step into a JSON document: an object key or an array index. */
 export type JsonStep = string | number;
