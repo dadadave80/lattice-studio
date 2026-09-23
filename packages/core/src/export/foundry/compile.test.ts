@@ -12,6 +12,7 @@ import { join, resolve } from "node:path";
 import fc from "fast-check";
 import { encodeAbiParameters, encodeFunctionData, keccak256, parseAbi, stringToHex, toFunctionSelector, type Hex } from "viem";
 import { buildSalt, createxPredict, factoryPredict } from "../../address";
+import { CREATEX_CODEHASH } from "../../checks/net";
 import { encodeInit } from "../../init/encode/encode";
 import { planInit } from "../../init/plan/plan";
 import type { Catalog, InitParam, InitSpec } from "../../model/catalog";
@@ -68,6 +69,22 @@ function proxyCode(): Hex {
 /** The fixture's invented runtime code for `name`: its codehash is keccak256 of these bytes (fixtures/catalog/provenance.json). */
 function fixtureRuntime(name: string): Hex {
   return stringToHex(`fixture:${name}:runtime`);
+}
+
+/**
+ * CreateX's real vendored runtime code (Q5's `e2e-chain/vendor/CreateX.runtime.hex`), hash-checked against core's
+ * `CREATEX_CODEHASH` before it's ever etched, so the CreateX-path harness runs its happy path against real code
+ * instead of only exercising the wrong-code revert. Read once and cached: every case on the createx path etches it.
+ */
+let createxRuntime: Hex | undefined;
+function createxCode(): Hex {
+  if (createxRuntime !== undefined) return createxRuntime;
+  const file = join(ROOT, "e2e-chain/vendor/CreateX.runtime.hex");
+  const code = readFileSync(file, "utf8").trim() as Hex;
+  const hash = keccak256(code);
+  if (hash !== CREATEX_CODEHASH) throw new Error(`${file} hashes to ${hash}, not core's CREATEX_CODEHASH (${CREATEX_CODEHASH}); refusing to etch it`);
+  createxRuntime = code;
+  return createxRuntime;
 }
 
 /** Every shared contract the script checks, in its order: name, address, expected codehash. */
@@ -130,7 +147,7 @@ function harness(item: Case, catalog: Catalog): string {
   const etch = (skip?: string): string =>
     shared
       .map((s) => `        vm.etch(${s.address}, ${s.name === skip ? 'hex"01"' : hexLit(fixtureRuntime(s.name))});`)
-      .join("\n") + (path === "createx" ? `\n        vm.etch(${target}, hex"00");` : "");
+      .join("\n") + (path === "createx" ? `\n        vm.etch(${target}, ${hexLit(createxCode())});` : "");
   const FOREIGN = "0x000000000000000000000000000000000000bEEF";
   const wrongPrediction = "0x000000000000000000000000000000000000dEaD";
   const fewer = encodeAbiParameters(loupeType, [analysis.plan.slice(0, -1).map((entry) => [entry.address, entry.selectors] as const)]);
@@ -151,11 +168,11 @@ function harness(item: Case, catalog: Catalog): string {
       `        vm.mockFunction(${target}, address(new ${deployer}()), abi.encodeWithSelector(bytes4(${deployCall.slice(0, 10)})));`,
     ].join("\n");
   const loupeMock = (data: Hex): string => `        vm.mockCall(${predicted}, abi.encodeWithSelector(bytes4(0x7a0ed627)), ${hexLit(data)});`;
-  // Only the factory path can run end to end here: CreateX's real runtime code isn't in the repo, so no etched
-  // code can match CREATEX_CODEHASH. Q5 runs the CreateX script on a fork; this harness drives its parts.
-  const runTests =
-    path === "factory"
-      ? `
+  // Both paths run end to end here: on the createx path, `etch()` puts Q5's vendored CreateX runtime code at
+  // CreateX's address, so `_checkSharedContracts` passes its codehash check on real code, and `run()` proceeds
+  // through a mocked deploy the same way the factory path does. `test_createxWithOtherCode` below overrides that
+  // with wrong code, after `etch()`, to prove the check still fires.
+  const runTests = `
     function test_addressTaken() public {
 ${etch()}
 ${mocks("MockDeployOk")}
@@ -183,14 +200,18 @@ ${predictMock(wrongPrediction)}
         vm.expectRevert(abi.encodeWithSelector(${contract}.PredictionDiffers.selector, ${predicted}, ${wrongPrediction}));
         script.run();
     }
-`
-      : `
+${
+  path === "createx"
+    ? `
     function test_createxWithOtherCode() public {
 ${etch()}
+        vm.etch(${target}, hex"00");
         vm.expectRevert(abi.encodeWithSelector(${contract}.UnexpectedCode.selector, ${solidityString(createxAt)}));
         script.run();
     }
-`;
+`
+    : ""
+}`;
   const mockDeploy = (name: string, facetsData: Hex): string => `contract ${name} {
     fallback(bytes calldata data) external returns (bytes memory) {
         require(keccak256(data) == ${keccak256(deployCall)}, "the deploy call differs from Studio's");
@@ -269,7 +290,7 @@ contract ${contract}Test is Test {
 
     function test_unexpectedCode() public {
 ${etch(first?.facet)}
-        vm.expectRevert(abi.encodeWithSelector(${contract}.UnexpectedCode.selector, ${solidityString(path === "createx" ? `${createxAt}, ${firstAt}` : firstAt)}));
+        vm.expectRevert(abi.encodeWithSelector(${contract}.UnexpectedCode.selector, ${solidityString(firstAt)}));
         script.run();
     }
 
@@ -548,10 +569,10 @@ describe.skipIf(!ENABLED)("generated scripts under forge", () => {
         "test_unexpectedCode", "test_predictMatches", "test_predictionDiffers", "test_deployCallMatches",
         "test_facetsMatchAsSets", "test_facetsDiffer", "test_unexpectedFacet", "test_selectorsDiffer",
       ];
-      const own =
-        item.path === "factory"
-          ? ["test_addressTaken", "test_runSendsTheDeployCall", "test_runRefusesOtherSelectors", "test_runRefusesAnotherPrediction"]
-          : ["test_createxWithOtherCode"];
+      const own = [
+        "test_addressTaken", "test_runSendsTheDeployCall", "test_runRefusesOtherSelectors", "test_runRefusesAnotherPrediction",
+        ...(item.path === "createx" ? ["test_createxWithOtherCode"] : []),
+      ];
       for (const t of [...common, ...own]) {
         expect(names).toContain(`${item.contract}Test.${t}`);
       }
