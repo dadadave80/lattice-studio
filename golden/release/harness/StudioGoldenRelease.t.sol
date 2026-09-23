@@ -33,9 +33,10 @@ contract StudioGoldenReleaseTest is Test, DeployRelease {
         if (_ARACHNID.code.length == 0) vm.etch(_ARACHNID, _ARACHNID_RUNTIME);
     }
 
-    /// @dev The release at the library's own version, with the owner run.ts passes (the catalog's registry owner).
+    /// @dev The release at the library's own version, with the owner run.ts passes (the catalog's registry owner),
+    ///      else HANDOFF D6's placeholder so the file also runs on its own under `forge test`.
     function test_Release() public {
-        address owner = vm.envAddress("STUDIO_RELEASE_OWNER");
+        address owner = vm.envOr("STUDIO_RELEASE_OWNER", address(0x000000000000000000000000000000000000dEaD));
         string memory version = LatticeVersion.VERSION;
         _log(string.concat("header ", version, " ", vm.toString(owner), " ", vm.toString(_ARACHNID.codehash)));
 
