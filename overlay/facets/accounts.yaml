@@ -1,0 +1,56 @@
+AccountSigner:
+  requires: []
+  family:
+    name: account
+    source: script/base/accounts/DeployAccount6900.s.sol#L23-L23
+  seamReview: >-
+    owner() is shared with OwnableFacet; the account scripts cut DiamondCutFacet without OwnableFacet, so AccountSigner
+    serves it there, and no script pins an owner when both are placed, so the user chooses (SEL-01).
+  notes: >-
+    Lattice ships no AccountSignerInit; AccountInit (init and init7702) seeds the owner through
+    AccountSignerLib.__AccountSigner_init.
+
+ERC1271Signature:
+  requires: []
+  seamReview: >-
+    isValidSignature is shared with ERC6900Signature; ERC6900Signature's NatSpec says the two are never cut into the
+    same account and no script pins an owner, so placing both raises SEL-01.
+  notes: >-
+    Checks signatures against the AccountSigner owner (src/accounts/ERC1271Signature.sol#L10-L11). No requires entry: it touches AccountSigner's
+    namespace, so C3's namespace rule already warns when AccountSigner is missing (contracts §4).
+
+ERC4337Validation:
+  requires: []
+  seamReview: >-
+    validateUserOp is shared with ERC6900Validation; ERC6900Validation's NatSpec says the two are never cut into the
+    same account and no script pins an owner, so placing both raises SEL-01.
+  notes: >-
+    Checks signatures against the AccountSigner owner (src/accounts/ERC4337Validation.sol#L11-L13). No requires entry: it touches AccountSigner's
+    namespace, so C3's namespace rule already warns when AccountSigner is missing (contracts §4).
+
+ERC6900AccountView:
+  requires: []
+
+ERC6900Executor:
+  requires: []
+
+ERC6900ModuleManager:
+  requires: []
+
+ERC6900Signature:
+  requires: []
+  seamReview: >-
+    isValidSignature is shared with ERC1271Signature; its NatSpec says the two are never cut into the same account and
+    no script pins an owner, so placing both raises SEL-01.
+
+ERC6900Validation:
+  requires: []
+  family:
+    name: account
+    source: script/base/accounts/DeployAccount6900.s.sol#L23-L23
+  seamReview: >-
+    validateUserOp is shared with ERC4337Validation; its NatSpec says the two are never cut into the same account and
+    no script pins an owner, so placing both raises SEL-01.
+
+ERC7821Executor:
+  requires: []

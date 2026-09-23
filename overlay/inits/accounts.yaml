@@ -1,0 +1,28 @@
+AccountInit.init:
+  kind: step
+  source: src/accounts/erc7579/AccountInit.sol#L35-L37
+  registersInterfaces: true
+  params:
+    owner:
+      doc: The account's initial ECDSA signing owner.
+      rule: nonzero
+      authority: true
+      role: signer
+      source: src/accounts/libraries/AccountSignerLib.sol#L146-L150
+
+AccountInit.init7702:
+  kind: step
+  source: src/accounts/erc7579/AccountInit.sol#L49-L51
+  registersInterfaces: true
+
+AccountInit6900:
+  kind: step
+  source: src/accounts/erc6900/AccountInit6900.sol#L37-L51
+  registersInterfaces: true
+  params:
+    owner:
+      doc: "The account's admin: the authority that installs and uninstalls validations and executions."
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/accounts/erc6900/AccountInit6900.sol#L45-L45

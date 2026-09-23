@@ -33,7 +33,7 @@ function parseTerm(term: string): RuleTerm | string {
   const [, name, body = ""] = m;
   switch (name) {
     case "range": {
-      const [a, b, extra] = body.split(",").map((s) => s.trim());
+      const [a, b, extra] = body.split(",");
       if (a === undefined || b === undefined || extra !== undefined || !INTEGER.test(a) || !INTEGER.test(b)) {
         return `"${term}" needs two whole numbers: range(a,b).`;
       }
@@ -63,9 +63,10 @@ function parseTerm(term: string): RuleTerm | string {
 
 /** Parses a `rule`: terms joined with `&`, each kind at most once. */
 export function parseRule(rule: string): { ok: true; terms: RuleTerm[] } | { ok: false; error: string } {
+  if (/\s/.test(rule)) return { ok: false, error: `"${rule}" has spaces; write it without them, like nonzero&code(safe).` };
   const terms: RuleTerm[] = [];
   for (const raw of rule.split("&")) {
-    const term = parseTerm(raw.trim());
+    const term = parseTerm(raw);
     if (typeof term === "string") return { ok: false, error: term };
     if (terms.some((t) => t.kind === term.kind)) return { ok: false, error: `"${rule}" repeats ${term.kind}.` };
     terms.push(term);

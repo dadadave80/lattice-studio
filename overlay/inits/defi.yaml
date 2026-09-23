@@ -1,0 +1,191 @@
+AggregatorExecAdapterInit:
+  kind: step
+  source: src/defi/AggregatorExecAdapterInit.sol#L20-L24
+  params:
+    admin:
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/defi/AggregatorExecAdapterInit.sol#L19-L22
+
+# The two whole-recipe inits: one call whose module order is fixed in Solidity (bundles, spec L178).
+GovernedVaultENSInit:
+  kind: bundle
+  source: src/defi/GovernedVaultENSInit.sol#L48-L107
+  registersInterfaces: true
+  params:
+    p:
+      doc: Governance and ENS parameters for the ENS-named self-governed vault.
+      components:
+        vault:
+          doc: The base self-governed vault parameters.
+          source: src/defi/GovernedVaultENSInit.sol#L25-L25
+          components:
+            asset:
+              doc: Underlying ERC-20 the vault holds.
+              rule: nonzero&code(token)
+              # Stored as the vault's asset; its decimals() is read at init.
+              source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L69-L81
+            name:
+              doc: Share-token name (also the EIP-712 domain name and governor name).
+            symbol:
+              doc: Share-token symbol.
+            decimalsOffset:
+              doc: ERC-4626 virtual-share offset (usually 0).
+            minDelay:
+              doc: Timelock delay between queue and execute.
+              unit: seconds
+              source: src/defi/GovernedVaultInit.sol#L25-L25
+            votingDelay:
+              doc: Time between proposal creation and voting start.
+              unit: seconds
+              # The Votes clock is block.timestamp (ERC-6372 mode=timestamp).
+              source: src/governance/libraries/VotesLib.sol#L81-L91
+            votingPeriod:
+              doc: How long the vote stays open (must be more than 0).
+              unit: seconds
+              rule: gt(0)
+              source: src/governance/libraries/GovernorLib.sol#L159-L159
+            proposalThreshold:
+              doc: Minimum votes to create a proposal.
+              unit: wei
+              source: src/defi/GovernedVaultInit.sol#L28-L28
+            quorumNumerator:
+              doc: Quorum as a percentage of total supply.
+              unit: percent
+              rule: range(0,100)
+              source: src/governance/libraries/GovernorLib.sol#L111-L112
+        reverseRegistrar:
+          doc: The chain's ENS reverse registrar.
+          rule: nonzero
+          source: src/ens/libraries/ENSReverseClaimerLib.sol#L72-L72
+        ensName:
+          doc: Primary ENS name claimed at init; an empty name skips the claim.
+  sequence:
+    modules:
+      - AccessControl
+      - EmergencyStop
+      - ERC-165 flags
+      - GovernedDiamondCut
+      - ERC20
+      - ERC4626
+      - EIP712
+      - Nonces
+      - Votes
+      - ERC20Votes
+      - VaultCore
+      - TimelockController
+      - Governor
+      - GovernedVault
+      - ENSReverseClaimer
+    source: src/defi/GovernedVaultENSInit.sol#L48-L107
+  notes: >-
+    Must not be combined with ENSReverseClaimerInit, which would re-run __AccessControl_init
+    (src/defi/GovernedVaultENSInit.sol#L45-L46); INIT-03 catches it from `initializes`.
+
+GovernedVaultInit:
+  kind: bundle
+  source: src/defi/GovernedVaultInit.sol#L44-L87
+  registersInterfaces: true
+  params:
+    p:
+      doc: Governance parameters for the self-governed vault.
+      components:
+        asset:
+          doc: Underlying ERC-20 the vault holds.
+          rule: nonzero&code(token)
+          # Stored as the vault's asset; its decimals() is read at init.
+          source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L69-L81
+        name:
+          doc: Share-token name (also the EIP-712 domain name and governor name).
+          example: Grant vault
+          exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
+        symbol:
+          doc: Share-token symbol.
+          example: gVLT
+          exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
+        decimalsOffset:
+          doc: ERC-4626 virtual-share offset (usually 0).
+          example: "0"
+          exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
+        minDelay:
+          doc: Timelock delay between queue and execute.
+          unit: seconds
+          source: src/defi/GovernedVaultInit.sol#L25-L25
+          example: "300"
+          exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
+        votingDelay:
+          doc: Time between proposal creation and voting start.
+          unit: seconds
+          # The Votes clock is block.timestamp (ERC-6372 mode=timestamp).
+          source: src/governance/libraries/VotesLib.sol#L81-L91
+          example: "60"
+          exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
+        votingPeriod:
+          doc: How long the vote stays open (must be more than 0).
+          unit: seconds
+          rule: gt(0)
+          source: src/governance/libraries/GovernorLib.sol#L159-L159
+          example: "600"
+          exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
+        proposalThreshold:
+          doc: Minimum votes to create a proposal.
+          unit: wei
+          source: src/defi/GovernedVaultInit.sol#L28-L28
+          example: "0"
+          exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
+        quorumNumerator:
+          doc: Quorum as a percentage of total supply.
+          unit: percent
+          rule: range(0,100)
+          # QUORUM_DENOMINATOR is 100 and __Governor_init rejects a larger numerator (L160-L162).
+          source: src/governance/libraries/GovernorLib.sol#L111-L112
+          example: "4"
+          exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
+  sequence:
+    modules:
+      - AccessControl
+      - EmergencyStop
+      - ERC-165 flags
+      - GovernedDiamondCut
+      - ERC20
+      - ERC4626
+      - EIP712
+      - Nonces
+      - Votes
+      - ERC20Votes
+      - VaultCore
+      - TimelockController
+      - Governor
+      - GovernedVault
+    source: src/defi/GovernedVaultInit.sol#L44-L87
+
+StrategyManagerInit:
+  kind: step
+  source: src/defi/StrategyManagerInit.sol#L18-L21
+  params:
+    admin:
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/defi/StrategyManagerInit.sol#L17-L19
+
+VaultCoreInit:
+  kind: step
+  source: src/defi/VaultCoreInit.sol#L24-L31
+  params:
+    asset_:
+      rule: nonzero&code(token)
+      # Stored as the vault's asset; its decimals() is read at init.
+      source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L69-L81
+    admin_:
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/defi/VaultCoreInit.sol#L22-L27
+  after:
+    # Satisfied by VaultCoreInit itself, which runs AccessControl and ERC4626 first (contracts §4 `after`).
+    - module: AccessControl
+      source: src/defi/libraries/VaultCoreLib.sol#L64-L65
+    - module: ERC4626
+      source: src/defi/libraries/VaultCoreLib.sol#L64-L65

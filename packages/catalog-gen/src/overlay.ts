@@ -49,9 +49,8 @@ const SourceSchema = z.string().refine((s) => parseSource(s) !== undefined, {
   message: "expected a citation like src/access/AccessControlInit.sol#L20-L24 (path#L<a>-L<b>, a ≤ b).",
 });
 
-const SelectorSchema = z.string().regex(/^0x[0-9a-f]{8}$/, {
-  message: 'expected a quoted lowercase 4-byte selector like "0x06fdde03" (YAML reads 0x… unquoted as a number).',
-});
+const SELECTOR_MESSAGE = 'expected a quoted lowercase 4-byte selector like "0x06fdde03" (YAML reads 0x… unquoted as a number).';
+const SelectorSchema = z.string({ error: SELECTOR_MESSAGE }).regex(/^0x[0-9a-f]{8}$/, { message: SELECTOR_MESSAGE });
 
 const NameSchema = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, { message: "expected a Solidity identifier." });
 const InitNameSchema = z
