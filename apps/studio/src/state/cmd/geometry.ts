@@ -3,8 +3,8 @@
  * C11 does no geometry, so S1 frees every position before placing).
  */
 import type { Analysis, Catalog, Point, Project, Size, Sizes } from "@lattice-studio/core";
-import { cardSize, contestedSelectors, freeSlot } from "@lattice-studio/core";
-import { layoutMetrics, type SessionState } from "@/contracts";
+import { analyze, cardSize, contestedSelectors, freeSlot, isNotImplemented, placeFacet } from "@lattice-studio/core";
+import { layoutMetrics, log, type SessionState } from "@/contracts";
 import { facetOf } from "./shared";
 
 /** Where Tidy starts, and where the first card lands when there's no view to center on (C9's origin, 12 grid). */
@@ -58,14 +58,38 @@ export type LandingInput = {
 };
 
 /**
+ * The analysis once `facet` joins the recipe: contested rows that only exist because two facets now export the
+ * same selector don't show up until it's actually placed, so sizing from the analysis given (the sheet before
+ * this facet) would undercount them (spec L425, L479: colliding rows never collapse). Falls back to the given
+ * analysis for a facet that can't be placed (already on the sheet), quietly for a neighbor not built yet (the
+ * live document already reported that), else reported the way `analysis-engine.ts` reports its own caught
+ * errors, so a genuine failure here is never silent (contracts §6) even though the placement still lands.
+ */
+function afterPlacement(project: Project, catalog: Catalog, facet: string, analysis: Analysis): Analysis {
+  try {
+    const placed = placeFacet(project, catalog, facet, { x: 0, y: 0 });
+    return placed.changed ? analyze(placed.project.recipe, catalog) : analysis;
+  } catch (error) {
+    if (!isNotImplemented(error)) {
+      console.warn(error);
+      log({ tag: "Error", text: `Sizing failed: ${error instanceof Error ? error.message : String(error)}.` });
+    }
+    return analysis;
+  }
+}
+
+/**
  * Where a new card lands (spec L425): at the given point, else beside the selected card, else at the center of
- * the view; then snapped and moved to the nearest free slot, so cards never stack.
+ * the view; then snapped and moved to the nearest free slot, so cards never stack. Sized, and every other card
+ * sized, from the recipe once this facet has joined it, so a card that turns out contested reserves its real
+ * height before `freeSlot` picks its spot.
  */
 export function landing(input: LandingInput): Point {
   const { project, catalog, analysis, session, facet, at } = input;
   const metrics = layoutMetrics;
-  const sizes = cardSizes(project, catalog, analysis);
-  const size = sizeOf(facet, catalog, analysis, false, "right");
+  const settled = afterPlacement(project, catalog, facet, analysis);
+  const sizes = cardSizes(project, catalog, settled);
+  const size = sizeOf(facet, catalog, settled, false, "right");
   let target: Point;
   if (at && Number.isFinite(at.x) && Number.isFinite(at.y)) {
     target = at;

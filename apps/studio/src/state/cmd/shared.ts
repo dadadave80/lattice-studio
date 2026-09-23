@@ -71,8 +71,11 @@ export function sayNote(text: string): void {
 }
 
 export type EditOutcome = {
-  /** The undo label. Default: the op's summary ("Placed ERC20"). */
-  label?: string;
+  /**
+   * The undo label. Default: the op's summary ("Placed ERC20"). A function sees the applied result, for a label
+   * that has to count what the edit actually did (Tidy's placed facets), the same count `say` narrates.
+   */
+  label?: string | ((result: EditResult) => string);
   /**
    * Lines logged first, before the problems the edit adds or resolves. Default, unless `fallback` is given: the
    * summary as a sentence ("Left `transfer · 0xa9059cbb` out of the diamond.").
@@ -98,7 +101,8 @@ export function edit(op: EditOp, outcome: EditOutcome = {}): EditResult {
     sayNote(preview.summary);
     return preview;
   }
-  const result = doc.apply(outcome.label ?? preview.summary, () => preview);
+  const label = typeof outcome.label === "function" ? outcome.label(preview) : (outcome.label ?? preview.summary);
+  const result = doc.apply(label, () => preview);
   if (!result.changed) return result; // Refused (read-only): the store logged why.
   const engine = studioState().analysis;
   const summary = { tag: "Note" as const, text: `${result.summary}.` };
