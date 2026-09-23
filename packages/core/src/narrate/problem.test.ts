@@ -308,24 +308,77 @@ describe("AUTH, LINK", () => {
     );
   });
 
-  test("LINK-01: spec example wording", () => {
+  test("AUTH-02: diamondCut role names the upgrade holder, not the admin", () => {
+    const address = addr(2);
+    expect(render("AUTH-02", { path: "steps[0].admin", role: "diamondCut", address })).toBe(
+      `The upgrade holder is ${formatAddress(address)}, an address this diamond had or a recorded deployment holds.`,
+    );
+  });
+
+  test("AUTH-02: every authority role in the fixture catalog", () => {
+    const address = addr(2);
+    const cases: Array<[string, string]> = [
+      ["DEFAULT_ADMIN_ROLE", "The admin"],
+      ["diamondCut", "The upgrade holder"],
+      ["scheduleCut", "The upgrade holder"],
+      ["owner", "The owner"],
+      ["signer", "The signer"],
+    ];
+    for (const [role, subject] of cases) {
+      expect(render("AUTH-02", { path: "steps[0].admin", role, address })).toBe(
+        `${subject} is ${formatAddress(address)}, an address this diamond had or a recorded deployment holds.`,
+      );
+    }
+  });
+
+  test("AUTH-02: a role outside the table falls back to backtick wording", () => {
+    const address = addr(2);
+    expect(render("AUTH-02", { path: "steps[0].admin", role: "guardian", address })).toBe(
+      `The \`guardian\` holder is ${formatAddress(address)}, an address this diamond had or a recorded deployment holds.`,
+    );
+  });
+
+  test("LINK-01: spec example wording (diamondCut)", () => {
     const address = addr(3);
-    expect(render("LINK-01", { path: "steps[0].admin", role: "UPGRADER_ROLE", address, source: "link" })).toBe(
+    expect(render("LINK-01", { path: "steps[0].admin", role: "diamondCut", address, source: "link" })).toBe(
       `The upgrade role goes to ${formatAddress(address)}, which came from a shared link.`,
     );
   });
 
   test("LINK-01: an opened file", () => {
     const address = addr(3);
-    expect(render("LINK-01", { path: "steps[0].admin", role: "UPGRADER_ROLE", address, source: "file" })).toBe(
+    expect(render("LINK-01", { path: "steps[0].admin", role: "diamondCut", address, source: "file" })).toBe(
       `The upgrade role goes to ${formatAddress(address)}, which came from an opened file.`,
     );
   });
 
   test("LINK-01: no source (generic)", () => {
     const address = addr(3);
-    expect(render("LINK-01", { path: "steps[0].admin", role: "UPGRADER_ROLE", address })).toBe(
+    expect(render("LINK-01", { path: "steps[0].admin", role: "diamondCut", address })).toBe(
       `The upgrade role goes to ${formatAddress(address)}, which came from a link or a file and hasn't been confirmed.`,
+    );
+  });
+
+  test("LINK-01: every authority role in the fixture catalog", () => {
+    const address = addr(3);
+    const cases: Array<[string, string]> = [
+      ["DEFAULT_ADMIN_ROLE", "The admin role"],
+      ["diamondCut", "The upgrade role"],
+      ["scheduleCut", "The upgrade role"],
+      ["owner", "Ownership"],
+      ["signer", "The signer role"],
+    ];
+    for (const [role, label] of cases) {
+      expect(render("LINK-01", { path: "steps[0].admin", role, address, source: "link" })).toBe(
+        `${label} goes to ${formatAddress(address)}, which came from a shared link.`,
+      );
+    }
+  });
+
+  test("LINK-01: a role outside the table falls back to backtick wording", () => {
+    const address = addr(3);
+    expect(render("LINK-01", { path: "steps[0].admin", role: "guardian", address, source: "link" })).toBe(
+      `The \`guardian\` role goes to ${formatAddress(address)}, which came from a shared link.`,
     );
   });
 });
