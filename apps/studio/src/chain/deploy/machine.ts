@@ -28,7 +28,7 @@ import type {
 } from "@lattice-studio/core";
 import {
   ARACHNID_PROXY, assertSaltSender, buildDiamondDeploy, buildMissingDeploys, decodeInit, decodeRevert, formatAddress, lines,
-  MULTICALL3_CODEHASH, plural, sameAddress, toChecksum,
+  MULTICALL3_CODEHASH, multicallGas, plural, sameAddress, toChecksum,
 } from "@lattice-studio/core";
 import type { DeployController, DeployPhase, DeployState } from "@/contracts";
 import {
@@ -1028,12 +1028,20 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       mode = built.value.mode;
       const groups = built.value.mode === "calls" ? [{ names: built.value.txs.flatMap((t) => t.names), txs: built.value.txs.map((t) => t.tx) }]
         : built.value.txs.slice(0, 1).map((t) => ({ names: t.names, txs: [t.tx] }));
+      // aggregate3 with failures allowed never reverts, so the wallet's own estimate would starve its last entries.
+      const batchGas = (batch: readonly string[]): bigint | undefined => {
+        if (batch.length < 2 || built.value.mode !== "multicall") return undefined;
+        const each = batch.map((name) => gas?.[name]);
+        if (each.some((g) => g === undefined)) return gasCap;
+        const total = multicallGas(each as bigint[]);
+        return gasCap !== undefined && total > gasCap ? gasCap : total;
+      };
       const group = groups[0];
       if (!group) break;
       for (const name of group.names) mark(name, "pending");
       setMissing({ chainId, preparing: false, running: true, items: items(), ...(mode ? { mode } : {}) });
 
-      const sentOk = await sendGroup(port.value, chainId, account.address, group.txs);
+      const sentOk = await sendGroup(port.value, chainId, account.address, group.txs, batchGas(group.names));
       if (!alive()) return;
       if (sentOk !== null) {
         for (const name of group.names) mark(name, byName.get(name)?.status === "deployed" ? "deployed" : "failed", sentOk);
@@ -1073,7 +1081,9 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
   };
 
   /** Sends one group; null when it went through, else why not. */
-  const sendGroup = async (port: DeployChainPort, chainId: number, from: Address, txs: readonly TxRequest[]): Promise<string | null> => {
+  const sendGroup = async (
+    port: DeployChainPort, chainId: number, from: Address, txs: readonly TxRequest[], gas: bigint | undefined,
+  ): Promise<string | null> => {
     if (txs.length > 1) {
       const sent = await port.sendCalls(chainId, { from, calls: txs });
       if (sent.kind === "rejected") return CANCELED_IN_WALLET;
@@ -1084,7 +1094,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     }
     const [tx] = txs;
     if (!tx) return null;
-    const sent = await port.send(chainId, { from, tx });
+    const sent = await port.send(chainId, { from, tx, ...(gas === undefined ? {} : { gas }) });
     if (sent.kind === "rejected") return CANCELED_IN_WALLET;
     if (sent.kind === "error") return sent.message;
     const abort = new AbortController();

@@ -15,10 +15,12 @@ const NO_WALLET_SUPPORT = "Wallet support isn't available.";
 /** The connected wallet, through wagmi. Every failure is an outcome: a rejection, or its short message. */
 export function wagmiWallet(config: Config | null): DeployWallet {
   return {
-    async send(chainId, { from, tx }) {
+    async send(chainId, { from, tx, gas }) {
       if (!config) return { kind: "error", message: NO_WALLET_SUPPORT };
       try {
-        const hash = await sendTransaction(config, { account: from, chainId, to: tx.to, data: tx.data, value: tx.value });
+        const hash = await sendTransaction(config, {
+          account: from, chainId, to: tx.to, data: tx.data, value: tx.value, ...(gas === undefined ? {} : { gas }),
+        });
         return { kind: "sent", value: hash };
       } catch (error) {
         return isRejection(error) ? { kind: "rejected" } : { kind: "error", message: reason(error) };

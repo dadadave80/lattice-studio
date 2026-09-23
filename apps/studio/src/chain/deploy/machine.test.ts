@@ -6,6 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { Address, Catalog, Deployment, Hex, Project } from "@lattice-studio/core";
+import { multicallGas } from "@lattice-studio/core";
 import { encodeErrorResult, parseAbi } from "viem";
 import { filledTemplate, loadBuiltCatalog, makeProject } from "@lattice-studio/core/testing";
 import { CANCELED_IN_WALLET, DEPLOY_BANNER_ID, MISMATCH, notSeenFor, OFFLINE_TRACKING } from "./copy";
@@ -580,6 +581,8 @@ describe("missing contracts", () => {
     await m.deployMissing(names);
     expect(h.port.sent.length).toBe(1);
     expect(h.port.sent[0]?.tx.to).toBe("0xcA11bde05977b3631167028862bE2a173976CA11");
+    // aggregate3 with failures allowed never reverts, so the batch carries its own gas, not the wallet's estimate.
+    expect(h.port.sent[0]?.gas).toBe(multicallGas([1_000_000n, 1_000_000n, 1_000_000n]));
     expect(m.missingStep().mode).toBe("multicall");
     expect(m.missingStep().items.every((i) => i.status === "deployed")).toBe(true);
   });

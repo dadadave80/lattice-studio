@@ -110,7 +110,7 @@ export type FakePort = DeployChainPort & {
   autoMine: boolean;
   onMined?: ((tx: TxRequest | undefined, hash: Hex) => void) | undefined;
   /** Hashes sent so far, with their transactions. */
-  readonly sent: { hash: Hex; tx: TxRequest; from: Address }[];
+  readonly sent: { hash: Hex; tx: TxRequest; from: Address; gas?: bigint }[];
   readonly batches: { calls: readonly TxRequest[] }[];
   /** Pending watches. */
   watching(): Hex[];
@@ -236,7 +236,7 @@ export function fakePort(options: FakePortOptions): FakePort {
       const next = port.sendQueue.shift();
       if (next && next.kind !== "sent") return next;
       const hash = next?.kind === "sent" ? next.value : nextHash();
-      sent.push({ hash, tx: request.tx, from: request.from });
+      sent.push({ hash, tx: request.tx, from: request.from, ...(request.gas === undefined ? {} : { gas: request.gas }) });
       return { kind: "sent", value: hash };
     },
     watch(chainId, hash, watchOptions) {

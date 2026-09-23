@@ -16,7 +16,7 @@ export type ChainClient = Client<Transport, Chain>;
 
 /** Signs and sends: the connected wallet. Every failure is an outcome, never a throw. */
 export type DeployWallet = {
-  send(chainId: number, request: { from: Address; tx: TxRequest }): Promise<SendOutcome>;
+  send(chainId: number, request: { from: Address; tx: TxRequest; gas?: bigint }): Promise<SendOutcome>;
   atomicBatch(chainId: number, from: Address): Promise<boolean>;
   sendCalls(chainId: number, request: { from: Address; calls: readonly TxRequest[] }): Promise<SendOutcome<string>>;
   waitCalls(chainId: number, id: string, signal: AbortSignal): Promise<CallsOutcome>;

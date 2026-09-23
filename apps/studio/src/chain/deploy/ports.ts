@@ -72,8 +72,8 @@ export type DeployChainPort = {
   estimateGas(chainId: number, request: { from: Address; tx: TxRequest }): Promise<Result<bigint, string>>;
   /** Hands the deploy's gas estimate to the chain module, so NET-06 weighs it (null: no longer applies). */
   noteEstimate(chainId: number, gas: bigint | null): void;
-  /** Asks the wallet to send. */
-  send(chainId: number, request: { from: Address; tx: TxRequest }): Promise<SendOutcome>;
+  /** Asks the wallet to send; `gas` overrides the wallet's estimate (a Multicall3 batch, whose failures don't revert). */
+  send(chainId: number, request: { from: Address; tx: TxRequest; gas?: bigint }): Promise<SendOutcome>;
   /** Waits for the receipt with no timeout of its own (the machine owns the stale timer), following speed-ups. */
   watch(chainId: number, hash: Hex, options: WatchOptions): Promise<ReceiptOutcome>;
   transactionStatus(chainId: number, hash: Hex): Promise<Result<TxStatus, string>>;
