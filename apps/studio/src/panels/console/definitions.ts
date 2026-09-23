@@ -6,13 +6,13 @@
 import type { Address, CommandRef, Result } from "@lattice-studio/core";
 import { isAddress, toChecksum } from "@lattice-studio/core";
 import {
-  announce, command, getCommand, log, openDialog, subscribeCommands, type Command, type CommandArgsOf, type Enablement,
+  announce, command, env, getCommand, log, openDialog, subscribeCommands, type Command, type CommandArgsOf, type Enablement,
 } from "@/contracts";
 import { helpLines, listVerbs } from "@/commands/console/router";
 import {
   alwaysExportable, briefFile, CATALOG_NOT_LOADED, deployableExport, exportFailed, exportSafe, saveExport,
 } from "./actions";
-import { chainFromText } from "./chains";
+import { chainFromText } from "@/chain/infra/chains";
 import { setConsoleMaximized, setConsoleOpen, showConsoleTab } from "./drawer";
 import { findOnSheet, findSummary, firstAnchor, foundFacets } from "./find";
 import { locatable, selectAndLocate } from "./locate";
@@ -37,9 +37,8 @@ function noArgs(error: string): (argv: string[]) => Result<NoArgs, string> {
   return (argv) => (argv.length ? err<NoArgs>(error) : ok<NoArgs>({}));
 }
 
-/** `help` and `find` take arguments no other module passes; their rows in `CommandArgsMap` are a CCR. */
-type HelpArgs = { verb?: string };
-type FindArgs = { query: string };
+type HelpArgs = CommandArgsOf<"console.help">;
+type FindArgs = CommandArgsOf<"console.find">;
 type SafeArgs = CommandArgsOf<"export.safe">;
 
 function say(text: string): void {
@@ -243,7 +242,7 @@ export const S5E_COMMANDS: readonly Command[] = [
           return err("export safe takes a Safe address and a chain: export safe 0x71C7…976F sepolia");
         }
         if (!isAddress(address)) return err(`${address} isn't an address. Enter the Safe's full address.`);
-        const picked = chainFromText(chain);
+        const picked = chainFromText(chain, env.e2e);
         if (!picked) return err(`${chain} isn't a chain Studio deploys to. Name one: sepolia, base-sepolia.`);
         return ok({ safe: toChecksum(address as Address), chainId: picked.id });
       },

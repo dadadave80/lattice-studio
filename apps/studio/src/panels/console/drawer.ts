@@ -1,17 +1,13 @@
 /**
- * The console drawer's session state (contracts §5.1 `panes.console`): open, tab, size and maximized. The
- * bounds follow spec L359 (a 36 px header over a 124 px body, resizable to half the window's height). S3's
- * `@/shell` exports the same helpers (`setConsoleSize`, `consoleMax`, `PANE_SIZES`); it isn't in this work
- * package's base yet, so these stand in until it is (listed in WP-S5e's report).
+ * The console drawer's session state (contracts §5.1 `panes.console`). Size, bounds and open come from S3's shell
+ * (`setConsoleSize`, `consoleMax`, `PANE_SIZES`, `setPaneOpen`), imported by module so the shell's barrel, which
+ * renders this panel, isn't a cycle. Maximize and the tab are the console's own.
  */
 import { session, type ConsoleTab } from "@/contracts";
+import { setPaneOpen } from "@/shell/sizes";
 
-export const CONSOLE_SIZES = { initial: 124, min: 64, header: 36 } as const;
-
-/** The body's largest size: the header plus the body fill at most half the window's height. */
-export function consoleMax(windowHeight: number): number {
-  return Math.max(CONSOLE_SIZES.initial, Math.floor(windowHeight / 2) - CONSOLE_SIZES.header);
-}
+export { consoleMax, PANE_SIZES } from "@/shell/panes";
+export { setConsoleSize } from "@/shell/sizes";
 
 type ConsolePane = ReturnType<typeof session.get>["panes"]["console"];
 
@@ -23,14 +19,13 @@ function patch(change: (pane: ConsolePane) => Partial<ConsolePane>): void {
   });
 }
 
-export function setConsoleSize(size: number): void {
-  patch(() => ({ size }));
-}
-
+/** Collapses to the header, or opens the body. Collapsing also leaves Maximize. */
 export function setConsoleOpen(open: boolean): void {
-  patch((pane) => (open ? { open } : { open, maximized: pane.maximized && open }));
+  if (!open) patch(() => ({ maximized: false }));
+  setPaneOpen("console", open);
 }
 
+/** Sets `panes.console.maximized`; maximizing opens the body. */
 export function setConsoleMaximized(maximized: boolean): void {
   patch(() => (maximized ? { maximized, open: true } : { maximized }));
 }

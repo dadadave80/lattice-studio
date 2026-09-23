@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ConsoleLine, Problem } from "@lattice-studio/core";
 import { loadFixtureCatalog } from "@lattice-studio/core/testing";
-import { chainFromText, chainName, scriptChainIds, studioChains } from "./chains";
+import { scriptChainIds } from "./chains";
 import { filterEntries, isFiltering, matchesQuery, parseQuery, showingText } from "./filter";
 import { findOnSheet, findSummary, firstAnchor, foundFacets } from "./find";
 import { changedLines } from "./line-diff";
@@ -223,14 +223,9 @@ describe("summary (spec L376-L389)", () => {
   });
 });
 
-describe("chains", () => {
-  test("names, lookups and the script's chain ids", () => {
-    expect(chainName(11155111, false)).toBe("Sepolia");
-    expect(chainName(5, false)).toBe("Chain 5");
-    expect(chainFromText("base-sepolia", false)?.id).toBe(84532);
-    expect(chainFromText("31337", false)).toBeUndefined();
-    expect(chainFromText("31337", true)?.name).toBe("Anvil");
-    expect(studioChains(false).map((c) => c.id)).toEqual([11155111, 84532]);
+describe("script chains", () => {
+  test("the catalog's chains and Studio's, sorted; Anvil only in e2e builds", () => {
+    expect(scriptChainIds({ chains: [] }, false)).toEqual([84532, 11155111]);
     expect(scriptChainIds({ chains: [{ chainId: 10 }] }, true)).toEqual([10, 31337, 84532, 11155111]);
   });
 });

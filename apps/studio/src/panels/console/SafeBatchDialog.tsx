@@ -1,14 +1,14 @@
 import type { Address } from "@lattice-studio/core";
 import { isAddress, toChecksum } from "@lattice-studio/core";
 import { useRef, useState } from "react";
-import { closeDialog, useSession, type DialogComponentProps } from "@/contracts";
+import { closeDialog, env, useSession, type DialogComponentProps } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { Select } from "@/ui/fields/Select";
 import { TextField } from "@/ui/fields/TextField";
 import { Dialog } from "@/ui/overlays/Dialog";
 import { Banner } from "@/ui/status/Banner";
 import { exportFailed, exportSafe } from "./actions";
-import { studioChains } from "./chains";
+import { pickerChains } from "@/chain/infra/chains";
 import styles from "./SafeBatchDialog.module.css";
 
 export const SAFE_BATCH_TITLE = "Safe batch";
@@ -22,7 +22,7 @@ export const DOWNLOAD_BATCH = "Download batch";
  * the Safe address; the primary is Download batch.
  */
 export function SafeBatchDialog({ entry, top }: DialogComponentProps<"safe-batch">) {
-  const chains = studioChains();
+  const chains = pickerChains(env.e2e);
   const selected = useSession((s) => s.chainId);
   const fallbackChain = chains.find((c) => c.id === selected)?.id ?? chains[0]?.id ?? 0;
   const [safe, setSafe] = useState<string>(entry.props.safe ?? "");

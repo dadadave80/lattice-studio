@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
-import { useAnalysis, useDeployState, useDocument, useOnline } from "@/contracts";
+import { env, useAnalysis, useDeployState, useDocument, useOnline } from "@/contracts";
 import { cx } from "@/ui/shared/cx";
-import { chainName } from "./chains";
+import { chainName } from "@/chain/infra/chains";
 import styles from "./ConsolePanel.module.css";
 import { latestWith, logEntries, subscribeLog } from "./log-store";
 import { consoleSummary, STREAMING } from "./summary";
@@ -44,7 +44,7 @@ export function ConsoleSummary() {
       ...(safe === undefined ? {} : { safe }),
     },
     latestDeployLine: latest,
-    chainName: (id) => chainName(id),
+    chainName: (id) => chainName(id, env.e2e),
   });
 
   return (

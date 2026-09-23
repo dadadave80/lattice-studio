@@ -1,5 +1,5 @@
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
-import { lazy, Suspense, useId, useSyncExternalStore } from "react";
+import { lazy, Suspense, useId } from "react";
 import { runCommand, useSession, type ConsoleTab } from "@/contracts";
 import { IconButton } from "@/ui/buttons/IconButton";
 import { PaneSizeMenu } from "@/ui/nav/PaneSizeMenu";
@@ -8,7 +8,8 @@ import { Chevron } from "./Chevron";
 import { CommandLine } from "./CommandLine";
 import styles from "./ConsolePanel.module.css";
 import { ConsoleSummary } from "./ConsoleSummary";
-import { CONSOLE_SIZES, consoleMax, setConsoleOpen, setConsoleSize, showConsoleTab } from "./drawer";
+import { useWindowHeight } from "@/shell/layout-tier";
+import { consoleMax, PANE_SIZES, setConsoleOpen, setConsoleSize, showConsoleTab } from "./drawer";
 import { ExportMenu } from "./ExportMenu";
 import { warmHighlighter } from "./highlight";
 import { LogView } from "./LogView";
@@ -22,13 +23,6 @@ const TABS: readonly { value: ConsoleTab; label: string; code: boolean }[] = [
   { value: "recipe", label: "Recipe JSON", code: true },
 ];
 
-function subscribeResize(onChange: () => void): () => void {
-  window.addEventListener("resize", onChange);
-  return () => window.removeEventListener("resize", onChange);
-}
-
-const windowHeight = () => window.innerHeight;
-
 /**
  * The console drawer (spec L359, IR L128-L160): a 36 px header with Collapse/Expand, "Console", the summary and
  * its square, the tabs, the Export menu, the size menu and Maximize; then the Log, Script and Recipe JSON tabs
@@ -39,7 +33,7 @@ export function ConsolePanel() {
   const open = useSession((s) => s.panes.console.open);
   const size = useSession((s) => s.panes.console.size);
   const maximized = useSession((s) => s.panes.console.maximized);
-  const height = useSyncExternalStore(subscribeResize, windowHeight, () => 900);
+  const height = useWindowHeight();
   const bodyId = useId();
   const max = consoleMax(height);
 
@@ -84,7 +78,7 @@ export function ConsolePanel() {
           pane="Console"
           dimension="height"
           value={Math.min(size, max)}
-          min={CONSOLE_SIZES.min}
+          min={PANE_SIZES.console.min}
           max={max}
           onChange={setConsoleSize}
           onCollapse={() => setConsoleOpen(false)}

@@ -3,7 +3,7 @@ import { page, userEvent } from "vitest/browser";
 import { runCommand, session } from "@/contracts";
 import { bufferedServices, renderWithStudio } from "../../../test/harness";
 import { ConsolePanel } from "./ConsolePanel";
-import { CONSOLE_SIZES } from "./drawer";
+import { PANE_SIZES } from "./drawer";
 import { erc20Project, resetConsole } from "./test-support";
 
 beforeEach(() => resetConsole());
@@ -45,9 +45,9 @@ describe("console header (IR L132, L252)", () => {
     await renderConsole();
     await userEvent.click(page.getByRole("button", { name: "Console menu" }));
     await userEvent.click(page.getByRole("menuitem", { name: "Taller" }));
-    await vi.waitFor(() => expect(session.get().panes.console.size).toBe(CONSOLE_SIZES.initial + 8));
+    await vi.waitFor(() => expect(session.get().panes.console.size).toBe(PANE_SIZES.console.initial + 8));
     await userEvent.click(page.getByRole("menuitem", { name: "Shorter" }));
-    await vi.waitFor(() => expect(session.get().panes.console.size).toBe(CONSOLE_SIZES.initial));
+    await vi.waitFor(() => expect(session.get().panes.console.size).toBe(PANE_SIZES.console.initial));
     await userEvent.keyboard("{Escape}");
     await userEvent.click(page.getByRole("button", { name: "Console menu" }));
     await userEvent.click(page.getByRole("menuitem", { name: "Collapse" }));
