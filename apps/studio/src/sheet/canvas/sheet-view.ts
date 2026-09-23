@@ -180,6 +180,18 @@ export function floatingRects(sheet: HTMLElement): Rect[] {
   return rects;
 }
 
+/** Pans so a rect on screen (relative to the sheet) lies inside it and clear of every floating element. */
+function clearOnScreen(target: Rect, options: { animate?: boolean }): boolean {
+  const viewport = sheetViewport();
+  const size = sheetSize();
+  const sheet = mounted()?.element() ?? null;
+  const floats = sheet ? floatingRects(sheet) : [];
+  const { dx, dy } = clearOf(target, { x: 0, y: 0, ...size }, floats, CLEAR_MARGIN);
+  if (dx === 0 && dy === 0) return false;
+  moveViewport({ x: viewport.x + dx, y: viewport.y + dy, zoom: viewport.zoom }, options);
+  return true;
+}
+
 /**
  * Pans so `facet`'s card lies inside the sheet and clear of every floating element (spec L771, 2.4.11), using
  * its token-computed size (spec L824). True when the view moved.
@@ -187,12 +199,17 @@ export function floatingRects(sheet: HTMLElement): Rect[] {
 export function ensureVisible(facet: string, options: { animate?: boolean } = {}): boolean {
   const rect = cardRect(doc.get().layout, sizes(), facet);
   if (!rect) return false;
-  const viewport = sheetViewport();
-  const size = sheetSize();
-  const sheet = mounted()?.element() ?? null;
-  const floats = sheet ? floatingRects(sheet) : [];
-  const { dx, dy } = clearOf(toScreen(rect, viewport), { x: 0, y: 0, ...size }, floats, CLEAR_MARGIN);
-  if (dx === 0 && dy === 0) return false;
-  moveViewport({ x: viewport.x + dx, y: viewport.y + dy, zoom: viewport.zoom }, options);
-  return true;
+  return clearOnScreen(toScreen(rect, sheetViewport()), options);
+}
+
+/**
+ * Pans so an element inside a card (a pin row with keyboard focus) is clear of the floating UI, without
+ * jumping back to the top of a card taller than the sheet. True when the view moved.
+ */
+export function ensureElementVisible(element: Element, options: { animate?: boolean } = {}): boolean {
+  const sheet = mounted()?.element();
+  if (!sheet) return false;
+  const box = sheet.getBoundingClientRect();
+  const r = element.getBoundingClientRect();
+  return clearOnScreen({ x: r.left - box.left, y: r.top - box.top, width: r.width, height: r.height }, options);
 }

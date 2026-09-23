@@ -7,7 +7,8 @@ import { bufferedServices } from "@/contracts/services";
 import { focusCard } from "@/a11y/focus";
 import { runConsoleLine } from "@/commands/console/router";
 import { installShortcuts } from "@/commands/keys/dispatcher";
-import { onCleanup } from "../../../test/harness";
+import { fixtureCatalog, onCleanup } from "../../../test/harness";
+import { cardProject } from "../card/testing/projects";
 import { BACK_TO_CONTENT_DELAY_MS } from "./BackToContent";
 import { ensureVisible, sheetViewport } from "./sheet-view";
 import {
@@ -464,6 +465,24 @@ describe("locate, Back to content, minimap, auto-pan", () => {
       const r = cardScreenRect(name);
       return r.x >= 0 && r.right <= SHEET_WIDTH && r.y >= 0 && r.bottom <= SHEET_HEIGHT;
     }).toBe(true);
+  });
+
+  test("a pin row focused by keyboard in a card taller than the sheet comes into view without jumping to the header", async () => {
+    const project = cardProject(fixtureCatalog(), ["Governor"], { expanded: ["Governor"] });
+    await renderSheet({ project });
+    session.set((s) => ({ viewports: { ...s.viewports, [project.id]: { x: 100, y: 40, zoom: 1 } } }));
+    await expect.poll(() => drawnViewport().y).toBe(40);
+    expect(cardScreenRect("Governor").height).toBeGreaterThan(SHEET_HEIGHT);
+    const last = [...cardNode("Governor").querySelectorAll<HTMLElement>("[data-selector]")].at(-1);
+    if (!last) throw new Error("Governor draws no rows.");
+    await userEvent.keyboard("{ArrowDown}");
+    last.focus();
+    await expect.poll(() => {
+      const box = flowElement().getBoundingClientRect();
+      return last.getBoundingClientRect().bottom - box.top;
+    }).toBeLessThanOrEqual(SHEET_HEIGHT - 15);
+    // Only as far as the row needed: the card's header scrolled off the top rather than the view snapping to it.
+    expect(cardScreenRect("Governor").y).toBeLessThan(0);
   });
 
   test("sheet.locate with a selector centers that pin's row", async () => {

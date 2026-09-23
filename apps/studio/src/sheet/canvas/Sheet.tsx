@@ -7,7 +7,7 @@ import {
 } from "@/contracts";
 import { BackToContent } from "./BackToContent";
 import { nodeBuilder, tabStopOf, type Measured } from "./nodes";
-import { cardInView, ensureVisible } from "./sheet-view";
+import { cardInView, ensureElementVisible, ensureVisible } from "./sheet-view";
 import { SheetGrid } from "./SheetGrid";
 import { useSpacePan } from "./use-space-pan";
 import { useViewportSync } from "./use-viewport-sync";
@@ -31,15 +31,18 @@ const KEY_CONTEXT = { [KEY_CONTEXT_ATTRIBUTE]: "sheet" };
 
 /**
  * When a card takes keyboard focus (Tab, undo's restored card, F8, S4e's arrows), or any focus while it's
- * entirely off-screen, pan it clear of the floating UI first (spec L755, L771). A pointer press on a visible
- * card never moves the view under the pointer.
+ * entirely off-screen, pan it clear of the floating UI first (spec L755, L771); a pin row focused inside a
+ * card is kept clear on its own, so moving through a tall card's rows never jumps back to its header. A pointer
+ * press on a visible card never moves the view under the pointer.
  */
 function followFocus(event: FocusEvent<HTMLDivElement>): void {
   const target = event.target;
   const card = target.closest<HTMLElement>(".react-flow__node[data-id]");
   const facet = card?.dataset.id;
-  if (!facet) return;
-  if (target.matches(":focus-visible") || !cardInView(facet)) ensureVisible(facet);
+  if (!card || !facet) return;
+  if (!target.matches(":focus-visible") && cardInView(facet)) return;
+  if (target === card) ensureVisible(facet);
+  else ensureElementVisible(target);
 }
 
 /**
