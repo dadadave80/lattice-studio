@@ -1,25 +1,18 @@
-// WP-C8 replaces this file with its real tests: until it lands, every function here is a stub.
 import { expect, test } from "bun:test";
-import { API_OWNERS, type ApiName } from "../model/api";
-import { NotImplemented } from "../model/wp";
-import * as mod from "./index";
+import { API_OWNERS } from "../model/api";
+import * as core from "../index";
+import * as share from "./index";
+import { catalog, tokenWithAdmin } from "./test-support";
 
-const stubs = Object.entries(mod).filter(([, value]) => typeof value === "function");
-
-test("the module exports its stubs", () => {
-  expect(stubs.length).toBeGreaterThan(0);
+test("the share functions are C8's and exported from the package root", () => {
+  for (const name of ["encodeShareLink", "decodeShareLink", "importFile"] as const) expect(API_OWNERS[name]).toBe("C8");
+  expect(core.encodeShareLink).toBe(share.encodeShareLink);
+  expect(core.decodeShareLink).toBe(share.decodeShareLink);
+  expect(core.importFile).toBe(share.importFile);
 });
 
-test.each(stubs)("%s throws NotImplemented naming WP-C8", (name, fn) => {
-  expect(API_OWNERS[name as ApiName]).toBe("C8");
-  let caught: unknown;
-  try {
-    (fn as (...args: unknown[]) => unknown)();
-  } catch (error) {
-    caught = error;
-  }
-  expect(caught).toBeInstanceOf(NotImplemented);
-  expect((caught as NotImplemented).wp).toBe("C8");
-  expect((caught as NotImplemented).fn).toBe(name);
-  expect((caught as NotImplemented).message).toBe("Not built yet · WP-C8");
+test("they are built: a link opens and a file imports", () => {
+  const link = share.encodeShareLink(tokenWithAdmin());
+  expect(share.decodeShareLink(link.fragment, [catalog]).ok).toBe(true);
+  expect(share.importFile(JSON.stringify(tokenWithAdmin()), "recipe.json", [catalog]).ok).toBe(true);
 });
