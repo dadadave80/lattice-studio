@@ -49,7 +49,7 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
 | Seams (R19) | `DeployGovernedVault.s.sol#L28-L35`, `DeployERC20Votes.s.sol#L21-L22`, `src/governance/Votes.sol#L43-L44` |
 | Default owners | `docs/guides/compose-your-own-diamond.md#L40-L42` |
 | VaultCore requires ERC4626 | `src/defi/libraries/VaultCoreLib.sol#L64-L65` |
-| DiamondCutFacet needs OwnableInit | `lib/diamond-lib/src/facets/DiamondCutFacet.sol#L25-L27` |
+| DiamondCutFacet needs OwnableInit | `lib/diamond-lib/src/facets/DiamondCutFacet.sol#L24-L26` |
 | InitSpec signatures, parameter names and docs, `initializes` | each init contract's `init` body (see `provenance.json`) |
 | GovernedVaultInit's struct and sequence | `src/defi/GovernedVaultInit.sol#L20-L30`, `#L44-L87` |
 | GovernedVault examples | `script/base/defi/GrantExample.s.sol#L26` |

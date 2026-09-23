@@ -194,7 +194,7 @@ export const FACET_INITS: { facet: string; init: string; source: Cite }[] = [
   },
   { facet: "GovernedDiamondCut", init: "GovernedDiamondCutInit", source: { path: "src/governance/GovernedDiamondCutInit.sol", needle: "function init(" } },
   // DiamondCutFacet checks the owner OwnableInit sets; without it the diamond can never be upgraded.
-  { facet: "DiamondCutFacet", init: "OwnableInit", source: { path: "lib/diamond-lib/src/facets/DiamondCutFacet.sol", needle: "// Check that the caller is the owner", lines: 3 } },
+  { facet: "DiamondCutFacet", init: "OwnableInit", source: { path: "lib/diamond-lib/src/facets/DiamondCutFacet.sol", needle: "function diamondCut(", lines: 3 } },
   { facet: "OwnableFacet", init: "OwnableInit", source: { path: "lib/diamond-lib/src/initializers/OwnableInit.sol", needle: "function init(" } },
 ];
 

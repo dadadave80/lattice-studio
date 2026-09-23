@@ -452,7 +452,7 @@
       {
         "facet": "DiamondCutFacet",
         "init": "OwnableInit",
-        "source": "lib/diamond-lib/src/facets/DiamondCutFacet.sol#L25-L27"
+        "source": "lib/diamond-lib/src/facets/DiamondCutFacet.sol#L24-L26"
       },
       {
         "facet": "OwnableFacet",
