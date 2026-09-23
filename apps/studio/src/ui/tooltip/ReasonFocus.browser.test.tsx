@@ -4,6 +4,7 @@ import { page, userEvent } from "vitest/browser";
 import { renderWithStudio } from "../../../test/harness";
 import { Button } from "../buttons/Button";
 import { Checkbox } from "../fields/Checkbox";
+import { RadioGroup } from "../fields/RadioGroup";
 import { Select } from "../fields/Select";
 import { Switch } from "../fields/Switch";
 import { ToggleButton } from "../fields/ToggleButton";
@@ -116,6 +117,7 @@ describe("a reason coming or going keeps the control and its focus", () => {
         <Switch label="Single-key shortcuts" disabledReason={reason} />
         <ToggleButton icon="undo" label="Show pins" disabledReason={reason} />
         <Select label="Network" options={[{ value: "anvil", label: "Anvil" }]} defaultValue="anvil" disabledReason={reason} />
+        <RadioGroup label="Salt" options={[{ value: "new", label: "Use a new salt", disabledReason: reason }]} />
         <Toolbar label="Sheet tools">
           <ToolbarButton icon="undo" label="Tidy layout" disabledReason={reason} />
         </Toolbar>
@@ -127,6 +129,7 @@ describe("a reason coming or going keeps the control and its focus", () => {
       () => page.getByRole("switch", { name: "Single-key shortcuts" }),
       () => page.getByRole("button", { name: "Show pins" }),
       () => page.getByRole("combobox", { name: "Network" }),
+      () => page.getByRole("radio", { name: "Use a new salt" }),
       () => page.getByRole("button", { name: "Tidy layout" }),
     ];
     for (const control of controls) {
@@ -186,6 +189,8 @@ describe("a reason coming or going keeps the control and its focus", () => {
     await userEvent.tab();
     await userEvent.keyboard("{ArrowRight}");
     await expectFocusKept(() => page.getByRole("tab", { name: "Structure" }), set);
+    // Enabled again, the tab is back to Base UI's own value.
+    expect(page.getByRole("tab", { name: "Structure" }).element().getAttribute("aria-disabled")).toBe("false");
   });
 
   test("a tree row", async () => {
