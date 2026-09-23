@@ -60,8 +60,10 @@ export async function runForgeHarness(opts: {
   const dir = join(opts.lattice, rel);
   if (existsSync(dir)) throw new SetupError(`${dir} already exists; another run may be using it.`);
 
+  let child: { kill(): void } | undefined;
   const cleanup = () => rmSync(dir, { recursive: true, force: true });
   const onSignal = (signal: NodeJS.Signals) => {
+    child?.kill();
     cleanup();
     process.exit(signal === "SIGINT" ? 130 : 143);
   };
@@ -80,6 +82,7 @@ export async function runForgeHarness(opts: {
         stderr: "pipe",
       },
     );
+    child = proc;
     const timer = setTimeout(() => proc.kill(), opts.timeoutMs ?? 600_000);
     const [stdout, stderr, exitCode] = await Promise.all([
       new Response(proc.stdout).text(),
