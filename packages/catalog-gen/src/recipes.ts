@@ -643,8 +643,8 @@ export function checkScriptFacets(
     const from = parseSource(r.source)?.from ?? 1;
     const built = scriptFacetNames(read, scripts, r.script, from, facets);
     const listed = new Set(r.cuts.map((c) => c.add ?? c.replace ?? ""));
-    for (const name of built) if (!listed.has(name)) issues.push({ file: r.file, path: "cuts", message: `leaves out ${name}, which the script cuts.` });
-    for (const name of listed) if (!built.has(name)) issues.push({ file: r.file, path: "cuts", message: `lists ${name}, which the script doesn't cut.` });
+    for (const name of [...built].sort()) if (!listed.has(name)) issues.push({ file: r.file, path: "cuts", message: `leaves out ${name}, which the script cuts.` });
+    for (const name of [...listed].sort()) if (!built.has(name)) issues.push({ file: r.file, path: "cuts", message: `lists ${name}, which the script doesn't cut.` });
   }
   return issues;
 }
@@ -688,7 +688,8 @@ export function checkRecipeSources(overlay: RecipeOverlay, read: SourceReader): 
       cited(r.file, `cuts[${i}].source`, c.source, c.replace !== undefined && c.selectors === undefined ? [facet, "_replace"] : [facet]);
       const refs = [...(c.selectors ?? []), ...(c.except ?? [])];
       const names = refs.map(functionName).filter((n): n is string => n !== undefined);
-      cited(r.file, `cuts[${i}].${c.listSource === undefined ? "source" : "listSource"}`, c.listSource ?? c.source, names);
+      if (c.listSource !== undefined) cited(r.file, `cuts[${i}].listSource`, c.listSource, names);
+      else if (names.length > 0) cited(r.file, `cuts[${i}].source`, c.source, names);
     });
     if (r.init.kind === "bundle") cited(r.file, "init.source", r.init.source, [r.init.spec.split(".")[0] ?? ""]);
     else if (r.init.kind === "steps") {
