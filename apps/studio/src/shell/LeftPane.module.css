@@ -1,0 +1,38 @@
+/* The left pane (spec L356): the tab header, 40 px, with the pane's size menu at its end. */
+.pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.tabs {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+/* Room at the end of the tab row for the size menu. */
+.list {
+  padding-inline-end: calc(var(--lx-space-8) + var(--lx-space-1));
+}
+
+.pane[data-layout="phone"] .list {
+  display: none;
+}
+
+.panel {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.menu {
+  position: absolute;
+  inset-block-start: var(--lx-space-2);
+  inset-inline-end: var(--lx-space-1);
+}
