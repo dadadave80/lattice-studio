@@ -76,7 +76,7 @@ const RESERVED_TEXT = {
   zoom: (keys: string) => `${keys} stays browser zoom.`,
   find: (keys: string) => `${keys} stays browser find.`,
   address: (keys: string) => `${keys} stays the address bar.`,
-  tab: (keys: string) => `${keys} moves between controls.`,
+  tab: () => "Tab moves between controls.",
 } as const;
 
 /** Why `keys` can't be bound as they are, or null: invalid grammar, or kept for the browser or for Tab. */
