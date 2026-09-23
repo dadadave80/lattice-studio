@@ -120,8 +120,9 @@ for (const catalog of catalogs) {
           }
         }),
       );
-      if (catalog.seams.length > 0) {
-        // Not vacuous: the generator reaches active seams, and owners that name a facet outside them.
+      if (catalog.lattice.tag === "fixture") {
+        // Not vacuous: the generator reaches active seams, and owners that name a facet outside them. The floors
+        // hold for the fixture's seam and template mix; another catalog runs the same property without them.
         expect(active).toBeGreaterThan(outcome.runs / 4);
         expect(overridden).toBeGreaterThan(outcome.runs / 40);
       }

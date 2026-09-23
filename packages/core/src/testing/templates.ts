@@ -7,21 +7,93 @@ import type { Catalog, InitParam } from "../model/catalog";
 import type { Address } from "../model/hex";
 import type { Arg, Recipe } from "../model/recipe";
 import { err, ok, type Result } from "../model/result";
+import { analyze } from "../analysis";
 import { loadTemplate, templateList } from "../plan";
 
 /** Fills an address argument a template leaves empty; any nonzero literal passes the offline rules. */
 export const FILL_ADDRESS: Address = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
 
-/** A value that passes every offline rule for the parameter's type (rules on the pinned catalog: nonzero, gte(1)). */
-function fillFor(param: Pick<InitParam, "type" | "components" | "rule">): Arg {
+/**
+ * What a `rule` (contracts §4 grammar: `range(a,b)`, `gt(n)`, `gte(n)`, `nonzero`, `maxlen(n)`,
+ * `code(safe|token|contract)`, `enum(a|b|c)`, joined with `&`) allows offline. `code(…)` is a chain rule, checked
+ * only with a chain, so it constrains nothing here. Malformed terms are ignored, as C4a ignores them.
+ */
+export type OfflineRule = { min?: bigint; max?: bigint; nonzero?: true; maxlen?: number; options?: string[] };
+
+const RULE_TERM = /^([a-z]+)(?:\((.*)\))?$/;
+
+function bigintOf(text: string | undefined): bigint | undefined {
+  const trimmed = text?.trim() ?? "";
+  return /^-?[0-9]+$/.test(trimmed) ? BigInt(trimmed) : undefined;
+}
+
+/** Parses a rule into the bounds it sets; every bound of the same kind tightens the last. */
+export function offlineRule(rule: string | undefined): OfflineRule {
+  const out: OfflineRule = {};
+  const atLeast = (n: bigint): void => {
+    if (out.min === undefined || n > out.min) out.min = n;
+  };
+  const atMost = (n: bigint): void => {
+    if (out.max === undefined || n < out.max) out.max = n;
+  };
+  for (const raw of (rule ?? "").split("&")) {
+    const match = RULE_TERM.exec(raw.trim());
+    if (match === null) continue;
+    const [, name, arg] = match;
+    if (name === "range") {
+      const [a, b] = (arg ?? "").split(",").map(bigintOf);
+      if (a !== undefined && b !== undefined) {
+        atLeast(a);
+        atMost(b);
+      }
+    } else if (name === "gt" || name === "gte") {
+      const n = bigintOf(arg);
+      if (n !== undefined) atLeast(name === "gt" ? n + 1n : n);
+    } else if (name === "nonzero") {
+      out.nonzero = true;
+    } else if (name === "maxlen") {
+      const n = bigintOf(arg);
+      if (n !== undefined && n >= 0n) out.maxlen = out.maxlen === undefined ? Number(n) : Math.min(out.maxlen, Number(n));
+    } else if (name === "enum") {
+      const options = (arg ?? "").split("|").map((o) => o.trim()).filter((o) => o !== "");
+      if (options.length > 0) out.options = options;
+    }
+  }
+  return out;
+}
+
+/** An integer the rule allows: 1 when it can be, else the nearest bound (never 0 under `nonzero`). */
+function integerFor(rule: OfflineRule, signed: boolean): string {
+  const first = rule.options?.find((option) => /^-?[0-9]+$/.test(option));
+  if (first !== undefined) return BigInt(first).toString();
+  let value = 1n;
+  if (rule.min !== undefined && value < rule.min) value = rule.min;
+  if (rule.max !== undefined && value > rule.max) value = rule.max;
+  if (!signed && value < 0n) value = 0n;
+  if (rule.nonzero === true && value === 0n) value = 1n;
+  return value.toString();
+}
+
+/** `text` made to fit the rule: the first `enum` option, or at most `maxlen` characters (whole code points). */
+export function fitText(text: string, rule: string | undefined): string {
+  const parsed = offlineRule(rule);
+  if (parsed.options !== undefined) return parsed.options[0] ?? text;
+  if (parsed.maxlen === undefined) return text;
+  return Array.from(text).slice(0, parsed.maxlen).join("");
+}
+
+/** A value that passes every offline rule of the parameter, by its type (chain rules such as `code(safe)` aside). */
+export function fillFor(param: Pick<InitParam, "type" | "components" | "rule">): Arg {
+  const rule = offlineRule(param.rule);
   if (param.type.endsWith("]")) return [];
   if (param.type === "tuple") return fillTuple(param.components ?? [], {});
-  if (param.type === "address") return FILL_ADDRESS;
+  if (param.type === "address") return rule.options?.[0] ?? FILL_ADDRESS;
   if (param.type === "bool") return false;
-  if (/^u?int[0-9]*$/.test(param.type)) return "1";
-  if (/^bytes[0-9]+$/.test(param.type)) return `0x${"01".repeat(Number(param.type.slice(5)))}`;
-  if (param.type === "bytes") return "0x01";
-  return "x";
+  const integer = /^(u?)int[0-9]*$/.exec(param.type);
+  if (integer !== null) return integerFor(rule, integer[1] === "");
+  if (/^bytes[0-9]+$/.test(param.type)) return rule.options?.[0] ?? `0x${"01".repeat(Number(param.type.slice(5)))}`;
+  if (param.type === "bytes") return rule.options?.[0] ?? "0x01";
+  return fitText("x", param.rule);
 }
 
 function isObject(value: Arg | undefined): value is { [field: string]: Arg } {
@@ -62,19 +134,39 @@ export function filledTemplate(catalog: Catalog, name: string): Result<Recipe, s
   return loaded.ok ? ok(fillMissingArgs(loaded.value, catalog)) : err(loaded.error);
 }
 
-function mapArg(value: Arg, param: Pick<InitParam, "type" | "components"> | undefined, path: string, f: (path: string, value: string) => string): Arg {
+/**
+ * The loadable templates that export as they are once filled: no blocker in their analysis offline. A catalog
+ * whose templates need a chain (or a person) to clear a blocker contributes fewer; one with none gives [].
+ */
+export function exportableTemplates(catalog: Catalog): Recipe[] {
+  return loadableTemplates(catalog).flatMap((name) => {
+    const filled = filledTemplate(catalog, name);
+    if (!filled.ok) return [];
+    const blocked = analyze(filled.value, catalog, { known: [], unconfirmed: [] }).problems.some((p) => p.severity === "blocker");
+    return blocked ? [] : [filled.value];
+  });
+}
+
+/** The parameter shape a string mapper sees: its ABI type and its rule (for `maxlen` or `enum`). */
+export type StringArgParam = Pick<InitParam, "type" | "components" | "rule">;
+
+/** Replaces one `string` argument: its path, its current value and its parameter. */
+export type StringArgMapper = (path: string, value: string, param: StringArgParam) => string;
+
+function mapArg(value: Arg, param: StringArgParam | undefined, path: string, f: StringArgMapper): Arg {
   if (param === undefined) return value;
-  if (param.type === "string" && typeof value === "string") return f(path, value);
+  if (param.type === "string" && typeof value === "string") return f(path, value, param);
   if (param.type === "tuple" && isObject(value)) return mapFields(value, param.components ?? [], path, f);
   if (param.type.endsWith("]") && Array.isArray(value)) {
-    const element: Pick<InitParam, "type" | "components"> = { type: param.type.replace(/\[[0-9]*\]$/, "") };
+    const element: StringArgParam = { type: param.type.replace(/\[[0-9]*\]$/, "") };
     if (param.components !== undefined) element.components = param.components;
+    if (param.rule !== undefined) element.rule = param.rule;
     return value.map((item, i) => mapArg(item, element, `${path}[${i}]`, f));
   }
   return value;
 }
 
-function mapFields(args: { [field: string]: Arg }, params: readonly Pick<InitParam, "name" | "type" | "components">[], at: string, f: (path: string, value: string) => string): { [field: string]: Arg } {
+function mapFields(args: { [field: string]: Arg }, params: readonly Pick<InitParam, "name" | "type" | "components" | "rule">[], at: string, f: StringArgMapper): { [field: string]: Arg } {
   const out: { [field: string]: Arg } = {};
   for (const [field, value] of Object.entries(args)) {
     out[field] = mapArg(value, params.find((param) => param.name === field), at === "" ? field : `${at}.${field}`, f);
@@ -84,9 +176,9 @@ function mapFields(args: { [field: string]: Arg }, params: readonly Pick<InitPar
 
 /**
  * `recipe` with every `string`-typed init argument (tuple components and array elements included) replaced by
- * `f(path, value)`. Paths read like C4a's: `bundle.p.name`, `steps[0].name_`.
+ * `f(path, value, param)`. Paths read like C4a's: `bundle.p.name`, `steps[0].name_`.
  */
-export function mapStringArgs(recipe: Recipe, catalog: Catalog, f: (path: string, value: string) => string): Recipe {
+export function mapStringArgs(recipe: Recipe, catalog: Catalog, f: StringArgMapper): Recipe {
   const paramsOf = (spec: string): InitParam[] => catalog.inits.find((init) => init.name === spec)?.params ?? [];
   const { init } = recipe;
   if (init.kind === "bundle") return { ...recipe, init: { ...init, args: mapFields(init.args, paramsOf(init.spec), "bundle", f) } };

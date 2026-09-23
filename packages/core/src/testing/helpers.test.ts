@@ -6,10 +6,41 @@ import { analyze } from "../analysis";
 import { deploymentArb, projectArb, recipeArb } from "./arbitraries";
 import { loadBuiltCatalog, loadFixtureCatalog, propertyCatalogs } from "./fixtures";
 import { HOSTILE_NAMES, hostileString, wellFormed } from "./hostile";
-import { formatJsonPath, jsonWith, mutationArb, pathsRelated, withExtraKey } from "./mutate";
+import { formatJsonPath, jsonKind, jsonWith, mutationArb, pathsRelated, retyped, withExtraKey } from "./mutate";
 import { checkProperty } from "./property";
 import { lexSolidity, markdownOutline, overlappingPairs, solidityShape, solidityStringBytes, tableCells } from "./shape";
-import { filledTemplate, loadableTemplates, mapStringArgs, stringArgPaths } from "./templates";
+import { exportableTemplates, fillFor, filledTemplate, fitText, loadableTemplates, mapStringArgs, offlineRule, stringArgPaths } from "./templates";
+
+describe("rules", () => {
+  test("offlineRule reads every term of the grammar, tightening bounds; code() is a chain rule", () => {
+    expect(offlineRule("range(0,100)&gt(3)&gte(2)&nonzero&maxlen(8)&maxlen(5)&code(safe)&enum(a|b)")).toEqual({
+      min: 4n, max: 100n, nonzero: true, maxlen: 5, options: ["a", "b"],
+    });
+    expect(offlineRule(undefined)).toEqual({});
+    expect(offlineRule("bogus(&range(x,1)")).toEqual({});
+  });
+
+  test("fillFor meets each rule for its type", () => {
+    expect(fillFor({ type: "uint256", rule: "gte(1)" })).toBe("1");
+    expect(fillFor({ type: "uint256", rule: "gt(9)" })).toBe("10");
+    expect(fillFor({ type: "uint8", rule: "range(0,0)" })).toBe("0");
+    expect(fillFor({ type: "uint32", rule: "range(5,7)&nonzero" })).toBe("5");
+    expect(fillFor({ type: "int8", rule: "range(-5,-2)" })).toBe("-2");
+    expect(fillFor({ type: "uint8", rule: "enum(3|4)" })).toBe("3");
+    expect(fillFor({ type: "string", rule: "enum(alpha|beta)" })).toBe("alpha");
+    expect(fillFor({ type: "string", rule: "maxlen(0)" })).toBe("");
+    expect(fillFor({ type: "address", rule: "nonzero&code(safe)" })).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    expect(fillFor({ type: "bytes4" })).toBe("0x01010101");
+    expect(fillFor({ type: "address[]" })).toEqual([]);
+    expect(fillFor({ type: "tuple", components: [{ name: "n", type: "uint8", doc: "", rule: "gt(1)" }] })).toEqual({ n: "2" });
+  });
+
+  test("fitText cuts to maxlen by whole code points, or takes the first enum option", () => {
+    expect(fitText("🦊🦊🦊", "maxlen(2)")).toBe("🦊🦊");
+    expect(fitText("anything", "enum(x|y)")).toBe("x");
+    expect(fitText("kept", undefined)).toBe("kept");
+  });
+});
 
 const fixture = loadFixtureCatalog();
 
@@ -81,6 +112,21 @@ describe("mutate", () => {
     expect(withExtraKey(doc, ["b"], "__proto__", { p: 1 })).toBe('{"a":[1,2,3],"b":{"__proto__":{"p":1},"c":"x"}}');
   });
 
+  test("a top-level container like a project file's `project` never counts as a precise enclosing path", () => {
+    expect(pathsRelated("project", "project.recipe.facets[0]")).toBe(true);
+    expect(pathsRelated("project", "project.recipe.facets[0]", ["project"])).toBe(false);
+    expect(pathsRelated("project.recipe", "project.recipe.facets[0]", ["project"])).toBe(true);
+    expect(pathsRelated("project", "project", ["project"])).toBe(true);
+  });
+
+  test("retyped gives another JSON kind: objects also become arrays and null", () => {
+    const kinds = (value: unknown) => new Set(fc.sample(retyped(value), { seed: 3, numRuns: 200 }).map(jsonKind));
+    expect(kinds({ a: 1 })).toEqual(new Set(["null", "array", "number", "boolean", "string"]));
+    expect(kinds([1]).has("array")).toBe(false);
+    expect(kinds(null).has("null")).toBe(false);
+    expect(kinds("x").has("string")).toBe(true);
+  });
+
   test("a mutation always changes the document", () => {
     const doc = { a: [1, "two"], b: { c: null } };
     const text = JSON.stringify(doc, null, 2);
@@ -116,6 +162,8 @@ describe.skipIf(!fixture.ok)("arbitraries and templates on the fixture catalog",
       expect([name, analyze(recipe.value, catalog).problems.filter((p) => p.code === "INIT-01").map((p) => p.id)]).toEqual([name, []]);
     }
     expect(filledTemplate(catalog, "NoSuchTemplate").ok).toBe(false);
+    expect(exportableTemplates(catalog).map((recipe) => recipe.template?.name)).toEqual(names);
+    expect(exportableTemplates({ ...catalog, recipes: [] })).toEqual([]);
   });
 
   test("mapStringArgs reaches tuple components and step arguments by path", () => {

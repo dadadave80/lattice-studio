@@ -50,10 +50,22 @@ export function jsonWith(value: unknown, path: readonly JsonStep[], replacement:
   return copy;
 }
 
-/** A value of a different JSON type than `value` (or a hostile string where a string was). */
+/** The JSON kind of a value: null, array, object, string, number or boolean. */
+export function jsonKind(value: unknown): "null" | "array" | "object" | "string" | "number" | "boolean" | "other" {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  const kind = typeof value;
+  return kind === "object" || kind === "string" || kind === "number" || kind === "boolean" ? kind : "other";
+}
+
+/**
+ * A value of another JSON kind than `value` (so an object also becomes an array or null), or a hostile string
+ * where a string was.
+ */
 export function retyped(value: unknown): fc.Arbitrary<unknown> {
-  const options: unknown[] = [null, 0, -1, 1.5, true, [], {}, "", "0xZZ", "‮", 1e308, "__proto__"];
-  return fc.constantFrom(...options.filter((option) => typeof option !== typeof value || (typeof value === "string" && option !== value)));
+  const options: unknown[] = [null, 0, -1, 1.5, true, [], ["x"], {}, { x: 1 }, "", "0xZZ", "‮", 1e308, "__proto__"];
+  const kind = jsonKind(value);
+  return fc.constantFrom(...options.filter((option) => jsonKind(option) !== kind || (kind === "string" && option !== value)));
 }
 
 /** One defect in a document: what was done, where, and the resulting JSON text. */
@@ -102,10 +114,12 @@ export function objectPaths(document: unknown): JsonStep[][] {
 
 /**
  * True when `issue` points at the defect at `defect`: the same path, a member inside it, or an enclosing member
- * that isn't the document's root (a union that can't tell which branch failed reports its parent).
+ * (a union that can't tell which branch failed reports its parent). The document's root and its top-level
+ * `containers` (a project file's `project`) don't count as enclosing members: an issue there isn't precise.
  */
-export function pathsRelated(issue: string, defect: string): boolean {
+export function pathsRelated(issue: string, defect: string, containers: readonly string[] = []): boolean {
   if (issue === defect) return true;
-  if (issue !== "" && (defect.startsWith(`${issue}.`) || defect.startsWith(`${issue}[`))) return true;
+  const enclosing = issue !== "" && !containers.includes(issue);
+  if (enclosing && (defect.startsWith(`${issue}.`) || defect.startsWith(`${issue}[`))) return true;
   return defect !== "" && (issue.startsWith(`${defect}.`) || issue.startsWith(`${defect}[`));
 }

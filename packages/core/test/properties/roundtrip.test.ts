@@ -10,7 +10,7 @@ import {
   canonicalJson, decodeShareLink, encodeShareLink, exportProjectFile, exportRecipeJson, importFile, normalizeRecipe,
   parseProjectFile, parseRecipe, recipeHash, type Recipe,
 } from "../../src";
-import { checkProperty, deploymentArb, hostileString, projectArb, propertyCatalogs, recipeArb } from "../../src/testing";
+import { checkProperty, deploymentArb, hostileString, projectArb, propertyCatalogs, recipeArb, wellFormed } from "../../src/testing";
 
 const catalogs = propertyCatalogs();
 
@@ -96,15 +96,24 @@ for (const catalog of catalogs) {
       );
     });
 
-    test("recipe.json keeps a name that isn't well-formed UTF-16 exactly, and importing it never throws", () => {
+    test("importing recipe.json with text that may not be well-formed UTF-16 never throws, and keeps well-formed names", () => {
       checkProperty(
         `${catalog.lattice.tag}: lone surrogates in recipe.json`,
         fc.property(recipeArb(catalog, { names: hostileString(), strings: hostileString() }), (recipe) => {
           const file = exportRecipeJson(recipe, catalog);
           expect(() => JSON.parse(file.text) as unknown).not.toThrow();
           const imported = importFile(file.text, file.filename, [catalog]);
-          if (!imported.ok || imported.value.kind !== "recipe") throw new Error(JSON.stringify(imported));
-          expect(imported.value.recipe.name).toBe(recipe.name);
+          if (!imported.ok) {
+            // Refusing text with a lone surrogate (FX2) is fine, with a reason.
+            for (const issue of imported.error) expect(issue.message.trim().length).toBeGreaterThan(0);
+            return;
+          }
+          if (imported.value.kind !== "recipe") throw new Error(`recipe.json opened as a ${imported.value.kind}`);
+          const name = imported.value.recipe.name;
+          const given = (JSON.parse(file.text) as Recipe).name;
+          if (given === undefined || given === wellFormed(given)) expect(name).toBe(given);
+          // Otherwise the name opens as written or repaired to U+FFFD; C1's fix decides which (see the todo below).
+          else expect([given, wellFormed(given)]).toContain(name ?? "");
         }),
       );
     });
