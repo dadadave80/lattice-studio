@@ -100,8 +100,12 @@ function comment(depth: number, text: string): string {
 function headerLines(input: ScriptInput): string[] {
   const { catalog } = input;
   const lines: string[] = [];
+  // Every line goes through commentText, so no value in it can end the comment.
   const add = (text = ""): void => {
     lines.push(text === "" ? "//" : `// ${commentText(text)}`);
+  };
+  const item = (text: string): void => {
+    lines.push(`//   ${commentText(text)}`);
   };
   const chainList = input.chains.map((chain) => chain.chainId).join(", ");
   add(`${input.filename}: deploys the diamond "${input.projectName}" as Lattice Studio composed it.`);
@@ -120,13 +124,13 @@ function headerLines(input: ScriptInput): string[] {
   add(`Chains: ${chainList}`);
   add();
   add("Run:");
-  add(`  forge script ${input.filename} --rpc-url $RPC_URL --account deployer --broadcast`);
+  item(`forge script ${input.filename} --rpc-url $RPC_URL --account deployer --broadcast`);
   add("On Anvil, fork a supported chain where the shared contracts exist: anvil --fork-url $RPC_URL");
   add();
   add("Before it broadcasts, the script checks that every shared contract's codehash matches the catalog, that the");
   add("predicted address is empty, and that its own simulation of the deploy finds facets() equal to this plan:");
   for (const entry of input.plan) {
-    add(`  ${entry.facet} ${entry.version}, ${entry.selectors.length} ${entry.selectors.length === 1 ? "selector" : "selectors"}`);
+    item(`${entry.facet} ${entry.version}, ${entry.selectors.length} ${entry.selectors.length === 1 ? "selector" : "selectors"}`);
   }
   add();
   const steps = [...input.init.steps].sort((a, b) => a.index - b.index);
@@ -134,13 +138,13 @@ function headerLines(input: ScriptInput): string[] {
     add("Init: none");
   } else {
     add(`Init: ${steps.length === 1 ? "one direct call" : `${steps.length} calls through MultiInit`}`);
-    for (const step of steps) add(`  ${step.contract}.${step.fn}`);
+    for (const step of steps) item(`${step.contract}.${step.fn}`);
   }
   add('References: "This diamond" is the predicted address; "Deploying account" is the broadcaster.');
   add();
   add("Verify: the script creates no contract forge could match. Verify the diamond against the published Lattice");
   add(`standard JSON, in a Lattice checkout at commit ${catalog.lattice.commit}:`);
-  add("  FOUNDRY_PROFILE=ci forge verify-contract <diamond> src/Lattice.sol:Lattice --verifier sourcify --chain <chain id>");
+  item("FOUNDRY_PROFILE=ci forge verify-contract <diamond> src/Lattice.sol:Lattice --verifier sourcify --chain <chain id>");
   if (input.path === "factory") {
     for (const chain of input.chains.filter((c) => c.chainSpecific)) {
       add(`Chain ${chain.chainId} has its own LatticeFactory: verify from a checkout at commit ${chain.proxyCommit} instead.`);
@@ -150,8 +154,8 @@ function headerLines(input: ScriptInput): string[] {
   add("Leaves out:");
   // Template text, not escaped: the spec's own label keeps its ellipsis.
   lines.push("//   Deploying missing shared contracts: use Deploy missing contracts… in Lattice Studio or the lattice-studio CLI.");
-  if (input.omitted.length > 0) add(`  Facets that route no selector: ${input.omitted.join(", ")}`);
-  if (input.excluded.length > 0) add(`  Excluded selectors: ${input.excluded.join(", ")}`);
+  if (input.omitted.length > 0) item(`Facets that route no selector: ${input.omitted.join(", ")}`);
+  if (input.excluded.length > 0) item(`Excluded selectors: ${input.excluded.join(", ")}`);
   return lines;
 }
 

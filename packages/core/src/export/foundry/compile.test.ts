@@ -20,6 +20,7 @@ import { commentText, solidityString } from "../escape";
 import { exportFoundry } from "./foundry";
 import { MISSING_HELP } from "./render";
 import { assignLines, callLines, declarationLines } from "./solidity";
+import { analyze } from "../../analysis";
 import { fixtureCatalog, fixtureProject, v1Recipes, type Fixture } from "./test-support";
 
 const ROOT = resolve(import.meta.dir, "../../../../..");
@@ -232,6 +233,9 @@ ${mocks("MockDeployShort")}
 `;
 }
 
+/** A project name and vault name that try to break out of every string and comment they land in. */
+const HOSTILE_NAME = 'Vault"; } contract Evil { /* */ \n// ‮evil⁦ \\" café \u{1F600}';
+
 /** Strings no encoder should let through: quotes, backslashes, newlines, comment ends, bidi controls, astral and lone surrogates. */
 const HOSTILE = [
   "",
@@ -274,6 +278,7 @@ function fmtProbe(): string {
     fc.stringMatching(/^[a-z][a-zA-Z0-9]{0,40}$/).map((s) => `v${s}`),
     fc.string({ maxLength: 90 }).map((s) => solidityString(s)),
     fc.constant("0x71C7656EC7ab88b098defB751B7401B5f6d8976F"),
+    fc.constant(`hex"${"ab".repeat(3000)}"`),
   );
   const call = fc.record({
     prefix: fc.constantFrom("", "data = ", "cuts[12] = "),
@@ -323,11 +328,21 @@ describe.skipIf(!ENABLED)("generated scripts under forge", () => {
       `[profile.default]\nsrc = "script"\ntest = "test"\nout = "out"\nlibs = ["lib"]\nsolc_version = "${catalog.toolchain.solc}"\noffline = true\nremappings = ["forge-std/=lib/forge-std/src/"]\n`,
     );
     const creation = proxyCode();
-    for (const name of v1Recipes(catalog)) {
-      for (const path of ["factory", "createx"] as const) {
+    // Every v1 recipe on both paths, plus one with a hostile project name and string argument.
+    const runs = [
+      ...v1Recipes(catalog).flatMap((name) => (["factory", "createx"] as const).map((path) => ({ name, path, title: `${name} ${path}` }))),
+      { name: "GovernedVault", path: "factory" as const, title: HOSTILE_NAME },
+    ];
+    for (const { name, path, title } of runs) {
+      {
         const scope = path === "factory" ? "every-chain" : "this-chain";
         const fixture = fixtureProject(catalog, name, { path, scope });
-        fixture.project.name = `${name} ${path}`;
+        fixture.project.name = title;
+        if (title === HOSTILE_NAME && fixture.project.recipe.init.kind === "bundle") {
+          const p = fixture.project.recipe.init.args["p"] as Record<string, string>;
+          p["name"] = HOSTILE_NAME;
+          fixture.analysis = analyze(fixture.project.recipe, catalog, { known: [], unconfirmed: [] });
+        }
         const out = exportFoundry({ ...fixture, studioVersion: "0.0.0-test", chainIds: CHAINS, ...(path === "createx" ? { proxyCreationCode: creation } : {}) });
         if (!out.ok) throw new Error(`${name} ${path}: ${out.error}`);
         const contract = out.value.filename.replace(/\.s\.sol$/, "");
@@ -360,7 +375,7 @@ describe.skipIf(!ENABLED)("generated scripts under forge", () => {
   });
 
   test("every v1 recipe's script compiles with forge-std on the pinned solc", () => {
-    expect(cases.length).toBe(v1Recipes(catalog).length * 2);
+    expect(cases.length).toBe(v1Recipes(catalog).length * 2 + 1);
     expect(build.out).not.toContain("Error");
     expect(build.code).toBe(0);
   });
