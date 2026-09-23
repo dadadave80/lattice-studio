@@ -17,6 +17,11 @@ export type ChannelMessage =
   /** The holder's saves failed, so it kept the lock (the taker would load an older save); `reason` says why. */
   | { kind: "lock-refused"; from: string; id: string; to: string; reason: string }
   /**
+   * `from` stopped waiting for project `id`'s edit lock (it gave up, or took it some other way): the holder keeps
+   * it, and takes it back if it had already let go.
+   */
+  | { kind: "lock-withdraw"; from: string; id: string }
+  /**
    * The projects list changed in another tab. `trashed` went to Recently deleted, `restored` came back, and
    * `cleared` means every project went (Clear data): a tab holding one of them stops writing it.
    */

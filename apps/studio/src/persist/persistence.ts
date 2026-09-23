@@ -86,11 +86,15 @@ export type Persistence = {
   start(): string;
   /** The id of the project the document shows now. */
   documentId(): string;
+  /** The project the document shows now: the same object until the document changes. */
+  document(): Project;
   /** Writes the pending save now (hide, close, lock handover, Save and reload). Starts synchronously when it can. */
   flush(): Promise<void>;
   /**
    * Opens the project last opened in this browser (else the last saved); null when there's none, or when
-   * `proceed` says no once it's known which (the document changed meanwhile).
+   * `proceed` says no once it's known which (the document changed meanwhile). When `proceed` says yes, the
+   * never-stored document it vouched for (the boot's, with a recorded prediction at most) is left unsaved, so
+   * it doesn't become a stray project.
    */
   openLastProject(proceed?: () => boolean): Promise<Result<Project, string> | null>;
   editLock(): EditLockState;
@@ -571,10 +575,14 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     log({ tag: "Error", text: `Couldn't read the stored project ${id}. ${reason}` });
   };
 
+  /** Why expiring Recently deleted last failed, said once until it works again. */
+  let purgeFailed: string | null = null;
+
   /** Expires Recently deleted (spec L502): says what happened, and tells every listener. */
   async function purge(connection: StudioDb): Promise<void> {
     try {
       const { gone, skipped } = await records.purgeTrash(connection, now());
+      purgeFailed = null;
       if (gone.length > 0) {
         emitProjects({ gone });
         for (const id of gone) emitDeployments(id);
@@ -582,11 +590,13 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       if (skipped > 0) {
         log({
           tag: "Note",
-          text: `${skipped} deployment ${skipped === 1 ? "record" : "records"} from projects deleted 30 days ago ${skipped === 1 ? "matches an address another record holds" : "match addresses other records hold"} now; the stored ${skipped === 1 ? "record was" : "records were"} kept.`,
+          text: `${skipped} deployment ${skipped === 1 ? "record" : "records"} from projects deleted 30 days ago ${skipped === 1 ? "matches an address another record holds" : "match addresses other records hold"} now. The stored ${skipped === 1 ? "record was" : "records were"} kept.`,
         });
       }
     } catch (error) {
-      log({ tag: "Error", text: `Couldn't empty Recently deleted. ${message(error)}` });
+      const reason = message(error);
+      if (purgeFailed !== reason) log({ tag: "Error", text: `Couldn't empty Recently deleted. ${reason}` });
+      purgeFailed = reason;
     }
   }
 
@@ -609,10 +619,23 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
    */
   async function putAfterUpdate(deployment: Deployment): Promise<void> {
     const unsaved = "This deployment record wasn't saved.";
-    if (upgradedTo === null) throw new Error(`${STORAGE_DELETED} ${unsaved}`);
+    const deleted = new Error(`${STORAGE_DELETED} ${unsaved}`);
+    if (upgradedTo === null) throw deleted;
+    // A fast path where the browser lists its databases (Firefox before 126 doesn't).
     const listed = typeof indexedDB.databases === "function" ? await indexedDB.databases() : null;
-    if (listed && !listed.some((info) => info.name === dbName)) throw new Error(`${STORAGE_DELETED} ${unsaved}`);
-    const connection = await openDB<StudioSchema>(dbName);
+    if (listed && !listed.some((info) => info.name === dbName)) throw deleted;
+    // Opening with no version creates a missing database at version 1: abort that creation instead.
+    let missing = false;
+    const connection = await openDB<StudioSchema>(dbName, undefined, {
+      // With no version asked for, only a missing database needs an upgrade.
+      upgrade(_db, _oldVersion, _newVersion, transaction) {
+        missing = true;
+        transaction.done.catch(() => {});
+        transaction.abort();
+      },
+    }).catch((error: unknown) => {
+      throw missing ? deleted : error;
+    });
     try {
       if (!connection.objectStoreNames.contains("deployments")) {
         throw new Error(`${UPDATED_TEXT}. Reload to save deployment records. ${unsaved}`);
@@ -783,6 +806,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     },
     flush,
     documentId: () => doc.get().id,
+    document: () => doc.get(),
     async openLastProject(proceed) {
       try {
         const connection = await db();
@@ -791,6 +815,11 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
           ? last
           : (await records.listProjects(connection, unreadable))[0]?.id;
         if (id === undefined || (proceed && !proceed())) return null;
+        const current = doc.get();
+        if (proceed && current.id === openId && !stored && detached === null) {
+          clearTimer();
+          persisted = current;
+        }
         return await projects.openProject(id);
       } catch (error) {
         return { ok: false, error: message(error) };

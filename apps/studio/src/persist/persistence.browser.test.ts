@@ -12,11 +12,11 @@ import {
 } from "@/contracts";
 import { bufferedServices, fakeClock, onCleanup } from "../../test/harness";
 import { META, openStudioDb } from "./db";
-import { bootPersistence, editLockState, subscribeEditLock } from "./index";
+import { bootPersistence, editLockState, persistence, subscribeEditLock } from "./index";
 import type { Persistence } from "./persistence";
 import { deleteDB } from "idb";
 import { createEditLock, STILL_SAVING } from "./lock";
-import { openChannel } from "./channel";
+import { openChannel, type Channel, type ChannelMessage } from "./channel";
 import { fakeDoc, testPersistence, type FakeDoc } from "./testing";
 
 const realTimeout = globalThis.setTimeout.bind(globalThis);
@@ -838,7 +838,233 @@ describe("handover and upgrade edge cases", () => {
     expect(await listDeployments(keep.id)).toEqual([deployment(keep.id, 2)]);
     expect(bufferedServices().log.at(-1)).toMatchObject({
       tag: "Note",
-      text: "1 deployment record from projects deleted 30 days ago matches an address another record holds now; the stored record was kept.",
+      text: "1 deployment record from projects deleted 30 days ago matches an address another record holds now. The stored record was kept.",
     });
+  });
+});
+
+describe("edge cases from the last review", () => {
+  /** Two edit locks on one channel name, `a` holding "p" and saving for `saveMs` before it lets go. */
+  function lockPair(saveMs: number, holderChannel?: (channel: Channel) => Channel) {
+    const prefix = `lattice-studio-test-withdraw-${crypto.randomUUID()}`;
+    const channelA = openChannel(`${prefix}:tabs`);
+    const channelB = openChannel(`${prefix}:tabs`);
+    const holderStates: string[] = [];
+    const holder = createEditLock({
+      prefix, locks: navigator.locks, channel: holderChannel ? holderChannel(channelA) : channelA, peerId: "a",
+      onChange: (state) => holderStates.push(state.state), onError: () => {},
+      beforeHandover: () => new Promise<void>((resolve) => realTimeout(resolve, saveMs)),
+    });
+    const taker = createEditLock({
+      prefix, locks: navigator.locks, channel: channelB, peerId: "b", onChange: () => {}, onError: () => {},
+      beforeHandover: async () => {}, stealAfter: 50, ackedPatience: 100,
+    });
+    onCleanup(() => {
+      holder.dispose();
+      taker.dispose();
+      channelA.close();
+      channelB.close();
+    });
+    const lockName = `${prefix}:edit:p`;
+    const held = async () => (await navigator.locks.query()).held?.filter((l) => l.name === lockName) ?? [];
+    return { holder, taker, holderStates, held, lockName };
+  }
+
+  test("a taker that gave up withdraws its request: the holder keeps editing once it has saved", async () => {
+    const { holder, taker, held } = lockPair(300);
+    expect(await holder.claim("p")).toBe(true);
+    expect(await taker.claim("p")).toBe(false);
+    expect(await taker.takeOver("p")).toEqual({ ok: false, error: STILL_SAVING });
+    // The holder's save finishes after the taker gave up.
+    await new Promise((resolve) => realTimeout(resolve, 400));
+    expect(holder.state()).toEqual({ state: "held", projectId: "p" });
+    expect(taker.state()).toEqual({ state: "elsewhere", projectId: "p" });
+    expect(await held()).toHaveLength(1);
+    expect(await taker.claim("p")).toBe(false);
+  });
+
+  test("a withdrawal that arrives after the holder let go gets the lock back to the holder", async () => {
+    // The holder hears the withdrawal late, after its save finished and it let go.
+    const late = (channel: Channel): Channel => ({
+      ...channel,
+      subscribe: (listener) => channel.subscribe((m) => {
+        if (m.kind === "lock-withdraw") realTimeout(() => listener(m), 300);
+        else listener(m);
+      }),
+    });
+    const { holder, taker, holderStates, held } = lockPair(200, late);
+    expect(await holder.claim("p")).toBe(true);
+    expect(await taker.claim("p")).toBe(false);
+    expect(await taker.takeOver("p")).toEqual({ ok: false, error: STILL_SAVING });
+    await until(() => holderStates.includes("handed-over"), "the holder to let go");
+    await until(() => holder.state().state === "held", "the holder to take the lock back");
+    expect(taker.state()).toEqual({ state: "elsewhere", projectId: "p" });
+    expect(await held()).toHaveLength(1);
+  });
+
+  test("take back editing before a late withdrawal arrives still ends with this tab editing", async () => {
+    // The holder's withdrawals wait until the test delivers them.
+    const held: { listener: (m: ChannelMessage) => void; message: ChannelMessage }[] = [];
+    const captured = (channel: Channel): Channel => ({
+      ...channel,
+      subscribe: (listener) => channel.subscribe((m) => {
+        if (m.kind === "lock-withdraw") held.push({ listener, message: m });
+        else listener(m);
+      }),
+    });
+    const { holder, taker, holderStates, held: holders, lockName } = lockPair(200, captured);
+    expect(await holder.claim("p")).toBe(true);
+    expect(await taker.claim("p")).toBe(false);
+    expect(await taker.takeOver("p")).toEqual({ ok: false, error: STILL_SAVING });
+    await until(() => holderStates.includes("handed-over") && held.length > 0, "the holder to let go");
+
+    // Something else holds the lock for a moment, so Take back editing waits for it.
+    let release: () => void = () => {};
+    onCleanup(() => release());
+    await new Promise<void>((granted) => {
+      void navigator.locks.request(lockName, () => new Promise<void>((r) => {
+        release = r;
+        granted();
+      }));
+    });
+    const back = holder.takeOver("p");
+    for (const { listener, message } of held.splice(0)) listener(message);
+    await new Promise((resolve) => realTimeout(resolve, 50));
+    release();
+    expect(await back).toEqual({ ok: true, value: undefined });
+    expect(holder.state()).toEqual({ state: "held", projectId: "p" });
+    expect(await holders()).toHaveLength(1);
+  });
+
+  test("without indexedDB.databases(), a database deleted after an upgrade still isn't recreated for a record", async () => {
+    const databases = Object.getOwnPropertyDescriptor(IDBFactory.prototype, "databases");
+    const restore = () => {
+      if (databases) Object.defineProperty(IDBFactory.prototype, "databases", databases);
+    };
+    onCleanup(restore);
+    const store = testPersistence();
+    const project = await created();
+    const upgraded = await openDB(store.dbName, 2);
+    await until(() => bufferedServices().banners.has("persist.updated"), "the reload banner");
+    upgraded.close();
+    await deleteDB(store.dbName);
+    // Firefox before 126 has no indexedDB.databases().
+    Object.defineProperty(IDBFactory.prototype, "databases", { value: undefined, configurable: true });
+    const error = await putDeployment(deployment(project.id, 9)).then(() => null, (e: Error) => e.message);
+    restore();
+    expect(error).toBe("Studio's storage was deleted in another tab. Reload to continue. This deployment record wasn't saved.");
+    expect((await indexedDB.databases()).map((d) => d.name)).not.toContain(store.dbName);
+  });
+
+  test("after an upgrade, a database deleted since isn't recreated to hold a record", async () => {
+    const store = testPersistence();
+    const project = await created();
+    const upgraded = await openDB(store.dbName, 2);
+    await until(() => bufferedServices().banners.has("persist.updated"), "the reload banner");
+    upgraded.close();
+    await deleteDB(store.dbName);
+    const error = await putDeployment(deployment(project.id, 9)).then(() => null, (e: Error) => e.message);
+    expect(error).toBe("Studio's storage was deleted in another tab. Reload to continue. This deployment record wasn't saved.");
+    expect((await indexedDB.databases()).map((d) => d.name)).not.toContain(store.dbName);
+  });
+
+  test("after an upgrade that dropped the deployments store, a record isn't saved and it says why", async () => {
+    const store = testPersistence();
+    const project = await created();
+    const upgraded = await openDB(store.dbName, 2, {
+      upgrade(db) {
+        db.deleteObjectStore("deployments");
+      },
+    });
+    onCleanup(() => upgraded.close());
+    await until(() => bufferedServices().banners.has("persist.updated"), "the reload banner");
+    const error = await putDeployment(deployment(project.id, 9)).then(() => null, (e: Error) => e.message);
+    expect(error).toBe("A new version of Studio is ready. Reload to save deployment records. This deployment record wasn't saved.");
+    expect(Array.from(upgraded.objectStoreNames)).not.toContain("deployments");
+  });
+
+  test("expiry that fails says so in the console", async () => {
+    const store = testPersistence({ start: false });
+    const transaction = IDBDatabase.prototype.transaction;
+    vi.spyOn(IDBDatabase.prototype, "transaction").mockImplementation(function (
+      this: IDBDatabase, ...args: Parameters<IDBDatabase["transaction"]>
+    ) {
+      const stores = Array.isArray(args[0]) ? args[0] : [args[0]];
+      if (stores.join() === "trash,meta,deployments") throw new DOMException("The disk is busy.", "UnknownError");
+      return transaction.apply(this, args);
+    });
+    // Storage opening expires Recently deleted, and so does listing it: said once.
+    expect(await store.listTrash()).toEqual([]);
+    expect(await store.listTrash()).toEqual([]);
+    expect(bufferedServices().log.filter((l) => l.text.startsWith("Couldn't empty"))).toEqual([
+      expect.objectContaining({ tag: "Error", text: "Couldn't empty Recently deleted. The disk is busy." }),
+    ]);
+  });
+
+  /** A stored project "Alpha" as the last one, and a fresh tab on the app's document, not started yet. */
+  async function returning(): Promise<Project> {
+    const earlier = testPersistence();
+    const alpha = await created("Alpha");
+    await earlier.close();
+    doc.load(makeProject({ id: "untitled", name: "Untitled", recipe }));
+    testPersistence({ dbName: earlier.dbName, start: false });
+    return alpha;
+  }
+
+  /** Runs `during` once, while the boot reads which project was last. */
+  function whileBootReads(during: () => void): void {
+    const getKey = IDBObjectStore.prototype.getKey;
+    let done = false;
+    vi.spyOn(IDBObjectStore.prototype, "getKey").mockImplementation(function (
+      this: IDBObjectStore, ...args: Parameters<IDBObjectStore["getKey"]>
+    ) {
+      if (!done) {
+        done = true;
+        queueMicrotask(during);
+      }
+      return getKey.apply(this, args);
+    });
+  }
+
+  test("an edit made while the boot reads storage keeps the visitor where they are", async () => {
+    await returning();
+    whileBootReads(() => rename("Typed during boot"));
+    expect(await bootPersistence()).toBeNull();
+    expect(doc.get().name).toBe("Typed during boot");
+  });
+
+  test("a prediction recorded while the boot reads storage doesn't keep the visitor from their last project", async () => {
+    const alpha = await returning();
+    whileBootReads(() => doc.record("Recorded the predicted address", (p) => ({
+      project: { ...p, predicted: [{ chainId: 11155111, address: address(3) }] }, changed: true,
+      summary: "Recorded the predicted address",
+    })));
+    expect(await bootPersistence()).toMatchObject({ ok: true, value: { id: alpha.id, name: "Alpha" } });
+    // The untitled document it left isn't saved as a project.
+    expect((await (await persistence()).listProjects()).map((p) => p.name)).toEqual(["Alpha"]);
+  });
+
+  function at(hash: string): void {
+    const before = `${location.pathname}${location.search}${location.hash}`;
+    history.replaceState(history.state, "", `${location.pathname}${location.search}${hash}`);
+    onCleanup(() => history.replaceState(history.state, "", before));
+  }
+
+  test("a share link or #open= opens its own project, not the last one", async () => {
+    await returning();
+    at("#s=1.abc");
+    expect(await bootPersistence()).toBeNull();
+    expect(doc.get().name).toBe("Untitled");
+
+    at("#open=eip155:11155111:0x0000000000000000000000000000000000000001");
+    expect(await bootPersistence()).toBeNull();
+    expect(doc.get().name).toBe("Untitled");
+  });
+
+  test("another hash route (#/settings, as an IPFS build routes) still lands in the last project", async () => {
+    const alpha = await returning();
+    at("#/settings");
+    expect(await bootPersistence()).toMatchObject({ ok: true, value: { id: alpha.id, name: "Alpha" } });
+    expect(doc.get()).toMatchObject({ id: alpha.id, name: "Alpha" });
   });
 });
