@@ -1,0 +1,41 @@
+.status {
+  display: block;
+  margin: 0;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lx-space-2);
+}
+
+.text {
+  margin: 0;
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.reason {
+  color: var(--lx-text-muted);
+}
+
+.retry {
+  min-height: 24px;
+  padding: 0 var(--lx-space-2);
+  border: var(--lx-stroke-hair) solid var(--lx-border-strong);
+  border-radius: var(--lx-radius);
+  background: var(--lx-raised);
+  color: var(--lx-text);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  cursor: pointer;
+}
+
+.retry:hover {
+  border-color: var(--lx-accent-line);
+}
