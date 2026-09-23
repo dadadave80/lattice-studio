@@ -14,11 +14,11 @@ import { registerDialog, registerEdgeType, registerSheetLayer, type DialogCompon
 import type { SheetEdge } from "./edge-data";
 import { TIE_EDGE_TYPE, TRACE_EDGE_TYPE } from "./edge-types";
 
-const LazyOverlayLayer = lazy(() => import("./OverlayLayer").then((m) => ({ default: m.OverlayLayer })));
-const LazyTraceEdge = lazy(() => import("./TraceEdge").then((m) => ({ default: m.TraceEdge })));
-const LazyTieEdge = lazy(() => import("./TieEdge").then((m) => ({ default: m.TieEdge })));
+const LazyOverlayLayer = lazy(() => import("./lazy").then((m) => ({ default: m.OverlayLayer })));
+const LazyTraceEdge = lazy(() => import("./lazy").then((m) => ({ default: m.TraceEdge })));
+const LazyTieEdge = lazy(() => import("./lazy").then((m) => ({ default: m.TieEdge })));
 const LazyChoosePerSelector = lazy(() =>
-  import("./ChoosePerSelectorDialog").then((m) => ({ default: m.ChoosePerSelectorDialog })),
+  import("./lazy").then((m) => ({ default: m.ChoosePerSelectorDialog })),
 );
 
 function NotesLayer() {
