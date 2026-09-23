@@ -51,11 +51,11 @@ export const PinRow = memo(function PinRow({ pin, readOnly, side }: PinRowProps)
       <span className={styles.tick} aria-hidden="true">
         <span className={styles.node} />
       </span>
-      <span className={styles.label} aria-hidden="true">
+      <span className={cx(styles.label, pin.mark !== pin.selector && styles.labelLong)} aria-hidden="true">
         <span className={styles.name}>{pin.name}</span>
         {pin.state === "seam" ? <Icon name="lock" size="small" className={styles.lock} /> : null}
         {pin.state === "default" ? <span className={styles.dot} /> : null}
-        <span className={cx(styles.mark, pin.mark !== pin.selector && styles.markShrink)}>{pin.mark}</span>
+        <span className={styles.mark}>{pin.mark}</span>
       </span>
       {pin.action === null ? null : (
         <span id={describedBy} hidden>

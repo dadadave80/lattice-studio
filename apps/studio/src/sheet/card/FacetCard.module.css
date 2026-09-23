@@ -225,8 +225,13 @@
 }
 
 /* "→ GovernedVault" and "stays on GovernedVault" give way before the name does. */
-.markShrink {
-  flex: 0 100 auto;
+.labelLong .name {
+  flex-shrink: 0;
+  max-inline-size: 70%;
+}
+
+.labelLong .mark {
+  flex: 0 1 auto;
   min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -451,4 +456,11 @@
 
 :global(:root[data-theme="shop"]) .node {
   border-radius: 50%;
+}
+
+/* Forced colors: the hatch keeps its stripes, and the contested name and hex get the system backplate again. */
+@media (forced-colors: active) {
+  .contested .label {
+    forced-color-adjust: auto;
+  }
 }
