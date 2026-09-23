@@ -57,12 +57,12 @@ describe("SegmentedToggle", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  test("disabled with a reason: options stay focusable, the group and each option say why, nothing changes", async () => {
+  test("disabled with a reason: options stay focusable, each option says why, nothing changes", async () => {
     const onChange = vi.fn();
     await renderWithStudio(<Theme onChange={onChange} disabledReason="Resolve 2 blockers · F8" />);
     const group = page.getByRole("group", { name: "Theme" });
     await expect.element(group).toHaveAttribute("aria-disabled", "true");
-    await expect.element(group).toHaveAccessibleDescription("Resolve 2 blockers · F8");
+    await expect.element(group).toHaveAccessibleDescription("");
     const shop = page.getByRole("button", { name: "Shop" });
     const draft = page.getByRole("button", { name: "Draft" });
     for (const option of [shop, draft]) {
@@ -82,7 +82,7 @@ describe("SegmentedToggle", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  test("the reason is written once: the group and every option point at the same description", async () => {
+  test("the reason is written once and read once: every option points at it, the group doesn't", async () => {
     await renderWithStudio(<Theme disabledReason="Resolve 2 blockers · F8" />);
     const group = page.getByRole("group", { name: "Theme" }).element();
     const holders = [...document.querySelectorAll<HTMLElement>("[hidden]")].filter(
@@ -91,7 +91,7 @@ describe("SegmentedToggle", () => {
     expect(holders).toHaveLength(1);
     const reasonId = holders[0]?.id;
     expect(reasonId).toBeTruthy();
-    expect(group.getAttribute("aria-describedby")).toBe(reasonId);
+    expect(group.hasAttribute("aria-describedby")).toBe(false);
     for (const name of ["Shop", "Draft"]) {
       expect(page.getByRole("button", { name }).element().getAttribute("aria-describedby")).toBe(reasonId);
     }
