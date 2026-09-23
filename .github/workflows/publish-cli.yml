@@ -1,0 +1,64 @@
+# Publishes `lattice-studio` (packages/cli) to npm with provenance (spec "CLI on npm", Phasing → v1). Manual
+# only: `workflow_dispatch`, no other trigger, and only David runs it (AGENTS.md: publishing needs him). This
+# workflow itself never runs until he pushes the repo and dispatches it by hand (HANDOFF.md D4); nothing here
+# executes as part of any agent's build.
+name: Publish CLI
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "publish" to publish packages/cli to npm. Only David runs this workflow.'
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+env:
+  BUN_VERSION: "1.4.2"
+
+jobs:
+  publish:
+    name: npm publish --provenance
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'publish'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run --cwd packages/cli build
+
+      # A copy, never the workspace file: the published package.json drops `private` (npm refuses to publish
+      # a private package) and every `workspace:*` dependency (npm doesn't understand that protocol), so the
+      # workspace's own package.json is untouched.
+      - name: Prepare a publishable package.json
+        run: |
+          bun -e '
+            const path = "packages/cli/package.json";
+            const pkg = await Bun.file(path).json();
+            delete pkg.private;
+            for (const field of ["dependencies", "devDependencies", "peerDependencies"]) {
+              const deps = pkg[field];
+              if (!deps) continue;
+              for (const [name, range] of Object.entries(deps)) {
+                if (typeof range === "string" && range.startsWith("workspace:")) delete deps[name];
+              }
+            }
+            await Bun.write(path, `${JSON.stringify(pkg, null, 2)}\n`);
+          '
+
+      - run: npm publish --provenance --access public
+        working-directory: packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

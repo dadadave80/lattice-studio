@@ -1,0 +1,68 @@
+# Early warning against Lattice's `dev` branch (spec L914 "A nightly job runs the same checks against dev,
+# report-only; release tags block"; brief Q6). Runs the golden and chain suites against the tip of Lattice's
+# `dev` instead of the pinned submodule commit, so a Lattice change that would break Studio is caught before
+# it lands in a release tag. Report-only: never blocks a PR, never fails the run for drift, only for a setup
+# problem (checkout, build, install). Not run until David pushes the repo (HANDOFF.md D4).
+name: Nightly (Lattice dev)
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # 03:17 UTC, off the hour to avoid the shared GitHub Actions cron spike
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: "1.4.2"
+  FOUNDRY_VERSION: "v1.8.3"
+
+jobs:
+  nightly-lattice-dev:
+    name: Golden and chain tests against Lattice dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      - run: bun install --frozen-lockfile
+
+      - name: Move the Lattice checkout to the tip of dev
+        working-directory: lattice
+        run: |
+          git fetch origin dev
+          git checkout --detach FETCH_HEAD
+          echo "lattice_dev_sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Build the Lattice checkout (ci profile)
+        run: FOUNDRY_PROFILE=ci forge build --root lattice
+
+      - name: Golden tests (report-only)
+        id: golden
+        continue-on-error: true
+        run: bun run golden
+        env:
+          LATTICE_DIR: ${{ github.workspace }}/lattice
+
+      - name: Chain tests (report-only)
+        id: chain
+        continue-on-error: true
+        run: bun run test:chain
+        env:
+          LATTICE_DIR: ${{ github.workspace }}/lattice
+
+      - name: Summary
+        run: |
+          echo "### Nightly against Lattice dev @ ${lattice_dev_sha}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- golden: ${{ steps.golden.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- chain: ${{ steps.chain.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Report-only: this job never fails the workflow for test drift, only for a setup problem." >> "$GITHUB_STEP_SUMMARY"

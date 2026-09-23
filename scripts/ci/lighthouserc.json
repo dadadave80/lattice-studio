@@ -1,0 +1,23 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "bun run --cwd apps/studio preview",
+      "startServerReadyPattern": "Local:",
+      "url": ["http://localhost:5173/"],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "mobile",
+        "throttlingMethod": "simulate"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci"
+    }
+  }
+}
