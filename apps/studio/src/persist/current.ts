@@ -6,7 +6,7 @@
  */
 import type { Project, Result } from "@lattice-studio/core";
 import { useSyncExternalStore } from "react";
-import { doc, log, type DeploymentsService, type ProjectsService, type SaveStatus } from "@/contracts";
+import { log, type DeploymentsService, type ProjectsService, type SaveStatus } from "@/contracts";
 import type { EditLockState } from "./lock";
 import type { Persistence } from "./persistence";
 
@@ -135,12 +135,12 @@ function routeOpensProject(hash: string): boolean {
  * project (spec L401) unless the route opens one or another project was opened meanwhile.
  */
 export function bootPersistence(): Promise<Result<Project, string> | null> {
-  const before = doc.get().id;
   return persistence()
     .then(async (p) => {
-      p.start();
+      // The boot document's id as `start()` leaves it (it gives an unsaved document its own id).
+      const booted = p.start();
       if (typeof location !== "undefined" && routeOpensProject(location.hash)) return null;
-      const opened = await p.openLastProject(() => doc.get().id === before);
+      const opened = await p.openLastProject(() => p.documentId() === booted);
       if (opened && !opened.ok) log({ tag: "Error", text: `Couldn't open your last project. ${opened.error}` });
       return opened;
     })

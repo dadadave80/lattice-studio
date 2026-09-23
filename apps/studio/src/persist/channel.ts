@@ -14,6 +14,8 @@ export type ChannelMessage =
   | { kind: "lock-request"; from: string; id: string }
   /** The holder heard `to`'s request and is saving before it lets go: wait, don't steal. */
   | { kind: "lock-ack"; from: string; id: string; to: string }
+  /** The holder's saves failed, so it kept the lock (the taker would load an older save); `reason` says why. */
+  | { kind: "lock-refused"; from: string; id: string; to: string; reason: string }
   /**
    * The projects list changed in another tab. `trashed` went to Recently deleted, `restored` came back, and
    * `cleared` means every project went (Clear data): a tab holding one of them stops writing it.

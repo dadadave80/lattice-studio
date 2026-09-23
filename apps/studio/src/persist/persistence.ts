@@ -12,7 +12,7 @@ import {
 } from "@lattice-studio/core";
 import { openDB } from "idb";
 import {
-  commandRef, doc as studioDoc, log, now as kernelNow, randomBytes, settings, showBanner,
+  commandRef, doc as studioDoc, hideBanner, log, now as kernelNow, randomBytes, settings, showBanner,
   type DeploymentsService, type DocumentState, type NewProjectOptions, type ProjectsService, type SaveStatus,
   type Viewport,
 } from "@/contracts";
@@ -53,6 +53,8 @@ export type PersistenceOptions = {
   quietMs?: number;
   /** How long Take over editing waits for the other tab to answer before stealing the lock, ms. */
   stealAfter?: number;
+  /** How long Take over editing waits, once the other tab answered, for it to save and let go, ms. */
+  ackedPatience?: number;
   /** Where `visibilitychange` and `pagehide` are heard. Default the page; null to not listen. */
   page?: { document: Document; window: Window } | null;
 };
@@ -78,9 +80,12 @@ export type Persistence = {
   /**
    * Follows the document: autosave, the page's hide events and the other tabs. Idempotent. When nothing was
    * opened through this instance yet, the document (never stored: the boot's untitled project) gets its own id,
-   * so it can't overwrite a stored project or share a lock with another fresh tab.
+   * so it can't overwrite a stored project or share a lock with another fresh tab. Returns the document's id
+   * afterwards.
    */
-  start(): void;
+  start(): string;
+  /** The id of the project the document shows now. */
+  documentId(): string;
   /** Writes the pending save now (hide, close, lock handover, Save and reload). Starts synchronously when it can. */
   flush(): Promise<void>;
   /**
@@ -138,6 +143,7 @@ const CLEARED_DETAIL = "Studio's data in this browser was cleared.";
 /** Spec L494: taking over from another tab resets history, and the console says so. */
 const TAKEOVER_LINE = "Took over editing from another tab. Undo history starts here.";
 const UPDATED_BANNER = "persist.updated";
+const STORAGE_DELETED = "Studio's storage was deleted in another tab. Reload to continue.";
 
 function hex(bytes: Uint8Array): `0x${string}` {
   return `0x${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
@@ -214,34 +220,47 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   let handle: StudioDb | null = null;
   /** A newer Studio upgraded the database: this connection closed. */
   let updated = false;
+  /** What the newer Studio did: upgraded to a version, or deleted the database (null). */
+  let upgradedTo: number | null = null;
   let closed = false;
 
   const db = (): Promise<StudioDb> => {
     if (updated) return Promise.reject(new Error(UPDATED_TEXT));
     if (closed) return Promise.reject(new Error("Storage is closed."));
     opened ??= openStudioDb(dbName, { onVersionChange: versionChanged }).then(async (connection) => {
-      const purged = await records.purgeTrash(connection, now()).catch(() => []);
-      if (purged.length > 0) emitProjects({ gone: purged });
       handle = connection;
+      await purge(connection);
       return connection;
     });
     return opened;
   };
 
-  function versionChanged(): void {
+  function versionChanged(newVersion: number | null): void {
     const closing = opened;
     void flush()
       .catch(() => {})
       .then(() => {
         updated = true;
+        upgradedTo = newVersion;
         handle = null;
         lock.release();
         refreshStatus();
-        showBanner(UPDATED_BANNER, { text: UPDATED_TEXT, tone: "info", actions: [commandRef("app.reload")] });
+        showUpdated();
         return closing;
       })
       .then((connection) => connection?.close())
       .catch(() => {});
+  }
+
+  /**
+   * After a newer Studio took the database: "A new version of Studio is ready" with Reload, only while nothing
+   * is left to save (IR L208), so Reload can't discard an edit. Otherwise the status says Not saved and offers
+   * Save a copy….
+   */
+  function showUpdated(): void {
+    if (!updated) return;
+    if (unsaved()) hideBanner(UPDATED_BANNER);
+    else showBanner(UPDATED_BANNER, { text: UPDATED_TEXT, tone: "info", actions: [commandRef("app.reload")] });
   }
 
   // ── Save status ─────────────────────────────────────────────────────────────────────────────────────
@@ -259,13 +278,29 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     if (lockState.state === "handed-over") {
       return { state: "read-only", text: "Read-only", detail: "Editing moved to another tab" };
     }
-    const unsaved = doc.get().id === openId && doc.get() !== persisted;
-    if (updated) return unsaved ? { state: "not-saved", text: "Not saved", detail: UPDATED_TEXT } : SAVED;
-    if (detached !== null) return unsaved ? { state: "not-saved", text: "Not saved", detail: detached } : SAVED;
+    if (updated) {
+      if (!unsaved()) return SAVED;
+      return {
+        state: "not-saved", text: "Not saved", detail: upgradedTo === null ? STORAGE_DELETED : UPDATED_TEXT,
+        action: commandRef("project.saveCopy"),
+      };
+    }
+    if (detached !== null) return unsaved() ? { state: "not-saved", text: "Not saved", detail: detached } : SAVED;
+    if (failure?.quota) {
+      const full: SaveStatus = { state: "not-saved", text: FULL_TEXT, action: commandRef("project.saveCopy") };
+      return holdingBack === null ? full : { ...full, detail: holdingBack };
+    }
+    if (holdingBack !== null) {
+      return { state: "not-saved", text: "Not saved", detail: holdingBack, action: commandRef("project.saveCopy") };
+    }
     if (timer !== null || inFlight > 0) return SAVING;
-    if (failure?.quota) return { state: "not-saved", text: FULL_TEXT, action: commandRef("project.saveCopy") };
     if (failure) return { state: "not-saved", text: "Not saved", detail: failure.reason };
     return SAVED;
+  }
+
+  /** The document holds changes to the open project that aren't stored. */
+  function unsaved(): boolean {
+    return doc.get().id === openId && doc.get() !== persisted;
   }
 
   function refreshStatus(): void {
@@ -293,6 +328,8 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   let lastWrite: Promise<void> = Promise.resolve();
   /** Set while this instance loads the document itself, so the load isn't broadcast as an edit. */
   let quiet = 0;
+  /** Set when this tab refused a handover because its saves failed; cleared by the next successful save. */
+  let holdingBack: string | null = null;
   /** The lock claim in flight for the open project; a save waits for it to know whether it may write. */
   let claiming: Promise<boolean> | null = null;
 
@@ -380,6 +417,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
           stored = true;
         }
         failure = null;
+        holdingBack = null;
       } else if (project.id === openId) {
         detach(outcome === "trashed" ? DELETED_DETAIL : GONE_DETAIL);
       }
@@ -419,11 +457,30 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     })();
   }
 
-  /** Saves until nothing is pending: edits made while a save ran are saved too (before a lock handover). */
+  /**
+   * Saves until nothing is pending: edits made while a save ran are saved too (before a lock handover).
+   * Rejects when a save fails or edits keep coming, so the lock stays here instead of the taker loading an
+   * older save (spec L505).
+   */
   async function flushUntilClean(): Promise<void> {
     for (let round = 0; round < 10; round++) {
       await flush();
+      if (failure) throw new Error(failure.quota ? `${FULL_TEXT}.` : `Not saved: ${failure.reason}`);
       if (!dirty() || !holds(doc.get().id)) return;
+    }
+    throw new Error("Changes kept coming while it saved.");
+  }
+
+  /** Before a handover: save everything, or keep the lock and say why. */
+  async function beforeHandover(): Promise<void> {
+    try {
+      await flushUntilClean();
+      holdingBack = null;
+    } catch (error) {
+      holdingBack = `Another tab asked to take over editing. This tab kept it because its changes aren't saved. ${message(error)}`;
+      log({ tag: "Error", text: holdingBack });
+      refreshStatus();
+      throw error;
     }
   }
 
@@ -470,6 +527,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     }
     if (quiet > 0) return;
     if (detached !== null || updated) {
+      showUpdated();
       refreshStatus();
       return;
     }
@@ -488,7 +546,8 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     channel,
     peerId,
     ...(options.stealAfter === undefined ? {} : { stealAfter: options.stealAfter }),
-    beforeHandover: () => flushUntilClean(),
+    ...(options.ackedPatience === undefined ? {} : { ackedPatience: options.ackedPatience }),
+    beforeHandover: () => beforeHandover(),
     onChange(state) {
       if (state.state !== "held") clearTimer();
       refreshStatus();
@@ -512,6 +571,25 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     log({ tag: "Error", text: `Couldn't read the stored project ${id}. ${reason}` });
   };
 
+  /** Expires Recently deleted (spec L502): says what happened, and tells every listener. */
+  async function purge(connection: StudioDb): Promise<void> {
+    try {
+      const { gone, skipped } = await records.purgeTrash(connection, now());
+      if (gone.length > 0) {
+        emitProjects({ gone });
+        for (const id of gone) emitDeployments(id);
+      }
+      if (skipped > 0) {
+        log({
+          tag: "Note",
+          text: `${skipped} deployment ${skipped === 1 ? "record" : "records"} from projects deleted 30 days ago ${skipped === 1 ? "matches an address another record holds" : "match addresses other records hold"} now; the stored ${skipped === 1 ? "record was" : "records were"} kept.`,
+        });
+      }
+    } catch (error) {
+      log({ tag: "Error", text: `Couldn't empty Recently deleted. ${message(error)}` });
+    }
+  }
+
   const deploymentListeners = new Set<(projectId: string) => void>();
   const emitDeployments = (projectId: string, remote = false) => {
     if (!remote) channel.post({ kind: "deployments", from: peerId, projectId });
@@ -525,10 +603,20 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     for (const listener of Array.from(projectListeners)) listener();
   };
 
-  /** After a newer Studio closed the database, a record still gets written: on a connection at whatever version. */
+  /**
+   * After a newer Studio closed the database, a record still gets written: on a connection at whatever version
+   * the database has now. Never creates a database (it was deleted) or writes where there's no deployments store.
+   */
   async function putAfterUpdate(deployment: Deployment): Promise<void> {
+    const unsaved = "This deployment record wasn't saved.";
+    if (upgradedTo === null) throw new Error(`${STORAGE_DELETED} ${unsaved}`);
+    const listed = typeof indexedDB.databases === "function" ? await indexedDB.databases() : null;
+    if (listed && !listed.some((info) => info.name === dbName)) throw new Error(`${STORAGE_DELETED} ${unsaved}`);
     const connection = await openDB<StudioSchema>(dbName);
     try {
+      if (!connection.objectStoreNames.contains("deployments")) {
+        throw new Error(`${UPDATED_TEXT}. Reload to save deployment records. ${unsaved}`);
+      }
       await connection.put("deployments", records.normalizeRecord(deployment));
     } finally {
       connection.close();
@@ -673,7 +761,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     projects,
     deployments,
     start() {
-      if (started) return;
+      if (started) return doc.get().id;
       started = true;
       stops.push(doc.subscribe(onDocChange));
       if (page) {
@@ -684,15 +772,17 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
           page.window.removeEventListener("pagehide", onPageHide);
         });
       }
-      if (openId !== null) return;
+      if (openId !== null) return doc.get().id;
       const fresh: Project = { ...doc.get(), id: newId() };
       openId = fresh.id;
       persisted = fresh;
       stored = false;
       loadQuietly(fresh);
       void claim(fresh.id);
+      return fresh.id;
     },
     flush,
+    documentId: () => doc.get().id,
     async openLastProject(proceed) {
       try {
         const connection = await db();
@@ -716,8 +806,11 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       if (id === null) return { ok: false, error: "No project is open." };
       if (updated) return { ok: false, error: UPDATED_TEXT };
       try {
-        const held = await lock.takeOver(id);
-        if (!held) return { ok: false, error: "Couldn't take over editing. Another tab kept it." };
+        const taken = await lock.takeOver(id);
+        if (!taken.ok) {
+          log({ tag: "Note", text: taken.error });
+          return taken;
+        }
         const read = await records.readProject(await db(), id);
         if (!read.ok) return read;
         if (openId === id) {
@@ -816,11 +909,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     },
     async listTrash() {
       const connection = await db();
-      const purged = await records.purgeTrash(connection, now());
-      if (purged.length > 0) {
-        emitProjects({ gone: purged });
-        for (const id of purged) emitDeployments(id);
-      }
+      await purge(connection);
       return records.listTrash(connection, unreadable);
     },
     async trashCounts(id) {

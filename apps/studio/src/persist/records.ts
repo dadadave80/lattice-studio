@@ -242,23 +242,29 @@ export async function deleteForGood(db: StudioDb, id: string): Promise<Result<Re
   return { ok: true, value: countRecords(entry.deployments) };
 }
 
+/** What expiry did: the project ids that went, and records not put back because their key is stored again. */
+export type Purged = { gone: string[]; skipped: number };
+
 /**
  * Deletes the projects that have been in Recently deleted for 30 days or more. Deployment records are never
  * deleted silently (spec L292): every record whose status isn't `failed` goes back to the deployments store,
- * where it stays (listed by its project id, exported, counted by Clear data). Resolves the ids that went.
+ * where it stays (listed by its project id, exported, counted by Clear data). A record whose
+ * `[chainId, address]` another record holds now stays out, and is counted in `skipped`.
  */
-export async function purgeTrash(db: StudioDb, now: number): Promise<string[]> {
+export async function purgeTrash(db: StudioDb, now: number): Promise<Purged> {
   const tx = db.transaction(["trash", "meta", "deployments"], "readwrite");
   const gone: string[] = [];
+  let skipped = 0;
   for (const entry of await tx.objectStore("trash").getAll()) {
     if (now - entry.deletedAt < TRASH_MS) continue;
     gone.push(entry.id);
-    await addRecords(tx.objectStore("deployments"), entry.deployments.filter((d) => d.status !== "failed"));
+    const kept = await addRecords(tx.objectStore("deployments"), entry.deployments.filter((d) => d.status !== "failed"));
+    skipped += kept.skipped;
     await tx.objectStore("trash").delete(entry.id);
     await tx.objectStore("meta").delete(META.viewport(entry.id));
   }
   await tx.done;
-  return gone;
+  return { gone, skipped };
 }
 
 export async function listTrash(db: StudioDb, unreadable?: Unreadable): Promise<TrashSummary[]> {

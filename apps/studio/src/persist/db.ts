@@ -32,8 +32,11 @@ export type StudioSchema = DBSchema & {
 export type StudioDb = IDBPDatabase<StudioSchema>;
 
 export type OpenOptions = {
-  /** Another tab opened a newer version: close this connection (after the handler) and ask to reload. */
-  onVersionChange(): void;
+  /**
+   * Another tab opened a newer version (`newVersion`), or deleted the database (`null`): close this connection
+   * (after the handler) and ask to reload.
+   */
+  onVersionChange(newVersion: number | null): void;
 };
 
 /** Opens (and creates or upgrades) the database. */
@@ -48,8 +51,8 @@ export function openStudioDb(name: string, options: OpenOptions): Promise<Studio
         db.createObjectStore("meta");
       }
     },
-    blocking() {
-      options.onVersionChange();
+    blocking(_current, newVersion) {
+      options.onVersionChange(newVersion);
     },
   });
 }

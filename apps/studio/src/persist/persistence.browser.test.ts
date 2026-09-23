@@ -14,7 +14,8 @@ import { bufferedServices, fakeClock, onCleanup } from "../../test/harness";
 import { META, openStudioDb } from "./db";
 import { bootPersistence, editLockState, subscribeEditLock } from "./index";
 import type { Persistence } from "./persistence";
-import { createEditLock } from "./lock";
+import { deleteDB } from "idb";
+import { createEditLock, STILL_SAVING } from "./lock";
 import { openChannel } from "./channel";
 import { fakeDoc, testPersistence, type FakeDoc } from "./testing";
 
@@ -503,7 +504,11 @@ describe("two tabs", () => {
     expect(saveStatus()).toEqual({ state: "saved", text: "Saved" });
     expect(editLockState()).toEqual({ state: "none" });
     rename("After the upgrade");
-    expect(saveStatus()).toEqual({ state: "not-saved", text: "Not saved", detail: "A new version of Studio is ready" });
+    expect(saveStatus()).toEqual({
+      state: "not-saved", text: "Not saved", detail: "A new version of Studio is ready", action: { id: "project.saveCopy" },
+    });
+    // Reload would discard the edit now, so it isn't offered.
+    expect(bufferedServices().banners.has("persist.updated")).toBe(false);
     // A receipt still gets recorded.
     await putDeployment(deployment(project.id, 8));
     expect(await upgraded.getAll("deployments")).toEqual([deployment(project.id, 8)]);
@@ -511,6 +516,31 @@ describe("two tabs", () => {
 });
 
 describe("boot", () => {
+  test("on the app's own document, a returning visitor lands in their last project", async () => {
+    const earlier = testPersistence();
+    const a = await created("Alpha");
+    await earlier.close();
+
+    doc.load(makeProject({ id: "untitled", name: "Untitled", recipe }));
+    testPersistence({ dbName: earlier.dbName, start: false });
+    expect(await bootPersistence()).toMatchObject({ ok: true, value: { id: a.id, name: "Alpha" } });
+    expect(doc.get()).toMatchObject({ id: a.id, name: "Alpha" });
+    expect(editLockState()).toEqual({ state: "held", projectId: a.id });
+  });
+
+  test("on the app's own document, a second fresh tab reaches the first tab's work read-only", async () => {
+    const firstDoc = fakeDoc(makeProject({ id: "untitled", recipe }));
+    const first = testPersistence({ doc: firstDoc, provide: false, page: null });
+    firstDoc.edit("Renamed", (p) => ({ ...p, name: "First tab's work" }));
+    await first.flush();
+
+    doc.load(makeProject({ id: "untitled", name: "Untitled", recipe }));
+    testPersistence({ dbName: first.dbName, start: false });
+    expect(await bootPersistence()).toMatchObject({ ok: true, value: { name: "First tab's work" } });
+    expect(doc.get().name).toBe("First tab's work");
+    expect(editLockState()).toEqual({ state: "elsewhere", projectId: firstDoc.get().id });
+  });
+
   test("a returning visitor lands in their last project", async () => {
     const store = testPersistence();
     const a = await created("Alpha");
@@ -684,7 +714,7 @@ describe("data that must never be lost", () => {
     });
     expect(await holder.claim("p")).toBe(true);
     expect(await taker.claim("p")).toBe(false);
-    expect(await taker.takeOver("p")).toBe(true);
+    expect(await taker.takeOver("p")).toEqual({ ok: true, value: undefined });
     events.push("taker holds");
     expect(events).toEqual(["holder saved", "taker holds"]);
     expect(holder.state()).toEqual({ state: "handed-over", projectId: "p" });
@@ -702,5 +732,113 @@ describe("data that must never be lost", () => {
     await store.flush();
     expect(await storedName(store, project.id)).toBe("Saved anyway");
     expect(bufferedServices().log.some((l) => l.text.startsWith("Couldn't coordinate editing with other tabs."))).toBe(true);
+  });
+});
+
+describe("handover and upgrade edge cases", () => {
+  test("a holder whose saves keep failing keeps editing and says why; the taker is told", async () => {
+    const first = testPersistence({ quietMs: 60_000 });
+    const project = await created("Vault");
+    const { tab: second } = await otherTab(first, project);
+    const put = IDBObjectStore.prototype.put;
+    vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>
+    ) {
+      if (this.name === "projects") throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+      return put.apply(this, args);
+    });
+    rename("Can't be saved");
+    expect(await second.takeOverEditing()).toEqual({
+      ok: false,
+      error: "The other tab kept editing: its changes aren't saved yet. Not saved: browser storage is full.",
+    });
+    expect(first.editLock()).toEqual({ state: "held", projectId: project.id });
+    expect(second.editLock()).toEqual({ state: "elsewhere", projectId: project.id });
+    expect(saveStatus()).toEqual({
+      state: "not-saved", text: "Not saved: browser storage is full", action: { id: "project.saveCopy" },
+      detail: "Another tab asked to take over editing. This tab kept it because its changes aren't saved. Not saved: browser storage is full.",
+    });
+    expect(await storedName(first, project.id)).toBe("Vault");
+  });
+
+  test("a holder that answered but never finishes saving: the taker gives up after a while and says so", async () => {
+    const prefix = `lattice-studio-test-hung-${crypto.randomUUID()}`;
+    const channelA = openChannel(`${prefix}:tabs`);
+    const channelB = openChannel(`${prefix}:tabs`);
+    const holder = createEditLock({
+      prefix, locks: navigator.locks, channel: channelA, peerId: "a", onChange: () => {}, onError: () => {},
+      beforeHandover: () => new Promise<void>(() => {}),
+    });
+    const taker = createEditLock({
+      prefix, locks: navigator.locks, channel: channelB, peerId: "b", onChange: () => {}, onError: () => {},
+      beforeHandover: async () => {}, stealAfter: 50, ackedPatience: 150,
+    });
+    onCleanup(() => {
+      holder.dispose();
+      taker.dispose();
+      channelA.close();
+      channelB.close();
+    });
+    expect(await holder.claim("p")).toBe(true);
+    expect(await taker.claim("p")).toBe(false);
+    expect(await taker.takeOver("p")).toEqual({ ok: false, error: STILL_SAVING });
+    expect(holder.state()).toEqual({ state: "held", projectId: "p" });
+    expect(taker.state()).toEqual({ state: "elsewhere", projectId: "p" });
+  });
+
+  test("an edit that can't be saved before an upgrade keeps Reload hidden and offers Save a copy…", async () => {
+    const store = testPersistence({ quietMs: 60_000 });
+    await created();
+    const put = IDBObjectStore.prototype.put;
+    vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>
+    ) {
+      if (this.name === "projects") throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+      return put.apply(this, args);
+    });
+    rename("Unsaved");
+    const upgraded = await openDB(store.dbName, 2);
+    onCleanup(() => upgraded.close());
+    await until(() => saveStatus().detail === "A new version of Studio is ready", "the upgrade to close storage");
+    expect(saveStatus()).toEqual({
+      state: "not-saved", text: "Not saved", detail: "A new version of Studio is ready", action: { id: "project.saveCopy" },
+    });
+    expect(bufferedServices().banners.has("persist.updated")).toBe(false);
+  });
+
+  test("a database deleted by another tab is never recreated to hold a record", async () => {
+    const store = testPersistence();
+    const project = await created();
+    await deleteDB(store.dbName);
+    await until(() => saveStatus().state !== "saving", "the tab to close storage");
+    const error = await putDeployment(deployment(project.id, 9)).then(() => null, (e: Error) => e.message);
+    expect(error).toBe("Studio's storage was deleted in another tab. Reload to continue. This deployment record wasn't saved.");
+    expect((await indexedDB.databases()).map((d) => d.name)).not.toContain(store.dbName);
+  });
+
+  test("expiry when storage opens says what it kept and tells every listener", async () => {
+    const clock = fakeClock({ at: "2026-09-23T12:00:00Z" });
+    const earlier = testPersistence();
+    const gone = await created("Gone");
+    await putDeployment(deployment(gone.id, 1));
+    await putDeployment(deployment(gone.id, 2));
+    const keep = await created("Keep");
+    await earlier.deleteProject(gone.id);
+    // Another project now holds one of the addresses.
+    await putDeployment(deployment(keep.id, 2));
+    await earlier.close();
+
+    clock.advance(30 * DAY);
+    const store = testPersistence({ dbName: earlier.dbName, start: false });
+    const heard: string[] = [];
+    onCleanup(store.deployments.subscribe((id) => heard.push(id)));
+    expect(await store.listProjects()).toMatchObject([{ id: keep.id }]);
+    expect(heard).toContain(gone.id);
+    expect(await listDeployments(gone.id)).toEqual([deployment(gone.id, 1)]);
+    expect(await listDeployments(keep.id)).toEqual([deployment(keep.id, 2)]);
+    expect(bufferedServices().log.at(-1)).toMatchObject({
+      tag: "Note",
+      text: "1 deployment record from projects deleted 30 days ago matches an address another record holds now; the stored record was kept.",
+    });
   });
 });
