@@ -12,7 +12,7 @@ import {
 } from "@/contracts";
 import { bufferedServices, fakeClock, onCleanup } from "../../test/harness";
 import { META, openStudioDb } from "./db";
-import { editLockState, subscribeEditLock } from "./index";
+import { bootPersistence, editLockState, subscribeEditLock } from "./index";
 import type { Persistence } from "./persistence";
 import { fakeDoc, testPersistence } from "./testing";
 
@@ -359,6 +359,23 @@ describe("two tabs", () => {
     expect(second.editLock()).toEqual({ state: "handed-over", projectId: project.id });
   });
 
+  test("a holder that doesn't answer has the lock stolen after a wait", async () => {
+    const store = testPersistence({ stealAfter: 50 });
+    const project = await created();
+    // A frozen tab: holds the lock and never hears the channel.
+    await store.close();
+    let letGo: () => void = () => {};
+    const frozen = navigator.locks.request(`${store.dbName}:edit:${project.id}`, () => new Promise<void>((r) => (letGo = r)));
+    onCleanup(() => letGo());
+    const frozenLost = frozen.then(() => "released", (error: unknown) => (error as DOMException).name);
+
+    const tab = testPersistence({ dbName: store.dbName, doc: fakeDoc(project), page: null, stealAfter: 50 });
+    await until(() => tab.editLock().state === "elsewhere", "the tab to open read-only");
+    expect(await tab.takeOverEditing()).toMatchObject({ ok: true, value: { id: project.id } });
+    expect(tab.editLock()).toEqual({ state: "held", projectId: project.id });
+    expect(await frozenLost).toBe("AbortError");
+  });
+
   test("a demoted tab still records deployments, and the other tab hears it", async () => {
     const first = testPersistence();
     const project = await created("Vault");
@@ -402,6 +419,21 @@ describe("two tabs", () => {
     expect(saveStatus()).toEqual({
       state: "not-saved", text: "Not saved", detail: "Studio was updated in another tab. Reload to continue.",
     });
+  });
+});
+
+describe("boot", () => {
+  test("a returning visitor lands in their last project", async () => {
+    const store = testPersistence();
+    const a = await created("Alpha");
+    await created("Beta");
+    await openProject(a.id);
+    await store.close();
+
+    const tabDoc = fakeDoc(makeProject({ id: "untitled" }));
+    testPersistence({ dbName: store.dbName, doc: tabDoc, start: false, page: null });
+    expect(await bootPersistence()).toMatchObject({ ok: true, value: { id: a.id, name: "Alpha" } });
+    expect(tabDoc.get()).toMatchObject({ id: a.id, name: "Alpha" });
   });
 });
 
