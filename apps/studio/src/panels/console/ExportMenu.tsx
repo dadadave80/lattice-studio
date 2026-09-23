@@ -1,5 +1,9 @@
 import { useCommandState } from "@/contracts";
-import { Button, Menu, MenuCommandItem, MenuItem, MenuSeparator } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
+import { Menu } from "@/ui/overlays/Menu";
+import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
+import { MenuItem } from "@/ui/overlays/MenuItem";
+import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
 import { briefFile, copyExport, exportFailed } from "./actions";
 
 export const IMAGE_LATER = "Arrives in v1.1";

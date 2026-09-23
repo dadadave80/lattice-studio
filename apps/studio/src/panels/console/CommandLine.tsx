@@ -1,6 +1,6 @@
 import { useId, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { runCommand, subscribeCommands } from "@/contracts";
-import { platform } from "@/ui";
+import { platform } from "@/ui/shared/platform";
 import { commandHistory, remember, submitLine } from "./command-line";
 import styles from "./CommandLine.module.css";
 import { verbWords } from "./definitions";

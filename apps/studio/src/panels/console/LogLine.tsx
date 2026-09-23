@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from "react";
-import { cx, VisuallyHidden } from "@/ui";
+import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
+import { cx } from "@/ui/shared/cx";
 import { InlineCode } from "./InlineCode";
 import type { LogEntry } from "./log-store";
 import styles from "./LogView.module.css";

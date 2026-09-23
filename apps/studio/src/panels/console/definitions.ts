@@ -8,7 +8,7 @@ import { isAddress, toChecksum } from "@lattice-studio/core";
 import {
   announce, command, getCommand, log, openDialog, subscribeCommands, type Command, type CommandArgsOf, type Enablement,
 } from "@/contracts";
-import { helpLines, listVerbs } from "@/commands";
+import { helpLines, listVerbs } from "@/commands/console/router";
 import {
   alwaysExportable, briefFile, CATALOG_NOT_LOADED, deployableExport, exportFailed, exportSafe, saveExport,
 } from "./actions";

@@ -1,5 +1,6 @@
 import { useAnalysis, useCatalog, useDocument } from "@/contracts";
-import { Banner, Button } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
+import { Banner } from "@/ui/status/Banner";
 import {
   blockerCount, CATALOG_NOT_LOADED, copyExport, PLACE_FACETS_TO_GENERATE, resolveToExport, saveExport,
 } from "./actions";

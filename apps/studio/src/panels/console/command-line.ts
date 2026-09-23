@@ -4,7 +4,7 @@
  * command's to answer. Output goes to the Log, so the Log tab comes forward first.
  */
 import { log } from "@/contracts";
-import { route, runConsoleLine, tokenize } from "@/commands";
+import { route, runConsoleLine, tokenize } from "@/commands/console/router";
 import { unknownVerb } from "./definitions";
 import { showConsoleTab } from "./drawer";
 

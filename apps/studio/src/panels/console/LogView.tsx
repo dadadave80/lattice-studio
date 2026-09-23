@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { getAnalysis } from "@/contracts";
-import { Button, copyText } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
+import { copyText } from "@/ui/copy/copy-text";
 import { filterEntries, isFiltering } from "./filter";
 import { locatable, selectAndLocate } from "./locate";
 import { logEntries, subscribeLog, type LogEntry, type LogTag } from "./log-store";

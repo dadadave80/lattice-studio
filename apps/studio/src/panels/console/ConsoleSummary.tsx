@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { useAnalysis, useDeployState, useDocument, useOnline } from "@/contracts";
-import { cx } from "@/ui";
+import { cx } from "@/ui/shared/cx";
 import { chainName } from "./chains";
 import styles from "./ConsolePanel.module.css";
 import { latestWith, logEntries, subscribeLog } from "./log-store";

@@ -1,5 +1,9 @@
 import { runCommand, settings, useSettings } from "@/contracts";
-import { IconButton, Menu, MenuCheckboxItem, MenuItem, ToggleButton } from "@/ui";
+import { IconButton } from "@/ui/buttons/IconButton";
+import { ToggleButton } from "@/ui/fields/ToggleButton";
+import { Menu } from "@/ui/overlays/Menu";
+import { MenuCheckboxItem } from "@/ui/overlays/MenuCheckboxItem";
+import { MenuItem } from "@/ui/overlays/MenuItem";
 import { showingText } from "./filter";
 import { LOG_TAGS, type LogTag } from "./log-store";
 import styles from "./LogView.module.css";

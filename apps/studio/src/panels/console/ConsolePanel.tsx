@@ -1,7 +1,9 @@
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
 import { useId, useSyncExternalStore } from "react";
 import { runCommand, useSession, type ConsoleTab } from "@/contracts";
-import { cx, IconButton, PaneSizeMenu } from "@/ui";
+import { IconButton } from "@/ui/buttons/IconButton";
+import { PaneSizeMenu } from "@/ui/nav/PaneSizeMenu";
+import { cx } from "@/ui/shared/cx";
 import { Chevron } from "./Chevron";
 import { CodeTab } from "./CodeTab";
 import { CommandLine } from "./CommandLine";

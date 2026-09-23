@@ -8,7 +8,7 @@ import { isNotImplemented, lines, plural } from "@lattice-studio/core";
 import {
   announce, deployController, doc, getAnalysis, getCatalog, log, now, type CommandContext, type Enablement,
 } from "@/contracts";
-import { copyText } from "@/ui";
+import { copyText } from "@/ui/copy/copy-text";
 import { downloadFile } from "./download";
 import { loadExporter } from "./exporters";
 

@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useSyncExternalStore, type CSSProperties } from "react";
-import { cx, VisuallyHidden } from "@/ui";
+import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
+import { cx } from "@/ui/shared/cx";
 import { highlighter, loadHighlighter, subscribeHighlighter, type CodeLang } from "./highlight";
 import styles from "./CodeView.module.css";
 
