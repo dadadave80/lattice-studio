@@ -4,7 +4,8 @@
  * are checked field by field, so a hand-edited or older entry can't put a wrong type into the store.
  */
 import { createStore, type StoreApi } from "zustand/vanilla";
-import { DEFAULT_SETTINGS, type KeySpec, type SettingsState } from "@/contracts";
+import { DEFAULT_SETTINGS, log, type KeySpec, type SettingsState } from "@/contracts";
+import { findProtoKey, formatPath } from "@lattice-studio/core";
 
 /** The localStorage key. Bump the version when a field changes meaning. */
 export const SETTINGS_KEY = "lattice-studio.settings.v1";
@@ -45,6 +46,11 @@ export function readSettings(raw: string | null): SettingsState {
     return out;
   }
   if (!isRecord(stored)) return out;
+  const protoPath = findProtoKey(stored);
+  if (protoPath !== null) {
+    log({ tag: "Error", text: `Stored settings have a reserved field name at ${formatPath(protoPath)}. Using the defaults.` });
+    return out;
+  }
   const s = stored;
   if (oneOf(s.theme, ["shop", "draft", "system"] as const)) out.theme = s.theme;
   if (oneOf(s.reduceMotion, ["system", "on", "off"] as const)) out.reduceMotion = s.reduceMotion;
@@ -55,16 +61,19 @@ export function readSettings(raw: string | null): SettingsState {
   if (typeof s.minimap === "boolean") out.minimap = s.minimap;
   if (typeof s.singleKeys === "boolean") out.singleKeys = s.singleKeys;
   if (isRecord(s.keymap)) {
-    const keymap: SettingsState["keymap"] = {};
+    const entries: [string, KeySpec[]][] = [];
     for (const [binding, keys] of Object.entries(s.keymap)) {
       if (!Array.isArray(keys)) continue;
       const valid = keys.filter(
         (k: Json): k is KeySpec =>
           typeof k === "string" || (isRecord(k) && typeof k.keys === "string" && oneOf(k.platform, ["mac", "other"] as const)),
       );
-      if (valid.length === keys.length) (keymap as Record<string, KeySpec[]>)[binding] = valid;
+      if (valid.length === keys.length) entries.push([binding, valid]);
     }
-    out.keymap = keymap;
+    // Object.fromEntries defines each own property directly, so a "__proto__" binding (findProtoKey already
+    // refuses the whole stored blob above; this is defense in depth) can't reach the prototype the way
+    // `keymap[binding] = valid` would.
+    out.keymap = Object.fromEntries(entries) as SettingsState["keymap"];
   }
   if (isRecord(s.rpc)) {
     const rpc: Record<number, string> = {};
