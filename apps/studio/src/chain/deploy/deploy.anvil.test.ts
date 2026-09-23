@@ -12,14 +12,14 @@ import { CREATEX, CREATEX_CODEHASH, MULTICALL3, MULTICALL3_CODEHASH, planInit, t
 import { filledTemplate, loadBuiltCatalog, makeProject } from "@lattice-studio/core/testing";
 import { Instance } from "prool";
 import { createClient, defineChain, http, keccak256, parseAbi, type Chain, type Client, type Transport } from "viem";
-import { getCode, readContract, sendTransaction } from "viem/actions";
+import { getCode, getTransactionCount, readContract, sendTransaction } from "viem/actions";
 import { localEnv } from "../../../local-env";
 import type { ChainService } from "@/contracts";
 import { probeChain } from "../infra/probe";
 import { releaseOf } from "./judge";
 import { createDeployMachine, type DeployMachine } from "./machine";
 import type { DeployDeps } from "./ports";
-import { ALICE, fakeInputs, fakeRecords, manualClock, type FakeInputs, type FakeRecords, type ManualClock } from "./testing";
+import { ALICE, BOB, fakeInputs, fakeRecords, manualClock, type FakeInputs, type FakeRecords, type ManualClock } from "./testing";
 import { createViemPort, isRejection, reason } from "./viem-port";
 
 const port = Number(localEnv("ANVIL_PORT_BASE") ?? "");
@@ -310,4 +310,49 @@ describe.skipIf(!runnable || catalog === null)("the deploy machine on Anvil", ()
     expect(records.get(ANVIL_ID, record.address)?.status).toBe("confirmed");
     expect(opened.said.some((t) => t.startsWith("Re-read ") && t.endsWith("it matches its record."))).toBe(true);
   }, 60_000);
+  describe("the receipt watcher's replacement detection", () => {
+    const TARGET: Address = "0x000000000000000000000000000000000000dEaD";
+
+    async function watchReplaced(replace: (nonce: number) => { to: Address; data: Hex }): Promise<{ outcome: unknown; repriced: Hex[]; first: Hex }> {
+      const chainPort = createViemPort({
+        service: anvilService(() => null), client: () => client, noteEstimate: () => {}, pollInterval: 25,
+        wallet: { send: async () => ({ kind: "error", message: "" }), atomicBatch: async () => false, sendCalls: async () => ({ kind: "rejected" }), waitCalls: async () => ({ kind: "aborted" }) },
+      });
+      await rpc("evm_setAutomine", [false]);
+      try {
+        const nonce = await getTransactionCount(client, { address: BOB, blockTag: "pending" });
+        const first = await sendTransaction(client, {
+          account: BOB, to: TARGET, data: "0x1234", nonce, chain: null, maxFeePerGas: 2_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n,
+        });
+        const repriced: Hex[] = [];
+        const abort = new AbortController();
+        const watching = chainPort.watch(ANVIL_ID, first, { from: BOB, signal: abort.signal, onRepriced: (hash) => void repriced.push(hash) });
+        // Let the watcher see the pending transaction before the wallet replaces it.
+        await Bun.sleep(200);
+        const next = replace(nonce);
+        await sendTransaction(client, {
+          account: BOB, ...next, nonce, chain: null, maxFeePerGas: 20_000_000_000n, maxPriorityFeePerGas: 10_000_000_000n,
+        });
+        await rpc("evm_mine");
+        const outcome = await Promise.race([watching, Bun.sleep(10_000).then(() => "timeout")]);
+        abort.abort();
+        return { outcome, repriced, first };
+      } finally {
+        await rpc("evm_setAutomine", [true]);
+      }
+    }
+
+    test("a speed-up (the same call at a higher fee) is followed under its new hash", async () => {
+      const { outcome, repriced, first } = await watchReplaced(() => ({ to: TARGET, data: "0x1234" }));
+      expect(repriced).toHaveLength(1);
+      expect(repriced[0]).not.toBe(first);
+      expect(outcome).toMatchObject({ kind: "receipt", hash: repriced[0], status: "success" });
+    }, 30_000);
+
+    test("a cancel (to self, no value) ends the watch as canceled", async () => {
+      const { outcome, repriced } = await watchReplaced(() => ({ to: BOB, data: "0x" }));
+      expect(repriced).toEqual([]);
+      expect(outcome).toMatchObject({ kind: "replaced", reason: "cancelled" });
+    }, 30_000);
+  });
 });
