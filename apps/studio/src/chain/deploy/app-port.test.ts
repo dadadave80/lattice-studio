@@ -23,7 +23,7 @@ describe("the wallet over the connected EIP-1193 provider", () => {
     const w = wallet(() => `0x${"AB".repeat(32)}`);
     const out = await providerWallet(async () => w.provider).send(11155111, { from: FROM, tx: TX, gas: 21_000n });
     expect(out).toEqual({ kind: "sent", value: `0x${"ab".repeat(32)}` });
-    expect(w.calls[0]).toEqual({ method: "eth_sendTransaction", params: [{ from: FROM, to: TX.to, data: "0x1234", value: "0x0", gas: "0x5208" }] });
+    expect(w.calls[0]).toEqual({ method: "eth_sendTransaction", params: [{ from: FROM, chainId: "0xaa36a7", to: TX.to, data: "0x1234", value: "0x0", gas: "0x5208" }] });
   });
 
   test("a 4001 is a rejection; anything else is its message; no wallet says to connect one", async () => {

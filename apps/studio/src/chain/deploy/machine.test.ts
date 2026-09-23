@@ -6,11 +6,11 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { Address, Catalog, Deployment, Hex, Project } from "@lattice-studio/core";
-import { multicallGas } from "@lattice-studio/core";
+import { loadTemplate, multicallGas, recipeHash } from "@lattice-studio/core";
 import { encodeErrorResult, parseAbi } from "viem";
 import { filledTemplate, loadBuiltCatalog, makeProject } from "@lattice-studio/core/testing";
 import { CANCELED_IN_WALLET, DEPLOY_BANNER_ID, MISMATCH, notSeenFor, OFFLINE_TRACKING } from "./copy";
-import { releaseOf } from "./judge";
+import { releaseOf, templatePlan } from "./judge";
 import { createDeployMachine, type DeployMachine } from "./machine";
 import { ALICE, BOB, deployHarness, flush, loupeOf, SEPOLIA_ID, type DeployHarness } from "./testing";
 
@@ -138,8 +138,10 @@ describe("review and simulation", () => {
     h.inputs.setProject({ ...p, deploy: { ...p.deploy, entropy: "0x0b0a090807060504030201" as Hex } });
     m.changed();
     m.changed();
+    // "Changed since review. Simulating again." while it simulates; cleared once the new result is in (spec L562).
+    expect(m.state()).toMatchObject({ phase: "simulating", changedSinceReview: true });
     await flush();
-    expect(m.state().changedSinceReview).toBe(true);
+    expect(m.state().changedSinceReview).toBeUndefined();
     expect(m.state().phase).toBe("ready");
     expect(h.port.methods().filter((x) => x === "simulate").length).toBe(before + 1);
   });
@@ -150,8 +152,46 @@ describe("review and simulation", () => {
     await flush();
     h.port.setAccount({ address: BOB, chainId: SEPOLIA_ID });
     h.inputs.touch();
+    expect(m.state()).toMatchObject({ phase: "simulating", changedSinceReview: true, from: BOB });
     await flush();
-    expect(m.state()).toMatchObject({ phase: "ready", changedSinceReview: true, from: BOB });
+    expect(m.state()).toMatchObject({ phase: "ready", from: BOB });
+    expect(m.state().changedSinceReview).toBeUndefined();
+  });
+
+  test("a failed simulation also clears Changed since review", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    h.port.down = true;
+    h.port.setAccount({ address: BOB, chainId: SEPOLIA_ID });
+    h.inputs.touch();
+    await flush();
+    expect(m.state()).toMatchObject({ phase: "review", error: "Sepolia's public RPC isn't answering." });
+    expect(m.state().changedSinceReview).toBeUndefined();
+  });
+
+  test("an RPC that can't simulate at all says so; signing then needs withoutSimulation, and goes out", async () => {
+    const { h, m } = rig();
+    h.port.simulation = { kind: "unavailable", message: "eth_call is not allowed." };
+    m.open();
+    await flush();
+    expect(m.state()).toMatchObject({ phase: "review", error: "Sepolia's RPC can't simulate this deploy. Signing without a simulation needs one more tick.", simulation: { ok: false, unavailable: true } });
+    await m.sign();
+    expect(h.port.methods()).not.toContain("send");
+    await m.sign({ withoutSimulation: true });
+    await flush();
+    expect(m.state().phase).toBe("pending");
+    expect(h.port.sent).toHaveLength(1);
+  });
+
+  test("withoutSimulation is refused when the simulation simply failed", async () => {
+    const { h, m } = rig();
+    h.port.down = true;
+    m.open();
+    await flush();
+    await m.sign({ withoutSimulation: true });
+    expect(h.port.methods()).not.toContain("send");
+    expect(h.said.texts().at(-1)).toBe("Signing without a simulation is only for an RPC that can't simulate.");
   });
 
   test("close before signing goes back to idle and stops caring about the simulation", async () => {
@@ -462,13 +502,63 @@ describe("resume, proposals and From file records", () => {
     expect(h.records.get(SEPOLIA_ID, predicted(h))?.status).toBe("mismatch");
   });
 
-  test("a From file record of another recipe is checked against the catalog's releases", async () => {
+  test("a From file record of a recipe Studio can't rebuild is never confirmed: it stays From file, unchecked", async () => {
     const { h, m } = rig();
     h.records.seed([record(h, { status: "confirmed", fromFile: true, recipeHash: `0x${"99".repeat(32)}` })]);
+    // Any diamond made of genuine catalog releases: a file mustn't pass it off as this recipe's.
     h.port.setFacets(predicted(h), loupeOf(h.inputs.analysis().plan));
     await m.refresh();
     await flush();
-    expect(h.records.get(SEPOLIA_ID, predicted(h))?.status).toBe("confirmed");
+    expect(h.records.get(SEPOLIA_ID, predicted(h))?.fromFile).toBe(true);
+    expect(h.port.methods()).not.toContain("readFacets");
+    expect(h.said.texts().at(-1)).toMatch(/^Couldn't check 0x.{4}….{4} on Sepolia: its record is for another recipe than this sheet\. It stays From file\.$/);
+    // Focus again: said once.
+    await m.refresh();
+    await flush();
+    expect(h.said.texts().filter((t) => t.startsWith("Couldn't check"))).toHaveLength(1);
+  });
+
+  test("a From file record of a Studio recipe (another than the sheet) is checked against that recipe's plan", async () => {
+    const { h, m } = rig({ project: project("GovernedVault") });
+    const erc20 = loadTemplate(catalog, "ERC20");
+    if (!erc20.ok) throw new Error(erc20.error);
+    const hash = recipeHash(erc20.value, catalog);
+    const plan = templatePlan(catalog, hash);
+    if (!plan) throw new Error("no template plan");
+    h.records.seed([record(h, { status: "confirmed", fromFile: true, recipeHash: hash })]);
+    h.port.setFacets(predicted(h), loupeOf(plan));
+    await m.refresh();
+    await flush();
+    const after = h.records.get(SEPOLIA_ID, predicted(h));
+    expect(after?.status).toBe("confirmed");
+    expect(after?.fromFile).toBeUndefined();
+  });
+
+  test("re-reading several From file records probes each chain once", async () => {
+    const { h, m } = rig();
+    const plan = h.inputs.analysis().plan;
+    const others = ["0x1111111111111111111111111111111111111111", "0x2222222222222222222222222222222222222222"] as Address[];
+    h.records.seed([record(h, { status: "confirmed", fromFile: true }), ...others.map((address) => record(h, { address, status: "confirmed", fromFile: true }))]);
+    for (const address of [predicted(h), ...others]) h.port.setFacets(address, loupeOf(plan));
+    await m.refresh();
+    await flush();
+    expect(h.port.methods().filter((x) => x === "probe")).toHaveLength(1);
+    expect(h.port.methods().filter((x) => x === "readFacets")).toHaveLength(3);
+    expect(h.records.all().every((d) => d.status === "confirmed" && d.fromFile === undefined)).toBe(true);
+  });
+
+  test("a write keeps a verification result another tab (S8d) already stored", async () => {
+    const r = rig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    const address = predicted(h);
+    const stored = h.records.get(SEPOLIA_ID, address) as Deployment;
+    h.records.seed([{ ...stored, verification: "exact_match" }]);
+    h.port.setFacets(address, loupeOf(h.inputs.analysis().plan));
+    h.port.mine(hash, { kind: "receipt", hash, status: "success", block: 12 });
+    await flush();
+    expect(h.records.get(SEPOLIA_ID, address)).toMatchObject({ status: "confirmed", verification: "exact_match" });
+    expect(m.state().phase).toBe("live");
   });
 
   test("a From file record at an address with no diamond stays From file and says it couldn't read it", async () => {
@@ -508,7 +598,7 @@ describe("resume, proposals and From file records", () => {
     expect(m.state()).toMatchObject({ phase: "proposed", safe });
     m.discardProposal();
     await flush();
-    expect(h.records.get(SEPOLIA_ID, predicted(h))?.status).toBe("failed");
+    expect(h.records.get(SEPOLIA_ID, predicted(h))).toBeUndefined();
     expect(["review", "ready"]).toContain(m.state().phase);
     expect(h.said.texts()).toContain("Discarded the proposal to Safe 0x71C7…976F on Sepolia.");
   });
@@ -544,6 +634,135 @@ describe("resume, proposals and From file records", () => {
     await m.sign();
     expect(m.state().simulation).toBeUndefined();
     expect(h.port.methods()).not.toContain("send");
+  });
+});
+
+describe("safety and resilience", () => {
+  test("the wallet moving to another chain after the first check: nothing is sent, and it says where the wallet is", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    const probe = h.port.probe;
+    h.port.probe = async (chainId, options) => {
+      h.port.setAccount({ address: ALICE, chainId: 84532 });
+      return probe(chainId, options);
+    };
+    await m.sign();
+    expect(h.port.methods()).not.toContain("send");
+    expect(m.state()).toMatchObject({ phase: "review", error: "Your wallet is on Base Sepolia." });
+    // The simulation still stands: switch back and Sign again goes out.
+    h.port.probe = probe;
+    h.port.setAccount({ address: ALICE, chainId: SEPOLIA_ID });
+    await m.sign();
+    await flush();
+    expect(m.state().phase).toBe("pending");
+  });
+
+  test("the pre-send probe reads the predicted address itself", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    await m.sign();
+    const refreshed = h.port.calls.filter((c) => c.method === "probe" && (c.args[1] as { refresh?: boolean } | undefined)?.refresh === true);
+    expect((refreshed[0]?.args[1] as { codeAt?: Address[] } | undefined)?.codeAt).toEqual([predicted(h)]);
+  });
+
+  test("a read-only tab doesn't sign or deploy missing contracts, and says why; tracking goes on", async () => {
+    const r = rig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    h.inputs.setReadOnly("Another tab is editing this project.");
+    expect(h.port.watching()).toContain(hash);
+    const address = predicted(h);
+    h.port.setFacets(address, loupeOf(h.inputs.analysis().plan));
+    h.port.mine(hash, { kind: "receipt", hash, status: "success", block: 3 });
+    await flush();
+    expect(h.records.get(SEPOLIA_ID, address)?.status).toBe("confirmed");
+    m.open();
+    await flush();
+    await m.sign();
+    expect(h.said.texts().at(-1)).toBe("Another tab is editing this project.");
+    expect(h.port.sent).toHaveLength(1);
+    await m.deployMissing(["ERC20"]);
+    expect(m.missingStep().error).toBe("Another tab is editing this project.");
+  });
+
+  test("Review again on a transaction the node dropped records it as failed, keeping its hash", async () => {
+    const r = rig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    h.clock.advance(180_000);
+    h.port.txStatus = "unknown";
+    m.reviewAgain();
+    await flush();
+    expect(h.records.get(SEPOLIA_ID, predicted(h))).toMatchObject({ status: "failed", tx: hash });
+    expect(h.said.texts()).toContain(`Sepolia no longer knows ${hash.slice(0, 6)}…${hash.slice(-4)} and nothing landed: it was dropped. Recorded as failed.`);
+    // No reload resumes it.
+    const reloaded = createDeployMachine(h.deps);
+    await reloaded.refresh();
+    expect(reloaded.state().phase).toBe("idle");
+    // If it lands after all, Sign shows that diamond instead of sending a second.
+    expect(["review", "ready"]).toContain(m.state().phase);
+    h.port.setCode(predicted(h), "0x6000");
+    h.port.setFacets(predicted(h), loupeOf(h.inputs.analysis().plan));
+    await m.sign();
+    await flush();
+    expect(h.port.sent).toHaveLength(1);
+    expect(m.state().phase).toBe("verifying");
+    reloaded.dispose();
+  });
+
+  test("a cancel is recorded against the deploy's own hash", async () => {
+    const r = rig();
+    const hash = await submit(r);
+    r.h.port.mine(hash, { kind: "replaced", reason: "cancelled", hash: `0x${"cd".repeat(32)}` });
+    await flush();
+    expect(r.h.records.get(SEPOLIA_ID, predicted(r.h))).toMatchObject({ status: "failed", tx: hash });
+  });
+
+  test("while verification runs, Deploy again opens a new review and close goes back to idle", async () => {
+    const r = rig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    h.port.setFacets(predicted(h), loupeOf(h.inputs.analysis().plan));
+    h.port.mine(hash, { kind: "receipt", hash, status: "success", block: 3 });
+    await flush();
+    expect(m.state().phase).toBe("verifying");
+    m.close();
+    expect(m.state().phase).toBe("idle");
+    m.open();
+    await flush();
+    expect(m.state().phase).toBe("ready");
+  });
+
+  test("a proposal while a transaction is pending is refused and tracking goes on", async () => {
+    const r = rig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    m.proposed({ safe: BOB, chainId: SEPOLIA_ID, address: predicted(h), salt: `0x${"00".repeat(32)}` });
+    expect(m.state()).toMatchObject({ phase: "pending", tx: hash });
+    expect(h.port.watching()).toContain(hash);
+    expect(h.said.texts().at(-1)).toBe("A deploy is already in flight. Show deploy progress to follow it.");
+  });
+
+  test("another project opened during the wallet prompt: the record is saved, this review doesn't track it", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    let answer: () => void = () => {};
+    h.port.hold = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    const signing = m.sign();
+    await flush();
+    expect(m.state().phase).toBe("awaitingSignature");
+    h.inputs.setProject(project("ERC20", { id: "p2" }));
+    answer();
+    await signing;
+    await flush();
+    expect(h.records.all().find((d) => d.projectId === "p1")?.status).toBe("pending");
+    expect(m.state().phase).not.toBe("pending");
+    expect(h.port.watching()).toEqual([]);
   });
 });
 
@@ -658,5 +877,79 @@ describe("missing contracts", () => {
     h.port.sendQueue.push({ kind: "rejected" });
     await m.deployMissing(names);
     expect(m.missingStep()).toMatchObject({ running: false, error: CANCELED_IN_WALLET });
+  });
+
+  test("a send never seen within the receipt timeout fails its contracts and frees the step; a second run proceeds", async () => {
+    const { h, m, names } = missingRig();
+    h.port.patch(SEPOLIA_ID, { multicall3: { present: false } });
+    h.port.autoMine = false;
+    const running = m.deployMissing(names);
+    await flush();
+    expect(m.missingStep().running).toBe(true);
+    expect(h.port.watching()).toHaveLength(1);
+    h.clock.advance(180_000);
+    await running;
+    const step = m.missingStep();
+    expect(step.running).toBe(false);
+    expect(step.error).toBe("Not seen for 3 minutes. It may have been dropped.");
+    expect(step.items.find((i) => i.name === names[0])).toMatchObject({ status: "failed", reason: "Not seen for 3 minutes. It may have been dropped." });
+    expect(h.port.watching()).toEqual([]);
+    expect(h.said.texts().at(-1)).toBe("Not seen for 3 minutes. It may have been dropped.");
+    h.port.autoMine = true;
+    await m.deployMissing(names);
+    expect(m.missingStep().items.map((i) => i.status)).toEqual(["deployed", "deployed", "deployed"]);
+  });
+
+  test("a stuck EIP-5792 batch times out the same way", async () => {
+    const { h, m, names } = missingRig();
+    h.port.patch(SEPOLIA_ID, { multicall3: { present: false } });
+    h.port.atomic = true;
+    h.port.autoMine = false;
+    const running = m.deployMissing(names);
+    await flush();
+    h.clock.advance(180_000);
+    await running;
+    expect(m.missingStep()).toMatchObject({ running: false, error: "Not seen for 3 minutes. It may have been dropped." });
+  });
+
+  test("dispose or another project stops the step: nothing reads as running", async () => {
+    for (const how of ["dispose", "project"] as const) {
+      const { h, m, names } = missingRig();
+      h.port.patch(SEPOLIA_ID, { multicall3: { present: false } });
+      h.port.autoMine = false;
+      const running = m.deployMissing(names);
+      await flush();
+      if (how === "dispose") m.dispose();
+      else h.inputs.setProject(project("ERC20", { id: "p2" }));
+      await running;
+      expect(m.missingStep().running).toBe(false);
+      expect(h.port.watching()).toEqual([]);
+    }
+  });
+
+  test("a canceled send says so rather than suggesting a retry", async () => {
+    const { h, m, names } = missingRig();
+    h.port.patch(SEPOLIA_ID, { multicall3: { present: false } });
+    h.port.autoMine = false;
+    const running = m.deployMissing(names);
+    await flush();
+    const [hash] = h.port.watching();
+    if (!hash) throw new Error("nothing sent");
+    h.port.mine(hash, { kind: "replaced", reason: "cancelled", hash: `0x${"cd".repeat(32)}` });
+    await running;
+    expect(m.missingStep().items.find((i) => i.name === names[0])).toMatchObject({ status: "failed", reason: "The transaction was canceled in your wallet." });
+  });
+
+  test("the wallet moving to another chain between sends stops before the next one", async () => {
+    const { h, m, names } = missingRig();
+    h.port.patch(SEPOLIA_ID, { multicall3: { present: false } });
+    const mined = h.port.onMined;
+    h.port.onMined = (tx, hash) => {
+      mined?.(tx, hash);
+      h.port.setAccount({ address: ALICE, chainId: 84532 });
+    };
+    await m.deployMissing(names);
+    expect(h.port.sent).toHaveLength(1);
+    expect(m.missingStep()).toMatchObject({ running: false, error: "Your wallet is on Base Sepolia." });
   });
 });

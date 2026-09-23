@@ -1,6 +1,6 @@
 import { formatAddress, formatGas, plural } from "@lattice-studio/core";
 import { useEffect, useId, useSyncExternalStore } from "react";
-import { closeDialog, deployController, type DialogComponentProps } from "@/contracts";
+import { closeDialog, deployController, useSession, type DialogComponentProps } from "@/contracts";
 import { Button, Dialog } from "@/ui";
 import { MISSING_DESCRIPTION, MISSING_TITLE } from "./copy";
 import { appDeployMachine } from "./controller";
@@ -33,6 +33,8 @@ function summary(step: MissingStep): string {
 export function MissingContractsDialog({ entry, top }: DialogComponentProps<"missing-contracts">) {
   const machine = appDeployMachine();
   const step = useSyncExternalStore(machine.subscribeMissing, machine.missingStep);
+  // The second tab is read-only (spec L503): it can watch the step, not send.
+  const readOnly = useSession((s) => s.readOnly);
   const { chainId } = entry.props;
   const names = entry.props.names ?? [];
   const namesKey = names.join(",");
@@ -48,7 +50,9 @@ export function MissingContractsDialog({ entry, top }: DialogComponentProps<"mis
 
   const busy = step.running || step.preparing;
   const toDeploy = step.items.filter((item) => item.status === "missing" || item.status === "failed").map((item) => item.name);
-  const primaryReason = step.running
+  const primaryReason = readOnly !== null
+    ? readOnly
+    : step.running
     ? "Deploying…"
     : step.preparing
       ? "Reading the chain…"
@@ -109,7 +113,7 @@ export function MissingContractsDialog({ entry, top }: DialogComponentProps<"mis
               <span className={styles.retry}>
                 <Button
                   size="small"
-                  disabledReason={step.running ? "Deploying…" : null}
+                  disabledReason={readOnly ?? (step.running ? "Deploying…" : null)}
                   aria-label={`Retry ${item.name}`}
                   onClick={() => void machine.deployMissing([item.name])}
                 >

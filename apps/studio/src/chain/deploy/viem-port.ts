@@ -161,7 +161,11 @@ export function createViemPort(options: ViemPortOptions): DeployChainPort {
       } catch (error) {
         const data = revertData(error);
         if (data !== null) return { kind: "reverted", block: 0, data, method: simulateV1 ? "simulate" : "call" };
-        return { kind: "error", message: error instanceof BaseError && error.walk((e) => named(e, "HttpRequestError") || named(e, "TimeoutError")) ? unreachable(chainId) : reason(error) };
+        const down = !(error instanceof BaseError) || error.walk((e) => named(e, "HttpRequestError") || named(e, "TimeoutError")) !== null;
+        if (down) return { kind: "error", message: unreachable(chainId) };
+        // It answered, but refused both eth_simulateV1 (the probe) and eth_call or eth_estimateGas: it can't simulate.
+        if (!simulateV1) return { kind: "unavailable", message: reason(error) };
+        return { kind: "error", message: reason(error) };
       }
     },
 

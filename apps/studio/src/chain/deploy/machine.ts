@@ -6,21 +6,26 @@
  * - **Review → Simulating → Ready.** `open()` snapshots the recipe hash and simulates by itself once the chain, the
  *   account and the inputs are known and nothing blocks. Any edit, account or chain change while the review is open
  *   marks it "Changed since review" and simulates again (the machine watches its inputs; `changed()` does the same).
- * - **Sign.** Re-probes the chain first (the predicted address must still be empty), rebuilds the transaction,
- *   asserts that the salt's first 20 bytes are the sending account, then asks the wallet. Rejected → Review with
- *   "You canceled in your wallet."; sent → Pending, with a record written at once.
+ *   An RPC that can't simulate at all says so; `sign({ withoutSimulation })` then goes on after the review's extra tick.
+ * - **Sign.** Refused while the tab is read-only. Re-probes the chain first (the predicted address must still be
+ *   empty), rebuilds the transaction, asserts that the salt's first 20 bytes are the sending account, re-reads the
+ *   wallet's account and chain, then asks the wallet (bound to the chain). Rejected → Review with "You canceled in
+ *   your wallet."; sent → Pending, with a record written at once.
  * - **Pending → Stale → …** The machine owns the receipt timeout (Settings, 180 s): no receipt by then reads
  *   "Not seen for 3 minutes. It may have been dropped." while the watcher keeps going, so a late receipt is still
- *   recorded. A sped-up transaction is followed under its new hash; a canceled or replaced one fails.
+ *   recorded. A sped-up transaction is followed under its new hash; a canceled or replaced one fails. Review again
+ *   records a transaction the node no longer knows as failed.
  * - **Confirmed → Verifying | Mismatch.** Reads `facets()` at the address (re-probing first: predicted-address code
  *   is cached) and compares it with the plan per facet as sets, codehashes included. A repeat (sender, salt) at
  *   LatticeFactory returns the older diamond without an event, so the comparison is what catches it.
- * - **Verifying → Live** once the record's `verification` leaves "pending" (S8d writes it).
+ * - **Verifying → Live** once the record's `verification` leaves "pending" (S8d writes it). Deploy again and close
+ *   don't wait for it.
  * - **Proposed.** A Safe batch was downloaded: the record waits until code appears at the address.
  * - **Resume.** `refresh()` (project open, window focus, back online) re-reads the records: it resumes tracking a
- *   pending transaction or a proposal, and re-reads From file records and proposals on-chain.
+ *   pending transaction or a proposal, and re-reads From file records and proposals on-chain, one probe per chain.
  *
- * Deployment records are written at every transition, outside the document (and its edit lock).
+ * Deployment records are written at every transition, outside the document (and its edit lock); a write never
+ * takes a record's verification back to "pending".
  */
 import type {
   Address, Analysis, Catalog, ChainState, Deployment, DeployPath, FacetDetail, Hex, LineDraft, LoupeFacet, PlanEntry, Recipe,
@@ -32,12 +37,13 @@ import {
 } from "@lattice-studio/core";
 import type { DeployController, DeployPhase, DeployState } from "@/contracts";
 import {
-  addressTaken, CANCELED_IN_WALLET, CANCELED_TRANSACTION, checkWalletText, CONNECT_A_WALLET, couldntReadRecord,
-  DEPLOY_BANNER_ID, DEPLOY_NEEDS_CONNECTION, DEPLOYING_BANNER, discardedProposal, groupDigits, truncateHex6, fileRecordConfirmed, fileRecordMismatch,
-  landedAfterAll, MISMATCH, missingDone, missingReverts, missingWouldDeploy, notSeenFor, NOTHING_MISSING, OFFLINE_TRACKING,
-  proposalExecuted, recordNotSaved, REPLACED_TRANSACTION, SIMULATE_FIRST, simulatedWithCall, simulationSummary, spedUp, walletOn,
+  ACCOUNT_CHANGED, addressTaken, ALREADY_IN_FLIGHT, CANCELED_IN_WALLET, CANCELED_TRANSACTION, cantSimulate, checkWalletText, CONNECT_A_WALLET,
+  couldntReadRecord, DEPLOY_BANNER_ID, DEPLOY_NEEDS_CONNECTION, DEPLOYING_BANNER, discardedProposal, droppedRecorded,
+  fileRecordConfirmed, fileRecordMismatch, fileRecordUnchecked, groupDigits, landedAfterAll, MISMATCH, missingDone,
+  missingReverts, missingWouldDeploy, notSeenFor, NOTHING_MISSING, OFFLINE_TRACKING, proposalExecuted, recordNotSaved,
+  REPLACED_TRANSACTION, SIMULATE_FIRST, simulatedWithCall, simulationSummary, spedUp, truncateHex6, walletOn,
 } from "./copy";
-import { judgeDiamond, releaseOf, withDependencies } from "./judge";
+import { judgeDiamond, releaseOf, templatePlan, withDependencies } from "./judge";
 import type { DeployChainPort, DeployDeps } from "./ports";
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -79,8 +85,8 @@ export type DeployMachine = DeployController & {
   dispose(): void;
 };
 
-/** What a deploy is compared against: its exact plan when this session built it, else what the record allows. */
-type PlanSource = { plan: readonly PlanEntry[] } | null;
+/** What this session built for a deploy: its exact plan and the facets on the sheet then. Null: only the record. */
+type PlanSource = { plan: readonly PlanEntry[]; placed: readonly string[] } | null;
 
 type Snapshot = {
   /** Everything a simulation depends on: a change means simulate again. */
@@ -108,10 +114,12 @@ type Level = "info" | "warn" | "alert";
 const IDLE: DeployState = Object.freeze({ phase: "idle" });
 const ZERO: Address = "0x0000000000000000000000000000000000000000";
 const REVIEWING: readonly DeployPhase[] = ["review", "simulating", "ready"];
-/** Phases that carry a deploy the dialog can close on without stopping it. */
-const IN_FLIGHT: readonly DeployPhase[] = ["awaitingSignature", "pending", "stale", "proposed", "confirmed", "verifying"];
+/** A transaction or a proposal on its way: the review can't start another, and closing it leaves tracking on. */
+const TRACKING: readonly DeployPhase[] = ["awaitingSignature", "pending", "stale", "proposed"];
 /** Tries of `facets()` after a receipt: a load-balanced RPC can answer from a node a block behind. */
 const FACET_READS = [0, 1_000, 3_000] as const;
+/** A missing-contract send stopped because the step was (dispose, another project). */
+const STOPPED = "stopped";
 
 type StateChanges = { [K in keyof DeployState]?: DeployState[K] | undefined };
 
@@ -136,6 +144,12 @@ function blockers(analysis: Analysis): number {
   return analysis.problems.filter((p) => p.severity === "blocker").length;
 }
 
+/** Whether the chain probe found code at `address` (asked for with `codeAt`), else its predicted-address answer. */
+function hasCode(chain: ChainState, address: Address): boolean {
+  const code = chain.codeAt[address.toLowerCase()];
+  return code === undefined ? chain.predictedHasCode === true : code !== "0x";
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 
 export function createDeployMachine(deps: DeployDeps): DeployMachine {
@@ -143,15 +157,20 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
 
   let state: DeployState = IDLE;
   const listeners = new Set<(s: DeployState) => void>();
-  let missing: MissingStep = { chainId: null, preparing: false, running: false, items: [] };
+  const EMPTY_STEP: MissingStep = { chainId: null, preparing: false, running: false, items: [] };
+  let missing: MissingStep = EMPTY_STEP;
   const missingListeners = new Set<(s: MissingStep) => void>();
 
   /** Bumped whenever the review's own work (simulation, sign) should stop mattering. */
   let epoch = 0;
   let missingEpoch = 0;
+  /** Aborts the missing-contracts step's current send (dispose, another project). */
+  let missingAbort: AbortController | null = null;
   let tracker: Tracker | null = null;
   /** The key the last successful simulation ran with: Sign needs the current inputs to match it. */
   let simulatedKey: string | null = null;
+  /** The key the last "can't simulate" answer came with: Sign without a simulation needs the inputs to match it. */
+  let unavailableKey: string | null = null;
   /** The key the review last saw, so `changed()` from several callers simulates once. */
   let seenKey: string | null = null;
   /** The plan of what's in flight, when this session built it (`proposed`, sign). */
@@ -196,6 +215,21 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     });
   };
 
+  /** Stops the missing-contracts step where it is: its send is aborted, nothing reads as pending or running. */
+  const stopMissing = (): void => {
+    missingEpoch += 1;
+    missingAbort?.abort();
+    missingAbort = null;
+    if (missing.running || missing.preparing) {
+      setMissing({
+        ...missing,
+        preparing: false,
+        running: false,
+        items: missing.items.map((item) => (item.status === "pending" ? { ...item, status: "missing" as const } : item)),
+      });
+    }
+  };
+
   const track = <T>(promise: Promise<T>): Promise<T> => {
     work.add(promise);
     void promise.finally(() => work.delete(promise)).catch(() => {});
@@ -226,14 +260,32 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     records = [record, ...records.filter((d) => recordKey(d) !== recordKey(record))];
   };
 
-  /** Writes a record; a refusal (storage full, a newer Studio) is said aloud and tracking goes on in memory. */
-  const save = async (record: Deployment): Promise<void> => {
-    remember(record);
+  const forget = (record: Deployment): void => {
+    records = records.filter((d) => recordKey(d) !== recordKey(record));
+  };
+
+  /**
+   * Writes a record and returns what was written. A stored verification result (S8d, maybe from another tab) is
+   * kept: the store replaces whole records, and this machine only ever knows "pending". A refusal (storage full, a
+   * newer Studio) is said aloud and tracking goes on in memory.
+   */
+  const save = async (record: Deployment): Promise<Deployment> => {
+    let next = record;
+    if (record.verification === "pending") {
+      try {
+        const stored = (await deps.records.list(record.projectId)).find((d) => recordKey(d) === recordKey(record));
+        if (stored && stored.verification !== "pending") next = { ...record, verification: stored.verification };
+      } catch {
+        // Can't read the store: write what we have.
+      }
+    }
+    remember(next);
     try {
-      await deps.records.put(record);
+      await deps.records.put(next);
     } catch (error) {
       emit({ tag: "Error", text: recordNotSaved(sentence(message(error))) }, "alert");
     }
+    return next;
   };
 
   const loadPort = async (): Promise<Result<DeployChainPort, string>> => {
@@ -365,44 +417,42 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const alive = (): boolean => mine === epoch && !disposed;
     seenKey = inputKey();
     simulatedKey = null;
+    unavailableKey = null;
     const snap = snapshotOf();
     if (!snap.ok) {
-      patch({ phase: "review", error: snap.error, simulation: undefined });
+      patch({ phase: "review", error: snap.error, simulation: undefined, changedSinceReview: undefined });
       return;
     }
     if (!inputs.online()) {
-      patch({ phase: "review", error: DEPLOY_NEEDS_CONNECTION, simulation: undefined });
+      patch({ phase: "review", error: DEPLOY_NEEDS_CONNECTION, simulation: undefined, changedSinceReview: undefined });
       return;
     }
     // Blockers first: a simulation of a recipe that can't deploy would only repeat them as a revert.
     if (blockers(inputs.analysis()) > 0) {
-      patch({ phase: "review", error: undefined, simulation: undefined, snapshot: snap.value.recipeHash });
+      patch({ phase: "review", error: undefined, simulation: undefined, snapshot: snap.value.recipeHash, changedSinceReview: undefined });
       return;
     }
     const s = snap.value;
     patch({ phase: "simulating", snapshot: s.recipeHash, chainId: s.chainId, address: s.address, from: s.from, error: undefined, simulation: undefined });
+    const done = (changes: StateChanges): void => patch({ ...changes, changedSinceReview: undefined });
     const port = await loadPort();
     if (!alive()) return;
-    if (!port.ok) {
-      patch({ phase: "review", error: port.error });
-      return;
-    }
+    if (!port.ok) return done({ phase: "review", error: port.error });
     const probed = await port.value.probe(s.chainId, { path: s.path });
     if (!alive()) return;
-    if (!probed.ok) {
-      patch({ phase: "review", error: probed.error });
-      return;
-    }
+    if (!probed.ok) return done({ phase: "review", error: probed.error });
     const built = await buildTx(s, probed.value);
     if (!alive()) return;
-    if (!built.ok) {
-      patch({ phase: "review", error: built.error });
-      return;
-    }
+    if (!built.ok) return done({ phase: "review", error: built.error });
     const outcome = await port.value.simulate(s.chainId, { from: s.from, tx: built.value.tx, simulateV1: probed.value.simulate });
     if (!alive()) return;
-    if (outcome.kind === "error") {
-      patch({ phase: "review", error: outcome.message });
+    if (outcome.kind === "error") return done({ phase: "review", error: outcome.message });
+    if (outcome.kind === "unavailable") {
+      // Spec L575: say so; the review asks for one extra tick and then signs without a simulation.
+      unavailableKey = s.key;
+      const text = cantSimulate(s.chain);
+      done({ phase: "review", error: text, simulation: { ok: false, unavailable: true } });
+      note(text, "warn");
       return;
     }
     const block = groupDigits(outcome.block);
@@ -413,14 +463,14 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       const summary = simulationSummary({
         block, address: s.address, facets: s.plan.length, selectors, ...(outcome.events === undefined ? {} : { events: outcome.events }),
       });
-      patch({ phase: "ready", simulation: { ok: true, block: outcome.block, summary } });
+      done({ phase: "ready", simulation: { ok: true, block: outcome.block, summary } });
       emit(outcome.events === undefined ? { tag: "Deploy", text: simulatedWithCall(block) } : lines.simulated({ block: outcome.block, events: outcome.events }));
       return;
     }
     port.value.noteEstimate(s.chainId, null);
     const line = await revertLine(outcome.data, s.catalog, { placed: s.placed, path: s.path, init: s.init.data });
     if (!alive()) return;
-    patch({ phase: "review", simulation: { ok: false, block: outcome.block, revert: line.text } });
+    done({ phase: "review", simulation: { ok: false, block: outcome.block, revert: line.text } });
     emit(line, "alert");
   };
 
@@ -445,11 +495,15 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     }, seconds * 1000);
   };
 
-  /** The plan a landed diamond is judged against (see `PlanSource`): the session's own, else the sheet's when it's the same recipe. */
-  const planFor = (record: Deployment, source: PlanSource): readonly PlanEntry[] | null => {
+  /**
+   * The plan a landed diamond is judged against: the session's own; else the sheet's when the record is for the same
+   * recipe; else a Studio recipe with the record's hash. Null when none of these is the record's recipe.
+   */
+  const planFor = (record: Deployment, source: PlanSource, catalog: Catalog): readonly PlanEntry[] | null => {
     if (source) return source.plan;
     const analysis = inputs.analysis();
-    return analysis.recipeHash.toLowerCase() === record.recipeHash.toLowerCase() ? analysis.plan : null;
+    if (analysis.recipeHash.toLowerCase() === record.recipeHash.toLowerCase()) return analysis.plan;
+    return templatePlan(catalog, record.recipeHash);
   };
 
   /** Reads `facets()` a few times: a load-balanced RPC can answer from a node a block behind the receipt. */
@@ -466,43 +520,61 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     return last;
   };
 
+  /** Once per record and reason, so a window regaining focus doesn't repeat itself. */
+  const reportOnce = (record: Deployment, text: string): void => {
+    const key = `${recordKey(record)}|${text}`;
+    if (reported.has(key)) return;
+    reported.add(key);
+    note(text, "warn");
+  };
+
   /**
-   * The diamond landed (a receipt, Review again finding it, a proposal executed): read `facets()`, compare, record
-   * Confirmed or Mismatch. `drive` moves the phase; a background re-check only writes the record and says so.
+   * The diamond landed (a receipt, Review again finding it, a proposal executed), or a record is re-read: read
+   * `facets()`, compare, record Confirmed or Mismatch. The record is always written; `drive` also moves the phase
+   * while the review still shows this deploy. `probed` is a fresh probe of the record's chain, when the caller has one.
    */
-  const settle = async (record: Deployment, source: PlanSource, drive: boolean, block?: number): Promise<void> => {
-    const alive = (): boolean => !disposed && (!drive || (state.address !== undefined && sameAddress(state.address, record.address)));
+  const settle = async (record: Deployment, source: PlanSource, drive: boolean, block?: number, probed?: ChainState): Promise<void> => {
+    const alive = (): boolean => !disposed;
+    const driving = (): boolean => drive && !disposed && state.chainId === record.chainId
+      && state.address !== undefined && sameAddress(state.address, record.address);
     const catalog = inputs.catalog();
     const port = await loadPort();
     if (!port.ok || !catalog) {
-      if (drive) patch({ phase: "confirmed", error: port.ok ? "The catalog hasn't loaded." : port.error });
+      if (driving()) patch({ phase: "confirmed", error: port.ok ? "The catalog hasn't loaded." : port.error });
       return;
     }
     const chain = chainName(record.chainId);
-    if (drive) {
+    if (driving()) {
       banner(false);
       patch({ phase: "confirmed", chainId: record.chainId, address: record.address, error: undefined });
     }
-    const probed = await port.value.probe(record.chainId, { refresh: true, path: record.path });
-    const facets = await readFacets(port.value, record.chainId, record.address, alive, drive);
-    if (!alive()) return;
-    if (!facets.ok || !probed.ok) {
-      const reason = !facets.ok ? facets.error : probed.ok ? "" : probed.error;
-      if (drive) patch({ error: reason || couldntReadRecord(chain) });
-      if (!drive && !reported.has(`${recordKey(record)}|${reason}`)) {
-        reported.add(`${recordKey(record)}|${reason}`);
-        note(`${couldntReadRecord(chain)} ${reason}`.trim(), "warn");
-      }
+    const plan = planFor(record, source, catalog);
+    if (plan === null && record.fromFile === true) {
+      // A file can't vouch for itself: without its recipe's plan, it stays From file (spec L501, L857).
+      reportOnce(record, fileRecordUnchecked(record.address, chain));
       return;
     }
-    const verdict = judgeDiamond({ facets: facets.value, chain: probed.value, catalog, plan: planFor(record, source) });
+    let chainState: ChainState | string;
+    if (probed) chainState = probed;
+    else {
+      const read = await port.value.probe(record.chainId, { refresh: true, path: record.path });
+      chainState = read.ok ? read.value : read.error;
+    }
+    const facets = await readFacets(port.value, record.chainId, record.address, alive, drive);
+    if (!alive()) return;
+    if (!facets.ok || typeof chainState === "string") {
+      const reason = !facets.ok ? facets.error : typeof chainState === "string" ? chainState : "";
+      if (driving()) patch({ error: reason || couldntReadRecord(chain) });
+      if (!drive) reportOnce(record, `${couldntReadRecord(chain)} ${reason}`.trim());
+      return;
+    }
+    const verdict = judgeDiamond({ facets: facets.value, chain: chainState, catalog, plan });
     const { fromFile: _dropped, ...rest } = record;
-    const next: Deployment = {
+    const next = await save({
       ...rest,
       status: verdict.matches ? "confirmed" : "mismatch",
       ...(block === undefined ? {} : { block }),
-    };
-    await save(next);
+    });
     if (record.fromFile) {
       note(verdict.matches ? fileRecordConfirmed(record.address, chain) : fileRecordMismatch(record.address, chain), verdict.matches ? "info" : "warn");
     } else if (verdict.matches) {
@@ -512,7 +584,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     } else {
       emit(lines.mismatch({ address: record.address, differing: verdict.differing }), "warn");
     }
-    if (!drive || !alive()) return;
+    if (!driving()) return;
     if (!verdict.matches) {
       patch({ phase: "mismatch", error: MISMATCH });
       return;
@@ -529,6 +601,9 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const port = await loadPort();
     if (tracker !== t) return;
     if (!port.ok) {
+      // Let go, so the next refresh (focus, back online, Keep waiting) picks the transaction up again.
+      clock.clearTimeout(t.timer);
+      tracker = null;
       patch({ error: port.error });
       return;
     }
@@ -550,8 +625,9 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const current = t.record;
     if (outcome.kind === "aborted") return;
     if (outcome.kind === "replaced") {
+      // The record keeps the deploy's own hash, not the transaction that took its nonce.
       const text = outcome.reason === "cancelled" ? CANCELED_TRANSACTION : REPLACED_TRANSACTION;
-      await save({ ...current, status: "failed", tx: outcome.hash });
+      await save({ ...current, status: "failed" });
       banner(false);
       patch({ phase: "failed", error: text });
       note(text, "alert");
@@ -560,8 +636,9 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     if (outcome.status === "reverted") {
       const catalog = inputs.catalog();
       const data = await port.value.replay(record.chainId, outcome.hash);
+      const placed = source?.placed ?? inputs.project().recipe.facets;
       const line = catalog && data
-        ? await revertLine(data, catalog, { placed: inputs.project().recipe.facets, path: record.path })
+        ? await revertLine(data, catalog, { placed, path: record.path })
         : { tag: "Error" as const, text: `Deploy reverted on ${chain} in block ${groupDigits(outcome.block)}.` };
       await save({ ...current, status: "failed", tx: outcome.hash, block: outcome.block });
       banner(false);
@@ -577,8 +654,8 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
 
   const open = (): void => {
     if (disposed) return;
-    if (IN_FLIGHT.includes(state.phase)) {
-      note("A deploy is already in flight. Show deploy progress to follow it.");
+    if (TRACKING.includes(state.phase)) {
+      note(ALREADY_IN_FLIGHT);
       return;
     }
     epoch += 1;
@@ -595,7 +672,6 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     void track(simulate());
   };
 
-
   const changed = (): void => {
     if (disposed || !REVIEWING.includes(state.phase)) return;
     const key = inputKey();
@@ -605,8 +681,14 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     void track(simulate());
   };
 
-  const signable = (): string | null => {
-    if (state.phase !== "ready" && !(state.phase === "review" && state.simulation?.ok === true)) {
+  const signable = (withoutSimulation: boolean): string | null => {
+    const readOnly = inputs.readOnly();
+    if (readOnly !== null) return readOnly;
+    if (withoutSimulation) {
+      if (state.phase !== "review" || state.simulation?.unavailable !== true) {
+        return "Signing without a simulation is only for an RPC that can't simulate.";
+      }
+    } else if (state.phase !== "ready" && !(state.phase === "review" && state.simulation?.ok === true)) {
       return state.phase === "idle" ? "Open the review first." : "Simulate the deploy first.";
     }
     const analysis = inputs.analysis();
@@ -619,9 +701,10 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     return null;
   };
 
-  const sign = async (): Promise<void> => {
+  const sign = async (options?: { withoutSimulation?: true }): Promise<void> => {
     if (disposed) return;
-    const refused = signable();
+    const withoutSimulation = options?.withoutSimulation === true;
+    const refused = signable(withoutSimulation);
     if (refused !== null) {
       note(refused);
       return;
@@ -632,7 +715,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       return;
     }
     const s = snap.value;
-    if (s.key !== simulatedKey) {
+    if (s.key !== (withoutSimulation ? unavailableKey : simulatedKey)) {
       note(SIMULATE_FIRST);
       await track(simulate());
       return;
@@ -663,14 +746,20 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     banner(true);
     const back = (error: string, keepSimulation = false): void => {
       banner(false);
-      if (!keepSimulation) simulatedKey = null;
+      if (!keepSimulation) {
+        simulatedKey = null;
+        unavailableKey = null;
+      }
       patch({ phase: "review", error, since: undefined, ...(keepSimulation ? {} : { simulation: undefined }) });
     };
-    const probed = await port.value.probe(s.chainId, { refresh: true, path: s.path });
+    // The predicted address itself, read now: the session's prediction may already be for another account.
+    const probed = await port.value.probe(s.chainId, { refresh: true, path: s.path, codeAt: [s.address] });
     if (!alive()) return;
     if (!probed.ok) return back(probed.error);
-    if (probed.value.predictedHasCode === true) {
-      const known = records.find((d) => d.chainId === s.chainId && sameAddress(d.address, s.address) && d.status === "pending");
+    if (hasCode(probed.value, s.address)) {
+      // A transaction of ours with this salt landed after all (pending, or given up as dropped): show that diamond.
+      const known = records.find((d) => d.chainId === s.chainId && sameAddress(d.address, s.address) && d.tx !== undefined
+        && (d.status === "pending" || (d.status === "failed" && sameAddress(d.deployer, s.from))));
       if (known) {
         note(landedAfterAll(s.address, s.chain));
         await settle(known, null, true);
@@ -683,8 +772,11 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     if (!built.ok) return back(built.error);
     const salt = assertSaltSender(s.salt, account.address);
     if (!salt.ok) return back(salt.error);
-    const sent = await port.value.send(s.chainId, { from: account.address, tx: built.value.tx });
-    // A sent transaction is recorded whatever happened meanwhile: it's on its way.
+    // Only the reviewed transaction goes out: the wallet's account and chain again, right before asking it.
+    const now = port.value.account();
+    if (!now || !sameAddress(now.address, s.from)) return back(SIMULATE_FIRST);
+    if (now.chainId !== s.chainId) return back(walletOn(chainName(now.chainId)), true);
+    const sent = await port.value.send(s.chainId, { from: now.address, tx: built.value.tx });
     if (sent.kind === "rejected") {
       if (!alive()) return;
       back(CANCELED_IN_WALLET, true);
@@ -697,33 +789,42 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       note(sent.message, "warn");
       return;
     }
+    // A sent transaction is recorded whatever happened meanwhile: it's on its way.
     const hash = sent.value;
-    const catalog = s.catalog;
     const record: Deployment = {
       projectId: s.projectId,
       chainId: s.chainId,
       address: toChecksum(s.address),
       path: s.path,
-      deployer: toChecksum(account.address),
+      deployer: toChecksum(now.address),
       salt: s.salt,
       status: "pending",
       tx: hash,
       recipeHash: s.recipeHash,
-      catalogHash: catalog.hash,
+      catalogHash: s.catalog.hash,
       at: iso(),
       verification: "pending",
       revision: 1,
     };
-    flightPlan = { plan: s.plan };
+    const source: PlanSource = { plan: s.plan, placed: s.placed };
     await save(record);
-    if (disposed) return;
+    // Another project opened (or this machine went away) during the wallet prompt: the record resumes it there.
+    if (!alive()) return;
+    flightPlan = source;
     epoch += 1;
     patch({ phase: "pending", tx: hash, since: record.at, chainId: s.chainId, address: record.address, from: record.deployer, error: undefined });
     emit(lines.submitted({ tx: hash, chain: s.chain }));
-    void track(follow(record, flightPlan));
+    void track(follow(record, source));
   };
 
   const keepWaiting = (): void => {
+    if (!tracker && (state.phase === "pending" || state.phase === "stale")) {
+      // The watch let go (the chain module didn't load): pick the transaction up again from its record.
+      patch({ phase: "pending", error: undefined });
+      note(`Waiting for ${truncateHex6(state.tx ?? "0x")} again.`);
+      void track(refresh());
+      return;
+    }
     if (state.phase !== "stale" || !tracker) {
       note("Nothing is waiting for a receipt.");
       return;
@@ -772,6 +873,14 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
         await settle(record, source, true);
         return;
       }
+      // Nothing there. A transaction the node no longer knows was dropped: record it, so no reload resumes it.
+      if (record.tx !== undefined) {
+        const status = await port.value.transactionStatus(record.chainId, record.tx);
+        if (status.ok && status.value === "unknown") {
+          await save({ ...record, status: "failed" });
+          note(droppedRecorded(truncateHex6(record.tx), chainName(record.chainId)), "warn");
+        }
+      }
       publish({ phase: "review", snapshot: inputs.analysis().recipeHash, chainId: record.chainId });
       await simulate();
     })());
@@ -780,9 +889,12 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
   const proposed = (batch: { safe: Address; chainId: number; address: Address; salt: Hex }): void => {
     const catalog = inputs.catalog();
     if (disposed || !catalog) return;
+    if (state.phase === "awaitingSignature" || state.phase === "pending" || state.phase === "stale") {
+      note(ALREADY_IN_FLIGHT);
+      return;
+    }
     const project = inputs.project();
     const analysis = inputs.analysis();
-    stopTracking();
     epoch += 1;
     const record: Deployment = {
       projectId: project.id,
@@ -798,7 +910,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       verification: "pending",
       revision: 1,
     };
-    flightPlan = { plan: analysis.plan };
+    flightPlan = { plan: analysis.plan, placed: project.recipe.facets };
     publish({ phase: "proposed", chainId: batch.chainId, address: record.address, safe: record.deployer, since: record.at, snapshot: analysis.recipeHash });
     void track((async () => {
       await save(record);
@@ -836,8 +948,14 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const safe = state.safe ?? found?.deployer ?? ZERO;
     flightPlan = null;
     void track((async () => {
-      // No delete in the records service yet (CCR): a discarded proposal is kept as failed, never proposed.
-      if (found) await save({ ...found, status: "failed" });
+      if (found) {
+        forget(found);
+        try {
+          await deps.records.delete(found);
+        } catch (error) {
+          emit({ tag: "Error", text: recordNotSaved(sentence(message(error))) }, "alert");
+        }
+      }
       note(discardedProposal(safe, chainName(chainId)));
     })());
     publish({ phase: "review", snapshot: inputs.analysis().recipeHash, chainId });
@@ -853,7 +971,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
         return;
       }
     }
-    if (IN_FLIGHT.includes(state.phase)) {
+    if (TRACKING.includes(state.phase)) {
       note("A deploy is in flight; retry once it settles.");
       return;
     }
@@ -865,9 +983,11 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
   };
 
   const close = (): void => {
-    if (IN_FLIGHT.includes(state.phase)) return;
+    // Tracking goes on with the dialog closed; a settled deploy (even one still verifying) just goes back to idle.
+    if (TRACKING.includes(state.phase)) return;
     epoch += 1;
     simulatedKey = null;
+    unavailableKey = null;
     seenKey = null;
     if (state.phase !== "idle") publish(IDLE);
   };
@@ -964,6 +1084,8 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       return;
     }
     const mine = ++missingEpoch;
+    const abort = new AbortController();
+    missingAbort = abort;
     const alive = (): boolean => mine === missingEpoch && !disposed;
     const catalog = inputs.catalog();
     const chainId = missing.chainId ?? inputs.chainId();
@@ -972,6 +1094,8 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       setMissing({ chainId, preparing: false, running: false, items: settled, error });
       note(error, "warn");
     };
+    const readOnly = inputs.readOnly();
+    if (readOnly !== null) return stop(readOnly);
     if (!catalog) return stop("The catalog hasn't loaded.");
     if (chainId === null) return stop("Choose a chain first.");
     const port = await loadPort();
@@ -1038,13 +1162,14 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       for (const name of group.names) mark(name, "pending");
       setMissing({ chainId, preparing: false, running: true, items: items(), ...(mode ? { mode } : {}) });
 
-      const sentOk = await sendGroup(port.value, chainId, account.address, group.txs, batchGas(group.names));
-      if (!alive()) return;
-      if (sentOk !== null) {
-        for (const name of group.names) mark(name, byName.get(name)?.status === "deployed" ? "deployed" : "failed", sentOk);
+      const outcome = await sendGroup(port.value, chainId, account.address, group.txs, batchGas(group.names), abort.signal);
+      if (!alive() || outcome === STOPPED) return;
+      if (outcome !== null) {
+        // Not deployed, and nothing to diagnose: the wallet said no, the account moved, it was replaced or never seen.
+        for (const name of group.names) mark(name, byName.get(name)?.status === "deployed" ? "deployed" : "failed", outcome);
         failed += group.names.length;
-        setMissing({ chainId, preparing: false, running: false, items: items(), ...(mode ? { mode } : {}), error: sentOk });
-        note(sentOk, sentOk === CANCELED_IN_WALLET ? "info" : "warn");
+        setMissing({ chainId, preparing: false, running: false, items: items(), ...(mode ? { mode } : {}), error: outcome });
+        note(outcome, outcome === CANCELED_IN_WALLET ? "info" : "warn");
         return;
       }
       const after = await port.value.probe(chainId, { refresh: true });
@@ -1070,6 +1195,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       setMissing({ chainId, preparing: false, running: true, items: items(), ...(mode ? { mode } : {}) });
     }
     if (!alive()) return;
+    if (missingAbort === abort) missingAbort = null;
     setMissing({ chainId, preparing: false, running: false, items: items(), ...(mode ? { mode } : {}) });
     if (deployed === 0 && failed === 0) note(NOTHING_MISSING);
     else note(missingDone(deployed, failed, chain), failed > 0 ? "warn" : "info");
@@ -1077,26 +1203,58 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     void port.value.probe(chainId, { refresh: true });
   };
 
-  /** Sends one group; null when it went through, else why not. */
+  /**
+   * Sends one group and waits for it, up to the receipt timeout (spec L844). Null when it went through; `STOPPED`
+   * when the step was stopped; else why it didn't: the wallet said no, moved account or chain, the transaction was
+   * canceled or replaced, or it wasn't seen in time.
+   */
   const sendGroup = async (
-    port: DeployChainPort, chainId: number, from: Address, txs: readonly TxRequest[], gas: bigint | undefined,
+    port: DeployChainPort, chainId: number, from: Address, txs: readonly TxRequest[], gas: bigint | undefined, stopped: AbortSignal,
   ): Promise<string | null> => {
-    if (txs.length > 1) {
-      const sent = await port.sendCalls(chainId, { from, calls: txs });
+    const now = port.account();
+    if (!now) return CONNECT_A_WALLET;
+    if (!sameAddress(now.address, from)) return ACCOUNT_CHANGED;
+    if (now.chainId !== chainId) return walletOn(chainName(now.chainId));
+    const seconds = deps.settings().receiptTimeout;
+    const abort = new AbortController();
+    const onStop = (): void => abort.abort();
+    stopped.addEventListener("abort", onStop);
+    let timedOut = false;
+    let timer: unknown = null;
+    const arm = (): void => {
+      timer = clock.setTimeout(() => {
+        timedOut = true;
+        abort.abort();
+      }, seconds * 1000);
+    };
+    try {
+      if (txs.length > 1) {
+        const sent = await port.sendCalls(chainId, { from, calls: txs });
+        if (stopped.aborted) return STOPPED;
+        if (sent.kind === "rejected") return CANCELED_IN_WALLET;
+        if (sent.kind === "error") return sent.message;
+        arm();
+        const done = await port.waitCalls(chainId, sent.value, abort.signal);
+        if (timedOut) return notSeenFor(seconds);
+        if (stopped.aborted || done.kind === "aborted") return STOPPED;
+        return done.kind === "error" ? done.message : null;
+      }
+      const [tx] = txs;
+      if (!tx) return null;
+      const sent = await port.send(chainId, { from, tx, ...(gas === undefined ? {} : { gas }) });
+      if (stopped.aborted) return STOPPED;
       if (sent.kind === "rejected") return CANCELED_IN_WALLET;
       if (sent.kind === "error") return sent.message;
-      const abort = new AbortController();
-      const done = await port.waitCalls(chainId, sent.value, abort.signal);
-      return done.kind === "error" ? done.message : null;
+      arm();
+      const outcome = await port.watch(chainId, sent.value, { from, signal: abort.signal, onRepriced: () => arm() });
+      if (timedOut) return notSeenFor(seconds);
+      if (stopped.aborted || outcome.kind === "aborted") return STOPPED;
+      if (outcome.kind === "replaced") return outcome.reason === "cancelled" ? CANCELED_TRANSACTION : REPLACED_TRANSACTION;
+      return null;
+    } finally {
+      clock.clearTimeout(timer);
+      stopped.removeEventListener("abort", onStop);
     }
-    const [tx] = txs;
-    if (!tx) return null;
-    const sent = await port.send(chainId, { from, tx, ...(gas === undefined ? {} : { gas }) });
-    if (sent.kind === "rejected") return CANCELED_IN_WALLET;
-    if (sent.kind === "error") return sent.message;
-    const abort = new AbortController();
-    await port.watch(chainId, sent.value, { from, signal: abort.signal, onRepriced: () => {} });
-    return null;
   };
 
   /** Arachnid's proxy reverts without a reason: check the address for code, then replay the creation (spec L572). */
@@ -1116,6 +1274,30 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
   // -------------------------------------------------------------------------------------------------------------
   // Resume, re-checks and watching the inputs
 
+  /** From file records re-read in the background: one probe per chain, then `facets()` per record. */
+  const recheckFileRecords = async (list: readonly Deployment[]): Promise<void> => {
+    const fresh = list.filter((d) => !checking.has(recordKey(d)));
+    if (fresh.length === 0) return;
+    for (const d of fresh) checking.add(recordKey(d));
+    try {
+      const port = await loadPort();
+      if (!port.ok) return;
+      const chains = [...new Set(fresh.map((d) => d.chainId))];
+      await Promise.all(chains.map(async (chainId) => {
+        const probed = await port.value.probe(chainId, { refresh: true });
+        for (const d of fresh.filter((r) => r.chainId === chainId)) {
+          if (!probed.ok) {
+            reportOnce(d, `${couldntReadRecord(chainName(chainId))} ${probed.error}`.trim());
+            continue;
+          }
+          await settle(d, null, false, undefined, probed.value);
+        }
+      }));
+    } finally {
+      for (const d of fresh) checking.delete(recordKey(d));
+    }
+  };
+
   const refresh = async (): Promise<void> => {
     if (disposed) return;
     const projectId = inputs.project().id;
@@ -1134,14 +1316,16 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const resumable = records.find((d) => d.fromFile !== true && ((d.status === "pending" && d.tx !== undefined) || d.status === "proposed"));
     const driving = (d: Deployment): boolean =>
       state.address !== undefined && state.chainId === d.chainId && sameAddress(state.address, d.address);
-    if (resumable && (state.phase === "idle" || (IN_FLIGHT.includes(state.phase) && driving(resumable)))) {
+    let resumed: Deployment | null = null;
+    if (resumable && (state.phase === "idle" || (TRACKING.includes(state.phase) && driving(resumable)))) {
+      resumed = resumable;
       if (resumable.status === "pending" && !(tracker && driving(resumable))) {
         publish({
           phase: "pending", chainId: resumable.chainId, address: resumable.address, tx: resumable.tx ?? "0x", since: resumable.at,
           from: resumable.deployer, snapshot: resumable.recipeHash,
         });
         banner(true);
-        void track(follow(resumable, null));
+        void track(follow(resumable, driving(resumable) ? flightPlan : null));
       } else if (resumable.status === "proposed") {
         if (state.phase === "idle") {
           publish({
@@ -1152,27 +1336,10 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
         await recheckProposal(resumable, true);
       }
     }
-    // The rest in the background: From file records are re-read, other proposals checked for code.
-    void track(Promise.all(records.map(async (d) => {
-      if (d === resumable) return;
-      if (d.fromFile === true && d.status === "failed") return;
-      if (d.fromFile === true && d.status === "proposed") {
-        await recheckProposal(d, false);
-        return;
-      }
-      if (d.fromFile === true) {
-        const key = recordKey(d);
-        if (checking.has(key)) return;
-        checking.add(key);
-        try {
-          await settle(d, null, false);
-        } finally {
-          checking.delete(key);
-        }
-      } else if (d.status === "proposed") {
-        await recheckProposal(d, false);
-      }
-    })));
+    // The rest in the background: From file records are re-read, proposals checked for code. A failed file record is history.
+    const rest = records.filter((d) => d !== resumed);
+    void track(recheckFileRecords(rest.filter((d) => d.fromFile === true && d.status !== "failed" && d.status !== "proposed")));
+    void track(Promise.all(rest.filter((d) => d.status === "proposed").map((d) => recheckProposal(d, false))));
   };
 
   /** Verifying → Live once the record's verification leaves "pending" (S8d writes it). */
@@ -1195,13 +1362,14 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     if (lastRecipe && lastRecipe.projectId !== project.id) {
       // Another project: stop what this one was doing; its records resume it when it's open again.
       stopTracking();
+      stopMissing();
       banner(false);
       epoch += 1;
-      missingEpoch += 1;
       flightPlan = null;
       records = [];
       recordsFor = null;
       if (state.phase !== "idle") publish(IDLE);
+      setMissing(EMPTY_STEP);
       lastRecipe = { projectId: project.id, hash };
       void track(refresh());
       return;
@@ -1243,7 +1411,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     },
     open,
     changed,
-    sign: () => track(sign()),
+    sign: (options) => track(sign(options)),
     proposed,
     deployMissing: (names) => track(deployMissing(names)),
     keepWaiting,
@@ -1265,6 +1433,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       while (work.size > 0) await Promise.allSettled(work);
     },
     dispose() {
+      stopMissing();
       disposed = true;
       stopTracking();
       stopInputs();

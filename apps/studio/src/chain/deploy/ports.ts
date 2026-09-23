@@ -15,6 +15,8 @@ export type SimulationOutcome =
   /** `events` only from `eth_simulateV1`; `eth_call` can't count them. */
   | { kind: "ok"; block: number; gas: bigint; events?: number; method: "simulate" | "call" }
   | { kind: "reverted"; block: number; data: Hex; method: "simulate" | "call" }
+  /** The RPC answers but can't simulate at all: no eth_simulateV1, and eth_call or eth_estimateGas refused (spec L575). */
+  | { kind: "unavailable"; message: string }
   /** The RPC failed; `message` is the spec's sentence ("Sepolia's public RPC isn't answering."). */
   | { kind: "error"; message: string };
 
@@ -95,6 +97,8 @@ export type DeployInputs = {
   chainName(chainId: number): string;
   /** The predicted address for the selected chain, path, salt and account (S1), or why there's none. */
   prediction(): { status: "ready"; address: Address; chainId: number; path: DeployPath; from: Address; salt: Hex } | { status: "none"; reason: string };
+  /** Why this tab can't edit (another tab holds the project), or null. Deploying is refused while set (spec L503). */
+  readOnly(): string | null;
   /** Acknowledged problem ids for the current recipe hash. */
   acks(): readonly string[];
   online(): boolean;
@@ -106,6 +110,8 @@ export type DeployRecords = {
   list(projectId: string): Promise<Deployment[]>;
   /** Rejects with the reason when the browser refuses the write (storage full, a newer Studio). */
   put(deployment: Deployment): Promise<void>;
+  /** Drops a record (Discard proposal); where the store can't, it's marked failed instead. */
+  delete(deployment: Deployment): Promise<void>;
   /** Called with the project id after every write, from this tab or another. */
   subscribe(listener: (projectId: string) => void): () => void;
 };

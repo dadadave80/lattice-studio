@@ -109,6 +109,14 @@ describe("Deploy missing contracts", () => {
     expect(await axeViolations(document.body)).toEqual([]);
   });
 
+  test("in a read-only tab, Deploy is aria-disabled with the reason", async () => {
+    stubMachine({ chainId: SEPOLIA, preparing: false, running: false, items: ITEMS });
+    const screen = await renderWithStudio(<MissingContractsDialog entry={entry()} top />, { session: { readOnly: "Another tab is editing this project." } });
+    const primary = screen.getByRole("button", { name: /^Deploy/ });
+    await expect.element(primary).toHaveAttribute("aria-disabled", "true");
+    await expect.element(primary).toHaveAccessibleDescription(/Another tab is editing this project\./);
+  });
+
   test("while it reads the chain, Deploy says so; with nothing missing, it says every contract is there", async () => {
     const stub = stubMachine({ chainId: SEPOLIA, preparing: true, running: false, items: ITEMS });
     const screen = await renderWithStudio(<MissingContractsDialog entry={entry()} top />);
@@ -148,6 +156,17 @@ describe("commands", () => {
     expect(commandState({ id: "deploy.sign" })).toMatchObject({ ok: false, reason: "Simulating…" });
     seedDeployState({ phase: "review", error: "You canceled in your wallet.", simulation: { ok: true, block: 1 } });
     expect(commandState({ id: "deploy.sign" }).title).toBe("Sign again");
+  });
+
+  test("a read-only tab can't sign or deploy missing contracts, and says why", () => {
+    const reason = "Another tab is editing this project.";
+    seedStudio({ session: { readOnly: reason, chainId: SEPOLIA } });
+    seedDeployState({ phase: "ready", simulation: { ok: true, block: 1 } });
+    expect(commandState({ id: "deploy.sign" })).toMatchObject({ ok: false, reason });
+    expect(commandState({ id: "deploy.missingContracts", args: { names: ["ERC20"] } })).toMatchObject({ ok: false, reason });
+    // Tracking commands stay available: the second tab keeps following the deploy.
+    seedDeployState({ phase: "pending", chainId: SEPOLIA });
+    expect(commandState({ id: "deploy.showProgress" }).ok).toBe(true);
   });
 
   test("Deploy missing contracts… needs a chain and something missing, then opens the sub-step", async () => {

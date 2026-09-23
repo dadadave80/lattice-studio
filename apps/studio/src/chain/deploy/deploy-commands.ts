@@ -50,6 +50,7 @@ export const missingContractsCommand = command<MissingArgs>({
   palette: true,
   enabled(ctx, args) {
     const chainId = ctx.session.chainId;
+    if (ctx.session.readOnly !== null) return { ok: false, reason: ctx.session.readOnly };
     if (chainId === null) return { ok: false, reason: "Choose a chain first." };
     if (!ctx.online) return { ok: false, reason: DEPLOY_NEEDS_CONNECTION };
     const names = args.names ?? missingNames(ctx.analysis);
@@ -70,6 +71,8 @@ export const signCommand = command({
   category: "Deploy",
   enabled(ctx) {
     const { phase, simulation } = ctx.deploy;
+    // The second tab is read-only (spec L503): it keeps tracking, but it doesn't sign.
+    if (ctx.session.readOnly !== null) return { ok: false, reason: ctx.session.readOnly };
     if (phase === "idle") return { ok: false, reason: "Open the deploy review first." };
     if (phase === "simulating") return { ok: false, reason: "Simulating…" };
     if (phase !== "ready" && !(phase === "review" && simulation?.ok === true)) {

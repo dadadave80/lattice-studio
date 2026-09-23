@@ -100,6 +100,8 @@ export type FakePort = DeployChainPort & {
   simulation: SimulationOutcome;
   /** What `send` answers next; default: a new hash. */
   sendQueue: SendOutcome[];
+  /** While set, `send` waits for it: the wallet's prompt is open. */
+  hold: Promise<void> | null;
   replayData: Hex | null;
   callResult: CallOutcome;
   txStatus: TxStatus;
@@ -152,6 +154,7 @@ export function fakePort(options: FakePortOptions): FakePort {
     methods: () => calls.map((c) => c.method),
     simulation: { kind: "ok", block: 9_123_456, gas: 3_000_000n, events: 7, method: "simulate" },
     sendQueue: [],
+    hold: null,
     replayData: null,
     callResult: { ok: true, data: "0x" },
     txStatus: "pending",
@@ -233,6 +236,8 @@ export function fakePort(options: FakePortOptions): FakePort {
     },
     async send(chainId, request) {
       record("send", [chainId, request]);
+      // A wallet prompt the person hasn't answered yet.
+      if (port.hold) await port.hold;
       const next = port.sendQueue.shift();
       if (next && next.kind !== "sent") return next;
       const hash = next?.kind === "sent" ? next.value : nextHash();
@@ -269,8 +274,15 @@ export function fakePort(options: FakePortOptions): FakePort {
       batches.push({ calls: request.calls });
       return { kind: "sent", value: `calls-${batches.length}` };
     },
-    async waitCalls(chainId, id): Promise<CallsOutcome> {
+    async waitCalls(chainId, id, signal): Promise<CallsOutcome> {
       record("waitCalls", [chainId, id]);
+      // Without autoMine the batch never settles on its own: only an abort ends the wait.
+      if (!port.autoMine) {
+        return new Promise<CallsOutcome>((resolve) => {
+          if (signal.aborted) resolve({ kind: "aborted" });
+          signal.addEventListener("abort", () => resolve({ kind: "aborted" }));
+        });
+      }
       const batch = batches[Number(id.split("-")[1]) - 1];
       for (const call of batch?.calls ?? []) port.onMined?.(call, "0x");
       return { kind: "done", status: "success", receipts: [] };
@@ -318,6 +330,10 @@ export function fakeRecords(): FakeRecords {
       map.set(key(record), structuredClone(record));
       for (const listener of Array.from(listeners)) listener(record.projectId);
     },
+    async delete(record) {
+      map.delete(key(record));
+      for (const listener of Array.from(listeners)) listener(record.projectId);
+    },
     subscribe(listener) {
       listeners.add(listener);
       return () => {
@@ -342,6 +358,7 @@ export type FakeInputs = DeployInputs & {
   setChain(chainId: number | null): void;
   setAck(ids: string[]): void;
   setOnline(online: boolean): void;
+  setReadOnly(reason: string | null): void;
   /** Re-analyzes and tells subscribers (after an account change on the port). */
   touch(): void;
 };
@@ -357,6 +374,7 @@ export function fakeInputs(options: {
   let chainId = options.chainId === undefined ? SEPOLIA_ID : options.chainId;
   let acks: string[] = [];
   let online = true;
+  let readOnly: string | null = null;
   let cached: { key: string; analysis: Analysis } | null = null;
   const listeners = new Set<() => void>();
   const { catalog } = options;
@@ -396,6 +414,7 @@ export function fakeInputs(options: {
     chainId: () => chainId,
     chainName: (id) => ({ [SEPOLIA_ID]: "Sepolia", 84532: "Base Sepolia", 31337: "Anvil" } as Record<number, string>)[id] ?? `Chain ${id}`,
     prediction,
+    readOnly: () => readOnly,
     acks: () => acks,
     online: () => online,
     subscribe(listener) {
@@ -418,6 +437,10 @@ export function fakeInputs(options: {
     },
     setOnline(next) {
       online = next;
+      emit();
+    },
+    setReadOnly(next) {
+      readOnly = next;
       emit();
     },
     touch: emit,

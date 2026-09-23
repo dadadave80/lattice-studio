@@ -93,6 +93,30 @@ export function fileRecordMismatch(address: Address, chain: string): string {
   return `Re-read ${formatAddress(address)} on ${chain}: \`facets()\` doesn't match its record. Saved as Mismatch.`;
 }
 
+/**
+ * A From file record whose recipe is neither the sheet's nor a Studio recipe: no plan to check it against, so it
+ * stays From file, never Confirmed (spec L501, L857).
+ */
+export function fileRecordUnchecked(address: Address, chain: string): string {
+  return `Couldn't check ${formatAddress(address)} on ${chain}: its record is for another recipe than this sheet. It stays From file.`;
+}
+
+/** Review again: the node no longer knows the transaction and nothing landed. */
+export function droppedRecorded(hash: string, chain: string): string {
+  return `${chain} no longer knows ${hash} and nothing landed: it was dropped. Recorded as failed.`;
+}
+
+/** Spec L575: the RPC can't simulate at all. The review asks for one more tick before signing. */
+export function cantSimulate(chain: string): string {
+  return `${chain}'s RPC can't simulate this deploy. Signing without a simulation needs one more tick.`;
+}
+
+/** The wallet moved to another account between the step's start and a send: nothing was sent. */
+export const ACCOUNT_CHANGED = "Your wallet switched accounts, so nothing was sent. Deploy again from this step.";
+
+/** open() or proposed() while a transaction or a proposal is being tracked. */
+export const ALREADY_IN_FLIGHT = "A deploy is already in flight. Show deploy progress to follow it.";
+
 /** Spec L697: the Deployments list's error, reused for a record Studio couldn't re-read. */
 export function couldntReadRecord(chain: string): string {
   return `Couldn't read ${chain} for this record.`;

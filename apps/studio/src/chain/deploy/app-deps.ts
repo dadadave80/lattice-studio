@@ -5,7 +5,7 @@
  * settings and the injected clock. The chain comes from `app-port.ts`, loaded on first use.
  */
 import {
-  announce, chainService, doc, env, getAnalysis, getCatalog, hideBanner, isOnline, listDeployments, loadCreationCode, loadFacetDetail, log, now,
+  announce, chainService, deleteDeployment, doc, env, getAnalysis, getCatalog, hideBanner, isOnline, listDeployments, loadCreationCode, loadFacetDetail, log, now,
   putDeployment, session, settings, showBanner, subscribeAnalysis, subscribeCatalog, subscribeDeployments, subscribeOnline,
 } from "@/contracts";
 import { prediction } from "@/state";
@@ -25,6 +25,7 @@ function inputs(): DeployInputs {
         ? { status: "ready", address: p.address, chainId: p.chainId, path: p.path, from: p.from, salt: p.salt }
         : { status: "none", reason: p.reason };
     },
+    readOnly: () => session.get().readOnly,
     acks: () => session.get().acks[getAnalysis().recipeHash] ?? [],
     online: isOnline,
     subscribe(listener) {
@@ -32,7 +33,7 @@ function inputs(): DeployInputs {
       const stops: (() => void)[] = [
         doc.subscribe(() => listener()),
         session.subscribe((state, previous) => {
-          if (state.chainId !== previous.chainId || state.acks !== previous.acks) listener();
+          if (state.chainId !== previous.chainId || state.acks !== previous.acks || state.readOnly !== previous.readOnly) listener();
         }),
         subscribeAnalysis(() => listener()),
         subscribeCatalog(() => listener()),
@@ -58,7 +59,7 @@ export function appDeployDeps(): DeployDeps {
   return {
     inputs: inputs(),
     chain: () => import("./app-port").then((m) => m.appPort()),
-    records: { list: listDeployments, put: putDeployment, subscribe: subscribeDeployments },
+    records: { list: listDeployments, put: putDeployment, delete: deleteDeployment, subscribe: subscribeDeployments },
     files: { detail: loadFacetDetail, code: loadCreationCode },
     say: { log, announce, showBanner, hideBanner },
     settings: () => {

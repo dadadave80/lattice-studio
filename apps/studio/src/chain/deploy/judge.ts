@@ -3,12 +3,27 @@
  * against the plan per facet as sets (C5a's `comparePlan`), and each planned facet's code against the catalog's
  * codehash as the chain probe read it. Pure.
  *
- * Without a plan (a record of another recipe than the sheet's, whose plan can't be rebuilt) the diamond must be made
- * of catalog releases only: every facet address in `facets()` is a catalog facet's release address, and the code
- * there hashes to that release's codehash.
+ * Without a plan (a record this browser wrote for a recipe the sheet has moved on from, whose plan can't be rebuilt)
+ * the diamond must be made of catalog releases only: every facet address in `facets()` is a catalog facet's release
+ * address, and the code there hashes to that release's codehash. A From file record never takes this path: without a
+ * plan it stays unchecked (the machine's `settle`).
  */
 import type { Catalog, ChainState, Hex, LoupeFacet, PlanComparison, PlanEntry, SharedContract } from "@lattice-studio/core";
-import { comparePlan, sameAddress } from "@lattice-studio/core";
+import { buildPlan, comparePlan, computeRouting, loadTemplate, recipeHash, sameAddress, templateList } from "@lattice-studio/core";
+
+/**
+ * The plan of the Studio recipe (a loadable template, as loaded) whose recipe hash is `hash`, or null. A record
+ * carries its recipe hash but no plan, so this is how a record of another recipe than the sheet's can still be checked.
+ */
+export function templatePlan(catalog: Catalog, hash: Hex): PlanEntry[] | null {
+  for (const item of templateList(catalog)) {
+    if (!item.loadable) continue;
+    const recipe = loadTemplate(catalog, item.name);
+    if (!recipe.ok || recipeHash(recipe.value, catalog).toLowerCase() !== hash.toLowerCase()) continue;
+    return buildPlan(recipe.value, catalog, computeRouting(recipe.value, catalog)).entries;
+  }
+  return null;
+}
 
 export type Verdict = {
   matches: boolean;

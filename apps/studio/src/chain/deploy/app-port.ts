@@ -49,13 +49,14 @@ type CallsStatus = { status?: number | string; receipts?: { transactionHash?: He
 /** The connected wallet over EIP-1193. Every failure is an outcome: a rejection (4001), or its short message. */
 export function providerWallet(provider: () => Promise<Eip1193 | null>): DeployWallet {
   return {
-    async send(_chainId, { from, tx, gas }) {
+    async send(chainId, { from, tx, gas }) {
       const wallet = await provider();
       if (!wallet) return { kind: "error", message: NO_WALLET };
       try {
+        // `chainId` binds the request to the reviewed chain: a wallet that switched meanwhile refuses it.
         const hash = await wallet.request({
           method: "eth_sendTransaction",
-          params: [{ from, ...call(tx), ...(gas === undefined ? {} : { gas: numberToHex(gas) }) }],
+          params: [{ from, chainId: numberToHex(chainId), ...call(tx), ...(gas === undefined ? {} : { gas: numberToHex(gas) }) }],
         });
         return typeof hash === "string" ? { kind: "sent", value: hash.toLowerCase() as Hex } : { kind: "error", message: "The wallet returned no transaction hash." };
       } catch (error) {
