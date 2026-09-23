@@ -1,0 +1,74 @@
+# ERC165Facet, AccessControl, ERC20, ERC4626 as a mixed cut (Add the vault surface, Replace ERC20's decimals),
+# VaultCore as a mixed cut (Add the strategy hooks, Replace ERC4626's totalAssets, deposit, mint, withdraw and
+# redeem), DiamondLoupeFacet, AccessControlDiamondCut and Receive, with VaultCoreInit.
+name: VaultCore
+script: script/base/defi/DeployVaultCore.s.sol
+buildCuts: buildCuts(address,string,string,address,uint8)
+source: script/base/defi/DeployVaultCore.s.sol#L36-L65
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/defi/DeployVaultCore.s.sol#L47-L47
+  - add: AccessControl
+    source: script/base/defi/DeployVaultCore.s.sol#L48-L48
+  - add: ERC20
+    source: script/base/defi/DeployVaultCore.s.sol#L49-L49
+  - add: ERC4626
+    selectors:
+      - "asset()"
+      - "totalAssets()"
+      - "convertToShares(uint256)"
+      - "convertToAssets(uint256)"
+      - "maxDeposit(address)"
+      - "maxMint(address)"
+      - "maxWithdraw(address)"
+      - "maxRedeem(address)"
+      - "previewDeposit(uint256)"
+      - "previewMint(uint256)"
+      - "previewWithdraw(uint256)"
+      - "previewRedeem(uint256)"
+      - "deposit(uint256,address)"
+      - "mint(uint256,address)"
+      - "withdraw(uint256,address,address)"
+      - "redeem(uint256,address,address)"
+    source: script/base/defi/DeployVaultCore.s.sol#L43-L51
+    listSource: script/base/defi/DeployVaultCore.s.sol#L68-L86
+  - replace: ERC4626
+    selectors: ["decimals()"]
+    source: script/base/defi/DeployVaultCore.s.sol#L43-L52
+    listSource: script/base/defi/DeployVaultCore.s.sol#L89-L92
+  - add: VaultCore
+    selectors:
+      - "strategyManager()"
+      - "idleAssets()"
+      - "allocatedAssets()"
+      - "setStrategyManager(address)"
+      - "allocateToStrategy(address,uint256)"
+      - "recallFromStrategy(address,uint256)"
+    source: script/base/defi/DeployVaultCore.s.sol#L44-L54
+    listSource: script/base/defi/DeployVaultCore.s.sol#L95-L103
+  - replace: VaultCore
+    selectors:
+      - "totalAssets()"
+      - "deposit(uint256,address)"
+      - "mint(uint256,address)"
+      - "withdraw(uint256,address,address)"
+      - "redeem(uint256,address,address)"
+    source: script/base/defi/DeployVaultCore.s.sol#L44-L56
+    listSource: script/base/defi/DeployVaultCore.s.sol#L106-L113
+  - add: DiamondLoupeFacet
+    source: script/base/defi/DeployVaultCore.s.sol#L57-L57
+  - add: AccessControlDiamondCut
+    source: script/base/defi/DeployVaultCore.s.sol#L58-L58
+  - add: Receive
+    source: script/base/defi/DeployVaultCore.s.sol#L59-L59
+init:
+  kind: steps
+  steps:
+    - spec: VaultCoreInit
+      args: {}  # the script passes (asset_, name_, symbol_, admin_, decimalsOffset_)
+  source: script/base/defi/DeployVaultCore.s.sol#L61-L64
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (asset_, name_, symbol_, admin_,
+  decimalsOffset_).

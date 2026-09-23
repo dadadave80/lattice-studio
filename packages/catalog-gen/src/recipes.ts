@@ -94,7 +94,12 @@ const CutSchema = z
 /** One cut, as written. */
 export type CutDef = z.infer<typeof CutSchema>;
 
-const StepSchema = z.strictObject({ spec: InitNameSchema, args: z.record(NameSchema, ArgSchema).default({}) });
+const StepSchema = z.strictObject({
+  spec: InitNameSchema,
+  args: z.record(NameSchema, ArgSchema).default({}),
+  /** Where this step's init is deployed or called, when not within the init's own `source` (a base recipe). */
+  source: SourceSchema.optional(),
+});
 
 const InitSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("bundle"), spec: InitNameSchema, args: z.record(NameSchema, ArgSchema).default({}), source: SourceSchema }),
@@ -117,7 +122,7 @@ const RecipeFileSchema = z.strictObject({
   immutable: z.literal(true).optional(),
   cuts: z.array(CutSchema).min(1),
   init: InitSchema,
-  /** What the template doesn't carry yet. Required for anything but a complete v1 template. */
+  /** What the template doesn't carry yet (v1.1 templates may be partial). Required when an argument is left empty. */
   gaps: TextSchema.optional(),
   notes: TextSchema.optional(),
 });
@@ -156,7 +161,37 @@ function zodIssues(error: z.ZodError, file: string): ParseIssue[] {
   }));
 }
 
+/**
+ * Keys written twice in one block mapping, with their line numbers. `Bun.YAML` keeps the last one silently, so a
+ * pasted block could replace a fact without a trace. Block style only, which is how these files are written.
+ */
+export function duplicateKeys(text: string): { key: string; line: number }[] {
+  const out: { key: string; line: number }[] = [];
+  const scopes: { indent: number; keys: Set<string> }[] = [];
+  text.split("\n").forEach((raw, i) => {
+    const m = /^(\s*)(- )?([A-Za-z_$][\w$]*):(?:\s|$)/.exec(raw);
+    if (m === null) return;
+    const indent = (m[1] ?? "").length + (m[2] === undefined ? 0 : 2);
+    if (m[2] !== undefined) {
+      while (scopes.length > 0 && (scopes.at(-1)?.indent ?? -1) >= indent) scopes.pop();
+      scopes.push({ indent, keys: new Set() });
+    } else {
+      while (scopes.length > 0 && (scopes.at(-1)?.indent ?? -1) > indent) scopes.pop();
+      if ((scopes.at(-1)?.indent ?? -1) < indent) scopes.push({ indent, keys: new Set() });
+    }
+    const scope = scopes.at(-1);
+    const key = m[3] ?? "";
+    if (scope?.keys.has(key) === true) out.push({ key, line: i + 1 });
+    scope?.keys.add(key);
+  });
+  return out;
+}
+
 function parseYaml(text: string, file: string): Result<unknown, ParseIssue[]> {
+  const twice = duplicateKeys(text);
+  if (twice.length > 0) {
+    return err(twice.map((d) => ({ file, path: d.key, message: `is written twice (line ${d.line}); YAML would keep only the last.` })));
+  }
   try {
     return ok(Bun.YAML.parse(text));
   } catch (e) {
@@ -184,9 +219,6 @@ export function parseRecipeFile(text: string, file: string): Result<RecipeDef, P
   if (def.name !== base) issues.push({ file, path: "name", message: `is ${def.name}; expected ${base}, the file's name.` });
   const cited = parseSource(def.source)?.path;
   if (cited !== def.script) issues.push({ file, path: "source", message: `cites ${cited ?? "?"}; expected the script, ${def.script}.` });
-  if (def.phase !== "v1" && def.gaps === undefined) {
-    issues.push({ file, path: "gaps", message: "say what this template doesn't carry yet (anything but v1 may be partial)." });
-  }
   return issues.length > 0 ? err(issues) : ok(def);
 }
 
@@ -390,7 +422,13 @@ function buildTemplate(
     if (initNames === undefined) return;
     const known = initNames.get(spec);
     if (known === undefined) issues.push({ file: def.file, path, message: `${spec} isn't a catalog init.` });
-    else if (known.params !== undefined) checkArgs(args, known.params, `${path}.args`, def.file, issues);
+    else if (known.params !== undefined) {
+      checkArgs(args, known.params, `${path}.args`, def.file, issues);
+      const missing = known.params.filter((p) => !(p.name in args)).map((p) => p.name);
+      if (def.phase !== "v1" && def.gaps === undefined && missing.length > 0) {
+        issues.push({ file: def.file, path: `${path}.args`, message: `leaves ${missing.join(", ")} empty; say so in gaps.` });
+      }
+    }
   };
   let init: Recipe["init"];
   if (def.init.kind === "bundle") {
@@ -513,6 +551,104 @@ export function overloadMatches(declared: string, buildCuts: string): boolean {
   return solidity.every((type, i) => (ELEMENTARY.test(type) ? type === abi[i] : abi[i]?.startsWith("(") === true));
 }
 
+/** The line range of the function declared at 0-based line `at`, found by brace matching. */
+function functionBody(lines: readonly string[], at: number): string[] {
+  let depth = 0;
+  let seen = false;
+  for (let i = at; i < lines.length; i++) {
+    for (const ch of (lines[i] ?? "").replace(/\/\/.*$/, "")) {
+      if (ch === "{") {
+        depth++;
+        seen = true;
+      } else if (ch === "}") depth--;
+    }
+    if (seen && depth === 0) return lines.slice(at, i + 1) as string[];
+  }
+  return lines.slice(at) as string[];
+}
+
+/**
+ * The catalog facets a script's function constructs (`new X()`, `_facet("X")`), following the zero-argument
+ * helpers it calls (`_coreCuts()`, `_buildBaseCuts()`, found in the script or a script it imports) and the base
+ * recipes it builds on (`new DeployERC20().buildCuts(a, b)`: that script's overload with as many parameters).
+ * Comments are ignored. `scripts` lists the checkout's deploy scripts, to find a contract's file.
+ */
+export function scriptFacetNames(
+  read: SourceReader,
+  scripts: readonly string[],
+  script: string,
+  from: number,
+  facets: ReadonlySet<string>,
+): Set<string> {
+  const found = new Set<string>();
+  const seen = new Set<string>();
+  const fileOf = (contract: string) =>
+    scripts.find((path) => read(path)?.some((l) => l.startsWith(`contract ${contract} `)) === true);
+  const imported = (path: string) =>
+    (read(path) ?? []).flatMap((l) => {
+      const m = /^import \{([^}]*)\} from "@lattice-script\/(.+)";/.exec(l);
+      return m === null ? [] : [`script/${m[2] ?? ""}`];
+    });
+  const visit = (path: string, at: number) => {
+    const key = `${path}:${at}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const lines = read(path);
+    if (lines === undefined) return;
+    const body = functionBody(lines, at).map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+    for (const m of body.matchAll(/\bnew (\w+)\(|_facet\("(\w+)"\)/g)) {
+      const name = m[1] ?? m[2] ?? "";
+      if (facets.has(name)) found.add(name);
+    }
+    for (const m of body.matchAll(/new (Deploy\w+)\(\)\.buildCuts\(([^)]*)\)/g)) {
+      const file = fileOf(m[1] ?? "");
+      if (file === undefined) continue;
+      const count = (m[2] ?? "").trim() === "" ? 0 : (m[2] ?? "").split(",").length;
+      const base = read(file) ?? [];
+      const target = base.findIndex((l, i) => {
+        const header = /function buildCuts\(([^)]*)\)/.exec(base.slice(i, i + 9).join(" "));
+        if (!/function buildCuts\(/.test(l) || header === null) return false;
+        const params = (header[1] ?? "").trim();
+        return (params === "" ? 0 : params.split(",").length) === count;
+      });
+      if (target >= 0) visit(file, target);
+    }
+    for (const m of body.matchAll(/\b(_\w+)\(\)/g)) {
+      const helper = m[1] ?? "";
+      for (const file of [path, ...imported(path)]) {
+        const at = (read(file) ?? []).findIndex((l) => new RegExp(`function ${helper}\\(`).test(l));
+        if (at >= 0) {
+          visit(file, at);
+          break;
+        }
+      }
+    }
+  };
+  visit(script, from - 1);
+  return found;
+}
+
+/**
+ * Each template's facets against the facets its script's function constructs (`scriptFacetNames`): a facet
+ * the script builds that the template leaves out, or one the template lists that the script never builds.
+ */
+export function checkScriptFacets(
+  overlay: Pick<RecipeOverlay, "recipes">,
+  read: SourceReader,
+  scripts: readonly string[],
+  facets: ReadonlySet<string>,
+): ParseIssue[] {
+  const issues: ParseIssue[] = [];
+  for (const r of overlay.recipes) {
+    const from = parseSource(r.source)?.from ?? 1;
+    const built = scriptFacetNames(read, scripts, r.script, from, facets);
+    const listed = new Set(r.cuts.map((c) => c.add ?? c.replace ?? ""));
+    for (const name of built) if (!listed.has(name)) issues.push({ file: r.file, path: "cuts", message: `leaves out ${name}, which the script cuts.` });
+    for (const name of listed) if (!built.has(name)) issues.push({ file: r.file, path: "cuts", message: `lists ${name}, which the script doesn't cut.` });
+  }
+  return issues;
+}
+
 /** Reads a checkout file as lines; `undefined` when it doesn't exist. */
 export type SourceReader = (path: string) => readonly string[] | undefined;
 
@@ -543,7 +679,7 @@ export function checkRecipeSources(overlay: RecipeOverlay, read: SourceReader): 
   for (const r of overlay.recipes) {
     cited(r.file, "source", r.source, [`function ${r.buildCuts.slice(0, r.buildCuts.indexOf("(") + 1)}`]);
     const from = parseSource(r.source)?.from ?? 1;
-    const declared = new RegExp(`function ${r.buildCuts.slice(0, r.buildCuts.indexOf("("))}\\(([^)]*)\\)`).exec(read(r.script)?.slice(from - 1, from + 3).join(" ") ?? "")?.[1];
+    const declared = new RegExp(`function ${r.buildCuts.slice(0, r.buildCuts.indexOf("("))}\\(([^)]*)\\)`).exec(read(r.script)?.slice(from - 1, from + 9).join(" ") ?? "")?.[1];
     if (declared !== undefined && !overloadMatches(declared, r.buildCuts)) {
       issues.push({ file: r.file, path: "buildCuts", message: `is ${r.buildCuts}, but the cited function takes (${declared.trim()}).` });
     }
@@ -556,7 +692,9 @@ export function checkRecipeSources(overlay: RecipeOverlay, read: SourceReader): 
     });
     if (r.init.kind === "bundle") cited(r.file, "init.source", r.init.source, [r.init.spec.split(".")[0] ?? ""]);
     else if (r.init.kind === "steps") {
-      cited(r.file, "init.source", r.init.source, r.init.steps.map((s) => s.spec.split(".")[0] ?? ""));
+      const here = r.init.steps.filter((s) => s.source === undefined).map((s) => s.spec.split(".")[0] ?? "");
+      cited(r.file, "init.source", r.init.source, here);
+      r.init.steps.forEach((s, i) => cited(r.file, `init.steps[${i}].source`, s.source, [s.spec.split(".")[0] ?? ""]));
     } else cited(r.file, "init.source", r.init.source, []);
   }
   overlay.seams.forEach((s, i) => cited(s.file, `seams[${i}].source`, s.source, []));

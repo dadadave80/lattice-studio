@@ -1,0 +1,27 @@
+name: L1ToL2CrossDomainMessengerGatewayAdapter
+script: script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol
+buildCuts: buildCuts(address,uint256,address,uint32)
+source: script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol#L36-L54
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol#L41-L41
+  - add: AccessControl
+    source: script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol#L42-L42
+  - add: L1ToL2CrossDomainMessengerGatewayAdapter
+    source: script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol#L43-L43
+  - add: DiamondLoupeFacet
+    source: script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol#L44-L44
+  - add: AccessControlDiamondCut
+    source: script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol#L45-L45
+  - add: Receive
+    source: script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol#L46-L46
+init:
+  kind: steps
+  steps:
+    - spec: L1ToL2CrossDomainMessengerGatewayAdapterInit
+      args: {}  # the script passes (admin, counterpartChainId, counterpartAdapter, minGasLimit)
+  source: script/base/crosschain/DeployL1ToL2CrossDomainMessengerGatewayAdapter.s.sol#L47-L53
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin, counterpartChainId, counterpartAdapter, minGasLimit).

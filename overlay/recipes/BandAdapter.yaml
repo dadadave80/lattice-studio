@@ -1,0 +1,27 @@
+name: BandAdapter
+script: script/base/oracles/DeployBandAdapter.s.sol
+buildCuts: buildCuts(address,address)
+source: script/base/oracles/DeployBandAdapter.s.sol#L28-L42
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/oracles/DeployBandAdapter.s.sol#L33-L33
+  - add: AccessControl
+    source: script/base/oracles/DeployBandAdapter.s.sol#L34-L34
+  - add: BandAdapter
+    source: script/base/oracles/DeployBandAdapter.s.sol#L35-L35
+  - add: DiamondLoupeFacet
+    source: script/base/oracles/DeployBandAdapter.s.sol#L36-L36
+  - add: AccessControlDiamondCut
+    source: script/base/oracles/DeployBandAdapter.s.sol#L37-L37
+  - add: Receive
+    source: script/base/oracles/DeployBandAdapter.s.sol#L38-L38
+init:
+  kind: steps
+  steps:
+    - spec: BandAdapterInit
+      args: {}  # the script passes (admin, reference_)
+  source: script/base/oracles/DeployBandAdapter.s.sol#L39-L41
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin, reference_).

@@ -1,0 +1,22 @@
+name: PlonkVerifier
+script: script/base/privacy/DeployPlonkVerifier.s.sol
+buildCuts: buildCuts()
+source: script/base/privacy/DeployPlonkVerifier.s.sol#L28-L32
+proxy: Lattice
+phase: v1.1
+immutable: true
+cuts:
+  - add: ERC165Facet
+    source: script/base/privacy/DeployPlonkVerifier.s.sol#L52-L52
+  - add: PlonkVerifier
+    source: script/base/privacy/DeployPlonkVerifier.s.sol#L53-L53
+  - add: DiamondLoupeFacet
+    source: script/base/privacy/DeployPlonkVerifier.s.sol#L54-L54
+  - add: Receive
+    source: script/base/privacy/DeployPlonkVerifier.s.sol#L55-L55
+init:
+  kind: steps
+  steps:
+    - spec: PlonkVerifierInit
+      args: {}
+  source: script/base/privacy/DeployPlonkVerifier.s.sol#L30-L31

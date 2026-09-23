@@ -1,0 +1,27 @@
+name: GelatoAutomateAdapter
+script: script/base/oracles/DeployGelatoAutomateAdapter.s.sol
+buildCuts: buildCuts(address)
+source: script/base/oracles/DeployGelatoAutomateAdapter.s.sol#L28-L39
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/oracles/DeployGelatoAutomateAdapter.s.sol#L30-L30
+  - add: AccessControl
+    source: script/base/oracles/DeployGelatoAutomateAdapter.s.sol#L31-L31
+  - add: GelatoAutomateAdapter
+    source: script/base/oracles/DeployGelatoAutomateAdapter.s.sol#L32-L32
+  - add: DiamondLoupeFacet
+    source: script/base/oracles/DeployGelatoAutomateAdapter.s.sol#L33-L33
+  - add: AccessControlDiamondCut
+    source: script/base/oracles/DeployGelatoAutomateAdapter.s.sol#L34-L34
+  - add: Receive
+    source: script/base/oracles/DeployGelatoAutomateAdapter.s.sol#L35-L35
+init:
+  kind: steps
+  steps:
+    - spec: GelatoAutomateAdapterInit
+      args: {}  # the script passes (admin)
+  source: script/base/oracles/DeployGelatoAutomateAdapter.s.sol#L36-L38
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin).

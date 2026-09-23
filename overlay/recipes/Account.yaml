@@ -1,0 +1,35 @@
+name: Account
+script: script/base/accounts/DeployAccount.s.sol
+buildCuts: buildCuts(address)
+source: script/base/accounts/DeployAccount.s.sol#L34-L46
+proxy: AccountDiamond
+phase: v1.1
+cuts:
+  - add: DiamondCutFacet
+    source: script/base/accounts/DeployAccount.s.sol#L36-L36
+  - add: DiamondLoupeFacet
+    source: script/base/accounts/DeployAccount.s.sol#L37-L37
+  - add: ERC165Facet
+    source: script/base/accounts/DeployAccount.s.sol#L38-L38
+  - add: AccessControl
+    source: script/base/accounts/DeployAccount.s.sol#L39-L39
+  - add: AccountSigner
+    source: script/base/accounts/DeployAccount.s.sol#L40-L40
+  - add: ERC4337Validation
+    source: script/base/accounts/DeployAccount.s.sol#L41-L41
+  - add: ERC1271Signature
+    source: script/base/accounts/DeployAccount.s.sol#L42-L42
+  - add: ERC7821Executor
+    source: script/base/accounts/DeployAccount.s.sol#L43-L43
+  - add: Receive
+    source: script/base/accounts/DeployAccount.s.sol#L44-L44
+init:
+  kind: steps
+  steps:
+    # buildCuts deploys AccountInit with the EntryPoint as its constructor argument; run() calls init(owner).
+    - spec: AccountInit
+      args: {}  # run() passes (owner)
+  source: script/base/accounts/DeployAccount.s.sol#L55-L56
+gaps: >-
+  No example arguments yet: run() takes the owner as a parameter, and AccountInit's EntryPoint is a constructor
+  argument. The account needs its own proxy and factory (AccountFactory, R20), so it arrives in v1.1.

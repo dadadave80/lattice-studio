@@ -1,0 +1,32 @@
+# The default, immutable overload: DeployERC20's four cuts (script/base/tokens/DeployERC20.s.sol#L60-L63), then ERC20Permit, with ERC20Init and
+# ERC20PermitInit in one MultiInit. The script nests DeployERC20's MultiInit, so its introspection step runs
+# between the two; Studio's planner appends the same step at the end instead.
+name: ERC20Permit
+script: script/base/tokens/DeployERC20Permit.s.sol
+buildCuts: buildCuts(string,string)
+source: script/base/tokens/DeployERC20Permit.s.sol#L30-L50
+proxy: Lattice
+phase: v1.1
+immutable: true
+cuts:
+  - add: ERC165Facet
+    source: script/base/tokens/DeployERC20.s.sol#L60-L60
+  - add: ERC20
+    source: script/base/tokens/DeployERC20.s.sol#L61-L61
+  - add: DiamondLoupeFacet
+    source: script/base/tokens/DeployERC20.s.sol#L62-L62
+  - add: Receive
+    source: script/base/tokens/DeployERC20.s.sol#L63-L63
+  - add: ERC20Permit
+    source: script/base/tokens/DeployERC20Permit.s.sol#L41-L41
+init:
+  kind: steps
+  steps:
+    - spec: ERC20Init
+      args: {}  # the script passes (name_, symbol_)
+      source: script/base/tokens/DeployERC20.s.sol#L35-L36
+    - spec: ERC20PermitInit
+      args: {}  # the script passes (name_)
+  source: script/base/tokens/DeployERC20Permit.s.sol#L43-L49
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (name_, symbol_; name_).

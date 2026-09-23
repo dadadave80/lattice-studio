@@ -1,0 +1,38 @@
+# DeployERC20's four cuts, Pausable, ERC20Pausable replacing ERC20's transfer and transferFrom, then AccessControl and
+# AccessControlDiamondCut. The script's init runs DeployERC20's MultiInit (ERC20Init and initImmutable),
+# ERC20PausableInit and initUpgradeable; Studio's planner appends initUpgradeable alone, which sets both flags.
+name: ERC20Pausable
+script: script/base/tokens/DeployERC20Pausable.s.sol
+buildCuts: buildCuts(string,string,address)
+source: script/base/tokens/DeployERC20Pausable.s.sol#L27-L56
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/tokens/DeployERC20.s.sol#L60-L60
+  - add: ERC20
+    source: script/base/tokens/DeployERC20.s.sol#L61-L61
+  - add: DiamondLoupeFacet
+    source: script/base/tokens/DeployERC20.s.sol#L62-L62
+  - add: Receive
+    source: script/base/tokens/DeployERC20.s.sol#L63-L63
+  - add: Pausable
+    source: script/base/tokens/DeployERC20Pausable.s.sol#L39-L39
+  # Every selector ERC20Pausable exports (transfer, transferFrom) replaces ERC20's.
+  - replace: ERC20Pausable
+    source: script/base/tokens/DeployERC20Pausable.s.sol#L41-L41
+  - add: AccessControl
+    source: script/base/tokens/DeployERC20Pausable.s.sol#L43-L43
+  - add: AccessControlDiamondCut
+    source: script/base/tokens/DeployERC20Pausable.s.sol#L44-L44
+init:
+  kind: steps
+  steps:
+    - spec: ERC20Init
+      args: {}  # the script passes (name_, symbol_)
+      source: script/base/tokens/DeployERC20.s.sol#L35-L36
+    - spec: ERC20PausableInit
+      args: {}  # the script passes (admin)
+  source: script/base/tokens/DeployERC20Pausable.s.sol#L46-L55
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (name_, symbol_; admin).
