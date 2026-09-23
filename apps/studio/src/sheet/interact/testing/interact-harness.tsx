@@ -36,6 +36,9 @@ export async function renderInteractSheet(options: StudioOptions = {}) {
   await settled();
   // The interactions layer arrives in its own chunk.
   await expect.poll(() => document.querySelector('[data-tour="place-facet"]')).not.toBeNull();
+  // Its listeners attach in effects, after the first paint.
+  await frame();
+  await frame();
   return screen;
 }
 
