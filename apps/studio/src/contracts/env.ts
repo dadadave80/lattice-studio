@@ -18,8 +18,11 @@ export const env: {
   readonly dev: boolean;
   /** Vitest (`mode === "test"`): modules skip registering real browser-storage services; CCR from S7a. */
   readonly test: boolean;
+  /** The IPFS build (`--mode ipfs`, relative base): routes live in the hash; CCR from S11a. */
+  readonly hashRouting: boolean;
 } = {
   e2e: isE2EFlag(import.meta.env.VITE_STUDIO_E2E),
   dev: import.meta.env.DEV === true,
   test: import.meta.env.MODE === "test",
+  hashRouting: import.meta.env.MODE === "ipfs",
 };
