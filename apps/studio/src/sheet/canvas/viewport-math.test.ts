@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  centerOn, clampZoom, clearOf, fitRect, intersects, isViewport, MAX_ZOOM, MIN_ZOOM, percent, sameViewport, toScreen,
+  centerOn, clampZoom, clearOf, fitRect, gridGap, intersects, isViewport, MAX_ZOOM, MIN_ZOOM, percent, sameViewport, toScreen,
   visibleRect, zoomAt, zoomStep, ZOOM_STOPS,
 } from "./viewport-math";
 
@@ -75,6 +75,16 @@ describe("viewports", () => {
   test("intersects needs shared area", () => {
     expect(intersects({ x: 0, y: 0, width: 10, height: 10 }, { x: 5, y: 5, width: 10, height: 10 })).toBe(true);
     expect(intersects({ x: 0, y: 0, width: 10, height: 10 }, { x: 10, y: 0, width: 10, height: 10 })).toBe(false);
+  });
+});
+
+describe("gridGap", () => {
+  test("8 px at 100%, coarser as the view zooms out so the grid never turns into a fill", () => {
+    expect(gridGap(1)).toBe(8);
+    expect(gridGap(2)).toBe(8);
+    expect(gridGap(0.75)).toBe(8);
+    expect(gridGap(0.5)).toBe(16);
+    expect(gridGap(0.1)).toBe(64);
   });
 });
 

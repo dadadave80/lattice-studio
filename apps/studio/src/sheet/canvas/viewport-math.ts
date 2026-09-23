@@ -88,6 +88,13 @@ export function toScreen(rect: Rect, viewport: Viewport): Rect {
   };
 }
 
+/** The dot grid's pitch in sheet units: 8 (the snap grid), doubled until the dots sit at least 6 px apart on screen. */
+export function gridGap(zoom: number, grid = 8): number {
+  let gap = grid;
+  while (gap * zoom < 6 && gap < grid * 64) gap *= 2;
+  return gap;
+}
+
 /** Whether two rects share any area (touching edges don't count). */
 export function intersects(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
