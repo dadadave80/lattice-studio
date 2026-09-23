@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { normalizeRecipe, recipeHash } from "../canonical";
+import { lintCopy } from "../format/copy-lint";
 import type { Hex } from "../model/hex";
 import type { Recipe } from "../model/recipe";
 import { hex, loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe, makeTemplate } from "../testing";
@@ -134,6 +135,18 @@ describe("loadTemplate", () => {
     const erc20 = loadTemplate(fixture.value, "ERC20");
     expect(erc20.ok && erc20.value.immutable).toBe(true);
   });
+});
+
+test("notes and refusals pass the copy lint", () => {
+  const copy = [
+    ...templateList(catalog).flatMap((item) => (item.note === undefined ? [] : [item.note])),
+    ...["Nope", "Account", "Account6900", "Bridge", "Someday"].map((name) => {
+      const loaded = loadTemplate(catalog, name);
+      return loaded.ok ? "" : loaded.error;
+    }),
+  ];
+  expect(copy.filter((text) => text === "")).toEqual([]);
+  expect(copy.flatMap((text) => lintCopy(text))).toEqual([]);
 });
 
 describe("blankDiamond", () => {
