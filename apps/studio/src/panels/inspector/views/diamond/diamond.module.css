@@ -1,0 +1,78 @@
+/* The Diamond view's additions to the shared spec sheet (shared/sheet.module.css). Tokens only. */
+
+.starts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+}
+
+.actionBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-2);
+  padding: var(--lx-space-3) var(--lx-space-4);
+  border-bottom: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.plainList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  margin: var(--lx-space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.faint {
+  color: var(--lx-text-muted);
+}
+
+.quiet {
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  color: var(--lx-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.holder {
+  text-align: right;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.group + .group {
+  margin-top: var(--lx-space-2);
+}
+
+.groupHeading {
+  margin: 0;
+  padding-bottom: var(--lx-space-1);
+  border-bottom: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  font-weight: 600;
+  color: var(--lx-text);
+}
+
+.recordError {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--lx-space-2);
+}
+
+.linkAction {
+  display: inline-flex;
+  align-items: center;
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.status {
+  display: block;
+}
