@@ -20,9 +20,9 @@ export type DeployStatus = {
 const NONE: readonly Deployment[] = Object.freeze([]);
 
 /**
- * `recordChains`: also load the chain module when there are records to name and check, not only once a chain is
- * selected. The Deployments list and the Comparison view ask for it; the footer doesn't, so the footer never
- * pulls in the wallet stack on its own (spec L25, decision 13).
+ * The chain module loads once a chain is selected. `recordChains` also loads it when there are records to name
+ * and check: the Deployments list and the Comparison view ask for that; the footer doesn't, so with no chain
+ * selected, records alone don't make the footer pull in the wallet stack (spec L25, decision 13).
  */
 export function useDeployStatus(options: { recordChains?: boolean } = {}): DeployStatus {
   const project = useDocument((s) => s.project);

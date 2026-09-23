@@ -132,7 +132,7 @@
 .link {
   color: var(--lx-text);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: var(--lx-stroke-heavy);
 }
 
 .link:hover {

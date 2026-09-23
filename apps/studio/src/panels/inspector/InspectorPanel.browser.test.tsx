@@ -131,7 +131,8 @@ describe("commands", () => {
     setView({ kind: "preview", facet: "Governor" });
     await runCommand(commandRef("inspector.show", { facet: "Receive" }), "menu");
     expect(session.get().selection).toEqual(["Receive"]);
-    expect(inspectorView()).toBeNull();
+    // An explicit view, which narrow layouts follow to open the inspector.
+    expect(inspectorView()).toEqual({ kind: "facet", facet: "Receive" });
     const heading = page.getByRole("heading", { level: 2, name: "Receive" });
     await expect.element(heading).toHaveFocus();
   });
@@ -162,6 +163,7 @@ describe("commands", () => {
     await runCommand(commandRef("inspector.focusSelectors", { facet: "ERC20" }), "api");
     expect(session.get().selection).toEqual(["ERC20"]);
     expect(inspectorView()).toEqual({ kind: "facet", facet: "ERC20", focus: "selectors" });
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute("data-selector")).toBe(fixtureCatalog().facets.find((f) => f.name === "ERC20")?.selectors[0]?.hex), { timeout: 5000 });
     expect(commandState(commandRef("inspector.focusSelectors", { facet: "Governor" }))).toMatchObject({
       ok: false,
       reason: "Governor isn't on the sheet.",
@@ -172,6 +174,7 @@ describe("commands", () => {
     await renderWithStudio(<InspectorPanel />, { project: project(["VaultCore"]) });
     await runCommand(commandRef("dependency.compare", { options: ["ERC20", "ERC4626"] }), "fix");
     expect(inspectorView()).toEqual({ kind: "preview", facet: "ERC20", compare: ["ERC20", "ERC4626"] });
+    await expect.element(page.getByRole("heading", { level: 2, name: "Compare options" })).toHaveFocus();
     expect(commandState(commandRef("dependency.compare", { options: ["ERC20"] }))).toMatchObject({
       ok: false,
       reason: "Compare needs two or more options.",
@@ -188,6 +191,7 @@ describe("commands", () => {
     const address = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
     await runCommand(commandRef("deploy.compare", { chainId: SEPOLIA, address }), "button");
     expect(inspectorView()).toEqual({ kind: "comparison", chainId: SEPOLIA, address });
+    await expect.element(page.getByRole("heading", { level: 2, name: "Compare with the sheet" })).toHaveFocus();
     await vi.waitFor(() => expect(shownKind()).toBe("comparison"));
   });
 
@@ -210,6 +214,62 @@ describe("commands", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe("keeping focus when an action inside replaces the view", () => {
+  test("Remove in the Facet view: focus lands on the next view's heading", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20", "Receive"]), session: { selection: ["Receive"] } });
+    await viewShown("facet");
+    expect(document.querySelector('[data-view="facet"]')?.getAttribute("data-facet")).toBe("Receive");
+    const remove = page.getByRole("button", { name: "Remove", exact: true });
+    await remove.click();
+    await vi.waitFor(() => expect(doc.get().recipe.facets).toEqual(["ERC20"]));
+    await vi.waitFor(() => expect(document.activeElement?.hasAttribute("data-inspector-heading")).toBe(true), { timeout: 5000 });
+  });
+
+  test("a fix that resolves the Problem view's problem: focus lands on the next view's heading", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["VaultCore"]) });
+    setView({ kind: "problem", id: "DEP-01:VaultCore+ERC4626" });
+    await viewShown("problem");
+    await page.getByRole("button", { name: "Place ERC4626" }).first().click();
+    await vi.waitFor(() => expect(doc.get().recipe.facets).toContain("ERC4626"));
+    await vi.waitFor(() => expect(document.activeElement?.hasAttribute("data-inspector-heading")).toBe(true), { timeout: 5000 });
+    expect(shownKind()).not.toBe("problem");
+  });
+
+  test("Place on sheet in a catalog preview: focus lands on the placed facet's heading", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    setView({ kind: "preview", facet: "Receive" });
+    await viewShown("preview");
+    await page.getByRole("button", { name: "Place on sheet" }).click();
+    await vi.waitFor(() => expect(doc.get().recipe.facets).toContain("Receive"));
+    await vi.waitFor(() => expect(document.activeElement?.hasAttribute("data-inspector-heading")).toBe(true), { timeout: 5000 });
+  });
+
+  test("a view change while focus is elsewhere leaves focus alone", async () => {
+    await renderWithStudio(<><button type="button">Outside</button><InspectorPanel /></>, { project: project(["ERC20"]) });
+    await viewShown("diamond");
+    const outside = page.getByRole("button", { name: "Outside" });
+    await outside.click();
+    session.set({ selection: ["ERC20"] });
+    await viewShown("facet");
+    await expect.element(outside).toHaveFocus();
+  });
+});
+
+describe("remounting only for another view", () => {
+  test("a parameter change (init's focus field) keeps the same view element", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]) });
+    setView({ kind: "init", focus: "steps[0].name_" });
+    const body = () => document.querySelector("[data-inspector-view]")?.children[0]?.nextElementSibling ?? null;
+    await vi.waitFor(() => expect(shownKind()).toBe("init"));
+    await vi.waitFor(() => expect(body()?.firstElementChild?.tagName).not.toBe("P"), { timeout: 5000 });
+    const before = body()?.firstElementChild;
+    expect(before).toBeTruthy();
+    setView({ kind: "init", focus: "steps[0].symbol_" });
+    await Promise.resolve();
+    expect(body()?.firstElementChild).toBe(before);
   });
 });
 

@@ -3,27 +3,28 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { log } from "@/contracts";
 import styles from "./InspectorPanel.module.css";
 
-type State = { error: unknown };
-
-/**
- * Keeps a failing view from taking the inspector down. A function another WP hasn't finished (NotImplemented)
- * shows `Not built yet · WP-<id>`; anything else shows its reason and is logged. The frame keys the view's boundary by view, so
- * routing elsewhere starts over.
- */
 type Props = {
   children: ReactNode;
   /** When it changes, a caught error clears and the children render again (without remounting them otherwise). */
   resetKey?: string;
 };
 
-export class ViewBoundary extends Component<Props, State> {
-  override state: State = { error: null };
+type State = { error: unknown; resetKey: string | undefined };
 
-  override componentDidUpdate(previous: Props): void {
-    if (this.state.error !== null && previous.resetKey !== this.props.resetKey) this.setState({ error: null });
+/**
+ * Keeps a failing view from taking the inspector down. A function another WP hasn't finished (NotImplemented)
+ * shows `Not built yet · WP-<id>`; anything else shows its reason and is logged. The frame keys the view's
+ * boundary by view, so routing elsewhere starts over; the footer's clears through `resetKey`.
+ */
+export class ViewBoundary extends Component<Props, State> {
+  override state: State = { error: null, resetKey: this.props.resetKey };
+
+  static getDerivedStateFromProps(props: Props, state: State): Partial<State> | null {
+    if (props.resetKey === state.resetKey) return null;
+    return { resetKey: props.resetKey, error: null };
   }
 
-  static getDerivedStateFromError(error: unknown): State {
+  static getDerivedStateFromError(error: unknown): Partial<State> {
     return { error };
   }
 

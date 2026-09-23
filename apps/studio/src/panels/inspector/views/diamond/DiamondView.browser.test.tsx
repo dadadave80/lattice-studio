@@ -255,6 +255,19 @@ describe("DiamondView: chain readiness", () => {
   });
 });
 
+describe("DiamondView: codehashes", () => {
+  test("a contract at the canonical address with other code reads wrong code (spec L843)", async () => {
+    const chain = fakeChainService({
+      state: { [SEPOLIA]: { multicall3: { present: true, codehash: `0x${"ab".repeat(32)}` } } },
+    });
+    await chain.probe(SEPOLIA);
+    await renderWithStudio(view, { project: makeProject({ id: "ready-wrong-code", recipe: template("GovernedVault") }), session: { chainId: SEPOLIA }, chain });
+    const readiness = page.getByRole("region", { name: "Chain readiness" });
+    await expect.element(readiness.getByText("wrong code", { exact: true })).toBeVisible();
+    await expect.element(readiness.getByText("Arachnid's proxy present")).toBeVisible();
+  });
+});
+
 describe("DiamondView: deployments", () => {
   test("Not deployed yet.", async () => {
     await renderWithStudio(view, { project: makeProject({ id: "deploy-none" }), chain: true });

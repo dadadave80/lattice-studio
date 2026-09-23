@@ -28,6 +28,7 @@
   border-bottom: var(--lx-stroke-hair) solid var(--lx-border-subtle);
 }
 
+/* Media queries can't read custom properties: 767 px is the spec's narrow breakpoint (L370). */
 @media (max-width: 767px) {
   .narrowFillIn {
     display: flex;

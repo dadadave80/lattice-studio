@@ -33,8 +33,9 @@ defineCommands([
         show(ctx.session.panes.inspector.view, { kind: "heading" });
         return;
       }
-      // The facet view follows a one-card selection, so a later click elsewhere moves the inspector on.
-      show(null, { kind: "heading" }, [facet]);
+      // An explicit facet view, so narrow layouts that open the inspector on a routed view show it; a later
+      // selection change elsewhere still moves the inspector on (services.ts).
+      show({ kind: "facet", facet }, { kind: "heading" }, [facet]);
     },
   }),
   command<CommandArgsMap["inspector.focusSelectors"]>({

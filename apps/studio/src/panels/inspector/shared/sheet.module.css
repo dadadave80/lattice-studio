@@ -66,7 +66,7 @@
 
 .rows {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: calc(var(--lx-space-12) * 2) minmax(0, 1fr);
   margin: 0;
 }
 
@@ -167,7 +167,7 @@
 .link {
   color: var(--lx-text);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: var(--lx-stroke-heavy);
 }
 
 .link:hover {

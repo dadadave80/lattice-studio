@@ -331,6 +331,55 @@ describe("requires, problems and init", () => {
   });
 });
 
+describe("init fields, key context and read-only rows", () => {
+  test("Init lists its fields read-only, marking the ones INIT-01 reports missing", async () => {
+    const recipe = { facets: ["ERC20"], init: { kind: "steps" as const, steps: [{ spec: "ERC20Init", args: { name_: "Vault" } }] } };
+    await renderWithStudio(<FacetView view={{ kind: "facet", facet: "ERC20" }} />, { project: project(recipe, "facet-init-fields") });
+    await shown("ERC20");
+    const fields = page.getByRole("list", { name: "ERC20Init fields" });
+    await expect.element(fields).toBeVisible();
+    const name = document.querySelector('[data-field="name_"]');
+    const symbol = document.querySelector('[data-field="symbol_"]');
+    expect(name?.textContent).toBe("name_string");
+    expect(symbol?.textContent).toBe("symbol_stringmissing");
+    // Read-only: no inputs in the Facet view's Init section.
+    expect(fields.element().querySelector("input")).toBeNull();
+  });
+
+  test("the Selectors list is a list key context, so single-key shortcuts stay quiet in it", async () => {
+    await renderWithStudio(<FacetView view={{ kind: "facet", facet: "ERC20" }} />, { project: project({ facets: ["ERC20"] }, "facet-keyctx") });
+    await shown("ERC20");
+    const list = page.getByRole("list", { name: "ERC20 selectors" });
+    await expect.element(list).toHaveAttribute("data-keyctx", "list");
+  });
+
+  test("while the session is read-only, rows stay focusable, aria-disabled with the reason, and run nothing", async () => {
+    const exclude = vi.fn();
+    const reason = "Another tab is editing this project.";
+    overrideCommands([
+      command({
+        id: "selector.exclude", title: () => "Exclude", category: "Build",
+        enabled: (ctx) => (ctx.session.readOnly ? { ok: false, reason: ctx.session.readOnly } : { ok: true }), run: exclude,
+      }),
+    ]);
+    await renderWithStudio(<FacetView view={{ kind: "facet", facet: "ERC20" }} />, {
+      project: project({ facets: ["ERC20"] }, "facet-readonly"),
+      session: { readOnly: reason },
+    });
+    await shown("ERC20");
+    const transfer = row(TRANSFER);
+    await expect.element(transfer).toHaveAttribute("aria-disabled", "true");
+    await expect.element(transfer).toHaveAccessibleDescription(reason);
+    transfer.focus();
+    expect(document.activeElement).toBe(transfer);
+    await userEvent.keyboard(" ");
+    transfer.click();
+    expect(exclude).not.toHaveBeenCalled();
+    session.set({ readOnly: null });
+    await vi.waitFor(() => expect(row(TRANSFER).hasAttribute("aria-disabled")).toBe(false));
+  });
+});
+
 describe("storage, seams and release", () => {
   test("storage lists the placed facets that share its namespaces; seams it serves list selector and reason", async () => {
     await renderWithStudio(<FacetView view={{ kind: "facet", facet: "GovernedVault" }} />, { project: makeProject({ id: "facet-seams", recipe: governedVault() }) });
