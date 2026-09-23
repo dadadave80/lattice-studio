@@ -1,0 +1,62 @@
+/* Placeholder layout until WP-S3: the 1280 px and wider regions (spec L353-L359). */
+
+.app {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 316px;
+  grid-template-rows: 40px minmax(0, 1fr) 160px;
+  grid-template-areas:
+    "titlebar titlebar titlebar"
+    "left sheet inspector"
+    "console console console";
+  height: 100%;
+  background: var(--lx-ground);
+  color: var(--lx-text);
+}
+
+.titlebar,
+.left,
+.sheet,
+.inspector,
+.console {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--lx-space-2) var(--lx-space-3);
+  color: var(--lx-text-muted);
+}
+
+.titlebar > * {
+  display: flex;
+  gap: var(--lx-space-3);
+}
+
+.titlebar {
+  grid-area: titlebar;
+  background: var(--lx-panel);
+  border-bottom: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.left {
+  grid-area: left;
+  background: var(--lx-panel);
+  border-right: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.sheet {
+  grid-area: sheet;
+  background-color: var(--lx-ground);
+  background-image: radial-gradient(var(--lx-dot) 1px, transparent 1px);
+  background-size: var(--lx-grid) var(--lx-grid);
+}
+
+.inspector {
+  grid-area: inspector;
+  background: var(--lx-panel);
+  border-left: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.console {
+  grid-area: console;
+  background: var(--lx-sunken);
+  border-top: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
