@@ -71,10 +71,13 @@ function cutRank(role: string): number {
 function staleAddresses(entries: readonly AuthorityEntry[], ctx: AnalysisContext): Problem[] {
   if (ctx.known.length === 0) return [];
   const known = new Set(ctx.known.map((a) => a.toLowerCase()));
+  // The current prediction is where this diamond will be, not a leftover (spec L333: "under another salt,
+  // account or chain"), even though recordPrediction puts it in `known` too.
+  const self = ctx.refs?.self?.toLowerCase();
   const out: Problem[] = [];
   for (const { path, role, address } of literalAuthority(entries)) {
     const key = address.toLowerCase();
-    if (!known.has(key)) continue;
+    if (!known.has(key) || key === self) continue;
     const from = ctx.knownFrom?.[key];
     const params: { path: string; role: string; address: Address; source?: "prediction" | "deployment"; chainId?: number; chain?: string } = {
       path,

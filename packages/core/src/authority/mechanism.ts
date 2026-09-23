@@ -20,7 +20,6 @@ import {
   isAddressLike,
   MECHANISMS,
   mechanismByFacet,
-  mechanismById,
   OWNER_ROLE,
   refOf,
   signature,
@@ -35,7 +34,8 @@ const AUTOMATIC_STEP = "the automatic ERC-165 step";
 export const mechanismOptions: MechanismOptionsFn = (recipe, catalog) => {
   const bundle = decidingBundle(recipe, catalog);
   const current = currentMechanism(recipe, catalog, bundle);
-  const options = MECHANISMS.map((def) => optionFor(def, catalog, current, bundle));
+  const fixedBundle = recipe.init.kind === "bundle" && !bundle ? fixedBundleReason(recipe.init.spec) : undefined;
+  const options = MECHANISMS.map((def) => optionFor(def, catalog, current, bundle, fixedBundle));
   const out: MechanismOptions = { current, options };
   if (bundle) out.bundle = bundle.name;
   return out;
@@ -58,11 +58,23 @@ function bundleReason(bundle: string): string {
   return `${bundle} sets up the upgrade mechanism itself, so the bundle decides it.`;
 }
 
-function optionFor(def: MechanismDef, catalog: Catalog, current: Mechanism | null, bundle: InitSpec | undefined): MechanismOption {
+/** A bundle that doesn't set up a mechanism: its one call can't take the mechanism's init step. */
+function fixedBundleReason(spec: string): string {
+  return `The init is a bundle, ${spec}, so Studio can't swap the upgrade mechanism's init steps.`;
+}
+
+function optionFor(
+  def: MechanismDef,
+  catalog: Catalog,
+  current: Mechanism | null,
+  bundle: InitSpec | undefined,
+  fixedBundle: string | undefined,
+): MechanismOption {
   const out: MechanismOption = { id: def.id, label: def.label, summary: def.summary, enabled: true };
   if (def.facet) out.facet = def.facet;
   const disable = (reason: string): MechanismOption => ({ ...out, enabled: false, reason });
   if (bundle) return def.id === current ? out : disable(bundleReason(bundle.name));
+  if (fixedBundle) return disable(fixedBundle);
   if (def.id === "governance") return disable(GOVERNANCE_DISABLED);
   if (def.facet && !facetNamed(catalog, def.facet)) return disable(`${def.facet} isn't in this catalog.`);
   return out;
@@ -72,12 +84,12 @@ function optionFor(def: MechanismDef, catalog: Catalog, current: Mechanism | nul
 export const planMechanismChange: PlanMechanismChangeFn = (recipe, catalog, choice, inputs) => {
   const options = mechanismOptions(recipe, catalog);
   if (options.bundle) return err(bundleReason(options.bundle));
+  // `choice` arrives as JSON at runtime (`authority.chooseMechanism {preset}`), so an unknown id is refused, not thrown.
+  const def = MECHANISMS.find((m) => m.id === choice);
   const option = options.options.find((o) => o.id === choice);
-  const def = mechanismById(choice);
-  if (!option?.enabled) return err(option?.reason ?? `${def.label} isn't available.`);
-  if (recipe.init.kind === "bundle") {
-    return err(`The init is a bundle, ${recipe.init.spec}, so Studio can't swap the upgrade mechanism's init steps.`);
-  }
+  if (!def || !option) return err(`There's no upgrade mechanism called "${String(choice)}".`);
+  if (!option.enabled) return err(option.reason ?? `${def.label} isn't available.`);
+  if (recipe.init.kind === "bundle") return err(fixedBundleReason(recipe.init.spec));
   if (choice === "admin" && inputs.keepMechanism) return handAdminToSafe(recipe, catalog, options.current, inputs);
   const missing = missingInput(choice, inputs);
   if (missing) return err(missing);
@@ -161,7 +173,9 @@ function switchMechanism(recipe: Recipe, catalog: Catalog, def: MechanismDef, in
     const covered = new Set([...nextSteps.map((s) => s.spec), ...added.map((a) => a.name)].flatMap(
       (s) => specNamed(catalog, s)?.initializes.map((i) => i.module) ?? [],
     ));
-    const needed = spec.initializes.some((i) => droppedModules.has(i.module));
+    // Put back what a dropped step initialized, and initialize a companion this change places (AccessControl
+    // when Admin role comes to a diamond with no AccessControl init).
+    const needed = placed.includes(name) || spec.initializes.some((i) => droppedModules.has(i.module));
     if (needed && !spec.initializes.every((i) => covered.has(i.module))) added.push(spec);
   }
   nextSteps.splice(insertAt, 0, ...added.map((spec) => ({ spec: spec.name, args: argsFor(spec) })));
@@ -172,7 +186,8 @@ function switchMechanism(recipe: Recipe, catalog: Catalog, def: MechanismDef, in
     facets: nextFacets,
     owners: keepOwners(recipe.owners, nextFacets),
     exclude: keepExcluded(recipe.exclude, nextFacets, catalog),
-    init: nextSteps.length > 0 ? { kind: "steps", steps: nextSteps } : { kind: "none" },
+    // An empty init is steps [] (the planner still adds the automatic ERC-165 step), never "none".
+    init: dropped.length === 0 && added.length === 0 && argLines.length === 0 ? recipe.init : { kind: "steps", steps: nextSteps },
   };
   if (def.id === "immutable") next.immutable = true;
 
@@ -200,7 +215,8 @@ function subsumes(outer: InitSpec, inner: InitSpec): boolean {
 
 /**
  * Facets the new member needs placed: the first option of each `requires` entry none of whose options is
- * placed, and the owner of each namespace it `touches` that no placed facet owns (DEP-02's two sources).
+ * placed, and the access-family owner of each namespace it `touches` that no placed facet owns (DEP-02's two
+ * sources; contracts §4 narrows the namespace kind to access-family owners, so only roles pull a facet in).
  */
 function companionsNeeded(member: Facet, placed: ReadonlySet<string>, catalog: Catalog): string[] {
   const out = new Set<string>();
@@ -210,19 +226,21 @@ function companionsNeeded(member: Facet, placed: ReadonlySet<string>, catalog: C
     if (first) out.add(first);
   }
   for (const ns of member.touches) {
-    const owners = catalog.facets.filter((f) => f.storage?.id === ns);
-    if (owners.length === 0 || owners.some((f) => placed.has(f.name))) continue;
-    const first = owners[0];
+    if (catalog.facets.some((f) => f.storage?.id === ns && placed.has(f.name))) continue;
+    const first = catalog.facets.find((f) => f.storage?.id === ns && f.family === "access");
     if (first) out.add(first.name);
   }
   return catalogOrder([...out].filter((n) => !placed.has(n)), catalog);
 }
 
-/** Companions of the removed members that no remaining facet needs, removed until nothing else frees up. */
+/**
+ * Companions of the removed members that no remaining facet needs, removed until nothing else frees up. A
+ * companion serves through `requires`, or through `touches` only when it is an access-family owner (as above).
+ */
 function exclusiveCompanions(removed: readonly string[], facets: ReadonlySet<string>, catalog: Catalog): string[] {
   const members = removed.map((n) => facetNamed(catalog, n)).filter((f): f is Facet => f !== undefined);
   const serves = (companion: Facet, user: Facet) =>
-    user.requires.some((r) => r.anyOf.includes(companion.name)) || (companion.storage !== undefined && user.touches.includes(companion.storage.id));
+    user.requires.some((r) => r.anyOf.includes(companion.name)) || (companion.family === "access" && companion.storage !== undefined && user.touches.includes(companion.storage.id));
   const candidates = catalog.facets.filter((f) => facets.has(f.name) && members.some((m) => serves(f, m)));
   const remaining = new Set(facets);
   const out: string[] = [];
@@ -290,27 +308,36 @@ function initChange(
     return spec ? signature(spec) : d.step.spec;
   });
   const addedTexts = added.map(signature);
-  const autoBefore = hasAutomaticStep(before, catalog);
-  const autoAfter = hasAutomaticStep(after, catalog);
+  const autoBefore = automaticStep(before, catalog);
+  const autoAfter = automaticStep(after, catalog);
   if (autoBefore && !autoAfter) removedTexts.push(AUTOMATIC_STEP);
   if (!autoBefore && autoAfter) addedTexts.push(AUTOMATIC_STEP);
-  if (addedTexts.length === 0 && removedTexts.length === 0) return undefined;
-  if (removedTexts.length === 0) return { kind: "init", text: `Init: add ${joinAnd(addedTexts)}` };
-  if (addedTexts.length === 0) return { kind: "init", text: `Init: remove ${joinAnd(removedTexts)}` };
-  const verb = addedTexts.length === 1 ? "replaces" : "replace";
-  let text = `Init: ${joinAnd(addedTexts)} ${verb} ${joinAnd(removedTexts)}`;
-  if (newSpec && added.length === 1 && added[0] === newSpec && addedTexts.length === 1) {
-    const sets = newSpec.initializes.map((i) => i.module).filter((m) => m !== def.facet);
-    if (newSpec.registersInterfaces) sets.push("the flags");
-    if (sets.length > 0) text += `, since it sets up ${joinAnd(sets)} itself`;
+  const switched = autoBefore && autoAfter && autoBefore !== autoAfter ? `${AUTOMATIC_STEP} switches to ${autoAfter}` : undefined;
+  let text: string | undefined;
+  if (removedTexts.length === 0 && addedTexts.length > 0) text = `Init: add ${joinAnd(addedTexts)}`;
+  else if (addedTexts.length === 0 && removedTexts.length > 0) text = `Init: remove ${joinAnd(removedTexts)}`;
+  else if (addedTexts.length > 0) {
+    const verb = addedTexts.length === 1 ? "replaces" : "replace";
+    text = `Init: ${joinAnd(addedTexts)} ${verb} ${joinAnd(removedTexts)}`;
+    if (newSpec && added.length === 1 && added[0] === newSpec && addedTexts.length === 1) {
+      const sets = newSpec.initializes.map((i) => i.module).filter((m) => m !== def.facet);
+      if (newSpec.registersInterfaces) sets.push("the flags");
+      if (sets.length > 0) text += `, since it sets up ${joinAnd(sets)} itself`;
+    }
   }
-  return { kind: "init", text };
+  if (switched) text = text ? `${text}; ${switched}` : `Init: ${switched}`;
+  return text === undefined ? undefined : { kind: "init", text };
 }
 
-/** Step inits get the ERC-165 step appended unless a step registers the interfaces itself (spec L468). */
-function hasAutomaticStep(recipe: Recipe, catalog: Catalog): boolean {
-  if (recipe.init.kind !== "steps" || recipe.init.steps.length === 0) return false;
-  return !recipe.init.steps.some((s) => specNamed(catalog, s.spec)?.registersInterfaces === true);
+/**
+ * The automatic ERC-165 step the planner appends to a step init (C4a `planInit`, spec L468, R11): none when a
+ * step registers the interfaces itself or the init is "none"; `initImmutable` with no upgrade mechanism placed.
+ * An empty steps init still gets it.
+ */
+function automaticStep(recipe: Recipe, catalog: Catalog): "initUpgradeable" | "initImmutable" | undefined {
+  if (recipe.init.kind !== "steps") return undefined;
+  if (recipe.init.steps.some((s) => specNamed(catalog, s.spec)?.registersInterfaces === true)) return undefined;
+  return upgradeMembers(recipe, catalog).length > 0 ? "initUpgradeable" : "initImmutable";
 }
 
 function upgradeLine(def: MechanismDef, next: Recipe, catalog: Catalog, inputs: MechanismInputs): ChangeLine | undefined {

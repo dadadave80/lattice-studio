@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Catalog } from "../model/catalog";
-import type { MechanismChange } from "../model/init";
+import type { Mechanism, MechanismChange } from "../model/init";
 import type { Recipe } from "../model/recipe";
 import type { Result } from "../model/result";
+import { planInit } from "../init/plan/plan";
 import { authorityTable, mechanismOptions, planMechanismChange } from "./index";
 import { blankDiamond, context, DEPLOYER, fixture, PREDICTED, SAFE, template } from "./test-support";
 
@@ -123,6 +124,14 @@ describe.skipIf(skip)("mechanismOptions", () => {
       expect(o.reason).toBe("GovernedVaultInit sets up the upgrade mechanism itself, so the bundle decides it.");
     }
   });
+  test("a bundle that doesn't set up a mechanism: every option disabled with the reason the change would give", () => {
+    const vault: Recipe = { ...blankDiamond(catalog), init: { kind: "bundle", spec: "VaultCoreInit", args: {} } };
+    const options = mechanismOptions(vault, catalog);
+    const reason = "The init is a bundle, VaultCoreInit, so Studio can't swap the upgrade mechanism's init steps.";
+    expect(options.bundle).toBeUndefined();
+    expect(options.options.map((o) => [o.enabled, o.reason])).toEqual(options.options.map(() => [false, reason]));
+    expect(error(planMechanismChange(vault, catalog, "safe", { safe: SAFE, minThreshold: "2" }))).toBe(reason);
+  });
 });
 
 describe.skipIf(skip)("planMechanismChange", () => {
@@ -211,15 +220,62 @@ describe.skipIf(skip)("planMechanismChange", () => {
     ]);
   });
 
-  test("Immutable removes the mechanism, its exclusive companions and their init, and acknowledges it", () => {
+  test("Immutable removes the mechanism, its exclusive companions and their init; the automatic step switches to initImmutable", () => {
     const { changes, next } = change(planMechanismChange(blankDiamond(catalog), catalog, "immutable", {}));
     expect(changes).toEqual([
       { kind: "remove", text: "Remove AccessControlDiamondCut", facet: "AccessControlDiamondCut" },
       { kind: "remove", text: "Remove AccessControl", facet: "AccessControl" },
-      { kind: "init", text: "Init: remove AccessControlInit(admin) and the automatic ERC-165 step" },
+      { kind: "init", text: "Init: remove AccessControlInit(admin); the automatic ERC-165 step switches to initImmutable" },
       { kind: "immutable", text: "Keep immutable: nothing can change this diamond after deploy" },
     ]);
-    expect(next).toMatchObject({ facets: ["Receive", "DiamondLoupeFacet", "ERC165Facet"], init: { kind: "none" }, immutable: true });
+    // An empty init is steps [], never "none": the planner still appends DiamondIntrospectionInit.initImmutable.
+    expect(next).toMatchObject({ facets: ["Receive", "DiamondLoupeFacet", "ERC165Facet"], init: { kind: "steps", steps: [] }, immutable: true });
+    expect(planInit(next, catalog).steps.at(-1)?.automatic).toBe("initImmutable");
+  });
+
+  test("Admin role on the immutable ERC20 recipe places AccessControl and initializes it, so someone holds DEFAULT_ADMIN_ROLE", () => {
+    const { changes, next } = change(planMechanismChange(template(catalog, "ERC20"), catalog, "admin", {}));
+    expect(next.facets).toEqual(["ERC20", "AccessControlDiamondCut", "EmergencyStop", "AccessControl", "Receive", "DiamondLoupeFacet", "ERC165Facet"]);
+    expect(next.init).toEqual({
+      kind: "steps",
+      steps: [
+        { spec: "AccessControlInit", args: { admin: { $ref: "deployer" } } },
+        { spec: "ERC20Init", args: { name_: "Example Token", symbol_: "EXT" } },
+      ],
+    });
+    expect(changes.map((c) => c.text)).toEqual([
+      "Place AccessControlDiamondCut",
+      "Place EmergencyStop",
+      "Place AccessControl",
+      "Init: add AccessControlInit(admin); the automatic ERC-165 step switches to initUpgradeable",
+      "Upgrade → Deploying account, through `DEFAULT_ADMIN_ROLE`",
+      "Clear Keep immutable",
+    ]);
+    expect(authorityTable(next, catalog).map((r) => [r.role, r.holder])).toEqual([
+      ["DEFAULT_ADMIN_ROLE", { $ref: "deployer" }],
+      ["Upgrade", { $ref: "deployer" }],
+      ["Guardian", null],
+    ]);
+  });
+
+  test("Admin role on an init of kind none adds AccessControlInit with the admin given", () => {
+    const bare: Recipe = { ...template(catalog, "ERC20"), facets: ["Receive", "DiamondLoupeFacet", "ERC165Facet"], init: { kind: "none" } };
+    const { changes, next } = change(planMechanismChange(bare, catalog, "admin", { admin: SAFE }));
+    expect(next.init).toEqual({ kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: SAFE } }] });
+    expect(changes).toContainEqual({ kind: "init", text: "Init: add AccessControlInit(admin) and the automatic ERC-165 step" });
+    expect(changes).toContainEqual({ kind: "authority", text: "Upgrade → 0x71C7…976F, through `DEFAULT_ADMIN_ROLE`" });
+  });
+
+  test("namespace companions come only from the access family", () => {
+    // Give SafeDiamondCut a touch on a namespace a non-access facet owns: it must not pull that facet in or out.
+    const withTouch: Catalog = {
+      ...catalog,
+      facets: catalog.facets.map((f) => (f.name === "SafeDiamondCut" ? { ...f, touches: [...f.touches, "lattice.storage.Pausable"] } : f)),
+    };
+    const { next } = change(planMechanismChange(blankDiamond(withTouch), withTouch, "safe", { safe: SAFE, minThreshold: "2" }));
+    expect(next.facets).not.toContain("Pausable");
+    const back = change(planMechanismChange({ ...next, facets: [...next.facets, "Pausable"] }, withTouch, "admin", {})).next;
+    expect(back.facets).toContain("Pausable");
   });
 
   test("a companion another facet still needs stays", () => {
@@ -267,6 +323,8 @@ describe.skipIf(skip)("planMechanismChange", () => {
     expect(error(planMechanismChange(blank, catalog, "safe-delay", { safe: SAFE, minThreshold: "2" }))).toBe("Enter the delay.");
     expect(error(planMechanismChange(blank, catalog, "admin", {}))).toBe("AccessControlDiamondCut is already the upgrade mechanism.");
     expect(error(planMechanismChange(template(catalog, "ERC20"), catalog, "immutable", {}))).toBe("This diamond is already immutable.");
+    // The preset arrives as JSON at runtime: an unknown id is refused, never thrown.
+    expect(error(planMechanismChange(blank, catalog, "multisig" as Mechanism, {}))).toBe('There\'s no upgrade mechanism called "multisig".');
   });
 
   test("removing a facet drops its owner entries and exclusions nothing else exports", () => {

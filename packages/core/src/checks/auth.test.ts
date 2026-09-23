@@ -137,6 +137,16 @@ describe.skipIf(skip)("AUTH-02", () => {
     expect(checkAuth(input(blankDiamond(catalog), context({ known: [DEPLOYER], refs })))).toEqual([]);
   });
 
+  test("never for the current prediction, even when recordPrediction put it in known", () => {
+    const ctx = context({
+      refs,
+      known: [PREDICTED, OLD_PREDICTION],
+      knownFrom: { [PREDICTED.toLowerCase()]: { source: "prediction", chainId: 11155111, chain: "Sepolia" } },
+    });
+    expect(checkAuth(input(withAdmin(blankDiamond(catalog), PREDICTED.toLowerCase()), ctx))).toEqual([]);
+    expect(checkAuth(input(withAdmin(blankDiamond(catalog), OLD_PREDICTION), ctx)).map((p) => p.id)).toEqual(["AUTH-02:steps[0].admin"]);
+  });
+
   test("the pinned Safe counts too, and an address nothing knows passes", () => {
     const recipe = template(catalog, "SafeDiamondCut");
     recipe.init = { kind: "steps", steps: [{ spec: "SafeDiamondCutInit", args: { admin: SAFE, safe: OLD_PREDICTION, minThreshold: "2" } }] };

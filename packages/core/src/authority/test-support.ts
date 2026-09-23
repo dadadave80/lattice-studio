@@ -3,7 +3,8 @@ import type { AnalysisContext } from "../model/analysis";
 import type { Catalog } from "../model/catalog";
 import type { Address } from "../model/hex";
 import type { Recipe } from "../model/recipe";
-import { loadFixtureCatalog, makeRecipe } from "../testing";
+import { blankDiamond as buildBlank } from "../plan/templates";
+import { loadFixtureCatalog } from "../testing";
 
 const loaded = loadFixtureCatalog();
 
@@ -19,15 +20,9 @@ export const PREDICTED: Address = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 /** Where this diamond would have been before the salt changed. */
 export const OLD_PREDICTION: Address = "0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db";
 
-/** Spec L990: Blank diamond is DiamondLoupeFacet, ERC165Facet, Receive, AccessControl and AccessControlDiamondCut, admin "Deploying account". */
+/** Spec L990 as C5a builds it: DiamondLoupeFacet, ERC165Facet, Receive, AccessControl and AccessControlDiamondCut, admin "Deploying account". */
 export function blankDiamond(catalog: Catalog): Recipe {
-  return makeRecipe(
-    {
-      facets: ["AccessControlDiamondCut", "AccessControl", "Receive", "DiamondLoupeFacet", "ERC165Facet"],
-      init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: { $ref: "deployer" } } }] },
-    },
-    catalog,
-  );
+  return buildBlank(catalog);
 }
 
 /** A fixture template's recipe, as it loads. */

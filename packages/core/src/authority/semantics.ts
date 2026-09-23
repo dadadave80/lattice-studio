@@ -99,12 +99,6 @@ function selfHeld(contract: string): SelfHeld[] {
 /** Guardians of EmergencyStop: none at init; the admin appoints them later (EmergencyStopLib.sol:101-110). */
 export const GUARDIAN = { facet: "EmergencyStop", role: "Guardian", via: "EmergencyStop (no guardian at init)" } as const;
 
-export function mechanismById(id: Mechanism): MechanismDef {
-  const def = MECHANISMS.find((m) => m.id === id);
-  if (!def) throw new TypeError(`Unknown mechanism ${id}`);
-  return def;
-}
-
 export function mechanismByFacet(facet: string): MechanismDef | undefined {
   return MECHANISMS.find((m) => m.facet === facet);
 }
