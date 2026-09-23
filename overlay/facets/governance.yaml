@@ -1,0 +1,105 @@
+# The four upgrade mechanisms, the Governor stack and SafeHarborAdopter (src/governance).
+# All four mechanisms carry the EmergencyStop convention (contracts §4: source wins for AccessControlDiamondCut).
+
+AccessControlDiamondCut:
+  requires:
+    - anyOf: [EmergencyStop]
+      strength: convention
+      reason: a guardian can halt upgrades
+      source: src/governance/AccessControlDiamondCut.sol#L10-L11
+  family:
+    name: upgrade
+    source: src/governance/AccessControlDiamondCut.sol#L16-L19
+  seamReview: >-
+    diamondCut 0x1f931c1c is shared only with the other upgrade mechanisms, so two of them together is CORE-03,
+    not a seam.
+  notes: >-
+    No init of its own: the DEFAULT_ADMIN_ROLE that AccessControlInit (or any init that seeds AccessControl)
+    grants is the upgrade authority (src/governance/AccessControlDiamondCut.sol#L12-L14).
+
+GovernedDiamondCut:
+  requires:
+    - anyOf: [EmergencyStop]
+      strength: convention
+      reason: a guardian can halt upgrades
+      source: src/governance/GovernedDiamondCut.sol#L13-L14
+  family:
+    name: upgrade
+    source: src/governance/GovernedDiamondCut.sol#L13-L15
+  init:
+    name: GovernedDiamondCutInit
+    source: src/governance/GovernedDiamondCutInit.sol#L23-L28
+  seamReview: >-
+    diamondCut and the registry, frozen-selector and emergency surface are shared only with the other upgrade
+    mechanisms (CORE-03), so no seam applies.
+
+GovernedSafeDiamondCut:
+  requires:
+    - anyOf: [EmergencyStop]
+      strength: convention
+      reason: a guardian can halt upgrades
+      source: src/governance/libraries/GovernedSafeDiamondCutLib.sol#L67-L67
+  family:
+    name: upgrade
+    source: src/governance/GovernedSafeDiamondCut.sol#L14-L21
+  init:
+    name: GovernedSafeDiamondCutInit
+    source: src/governance/GovernedSafeDiamondCutInit.sol#L27-L32
+  seamReview: >-
+    Its registry, frozen-selector, emergency and Safe selectors are shared with GovernedDiamondCut and
+    SafeDiamondCut (CORE-03). getTimestamp, isOperationDone, isOperationPending and isOperationReady are also
+    TimelockController's, for that facet's own operations; no Lattice script cuts both, and none pins an owner,
+    so the user chooses (SEL-01).
+
+Governor:
+  requires: []
+  seamReview: >-
+    In GovernedVault, name, clock, CLOCK_MODE and castVoteBySig are excluded from Governor and served by
+    GovernedVault (script/base/defi/DeployGovernedVault.s.sol#L27-L35); castVoteBySig is a seam (seams.yaml),
+    the others are GovernedVault's defaults. token() is also BridgeERC20's and BridgeERC7802's, with a different
+    meaning; no script cuts them together, so the user chooses (SEL-01).
+  notes: >-
+    No init contract ships for Governor: __Governor_init runs only inside GovernedVaultInit and
+    GovernedVaultENSInit, so the facet has no init of its own (src/governance/Governor.sol#L13-L15).
+
+SafeDiamondCut:
+  requires:
+    - anyOf: [EmergencyStop]
+      strength: convention
+      reason: a guardian can halt upgrades
+      source: script/base/governance/DeploySafeDiamondCut.s.sol#L20-L20
+  family:
+    name: upgrade
+    source: src/governance/SafeDiamondCut.sol#L14-L16
+  init:
+    name: SafeDiamondCutInit
+    source: src/governance/SafeDiamondCutInit.sol#L25-L30
+  seamReview: >-
+    diamondCut and the registry, frozen-selector, emergency and Safe selectors are shared only with the other
+    upgrade mechanisms (CORE-03), so no seam applies.
+
+SafeHarborAdopter:
+  requires: []
+  init:
+    name: SafeHarborAdopterInit
+    source: src/governance/SafeHarborAdopterInit.sol#L22-L25
+
+TimelockController:
+  requires: []
+  seamReview: >-
+    getTimestamp, isOperationDone, isOperationPending and isOperationReady are also GovernedSafeDiamondCut's,
+    for its scheduled cuts; no Lattice script cuts both, and none pins an owner, so the user chooses (SEL-01).
+  notes: >-
+    No init contract ships for TimelockController: __TimelockController_init runs only inside GovernedVaultInit
+    and GovernedVaultENSInit. Its roles live in AccessControl's storage (src/governance/TimelockController.sol#L9-L13).
+
+Votes:
+  requires: []
+  seamReview: >-
+    delegate and delegateBySig must be ERC20Votes' once ERC20Votes is placed, because Votes' own versions leave
+    checkpoints at zero (src/governance/Votes.sol#L43-L44; a seam in seams.yaml). clock and CLOCK_MODE are
+    GovernedVault's by default: it owns the shared clock (docs/guides/compose-your-own-diamond.md#L41-L42) and
+    serves it from VotesLib.
+  notes: >-
+    Used alone, voting units are 0: use ERC20Votes to tie voting power to balances
+    (src/governance/Votes.sol#L12-L13). No init contract ships for Votes.

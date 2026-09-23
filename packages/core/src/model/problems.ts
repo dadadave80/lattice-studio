@@ -176,7 +176,9 @@ export type ProblemParams = {
   "NET-02": { chain: string; case: "missing" | "codehash"; expected: Hex; actual?: Hex };
   /**
    * "LatticeFactory and 3 of 15 facets and init contracts aren't on {chain} yet. …" `core`: LatticeRegistry
-   * and LatticeFactory when missing; `missing`: absent facets and init contracts, of `total` the plan needs.
+   * and LatticeFactory when missing; `missing`: absent facets, init contracts and the linked libraries they
+   * depend on (`Catalog.libraries`, e.g. PoseidonT3), of `total` the plan needs; the message still says "facets and
+   * init contracts".
    */
   "NET-03": { chain: string; core: string[]; missing: string[]; total: number };
   /** "The code at 0x5FbD…0aa3 isn't Lattice ERC20 0.4.0." */

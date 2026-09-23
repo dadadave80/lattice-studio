@@ -1,0 +1,145 @@
+API3Adapter:
+  requires: []
+  init:
+    name: API3AdapterInit
+    source: src/oracles/api3/API3AdapterInit.sol#L18-L21
+  seamReview: >-
+    getFeed, latestAnswer, registerFeed and unregisterFeed are shared with the other price adapters. latestAnswer is
+    the common read surface by design (src/interfaces/oracles/IPriceOracleReader.sol L6-L14), each adapter reads its
+    own feed registry, and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+  notes: >-
+    Every Lattice price adapter ships as its own diamond in script/base/oracles. When two share a diamond, route all
+    of an adapter's feed selectors to it: a feed registered through one adapter is invisible to another's reads.
+API3QRNGAdapter:
+  requires: []
+  init:
+    name: API3QRNGAdapterInit
+    source: src/oracles/api3/API3QRNGAdapterInit.sol#L18-L21
+  seamReview: >-
+    getConfig is shared with ChainlinkVRF, GelatoAutomateAdapter and PythEntropyAdapter; each returns its own
+    provider's config, and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+BandAdapter:
+  requires: []
+  init:
+    name: BandAdapterInit
+    source: src/oracles/band/BandAdapterInit.sol#L20-L23
+  seamReview: >-
+    getFeed, latestAnswer and unregisterFeed are shared with the other price adapters. latestAnswer is the common
+    read surface by design (src/interfaces/oracles/IPriceOracleReader.sol L6-L14), each adapter reads its own feed
+    registry, and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+ChainlinkAdapter:
+  requires: []
+  init:
+    name: ChainlinkAdapterInit
+    source: src/oracles/chainlink/ChainlinkAdapterInit.sol#L18-L21
+  seamReview: >-
+    getFeed, latestAnswer, registerFeed and unregisterFeed are shared with the other price adapters, and
+    latestAnswerRaw with PythAdapter. latestAnswer is the common read surface by design
+    (src/interfaces/oracles/IPriceOracleReader.sol L6-L14), each adapter reads its own feed registry, and no deploy
+    script or doc pins an owner, so the user chooses (SEL-01).
+ChainlinkAutomationAdapter:
+  requires: []
+  init:
+    name: ChainlinkAutomationAdapterInit
+    source: src/oracles/chainlink/ChainlinkAutomationAdapterInit.sol#L19-L22
+  seamReview: >-
+    getForwarder is shared with ChainlinkCREAdapter; each returns its own forwarder (the Automation forwarder here,
+    the KeystoneForwarder there), and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+ChainlinkCREAdapter:
+  requires: []
+  init:
+    name: ChainlinkCREAdapterInit
+    source: src/oracles/chainlink/ChainlinkCREAdapterInit.sol#L19-L22
+  seamReview: >-
+    getForwarder is shared with ChainlinkAutomationAdapter; each returns its own forwarder (the KeystoneForwarder
+    here, the Automation forwarder there), and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+ChainlinkVRF:
+  requires: []
+  init:
+    name: ChainlinkVRFInit
+    source: src/oracles/chainlink/ChainlinkVRFInit.sol#L18-L21
+  seamReview: >-
+    getConfig is shared with API3QRNGAdapter, GelatoAutomateAdapter and PythEntropyAdapter, and getUserKey with
+    GelatoVRFAdapter; each reads its own provider's storage, and no deploy script or doc pins an owner, so the user
+    chooses (SEL-01).
+ChronicleAdapter:
+  requires: []
+  init:
+    name: ChronicleAdapterInit
+    source: src/oracles/chronicle/ChronicleAdapterInit.sol#L18-L21
+  seamReview: >-
+    getFeed, latestAnswer, registerFeed and unregisterFeed are shared with the other price adapters. latestAnswer is
+    the common read surface by design (src/interfaces/oracles/IPriceOracleReader.sol L6-L14), each adapter reads its
+    own feed registry, and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+  notes: >-
+    Chronicle oracles are toll-gated: the oracle operator must kiss the deployed diamond before reads succeed
+    (src/oracles/chronicle/ChronicleAdapter.sol L13-L14).
+DIAAdapter:
+  requires: []
+  init:
+    name: DIAAdapterInit
+    source: src/oracles/dia/DIAAdapterInit.sol#L18-L21
+  seamReview: >-
+    getFeed, latestAnswer and unregisterFeed are shared with the other price adapters. latestAnswer is the common
+    read surface by design (src/interfaces/oracles/IPriceOracleReader.sol L6-L14), each adapter reads its own feed
+    registry, and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+GelatoAutomateAdapter:
+  requires: []
+  init:
+    name: GelatoAutomateAdapterInit
+    source: src/oracles/gelato/GelatoAutomateAdapterInit.sol#L19-L22
+  seamReview: >-
+    getConfig is shared with API3QRNGAdapter, ChainlinkVRF and PythEntropyAdapter; each returns its own provider's
+    config, and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+  notes: >-
+    Gelato runs tasks through a dedicated msg.sender, so consumer exec entry points must gate on
+    requireDedicatedMsgSender (src/oracles/gelato/GelatoAutomateAdapter.sol L14-L17).
+GelatoVRFAdapter:
+  requires: []
+  init:
+    name: GelatoVRFAdapterInit
+    source: src/oracles/gelato/GelatoVRFAdapterInit.sol#L18-L21
+  seamReview: >-
+    getUserKey is shared with ChainlinkVRF; each reads its own request map, and no deploy script or doc pins an
+    owner, so the user chooses (SEL-01).
+PythAdapter:
+  requires: []
+  init:
+    name: PythAdapterInit
+    source: src/oracles/pyth/PythAdapterInit.sol#L20-L23
+  seamReview: >-
+    getFeed, latestAnswer and unregisterFeed are shared with the other price adapters, and latestAnswerRaw with
+    ChainlinkAdapter. latestAnswer is the common read surface by design
+    (src/interfaces/oracles/IPriceOracleReader.sol L6-L14), each adapter reads its own feed registry, and no deploy
+    script or doc pins an owner, so the user chooses (SEL-01).
+PythEntropyAdapter:
+  requires: []
+  init:
+    name: PythEntropyAdapterInit
+    source: src/oracles/pyth/PythEntropyAdapterInit.sol#L18-L21
+  seamReview: >-
+    getConfig is shared with API3QRNGAdapter, ChainlinkVRF and GelatoAutomateAdapter; each returns its own
+    provider's config, and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+RedStoneAdapter:
+  requires: []
+  init:
+    name: RedStoneAdapterInit
+    source: src/oracles/redstone/RedStoneAdapterInit.sol#L18-L21
+  seamReview: >-
+    getFeed, latestAnswer and unregisterFeed are shared with the other price adapters. latestAnswer is the common
+    read surface by design (src/interfaces/oracles/IPriceOracleReader.sol L6-L14), each adapter reads its own feed
+    registry, and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+TellorAdapter:
+  requires: []
+  init:
+    name: TellorAdapterInit
+    source: src/oracles/tellor/TellorAdapterInit.sol#L20-L23
+  seamReview: >-
+    getFeed, latestAnswer and unregisterFeed are shared with the other price adapters. latestAnswer is the common
+    read surface by design (src/interfaces/oracles/IPriceOracleReader.sol L6-L14), each adapter reads its own feed
+    registry, and no deploy script or doc pins an owner, so the user chooses (SEL-01).
+TWAPOracle:
+  requires: []
+  init:
+    name: TWAPOracleInit
+    source: src/oracles/uniswap/TWAPOracleInit.sol#L18-L21
