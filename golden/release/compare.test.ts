@@ -17,6 +17,9 @@ import {
   failed,
   formatComparison,
   knownGapNames,
+  libraryCodehashAt,
+  libraryProbes,
+  libraryWindows,
   parseReleaseLogs,
 } from "./compare.ts";
 
@@ -42,6 +45,11 @@ function linkedCode(lib: Address, middle = "5af450"): Hex {
 }
 const SEMAPHORE_CODE = linkedCode(POSEIDON_CATALOG);
 
+/** A library's runtime deployed at `at`: its call guard PUSH20 <at>, ADDRESS, EQ, then its body. */
+const libRuntime = (at: Address, body = "6080604052600080fd"): Hex => `0x73${at.slice(2).toLowerCase()}3014${body}` as Hex;
+/** Studio's PoseidonT3 codehash: the library's runtime at the catalog's address. */
+const POSEIDON_CODEHASH = keccak256(libRuntime(POSEIDON_CATALOG));
+
 /** A small catalog: registry, factory, three facets, one of them linking an unpinned library. */
 function catalog(): CatalogRelease {
   return {
@@ -57,7 +65,9 @@ function catalog(): CatalogRelease {
         release: shared("Semaphore", { initCodeHash: keccak256(SEMAPHORE_CODE), dependsOn: ["PoseidonT3"], provisional: "Links PoseidonT3." }),
       },
     ],
-    libraries: [{ name: "PoseidonT3", release: shared("PoseidonT3", { provisional: "Lattice doesn't release PoseidonT3." }) }],
+    libraries: [
+      { name: "PoseidonT3", release: shared("PoseidonT3", { codehash: POSEIDON_CODEHASH, provisional: "Lattice doesn't release PoseidonT3." }) },
+    ],
   };
 }
 
@@ -77,6 +87,7 @@ function faithfulReport(model: DeployerModel, c: CatalogRelease = catalog()): Re
     createx: model === "createx-raw" ? "mock-createx" : "no-createx",
     contracts: all.map(([name, s]) => ({ name, address: addressUnder(model, s.salt, s.initCodeHash), codehash: s.codehash })),
     creationCodes: {},
+    libraries: {},
   };
 }
 
@@ -84,17 +95,31 @@ function withContract(report: ReleaseReport, name: string, change: Partial<Relea
   return { ...report, contracts: report.contracts.map((c) => (c.name === name ? { ...c, ...change } : c)) };
 }
 
+type GapOptions = {
+  /** Where DeployRelease put Semaphore; default where `forgeCode` lands. */
+  at?: Address;
+  /** Log forge's creation code (default true). */
+  log?: boolean;
+  /** The library the harness reports; default forge's PoseidonT3 with the catalog library's body; null for none. */
+  library?: { address: Address; runtimeCode: Hex } | null;
+};
+
 /**
  * The release as forge produced it: Semaphore built from `forgeCode` (default: the catalog's code linking forge's
- * PoseidonT3) and deployed where that code lands, and its creation code logged unless `log` is false.
+ * PoseidonT3) and deployed where that code lands, its creation code logged, and forge's PoseidonT3 reported.
  */
-function gapReport(model: DeployerModel, forgeCode: Hex = linkedCode(POSEIDON_FORGE), opts: { at?: Address; log?: boolean } = {}): ReleaseReport {
+function gapReport(model: DeployerModel, forgeCode: Hex = linkedCode(POSEIDON_FORGE), opts: GapOptions = {}): ReleaseReport {
   const salt = sharedSalt("Semaphore", VERSION);
   const report = withContract(faithfulReport(model), "Semaphore", {
     address: opts.at ?? addressUnder(model, salt, keccak256(forgeCode)),
     codehash: hash("forge-linked runtime"),
   });
-  return opts.log === false ? report : { ...report, creationCodes: { Semaphore: forgeCode } };
+  const library = opts.library === undefined ? { address: POSEIDON_FORGE, runtimeCode: libRuntime(POSEIDON_FORGE) } : opts.library;
+  return {
+    ...report,
+    creationCodes: opts.log === false ? {} : { Semaphore: forgeCode },
+    libraries: library === null ? {} : { PoseidonT3: library },
+  };
 }
 
 const statusOf = (c: Comparison, name: string) => c.rows.find((r) => r.name === name)?.status;
@@ -144,8 +169,10 @@ describe("parseReleaseLogs", () => {
   const reg = line("LatticeRegistry", "0x303aabd5fd0af342095da749b62ae651c1c9be79", hash("r"));
   const code = `STUDIO_RELEASE code Semaphore ${SEMAPHORE_CODE.toUpperCase().replace("0X", "0x")}`;
 
-  test("reads the header, contracts and creation code, ignoring what release() prints itself", () => {
-    const parsed = parseReleaseLogs(["LatticeRegistry deployed: 0x303a…", header, reg, code, "Facets deployed: 100 | skipped (already deployed): 0"]);
+  const lib = `STUDIO_RELEASE library PoseidonT3 ${POSEIDON_FORGE.toLowerCase()} ${libRuntime(POSEIDON_FORGE)}`;
+
+  test("reads the header, contracts, creation code and libraries, ignoring what release() prints itself", () => {
+    const parsed = parseReleaseLogs(["LatticeRegistry deployed: 0x303a…", header, reg, code, lib, "Facets deployed: 100 | skipped (already deployed): 0"]);
     expect(parsed).toEqual({
       ok: true,
       value: {
@@ -155,8 +182,14 @@ describe("parseReleaseLogs", () => {
         createx: "mock-createx",
         contracts: [{ name: "LatticeRegistry", address: "0x303aabD5fD0AF342095DA749b62aE651c1c9be79", codehash: hash("r") }],
         creationCodes: { Semaphore: SEMAPHORE_CODE },
+        libraries: { PoseidonT3: { address: POSEIDON_FORGE, runtimeCode: libRuntime(POSEIDON_FORGE) } },
       },
     });
+  });
+
+  test("reads a library address with no code", () => {
+    const parsed = parseReleaseLogs([header, reg, `STUDIO_RELEASE library PoseidonT3 ${POSEIDON_FORGE} 0x`]);
+    expect(parsed.ok && parsed.value.libraries).toEqual({ PoseidonT3: { address: POSEIDON_FORGE, runtimeCode: "0x" } });
   });
 
   const long = `STUDIO_RELEASE code Semaphore 0x${"ab".repeat(200)}z`;
@@ -174,10 +207,30 @@ describe("parseReleaseLogs", () => {
       `malformed header line "STUDIO_RELEASE header 0.2.0 ${OWNER} ${ARACHNID_PROXY_CODEHASH}".`,
     ],
     ["a duplicate code line", [header, reg, code, code], "the harness logged Semaphore's creation code twice."],
+    ["a duplicate library line", [header, reg, lib, lib], "the harness reported PoseidonT3 twice."],
+    ["a library line with a bad address", [header, reg, "STUDIO_RELEASE library PoseidonT3 0x12 0x"], `malformed library line "STUDIO_RELEASE library PoseidonT3 0x12 0x".`],
     ["code that isn't hex, shortened", [header, reg, long], `malformed code line "${long.slice(0, 237)}...".`],
     ["an unknown kind", [header, "STUDIO_RELEASE facet ERC20"], `unknown line "STUDIO_RELEASE facet ERC20".`],
   ])("rejects %s", (_label, lines, error) => {
     expect(parseReleaseLogs(lines)).toEqual({ ok: false, error });
+  });
+});
+
+describe("libraryWindows", () => {
+  test("finds the address only as a PUSH20 operand, at byte offsets", () => {
+    expect(libraryWindows(SEMAPHORE_CODE, POSEIDON_CATALOG)).toEqual([6, 30]);
+    const bare = `0x6080604052${POSEIDON_CATALOG.slice(2)}00` as Hex;
+    expect(libraryWindows(bare, POSEIDON_CATALOG)).toEqual([]);
+  });
+});
+
+describe("libraryCodehashAt", () => {
+  test("moves a library's call guard to another address", () => {
+    expect(libraryCodehashAt(libRuntime(POSEIDON_FORGE), POSEIDON_FORGE, POSEIDON_CATALOG)).toEqual({ ok: true, value: POSEIDON_CODEHASH });
+  });
+
+  test("refuses code without the guard for its own address", () => {
+    expect(libraryCodehashAt(libRuntime(POSEIDON_CATALOG), POSEIDON_FORGE, POSEIDON_CATALOG).ok).toBe(false);
   });
 });
 
@@ -196,9 +249,14 @@ describe("expectedFromCatalog", () => {
     const expected = withCode();
     expect(knownGapNames(expected)).toEqual(["Semaphore"]);
     expect(expected.contracts.find((c) => c.name === "Semaphore")?.knownGap).toEqual({
-      libraries: [{ name: "PoseidonT3", address: POSEIDON_CATALOG }],
+      libraries: [{ name: "PoseidonT3", address: POSEIDON_CATALOG, codehash: POSEIDON_CODEHASH }],
       creationCode: SEMAPHORE_CODE,
     });
+  });
+
+  test("probes each unpinned library at the first PUSH20 window of a gap contract's catalog code", () => {
+    expect(libraryProbes(withCode())).toEqual(["PoseidonT3:Semaphore:6"]);
+    expect(libraryProbes(expectedFromCatalog(catalog()))).toEqual([]);
   });
 
   test("a dependency that isn't a provisional library isn't a known gap", () => {
@@ -254,7 +312,7 @@ describe("compareRelease after Lattice A1 (Arachnid's proxy)", () => {
     expect(lines[0]).toBe("4 of 5 shared contracts are at the catalog's addresses.");
     expect(lines[1]).toStartWith("  Semaphore: known Lattice gap: address ");
     expect(lines[1]).toEndWith(
-      `; forge links PoseidonT3 at ${POSEIDON_FORGE} instead of ${POSEIDON_CATALOG}, which Lattice doesn't pin yet; the creation code is otherwise the catalog's`,
+      `; forge links PoseidonT3 at ${POSEIDON_FORGE} instead of ${POSEIDON_CATALOG}, which Lattice doesn't pin yet; the library and the creation code are otherwise the catalog's`,
     );
   });
 
@@ -278,10 +336,46 @@ describe("compareRelease after Lattice A1 (Arachnid's proxy)", () => {
     ["the catalog's creation code isn't loaded", () => gapReport("arachnid"), () => expectedFromCatalog(catalog()), "the catalog's creation code wasn't loaded, so the gap can't be checked"],
     ["the lengths differ", () => gapReport("arachnid", `${linkedCode(POSEIDON_FORGE)}00` as Hex), withCode, "forge's creation code is 54 bytes, the catalog's 53"],
     [
-      "forge links two different addresses",
+      "one of forge's windows holds another address",
       () => gapReport("arachnid", `0x608060405273${POSEIDON_FORGE.slice(2).toLowerCase()}5af45073${"11".repeat(20)}5af400` as Hex),
       withCode,
-      "forge's creation code links PoseidonT3 at 2 different addresses",
+      `forge's creation code doesn't link PoseidonT3 at ${POSEIDON_FORGE} at byte 30`,
+    ],
+    [
+      "forge consistently links a different library",
+      () => {
+        const other: Address = "0x1111111111111111111111111111111111111111";
+        return gapReport("arachnid", linkedCode(other), { library: { address: other, runtimeCode: libRuntime(other, "6080604052600180fd") } });
+      },
+      withCode,
+      "forge's PoseidonT3 at 0x1111111111111111111111111111111111111111 isn't the catalog's: at ",
+    ],
+    [
+      "forge's linked address holds no code",
+      () => gapReport("arachnid", undefined, { library: { address: POSEIDON_FORGE, runtimeCode: "0x" } }),
+      withCode,
+      `forge's PoseidonT3 at ${POSEIDON_FORGE} isn't a library: there's no code there`,
+    ],
+    [
+      "the code there doesn't start with the library guard",
+      () => gapReport("arachnid", undefined, { library: { address: POSEIDON_FORGE, runtimeCode: "0x6080604052" } }),
+      withCode,
+      `forge's PoseidonT3 at ${POSEIDON_FORGE} isn't a library: its code doesn't start with a library's PUSH20 of its own address`,
+    ],
+    [
+      "the harness didn't report the library",
+      () => gapReport("arachnid", undefined, { library: null }),
+      withCode,
+      "the harness didn't report which PoseidonT3 forge linked",
+    ],
+    [
+      "forge links the catalog's own address",
+      () =>
+        withContract(gapReport("arachnid", SEMAPHORE_CODE, { library: { address: POSEIDON_CATALOG, runtimeCode: libRuntime(POSEIDON_CATALOG) } }), "Semaphore", {
+          codehash: hash("something else"),
+        }),
+      withCode,
+      `forge links the catalog's own PoseidonT3 address ${POSEIDON_CATALOG}, so the library doesn't explain the difference`,
     ],
     [
       "DeployRelease didn't deploy forge's code",

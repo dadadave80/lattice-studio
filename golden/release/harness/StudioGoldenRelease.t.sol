@@ -10,9 +10,11 @@ pragma solidity ^0.8.30;
 //   STUDIO_RELEASE header <version> <registry owner> <codehash at Arachnid's proxy address> <mock-createx|no-createx>
 //   STUDIO_RELEASE contract <Name> <address> <runtime codehash>
 //   STUDIO_RELEASE code <Name> <creation code>
+//   STUDIO_RELEASE library <Lib> <linked address> <runtime code there>
 // one `contract` line for LatticeRegistry, LatticeFactory and every FacetInventory facet, in that order, then one
 // `code` line (the creation code DeployRelease takes from `vm.getCode`) for each facet named in
-// STUDIO_RELEASE_CODE (comma-separated): the ones whose catalog address links a library Lattice doesn't pin.
+// STUDIO_RELEASE_CODE (comma-separated): the ones whose catalog address links a library Lattice doesn't pin;
+// then one `library` line per STUDIO_RELEASE_LIBRARIES entry.
 
 import {DeployRelease} from "@lattice-script/deploy/DeployRelease.s.sol";
 import {FacetInventory} from "@lattice-script/lib/FacetInventory.sol";
@@ -67,6 +69,24 @@ contract StudioGoldenReleaseTest is Test, DeployRelease {
             if (bytes(codeFor[j]).length == 0) continue;
             uint256 i = _indexOf(names, codeFor[j]);
             _log(string.concat("code ", names[i], " ", vm.toString(vm.getCode(paths[i]))));
+        }
+
+        // Each entry is "<Lib>:<Facet>:<byte offset>": where the facet's creation code holds the library's linked
+        // address (after a PUSH20). Reports the address forge linked there and the runtime code at that address
+        // (a library's runtime starts with PUSH20 of its own address, so run.ts compares it, not the codehash).
+        string[] memory libs = vm.envOr("STUDIO_RELEASE_LIBRARIES", ",", new string[](0));
+        for (uint256 j; j < libs.length; ++j) {
+            if (bytes(libs[j]).length == 0) continue;
+            string[] memory f = vm.split(libs[j], ":");
+            require(f.length == 3, string.concat("STUDIO_RELEASE_LIBRARIES entry ", libs[j], " isn't <Lib>:<Facet>:<offset>"));
+            bytes memory code = vm.getCode(paths[_indexOf(names, f[1])]);
+            uint256 offset = vm.parseUint(f[2]);
+            require(offset >= 1 && offset + 20 <= code.length && code[offset - 1] == 0x73, "no PUSH20 at that offset");
+            address linked;
+            assembly ("memory-safe") {
+                linked := shr(96, mload(add(add(code, 32), offset)))
+            }
+            _log(string.concat("library ", f[0], " ", vm.toString(linked), " ", vm.toString(linked.code)));
         }
     }
 

@@ -19,6 +19,7 @@ import {
   failed,
   formatComparison,
   knownGapNames,
+  libraryProbes,
   parseReleaseLogs,
 } from "./compare.ts";
 
@@ -74,8 +75,11 @@ async function main(): Promise<number> {
   const expected = expectedFromCatalog(catalog, readCreationCodes(dir, catalog, gaps));
   console.log(`${PREFIX} releasing Lattice at ${lattice} with DeployRelease (FOUNDRY_PROFILE=ci), catalog ${id}…`);
   process.env["STUDIO_RELEASE_OWNER"] = expected.registryOwner;
+  const probes = libraryProbes(expected);
   if (gaps.length > 0) process.env["STUDIO_RELEASE_CODE"] = gaps.join(",");
   else delete process.env["STUDIO_RELEASE_CODE"];
+  if (probes.length > 0) process.env["STUDIO_RELEASE_LIBRARIES"] = probes.join(",");
+  else delete process.env["STUDIO_RELEASE_LIBRARIES"];
   const before = gitOutput(lattice, ["status", "--porcelain"]);
   const run = await runForgeHarness({ lattice, files: [HARNESS], folder: `.studio-golden-release-${process.pid}` });
   const after = gitOutput(lattice, ["status", "--porcelain"]);

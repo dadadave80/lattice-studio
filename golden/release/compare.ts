@@ -26,6 +26,8 @@ export const FACTORY = "LatticeFactory";
 const TAG = "STUDIO_RELEASE";
 const HASH32 = /^0x[0-9a-fA-F]{64}$/;
 const CODE = /^0x(?:[0-9a-fA-F]{2})+$/;
+/** Runtime code at an address, which may be empty. */
+const RUNTIME = /^0x(?:[0-9a-fA-F]{2})*$/;
 
 /** One contract the harness saw `release()` return. */
 export type ReleasedContract = { name: string; address: Address; codehash: Hex };
@@ -42,6 +44,8 @@ export type ReleaseReport = {
   contracts: ReleasedContract[];
   /** The creation code DeployRelease took from `vm.getCode`, for the facets run.ts asked about. */
   creationCodes: Record<string, Hex>;
+  /** Each unpinned library run.ts asked about: the address forge linked and the runtime code there. */
+  libraries: Record<string, { address: Address; runtimeCode: Hex }>;
 };
 
 /**
@@ -50,9 +54,10 @@ export type ReleaseReport = {
  * naming the line (shortened, since a code line holds a whole contract).
  */
 export function parseReleaseLogs(lines: readonly string[]): Result<ReleaseReport, string> {
-  let header: Omit<ReleaseReport, "contracts" | "creationCodes"> | undefined;
+  let header: Omit<ReleaseReport, "contracts" | "creationCodes" | "libraries"> | undefined;
   const contracts: ReleasedContract[] = [];
   const creationCodes: Record<string, Hex> = {};
+  const libraries: ReleaseReport["libraries"] = {};
   const seen = new Set<string>();
   for (const line of lines) {
     const parts = line.trim().split(/\s+/);
@@ -95,17 +100,27 @@ export function parseReleaseLogs(lines: readonly string[]): Result<ReleaseReport
       creationCodes[name] = code.toLowerCase() as Hex;
       continue;
     }
+    if (kind === "library") {
+      const [, , name, address, code] = parts;
+      if (parts.length !== 5 || !name || !address || !isAddress(address) || !code || !RUNTIME.test(code)) {
+        return err(`malformed library line "${shown}".`);
+      }
+      if (!header) return err(`a library line came before the header: "${shown}".`);
+      if (libraries[name] !== undefined) return err(`the harness reported ${name} twice.`);
+      libraries[name] = { address: getAddress(address), runtimeCode: code.toLowerCase() as Hex };
+      continue;
+    }
     return err(`unknown line "${shown}".`);
   }
   if (!header) return err("the harness logged no header.");
   if (contracts.length === 0) return err("the harness reported no contracts.");
-  return ok({ ...header, contracts, creationCodes });
+  return ok({ ...header, contracts, creationCodes, libraries });
 }
 
 /** A contract whose catalog address links libraries Lattice doesn't pin yet. */
 export type KnownGap = {
-  /** The unpinned libraries and the addresses the catalog links for them (Studio's own releases). */
-  libraries: { name: string; address: Address }[];
+  /** The unpinned libraries: the addresses and codehashes of Studio's own releases, which the catalog links. */
+  libraries: { name: string; address: Address; codehash: Hex }[];
   /** The catalog's creation code (`code/<Name>.creation.hex`), when run.ts loaded it. */
   creationCode?: Hex;
 };
@@ -162,7 +177,9 @@ export function expectedFromCatalog(
   creationCodes: ReadonlyMap<string, Hex> = new Map(),
 ): ExpectedRelease {
   const provisional = new Map(
-    (catalog.libraries ?? []).filter((l) => l.release.provisional !== undefined).map((l) => [l.name, l.release.address]),
+    (catalog.libraries ?? [])
+      .filter((l) => l.release.provisional !== undefined)
+      .map((l) => [l.name, { name: l.name, address: l.release.address, codehash: l.release.codehash }]),
   );
   const entry = (name: string, c: SharedRelease): ExpectedContract => {
     const e: ExpectedContract = {
@@ -175,7 +192,7 @@ export function expectedFromCatalog(
     };
     const deps = c.dependsOn ?? [];
     if (deps.length > 0 && deps.every((d) => provisional.has(d))) {
-      const gap: KnownGap = { libraries: deps.map((d) => ({ name: d, address: provisional.get(d) as Address })) };
+      const gap: KnownGap = { libraries: deps.flatMap((d) => provisional.get(d) ?? []) };
       const code = creationCodes.get(name);
       if (code !== undefined) gap.creationCode = code.toLowerCase() as Hex;
       e.knownGap = gap;
@@ -196,6 +213,24 @@ export function expectedFromCatalog(
 /** The contracts run.ts must ask the harness for creation code: the known-gap ones. */
 export function knownGapNames(expected: ExpectedRelease): string[] {
   return expected.contracts.filter((c) => c.knownGap !== undefined).map((c) => c.name);
+}
+
+/**
+ * What run.ts passes the harness in STUDIO_RELEASE_LIBRARIES: for each unpinned library, `<Lib>:<Contract>:<offset>`,
+ * the first place a known-gap contract's catalog code links it, where the harness reads forge's linked address.
+ * A library no loaded catalog code links is left out, and `checkKnownGap` says so.
+ */
+export function libraryProbes(expected: ExpectedRelease): string[] {
+  const probes = new Map<string, string>();
+  for (const c of expected.contracts) {
+    const code = c.knownGap?.creationCode;
+    if (!c.knownGap || code === undefined) continue;
+    for (const lib of c.knownGap.libraries) {
+      const [first] = libraryWindows(code, lib.address);
+      if (first !== undefined && !probes.has(lib.name)) probes.set(lib.name, `${lib.name}:${c.name}:${first}`);
+    }
+  }
+  return [...probes.values()];
 }
 
 /** How DeployRelease put its contracts on chain. */
@@ -226,21 +261,52 @@ export function detectDeployer(registry: Pick<ExpectedContract, "salt" | "initCo
 }
 
 /**
+ * Byte offsets where `code` holds `address` as a PUSH20 operand (0x73 then the 20 bytes): where a contract's
+ * code calls a linked library.
+ */
+export function libraryWindows(code: Hex, address: Address): number[] {
+  const hex = code.slice(2).toLowerCase();
+  const needle = `73${address.slice(2).toLowerCase()}`;
+  const out: number[] = [];
+  for (let at = hex.indexOf(needle); at >= 0; at = hex.indexOf(needle, at + 1)) {
+    if (at % 2 === 0) out.push(at / 2 + 1);
+  }
+  return out;
+}
+
+/**
+ * The codehash a library's runtime code would have at `at`. A deployed Solidity library starts with
+ * `PUSH20 <its own address>` (its call guard), so its codehash depends on where it lives; this swaps `own` in
+ * that guard for `at`. An error when the code doesn't start with that guard.
+ */
+export function libraryCodehashAt(runtime: Hex, own: Address, at: Address): Result<Hex, string> {
+  const hex = runtime.slice(2).toLowerCase();
+  if (!hex.startsWith(`73${own.slice(2).toLowerCase()}`)) {
+    return err(hex === "" ? "there's no code there" : "its code doesn't start with a library's PUSH20 of its own address");
+  }
+  return ok(keccak256(`0x73${at.slice(2).toLowerCase()}${hex.slice(42)}`));
+}
+
+/**
  * Accepts a known-gap divergence only when it's explained by the unpinned libraries alone:
  * - the catalog's creation code hashes to its init-code hash;
+ * - for each library, the harness reports the address forge linked and the runtime code there, which is the
+ *   catalog's library: moved to the catalog's address, it has the catalog's codehash. That address isn't the
+ *   catalog's own (then the library explains nothing);
  * - forge's creation code (what DeployRelease deployed) has the same length and differs from the catalog's only
- *   inside the 20-byte windows where the catalog's code holds a library's catalog address;
- * - every such window of one library holds the same address in forge's code;
+ *   inside the PUSH20 windows where the catalog's code holds a library's catalog address, and each of those
+ *   windows holds that library's forge address;
  * - DeployRelease put the contract where forge's creation code lands under `model`.
  * Returns why otherwise.
  */
 export function checkKnownGap(
   want: ExpectedContract & { knownGap: KnownGap },
-  forgeCode: Hex | undefined,
+  report: Pick<ReleaseReport, "creationCodes" | "libraries">,
   deployedAt: Address,
   model: DeployerModel,
 ): Result<string, string> {
   const catalogCode = want.knownGap.creationCode;
+  const forgeCode = report.creationCodes[want.name];
   if (catalogCode === undefined) return err("the catalog's creation code wasn't loaded, so the gap can't be checked");
   if (forgeCode === undefined) return err("the harness didn't log forge's creation code, so the gap can't be checked");
   if (keccak256(catalogCode) !== want.initCodeHash.toLowerCase()) {
@@ -253,16 +319,28 @@ export function checkKnownGap(
   const masked = new Uint8Array(a.length / 2);
   const linked: string[] = [];
   for (const lib of want.knownGap.libraries) {
-    const needle = lib.address.slice(2).toLowerCase();
-    const forgeAddresses = new Set<string>();
-    for (let at = a.indexOf(needle); at >= 0; at = a.indexOf(needle, at + 1)) {
-      if (at % 2 !== 0) continue;
-      masked.fill(1, at / 2, at / 2 + 20);
-      forgeAddresses.add(b.slice(at, at + 40));
+    const windows = libraryWindows(catalogCode, lib.address);
+    if (windows.length === 0) return err(`the catalog's creation code doesn't link ${lib.name} at ${lib.address}`);
+    const forgeLib = report.libraries[lib.name];
+    if (forgeLib === undefined) return err(`the harness didn't report which ${lib.name} forge linked`);
+    if (sameAddress(forgeLib.address, lib.address)) {
+      return err(`forge links the catalog's own ${lib.name} address ${lib.address}, so the library doesn't explain the difference`);
     }
-    if (forgeAddresses.size === 0) return err(`the catalog's creation code doesn't link ${lib.name} at ${lib.address}`);
-    if (forgeAddresses.size > 1) return err(`forge's creation code links ${lib.name} at ${forgeAddresses.size} different addresses`);
-    linked.push(`${lib.name} at ${getAddress(`0x${[...forgeAddresses][0]}`)} instead of ${lib.address}`);
+    const moved = libraryCodehashAt(forgeLib.runtimeCode, forgeLib.address, lib.address);
+    if (!moved.ok) return err(`forge's ${lib.name} at ${forgeLib.address} isn't a library: ${moved.error}`);
+    if (moved.value !== lib.codehash.toLowerCase()) {
+      return err(
+        `forge's ${lib.name} at ${forgeLib.address} isn't the catalog's: at ${lib.address} it would have codehash ${moved.value}, not ${lib.codehash}`,
+      );
+    }
+    const forgeAt = forgeLib.address.slice(2).toLowerCase();
+    for (const w of windows) {
+      if (b.slice(w * 2 - 2, w * 2 + 40) !== `73${forgeAt}`) {
+        return err(`forge's creation code doesn't link ${lib.name} at ${forgeLib.address} at byte ${w}`);
+      }
+      masked.fill(1, w, w + 20);
+    }
+    linked.push(`${lib.name} at ${forgeLib.address} instead of ${lib.address}`);
   }
   for (let i = 0; i < a.length; i += 2) {
     if (masked[i / 2] === 1) continue;
@@ -275,7 +353,7 @@ export function checkKnownGap(
     return err(`DeployRelease put it at ${deployedAt}, not where forge's creation code lands (${expectedAt})`);
   }
   return ok(
-    `forge links ${linked.join(", ")}, which Lattice doesn't pin yet; the creation code is otherwise the catalog's`,
+    `forge links ${linked.join(", ")}, which Lattice doesn't pin yet; the library and the creation code are otherwise the catalog's`,
   );
 }
 
@@ -355,7 +433,7 @@ export function compareRelease(expected: ExpectedRelease, report: ReleaseReport,
       rows.push({ name: want.name, status: "mismatch", detail: diff });
       continue;
     }
-    const gap = checkKnownGap({ ...want, knownGap: want.knownGap }, report.creationCodes[want.name], got.address, model);
+    const gap = checkKnownGap({ ...want, knownGap: want.knownGap }, report, got.address, model);
     rows.push(
       gap.ok
         ? { name: want.name, status: "known-gap", detail: `${diff}; ${gap.value}` }
