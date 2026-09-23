@@ -91,7 +91,7 @@ for (const catalog of catalogs) {
     test("seams always route to an allowed facet, whatever the owners say; with none placed, SEM-01 blocks", () => {
       let active = 0;
       let overridden = 0;
-      checkProperty(
+      const outcome = checkProperty(
         `${catalog.lattice.tag}: seams route to an allowed facet`,
         fc.property(recipeArb(catalog), (recipe) => {
           const analysis = analyze(recipe, catalog, ctx);
@@ -122,8 +122,8 @@ for (const catalog of catalogs) {
       );
       if (catalog.seams.length > 0) {
         // Not vacuous: the generator reaches active seams, and owners that name a facet outside them.
-        expect(active).toBeGreaterThan(50);
-        expect(overridden).toBeGreaterThan(5);
+        expect(active).toBeGreaterThan(outcome.runs / 4);
+        expect(overridden).toBeGreaterThan(outcome.runs / 40);
       }
     });
 

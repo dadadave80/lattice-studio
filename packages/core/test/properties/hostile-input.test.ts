@@ -103,7 +103,7 @@ for (const catalog of catalogs) {
   describe(`one defect on catalog ${catalog.lattice.tag}`, () => {
     test("recipe.json: a deleted, retyped or cut member is refused at its path, or what opens still works", () => {
       let refused = 0;
-      checkProperty(
+      const outcome = checkProperty(
         `${catalog.lattice.tag}: defective recipe.json`,
         fc.property(
           recipeArb(catalog).chain((recipe) => mutationArb(JSON.parse(exportRecipeJson(recipe, catalog).text))),
@@ -118,12 +118,12 @@ for (const catalog of catalogs) {
           },
         ),
       );
-      expect(refused).toBeGreaterThan(40);
+      expect(refused).toBeGreaterThan(outcome.runs / 5);
     });
 
     test("share link: a deleted, retyped or cut member is refused at its path, or what opens still works", () => {
       let refused = 0;
-      checkProperty(
+      const outcome = checkProperty(
         `${catalog.lattice.tag}: defective share link`,
         fc.property(
           recipeArb(catalog).chain((recipe) => {
@@ -140,12 +140,12 @@ for (const catalog of catalogs) {
           },
         ),
       );
-      expect(refused).toBeGreaterThan(40);
+      expect(refused).toBeGreaterThan(outcome.runs / 5);
     });
 
     test(".lattice.json: a deleted, retyped or cut member is refused at its path, or what opens still works", () => {
       let refused = 0;
-      checkProperty(
+      const outcome = checkProperty(
         `${catalog.lattice.tag}: defective project file`,
         fc.property(
           projectArb(catalog)
@@ -161,7 +161,7 @@ for (const catalog of catalogs) {
           },
         ),
       );
-      expect(refused).toBeGreaterThan(40);
+      expect(refused).toBeGreaterThan(outcome.runs / 5);
     });
 
     test("__proto__, constructor and prototype keys anywhere in a file or link set no prototype and pollute nothing", () => {

@@ -4,7 +4,7 @@ import { solidityString } from "../export/escape";
 import { validateDeployment, validateProject, validateRecipe } from "../model/schema";
 import { analyze } from "../analysis";
 import { deploymentArb, projectArb, recipeArb } from "./arbitraries";
-import { loadFixtureCatalog } from "./fixtures";
+import { loadBuiltCatalog, loadFixtureCatalog, propertyCatalogs } from "./fixtures";
 import { HOSTILE_NAMES, hostileString, wellFormed } from "./hostile";
 import { formatJsonPath, jsonWith, mutationArb, pathsRelated, withExtraKey } from "./mutate";
 import { checkProperty } from "./property";
@@ -12,6 +12,17 @@ import { lexSolidity, markdownOutline, overlappingPairs, solidityShape, solidity
 import { filledTemplate, loadableTemplates, mapStringArgs, stringArgPaths } from "./templates";
 
 const fixture = loadFixtureCatalog();
+
+describe("catalog loaders", () => {
+  test("the built catalog loads when it's there, or says why; property suites always get the fixture", () => {
+    const built = loadBuiltCatalog();
+    if (built.ok) expect(built.value.lattice.tag).not.toBe("fixture");
+    else expect(built.error).toMatch(/catalog\//);
+    const catalogs = propertyCatalogs();
+    expect(catalogs[0]?.lattice.tag).toBe("fixture");
+    expect(catalogs.length).toBe(built.ok ? 2 : 1);
+  });
+});
 
 describe("shape", () => {
   test("lexSolidity separates literals and comments from code, and refuses a literal that breaks its line", () => {

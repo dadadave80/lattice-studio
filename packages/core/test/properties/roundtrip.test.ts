@@ -7,10 +7,10 @@
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import {
-  analyze, canonicalJson, decodeShareLink, encodeShareLink, exportProjectFile, exportRecipeJson, importFile, normalizeRecipe,
+  canonicalJson, decodeShareLink, encodeShareLink, exportProjectFile, exportRecipeJson, importFile, normalizeRecipe,
   parseProjectFile, parseRecipe, recipeHash, type Recipe,
 } from "../../src";
-import { checkProperty, deploymentArb, hostileString, projectArb, propertyCatalogs, recipeArb, wellFormed } from "../../src/testing";
+import { checkProperty, deploymentArb, hostileString, projectArb, propertyCatalogs, recipeArb } from "../../src/testing";
 
 const catalogs = propertyCatalogs();
 
@@ -109,27 +109,11 @@ for (const catalog of catalogs) {
       );
     });
 
-    // Known gap (follow-up for C1): JSON can spell a lone surrogate ("\ud800"), `parseRecipe` and `importFile`
-    // accept it, and then `recipeHash`, `analyze` and `encodeShareLink` throw from `canonicalJson`. Spec L936
-    // wants such a file refused with a precise error (or its text repaired). This flips to a failure, on purpose,
-    // once C1 fixes it: then drop `.failing`.
-    test.failing("a file holding a lone surrogate is refused with a path, or opens into a recipe that hashes, analyzes and shares", () => {
-      checkProperty(
-        `${catalog.lattice.tag}: lone surrogates refused or repaired`,
-        fc.property(recipeArb(catalog, { strings: hostileString().map((text) => `${text}\ud800`) }), (recipe) => {
-          const imported = importFile(JSON.stringify(recipe), "recipe.json", [catalog]);
-          if (!imported.ok) {
-            expect(imported.error.every((issue) => issue.path !== "" && issue.message !== "")).toBe(true);
-            return;
-          }
-          if (imported.value.kind !== "recipe") throw new Error("expected a recipe");
-          const opened = imported.value.recipe;
-          expect(() => recipeHash(opened, catalog)).not.toThrow();
-          expect(() => analyze(opened, catalog)).not.toThrow();
-          const decoded = decodeShareLink(encodeShareLink(opened).fragment, [catalog]);
-          expect(decoded.ok && decoded.value.recipe.name).toBe(opened.name === undefined ? undefined : wellFormed(opened.name));
-        }),
-      );
-    });
+    // Known gap, a follow-up for C1 (and C8, whose importFile inherits it): JSON can spell a lone surrogate
+    // ("\ud800"); parseRecipe and importFile accept it, then recipeHash, analyze and encodeShareLink throw from
+    // canonicalJson. Spec L936 wants such a file refused with a path (or its text repaired to U+FFFD). A todo, not
+    // a failing test, so C1's fix doesn't turn this suite red: once it lands, write the property that such a file
+    // is refused with a path or opens into a recipe that hashes, analyzes and shares.
+    test.todo("a file holding a lone surrogate is refused with a path, or opens into a recipe that hashes, analyzes and shares", () => undefined);
   });
 }
