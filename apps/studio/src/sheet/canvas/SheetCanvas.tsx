@@ -51,6 +51,8 @@ function followFocus(event: FocusEvent<HTMLDivElement>): void {
  * `<ReactFlow>` and spreads S4e's `useSheetInteractions()` under its own props. `sheet-view.ts` is how
  * everything else moves the view.
  */
+const EMPTY_EDGES: never[] = [];
+
 export function SheetCanvas() {
   const wrapper = useRef<HTMLDivElement>(null);
   const tool = useSession((s) => s.tool);
@@ -122,6 +124,7 @@ function SheetFlow({ wrapper, hand }: SheetFlowProps) {
     <ReactFlow
       {...interactions}
       nodes={nodes}
+      defaultEdges={EMPTY_EDGES} // Uncontrolled edges, so a layer's `useReactFlow().setEdges` takes (S4c).
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       onNodesChange={onNodesChange}

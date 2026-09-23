@@ -1,24 +1,17 @@
 /**
  * S5e's commands (contracts §5.3): the console drawer, the console's own verbs (`clear`, `help`, `find`,
- * `problems`) and the exports (`export foundry | brief | json | safe`; `export project` is S7b's). Run bodies
- * reach exporters only through their lazy chunks.
+ * `problems`) and the exports (`export foundry | brief | json | safe`; `export project` is S7b's). In the entry
+ * chunk with their titles, argument shapes and `enabled` reasons; run bodies reach the console body's chunk
+ * (`loadConsoleBody()`), and the exporters only through their own lazy chunks.
  */
-import type { Address, CommandRef, Result } from "@lattice-studio/core";
+import type { Address, Result } from "@lattice-studio/core";
 import { isAddress, toChecksum } from "@lattice-studio/core";
-import {
-  announce, command, env, getCommand, log, openDialog, subscribeCommands, type Command, type CommandArgsOf, type Enablement,
-} from "@/contracts";
-import { helpLines, listVerbs } from "@/commands/console/router";
-import {
-  alwaysExportable, briefFile, CATALOG_NOT_LOADED, deployableExport, exportFailed, exportSafe, saveExport,
-} from "./actions";
+import { announce, command, env, log, openDialog, type Command, type CommandArgsOf, type Enablement } from "@/contracts";
 import { chainFromText, pickerChains } from "@/chain/infra/chains";
 import { setConsoleMaximized, setConsoleOpen, showConsoleTab } from "./drawer";
-import { findOnSheet, findSummary, firstAnchor, foundFacets } from "./find";
-import { locatable, selectAndLocate } from "./locate";
+import { alwaysExportable, CATALOG_NOT_LOADED, deployableExport } from "./export-enablement";
+import { loadConsoleBody } from "./load-body";
 import { clearLog } from "./log-store";
-import { problemLines } from "./problem-lines";
-import { nearestVerb, type VerbWords } from "./suggest";
 
 const OK: Enablement = { ok: true };
 
@@ -41,63 +34,9 @@ type HelpArgs = CommandArgsOf<"console.help">;
 type FindArgs = CommandArgsOf<"console.find">;
 type SafeArgs = CommandArgsOf<"export.safe">;
 
-function say(text: string): void {
-  log({ tag: "Note", text });
-  announce(text);
-}
-
 /** "sepolia, base-sepolia": the picker's chains as `export safe` takes them. */
 function chainWords(): string {
   return pickerChains(env.e2e).map((c) => c.name.toLowerCase().replace(/\s+/g, "-")).join(", ");
-}
-
-let verbCache: VerbWords[] | null = null;
-subscribeCommands(() => {
-  verbCache = null;
-});
-
-/** The verbs as the suggestion and help list them; the same array until a registration changes them. */
-export function verbWords(): VerbWords[] {
-  verbCache ??= listVerbs().map((v) => ({
-    verb: v.verb,
-    aliases: v.aliases,
-    subs: v.forms.flatMap((f) => (f.sub === undefined ? [] : [f.sub])),
-  }));
-  return verbCache;
-}
-
-/** "“plce” isn't a command. Did you mean place? Type help for commands." */
-export function unknownVerb(word: string): string {
-  const near = nearestVerb(word, verbWords());
-  return near ? `“${word}” isn't a command. Did you mean ${near}? Type help for commands.` : `“${word}” isn't a command. Type help for commands.`;
-}
-
-function safeTitle(ref: CommandRef): string | null {
-  try {
-    const title = getCommand(ref.id).title(ref.args ?? {});
-    return /undefined|\{|\[object/.test(title) ? null : title;
-  } catch {
-    return null;
-  }
-}
-
-function help(verb: string | undefined): void {
-  if (verb === undefined) {
-    const verbs = listVerbs().map((v) => v.verb);
-    say(`Commands: ${verbs.join(", ")}. Type help <verb> for one.`);
-    return;
-  }
-  const found = helpLines(verb);
-  if (!found) {
-    say(unknownVerb(verb));
-    return;
-  }
-  for (const line of found) {
-    const title = safeTitle({ id: line.id });
-    const also = line.aliases.length ? ` · also ${line.aliases.join(", ")}` : "";
-    log({ tag: "Note", text: `${line.syntax}${title ? ` · ${title}` : ""}${also}` });
-  }
-  announce(`${found.length} ${found.length === 1 ? "form" : "forms"} of ${verb}.`);
 }
 
 export const S5E_COMMANDS: readonly Command[] = [
@@ -154,7 +93,10 @@ export const S5E_COMMANDS: readonly Command[] = [
       },
     },
     enabled: () => OK,
-    run: (_ctx, args) => help(args.verb),
+    run: async (_ctx, args) => {
+      const { help } = await loadConsoleBody();
+      help(args.verb);
+    },
   }),
   command<FindArgs>({
     id: "console.find",
@@ -166,8 +108,9 @@ export const S5E_COMMANDS: readonly Command[] = [
       parse: (argv) => (argv.length ? ok({ query: argv.join(" ") }) : err("Name what to find: find <text or 0x…>")),
     },
     enabled: (ctx) => (ctx.catalog ? OK : { ok: false, reason: CATALOG_NOT_LOADED }),
-    run: (ctx, args) => {
+    run: async (ctx, args) => {
       if (!ctx.catalog) return;
+      const { findOnSheet, findSummary, firstAnchor, foundFacets, locatable, selectAndLocate } = await loadConsoleBody();
       const placed = ctx.project.recipe.facets;
       const result = findOnSheet(args.query ?? "", placed, ctx.catalog);
       const anchor = firstAnchor(result);
@@ -184,7 +127,8 @@ export const S5E_COMMANDS: readonly Command[] = [
     palette: true,
     console: { verb: "problems", syntax: "problems", parse: noArgs("problems takes no arguments: problems") },
     enabled: () => OK,
-    run: (ctx) => {
+    run: async (ctx) => {
+      const { problemLines } = await loadConsoleBody();
       const out = problemLines(ctx.analysis.problems);
       for (const line of out) log(line);
       announce(out[0]?.text ?? "");
@@ -211,6 +155,7 @@ export const S5E_COMMANDS: readonly Command[] = [
     console: { verb: "export", sub: "brief", syntax: "export brief", parse: noArgs("export brief takes no arguments") },
     enabled: (ctx) => alwaysExportable(ctx),
     run: async () => {
+      const { briefFile, exportFailed, saveExport } = await loadConsoleBody();
       const file = await briefFile();
       if (!file.ok) {
         exportFailed(file.error);
@@ -261,6 +206,7 @@ export const S5E_COMMANDS: readonly Command[] = [
         });
         return;
       }
+      const { exportFailed, exportSafe } = await loadConsoleBody();
       const done = await exportSafe(args.safe, args.chainId);
       if (!done.ok) exportFailed(done.error);
     },

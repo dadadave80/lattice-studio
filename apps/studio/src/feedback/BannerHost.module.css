@@ -1,0 +1,5 @@
+/* Stacks the banners it's given (IR L199-L210); each banner draws its own rule and background. */
+.host {
+  display: flex;
+  flex-direction: column;
+}
