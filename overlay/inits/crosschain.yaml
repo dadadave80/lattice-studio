@@ -1,0 +1,259 @@
+# Crosschain init contracts (src/crosschain). None calls DiamondLib.registerInterface() itself: the module libs
+# register their own ids, so each deploy recipe appends DiamondIntrospectionInit.
+
+AcrossBridgeAdapterInit:
+  kind: step
+  source: src/crosschain/across/AcrossBridgeAdapterInit.sol#L19-L21
+  params:
+    spokePool:
+      rule: nonzero
+      source: src/crosschain/across/AcrossBridgeAdapterLib.sol#L65-L65
+
+AxelarGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/axelar/AxelarGatewayAdapterInit.sol#L20-L23
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/axelar/AxelarGatewayAdapterInit.sol#L21-L21
+
+BridgeERC20Init:
+  kind: step
+  source: src/crosschain/BridgeERC20Init.sol#L20-L24
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/BridgeERC20Init.sol#L21-L21
+    token:
+      rule: nonzero
+      source: src/crosschain/libraries/BridgeERC20Lib.sol#L35-L35
+
+BridgeERC7802Init:
+  kind: step
+  source: src/crosschain/BridgeERC7802Init.sol#L20-L24
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/BridgeERC7802Init.sol#L21-L21
+    token:
+      rule: nonzero
+      source: src/crosschain/libraries/BridgeERC7802Lib.sol#L36-L36
+
+CCIPGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/chainlink/CCIPGatewayAdapterInit.sol#L21-L24
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/chainlink/CCIPGatewayAdapterInit.sol#L22-L22
+
+CCTPBridgeAdapterInit:
+  kind: step
+  source: src/crosschain/circle/CCTPBridgeAdapterInit.sol#L23-L26
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/circle/CCTPBridgeAdapterInit.sol#L24-L24
+    tokenMessenger:
+      rule: nonzero
+      source: src/crosschain/circle/CCTPBridgeAdapterLib.sol#L154-L156
+    messageTransmitter:
+      rule: nonzero
+      source: src/crosschain/circle/CCTPBridgeAdapterLib.sol#L154-L156
+    usdc:
+      rule: nonzero
+      source: src/crosschain/circle/CCTPBridgeAdapterLib.sol#L154-L156
+
+ChainRegistryInit:
+  kind: step
+  source: src/crosschain/ChainRegistryInit.sol#L19-L22
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/ChainRegistryInit.sol#L20-L20
+
+CrosschainLinkInit:
+  kind: step
+  source: src/crosschain/CrosschainLinkInit.sol#L18-L21
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/CrosschainLinkInit.sol#L19-L19
+
+CrosschainTimelockHandlerInit:
+  kind: step
+  source: src/crosschain/CrosschainTimelockHandlerInit.sol#L21-L31
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      # Admin of AccessControl and of the timelock.
+      source: src/crosschain/CrosschainTimelockHandlerInit.sol#L22-L28
+    minDelay:
+      unit: seconds
+      # Operations become ready at block.timestamp + delay, and delay must be at least minDelay.
+      source: src/governance/libraries/TimelockControllerLib.sol#L299-L303
+  after:
+    - module: AccessControl
+      source: src/governance/libraries/TimelockControllerLib.sol#L87-L87
+
+ERC7786OpenBridgeInit:
+  kind: step
+  source: src/crosschain/ERC7786OpenBridgeInit.sol#L19-L22
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/ERC7786OpenBridgeInit.sol#L20-L20
+
+HyperbridgeGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/hyperbridge/HyperbridgeGatewayAdapterInit.sol#L24-L27
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/hyperbridge/HyperbridgeGatewayAdapterInit.sol#L25-L25
+    host:
+      rule: nonzero
+      source: src/crosschain/hyperbridge/HyperbridgeGatewayAdapterLib.sol#L94-L94
+
+HyperlaneGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/hyperlane/HyperlaneGatewayAdapterInit.sol#L21-L24
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/hyperlane/HyperlaneGatewayAdapterInit.sol#L22-L22
+    mailbox:
+      rule: nonzero
+      source: src/crosschain/hyperlane/HyperlaneGatewayAdapterLib.sol#L84-L84
+
+L1ToL2CrossDomainMessengerGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterInit.sol#L26-L31
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterInit.sol#L27-L27
+    counterpartAdapter:
+      rule: nonzero
+      source: src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol#L146-L146
+    minGasLimit:
+      rule: gt(0)
+      source: src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterLib.sol#L155-L158
+
+L2ToL2CrossDomainMessengerGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterInit.sol#L22-L25
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterInit.sol#L23-L23
+
+LayerZeroGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/layerzero/LayerZeroGatewayAdapterInit.sol#L21-L24
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/layerzero/LayerZeroGatewayAdapterInit.sol#L22-L22
+
+StargateBridgeAdapterInit:
+  kind: step
+  source: src/crosschain/layerzero/StargateBridgeAdapterInit.sol#L21-L24
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/layerzero/StargateBridgeAdapterInit.sol#L22-L22
+
+StarknetGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/starknet/StarknetGatewayAdapterInit.sol#L23-L26
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/starknet/StarknetGatewayAdapterInit.sol#L24-L24
+    starknetCore:
+      rule: nonzero
+      source: src/crosschain/starknet/StarknetGatewayAdapterLib.sol#L78-L78
+
+SuperchainETHBridgeAdapterInit:
+  kind: step
+  source: src/crosschain/optimism/SuperchainETHBridgeAdapterInit.sol#L14-L16
+
+WormholeGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/wormhole/WormholeGatewayAdapterInit.sol#L21-L24
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/wormhole/WormholeGatewayAdapterInit.sol#L22-L22
+
+ZetaChainGatewayAdapterInit:
+  kind: step
+  source: src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol#L24-L35
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol#L31-L31
+    gateway:
+      rule: nonzero
+      source: src/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol#L80-L80
+    hubChainId:
+      rule: gt(0)
+      source: src/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol#L148-L149
+    hubRemoteApp:
+      rule: nonzero
+      source: src/crosschain/zetachain/ZetaChainGatewayAdapterLib.sol#L148-L149

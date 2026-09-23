@@ -1,0 +1,10 @@
+EIP712:
+  requires: []
+  notes: >-
+    Exposes only the ERC-5267 eip712Domain() view (src/utils/EIP712.sol#L8-L11). The domain itself is set by
+    whichever init runs __EIP712_init (ERC20PermitInit, ERC20VotesInit, ERC6538RegistryInit and others); there is
+    no EIP712 init contract, so the facet has no init of its own.
+
+Multicall:
+  requires: []
+  notes: Stateless, no initializer (src/utils/Multicall.sol#L10-L10).

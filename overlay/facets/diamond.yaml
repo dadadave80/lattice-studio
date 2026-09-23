@@ -1,0 +1,59 @@
+# diamond-lib's four facets and Lattice's Receive (src/Receive.sol).
+
+Receive:
+  requires: []
+  notes: >-
+    Exports the zero selector 0x00000000 so empty-calldata calls reach its receive(); stateless, no init
+    (src/Receive.sol#L15-L17). Without it the diamond rejects plain ETH (CORE-04).
+
+DiamondCutFacet:
+  summary:
+    # The contract's @notice is OwnableFacet's ("Simple single owner and multiroles authorization mixin.").
+    text: >-
+      Owner-gated EIP-2535 diamondCut: adds, replaces and removes functions, then optionally runs an init
+      through delegatecall.
+    source: lib/diamond-lib/src/facets/DiamondCutFacet.sol#L18-L29
+  requires: []
+  family:
+    name: upgrade
+    source: src/governance/AccessControlDiamondCut.sol#L16-L19
+  init:
+    # diamondCut checks the owner OwnableInit sets; without it the diamond can never be upgraded.
+    name: OwnableInit
+    source: lib/diamond-lib/src/facets/DiamondCutFacet.sol#L24-L26
+  seamReview: >-
+    diamondCut 0x1f931c1c is also exported by AccessControlDiamondCut, GovernedDiamondCut and SafeDiamondCut,
+    the other members of its upgrade family, so placing two of them is CORE-03, not a seam.
+  notes: >-
+    Only calls into DiamondLib's storage (diamond.lib.storage), which it lists in touches, not storage
+    (lib/diamond-lib/src/facets/DiamondCutFacet.sol#L28-L28).
+
+DiamondLoupeFacet:
+  requires: []
+  notes: >-
+    Every Lattice diamond needs all four loupe selectors (CORE-01). Reads DiamondLib's storage only, so it
+    lists diamond.lib.storage in touches (lib/diamond-lib/src/facets/DiamondLoupeFacet.sol#L18-L18).
+
+ERC165Facet:
+  requires: []
+  notes: >-
+    No init on purpose: diamond-lib's ERC165Init exists, but no Lattice recipe runs it, so requiring it would
+    raise INIT-04 on every template. Lattice inits register their own interface ids through the modules they
+    initialize.
+
+OwnableFacet:
+  summary:
+    # The contract's @notice is Solady OwnableRoles' ("Simple single owner and multiroles authorization
+    # mixin."), but the facet has no roles: one owner with a two-step handover.
+    text: >-
+      Single-owner authority with a two-step ownership handover; the owner must be set by an initializer.
+    source: lib/diamond-lib/src/facets/OwnableFacet.sol#L12-L18
+  requires: []
+  init:
+    name: OwnableInit
+    source: lib/diamond-lib/src/initializers/OwnableInit.sol#L15-L18
+  seamReview: >-
+    owner() 0x8da5cb5b is also AccountSigner's, where it returns the account's signing owner rather than the
+    diamond's owner. No Lattice script cuts both, and none pins an owner, so the user chooses (SEL-01).
+  notes: >-
+    Only calls into DiamondLib's storage (diamond.lib.storage): touches, not storage.

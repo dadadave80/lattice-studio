@@ -1,0 +1,53 @@
+AccessControlEnumerableInit:
+  kind: step
+  source: src/access/AccessControlEnumerableInit.sol#L15-L18
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/access/AccessControlEnumerableInit.sol#L16-L16
+
+AccessControlInit:
+  kind: step
+  source: src/access/AccessControlInit.sol#L16-L18
+  params:
+    admin:
+      doc: The address granted `DEFAULT_ADMIN_ROLE`.
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/access/AccessControlInit.sol#L16-L18
+
+AccessControlTimedInit:
+  kind: step
+  source: src/access/AccessControlTimedInit.sol#L15-L18
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/access/AccessControlTimedInit.sol#L16-L16
+
+AccessManagedInit:
+  kind: step
+  source: src/access/AccessManagedInit.sol#L16-L18
+  params:
+    authority:
+      rule: nonzero&code(contract)
+      authority: true
+      role: authority
+      source: src/access/libraries/AccessManagedLib.sol#L40-L42
+
+AccessManagerInit:
+  kind: step
+  source: src/access/AccessManagerInit.sol#L16-L18
+  params:
+    admin:
+      rule: nonzero
+      authority: true
+      role: ADMIN_ROLE
+      source: src/access/libraries/AccessManagerLib.sol#L82-L83
