@@ -2,15 +2,16 @@
  * Persistence against the browser's real IndexedDB, Web Locks and BroadcastChannel. Each test has its own
  * database (`testPersistence`); two instances on one database play two tabs.
  */
-import { toChecksum, type Deployment, type Project, type Recipe } from "@lattice-studio/core";
+import { toChecksum, type Catalog, type Deployment, type Project, type Recipe } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { openDB } from "idb";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
-  createProject, doc, listDeployments, loadViewport, openProject, putDeployment, saveStatus, saveViewport,
-  subscribeDeployments, type SaveStatus,
+  createProject, doc, getCatalogStatus, listDeployments, loadViewport, openProject, putDeployment, saveStatus,
+  saveViewport, setCatalogStatus, subscribeDeployments, type SaveStatus,
 } from "@/contracts";
-import { bufferedServices, fakeClock, onCleanup } from "../../test/harness";
+import { isUnpinned, UNPINNED_HASH } from "@/state/document-store";
+import { bufferedServices, fakeClock, fixtureCatalog, onCleanup } from "../../test/harness";
 import { META, openStudioDb } from "./db";
 import { bootPersistence, editLockState, persistence, subscribeEditLock } from "./index";
 import type { Persistence } from "./persistence";
@@ -552,6 +553,102 @@ describe("boot", () => {
     testPersistence({ dbName: store.dbName, doc: tabDoc, start: false, page: null });
     expect(await bootPersistence()).toMatchObject({ ok: true, value: { id: a.id, name: "Alpha" } });
     expect(tabDoc.get()).toMatchObject({ id: a.id, name: "Alpha" });
+  });
+
+  /**
+   * The app's own document as it boots: an untitled project that names no catalog, with the catalog still
+   * loading. Returns what loads the catalog, as the manifest's fetch would (then `state/pinning.ts` pins).
+   */
+  function bootUntitled(): () => Catalog {
+    const previous = getCatalogStatus();
+    onCleanup(() => setCatalogStatus(previous));
+    setCatalogStatus({ status: "loading" });
+    doc.load(makeProject({ id: "untitled", name: "Untitled", recipe: { ...recipe, catalog: { tag: "", hash: UNPINNED_HASH } } }));
+    return () => {
+      const catalog = fixtureCatalog();
+      setCatalogStatus({ status: "ready", id: catalog.lattice.tag, catalog, manifest: null });
+      return catalog;
+    };
+  }
+
+  /** Holds `tab`'s storage read back until `answer()`; `asked` settles once the boot has started it. */
+  function slowStorage(tab: Persistence): { asked: Promise<void>; answer: () => void } {
+    const read = tab.openLastProject.bind(tab);
+    let answer = (): void => {};
+    let ask = (): void => {};
+    const answered = new Promise<void>((resolve) => (answer = resolve));
+    const asked = new Promise<void>((resolve) => (ask = resolve));
+    vi.spyOn(tab, "openLastProject").mockImplementation(async (proceed) => {
+      ask();
+      await answered;
+      return read(proceed);
+    });
+    return { asked, answer };
+  }
+
+  test("a returning visitor lands in their last project when the catalog loads before storage answers", async () => {
+    const earlier = testPersistence();
+    const a = await created("Alpha");
+    await earlier.close();
+
+    const loadCatalog = bootUntitled();
+    const tab = testPersistence({ dbName: earlier.dbName, start: false });
+    const storage = slowStorage(tab);
+    const booting = bootPersistence();
+    await storage.asked;
+    const catalog = loadCatalog();
+    await until(() => !isUnpinned(doc.get().recipe), "the catalog pin");
+    expect(doc.get().recipe.catalog).toEqual({ tag: catalog.lattice.tag, hash: catalog.hash });
+    storage.answer();
+
+    expect(await booting).toMatchObject({ ok: true, value: { id: a.id, name: "Alpha" } });
+    expect(doc.get()).toMatchObject({ id: a.id, name: "Alpha", recipe: { catalog: a.recipe.catalog } });
+    expect(editLockState()).toEqual({ state: "held", projectId: a.id });
+    // The pinned untitled document was left unsaved: no stray Untitled project.
+    await tab.flush();
+    expect((await tab.listProjects()).map((p) => p.id)).toEqual([a.id]);
+  });
+
+  test("a returning visitor lands in their last project when storage answers before the catalog loads", async () => {
+    const earlier = testPersistence();
+    const a = await created("Alpha");
+    await earlier.close();
+
+    const loadCatalog = bootUntitled();
+    testPersistence({ dbName: earlier.dbName, start: false });
+    expect(await bootPersistence()).toMatchObject({ ok: true, value: { id: a.id, name: "Alpha" } });
+    const catalog = loadCatalog();
+    await new Promise((resolve) => realTimeout(resolve, 0));
+    // The opened project keeps the catalog it names.
+    expect(doc.get()).toMatchObject({ id: a.id, name: "Alpha", recipe: { catalog: a.recipe.catalog } });
+    expect(doc.get().recipe.catalog.hash).not.toBe(catalog.hash);
+  });
+
+  test.each([
+    ["a rename", () => rename("My own")],
+    ["a recipe edit", () =>
+      doc.apply("Placed Extra", (p) => ({
+        project: { ...p, recipe: { ...p.recipe, facets: [...p.recipe.facets, "Extra"] } },
+        changed: true,
+        summary: "Placed Extra",
+      }))],
+  ])("%s after the catalog pin keeps the visitor in their document", async (_, edit) => {
+    const earlier = testPersistence();
+    const a = await created("Alpha");
+    await earlier.close();
+
+    const loadCatalog = bootUntitled();
+    const tab = testPersistence({ dbName: earlier.dbName, start: false });
+    const storage = slowStorage(tab);
+    const booting = bootPersistence();
+    await storage.asked;
+    loadCatalog();
+    await until(() => !isUnpinned(doc.get().recipe), "the catalog pin");
+    edit();
+    storage.answer();
+
+    expect(await booting).toBeNull();
+    expect(doc.get().id).not.toBe(a.id);
   });
 });
 

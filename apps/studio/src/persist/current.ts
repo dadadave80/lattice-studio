@@ -4,9 +4,10 @@
  * deployments services registered with the contracts forward here, and so does the public API in `index.ts`.
  * Subscriptions made before the instance loads (or before a test provides one) follow it.
  */
-import type { Project, Result } from "@lattice-studio/core";
+import type { Project, Recipe, Result } from "@lattice-studio/core";
 import { useSyncExternalStore } from "react";
 import { log, type DeploymentsService, type ProjectsService, type SaveStatus } from "@/contracts";
+import { isUnpinned } from "@/state/document-store";
 import type { EditLockState } from "./lock";
 import type { Persistence } from "./persistence";
 
@@ -134,13 +135,31 @@ function routeOpensProject(hash: string): boolean {
 }
 
 /**
- * Whether the document is still the one the boot started on. A recorded prediction doesn't count: a wallet
- * that reconnects on load records one (`state/prediction.ts`) without the visitor doing anything.
+ * Whether the recipe differs from the boot's only by the catalog pin: the boot's recipe named no catalog, and
+ * `state/pinning.ts` pinned it to the one that loaded, leaving every other key as it was.
+ */
+function onlyPinned(booted: Recipe, now: Recipe): boolean {
+  if (now === booted) return true;
+  if (!isUnpinned(booted) || isUnpinned(now)) return false;
+  const keys = new Set([...Object.keys(booted), ...Object.keys(now)] as (keyof Recipe)[]);
+  for (const key of keys) if (key !== "catalog" && booted[key] !== now[key]) return false;
+  return true;
+}
+
+/**
+ * Whether the document is still the one the boot started on. Neither a recorded prediction nor the catalog pin
+ * counts, since neither is the visitor's doing: a wallet that reconnects on load records a prediction
+ * (`state/prediction.ts`), and a catalog that loads before storage answers pins the untitled project
+ * (`state/pinning.ts`). The project that opens keeps its own pin.
  */
 function untouched(booted: Project, now: Project): boolean {
   if (now === booted) return true;
   const keys = new Set([...Object.keys(booted), ...Object.keys(now)] as (keyof Project)[]);
-  for (const key of keys) if (key !== "predicted" && booted[key] !== now[key]) return false;
+  for (const key of keys) {
+    if (key === "predicted" || booted[key] === now[key]) continue;
+    if (key === "recipe" && onlyPinned(booted.recipe, now.recipe)) continue;
+    return false;
+  }
   return true;
 }
 
