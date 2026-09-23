@@ -97,6 +97,15 @@ describe("removeFacets", () => {
     expect(recipeHash(after.recipe)).not.toBe(recipeHash(before.recipe, catalog));
   });
 
+  test("leaves owners of selectors the removed facets didn't export alone, stale imported ones included (SEL-05)", () => {
+    const before = projectWith({
+      facets: ["ERC20", "GovernedVault", "Receive"],
+      owners: { [SEL.balanceOf]: "Vault", "0x0ef22643": "ERC20" },
+    });
+    const after = expectChanged(removeFacets(before, catalog, ["Receive"]), before, "Removed Receive");
+    expect(after.recipe.owners).toEqual({ "0x0ef22643": "ERC20", [SEL.balanceOf]: "Vault" });
+  });
+
   test("drops exclusions only the removed facets exported, and keeps the rest", () => {
     const before = projectWith({
       facets: ["ERC20", "GovernedVault", "Receive"],

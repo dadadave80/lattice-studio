@@ -152,7 +152,9 @@ export const removeFacets: RemoveFacetsFn = (project, catalog, names) => {
   for (const key of Object.keys(recipe.owners) as Hex4[]) {
     const owner = recipe.owners[key];
     if (owner === undefined || gone.has(owner)) continue;
-    if (remaining.filter((name) => exports(catalog, name, key)).length > 1) owners[key] = owner;
+    // Only selectors this removal touched; any other entry, stale or not, is left for its own problem to raise.
+    const touched = removed.some((name) => exports(catalog, name, key));
+    if (!touched || remaining.filter((name) => exports(catalog, name, key)).length > 1) owners[key] = owner;
   }
 
   // An exclusion only a removed facet exported has nothing left to exclude.
