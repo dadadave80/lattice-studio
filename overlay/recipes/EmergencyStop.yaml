@@ -1,0 +1,26 @@
+name: EmergencyStop
+script: script/base/security/DeployEmergencyStop.s.sol
+buildCuts: buildCuts(address)
+source: script/base/security/DeployEmergencyStop.s.sol#L39-L50
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/security/DeployEmergencyStop.s.sol#L41-L41
+  - add: AccessControl
+    source: script/base/security/DeployEmergencyStop.s.sol#L42-L42
+  - add: EmergencyStop
+    source: script/base/security/DeployEmergencyStop.s.sol#L43-L43
+  - add: DiamondLoupeFacet
+    source: script/base/security/DeployEmergencyStop.s.sol#L44-L44
+  - add: AccessControlDiamondCut
+    source: script/base/security/DeployEmergencyStop.s.sol#L45-L45
+  - add: Receive
+    source: script/base/security/DeployEmergencyStop.s.sol#L46-L46
+init:
+  # The script's own init contract: not in src/, so the catalog has no init spec or release for it.
+  kind: none
+  source: script/base/security/DeployEmergencyStop.s.sol#L18-L24
+gaps: >-
+  No init: the script initializes the diamond with EmergencyStopRecipeInit, a contract written in the script
+  rather than in src/, so Studio has no init spec for it until Lattice releases one (Lattice requirement A2).

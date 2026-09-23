@@ -1,0 +1,27 @@
+name: L2ToL2CrossDomainMessengerGatewayAdapter
+script: script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol
+buildCuts: buildCuts(address)
+source: script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol#L33-L45
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol#L35-L35
+  - add: AccessControl
+    source: script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol#L36-L36
+  - add: L2ToL2CrossDomainMessengerGatewayAdapter
+    source: script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol#L37-L37
+  - add: DiamondLoupeFacet
+    source: script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol#L38-L38
+  - add: AccessControlDiamondCut
+    source: script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol#L39-L39
+  - add: Receive
+    source: script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol#L40-L40
+init:
+  kind: steps
+  steps:
+    - spec: L2ToL2CrossDomainMessengerGatewayAdapterInit
+      args: {}  # the script passes (admin)
+  source: script/base/crosschain/DeployL2ToL2CrossDomainMessengerGatewayAdapter.s.sol#L41-L44
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin).

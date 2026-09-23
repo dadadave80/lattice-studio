@@ -1,0 +1,37 @@
+name: Account6900
+script: script/base/accounts/DeployAccount6900.s.sol
+buildCuts: buildCuts(address)
+source: script/base/accounts/DeployAccount6900.s.sol#L30-L43
+proxy: ModularAccount6900
+phase: v1.1
+cuts:
+  - add: DiamondCutFacet
+    source: script/base/accounts/DeployAccount6900.s.sol#L32-L32
+  - add: DiamondLoupeFacet
+    source: script/base/accounts/DeployAccount6900.s.sol#L33-L33
+  - add: ERC165Facet
+    source: script/base/accounts/DeployAccount6900.s.sol#L34-L34
+  - add: AccessControl
+    source: script/base/accounts/DeployAccount6900.s.sol#L35-L35
+  - add: ERC6900ModuleManager
+    source: script/base/accounts/DeployAccount6900.s.sol#L36-L36
+  - add: ERC6900Executor
+    source: script/base/accounts/DeployAccount6900.s.sol#L37-L37
+  - add: ERC6900Validation
+    source: script/base/accounts/DeployAccount6900.s.sol#L38-L38
+  - add: ERC6900Signature
+    source: script/base/accounts/DeployAccount6900.s.sol#L39-L39
+  - add: ERC6900AccountView
+    source: script/base/accounts/DeployAccount6900.s.sol#L40-L40
+  - add: Receive
+    source: script/base/accounts/DeployAccount6900.s.sol#L41-L41
+init:
+  kind: steps
+  steps:
+    # buildCuts deploys AccountInit6900 with the EntryPoint as its constructor argument; run() calls init(owner).
+    - spec: AccountInit6900
+      args: {}  # run() passes (owner)
+  source: script/base/accounts/DeployAccount6900.s.sol#L52-L53
+gaps: >-
+  No example arguments yet: run() takes the owner as a parameter, and AccountInit6900's EntryPoint is a constructor
+  argument. The account needs its own proxy and factory (AccountFactory6900, R20), so it arrives in v1.1.

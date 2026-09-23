@@ -1,0 +1,27 @@
+name: LayerZeroGatewayAdapter
+script: script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol
+buildCuts: buildCuts(address,address)
+source: script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol#L28-L43
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol#L33-L33
+  - add: AccessControl
+    source: script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol#L34-L34
+  - add: LayerZeroGatewayAdapter
+    source: script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol#L35-L35
+  - add: DiamondLoupeFacet
+    source: script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol#L36-L36
+  - add: AccessControlDiamondCut
+    source: script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol#L37-L37
+  - add: Receive
+    source: script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol#L38-L38
+init:
+  kind: steps
+  steps:
+    - spec: LayerZeroGatewayAdapterInit
+      args: {}  # the script passes (admin, endpoint)
+  source: script/base/crosschain/DeployLayerZeroGatewayAdapter.s.sol#L39-L42
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin, endpoint).

@@ -1,0 +1,48 @@
+# DeployERC20's four cuts, Votes, then ERC20Votes as a mixed cut: Add its checkpoint accessors, Replace ERC20's
+# transfer and transferFrom and Votes' delegate and delegateBySig (the R19 seams), then AccessControl and
+# AccessControlDiamondCut. The script's init runs DeployERC20's MultiInit (ERC20Init and initImmutable),
+# ERC20VotesInit and initUpgradeable; Studio's planner appends initUpgradeable alone, which sets both flags.
+name: ERC20Votes
+script: script/base/tokens/DeployERC20Votes.s.sol
+buildCuts: buildCuts(string,string,address)
+source: script/base/tokens/DeployERC20Votes.s.sol#L36-L81
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/tokens/DeployERC20.s.sol#L60-L60
+  - add: ERC20
+    source: script/base/tokens/DeployERC20.s.sol#L61-L61
+  - add: DiamondLoupeFacet
+    source: script/base/tokens/DeployERC20.s.sol#L62-L62
+  - add: Receive
+    source: script/base/tokens/DeployERC20.s.sol#L63-L63
+  - add: Votes
+    source: script/base/tokens/DeployERC20Votes.s.sol#L63-L63
+  - add: ERC20Votes
+    selectors: ["numCheckpoints(address)", "checkpoints(address,uint32)"]
+    source: script/base/tokens/DeployERC20Votes.s.sol#L43-L65
+    listSource: script/base/tokens/DeployERC20Votes.s.sol#L54-L56
+  - replace: ERC20Votes
+    selectors:
+      - "transfer(address,uint256)"
+      - "transferFrom(address,address,uint256)"
+      - "delegate(address)"
+      - "delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)"
+    source: script/base/tokens/DeployERC20Votes.s.sol#L43-L67
+    listSource: script/base/tokens/DeployERC20Votes.s.sol#L47-L51
+  - add: AccessControl
+    source: script/base/tokens/DeployERC20Votes.s.sol#L68-L68
+  - add: AccessControlDiamondCut
+    source: script/base/tokens/DeployERC20Votes.s.sol#L69-L69
+init:
+  kind: steps
+  steps:
+    - spec: ERC20Init
+      args: {}  # the script passes (name_, symbol_)
+      source: script/base/tokens/DeployERC20.s.sol#L35-L36
+    - spec: ERC20VotesInit
+      args: {}  # the script passes (name_, admin)
+  source: script/base/tokens/DeployERC20Votes.s.sol#L71-L80
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (name_, symbol_; name_, admin).

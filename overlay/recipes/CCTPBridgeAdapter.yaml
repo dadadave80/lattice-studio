@@ -1,0 +1,27 @@
+name: CCTPBridgeAdapter
+script: script/base/crosschain/DeployCCTPBridgeAdapter.s.sol
+buildCuts: buildCuts(address,address,address,address)
+source: script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L31-L46
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L36-L36
+  - add: AccessControl
+    source: script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L37-L37
+  - add: CCTPBridgeAdapter
+    source: script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L38-L38
+  - add: DiamondLoupeFacet
+    source: script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L39-L39
+  - add: AccessControlDiamondCut
+    source: script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L40-L40
+  - add: Receive
+    source: script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L41-L41
+init:
+  kind: steps
+  steps:
+    - spec: CCTPBridgeAdapterInit
+      args: {}  # the script passes (admin, tokenMessenger, messageTransmitter, usdc)
+  source: script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L42-L45
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin, tokenMessenger, messageTransmitter, usdc).

@@ -1,0 +1,24 @@
+name: AccessManager
+script: script/base/access/DeployAccessManager.s.sol
+buildCuts: buildCuts(address)
+source: script/base/access/DeployAccessManager.s.sol#L29-L34
+proxy: Lattice
+phase: v1.1
+immutable: true
+cuts:
+  - add: ERC165Facet
+    source: script/base/access/DeployAccessManager.s.sol#L57-L57
+  - add: AccessManager
+    source: script/base/access/DeployAccessManager.s.sol#L58-L58
+  - add: DiamondLoupeFacet
+    source: script/base/access/DeployAccessManager.s.sol#L59-L59
+  - add: Receive
+    source: script/base/access/DeployAccessManager.s.sol#L60-L60
+init:
+  kind: steps
+  steps:
+    - spec: AccessManagerInit
+      args: {}  # the script passes (admin)
+  source: script/base/access/DeployAccessManager.s.sol#L31-L33
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin).

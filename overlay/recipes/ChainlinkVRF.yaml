@@ -1,0 +1,27 @@
+name: ChainlinkVRF
+script: script/base/oracles/DeployChainlinkVRF.s.sol
+buildCuts: buildCuts(address)
+source: script/base/oracles/DeployChainlinkVRF.s.sol#L26-L37
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/oracles/DeployChainlinkVRF.s.sol#L28-L28
+  - add: AccessControl
+    source: script/base/oracles/DeployChainlinkVRF.s.sol#L29-L29
+  - add: ChainlinkVRF
+    source: script/base/oracles/DeployChainlinkVRF.s.sol#L30-L30
+  - add: DiamondLoupeFacet
+    source: script/base/oracles/DeployChainlinkVRF.s.sol#L31-L31
+  - add: AccessControlDiamondCut
+    source: script/base/oracles/DeployChainlinkVRF.s.sol#L32-L32
+  - add: Receive
+    source: script/base/oracles/DeployChainlinkVRF.s.sol#L33-L33
+init:
+  kind: steps
+  steps:
+    - spec: ChainlinkVRFInit
+      args: {}  # the script passes (admin)
+  source: script/base/oracles/DeployChainlinkVRF.s.sol#L34-L36
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin).

@@ -1,0 +1,31 @@
+# DeployERC20's four cuts (its init discarded), then AccessControl, ERC7802 and AccessControlDiamondCut, with
+# ERC7802Init, which initializes the token itself.
+name: ERC7802
+script: script/base/tokens/DeployERC7802.s.sol
+buildCuts: buildCuts(address,address,string,string)
+source: script/base/tokens/DeployERC7802.s.sol#L31-L48
+proxy: Lattice
+phase: v1.1
+cuts:
+  - add: ERC165Facet
+    source: script/base/tokens/DeployERC20.s.sol#L60-L60
+  - add: ERC20
+    source: script/base/tokens/DeployERC20.s.sol#L61-L61
+  - add: DiamondLoupeFacet
+    source: script/base/tokens/DeployERC20.s.sol#L62-L62
+  - add: Receive
+    source: script/base/tokens/DeployERC20.s.sol#L63-L63
+  - add: AccessControl
+    source: script/base/tokens/DeployERC7802.s.sol#L41-L41
+  - add: ERC7802
+    source: script/base/tokens/DeployERC7802.s.sol#L42-L42
+  - add: AccessControlDiamondCut
+    source: script/base/tokens/DeployERC7802.s.sol#L43-L43
+init:
+  kind: steps
+  steps:
+    - spec: ERC7802Init
+      args: {}  # the script passes (admin, bridge, name_, symbol_)
+  source: script/base/tokens/DeployERC7802.s.sol#L45-L47
+gaps: >-
+  No example arguments yet: the script takes every init argument as a parameter (admin, bridge, name_, symbol_).
