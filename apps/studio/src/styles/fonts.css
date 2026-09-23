@@ -17,3 +17,18 @@
   font-weight: 400;
   src: url("@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2") format("woff2");
 }
+
+/*
+ * Inter's size-adjusted fallback (spec L826): a local system font tuned to take up about the same space as
+ * Inter, so the font-display: swap from this face to the real one causes no reflow. Metrics against Arial
+ * (developer.chrome.com/blog/framework-tools-font-fallback); global.css puts it ahead of system-ui in
+ * --lx-font-sans.
+ */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  ascent-override: 90.2%;
+  descent-override: 22.48%;
+  line-gap-override: 0%;
+  size-adjust: 107.4%;
+}

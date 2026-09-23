@@ -3,6 +3,11 @@
 @import "./fonts.css";
 @import "./reset.css";
 
+/* Inter's size-adjusted fallback ahead of the system stack (spec L826; the fallback face is fonts.css's). */
+:root {
+  --lx-font-sans: Inter, "Inter Fallback", system-ui, sans-serif;
+}
+
 html {
   background: var(--lx-ground);
   color: var(--lx-text);
