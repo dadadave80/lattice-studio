@@ -1,0 +1,21 @@
+# Versions and changelog from conventional commits (spec "Versions and changelog"; Developer experience →
+# Building Studio → Workflow). Opens or updates a "release please" PR on every push to main; merging that PR
+# tags the release. Not run until David pushes the repo (HANDOFF.md D4).
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: .github/release-please-config.json
+          manifest-file: .github/release-please-manifest.json

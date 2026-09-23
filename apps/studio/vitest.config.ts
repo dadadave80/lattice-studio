@@ -27,7 +27,7 @@ export default defineConfig(async (env) => {
     optimizeDeps: {
       include: [
         "react", "react/jsx-dev-runtime", "react-dom/client", "zustand", "zustand/vanilla",
-        "vitest-browser-react", "@base-ui/react/csp-provider", "@xyflow/react", "viem", "zod", "fflate",
+        "vitest-browser-react", "@base-ui/react/csp-provider", "@xyflow/react", "viem", "zod", "fflate", "fast-check",
       ],
     },
     test: {

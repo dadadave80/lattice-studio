@@ -1,0 +1,57 @@
+# The Sepolia fork suite the spec wants on every PR (spec L934-L935), gated behind the `SEPOLIA_RPC_URL`
+# repository secret per D8 (HANDOFF.md §11): until David adds that secret, this workflow runs its gate job and
+# stops there, and the PR gate (ci.yml's `chain` job) stays local Anvil. Once the secret exists, this job runs
+# alongside the PR gate. Read-only against Sepolia except for the deploys the fork test suite itself makes on
+# its own forked, in-memory chain (prool/Anvil) — nothing ever reaches a real network. Not run until David
+# pushes the repo (HANDOFF.md D4).
+name: Sepolia fork suite
+
+on:
+  pull_request:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: "1.4.2"
+  FOUNDRY_VERSION: "v1.8.3"
+  # Placeholder; Q5 pins the real block against its Sepolia fixtures and this value should follow. Kept here,
+  # not in e2e-chain/, because only Q6 owns workflow inputs.
+  FORK_BLOCK: "7000000"
+
+jobs:
+  gate:
+    name: Check for SEPOLIA_RPC_URL
+    runs-on: ubuntu-latest
+    outputs:
+      has-secret: ${{ steps.check.outputs.has-secret }}
+    steps:
+      - id: check
+        run: echo "has-secret=${{ secrets.SEPOLIA_RPC_URL != '' }}" >> "$GITHUB_OUTPUT"
+
+  sepolia-fork:
+    name: bun run test:chain (Sepolia fork)
+    needs: gate
+    if: needs.gate.outputs.has-secret == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Build the pinned Lattice checkout (ci profile)
+        run: FOUNDRY_PROFILE=ci forge build --root lattice
+      # This job's env is all Q6 owns: the URL, the pinned block and where Lattice is. What the fork test
+      # suite does with them (forking, deploying missing shared contracts, forced failures) is Q5's.
+      - run: bun run test:chain
+        env:
+          LATTICE_DIR: ${{ github.workspace }}/lattice
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          FORK_BLOCK: ${{ env.FORK_BLOCK }}

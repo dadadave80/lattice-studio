@@ -1,0 +1,196 @@
+# Lattice Studio's pull-request gate (brief Q6; spec "Testing and release", spec L897 "bun run check").
+# Not run until David pushes the repo and creates it on GitHub (HANDOFF.md D4): written now so the day he does,
+# every gate is ready. Nothing here sends a transaction to a public network; the golden and chain jobs run
+# against a local Anvil (D8's default), with CreateX's and Multicall3's real runtime code etched by the test
+# harness itself (Q5), not by this workflow.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev] # dev is scripts/wp/merge.ts's integration branch
+
+# A PR gate never needs write access; release-please and publish-cli (separate workflows) ask for more.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: "1.4.2"
+  NODE_VERSION: "22"
+  FOUNDRY_VERSION: "v1.8.3" # contracts.md §2: David chose 1.8.3 over the planned 1.8.1 (2026-09-23, QUESTIONS Q1)
+
+jobs:
+  checks:
+    name: bun run check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      # typecheck.ts runs TypeScript's compiler under Node (contracts §2: TS 7 has no JS API yet), so `check`
+      # needs Node too, same as `browser`/`e2e`.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # Frozen lockfile, install scripts blocked (root package.json's empty trustedDependencies; spec
+      # "Compromised npm dependency"): CI installs exactly what bun.lock pins and runs no lifecycle script.
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+
+  test:
+    name: bun test (core logic)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun test
+
+  browser:
+    name: Component tests (Vitest Browser Mode)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      - run: bun x playwright install --with-deps chromium
+      - run: bun run test:browser
+
+  e2e:
+    name: End to end (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      # Chromium for Flows 1-14 and 17; WebKit for the @smoke set only (spec "Screen readers, tier 1").
+      - run: bun x playwright install --with-deps chromium webkit
+      - run: bun run e2e
+
+  golden:
+    name: Golden tests (Foundry)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Build the pinned Lattice checkout (ci profile)
+        run: FOUNDRY_PROFILE=ci forge build --root lattice
+      - run: bun run golden
+        env:
+          LATTICE_DIR: ${{ github.workspace }}/lattice
+
+  chain:
+    name: Chain tests (Anvil, Foundry)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Build the pinned Lattice checkout (ci profile)
+        run: FOUNDRY_PROFILE=ci forge build --root lattice
+      # Local Anvil, D8's default: CreateX's and Multicall3's real runtime code is etched by e2e-chain's own
+      # harness (Q5), not by this step. No transaction ever reaches a public network.
+      - run: bun run test:chain
+        env:
+          LATTICE_DIR: ${{ github.workspace }}/lattice
+
+  catalog-drift:
+    name: Catalog drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Build the pinned Lattice checkout (ci profile)
+        run: FOUNDRY_PROFILE=ci forge build --root lattice
+      - run: bun run catalog
+        env:
+          LATTICE_DIR: ${{ github.workspace }}/lattice
+      # A rebuilt catalog must equal the committed one (contracts §1 "catalog/ CG8, generated, committed").
+      - run: git diff --exit-code catalog/
+
+  size:
+    name: Size budgets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/ci/size.ts --build
+
+  lighthouse:
+    name: Lighthouse CI (mobile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      # @lhci/cli is apps/studio's devDependency (contracts §2, ^0.15.1, resolved 0.15.1 in bun.lock): `bun x
+      # lhci` resolves the installed binary, never fetches from the registry. Reports stay in this run's own
+      # artifact storage (upload.target "filesystem" in lighthouserc.json), not a public URL: no analytics and
+      # nothing published without David (spec "Privacy").
+      - name: Preview and audit
+        run: bun x lhci autorun --config=scripts/ci/lighthouserc.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-report
+          path: .lighthouseci
+          retention-days: 14

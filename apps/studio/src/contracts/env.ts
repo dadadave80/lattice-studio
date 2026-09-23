@@ -16,7 +16,10 @@ export const env: {
   readonly e2e: boolean;
   /** A dev server: enables the `#/__ui` primitives gallery. */
   readonly dev: boolean;
+  /** Vitest (`mode === "test"`): modules skip registering real browser-storage services; CCR from S7a. */
+  readonly test: boolean;
 } = {
   e2e: isE2EFlag(import.meta.env.VITE_STUDIO_E2E),
   dev: import.meta.env.DEV === true,
+  test: import.meta.env.MODE === "test",
 };
