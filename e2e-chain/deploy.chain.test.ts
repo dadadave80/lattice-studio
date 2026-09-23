@@ -53,10 +53,13 @@ describe.skipIf(ANVIL_SKIP_REASON !== undefined)("the deploy calldata core build
     };
   }
 
-  for (const name of ["GovernedVault", "ERC20", "SafeDiamondCut"]) {
+  test("the catalog has v1 recipes to run", () => {
+    expect(v1Recipes(catalog).length).toBeGreaterThan(0);
+  });
+
+  for (const name of v1Recipes(catalog)) {
     for (const path of PATHS) {
       test(`${name} through ${path === "factory" ? "LatticeFactory" : "CreateX"}: lands at the prediction, loupe matches the plan`, async () => {
-        expect(v1Recipes(catalog)).toContain(name);
         const f = fixture(catalog, name, path, entropyFor(`viem:${name}:${path}`));
         await table.run(name, path, async () => {
           const deploy = coreDeploy(f, ALICE, node.chainId);

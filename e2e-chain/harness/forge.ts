@@ -7,6 +7,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Address } from "viem";
 import { FORGE, LATTICE } from "./env";
+import { scrub } from "./scrub";
+
+/** Environment variables forge never gets. */
+const WITHHELD = new Set(["FOUNDRY_PROFILE", "SEPOLIA_RPC_URL"]);
 
 export type ForgeResult = { code: number; out: string };
 
@@ -37,12 +41,15 @@ export class ForgeProject {
     writeFileSync(join(this.dir, "script", filename), text);
   }
 
-  /** Runs forge in the project, without the caller's FOUNDRY_PROFILE (Lattice's `ci` profile isn't this project's). */
+  /**
+   * Runs forge in the project, without the caller's FOUNDRY_PROFILE (Lattice's `ci` profile isn't this project's) or
+   * SEPOLIA_RPC_URL (forge never needs it: every run targets the local node). Output is scrubbed of a fork's URL.
+   */
   run(args: string[]): ForgeResult {
     const env: Record<string, string> = { FOUNDRY_DISABLE_NIGHTLY_WARNING: "true", NO_COLOR: "1" };
-    for (const [key, value] of Object.entries(process.env)) if (value !== undefined && key !== "FOUNDRY_PROFILE") env[key] = value;
+    for (const [key, value] of Object.entries(process.env)) if (value !== undefined && !WITHHELD.has(key)) env[key] = value;
     const proc = Bun.spawnSync([FORGE ?? "forge", ...args], { cwd: this.dir, env, stdout: "pipe", stderr: "pipe" });
-    return { code: proc.exitCode, out: `${proc.stdout.toString()}${proc.stderr.toString()}` };
+    return { code: proc.exitCode, out: scrub(`${proc.stdout.toString()}${proc.stderr.toString()}`) };
   }
 
   /**

@@ -59,6 +59,7 @@ describe.skipIf(SKIP_REASON !== undefined)("exported Foundry scripts on Anvil", 
   let node: Node;
   let fmt: ForgeResult = { code: -1, out: "" };
   let build: ForgeResult = { code: -1, out: "" };
+  const runScripts = (path: DeployPath): Script[] => scripts.filter((s) => s.path === path && s.f.project.name.includes(" Run "));
 
   beforeAll(async () => {
     project = new ForgeProject(catalog.toolchain.solc);
@@ -79,6 +80,8 @@ describe.skipIf(SKIP_REASON !== undefined)("exported Foundry scripts on Anvil", 
   });
 
   test("every script lists chain 31337 and is forge fmt clean", () => {
+    expect(v1Recipes(catalog).length).toBeGreaterThan(0);
+    expect(scripts.length).toBe(v1Recipes(catalog).length * 2 + 2);
     for (const script of scripts) expect([script.filename, script.text.includes("if (block.chainid == 31337)")]).toEqual([script.filename, true]);
     expect(fmt.out).toBe("");
     expect(fmt.code).toBe(0);
@@ -100,7 +103,9 @@ describe.skipIf(SKIP_REASON !== undefined)("exported Foundry scripts on Anvil", 
             expect(s.text).toContain('_expect("CreateX", CREATEX, CREATEX_CODEHASH);');
           }
         }
-        for (const script of scripts.filter((s) => s.path === path && s.f.project.name.includes(" Run "))) {
+        const runs = runScripts(path);
+        expect([runs.length > 0, runs.length]).toEqual([true, v1Recipes(catalog).length]);
+        for (const script of runs) {
           const name = script.f.name;
           await table.run(name, path, async () => {
             const { address } = predict(script.f, ALICE, node.chainId);
@@ -117,7 +122,9 @@ describe.skipIf(SKIP_REASON !== undefined)("exported Foundry scripts on Anvil", 
       }, 240_000);
 
       test("an occupied predicted address stops it before broadcast (AddressTaken)", async () => {
-        for (const script of scripts.filter((s) => s.path === path && s.f.project.name.includes(" Run "))) {
+        const runs = runScripts(path);
+        expect([runs.length > 0, runs.length]).toEqual([true, v1Recipes(catalog).length]);
+        for (const script of runs) {
           const { address } = predict(script.f, ALICE, node.chainId);
           const before = await standing(node, ALICE);
           const result = project.broadcast(script.filename, script.contract, node.url, ALICE);

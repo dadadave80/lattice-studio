@@ -29,7 +29,7 @@ describe.skipIf(NESTED || (ANVIL === null && FORGE === null))("without Foundry",
     expect(out).toContain("core-built deploys: skipped, anvil isn't on PATH (install Foundry 1.8.3).");
     expect(out).toContain("exported scripts: skipped, anvil isn't on PATH (install Foundry 1.8.3).");
     expect(out).toContain("Sepolia fork: skipped, anvil isn't on PATH (install Foundry 1.8.3).");
-    expect(out).toMatch(/\b0 pass\b/);
+    // Only the Foundry-free unit tests (the URL scrubber) run; every chain suite skipped.
     expect(out).toMatch(/\b0 fail\b/);
     expect(proc.exitCode).toBe(0);
   }, 60_000);

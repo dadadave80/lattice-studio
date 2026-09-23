@@ -2,6 +2,8 @@
  * The recipe × path table each suite prints when it finishes, so a run's log says what ran and how it ended
  * (Done when: "the report lists each recipe × path result").
  */
+import { scrub } from "./scrub";
+
 export type Row = { recipe: string; path: string; result: string };
 
 export class ResultTable {
@@ -11,8 +13,8 @@ export class ResultTable {
 
   record(recipe: string, path: string, result: string): void {
     const existing = this.rows.find((row) => row.recipe === recipe && row.path === path);
-    if (existing) existing.result = result;
-    else this.rows.push({ recipe, path, result });
+    if (existing) existing.result = scrub(result);
+    else this.rows.push({ recipe, path, result: scrub(result) });
   }
 
   /** Records "fail: <reason>" when `fn` throws, then rethrows, so a failed case still shows in the table. */
@@ -22,7 +24,7 @@ export class ResultTable {
       this.record(recipe, path, ok(value));
       return value;
     } catch (error) {
-      this.record(recipe, path, `fail: ${(error instanceof Error ? error.message : String(error)).split("\n")[0]?.slice(0, 160)}`);
+      this.record(recipe, path, `fail: ${scrub(error instanceof Error ? error.message : String(error)).split("\n")[0]?.slice(0, 160)}`);
       throw error;
     }
   }

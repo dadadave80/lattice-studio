@@ -61,10 +61,13 @@ describe.skipIf(FORK_SKIP !== undefined)(`Sepolia fork at block ${SEPOLIA_FORK_B
     for (const name of neededByV1(catalog)) expect([name, state.shared[name]?.present]).toEqual([name, true]);
   }, 240_000);
 
-  for (const name of ["GovernedVault", "ERC20", "SafeDiamondCut"]) {
+  test("the catalog has v1 recipes to run", () => {
+    expect(v1Recipes(catalog).length).toBeGreaterThan(0);
+  });
+
+  for (const name of v1Recipes(catalog)) {
     for (const path of PATHS) {
       test(`${name} through ${path}: core's calldata and the exported script both land, loupe matches the plan`, async () => {
-        expect(v1Recipes(catalog)).toContain(name);
         await table.run(name, path, async () => {
           const viemCase = fixture(catalog, name, path, entropyFor(`fork:viem:${name}:${path}`));
           const deploy = coreDeploy(viemCase, ALICE, SEPOLIA);

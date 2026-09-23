@@ -57,7 +57,7 @@ export function anvilPort(offset: number): number {
 }
 
 /** Offsets, one per test file, so no two files ever share a node. */
-export const PORT = { createx: 0, shared: 1, deploy: 2, scripts: 3, fork: 4 } as const;
+export const PORT = { createx: 0, shared: 1, deploy: 2, scripts: 3, fork: 4, scrub: 5 } as const;
 
 /** Prints once why a suite skips, so a skipped run says so instead of passing silently. */
 export function announceSkip(suite: string, reason: string | undefined): void {

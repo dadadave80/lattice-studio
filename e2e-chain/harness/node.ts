@@ -6,6 +6,7 @@ import { Instance } from "prool";
 import {
   createTestClient, defineChain, http, publicActions, walletActions, type Address, type Hex,
 } from "viem";
+import { registerSecretUrl, scrub, scrubError } from "./scrub";
 
 /** Anvil's default account 0 and 1 (its well-known dev mnemonic); the nodes keep them unlocked. */
 export const ALICE: Address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
@@ -19,6 +20,16 @@ export type NodeOptions = {
   forkBlockNumber?: bigint;
 };
 
+/**
+ * `fetch` whose response bodies are scrubbed of a fork's RPC URL (harness/scrub.ts) before anything parses them, so
+ * an upstream error anvil relays can't carry the URL into a viem error, a thrown Error or a result-table row.
+ */
+async function scrubbedFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
+  const response = await fetch(input, init);
+  const text = scrub(await response.text());
+  return new Response(text, { status: response.status, statusText: response.statusText, headers: response.headers });
+}
+
 function makeClient(url: string, chainId: number) {
   const chain = defineChain({
     id: chainId,
@@ -26,8 +37,9 @@ function makeClient(url: string, chainId: number) {
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: { default: { http: [url] } },
   });
+  const transport = http(url, { timeout: 60_000, fetchFn: scrubbedFetch });
   // Anvil mines on arrival: poll receipts every 25 ms, not viem's 4 s default for a chain without a block time.
-  return createTestClient({ mode: "anvil", chain, transport: http(url, { timeout: 60_000 }), pollingInterval: 25 })
+  return createTestClient({ mode: "anvil", chain, transport, pollingInterval: 25 })
     .extend(publicActions)
     .extend(walletActions);
 }
@@ -53,12 +65,18 @@ export async function startNode(options: NodeOptions): Promise<Node> {
     ...(options.forkUrl === undefined ? { chainId } : { forkUrl: options.forkUrl }),
     ...(options.forkBlockNumber === undefined ? {} : { forkBlockNumber: options.forkBlockNumber }),
   });
-  await instance.start();
+  if (options.forkUrl !== undefined) registerSecretUrl(options.forkUrl);
+  try {
+    await instance.start();
+  } catch (error) {
+    // prool rejects with anvil's stderr word for word, and anvil's fork errors quote the endpoint with its key.
+    throw scrubError(error);
+  }
   const url = `http://127.0.0.1:${options.port}`;
   let id = 0;
   const rpc = async <T>(method: string, params: unknown[]): Promise<T> => {
     id += 1;
-    const response = await fetch(url, {
+    const response = await scrubbedFetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
@@ -67,7 +85,7 @@ export async function startNode(options: NodeOptions): Promise<Node> {
     if (body.error) {
       const error = new Error(`${method}: ${body.error.message}`) as Error & { data?: unknown };
       error.data = body.error.data;
-      throw error;
+      throw scrubError(error);
     }
     return body.result as T;
   };
