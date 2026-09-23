@@ -7,7 +7,9 @@ import {
 } from "@/contracts";
 import { Kbd } from "@/ui";
 import { filterGroups, paletteGroups, type PaletteGroup, type PaletteItem } from "./palette-items";
-import { closePalette, useRecentCommands, usePaletteState, type PaletteMode } from "./palette-state";
+import {
+  closePalette, paletteReturnTarget, useRecentCommands, usePaletteState, type PaletteMode,
+} from "./palette-state";
 import { PaletteRow } from "./PaletteRow";
 import styles from "./Palette.module.css";
 
@@ -17,10 +19,13 @@ import styles from "./Palette.module.css";
  */
 export function PalettePopup() {
   const { open, mode, at, key } = usePaletteState();
-  return <PaletteDialog key={key} open={open} mode={mode} at={at} />;
+  // Mounted while open and through the close animation only: a hidden palette builds no rows on each edit.
+  const [closed, setClosed] = useState(() => (open ? -1 : key));
+  if (!open && closed === key) return null;
+  return <PaletteDialog key={key} open={open} mode={mode} at={at} onClosed={() => setClosed(key)} />;
 }
 
-type PaletteDialogProps = { open: boolean; mode: PaletteMode; at: SheetPoint | null };
+type PaletteDialogProps = { open: boolean; mode: PaletteMode; at: SheetPoint | null; onClosed: () => void };
 
 const itemTitle = (item: PaletteItem): string => item.title;
 
@@ -30,9 +35,15 @@ function rowCount(groups: readonly PaletteGroup[]): number {
 }
 
 /**
- * Moves the active row from `from` to `to` with the list's own arrow keys, the short way round (the list
- * wraps). Base UI's Autocomplete keeps Home and End for the input's caret and has no controlled highlight,
- * so Home and End step there (IR L166).
+ * Moves the active row from `from` to `to` with the list's own arrow keys, the short way round (IR L166:
+ * Home and End). Base UI 1.8's Autocomplete has no controlled highlight, so this relies on three of its
+ * behaviors, each covered by the palette's key test:
+ * 1. The typeable input's own keydown handler takes Home and End for the caret and stops them. Ours is a
+ *    native listener on the input, which runs before React's delegated handler, and stops them first.
+ * 2. An ArrowDown or ArrowUp keydown dispatched on the input moves the highlight one row; with
+ *    `autoHighlight="always"` and `loopFocus` (the default) it wraps from the last row to the first and back,
+ *    never stopping on the input.
+ * 3. `onItemHighlighted`'s `details.index` is the row's index across all groups, in render order.
  */
 function stepTo(input: HTMLInputElement, from: number, to: number, count: number): void {
   if (from < 0) {
@@ -47,11 +58,9 @@ function stepTo(input: HTMLInputElement, from: number, to: number, count: number
   }
 }
 
-function PaletteDialog({ open, mode, at }: PaletteDialogProps) {
+function PaletteDialog({ open, mode, at, onClosed }: PaletteDialogProps) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  /** Where focus was when the palette opened: where it goes back (PA bug 15). */
-  const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null));
   /** The command chosen, run once the palette has closed and focus is back. */
   const pending = useRef<CommandRef | null>(null);
   const highlighted = useRef(-1);
@@ -73,8 +82,9 @@ function PaletteDialog({ open, mode, at }: PaletteDialogProps) {
     countRef.current = count;
   }, [count]);
 
-  useEffect(() => {
-    const input = inputRef.current;
+  /** The input, with Home and End attached for as long as it's in the document (see `stepTo`). */
+  const attachInput = useCallback((input: HTMLInputElement | null) => {
+    inputRef.current = input;
     if (!input) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Home" && event.key !== "End") return;
@@ -86,8 +96,11 @@ function PaletteDialog({ open, mode, at }: PaletteDialogProps) {
       stepTo(input, highlighted.current, event.key === "Home" ? 0 : total - 1, total);
     };
     input.addEventListener("keydown", onKeyDown);
-    return () => input.removeEventListener("keydown", onKeyDown);
-  }, [open]);
+    return () => {
+      input.removeEventListener("keydown", onKeyDown);
+      inputRef.current = null;
+    };
+  }, []);
 
   const activate = useCallback((item: PaletteItem, enabled: boolean) => {
     if (!enabled) {
@@ -103,9 +116,13 @@ function PaletteDialog({ open, mode, at }: PaletteDialogProps) {
     if (isOpen) return;
     const ref = pending.current;
     pending.current = null;
-    if (!ref) return;
-    if (opener?.isConnected && document.activeElement !== opener) opener.focus();
-    void runCommand(ref, "palette");
+    if (ref) {
+      // Focus goes back first, so a command that moves focus or opens a dialog starts from there.
+      const back = paletteReturnTarget();
+      if (back && document.activeElement !== back) back.focus();
+      void runCommand(ref, "palette");
+    }
+    onClosed();
   };
 
   const facetsOnly = mode === "facets";
@@ -135,7 +152,7 @@ function PaletteDialog({ open, mode, at }: PaletteDialogProps) {
             className={styles.popup}
             aria-label={label}
             initialFocus={inputRef}
-            finalFocus={() => (pending.current ? false : opener?.isConnected ? opener : true)}
+            finalFocus={() => (pending.current ? false : (paletteReturnTarget() ?? true))}
             {...{ [KEY_CONTEXT_ATTRIBUTE]: "palette" }}
           >
             <Autocomplete.Root
@@ -160,7 +177,7 @@ function PaletteDialog({ open, mode, at }: PaletteDialogProps) {
                   &gt;
                 </span>
                 <Autocomplete.Input
-                  ref={inputRef}
+                  ref={attachInput}
                   className={styles.input}
                   aria-label={facetsOnly ? "Search facets" : "Search commands, facets and recipes"}
                   placeholder={facetsOnly ? "Add facet here…" : "Type a command, facet or recipe"}

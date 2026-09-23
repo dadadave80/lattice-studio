@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { log } from "@/contracts";
+import { announce, log } from "@/contracts";
 import { closePalette, loadedPalette, loadPalette, usePaletteState, whenIdle, type PaletteModule } from "./palette-state";
 
 export type CommandPaletteProps = {
@@ -36,6 +36,7 @@ export function CommandPalette({ preload = whenIdle }: CommandPaletteProps) {
       () => {
         if (!live) return;
         log({ tag: "Error", text: LOAD_FAILED });
+        announce(LOAD_FAILED, { politeness: "assertive" });
         closePalette();
       },
     );

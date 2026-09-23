@@ -3,12 +3,9 @@
  * and never opens over one (IR L168, PA bug 4). With `{ mode: "facets", at }` it opens as Add facet here…
  * (spec L423): filtered to facets, placing at `at`.
  */
-import { command, type Enablement, type KeyContext, type SheetPoint } from "@/contracts";
+import { command, type CommandArgsOf, type Enablement, type KeyContext, type SheetPoint } from "@/contracts";
 import { EVERYWHERE } from "@/commands";
 import { closePalette, openPalette, paletteState } from "./palette-state";
-
-/** Arguments S4e's Add facet here… passes; ⌘K passes none. */
-export type PaletteOpenArgs = { mode?: "facets"; at?: SheetPoint };
 
 /** Live in every key context but a modal dialog's (IR L9). Text included: ⌘K works from the palette's own input. */
 export const PALETTE_KEY_CONTEXTS: KeyContext[] = EVERYWHERE.filter((c) => c !== "dialog");
@@ -21,7 +18,7 @@ function isPoint(value: unknown): value is SheetPoint {
   return typeof x === "number" && Number.isFinite(x) && typeof y === "number" && Number.isFinite(y);
 }
 
-export const paletteOpenCommand = command<PaletteOpenArgs>({
+export const paletteOpenCommand = command<CommandArgsOf<"palette.open">>({
   id: "palette.open",
   title: (args) => (args.mode === "facets" ? "Add facet here…" : "Command palette"),
   category: "Session",

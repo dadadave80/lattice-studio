@@ -7,4 +7,3 @@ export { CommandPalette } from "./CommandPalette";
 export type { CommandPaletteProps } from "./CommandPalette";
 export { closePalette, openPalette, usePaletteState } from "./palette-state";
 export type { OpenOptions, PaletteMode, PaletteState } from "./palette-state";
-export type { PaletteOpenArgs } from "./open-command";

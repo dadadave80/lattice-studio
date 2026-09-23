@@ -42,8 +42,27 @@ export function paletteState(): PaletteState {
   return state;
 }
 
-/** Opens the palette (again, when it's open: a new mode or place starts over). Starts loading its chunk. */
+/** Where focus was when the palette opened: where it goes back (PA bug 15). */
+let opener: HTMLElement | null = null;
+
+/**
+ * Where focus goes when the palette closes: the element that had it when the palette opened, while it's
+ * still there and showing (a context menu's item isn't), else the sheet region.
+ */
+export function paletteReturnTarget(): HTMLElement | null {
+  if (opener?.isConnected && opener.checkVisibility()) return opener;
+  return document.querySelector<HTMLElement>('[data-region="sheet"]');
+}
+
+/**
+ * Opens the palette (again, when it's open: a new mode or place starts over). Starts loading its chunk.
+ * Remembers where focus was, unless the palette is already open (focus is then in the palette itself).
+ */
 export function openPalette(options: OpenOptions = {}): void {
+  if (!state.open) {
+    const active = document.activeElement;
+    opener = active instanceof HTMLElement && active !== document.body ? active : null;
+  }
   // The host reports a failed load.
   loadPalette().catch(() => undefined);
   set({ open: true, mode: options.mode ?? "all", at: options.at ?? null, key: state.key + 1 });
@@ -100,6 +119,7 @@ export function useRecentCommands(): readonly CommandRef[] {
 /** @internal Tests start with no Recent and a closed palette. */
 export function resetPaletteState(): void {
   recent = [];
+  opener = null;
   for (const listener of recentListeners) listener();
   set(CLOSED);
 }

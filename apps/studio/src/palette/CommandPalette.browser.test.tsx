@@ -6,7 +6,7 @@ import {
   command, emptyAnalysis, openDialog, provideAnalysis, runCommand, session, type Command, type CommandArgs,
 } from "@/contracts";
 import { installShortcuts } from "@/commands";
-import { Button, DialogHost } from "@/ui";
+import { Button, ContextMenu, DialogHost, MenuCommandItem } from "@/ui";
 import { overridePlatform } from "@/ui/shared/platform";
 import { axeViolations } from "@/ui/testing/axe";
 import { bufferedServices, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio } from "../../test/harness";
@@ -54,6 +54,7 @@ beforeEach(() => {
     }),
     fake("problem.next", () => "Next problem", { keys: ["F8"], palette: true }),
     fake("init.open", () => "Fill in"),
+    fake("init.focusField", () => "Edit asset"),
     fake("selector.route", (args) => `Route to ${String(args.facet)}`),
     fake("facet.place", (args) => `Place ${String(args.facet)}`, {
       console: { verb: "place", syntax: "place <facet>", parse: () => ({ ok: false, error: "" }) },
@@ -116,8 +117,9 @@ describe("Command palette (IR L162-L168)", () => {
     expect(groupNames()).toEqual(["Suggested", "Recent", "Commands", "Place facet", "Recipes"]);
     const suggested = page.getByRole("group", { name: "Suggested" }).getByRole("option");
     await expect.element(suggested.nth(0)).toMatchTextContent(/^Route to ERC20/);
-    await expect.element(suggested.nth(1)).toMatchTextContent(/^Fill in/);
-    await expect.element(suggested.nth(2)).toMatchTextContent(/^Next problem/);
+    await expect.element(suggested.nth(1)).toMatchTextContent(/^Edit asset/);
+    await expect.element(suggested.nth(2)).toMatchTextContent(/^Fill in/);
+    await expect.element(suggested.nth(3)).toMatchTextContent(/^Next problem/);
     await expect.element(page.getByRole("group", { name: "Recent" }).getByRole("option")).toMatchTextContent(/^Tidy/);
     // The first row is active.
     expect(active()?.textContent).toMatch(/^Route to ERC20/);
@@ -254,6 +256,58 @@ describe("Command palette (IR L162-L168)", () => {
     await userEvent.keyboard("{Enter}");
     await expect.element(dialog).not.toBeInTheDocument();
     await expect.poll(() => ran).toEqual([{ id: "facet.place", args: { facet: "ERC20Permit", at: { x: 320, y: 180 } } }]);
+    await expect.element(opener()).toHaveFocus();
+  });
+
+  test("Add facet here… from a context menu: focus goes to the palette, then back to the sheet region", async () => {
+    await renderWithStudio(
+      <>
+        <ContextMenu
+          label="Sheet actions"
+          items={<MenuCommandItem command={{ id: "palette.open", args: { mode: "facets", at: { x: 64, y: 96 } } }} />}
+        >
+          <section data-region="sheet" aria-label="Sheet" tabIndex={-1}>
+            Sheet
+          </section>
+        </ContextMenu>
+        <CommandPalette preload={never} />
+      </>,
+    );
+    const sheet = page.getByRole("region", { name: "Sheet" });
+    (sheet.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    await expect.element(page.getByRole("menuitem", { name: "Add facet here…" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    const dialog = page.getByRole("dialog", { name: "Add facet here…" });
+    await expect.element(dialog).toBeVisible();
+    await expect.element(page.getByRole("combobox", { name: "Search facets" })).toHaveFocus();
+    // The menu item that opened it is gone: Esc lands on the sheet region, not the body.
+    await userEvent.keyboard("{Escape}");
+    await expect.element(dialog).not.toBeInTheDocument();
+    await expect.element(sheet).toHaveFocus();
+  });
+
+  test("a dialog run from the palette takes focus, and closing it returns to the palette's opener", async () => {
+    await renderWithStudio(<App />);
+    await openFromOpener();
+    await userEvent.keyboard("keyboard shortcuts");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(palette()).not.toBeInTheDocument();
+    const shortcuts = page.getByRole("dialog", { name: "Keyboard shortcuts" });
+    await expect.element(shortcuts).toBeVisible();
+    await expect.element(shortcuts.getByRole("textbox", { name: "Search" })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(shortcuts).not.toBeInTheDocument();
+    await expect.element(opener()).toHaveFocus();
+  });
+
+  test("reopening over an open palette keeps the first opener", async () => {
+    await renderWithStudio(<App />);
+    await openFromOpener();
+    await runCommand({ id: "palette.open", args: { mode: "facets" } }, "menu");
+    await expect.element(page.getByRole("combobox", { name: "Search facets" })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(page.getByRole("dialog")).not.toBeInTheDocument();
     await expect.element(opener()).toHaveFocus();
   });
 
