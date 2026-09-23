@@ -3,8 +3,18 @@
 // reconciliation (neutrals.ts) stay visible in one place, as the brief asks.
 
 import { D3_ACCENT_BY_THEME } from "./brand.ts";
+import { LAYOUT_CSS_LENGTH_KEYS, layoutSizes, type LayoutSizes } from "./layout.ts";
 import { kebab } from "./render-css.ts";
 import { themeRoles, type ThemeRoles } from "./roles.ts";
+
+const BEHAVIORAL_LAYOUT_KEYS: readonly (keyof LayoutSizes)[] = [
+  "snap",
+  "dragThreshold",
+  "collapsedRows",
+  "expandThreshold",
+  "compactZoom",
+  "traceLabelZoom",
+];
 
 const COMPOSER_VAR: Record<keyof ThemeRoles, string> = {
   ground: "--field",
@@ -123,8 +133,40 @@ on the 4px grid, \`--lx-radius: 0px\` (the system has no rounded corners) and
 
 ## Layout sizes
 
-\`dist/tokens.ts\` also exports \`layoutSizes\`: the grid, snap, drag
-threshold, nudge steps and card/row/note metrics core and the sheet share.
-See \`src/layout.ts\` for where each value comes from.
+\`dist/tokens.ts\` exports \`layoutSizes\`: the grid, snap, drag threshold,
+nudge steps and card/row/note metrics core and the sheet share. See
+\`src/layout.ts\` for where each value comes from.
+
+contracts.md §5.4 also requires these as \`var(--lx-*)\` in \`tokens.css\`.
+The length-valued, theme-independent subset is generated into \`:root\` from
+the same \`layoutSizes\` object as \`dist/tokens.ts\`, so the two can't drift:
+
+${layoutCssTable()}
+
+The rest of \`layoutSizes\` is a behavioral constant, not a CSS length (a
+snap increment, a row count, a zoom ratio, a threshold), so it stays
+TypeScript-only: ${BEHAVIORAL_LAYOUT_KEYS.map((key) => `\`${key}\` (${layoutSizes[key]})`).join(", ")}.
+
+## Traces
+
+The sheet's dependency connector lines, ports and junctions
+(Composer-Final.dc.html's \`.seg\`/\`.port\`/\`.jct\`) use \`--lx-border\` for
+their default state and \`--lx-accent\` when live or selected. Under
+\`forced-colors: active\` (spec L785: "traces use CanvasText, selection and
+focus Highlight"), \`--lx-border\` maps to \`CanvasText\` and \`--lx-accent\`
+(with \`--lx-border-focus\`) maps to \`Highlight\`, so both states already
+resolve correctly through the token layer with no extra work downstream.
+\`--lx-accent-line\` is not a trace or selection role (it's composer's
+toggle-on button border tint), so it maps to \`CanvasText\` alongside the
+other border roles, not \`Highlight\`.
 `;
+}
+
+function layoutCssTable(): string {
+  const rows = LAYOUT_CSS_LENGTH_KEYS.map(
+    (key) => `| \`--lx-${kebab(key)}\` | ${layoutSizes[key]}px |`,
+  );
+  return `| CSS variable | Value |
+| --- | --- |
+${rows.join("\n")}`;
 }

@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
+import { kebab } from "./render-css.ts";
+import { LAYOUT_CSS_LENGTH_KEYS, layoutSizes } from "./layout.ts";
 import { renderCss } from "./render-css.ts";
 import { renderReadme } from "./render-readme.ts";
 import { renderShikiTheme } from "./render-shiki.ts";
@@ -8,6 +10,7 @@ import { parseTokensJson } from "./tokens-json.ts";
 
 const PACKAGE_DIR = resolve(new URL(".", import.meta.url).pathname, "..");
 const VENDORED_TOKENS_JSON = resolve(PACKAGE_DIR, "tokens.json");
+const DIST_DIR = resolve(PACKAGE_DIR, "dist");
 
 async function loadJson() {
   return parseTokensJson(await Bun.file(VENDORED_TOKENS_JSON).text());
@@ -80,6 +83,47 @@ describe("tokens.css structure", () => {
   test("radius is square (0px) everywhere", async () => {
     const css = renderCss(await loadJson());
     expect(css).toContain("--lx-radius: 0px;");
+  });
+
+  test("every length in layoutSizes appears as a var(--lx-*), with the same value (contracts.md §5.4)", async () => {
+    const css = renderCss(await loadJson());
+    for (const key of LAYOUT_CSS_LENGTH_KEYS) {
+      expect(css).toContain(`--lx-${kebab(key)}: ${layoutSizes[key]}px;`);
+    }
+  });
+});
+
+describe("dist/* matches a fresh render from the vendored tokens.json (drift check)", () => {
+  test("tokens.css", async () => {
+    const json = await loadJson();
+    const fresh = renderCss(json);
+    const committed = await Bun.file(resolve(DIST_DIR, "tokens.css")).text();
+    expect(fresh).toBe(committed);
+  });
+
+  test("tokens.ts", async () => {
+    const json = await loadJson();
+    const fresh = renderTokensTs(json);
+    const committed = await Bun.file(resolve(DIST_DIR, "tokens.ts")).text();
+    expect(fresh).toBe(committed);
+  });
+
+  test("shiki-shop.json", async () => {
+    const fresh = renderShikiTheme("shop");
+    const committed = await Bun.file(resolve(DIST_DIR, "shiki-shop.json")).text();
+    expect(fresh).toBe(committed);
+  });
+
+  test("shiki-draft.json", async () => {
+    const fresh = renderShikiTheme("draft");
+    const committed = await Bun.file(resolve(DIST_DIR, "shiki-draft.json")).text();
+    expect(fresh).toBe(committed);
+  });
+
+  test("README.md", async () => {
+    const fresh = renderReadme();
+    const committed = await Bun.file(resolve(PACKAGE_DIR, "README.md")).text();
+    expect(fresh).toBe(committed);
   });
 });
 

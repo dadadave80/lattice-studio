@@ -35,6 +35,15 @@
   --lx-radius: 0px;
   --lx-stroke-hair: 1px;
   --lx-stroke-heavy: 2px;
+  --lx-grid: 8px;
+  --lx-card-width: 232px;
+  --lx-header-height: 48px;
+  --lx-row-height: 20px;
+  --lx-footer-height: 28px;
+  --lx-note-width: 200px;
+  --lx-edge-zone: 48px;
+  --lx-nudge-small: 8px;
+  --lx-nudge-large: 32px;
 }
 
 :root[data-theme="shop"] {
@@ -86,9 +95,9 @@
     --lx-border: CanvasText;
     --lx-border-strong: CanvasText;
     --lx-border-subtle: CanvasText;
+    --lx-accent-line: CanvasText;
     --lx-border-focus: Highlight;
     --lx-accent: Highlight;
-    --lx-accent-line: Highlight;
     --lx-on-accent: HighlightText;
     --lx-dot: transparent;
   }
@@ -96,9 +105,9 @@
     --lx-border: CanvasText;
     --lx-border-strong: CanvasText;
     --lx-border-subtle: CanvasText;
+    --lx-accent-line: CanvasText;
     --lx-border-focus: Highlight;
     --lx-accent: Highlight;
-    --lx-accent-line: Highlight;
     --lx-on-accent: HighlightText;
     --lx-dot: transparent;
   }

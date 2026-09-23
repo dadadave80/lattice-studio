@@ -52,3 +52,23 @@ export const layoutSizes: LayoutSizes = {
   traceLabelZoom: 0.75,
   edgeZone: 48,
 };
+
+/**
+ * The subset of `layoutSizes` that is a length in px and theme-independent:
+ * contracts.md §5.4 requires these as `var(--lx-*)` in tokens.css, not only
+ * in tokens.ts. `snap`, `dragThreshold`, `collapsedRows`, `expandThreshold`,
+ * `compactZoom` and `traceLabelZoom` are behavioral constants (a snap
+ * increment, a row count, a zoom ratio, a threshold), not CSS lengths a
+ * stylesheet would consume, so they stay TS-only.
+ */
+export const LAYOUT_CSS_LENGTH_KEYS: readonly (keyof LayoutSizes)[] = [
+  "grid",
+  "cardWidth",
+  "headerHeight",
+  "rowHeight",
+  "footerHeight",
+  "noteWidth",
+  "edgeZone",
+  "nudgeSmall",
+  "nudgeLarge",
+];

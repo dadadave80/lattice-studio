@@ -2,6 +2,7 @@
 // the (theme-independent) type scale, spacing, radius and stroke, and the
 // `forced-colors` / `prefers-contrast` blocks (spec L785-L786).
 
+import { LAYOUT_CSS_LENGTH_KEYS, layoutSizes } from "./layout.ts";
 import { THEMES, themeRoles, type ThemeRoles } from "./roles.ts";
 import type { TokensJson } from "./tokens-json.ts";
 
@@ -53,6 +54,12 @@ function baseBlock(json: TokensJson): string {
   lines.push(`  --lx-radius: ${json.radiusNone};`);
   lines.push(`  --lx-stroke-hair: ${json.strokeHair};`);
   lines.push(`  --lx-stroke-heavy: ${json.strokeHeavy};`);
+  // contracts.md §5.4: layout sizes come from @lattice-studio/tokens as
+  // var(--lx-*) too, not only from dist/tokens.ts. Generated from the same
+  // `layoutSizes` object as tokens.ts (layout.ts), so the two can't drift.
+  for (const key of LAYOUT_CSS_LENGTH_KEYS) {
+    lines.push(`  --lx-${kebab(key)}: ${layoutSizes[key]}px;`);
+  }
   return `:root {\n${lines.join("\n")}\n}`;
 }
 
@@ -60,14 +67,24 @@ function forcedColorsBlock(): string {
   // spec L785-L786: traces use CanvasText, selection and focus Highlight,
   // card borders CanvasText, the dot grid hides. Focus uses `outline`
   // (forced colors strip `box-shadow`).
+  //
+  // Traces (the sheet's dependency connector lines, ports and junctions:
+  // Composer-Final.dc.html's `.seg`/`.port`/`.jct`) use `--lx-border` for
+  // their default state and `--lx-accent` when live or selected — see the
+  // README's "Traces" note. `--lx-border`, `--lx-border-strong` and
+  // `--lx-border-subtle` (card borders, dividers) go to CanvasText;
+  // `--lx-accent` and `--lx-border-focus` (selection, focus) go to
+  // Highlight. `--lx-accent-line` is a border-family role (composer's
+  // toggle-on button border tint, not a trace or a selection indicator),
+  // so it goes to CanvasText alongside the other borders, not Highlight.
   const perTheme = THEMES.map(
     (theme) => `  :root[data-theme="${theme}"] {
     --lx-border: CanvasText;
     --lx-border-strong: CanvasText;
     --lx-border-subtle: CanvasText;
+    --lx-accent-line: CanvasText;
     --lx-border-focus: Highlight;
     --lx-accent: Highlight;
-    --lx-accent-line: Highlight;
     --lx-on-accent: HighlightText;
     --lx-dot: transparent;
   }`,
