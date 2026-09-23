@@ -45,14 +45,14 @@ beforeEach(() => {
 function Surface() {
   return (
     <div>
-      <div data-keyctx="sheet" data-testid="sheet" tabIndex={0}>
-        <div data-keyctx="card-rows" data-testid="rows" tabIndex={-1} />
+      <div data-keyctx="sheet" data-testid="sheet">
+        <div data-keyctx="card-rows" data-testid="rows" />
       </div>
-      <div data-keyctx="tree" data-testid="tree" tabIndex={0} />
-      <div data-keyctx="list" data-testid="list" tabIndex={0} />
-      <div data-keyctx="menu" data-testid="menu" tabIndex={0} />
-      <div data-keyctx="palette" data-testid="palette" tabIndex={0} />
-      <div data-keyctx="console" data-testid="console" tabIndex={0}>
+      <div data-keyctx="tree" data-testid="tree" />
+      <div data-keyctx="list" data-testid="list" />
+      <div data-keyctx="menu" data-testid="menu" />
+      <div data-keyctx="palette" data-testid="palette" />
+      <div data-keyctx="console" data-testid="console">
         <input aria-label="Command" data-keyctx="text" data-testid="command-line" />
       </div>
       <div data-keyctx="sheet">
@@ -153,10 +153,13 @@ describe("inert contexts (spec L753)", () => {
 
   test("a key another control already handled is left alone", async () => {
     await renderWithStudio(<Surface />);
-    const event = new KeyboardEvent("keydown", { key: "t", code: "KeyT", bubbles: true, cancelable: true });
-    event.preventDefault();
-    el("sheet").dispatchEvent(event);
+    const own = (event: KeyboardEvent) => event.preventDefault();
+    el("rows").addEventListener("keydown", own);
+    onCleanup(() => el("rows").removeEventListener("keydown", own));
+    key(el("rows"), { key: "/", code: "Slash" });
     expect(ran).toEqual([]);
+    key(el("sheet"), { key: "/", code: "Slash" });
+    expect(ran).toEqual(["catalog.focusSearch"]);
   });
 });
 
@@ -247,7 +250,7 @@ describe("remapping", () => {
       command({ id: "tool.hand", title: () => "Hand tool", category: "Sheet", keys: ["h"], keyContext: SHEET, enabled: () => ({ ok: true }), run: () => void ran.push("tool.hand") }),
     ]);
     await renderWithStudio(
-      <div data-keyctx="sheet" data-testid="sheet" tabIndex={0}>
+      <div data-keyctx="sheet" data-testid="sheet">
         <CommandButton command={{ id: "tool.hand" }} />
       </div>,
     );
