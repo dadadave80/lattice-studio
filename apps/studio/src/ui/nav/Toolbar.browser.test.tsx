@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
+import { settings } from "@/contracts";
 import { onCleanup, renderWithStudio } from "../../../test/harness";
 import { overridePlatform } from "../shared/platform";
-import { Toolbar, ToolbarGroup, ToolbarSeparator, type ToolbarProps } from "./Toolbar";
+import { Toolbar, type ToolbarProps } from "./Toolbar";
 import { ToolbarButton } from "./ToolbarButton";
+import { ToolbarGroup } from "./ToolbarGroup";
+import { ToolbarSeparator } from "./ToolbarSeparator";
 
 function Strip({ orientation, onTidy }: { orientation: ToolbarProps["orientation"]; onTidy: () => void }) {
   const [tool, setTool] = useState<"select" | "hand">("select");
@@ -96,6 +99,10 @@ describe("Toolbar", () => {
     onCleanup(overridePlatform("mac"));
     await renderWithStudio(<Strip orientation="vertical" onTidy={vi.fn()} />);
     expect(button("Zoom out").element().getAttribute("aria-keyshortcuts")).toBe("-");
+    settings.set({ singleKeys: false });
+    await expect.poll(() => button("Zoom out").element().hasAttribute("aria-keyshortcuts")).toBe(false);
+    settings.set({ singleKeys: true });
+    await expect.element(button("Zoom out")).toHaveAttribute("aria-keyshortcuts", "-");
     await button("Before").click();
     await userEvent.tab();
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");

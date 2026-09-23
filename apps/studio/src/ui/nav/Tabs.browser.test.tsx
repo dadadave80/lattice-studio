@@ -2,7 +2,8 @@ import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { renderWithStudio } from "../../../test/harness";
-import { TabPanel, Tabs, type TabItem } from "./Tabs";
+import { TabPanel } from "./TabPanel";
+import { Tabs, type TabItem } from "./Tabs";
 
 const TABS: TabItem[] = [
   { value: "log", label: "Log", count: 3 },

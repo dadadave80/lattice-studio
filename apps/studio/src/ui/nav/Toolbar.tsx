@@ -44,24 +44,3 @@ export function Toolbar({ label, orientation = "horizontal", children, className
     </ToolbarOrientationContext>
   );
 }
-
-/** A hairline between groups of toolbar controls. */
-export function ToolbarSeparator({ className }: { className?: string | undefined }) {
-  return <BaseToolbar.Separator className={cx(styles.separator, className)} />;
-}
-
-export type ToolbarGroupProps = {
-  /** Name a group when its purpose isn't plain from its buttons ("Zoom"). */
-  label?: string;
-  children: ReactNode;
-  className?: string | undefined;
-};
-
-/** Related toolbar controls, kept together. */
-export function ToolbarGroup({ label, children, className }: ToolbarGroupProps) {
-  return (
-    <BaseToolbar.Group {...(label ? { "aria-label": label } : {})} className={cx(styles.group, className)}>
-      {children}
-    </BaseToolbar.Group>
-  );
-}

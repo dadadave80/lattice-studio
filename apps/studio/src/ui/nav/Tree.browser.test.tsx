@@ -1,8 +1,10 @@
 import { useState, type KeyboardEvent } from "react";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { KEY_CONTEXT_ATTRIBUTE } from "@/contracts";
 import { renderWithStudio } from "../../../test/harness";
+import { MenuItem } from "../overlays/MenuItem";
+import { emulateForcedColors } from "../testing/axe";
 import { Tree, type TreeProps } from "./Tree";
 import type { TreeNode } from "./tree-model";
 
@@ -292,6 +294,220 @@ describe("Tree focus from outside", () => {
     expect(focusedId()).toBe("pausable");
     await userEvent.keyboard("{ArrowUp}");
     expect(focusedId()).toBe("erc4626");
+  });
+});
+
+describe("Tree item menus", () => {
+  const menu = () => page.getByRole("menu");
+  const withMenu = (onMove = vi.fn()) => ({
+    itemMenu: (node: TreeNode) =>
+      node.id === "pausable" ? null : (
+        <>
+          <MenuItem label="Move to…" onSelect={() => onMove(node.id)} />
+          <MenuItem label="Open source" onSelect={() => {}} />
+        </>
+      ),
+  });
+
+  test("Shift+F10 on the focused item opens its menu on the first item; Esc returns focus to the item", async () => {
+    await renderWithStudio(<Harness {...withMenu()} />);
+    await page.getByRole("button", { name: "Before" }).click();
+    await userEvent.tab();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(focusedId()).toBe("erc20");
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    await expect.element(page.getByRole("menu", { name: "ERC20 actions" })).toBeVisible();
+    await expect.element(page.getByRole("menuitem", { name: "Move to…" })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(menu()).not.toBeInTheDocument();
+    expect(focusedId()).toBe("erc20");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(focusedId()).toBe("erc4626");
+  });
+
+  test("a right click opens it too, with the caller's label; an item without a menu has none", async () => {
+    const onMove = vi.fn();
+    await renderWithStudio(<Harness {...withMenu(onMove)} itemMenuLabel={(node) => `${node.label} menu`} />);
+    await item("ERC4626").click({ button: "right" });
+    await expect.element(page.getByRole("menu", { name: "ERC4626 menu" })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Move to…" }).click();
+    expect(onMove).toHaveBeenCalledWith("erc4626");
+    await expect.element(menu()).not.toBeInTheDocument();
+    await item("Pausable").click();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(focusedId()).toBe("pausable");
+  });
+
+  test("virtualized rows keep their place with a menu", async () => {
+    const big: TreeNode[] = Array.from({ length: 300 }, (_, i) => ({ id: `row-${i + 1}`, label: `Row ${i + 1}` }));
+    await renderWithStudio(
+      <Tree
+        label="Large tree"
+        nodes={big}
+        expanded={[]}
+        onExpandedChange={() => {}}
+        selected={[]}
+        onSelectedChange={() => {}}
+        itemMenu={() => <MenuItem label="Open source" onSelect={() => {}} />}
+        style={{ height: 280 }}
+      />,
+    );
+    const second = item("Row 2").element() as HTMLElement;
+    expect(getComputedStyle(second).position).toBe("absolute");
+    expect(second.style.top).toBe("28px");
+  });
+});
+
+describe("Tree item clicks and row attributes", () => {
+  test("onItemClick fires on every click, the selected item and a disabled one included, not on the chevron", async () => {
+    const onItemClick = vi.fn();
+    const onSelect = vi.fn();
+    await renderWithStudio(<Harness expanded={["erc20"]} onItemClick={onItemClick} onSelect={onSelect} />);
+    await item("Pausable").click();
+    await item("Pausable").click();
+    expect(onItemClick.mock.calls.map(([node]) => (node as TreeNode).id)).toEqual(["pausable", "pausable"]);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    await item("totalSupply()").click({ force: true });
+    expect(onItemClick).toHaveBeenLastCalledWith(expect.objectContaining({ id: "erc20.totalSupply" }), expect.anything());
+    item("GovernedVault").element().querySelector<HTMLElement>("[data-tree-toggle]")?.click();
+    await expect.element(item("GovernedVault")).toHaveAttribute("aria-expanded", "true");
+    expect(onItemClick).toHaveBeenCalledTimes(3);
+  });
+
+  test("itemProps adds data attributes and handlers to the row; the tree keeps its own", async () => {
+    const onDragStart = vi.fn();
+    const onActivate = vi.fn();
+    await renderWithStudio(
+      <Harness
+        onActivate={onActivate}
+        itemProps={(node) => ({
+          "data-facet": node.id,
+          draggable: true,
+          onDragStart: () => onDragStart(node.id),
+          role: "button",
+          className: "caller-row",
+          style: { paddingInlineStart: 99, opacity: 0.9 },
+        })}
+      />,
+    );
+    const row = item("ERC4626").element() as HTMLElement;
+    expect(row.dataset.facet).toBe("erc4626");
+    expect(row.getAttribute("role")).toBe("treeitem");
+    expect(row.dataset.treeId).toBe("erc4626");
+    expect(row.classList.contains("caller-row")).toBe(true);
+    expect(row.getAttribute("draggable")).toBe("true");
+    expect(row.style.opacity).toBe("0.9");
+    expect(row.style.paddingInlineStart).not.toBe("99px");
+    row.dispatchEvent(new DragEvent("dragstart", { bubbles: true }));
+    expect(onDragStart).toHaveBeenCalledWith("erc4626");
+    await item("ERC4626").click();
+    expect(focusedId()).toBe("erc4626");
+    await userEvent.keyboard("{Enter}");
+    expect(onActivate).toHaveBeenCalledWith(expect.objectContaining({ id: "erc4626" }));
+  });
+});
+
+describe("Tree disabled reason", () => {
+  const tooltip = () => document.querySelector<HTMLElement>("[data-tooltip]");
+
+  test("shows in a tooltip on hover and on focus, and stays the description", async () => {
+    await renderWithStudio(<Harness expanded={["erc20"]} />);
+    const disabled = item("totalSupply()");
+    await expect.element(disabled).toHaveAccessibleDescription("Served by GovernedVault");
+    await disabled.hover();
+    await expect.poll(() => tooltip()?.textContent).toBe("Served by GovernedVault");
+    await page.getByRole("button", { name: "Before" }).hover();
+    await expect.poll(tooltip).toBeNull();
+    await page.getByRole("button", { name: "Before" }).click();
+    await userEvent.tab();
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    await expect.element(disabled).toHaveFocus();
+    await expect.poll(() => tooltip()?.textContent).toBe("Served by GovernedVault");
+  });
+});
+
+describe("Tree focus loss", () => {
+  function Shrinking() {
+    const [nodes, setNodes] = useState<TreeNode[]>(NODES);
+    const [expanded, setExpanded] = useState<string[]>(["vault"]);
+    return (
+      <>
+        <button type="button">Before</button>
+        <Tree
+          label="Structure"
+          nodes={nodes}
+          expanded={expanded}
+          onExpandedChange={setExpanded}
+          selected={[]}
+          onSelectedChange={() => {}}
+          multiSelect
+          onItemKeyDown={(event, node) => {
+            if (event.key === "Delete") {
+              event.preventDefault();
+              setNodes((list) => list.filter((other) => other.id !== node.id));
+            }
+            if (event.key === "c") {
+              event.preventDefault();
+              setExpanded([]);
+            }
+          }}
+        />
+      </>
+    );
+  }
+
+  test("removing the focused item hands focus to the item that takes Tab", async () => {
+    await renderWithStudio(<Shrinking />);
+    await page.getByRole("button", { name: "Before" }).click();
+    await userEvent.tab();
+    await userEvent.keyboard("{End}");
+    expect(focusedId()).toBe("pausable");
+    await userEvent.keyboard("{Delete}");
+    expect(document.querySelector('[data-tree-id="pausable"]')).toBeNull();
+    await expect.poll(focusedId).toBe("vault");
+    expect(tabbables()).toEqual([document.activeElement]);
+  });
+
+  test("the caller closing the focused item's parent does the same", async () => {
+    await renderWithStudio(<Shrinking />);
+    await page.getByRole("button", { name: "Before" }).click();
+    await userEvent.tab();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(focusedId()).toBe("vault.transfer");
+    await userEvent.keyboard("c");
+    expect(document.querySelector('[data-tree-id="vault.transfer"]')).toBeNull();
+    await expect.poll(focusedId).toBe("vault");
+  });
+
+  test("a change after focus has left the tree doesn't pull focus back", async () => {
+    await renderWithStudio(<Shrinking />);
+    await item("Pausable").click();
+    const before = page.getByRole("button", { name: "Before" });
+    await before.click();
+    await expect.element(before).toHaveFocus();
+    (document.activeElement as HTMLElement).blur();
+    item("ERC4626").element().dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+    await expect.poll(() => document.querySelector('[data-tree-id="erc4626"]')).toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
+describe("Tree under forced colors", () => {
+  afterEach(async () => {
+    await emulateForcedColors(false);
+  });
+
+  test("a focused selected item's ring differs from its fill", async () => {
+    await renderWithStudio(<Harness selected={["erc20"]} />);
+    await emulateForcedColors(true);
+    await page.getByRole("button", { name: "Before" }).click();
+    await userEvent.tab();
+    const row = item("ERC20").element();
+    await expect.element(item("ERC20")).toHaveFocus();
+    const css = getComputedStyle(row);
+    expect(css.outlineStyle).toBe("solid");
+    expect(css.outlineColor).not.toBe(css.backgroundColor);
   });
 });
 

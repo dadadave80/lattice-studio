@@ -40,6 +40,7 @@ describe("Splitter", () => {
     await expect.element(el).toHaveAttribute("aria-valuenow", "240");
     await expect.element(el).toHaveAttribute("aria-valuemin", "200");
     await expect.element(el).toHaveAttribute("aria-valuemax", "360");
+    await expect.element(el).toHaveAttribute("aria-valuetext", "25% of the way from narrowest to widest");
     const rect = el.element().getBoundingClientRect();
     expect(rect.width).toBeGreaterThanOrEqual(24);
     expect(rect.height).toBeGreaterThanOrEqual(24);
@@ -58,6 +59,7 @@ describe("Splitter", () => {
     await expect.element(el).toHaveAttribute("aria-valuenow", "272");
     await userEvent.keyboard("{End}");
     await expect.element(el).toHaveAttribute("aria-valuenow", "360");
+    await expect.element(el).toHaveAttribute("aria-valuetext", "Widest");
     await userEvent.keyboard("{ArrowRight}");
     await expect.element(el).toHaveAttribute("aria-valuenow", "360");
     await userEvent.keyboard("{Home}");
@@ -99,10 +101,10 @@ describe("Splitter", () => {
     await expect.element(el).toHaveAttribute("aria-valuetext", "Collapsed");
     expect((document.getElementById("pane") as HTMLElement).getBoundingClientRect().width).toBe(0);
     await userEvent.keyboard("{Enter}");
-    expect(el.element().hasAttribute("aria-valuetext")).toBe(false);
+    await expect.element(el).toHaveAttribute("aria-valuetext", "30% of the way from narrowest to widest");
     await expect.element(el).toHaveAttribute("aria-valuenow", "248");
     await userEvent.keyboard("{Enter}{ArrowRight}");
-    expect(el.element().hasAttribute("aria-valuetext")).toBe(false);
+    await expect.element(el).toHaveAttribute("aria-valuetext", "35% of the way from narrowest to widest");
     await expect.element(el).toHaveAttribute("aria-valuenow", "256");
   });
 

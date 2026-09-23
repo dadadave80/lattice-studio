@@ -3,9 +3,8 @@ import { use, type ComponentPropsWithRef } from "react";
 import type { KeySpec } from "@/contracts";
 import { Icon } from "../icons/Icon";
 import type { IconName } from "../icons/icon-paths";
-import { ariaKeyShortcuts } from "../keys/key-labels";
+import { useAriaKeyShortcuts } from "../keys/use-aria-key-shortcuts";
 import { cx } from "../shared/cx";
-import { usePlatform } from "../shared/platform";
 import type { TooltipSide } from "../tooltip/Tooltip";
 import { ReasonTooltip } from "../tooltip/ReasonTooltip";
 import { ToolbarOrientationContext } from "./toolbar-orientation";
@@ -33,8 +32,7 @@ export function ToolbarButton({
   icon, label, shortcut, pressed, disabledReason, tooltipSide, className, type = "button", ...rest
 }: ToolbarButtonProps) {
   const orientation = use(ToolbarOrientationContext);
-  const platform = usePlatform();
-  const keyshortcuts = ariaKeyShortcuts(shortcut, platform);
+  const keyshortcuts = useAriaKeyShortcuts(shortcut);
   return (
     <ReasonTooltip
       reason={disabledReason}
@@ -46,7 +44,7 @@ export function ToolbarButton({
         {...rest}
         type={type}
         aria-label={label}
-        {...(keyshortcuts ? { "aria-keyshortcuts": keyshortcuts } : {})}
+        {...keyshortcuts}
         {...(pressed === undefined ? {} : { "aria-pressed": pressed })}
         className={cx(styles.button, className)}
       >

@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { clampSize, dragSize, narrower, splitterKey, wider, type SplitterKeyInput } from "./splitter-model";
+import {
+  clampSize, dragSize, narrower, splitterKey, splitterValueText, wider, type SplitterKeyInput,
+} from "./splitter-model";
 
 const left: SplitterKeyInput = {
   value: 240, min: 200, max: 360, orientation: "vertical", paneSide: "before", step: 8, largeStep: 32,
@@ -54,5 +56,22 @@ describe("helpers", () => {
     expect(dragSize(240, 30, "before", { min: 200, max: 360 })).toBe(270);
     expect(dragSize(316, 30, "after", { min: 280, max: 420 })).toBe(286);
     expect(dragSize(240, -100, "before", { min: 200, max: 360 })).toBe(200);
+  });
+});
+
+describe("splitterValueText", () => {
+  test("says where the pane sits between its bounds, in words", () => {
+    const bounds = { min: 200, max: 360 };
+    expect(splitterValueText(240, bounds, "vertical", false)).toBe("25% of the way from narrowest to widest");
+    expect(splitterValueText(200, bounds, "vertical", false)).toBe("Narrowest");
+    expect(splitterValueText(360, bounds, "vertical", false)).toBe("Widest");
+    expect(splitterValueText(201, bounds, "vertical", false)).toBe("1% of the way from narrowest to widest");
+    expect(splitterValueText(359, bounds, "vertical", false)).toBe("99% of the way from narrowest to widest");
+    expect(splitterValueText(118, { min: 36, max: 200 }, "horizontal", false)).toBe(
+      "50% of the way from shortest to tallest",
+    );
+    expect(splitterValueText(200, { min: 36, max: 200 }, "horizontal", false)).toBe("Tallest");
+    expect(splitterValueText(240, bounds, "vertical", true)).toBe("Collapsed");
+    expect(splitterValueText(240, { min: 240, max: 240 }, "vertical", false)).toBe("Narrowest");
   });
 });

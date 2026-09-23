@@ -57,3 +57,20 @@ export function splitterKey(key: string, shift: boolean, input: SplitterKeyInput
 export function dragSize(start: number, delta: number, paneSide: PaneSide, bounds: SplitterBounds): number {
   return clampSize(Math.round(start + (paneSide === "before" ? delta : -delta)), bounds);
 }
+
+/**
+ * The splitter's `aria-valuetext`, in words rather than px: "Collapsed", the bound's name at either end, or how
+ * far the pane sits between its bounds ("25% of the way from narrowest to widest"). A vertical splitter sizes a
+ * width, a horizontal one a height.
+ */
+export function splitterValueText(
+  value: number, { min, max }: SplitterBounds, orientation: SplitterOrientation, collapsed: boolean,
+): string {
+  if (collapsed) return "Collapsed";
+  const [small, large] = orientation === "vertical" ? ["narrowest", "widest"] : ["shortest", "tallest"];
+  const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+  if (value <= min || max <= min) return capital(small);
+  if (value >= max) return capital(large);
+  const percent = Math.min(99, Math.max(1, Math.round(((value - min) / (max - min)) * 100)));
+  return `${percent}% of the way from ${small} to ${large}`;
+}

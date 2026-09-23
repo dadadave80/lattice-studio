@@ -1,6 +1,6 @@
 import { useRef, type KeyboardEvent, type PointerEvent } from "react";
 import { cx } from "../shared/cx";
-import { dragSize, splitterKey, type PaneSide, type SplitterOrientation } from "./splitter-model";
+import { dragSize, splitterKey, splitterValueText, type PaneSide, type SplitterOrientation } from "./splitter-model";
 import styles from "./Splitter.module.css";
 
 export type SplitterProps = {
@@ -100,7 +100,7 @@ export function Splitter({
       aria-valuenow={collapsed ? min : value}
       aria-valuemin={min}
       aria-valuemax={max}
-      {...(collapsed ? { "aria-valuetext": "Collapsed" } : {})}
+      aria-valuetext={splitterValueText(value, bounds, orientation, collapsed)}
       data-orientation={orientation}
       data-collapsed={collapsed ? "" : undefined}
       className={cx(styles.splitter, className)}

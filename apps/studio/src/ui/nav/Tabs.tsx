@@ -73,20 +73,3 @@ export function Tabs<V extends string = string>({
     </BaseTabs.Root>
   );
 }
-
-export type TabPanelProps = {
-  value: string;
-  children: ReactNode;
-  /** Keep the panel in the DOM while another tab is open (a scroll position or a draft survives). */
-  keepMounted?: boolean;
-  className?: string | undefined;
-};
-
-/** The panel for one tab. Render it inside `Tabs`. */
-export function TabPanel({ value, children, keepMounted = false, className }: TabPanelProps) {
-  return (
-    <BaseTabs.Panel value={value} keepMounted={keepMounted} className={cx(styles.panel, className)}>
-      {children}
-    </BaseTabs.Panel>
-  );
-}

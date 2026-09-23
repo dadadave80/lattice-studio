@@ -1,9 +1,10 @@
 import {
-  useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent,
-  type KeyboardEvent, type MouseEvent, type ReactNode,
+  Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent,
+  type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode,
 } from "react";
 import { KEY_CONTEXT_ATTRIBUTE } from "@/contracts";
 import { Icon } from "../icons/Icon";
+import { ContextMenu } from "../overlays/ContextMenu";
 import { cx } from "../shared/cx";
 import { VisuallyHidden } from "../shared/VisuallyHidden";
 import {
@@ -11,6 +12,7 @@ import {
   toggleId, typeAheadIndex, VIRTUALIZE_AFTER, windowRange, type TreeNode,
 } from "./tree-model";
 import styles from "./Tree.module.css";
+import { TreeRow } from "./TreeRow";
 
 export type TreeItemState = {
   level: number;
@@ -46,6 +48,23 @@ export type TreeProps = {
    * Delete): the tree then does nothing with it.
    */
   onItemKeyDown?: (event: KeyboardEvent<HTMLElement>, node: TreeNode) => void;
+  /**
+   * Every click on an item, disabled ones included, even when it's already selected (the tree's own selection
+   * change fires only when the selection changes). Not for a click on a parent's chevron, which only toggles.
+   */
+  onItemClick?: (node: TreeNode, event: MouseEvent<HTMLElement>) => void;
+  /**
+   * Extra attributes for an item's row element: `data-*` attributes and pointer handlers (drag start). The tree
+   * keeps its own role, tabindex, `aria-*` and `data-tree-id`; `className` and `style` are merged.
+   */
+  itemProps?: (node: TreeNode) => TreeItemProps;
+  /**
+   * An item's context menu items (`MenuItem`s), or null for none. Right click, long press, Shift+F10 and the
+   * Menu key on the focused item open it; Esc returns focus to the item.
+   */
+  itemMenu?: (node: TreeNode) => ReactNode;
+  /** The menu's accessible name. Default: "<label> actions". */
+  itemMenuLabel?: (node: TreeNode) => string;
   /** An item's content after its chevron. Default: the label. */
   renderItem?: (node: TreeNode, state: TreeItemState) => ReactNode;
   /** Row height in px (default 28, never under 24). Rows are exactly this tall once the tree is virtualized. */
@@ -56,7 +75,14 @@ export type TreeProps = {
   id?: string;
 };
 
+/** Attributes a caller can add to an item's row element. */
+export type TreeItemProps = HTMLAttributes<HTMLDivElement> & {
+  [attribute: `data-${string}`]: string | number | boolean | undefined;
+};
+
 const TYPE_AHEAD_RESET_MS = 500;
+
+const MENU_POPUP = `[${KEY_CONTEXT_ATTRIBUTE}="menu"]`;
 
 function toSet(value: ReadonlySet<string> | readonly string[]): ReadonlySet<string> {
   return isList(value) ? new Set(value) : value;
@@ -79,7 +105,8 @@ function rowIdOf(target: EventTarget | null): string | null {
  */
 export function Tree({
   label, nodes, expanded, onExpandedChange, selected, onSelectedChange, multiSelect = false, focusedId,
-  onFocusedChange, onActivate, onItemKeyDown, renderItem, rowHeight: rowHeightProp = 28, className, style, id,
+  onFocusedChange, onActivate, onItemKeyDown, onItemClick, itemProps, itemMenu, itemMenuLabel, renderItem,
+  rowHeight: rowHeightProp = 28, className, style, id,
 }: TreeProps) {
   const rowHeight = Math.max(24, rowHeightProp);
   const reasonPrefix = useId();
@@ -93,6 +120,8 @@ export function Tree({
 
   const container = useRef<HTMLDivElement>(null);
   const pendingFocus = useRef<string | null>(null);
+  /** Whether focus is on an item (or in an item's menu), so losing the focused item can hand focus on. */
+  const focusInside = useRef(false);
   const anchor = useRef<string | null>(null);
   const typed = useRef({ text: "", timer: 0 });
 
@@ -119,6 +148,18 @@ export function Tree({
     if (!el) return;
     pendingFocus.current = null;
     el.focus({ preventScroll: virtual });
+  });
+
+  // The focused item went away (removed, or its parent closed by the caller) and took focus with it: the item
+  // that now takes Tab gets it, not the page.
+  useLayoutEffect(() => {
+    if (!focusInside.current) return;
+    const active = document.activeElement;
+    if (active !== null && active !== document.body) return;
+    const row = rows[tabbable];
+    const el = row ? container.current?.querySelector<HTMLElement>(`[data-tree-id="${CSS.escape(row.id)}"]`) : null;
+    if (el) el.focus({ preventScroll: virtual });
+    else focusInside.current = false;
   });
 
   const setFocus = (next: string) => {
@@ -155,6 +196,8 @@ export function Tree({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // Taken already: an item's context menu (Shift+F10, the Menu key) or a handler on the row.
+    if (event.defaultPrevented) return;
     const id = rowIdOf(event.target);
     const index = rowIndex(rows, id);
     const row = rows[index];
@@ -224,7 +267,24 @@ export function Tree({
 
   const onFocus = (event: FocusEvent<HTMLDivElement>) => {
     const id = rowIdOf(event.target);
-    if (id !== null) setFocus(id);
+    if (id === null) return;
+    focusInside.current = true;
+    setFocus(id);
+  };
+
+  const onBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const { target, relatedTarget: next } = event;
+    // An item's menu is portaled, but its focus events still bubble here through React.
+    if (rowIdOf(target) === null && !target.closest(MENU_POPUP)) return;
+    if (next instanceof Element) {
+      // Into another item, or into an item's menu (whose action may remove the item): still inside.
+      if (!container.current?.contains(next) && !next.closest(MENU_POPUP)) focusInside.current = false;
+      return;
+    }
+    // Focus went nowhere: a click on the page, or the item was removed. Only a removal disconnects the item.
+    queueMicrotask(() => {
+      if (target.isConnected) focusInside.current = false;
+    });
   };
 
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -236,6 +296,7 @@ export function Tree({
       if (row.hasChildren) setExpanded(row.id, !row.expanded);
       return;
     }
+    onItemClick?.(row.node, event);
     if (row.node.disabledReason) return;
     if (multiSelect && event.shiftKey) {
       const from = rowIndex(rows, anchor.current);
@@ -278,9 +339,10 @@ export function Tree({
     const place: CSSProperties = virtual
       ? { position: "absolute", insetInline: 0, top: index * rowHeight, blockSize: rowHeight, paddingInlineStart: indent }
       : { minBlockSize: rowHeight, paddingInlineStart: indent };
-    return (
-      <div
-        key={row.id}
+    const extra = itemProps?.(row.node);
+    const element = (
+      <TreeRow
+        {...extra}
         role="treeitem"
         tabIndex={index === tabbable ? 0 : -1}
         aria-level={row.level}
@@ -290,8 +352,9 @@ export function Tree({
         {...(row.hasChildren ? { "aria-expanded": row.expanded } : {})}
         {...(reasonId ? { "aria-disabled": true, "aria-describedby": reasonId } : {})}
         data-tree-id={row.id}
-        className={styles.row}
-        style={place}
+        className={cx(styles.row, extra?.className)}
+        style={{ ...extra?.style, ...place }}
+        reason={reason}
       >
         <span
           aria-hidden="true"
@@ -301,7 +364,14 @@ export function Tree({
           {row.hasChildren ? <Icon name={row.expanded ? "chevron-down" : "chevron-right"} size="small" /> : null}
         </span>
         <span className={styles.content}>{renderItem ? renderItem(row.node, state) : row.node.label}</span>
-      </div>
+      </TreeRow>
+    );
+    const menu = itemMenu?.(row.node);
+    if (menu === null || menu === undefined || menu === false) return <Fragment key={row.id}>{element}</Fragment>;
+    return (
+      <ContextMenu key={row.id} label={itemMenuLabel?.(row.node) ?? `${row.node.label} actions`} items={menu}>
+        {element}
+      </ContextMenu>
     );
   });
 
@@ -321,6 +391,7 @@ export function Tree({
         style={style}
         onKeyDown={onKeyDown}
         onFocus={onFocus}
+        onBlur={onBlur}
         onClick={onClick}
         onDoubleClick={onDoubleClick}
         onScroll={virtual ? (event) => setViewport({ top: event.currentTarget.scrollTop, height: event.currentTarget.clientHeight }) : undefined}

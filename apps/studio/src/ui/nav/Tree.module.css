@@ -89,6 +89,11 @@
     color: HighlightText;
   }
 
+  /* The ring sits inside the row, on its Highlight fill: draw it in HighlightText there. */
+  .row[aria-selected="true"]:focus-visible {
+    outline-color: HighlightText;
+  }
+
   .row[aria-disabled="true"] {
     color: GrayText;
   }
