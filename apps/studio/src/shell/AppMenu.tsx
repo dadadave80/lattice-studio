@@ -5,17 +5,12 @@ import { Button, cx, Menu, MenuCommandItem, MenuItem, MenuSeparator, VisuallyHid
 import { retainAppMenu, setAppMenuOpen, useAppMenuOpen } from "./app-menu-state";
 import styles from "./TitleBar.module.css";
 
-/**
- * "Open…" opens a project file (⌘O, spec L499). `project.open` takes a stored project's id; S7b decides how
- * it opens a file without one (see the report's CCR).
- */
-const OPEN_FILE: CommandRef = { id: "project.open" };
-
 /** The App menu's items, in the spec's order (spec L355, IR L64), each running its command. */
 const ITEMS: readonly (readonly [label: string, ref: CommandRef])[] = [
   ["Projects", commandRef("project.list")],
   ["New project", commandRef("project.new")],
-  ["Open…", OPEN_FILE],
+  // Without an id, `project.open` picks a file (⌘O, spec L499).
+  ["Open…", commandRef("project.open")],
   ["Save a copy…", commandRef("project.saveCopy")],
 ];
 
