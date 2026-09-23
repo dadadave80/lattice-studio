@@ -140,6 +140,23 @@ describe("verifyCatalog", () => {
     expect(res.ok && res.value.differences.map((d) => d.path)).toEqual(["manifest.json"]);
   });
 
+  test("differences stay sorted by path with manifest.json among them", async () => {
+    const generated = await committedAsGenerated();
+    const flip = (f: { path: string; bytes: Uint8Array }) => {
+      const changed = new Uint8Array(f.bytes);
+      changed[0] = (changed[0] ?? 0) ^ 1;
+      return { path: f.path, bytes: changed };
+    };
+    const files = generated.assembled.files.map((f) => (f.path === "code/ERC20.creation.hex" || f.path === "shards/ERC20.json" ? flip(f) : f));
+    const catalog = { ...generated.assembled.catalog, hash: keccak256(bytes("other")) };
+    const res = await verifyCatalog({
+      latticeDir: "/lattice",
+      catalogDir: CATALOG,
+      generate: async () => ok({ ...generated, assembled: { catalog, files } }),
+    });
+    expect(res.ok && res.value.differences.map((d) => d.path)).toEqual(["code/ERC20.creation.hex", "manifest.json", "shards/ERC20.json"]);
+  });
+
   test("a checkout at a commit no committed catalog has: every file is extra, exit 3", async () => {
     const generated = await committedAsGenerated();
     const res = await verifyCatalog({ latticeDir: "/lattice", catalogDir: CATALOG, generate: async () => ok({ ...generated, id: "dev-0000000" }) });

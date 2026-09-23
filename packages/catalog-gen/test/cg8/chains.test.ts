@@ -84,27 +84,44 @@ describe("release manifests", () => {
     expect(await readChainReleases(dir, EXPECTED)).toEqual({ ok: true, value: { chains: [{ chainId: 84532 }, { chainId: 11155111 }], gaps: [] } });
   });
 
-  test("another factory: no factory entry, and the gap names what A4 must add", async () => {
-    const dir = checkout({ "deployments/11155111/release-0.2.0.json": manifest(11155111, { factory: a("c0") }) });
+  test("another factory: the chain is left out, and the gap names what A4 must add", async () => {
+    const dir = checkout({
+      "deployments/11155111/release-0.2.0.json": manifest(11155111, { factory: a("c0") }),
+      "deployments/84532/release-0.2.0.json": manifest(84532),
+    });
     const res = await readChainReleases(dir, EXPECTED);
     if (!res.ok) throw new Error(res.error);
-    expect(res.value.chains).toEqual([{ chainId: 11155111 }]);
-    expect(res.value.chains[0]?.factory).toBeUndefined();
-    expect(res.value.gaps).toHaveLength(1);
+    expect(res.value.chains).toEqual([{ chainId: 84532 }]);
+    expect(res.value.gaps).toHaveLength(2);
     expect(res.value.gaps[0]).toContain("Chain 11155111: its LatticeFactory");
     expect(res.value.gaps[0]).toContain(MISSING_FACTORY_FIELDS.join(", "));
     expect(res.value.gaps[0]).toContain("(Lattice A4)");
+    expect(res.value.gaps[1]).toBe("Chain 11155111 is left out of the catalog's chains.");
   });
 
-  test("a release built another way (other registry, facets elsewhere) is listed as a gap", async () => {
+  test("a release built another way (other registry, facets elsewhere) is left out with a gap per reason", async () => {
     const m = manifest(84532, { registry: a("11") });
     const facets = m["facets"] as Record<string, Record<string, string>>;
     facets["ERC20"] = { ...facets["ERC20"], address: a("99") };
     const res = await readChainReleases(checkout({ "deployments/84532/release-0.2.0.json": m }), EXPECTED);
     if (!res.ok) throw new Error(res.error);
+    expect(res.value.chains).toEqual([]);
     expect(res.value.gaps).toEqual([
       `Chain 84532: its LatticeRegistry ${a("11")} isn't the catalog's ${REGISTRY}.`,
       "Chain 84532: 1 of 2 facets in deployments/84532/release-0.2.0.json aren't at the catalog's addresses (ERC20).",
+      "Chain 84532 is left out of the catalog's chains.",
+    ]);
+  });
+
+  test("a release missing a catalog facet is left out", async () => {
+    const m = manifest(10);
+    delete (m["facets"] as Record<string, unknown>)["Receive"];
+    const res = await readChainReleases(checkout({ "deployments/10/release-0.2.0.json": m }), EXPECTED);
+    if (!res.ok) throw new Error(res.error);
+    expect(res.value.chains).toEqual([]);
+    expect(res.value.gaps).toEqual([
+      "Chain 10: deployments/10/release-0.2.0.json lists no release of 1 catalog facet (Receive).",
+      "Chain 10 is left out of the catalog's chains.",
     ]);
   });
 

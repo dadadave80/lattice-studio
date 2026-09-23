@@ -7,15 +7,18 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { Address, Hex, Hex4 } from "@lattice-studio/core";
+import { type Address, type Hex, type Hex4, validateCatalog } from "@lattice-studio/core";
 import type { Overlay } from "../../src/overlay";
 import type { ReleaseEntry } from "../../src/release";
+import { assembleCatalog } from "../../src/write";
 import {
   allSelectors,
   areaOf,
   catalogId,
   checkFoundry,
   copyCheckout,
+  type FacetParts,
+  facetInput,
   FOUNDRY_VERSION,
   generateCatalog,
   initModules,
@@ -27,6 +30,7 @@ import {
   parseToolVersion,
   provisionalNote,
   readIdentity,
+  releaseTags,
   type RunResult,
   type Runner,
   runCatalog,
@@ -146,7 +150,35 @@ describe("the checkout's identity", () => {
   test("a release tag on the commit becomes the tag", async () => {
     const res = await readIdentity(checkout(), clean({ "tag --points-at HEAD": { stdout: "v0.4.0\nstorage-guard-v1.0.0\n" } }));
     expect(res.ok && res.value.tag).toBe("v0.4.0");
+    expect(res.ok && res.value.otherTags).toBeUndefined();
   });
+
+  test("several release tags: the highest by version, not by string order, and the rest are kept", async () => {
+    expect(releaseTags("v0.4.0\nv0.10.0\nv0.9.12\nstorage-guard-v1.0.0\nv1.0\n")).toEqual(["v0.10.0", "v0.9.12", "v0.4.0"]);
+    expect(releaseTags("v1.2.3\nv1.10.0\nv2.0.0\n")).toEqual(["v2.0.0", "v1.10.0", "v1.2.3"]);
+    expect(releaseTags("")).toEqual([]);
+    const res = await readIdentity(checkout(), clean({ "tag --points-at HEAD": { stdout: "v0.4.0\nv0.10.0\n" } }));
+    expect(res.ok && res.value.tag).toBe("v0.10.0");
+    expect(res.ok && res.value.otherTags).toEqual(["v0.4.0"]);
+  });
+
+  test("the generator logs which release tag it picked", async () => {
+    const lines: string[] = [];
+    const run = fakeRunner({
+      "forge --version": { stdout: FORGE_183 },
+      "anvil --version": { stdout: ANVIL_183 },
+      "rev-parse HEAD": { stdout: `${COMMIT}\n` },
+      "status --porcelain": { stdout: "" },
+      "tag --points-at HEAD": { stdout: "v0.4.0\nv0.10.0\n" },
+      "ls-tree HEAD lib/forge-std": { stdout: `160000 commit ${"ab".repeat(20)}\tlib/forge-std\n` },
+      "ls-tree HEAD lib/diamond-lib": { stdout: `160000 commit ${DIAMOND_LIB}\tlib/diamond-lib\n` },
+    });
+    // The build that follows fails on this empty checkout; the tag line comes first.
+    const res = await generateCatalog({ latticeDir: checkout(), run, log: (l) => lines.push(l) });
+    expect(res.ok).toBe(false);
+    expect(lines).toContain("Using release tag v0.10.0 (the highest of v0.10.0, v0.4.0), which points at f4a32c8.");
+    expect(lines).toContain("Lattice 0.2.0 at v0.10.0 → catalog/v0.10.0");
+  }, 60_000);
 
   test("a checkout with uncommitted changes is refused", async () => {
     const res = await readIdentity(checkout(), clean({ "status --porcelain": { stdout: " M src/tokens/ERC20/ERC20.sol\n?? scratch.sol\n" } }));
@@ -264,6 +296,63 @@ describe("projections", () => {
     expect(Object.keys(sharedInput({ ...plain, dependsOn: [] }, detail)).sort()).toEqual(
       ["address", "codehash", "creationCode", "detail", "initCodeHash", "salt", "version"],
     );
+  });
+
+  describe("facet inputs", () => {
+    const parts: FacetParts = {
+      name: "Widget",
+      area: "utils",
+      source: "src/utils/Widget.sol",
+      selectors: [{ hex: "0x12345678" as Hex4, signature: "poke()" }],
+      overlay: { requires: [] },
+      natspecSummary: undefined,
+      storage: { touches: [] },
+      release: sharedInput(entry),
+      detail: { name: "Widget", abi: [], natspec: { functions: {} }, source: { path: "src/utils/Widget.sol", url: "https://example.test" } },
+    };
+
+    test("a facet with no overlay summary and no NatSpec notice is still built, with an empty summary", () => {
+      const built = facetInput(parts);
+      expect(built.summary).toBe("");
+      expect(built.name).toBe("Widget");
+      // It still assembles and validates: the overlay lint's summary-missing warning is where it shows up.
+      const catalogInput = {
+        lattice: { tag: "dev-f4a32c8", commit: COMMIT },
+        toolchain: { foundry: "1.8.3", solc: "0.8.36" },
+        deployer: { address: "0x4e59b44847b379578588920cA78FbF26c0B4956C" as Address, codehash: `0x${"11".repeat(32)}` as Hex },
+        registry: sharedInput(entry),
+        factory: sharedInput(entry),
+        proxy: { creationCode: "0x6080", initCodeHash: `0x${"22".repeat(32)}` as Hex, standardJson: {} },
+        facets: [built],
+        inits: [],
+        recipes: [],
+        chains: [],
+        seams: [],
+      };
+      const assembled = assembleCatalog(catalogInput);
+      const valid = validateCatalog(assembled.catalog);
+      expect(valid.ok ? [] : valid.error).toEqual([]);
+      expect(assembled.catalog.facets[0]?.summary).toBe("");
+    });
+
+    test("the overlay's summary wins over NatSpec, which wins over nothing", () => {
+      expect(facetInput({ ...parts, natspecSummary: "Pokes things." }).summary).toBe("Pokes things.");
+      expect(facetInput({ ...parts, natspecSummary: "Pokes things.", overlay: { requires: [], summary: "Pokes widgets." } }).summary).toBe("Pokes widgets.");
+    });
+
+    test("overlay fields and storage carry through; absent ones stay absent", () => {
+      const built = facetInput({
+        ...parts,
+        overlay: { requires: [{ anyOf: ["AccessControl"], strength: "hard", reason: "checks roles" }], family: "access", init: "WidgetInit" },
+        storage: { storage: { id: "lattice.widget", slot: `0x${"33".repeat(32)}` as Hex }, touches: ["lattice.access"] },
+      });
+      expect(built.family).toBe("access");
+      expect(built.init).toBe("WidgetInit");
+      expect(built.storage?.id).toBe("lattice.widget");
+      expect(built.touches).toEqual(["lattice.access"]);
+      expect("defaultOwnerOf" in built).toBe(false);
+      expect("storage" in facetInput(parts)).toBe(false);
+    });
   });
 
   test("a non-facet shard names every function the ABI lists", () => {

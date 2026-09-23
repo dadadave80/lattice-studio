@@ -43,7 +43,7 @@ export type VerifyReport = {
   hash: Hex;
   /** The committed manifest's hash for `id`, if it lists one. */
   committedHash?: Hex;
-  /** Sorted by path; empty when the catalogs match byte for byte. */
+  /** Sorted by path, `manifest.json` included; empty when the catalogs match byte for byte. */
   differences: CatalogDifference[];
   matches: boolean;
 };
@@ -110,7 +110,9 @@ export async function compareWithCommitted(catalogDir: string, generated: Pick<G
   const hash = assembled.catalog.hash;
   const committedHash = await manifestHash(catalogDir, id);
   if (committedHash !== hash) {
-    differences.push({ path: "manifest.json", problem: committedHash === undefined ? "missing" : "changed", ...(committedHash !== undefined ? { committed: committedHash } : {}), rebuilt: hash });
+    // No entry for this id: the rebuilt catalog is one the manifest doesn't list ("extra").
+    differences.push({ path: "manifest.json", problem: committedHash === undefined ? "extra" : "changed", ...(committedHash !== undefined ? { committed: committedHash } : {}), rebuilt: hash });
+    differences.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   }
   return { id, hash, ...(committedHash !== undefined ? { committedHash } : {}), differences, matches: differences.length === 0 };
 }
@@ -119,7 +121,10 @@ export type VerifyOptions = {
   latticeDir: string;
   /** Where the committed catalogs are (default `catalog/`). */
   catalogDir?: string;
-  /** Build the checkout itself instead of a clean temporary copy (faster; trusts its `out/`). */
+  /**
+   * Build incrementally in the checkout itself, trusting its `out/`, instead of clean in a fresh temporary copy.
+   * The main checkout's `lattice/` is read-only, so it's copied either way (and so built from nothing).
+   */
   inPlace?: boolean;
   log?: (line: string) => void;
   /** The generator; injectable for tests. */
@@ -170,7 +175,8 @@ Rebuilds the catalog from a Lattice checkout, in a clean temporary copy, and com
 Exit codes: 0 match, 2 the rebuild couldn't run, 3 catalog mismatch.
   --lattice <dir>   the checkout (default: LATTICE_DIR, else lattice/)
   --catalog <dir>   the committed catalogs (default: catalog/)
-  --in-place        build the checkout itself instead of a clean copy`;
+  --in-place        build incrementally in the checkout itself, trusting its out/, instead of clean in a
+                    fresh temporary copy (the main checkout's lattice/ is read-only, so it's copied either way)`;
 
 /** Parses the verifier's command line. */
 export function parseVerifyArgs(argv: readonly string[], root: string = join(import.meta.dir, "..", "..", "..")): Result<VerifyArgs, string> {

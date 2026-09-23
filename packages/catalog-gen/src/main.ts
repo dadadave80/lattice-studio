@@ -8,8 +8,9 @@
  * 1. Foundry must be 1.8.3 exactly (David, QUESTIONS Q1): every address depends on the compiler build.
  * 2. The checkout must be clean (the catalog records its commit). It's built with `FOUNDRY_PROFILE=ci` (CG2's
  *    `buildLattice`, incremental unless `--clean`; forge rebuilds only what's stale), then diamond-lib's
- *    initializers (CG4). The main checkout's `lattice/` is read-only (contracts §2), so it's built in a temporary
- *    copy of its tracked files instead, as is any checkout with `--copy`.
+ *    initializers (CG4). The main checkout's `lattice/` is read-only (contracts §2), so it's built in a fresh
+ *    temporary copy of its tracked files instead, from nothing every run (so `--clean` changes nothing there), as
+ *    is any checkout with `--copy`.
  * 3. On a local Anvil: facets and their selectors (CG1), storage (CG3), inits (CG4) with the overlay (CG5),
  *    seams and templates (CG6), release data and the proxy (CG2), chain releases (`chains.ts`).
  * 4. The catalog is assembled (CG7), gated on template routing, recipe citations and script facets (CG6), and
@@ -54,7 +55,7 @@ import {
 } from "./inits";
 import { type FacetFacts, readFacets } from "./inventory";
 import { natspecSummary } from "./natspec";
-import { facetOverlayFields, type InitParamOverlay, loadOverlay, OVERLAY_DIR, type Overlay } from "./overlay";
+import { type FacetOverlayFields, facetOverlayFields, type InitParamOverlay, loadOverlay, OVERLAY_DIR, type Overlay } from "./overlay";
 import { formatLintSummary, formatParseIssues, type KnownParam, type LintFacts, lintOverlay } from "./overlay-lint";
 import {
   buildSeams,
@@ -84,7 +85,7 @@ import {
 } from "./release";
 import { buildFacetDetail } from "./shards";
 import { buildSizeReport, formatSizeReport } from "./size-report";
-import { describeMismatch as describeSlotMismatch, allFacetStorage, scanLatticeStorage } from "./storage";
+import { allFacetStorage, describeMismatch as describeSlotMismatch, type FacetStorage, scanLatticeStorage } from "./storage";
 import {
   type AssembledCatalog,
   assembleCatalog,
@@ -161,7 +162,15 @@ export async function checkFoundry(run: Runner = runCommand): Promise<Result<str
 export type Submodule = { path: string; url: string; commit: string };
 
 /** Which Lattice this is: the commit, a release tag pointing at it, `VERSION`, and its submodules. */
-export type LatticeIdentity = { commit: string; tag?: string; version: string; submodules: Submodule[] };
+export type LatticeIdentity = {
+  commit: string;
+  /** The highest release tag on the commit (`releaseTags`), if any. */
+  tag?: string;
+  /** The other release tags on the commit, highest first, when there are several. */
+  otherTags?: string[];
+  version: string;
+  submodules: Submodule[];
+};
 
 /** `.gitmodules`' `path` and `url` per submodule, in file order. */
 export function parseGitmodules(text: string): { path: string; url: string }[] {
@@ -174,7 +183,23 @@ export function parseGitmodules(text: string): { path: string; url: string }[] {
   return out;
 }
 
-const RELEASE_TAG = /^v\d+\.\d+\.\d+$/;
+const RELEASE_TAG = /^v(\d+)\.(\d+)\.(\d+)$/;
+
+/**
+ * The release tags (`vX.Y.Z`) among the tags on a commit, one per line, highest version first in numeric order
+ * (v0.10.0 before v0.4.0). Other tags (`storage-guard-v1.0.0`) are ignored.
+ */
+export function releaseTags(output: string): string[] {
+  const parsed = output
+    .split("\n")
+    .map((t) => t.trim())
+    .flatMap((t) => {
+      const m = RELEASE_TAG.exec(t);
+      return m === null ? [] : [{ t, v: [Number(m[1]), Number(m[2]), Number(m[3])] }];
+    });
+  parsed.sort((a, b) => (b.v[0] ?? 0) - (a.v[0] ?? 0) || (b.v[1] ?? 0) - (a.v[1] ?? 0) || (b.v[2] ?? 0) - (a.v[2] ?? 0));
+  return parsed.map((p) => p.t);
+}
 
 /**
  * Reads the checkout's identity with git. A checkout with uncommitted changes (build output aside, which Lattice
@@ -197,11 +222,8 @@ export async function readIdentity(latticeDir: string, run: Runner = runCommand)
     );
   }
   const tags = await git("tag", "--points-at", "HEAD");
-  const tag = tags.stdout
-    .split("\n")
-    .map((t) => t.trim())
-    .filter((t) => RELEASE_TAG.test(t))
-    .sort()[0];
+  const releases = releaseTags(tags.stdout);
+  const tag = releases[0];
   const version = await readLatticeVersion(latticeDir);
   if (!version.ok) return version;
 
@@ -215,7 +237,13 @@ export async function readIdentity(latticeDir: string, run: Runner = runCommand)
       submodules.push({ path, url: url.replace(/\.git$/, ""), commit: pinned });
     }
   }
-  return ok({ commit, ...(tag !== undefined ? { tag } : {}), version: version.value, submodules });
+  return ok({
+    commit,
+    ...(tag !== undefined ? { tag } : {}),
+    ...(releases.length > 1 ? { otherTags: releases.slice(1) } : {}),
+    version: version.value,
+    submodules,
+  });
 }
 
 /** `catalog/<id>/` (contracts §4): the release tag, else `dev-<commit7>`. */
@@ -301,7 +329,10 @@ export async function copyCheckout(
 async function buildCheckout(dir: string, clean: boolean, allowMainCheckout: boolean): Promise<Result<void, string>> {
   const built = await buildLattice(dir, { clean, allowMainCheckout });
   if (!built.ok) return err(`Build: ${built.error}`);
-  // buildSupplementaryInits refuses the main checkout; `allowMainCheckout` means this one owns its submodule.
+  // CG4's buildSupplementaryInits refuses whichever directory it's told is the main checkout, and has no
+  // allowMainCheckout option yet. When this directory may be built (a temporary copy, or a CI clone that owns its
+  // submodule), it's given a path that can never be this directory, so the guard passes. Otherwise it gets the
+  // real main checkout, and the guard still protects it. Switch to CG4's option once its fix package lands.
   const extra = await buildSupplementaryInits(dir, allowMainCheckout ? join(dir, ".not-the-main-checkout") : mainLatticeDir());
   if (!extra.ok) return err(`Build: ${extra.error}`);
   return ok(undefined);
@@ -374,6 +405,43 @@ export function sharedInput(entry: ReleaseEntry, detail?: FacetDetail): SharedCo
 /** Every function a contract's ABI lists, as NatSpec keys for a non-facet shard (solc's own order). */
 export function allSelectors(artifact: Pick<Artifact, "methodIdentifiers">): FacetSelector[] {
   return Object.entries(artifact.methodIdentifiers).map(([signature, hex]) => ({ hex, signature }));
+}
+
+/** What `facetInput` puts together for one facet. */
+export type FacetParts = {
+  name: string;
+  area: Area;
+  source: string;
+  selectors: FacetSelector[];
+  overlay: FacetOverlayFields;
+  /** The contract notice's first sentence, when the NatSpec has one. */
+  natspecSummary: string | undefined;
+  storage: FacetStorage;
+  release: SharedContractInput;
+  detail: FacetDetail;
+};
+
+/**
+ * One facet's catalog input. The summary is the overlay's, else the NatSpec notice's, else empty: a facet with
+ * neither is still built, and the overlay lint lists it as `summary-missing` (spec L911: warnings, not failures).
+ */
+export function facetInput(p: FacetParts): FacetInput {
+  const o = p.overlay;
+  return {
+    name: p.name,
+    area: p.area,
+    source: p.source,
+    summary: o.summary ?? p.natspecSummary ?? "",
+    selectors: p.selectors,
+    ...(p.storage.storage !== undefined ? { storage: p.storage.storage } : {}),
+    touches: p.storage.touches,
+    release: p.release,
+    requires: o.requires,
+    ...(o.family !== undefined ? { family: o.family } : {}),
+    ...(o.defaultOwnerOf !== undefined ? { defaultOwnerOf: o.defaultOwnerOf } : {}),
+    ...(o.init !== undefined ? { init: o.init } : {}),
+    detail: p.detail,
+  };
 }
 
 // ── the pipeline ───────────────────────────────────────────────────────────────────────────────────
@@ -469,7 +537,12 @@ export async function generateCatalog(options: GenerateOptions): Promise<Result<
   if (!identity.ok) return identity;
   const id = catalogId(identity.value);
   const provisional = provisionalNote(identity.value);
-  log(`Lattice ${identity.value.version} at ${identity.value.tag ?? `dev ${identity.value.commit.slice(0, 7)}`} → catalog/${id}`);
+  const { tag: pickedTag, otherTags } = identity.value;
+  if (pickedTag !== undefined) {
+    const others = otherTags !== undefined ? ` (the highest of ${[pickedTag, ...otherTags].join(", ")})` : "";
+    log(`Using release tag ${pickedTag}${others}, which points at ${identity.value.commit.slice(0, 7)}.`);
+  }
+  log(`Lattice ${identity.value.version} at ${pickedTag ?? `dev ${identity.value.commit.slice(0, 7)}`} → catalog/${id}`);
 
   const copy = options.copy === true || (!allowMain && isMainCheckout(latticeDir));
   let buildDir = latticeDir;
@@ -732,30 +805,19 @@ async function generateFrom(ctx: Context): Promise<Result<Generated, string>> {
     return rel !== undefined ? { ...spec, release: rel } : { ...spec };
   });
 
-  const missingSummary: string[] = [];
-  const facetInputs: FacetInput[] = facets.map((f) => {
-    const o = facetOverlay.get(f.name) ?? facetOverlayFields(undefined);
-    const text = o.summary ?? natspecSummary(f.artifact.metadata);
-    if (text === undefined) missingSummary.push(f.name);
-    const st = facetStorage.value.facets.get(f.name) ?? { touches: [] };
-    const input: FacetInput = {
+  const facetInputs: FacetInput[] = facets.map((f) =>
+    facetInput({
       name: f.name,
       area: areas.get(f.name) as Area,
       source: f.source,
-      summary: text ?? "",
       selectors: f.selectors,
-      ...(st.storage !== undefined ? { storage: st.storage } : {}),
-      touches: st.touches,
+      overlay: facetOverlay.get(f.name) ?? facetOverlayFields(undefined),
+      natspecSummary: natspecSummary(f.artifact.metadata),
+      storage: facetStorage.value.facets.get(f.name) ?? { touches: [] },
       release: sharedInput(entry(f.name)),
-      requires: o.requires,
-      ...(o.family !== undefined ? { family: o.family } : {}),
-      ...(o.defaultOwnerOf !== undefined ? { defaultOwnerOf: o.defaultOwnerOf } : {}),
-      ...(o.init !== undefined ? { init: o.init } : {}),
       detail: detailOf(f.name, f.artifact, f.selectors, f.artifact.storageLayout),
-    };
-    return input;
-  });
-  if (missingSummary.length > 0) return err(`Facets: no summary in the overlay or NatSpec for ${missingSummary.join(", ")}.`);
+    }),
+  );
 
   const input: CatalogInput = {
     lattice: { tag: id, commit: identity.commit },
@@ -818,11 +880,14 @@ export type CatalogArgs = {
 export const USAGE = `Usage: bun run catalog [--lattice <dir>] [--out <dir>] [--clean] [--copy] [--allow-main-checkout]
 
 Rebuilds catalog/<id>/ from a Lattice checkout with Foundry ${FOUNDRY_VERSION} and makes it the manifest's default.
+The main checkout's lattice/ (the default, and CI's drift check) is read-only, so every run builds a fresh
+temporary copy of it from nothing (about 100 s), and --clean changes nothing there. A checkout of your own is
+built in place, incrementally (seconds when out/ is current).
   --lattice <dir>          the checkout (default: LATTICE_DIR, else lattice/)
   --out <dir>              where catalogs live (default: catalog/)
-  --clean                  forge clean before building
-  --copy                   build in a temporary copy of the checkout (always so for the main checkout's lattice/)
-  --allow-main-checkout    build the main checkout's lattice/ in place (a fresh CI clone only)`;
+  --clean                  forge clean before building (only matters for a checkout built in place)
+  --copy                   build in a fresh temporary copy of the checkout, as the main checkout's always is
+  --allow-main-checkout    build the main checkout's lattice/ in place (a fresh CI clone that owns it only)`;
 
 /** Parses the command line; an error names the argument. */
 export function parseCatalogArgs(argv: readonly string[], root: string = REPO_ROOT): Result<CatalogArgs, string> {

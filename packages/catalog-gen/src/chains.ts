@@ -7,8 +7,9 @@
  * the chain id, CreateX, the registry, the factory, the registry's owner, a timestamp and one entry per facet
  * (name, address, codehash, selectors hash, salt). It records no build commit, no codehash for the factory, no
  * standard JSON and no proxy init-code hash, and `ChainRelease.factory` needs all four. So a chain whose factory
- * isn't the canonical one gets no `factory` entry, and the gap is listed for Lattice A4 (manifest v1). A chain
- * whose factory is the canonical one needs no entry: it's recorded with its chain id alone.
+ * isn't the canonical one is left out of `chains`, and the gap is listed for Lattice A4 (manifest v1). A chain
+ * whose factory is the canonical one, and whose registry and facets are this catalog's, is recorded with its
+ * chain id alone.
  */
 import { join } from "node:path";
 import { type Address, err, isAddress, ok, type Result, sameAddress } from "@lattice-studio/core";
@@ -84,9 +85,10 @@ export type ChainReleases = { chains: ChainReleaseInput[]; gaps: string[] };
 
 /**
  * `ChainRelease` entries from parsed manifests, sorted by chain id. A manifest for another version, or two for
- * one chain, is an error. A factory other than the canonical one is left out with a gap (see the file header);
- * so is a registry or facet address that differs from the catalog's prediction, which means the chain holds a
- * release built another way (at the pin, `DeployRelease` still deploys through CreateX, not Arachnid's proxy).
+ * one chain, is an error. A chain is recorded (as `{ chainId }`) only when its factory is the canonical one and
+ * its registry and every catalog facet are at this catalog's release addresses. Otherwise it's left out with a
+ * gap line per reason: a chain-specific factory (see the file header), or a release built another way (at the
+ * pin, `DeployRelease` still deploys through CreateX, not Arachnid's proxy).
  */
 export function chainReleasesFrom(
   manifests: readonly { file: string; chainId: number; manifest: ReleaseManifest }[],
@@ -104,14 +106,15 @@ export function chainReleasesFrom(
     if (other !== undefined) return err(`${other} and ${file} are both releases for chain ${chainId}.`);
     seen.set(chainId, file);
 
+    const chainGaps: string[] = [];
     if (!sameAddress(manifest.factory, expected.factory)) {
-      gaps.push(
+      chainGaps.push(
         `Chain ${chainId}: its LatticeFactory ${manifest.factory} isn't the canonical one (${expected.factory}), and ` +
           `${file} doesn't record its ${MISSING_FACTORY_FIELDS.join(", ")}, so Studio can't use it (Lattice A4).`,
       );
     }
     if (!sameAddress(manifest.registry, expected.registry)) {
-      gaps.push(`Chain ${chainId}: its LatticeRegistry ${manifest.registry} isn't the catalog's ${expected.registry}.`);
+      chainGaps.push(`Chain ${chainId}: its LatticeRegistry ${manifest.registry} isn't the catalog's ${expected.registry}.`);
     }
     const moved = Object.entries(manifest.facets)
       .filter(([name, entry]) => {
@@ -121,12 +124,23 @@ export function chainReleasesFrom(
       .map(([name]) => name)
       .sort();
     if (moved.length > 0) {
-      gaps.push(
+      chainGaps.push(
         `Chain ${chainId}: ${moved.length} of ${Object.keys(manifest.facets).length} facets in ${file} aren't at the ` +
           `catalog's addresses (${moved.slice(0, 5).join(", ")}${moved.length > 5 ? ", …" : ""}).`,
       );
     }
-    chains.push({ chainId });
+    const listed = new Set(Object.entries(manifest.facets).flatMap(([key, entry]) => [key, entry.name]));
+    const absent = Object.keys(expected.facets).filter((name) => !listed.has(name)).sort();
+    if (absent.length > 0) {
+      chainGaps.push(
+        `Chain ${chainId}: ${file} lists no release of ${absent.length} catalog facet${absent.length === 1 ? "" : "s"} ` +
+          `(${absent.slice(0, 5).join(", ")}${absent.length > 5 ? ", …" : ""}).`,
+      );
+    }
+    // Recorded only when the chain holds exactly this catalog's release behind the canonical factory; otherwise
+    // left out, with the reasons, so nothing reads it as ready.
+    if (chainGaps.length === 0) chains.push({ chainId });
+    else gaps.push(...chainGaps, `Chain ${chainId} is left out of the catalog's chains.`);
   }
   return ok({ chains, gaps });
 }
