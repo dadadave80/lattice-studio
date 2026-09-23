@@ -3,10 +3,11 @@
  * same code against the pinned Lattice.
  */
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  buildSupplementaryInits,
   canonicalType,
   DIAMOND_LIB_INITS,
   type InitSkeleton,
@@ -14,6 +15,7 @@ import {
   mergeInitOverlay,
   readInits,
   statelessInitContracts,
+  SKIPPED_ENTRY_POINTS,
   supplementaryBuildCommand,
   withKey,
 } from "../../src/inits";
@@ -338,7 +340,7 @@ describe("initFactsFor", () => {
     expect(statelessInitContracts(r.value.facts).map((c) => c.contract)).toEqual(["SoloInit"]);
   });
 
-  test("registersInterfaces: writing DiamondLib's ERC165_MAP_* slot in assembly counts; a like-named slot elsewhere doesn't", async () => {
+  test("registersInterfaces: an sstore to DiamondLib's ERC165_MAP_* slot counts; a read or a like-named slot doesn't", async () => {
     const d = new File(DIAMOND_LIB_PATH, "bytes32 constant ERC165_MAP_ILOUPE_SLOT = 0x01;\n", 9200);
     const diamond = d.unit([{ nodeType: "VariableDeclaration", id: d.id(), name: "ERC165_MAP_ILOUPE_SLOT", src: d.src("ERC165_MAP_ILOUPE_SLOT") }]);
     const o = new File("src/OtherLib.sol", "bytes32 constant ERC165_MAP_X = 0x02;\n", 9300);
@@ -352,16 +354,38 @@ contract FlagInit {
     function lookalike() external {
         assembly { sstore(ERC165_MAP_X, true) }
     }
+    function readOnly() external {
+        assembly { let v := sload(ERC165_MAP_ILOUPE_SLOT) }
+    }
 }
 `;
     const f = new File("src/FlagInit.sol", source, 7100);
-    const asm = (name: string) => ({ nodeType: "InlineAssembly", id: f.id(), externalReferences: [{ declaration: 1, src: f.src(name, 1) }] });
+    // Yul as solc writes it: YulFunctionCall { functionName: YulIdentifier, arguments: [YulIdentifier, …] }.
+    const asm = (op: string, slot: string) => ({
+      nodeType: "InlineAssembly",
+      id: f.id(),
+      externalReferences: [{ declaration: 1, src: "0:0:0" }],
+      AST: {
+        nodeType: "YulBlock",
+        statements: [
+          {
+            nodeType: "YulExpressionStatement",
+            expression: {
+              nodeType: "YulFunctionCall",
+              functionName: { nodeType: "YulIdentifier", name: op },
+              arguments: [{ nodeType: "YulIdentifier", name: slot }, { nodeType: "YulLiteral", kind: "bool", value: "true" }],
+            },
+          },
+        ],
+      },
+    });
     const unit = f.unit([
       f.import(DIAMOND_LIB_PATH, ["ERC165_MAP_ILOUPE_SLOT"]),
       f.import("src/OtherLib.sol", ["ERC165_MAP_X"]),
       f.contract("FlagInit", [
-        f.fn({ name: "loupeOnly", visibility: "external", selector: "aaaaaaaa", snippet: "function loupeOnly() external {", statements: [asm("ERC165_MAP_ILOUPE_SLOT")] }),
-        f.fn({ name: "lookalike", visibility: "external", selector: "bbbbbbbb", snippet: "function lookalike() external {", statements: [asm("ERC165_MAP_X")] }),
+        f.fn({ name: "loupeOnly", visibility: "external", selector: "aaaaaaaa", snippet: "function loupeOnly() external {", statements: [asm("sstore", "ERC165_MAP_ILOUPE_SLOT")] }),
+        f.fn({ name: "lookalike", visibility: "external", selector: "bbbbbbbb", snippet: "function lookalike() external {", statements: [asm("sstore", "ERC165_MAP_X")] }),
+        f.fn({ name: "readOnly", visibility: "external", selector: "cccccccc", snippet: "function readOnly() external {", statements: [asm("sload", "ERC165_MAP_ILOUPE_SLOT")] }),
       ]),
     ]);
     const artifact = artifactOf(
@@ -370,15 +394,54 @@ contract FlagInit {
       [
         { type: "function", name: "loupeOnly", stateMutability: "nonpayable", inputs: [], outputs: [] },
         { type: "function", name: "lookalike", stateMutability: "nonpayable", inputs: [], outputs: [] },
+        { type: "function", name: "readOnly", stateMutability: "nonpayable", inputs: [], outputs: [] },
       ],
-      { "loupeOnly()": "0xaaaaaaaa", "lookalike()": "0xbbbbbbbb" },
+      { "loupeOnly()": "0xaaaaaaaa", "lookalike()": "0xbbbbbbbb", "readOnly()": "0xcccccccc" },
     );
     const r = await initFactsFor(artifact, unit, loaderOf([unit, diamond, other]));
     if (!r.ok) throw new Error(r.error);
     expect(r.value.facts.map((x) => [x.spec.name, x.spec.registersInterfaces])).toEqual([
       ["FlagInit.loupeOnly", true],
       ["FlagInit.lookalike", undefined],
+      ["FlagInit.readOnly", undefined],
     ]);
+  });
+
+  test("a skipped entry point is dropped before naming, so the one left keeps the plain contract name", async () => {
+    const source = "contract DuoInit {\n    function init(address owner) external {}\n    function init7702() external {}\n}\n";
+    const f = new File("src/DuoInit.sol", source, 7300);
+    const unit = f.unit([
+      f.contract("DuoInit", [
+        f.fn({ name: "init", visibility: "external", selector: "19ab453c", snippet: "function init(address owner) external {}", params: [f.param("owner", "address")] }),
+        f.fn({ name: "init7702", visibility: "external", selector: "ead272ac", snippet: "function init7702() external {}" }),
+      ]),
+    ]);
+    const artifact = artifactOf(
+      "DuoInit",
+      "src/DuoInit.sol",
+      [
+        { type: "function", name: "init", stateMutability: "nonpayable", inputs: [{ name: "owner", type: "address" }], outputs: [] },
+        { type: "function", name: "init7702", stateMutability: "nonpayable", inputs: [], outputs: [] },
+      ],
+      { "init(address)": "0x19ab453c", "init7702()": "0xead272ac" },
+    );
+    const skipped = { "DuoInit.init7702()": "EIP-7702 only" };
+    const r = await initFactsFor(artifact, unit, loaderOf([unit]), skipped);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.value.facts.map((x) => [x.spec.name, x.spec.fn])).toEqual([["DuoInit", "init(address)"]]);
+    expect(r.value.skippedEntryPoints).toEqual(["DuoInit.init7702()"]);
+    // Without the skip, both stay and each is named <Contract>.<fn>.
+    const both = await initFactsFor(artifact, unit, loaderOf([unit]), {});
+    if (!both.ok) throw new Error(both.error);
+    expect(both.value.facts.map((x) => x.spec.name)).toEqual(["DuoInit.init", "DuoInit.init7702"]);
+    // Skipping every entry point leaves nothing usable, which is an error, not an empty init.
+    const none = await initFactsFor(artifact, unit, loaderOf([unit]), { ...skipped, "DuoInit.init(address)": "test" });
+    expect(none).toEqual({ ok: false, error: "src/DuoInit.sol: DuoInit has no usable state-changing entry point." });
+  });
+
+  test("AccountInit.init7702() is the one entry point skipped at the pin, with its reason", () => {
+    expect(Object.keys(SKIPPED_ENTRY_POINTS)).toEqual(["AccountInit.init7702()"]);
+    expect(SKIPPED_ENTRY_POINTS["AccountInit.init7702()"]).toContain("R7");
   });
 
   test("stateless contracts leave out inits with constructor arguments, once per contract", async () => {
@@ -402,7 +465,7 @@ describe("helpers", () => {
   });
 
   test("the supplementary build compiles diamond-lib's three initializers in the checkout", () => {
-    expect(supplementaryBuildCommand("/l")).toEqual(["forge", "build", "--root", "/l", ...DIAMOND_LIB_INITS]);
+    expect(supplementaryBuildCommand("/l")).toEqual(["forge", "build", "--root", "/l", ...DIAMOND_LIB_INITS.map((p) => `/l/${p}`)]);
   });
 });
 
@@ -419,7 +482,7 @@ describe("readInits", () => {
       expect(r.ok).toBe(false);
       if (r.ok) return;
       expect(r.error).toContain(`no artifacts for src/FooInit.sol, ${DIAMOND_LIB_INITS.join(", ")}.`);
-      expect(r.error).toContain(`FOUNDRY_PROFILE=ci forge build --root ${dir} ${DIAMOND_LIB_INITS.join(" ")}`);
+      expect(r.error).toContain(`FOUNDRY_PROFILE=ci ${supplementaryBuildCommand(dir).join(" ")}.`);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -501,6 +564,7 @@ describe("mergeInitOverlay", () => {
     expect(merged.withoutOverlay).toEqual([]);
     expect(merged.conflicts).toEqual([]);
     expect(merged.undocumented).toEqual([]);
+    expect(merged.docOverrides).toEqual([]);
   });
 
   test("inits with no overlay entry are listed for the lint, and keep the source's facts", () => {
@@ -523,5 +587,147 @@ describe("mergeInitOverlay", () => {
       "VaultInit: the overlay says registersInterfaces false, the source says true; the source wins.",
       "VaultInit.p: the overlay names field votes, which the struct doesn't have.",
     ]);
+  });
+});
+
+// ── what the walk can't follow says so ─────────────────────────────────────────────────────────────
+
+const WALK_SOURCE = `library L {
+    function __H_init(uint256 v) internal {}
+    function g(uint256 a) internal {}
+    function g(address a) internal {}
+}
+contract WalkInit {
+    using L for uint256;
+    function init(uint256 x, address a) external {
+        x.__H_init();
+        IX(a).f();
+        s.f();
+        L.g(true);
+        abi.encode(x);
+    }
+}
+`;
+
+async function walkFacts() {
+  const f = new File("src/WalkInit.sol", WALK_SOURCE, 8000);
+  const v = f.param("v", "uint256");
+  const h = f.fn({ name: "__H_init", snippet: "function __H_init(uint256 v) internal {}", params: [v] });
+  const g1 = f.fn({ name: "g", snippet: "function g(uint256 a) internal {}", params: [f.param("a", "uint256")] });
+  const g2 = f.fn({ name: "g", snippet: "function g(address a) internal {}", params: [f.param("a", "address", 1)] });
+  const lib = f.contract("L", [h, g1, g2], "library");
+  const using = { nodeType: "UsingForDirective", id: f.id(), libraryName: { nodeType: "IdentifierPath", name: "L" } };
+  const x = f.param("x", "uint256", 0);
+  const a = f.param("a", "address", 2);
+  const typed = (node: ReturnType<File["ident"]>, typeIdentifier: string, typeString = "function ()") => ({
+    ...node,
+    typeDescriptions: { typeIdentifier, typeString },
+  });
+  const internal = "t_function_internal_nonpayable$__$returns$__$";
+  const xRef = { ...f.ident("x", x.id ?? 0, 2), typeDescriptions: { typeString: "uint256" } };
+  const init = f.fn({
+    name: "init",
+    visibility: "external",
+    selector: "12345678",
+    snippet: "function init(uint256 x, address a) external {",
+    params: [x, a],
+    statements: [
+      f.stmt(f.call("x.__H_init()", typed(f.member("x.__H_init", xRef, "__H_init"), internal), [])),
+      f.stmt(
+        f.call(
+          "IX(a).f()",
+          typed(f.member("IX(a).f", f.conversion("IX(a)"), "f"), "t_function_external_nonpayable$__$returns$__$"),
+          [],
+        ),
+      ),
+      f.stmt(f.call("s.f()", typed(f.member("s.f", f.ident("s", 99_999), "f"), internal), [])),
+      f.stmt(
+        f.call(
+          "L.g(true)",
+          typed(f.member("L.g", f.ident("L", lib.id ?? 0, 1), "g"), internal, "function (bool)"),
+          [{ nodeType: "Literal", id: f.id(), kind: "bool", value: "true", src: f.src("true") }],
+        ),
+      ),
+      f.stmt(
+        f.call("abi.encode(x)", typed(f.member("abi.encode", f.ident("abi", -1), "encode"), "t_function_abiencode_pure$__$returns$__$"), [
+          f.ident("x", x.id ?? 0, 3),
+        ]),
+      ),
+    ],
+  });
+  const unit = f.unit([lib, f.contract("WalkInit", [using, init])]);
+  const artifact = artifactOf(
+    "WalkInit",
+    "src/WalkInit.sol",
+    [
+      {
+        type: "function",
+        name: "init",
+        stateMutability: "nonpayable",
+        inputs: [
+          { name: "x", type: "uint256" },
+          { name: "a", type: "address" },
+        ],
+        outputs: [],
+      },
+    ],
+    { "init(uint256,address)": "0x12345678" },
+  );
+  const r = await initFactsFor(artifact, unit, loaderOf([unit]));
+  if (!r.ok) throw new Error(r.error);
+  return r.value;
+}
+
+describe("walk notes", () => {
+  test("a `using L for T` call is followed, with the receiver as the first argument", async () => {
+    const { facts } = await walkFacts();
+    expect(facts[0]?.spec.initializes).toEqual([{ module: "H", with: { v: "x" } }]);
+  });
+
+  test("an internal call with no resolvable target and an overload that matches nothing are notes, not guesses", async () => {
+    const { notes } = await walkFacts();
+    expect(notes).toEqual([
+      "src/WalkInit.sol#L11: couldn't follow s.f (its target isn't a contract or library this file names).",
+      "src/WalkInit.sol#L12: couldn't tell which overload of L.g this call reaches.",
+    ]);
+  });
+
+  test("external calls are listed apart: other code, not followed by design; built-ins are silent", async () => {
+    const { externalCalls } = await walkFacts();
+    expect(externalCalls).toEqual(["src/WalkInit.sol#L10: IX(a).f"]);
+  });
+});
+
+describe("buildSupplementaryInits", () => {
+  test("refuses the main checkout's read-only lattice/, through a symlink too, without running forge", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "cg4-main-"));
+    try {
+      const main = join(dir, "main", "lattice");
+      await mkdir(main, { recursive: true });
+      await symlink(main, join(dir, "alias"));
+      for (const target of [main, join(dir, "alias"), `${main}/`]) {
+        expect(await buildSupplementaryInits(target, main)).toEqual({
+          ok: false,
+          error: `${target} is the main checkout's read-only lattice/, so it isn't built here. Build your own checkout.`,
+        });
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("docOverrides", () => {
+  test("an overlay doc that replaces a different NatSpec doc is listed; filling an empty one or repeating it isn't", () => {
+    const merged = mergeInitOverlay([skeleton()], {
+      VaultInit: {
+        params: {
+          admin: { doc: "Who administers the vault." },
+          p: { doc: "Vault parameters.", components: { period: { doc: "Vote length." }, quorum: { doc: "Quorum." } } },
+        },
+      },
+    });
+    expect(merged.docOverrides).toEqual([{ path: "VaultInit.admin", source: "The admin.", overlay: "Who administers the vault." }]);
+    expect(merged.inits[0]?.params[0]?.doc).toBe("Who administers the vault.");
   });
 });

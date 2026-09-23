@@ -40,12 +40,6 @@ const REGISTERS_INTERFACES = [
 ];
 
 /**
- * The fixture's `AccountInit` is `AccountInit.init` at the pin: the contract has a second entry point,
- * `init7702()` (src/accounts/erc7579/AccountInit.sol#L49), so contracts §3.1 names each one.
- */
-const RENAMED: Record<string, string> = { AccountInit: "AccountInit.init" };
-
-/**
  * Docs where K3's fixture (hand-written) and the source differ; the overlay settles them (contracts §4). Each
  * entry: the fixture's text, what the source gives, and where the source says it.
  */
@@ -136,7 +130,7 @@ function k3Overlay(withDocs: boolean): Record<string, InitOverlay> {
         registersInterfaces: s.registersInterfaces === true,
       };
       if (s.sequence) o.sequence = s.sequence;
-      return [RENAMED[s.name] ?? s.name, o];
+      return [s.name, o];
     }),
   );
 }
@@ -147,7 +141,7 @@ async function fixtureInits(): Promise<InitSkeleton[]> {
   const index = (await Bun.file(join(REPO_ROOT, "fixtures", "catalog", "fixture", "index.json")).json()) as {
     inits: FixtureInit[];
   };
-  return index.inits.map(({ release: _r, afterSource: _a, ...spec }) => ({ ...spec, name: RENAMED[spec.name] ?? spec.name }));
+  return index.inits.map(({ release: _r, afterSource: _a, ...spec }) => spec);
 }
 
 function docs(params: Param[], prefix: string, out: Map<string, string>): Map<string, string> {
@@ -162,6 +156,7 @@ const title = "every init at the pin, from the ci build";
 describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason})`, () => {
   let inits: InitFacts[] = [];
   let notes: string[] = [];
+  let externalCalls: string[] = [];
   let fixture: InitSkeleton[] = [];
 
   beforeAll(async () => {
@@ -175,27 +170,40 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     if (!extra.ok) throw new Error(extra.error);
     const read = await readInits(LATTICE);
     if (!read.ok) throw new Error(read.error);
-    ({ inits, notes } = read.value);
+    ({ inits, notes, externalCalls } = read.value);
     fixture = await fixtureInits();
   }, BUILD_TIMEOUT_MS);
 
-  test("84 init contracts give 86 specs, sorted by name; every call was followed", () => {
+  test("84 init contracts give 85 specs, sorted by name; every internal call was followed", () => {
     expect(new Set(inits.map((f) => f.spec.contract)).size).toBe(84);
-    expect(inits).toHaveLength(86);
+    expect(inits).toHaveLength(85);
     const names = inits.map((f) => f.spec.name);
     expect(names).toEqual([...names].sort());
-    expect(new Set(names).size).toBe(86);
+    expect(new Set(names).size).toBe(85);
     expect(notes).toEqual([]);
+    // Calls into other code, which aren't init code: pinned so a new one gets looked at.
+    expect(externalCalls).toEqual([
+      "lib/diamond-lib/src/initializers/MultiInit.sol#L25: initAddress.delegatecall",
+      "src/defi/GovernedVaultENSInit.sol#L104: IReverseRegistrar(p.reverseRegistrar).setName",
+      "src/governance/libraries/GovernedSafeDiamondCutLib.sol#L140: ISafe(_safe).getThreshold",
+      "src/governance/libraries/SafeDiamondCutLib.sol#L129: ISafe(_safe).getThreshold",
+      "src/tokens/ERC20/libraries/ERC20WrapperLib.sol#L65: underlying_.staticcall",
+      "src/tokens/ERC4626/libraries/ERC4626Lib.sol#L81: asset_.staticcall",
+    ]);
   });
 
-  test("the multi-entry contracts are split per entry point, named <Contract>.<fn>", () => {
+  test("only DiamondIntrospectionInit is split per entry point; AccountInit.init7702() is left out", () => {
     const split = inits.filter((f) => f.spec.name !== f.spec.contract).map((f) => [f.spec.name, f.spec.fn]);
     expect(split).toEqual([
-      ["AccountInit.init", "init(address)"],
-      ["AccountInit.init7702", "init7702()"],
       ["DiamondIntrospectionInit.initImmutable", "initImmutable()"],
       ["DiamondIntrospectionInit.initUpgradeable", "initUpgradeable()"],
     ]);
+  });
+
+  test("AccountInit keeps its plain name: init7702() is EIP-7702-only (contracts §3.1)", () => {
+    expect(inits.some((f) => f.spec.fn === "init7702()")).toBe(false);
+    const account = inits.filter((f) => f.spec.contract === "AccountInit");
+    expect(account.map((f) => [f.spec.name, f.spec.fn])).toEqual([["AccountInit", "init(address)"]]);
   });
 
   test("exactly eight contracts register the diamond's ERC-165 flags themselves", () => {
@@ -237,8 +245,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
 
   test("inits with constructor arguments carry ctorArgs and get no release; the rest are stateless", () => {
     expect(inits.filter((f) => f.spec.ctorArgs).map((f) => [f.spec.name, f.spec.ctorArgs])).toEqual([
-      ["AccountInit.init", [{ name: "entryPoint_", type: "address" }]],
-      ["AccountInit.init7702", [{ name: "entryPoint_", type: "address" }]],
+      ["AccountInit", [{ name: "entryPoint_", type: "address" }]],
       ["AccountInit6900", [{ name: "entryPoint_", type: "address" }]],
     ]);
     const stateless = statelessInitContracts(inits).map((c) => c.contract);
@@ -257,6 +264,13 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     const byName = new Map(merged.inits.map((s) => [s.name, s]));
     for (const want of fixture) expect(byName.get(want.name)).toEqual(want);
     for (const s of merged.inits) expect(InitSpecSchema.safeParse(s).success).toBe(true);
+    // Each place K3's docs replace a different, non-empty NatSpec doc reaches the lint.
+    const replaced = Object.entries(DOC_DIFFERENCES)
+      .filter(([, d]) => d.source !== "")
+      .map(([path, d]) => ({ path, source: d.source, overlay: d.fixture }));
+    const byPath = (a: { path: string }, b: { path: string }) => (a.path < b.path ? -1 : 1);
+    expect([...merged.docOverrides].sort(byPath)).toEqual(replaced.sort(byPath));
+    expect(merged.docOverrides).toHaveLength(8);
   });
 
   test("the source's own docs differ from the fixture's only where listed, each with its source line", () => {
@@ -288,7 +302,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     );
     const covered = new Set(fixture.map((s) => s.name));
     expect(merged.withoutOverlay).toEqual(inits.map((f) => f.spec.name).filter((n) => !covered.has(n)));
-    expect(merged.withoutOverlay).toHaveLength(69);
-    expect(merged.withoutOverlay).toContain("AccountInit.init7702");
+    expect(merged.withoutOverlay).toHaveLength(68);
+    expect(merged.withoutOverlay).not.toContain("AccountInit");
   });
 });

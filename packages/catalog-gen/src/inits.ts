@@ -4,19 +4,22 @@
  * the overlay (contracts §4). diamond-lib's `DiamondInit` is skipped: Lattice can't use it, because it registers
  * both ERC-165 flags and sets an Ownable owner unconditionally (`DiamondIntrospectionInit.sol:16-18`).
  *
- * What the source states comes from the build: the entry points (one InitSpec per entry point, named
- * `<Contract>.<fn>` when a contract has several), parameter types with tuple components, NatSpec docs,
+ * What the source states comes from the build: the entry points (one InitSpec per usable entry point, named
+ * after the contract when one remains and `<Contract>.<fn>` when several do; entry points no Studio diamond can
+ * use are left out first, see `SKIPPED_ENTRY_POINTS`), parameter types with tuple components, NatSpec docs,
  * constructor arguments, every `__X_init` the init runs (`initializes`, following calls through the libraries)
  * and whether the init itself sets the diamond's ERC-165 flags (`registersInterfaces`). Calls are followed
  * through each artifact's own AST, and across files by name through the import directives, never by AST id:
  * two build jobs number their nodes independently, and the diamond-lib inits come from a second job.
  */
+import { realpathSync } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { err, type Hex4, type InitParam, type InitSpec, type Json, ok, type Result } from "@lattice-studio/core";
 import type { AbiParameter } from "viem";
 import { type Artifact, parseArtifact } from "./artifacts";
 import { cleanDoc } from "./natspec";
+import { mainLatticeDir } from "./release";
 
 // ── what counts as an init ─────────────────────────────────────────────────────────────────────────
 
@@ -32,27 +35,61 @@ export const SKIPPED_INITS: Record<string, string> = {
   DiamondInit: "registers both ERC-165 flags and sets an Ownable owner unconditionally (DiamondIntrospectionInit.sol:16-18)",
 };
 
+/**
+ * Entry points left out on purpose, keyed `<Contract>.<signature>`, with the reason. They're dropped before
+ * naming, so a contract with one usable entry point keeps its plain name (contracts §3.1, "Multi-entry-point
+ * naming, refined").
+ */
+export const SKIPPED_ENTRY_POINTS: Record<string, string> = {
+  "AccountInit.init7702()":
+    "EIP-7702 onboarding only: the owner is the delegated EOA itself, and a factory diamond is never delegated (R7)",
+};
+
 /** Lattice's init sources: `*Init*.sol` under `src/`. `Initializable.sol` matches the glob but holds no init. */
 export const LATTICE_INIT_GLOB = "src/**/*Init*.sol";
 
 /** A contract name that reads as an init: `ERC20Init`, `AccountInit6900`. */
 const INIT_NAME = /Init\d*$/;
 
-/** The forge command that compiles diamond-lib's initializers the ci build leaves out, run in the Lattice checkout. */
+/**
+ * The forge command that compiles diamond-lib's initializers the ci build leaves out. The source paths are
+ * absolute, so it works from any directory.
+ */
 export function supplementaryBuildCommand(latticeDir: string): string[] {
-  return ["forge", "build", "--root", latticeDir, ...DIAMOND_LIB_INITS];
+  return ["forge", "build", "--root", latticeDir, ...DIAMOND_LIB_INITS.map((p) => join(latticeDir, p))];
+}
+
+/** A path with symlinks resolved; a path that doesn't exist yet is only made absolute. */
+function canonicalPath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
 }
 
 /**
- * Compiles diamond-lib's initializers with the ci profile (build output only; the checkout is otherwise untouched).
- * CG8 runs it after the main build; `readInits` refuses to guess when their artifacts are missing.
+ * Compiles diamond-lib's initializers with the ci profile. It writes `out/` (their artifacts and a second
+ * build-info file) and `cache/` in the checkout, so it refuses the main checkout's read-only `lattice/` (symlinks
+ * resolved), as CG2's `buildLattice` does. CG8 runs it after the main build; `readInits` refuses to guess when
+ * their artifacts are missing.
  */
-export async function buildSupplementaryInits(latticeDir: string): Promise<Result<void, string>> {
-  const cmd = supplementaryBuildCommand(latticeDir);
-  const proc = Bun.spawn(cmd, { env: { ...process.env, FOUNDRY_PROFILE: "ci" }, stdout: "ignore", stderr: "pipe" });
-  if ((await proc.exited) !== 0) {
-    return err(`FOUNDRY_PROFILE=ci ${cmd.join(" ")} failed: ${(await new Response(proc.stderr).text()).trim()}`);
+export async function buildSupplementaryInits(
+  latticeDir: string,
+  mainCheckout: string = mainLatticeDir(),
+): Promise<Result<void, string>> {
+  if (canonicalPath(latticeDir) === canonicalPath(mainCheckout)) {
+    return err(`${latticeDir} is the main checkout's read-only lattice/, so it isn't built here. Build your own checkout.`);
   }
+  const cmd = supplementaryBuildCommand(latticeDir);
+  let proc: ReturnType<typeof Bun.spawn>;
+  try {
+    proc = Bun.spawn(cmd, { cwd: latticeDir, env: { ...process.env, FOUNDRY_PROFILE: "ci" }, stdout: "ignore", stderr: "pipe" });
+  } catch (e) {
+    return err(`FOUNDRY_PROFILE=ci ${cmd.join(" ")} didn't start: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const [code, stderr] = await Promise.all([proc.exited, new Response(proc.stderr as ReadableStream).text()]);
+  if (code !== 0) return err(`FOUNDRY_PROFILE=ci ${cmd.join(" ")} failed (exit ${code}): ${stderr.trim().slice(-2000)}`);
   return ok(undefined);
 }
 
@@ -210,11 +247,14 @@ function callTypes(expr: AstNode): string | undefined {
   return /^function \((.*?)\)/.exec(typeString(expr) ?? "")?.[1];
 }
 
-/** The function `member` of a contract or library, matched by name and, among overloads, by parameter types. */
-function memberFunction(contract: AstNode, member: string, types: string | undefined): AstNode | undefined {
+/**
+ * The function `member` of a contract or library, matched by name and, among overloads, by parameter types.
+ * `ambiguous` when there are overloads and none matches the call's types: the walk says so instead of guessing.
+ */
+function memberFunction(contract: AstNode, member: string, types: string | undefined): AstNode | "ambiguous" | undefined {
   const fns = children(contract, "nodes").filter((n) => n.nodeType === "FunctionDefinition" && n.name === member);
-  if (fns.length <= 1 || types === undefined) return fns[0];
-  return fns.find((f) => paramTypes(f) === types) ?? fns[0];
+  if (fns.length <= 1) return fns[0];
+  return fns.find((f) => types !== undefined && paramTypes(f) === types) ?? "ambiguous";
 }
 
 // ── walking an entry point ─────────────────────────────────────────────────────────────────────────
@@ -234,7 +274,15 @@ type Scope = {
   depth: number;
 };
 
-type Walk = { initializes: Initialized[]; registers: boolean; load: UnitLoader; notes: string[] };
+type Walk = {
+  initializes: Initialized[];
+  registers: boolean;
+  load: UnitLoader;
+  /** Calls the walk couldn't follow. */
+  notes: string[];
+  /** External calls: other code, not init code, so not followed by design. */
+  external: string[];
+};
 
 const MODULE_INIT = /^__([A-Za-z0-9]+)_init$/;
 const MAX_DEPTH = 24;
@@ -383,12 +431,12 @@ async function visit(n: AstNode | undefined, scope: Scope, walk: Walk): Promise<
     await call(n, scope, walk);
     return;
   }
-  if (n.nodeType === "InlineAssembly" && scope.own) {
-    const refs = Array.isArray(n.externalReferences) ? n.externalReferences : [];
-    for (const r of refs) {
-      const src = typeof r === "object" && r !== null ? (r as { src?: unknown }).src : undefined;
-      if (typeof src !== "string") continue;
-      if (await isDiamondFlagSlot(text(scope.unit, { nodeType: "ExternalReference", src }), scope, walk)) walk.registers = true;
+  if (n.nodeType === "YulFunctionCall" && scope.own) {
+    // Only a write counts: `sstore(ERC165_MAP_…, v)` where the slot is DiamondLib's constant.
+    const callee = child(n, "functionName");
+    const [slot] = children(n, "arguments");
+    if (callee?.name === "sstore" && slot?.nodeType === "YulIdentifier" && slot.name !== undefined) {
+      if (await isDiamondFlagSlot(slot.name, scope, walk)) walk.registers = true;
     }
   }
   for (const [k, v] of Object.entries(n)) {
@@ -408,6 +456,57 @@ async function isDiamondFlagSlot(name: string, scope: Scope, walk: Walk): Promis
   return found !== undefined && basename(found.unit.path) === "DiamondLib.sol";
 }
 
+/**
+ * What a member call reaches, from its callee's type: `internal` code the walk follows (library and contract
+ * functions), an `external` call into other code, or a `builtin` (ABI and array helpers, conversions, errors and
+ * events), which runs no init code.
+ */
+function callKind(expr: AstNode): "internal" | "external" | "builtin" {
+  const ts = expr.typeDescriptions;
+  const id = typeof ts === "object" && ts !== null ? (ts as { typeIdentifier?: unknown }).typeIdentifier : undefined;
+  if (typeof id !== "string") return "internal";
+  if (id.startsWith("t_function_internal")) return "internal";
+  if (/^t_function_(external|delegatecall|barecall|baredelegatecall|barestaticcall|bare|creation)/.test(id)) return "external";
+  return "builtin";
+}
+
+/** A type without its data location: "struct S storage pointer" and "struct S storage ref" are both "struct S". */
+function baseType(t: string | undefined): string | undefined {
+  return t?.replace(/ (storage pointer|storage ref|storage|memory|calldata)$/, "");
+}
+
+/**
+ * A library function attached with `using L for T` in the current contract or file, called as `x.member(...)`
+ * with `arity` arguments counting `x`. `ambiguous` when several libraries or overloads fit.
+ */
+async function boundFunction(
+  member: string,
+  arity: number,
+  selfType: string | undefined,
+  scope: Scope,
+  walk: Walk,
+): Promise<{ unit: Unit; decl: AstNode; fn: AstNode } | "ambiguous" | undefined> {
+  const directives = [...children(scope.contract ?? { nodeType: "" }, "nodes"), ...children(scope.unit.ast, "nodes")].filter(
+    (d) => d.nodeType === "UsingForDirective",
+  );
+  const hits: { unit: Unit; decl: AstNode; fn: AstNode }[] = [];
+  for (const d of directives) {
+    const lib = child(d, "libraryName")?.name;
+    if (lib === undefined || lib.includes(".")) continue;
+    const found = await resolveName(scope.unit, lib, walk.load);
+    if (!found || found.decl.nodeType !== "ContractDefinition") continue;
+    for (const fn of children(found.decl, "nodes")) {
+      const first = paramsOf(fn)[0];
+      const fits = selfType === undefined || first === undefined || baseType(typeString(first)) === baseType(selfType);
+      if (fn.nodeType === "FunctionDefinition" && fn.name === member && paramsOf(fn).length === arity && fits) {
+        if (!hits.some((h) => h.fn === fn)) hits.push({ unit: found.unit, decl: found.decl, fn });
+      }
+    }
+  }
+  if (hits.length > 1) return "ambiguous";
+  return hits[0];
+}
+
 /** The contract (or library) in `unit` that declares `fn`. */
 function containerOf(unit: Unit, fn: AstNode): AstNode | undefined {
   return children(unit.ast, "nodes").find((c) => c.nodeType === "ContractDefinition" && children(c, "nodes").includes(fn));
@@ -421,18 +520,45 @@ async function call(n: AstNode, scope: Scope, walk: Walk): Promise<void> {
   if (expr.nodeType === "MemberAccess") {
     const base = child(expr, "expression");
     const member = str(expr, "memberName");
-    if (base?.nodeType !== "Identifier" || base.name === undefined || member === undefined) return;
-    const local = scope.unit.byId.get(num(base, "referencedDeclaration") ?? -1);
-    const found =
-      local?.nodeType === "ContractDefinition" && local.name === base.name
+    const kind = callKind(expr);
+    // Built-ins (`abi.encode`, `list.push`, `string.concat`), errors and events run no init code.
+    if (kind === "builtin") return;
+    const where = `${scope.unit.path}#L${lineAt(scope.unit.bytes, range(n)?.start ?? 0)}`;
+    const shown = text(scope.unit, expr) || member || "a call";
+    if (kind === "external") {
+      walk.external.push(`${where}: ${shown}`);
+      return;
+    }
+    const resolved = base?.nodeType === "Identifier" && base.name !== undefined && member !== undefined;
+    const local = resolved ? scope.unit.byId.get(num(base, "referencedDeclaration") ?? -1) : undefined;
+    const found = !resolved
+      ? undefined
+      : local?.nodeType === "ContractDefinition" && local.name === base.name
         ? { unit: scope.unit, decl: local }
-        : await resolveName(scope.unit, base.name, walk.load);
-    if (!found || found.decl.nodeType !== "ContractDefinition") return;
+        : await resolveName(scope.unit, base.name ?? "", walk.load);
+    if ((!found || found.decl.nodeType !== "ContractDefinition") && base && member !== undefined) {
+      // `using L for T`: `x.f(a)` is `L.f(x, a)`.
+      const bound = await boundFunction(member, children(n, "arguments").length + 1, typeString(base), scope, walk);
+      if (bound && bound !== "ambiguous") {
+        await enter({ ...n, arguments: [base, ...children(n, "arguments")], names: [] }, bound.unit, bound.decl, bound.fn, scope, walk);
+        return;
+      }
+      if (bound === "ambiguous") {
+        walk.notes.push(`${where}: couldn't tell which attached ${member} ${shown} reaches.`);
+        return;
+      }
+    }
+    if (!found || found.decl.nodeType !== "ContractDefinition" || member === undefined) {
+      walk.notes.push(`${where}: couldn't follow ${shown} (its target isn't a contract or library this file names).`);
+      return;
+    }
     const fn = memberFunction(found.decl, member, callTypes(expr));
+    if (fn === "ambiguous") {
+      walk.notes.push(`${where}: couldn't tell which overload of ${found.decl.name}.${member} this call reaches.`);
+      return;
+    }
     if (!fn) {
-      // Errors and events are called too (`revert I.X()`, `emit I.E()`); only a missing function is news.
-      const other = children(found.decl, "nodes").some((d) => d.name === member);
-      if (!other) walk.notes.push(`${scope.unit.path}: ${found.decl.name}.${member} isn't in ${found.unit.path}.`);
+      walk.notes.push(`${where}: ${found.decl.name}.${member} isn't in ${found.unit.path}.`);
       return;
     }
     await enter(n, found.unit, found.decl, fn, scope, walk);
@@ -651,39 +777,51 @@ export function buildLoader(latticeDir: string): UnitLoader {
 }
 
 /**
- * The init specs one contract yields: one per state-changing external or public function, named after the
- * contract when it has one, `<Contract>.<fn>` when it has several (contracts §3.1, CCR from K3).
+ * The init specs one contract yields: one per usable state-changing external or public function. Entry points
+ * in `skipped` (default `SKIPPED_ENTRY_POINTS`) are dropped first; the spec is named after the contract when one
+ * entry point remains, `<Contract>.<fn>` when several do (contracts §3.1, "Multi-entry-point naming, refined").
+ * `skippedEntryPoints` lists the keys of `skipped` this contract matched.
  */
 export async function initFactsFor(
   artifact: Artifact,
   unit: Unit,
   load: UnitLoader,
-): Promise<Result<{ facts: InitFacts[]; notes: string[] }, string>> {
+  skipped: Record<string, string> = SKIPPED_ENTRY_POINTS,
+): Promise<Result<{ facts: InitFacts[]; notes: string[]; externalCalls: string[]; skippedEntryPoints: string[] }, string>> {
   const contract = children(unit.ast, "nodes").find((n) => n.nodeType === "ContractDefinition" && n.name === artifact.contract);
   if (!contract) return err(`${unit.path}: no contract ${artifact.contract} in its AST.`);
-  const entries = children(contract, "nodes").filter(
-    (n) =>
-      n.nodeType === "FunctionDefinition" &&
-      n.kind === "function" &&
-      (n.visibility === "external" || n.visibility === "public") &&
-      n.stateMutability !== "view" &&
-      n.stateMutability !== "pure",
-  );
-  if (entries.length === 0) return err(`${unit.path}: ${artifact.contract} has no state-changing entry point.`);
-
   const bySelector = new Map<string, string>();
   for (const [sig, sel] of Object.entries(artifact.methodIdentifiers)) bySelector.set(sel, sig);
-  const ctor = artifact.abi.find((i) => i.type === "constructor");
-  const ctorArgs = ctor && ctor.type === "constructor" ? (ctor.inputs as readonly AbiInput[]) : [];
-  const names = new Map<string, number>();
-  for (const e of entries) names.set(e.name ?? "", (names.get(e.name ?? "") ?? 0) + 1);
 
-  const facts: InitFacts[] = [];
-  const notes: string[] = [];
-  for (const entry of entries) {
+  const all: { entry: AstNode; selector: Hex4; fn: string }[] = [];
+  for (const entry of children(contract, "nodes")) {
+    if (
+      entry.nodeType !== "FunctionDefinition" ||
+      entry.kind !== "function" ||
+      (entry.visibility !== "external" && entry.visibility !== "public") ||
+      entry.stateMutability === "view" ||
+      entry.stateMutability === "pure"
+    ) {
+      continue;
+    }
     const selector = `0x${str(entry, "functionSelector") ?? ""}` as Hex4;
     const fn = bySelector.get(selector);
     if (fn === undefined) return err(`${unit.path}: ${artifact.contract}.${entry.name} (${selector}) isn't in methodIdentifiers.`);
+    all.push({ entry, selector, fn });
+  }
+  const skippedEntryPoints = all.map((e) => `${artifact.contract}.${e.fn}`).filter((key) => skipped[key] !== undefined);
+  const entries = all.filter((e) => skipped[`${artifact.contract}.${e.fn}`] === undefined);
+  if (entries.length === 0) return err(`${unit.path}: ${artifact.contract} has no usable state-changing entry point.`);
+
+  const ctor = artifact.abi.find((i) => i.type === "constructor");
+  const ctorArgs = ctor && ctor.type === "constructor" ? (ctor.inputs as readonly AbiInput[]) : [];
+  const names = new Map<string, number>();
+  for (const { entry: e } of entries) names.set(e.name ?? "", (names.get(e.name ?? "") ?? 0) + 1);
+
+  const facts: InitFacts[] = [];
+  const notes: string[] = [];
+  const externalCalls: string[] = [];
+  for (const { entry, selector, fn } of entries) {
     const abi = artifact.abi.find(
       (i) => i.type === "function" && `${i.name}(${(i.inputs as readonly AbiInput[]).map(canonicalType).join(",")})` === fn,
     );
@@ -697,13 +835,14 @@ export async function initFactsFor(
       params.push(await initParam(p, doc, unit, load));
     }
 
-    const walk: Walk = { initializes: [], registers: false, load, notes: [] };
+    const walk: Walk = { initializes: [], registers: false, load, notes: [], external: [] };
     const bindings = new Map<number, string>();
     for (const p of paramsOf(entry)) {
       if (typeof p.id === "number") bindings.set(p.id, p.name ?? "");
     }
     await walkBody({ unit, bindings, fn: entry, contract, own: true, depth: 0 }, walk);
     notes.push(...walk.notes);
+    externalCalls.push(...walk.external);
 
     const overloaded = (names.get(entry.name ?? "") ?? 0) > 1;
     const name = entries.length === 1 ? artifact.contract : `${artifact.contract}.${overloaded ? fn : entry.name}`;
@@ -715,7 +854,7 @@ export async function initFactsFor(
     const lines = r ? `#L${lineAt(unit.bytes, r.start)}-L${lineAt(unit.bytes, r.end)}` : "";
     facts.push({ spec, selector, sourcePath: unit.path, source: `${unit.path}${lines}`, artifact });
   }
-  return ok({ facts, notes });
+  return ok({ facts, notes, externalCalls, skippedEntryPoints });
 }
 
 /** The init source files of a checkout: Lattice's `src/**\/*Init*.sol` and diamond-lib's three, sorted. */
@@ -730,13 +869,21 @@ async function declaresInit(file: string): Promise<boolean> {
   return (await f.exists()) && /\bcontract\s+\w*Init\d*\b/.test(await f.text());
 }
 
-/** Every init in a built checkout, sorted by name. `notes` lists calls the walk couldn't follow. */
-export async function readInits(latticeDir: string): Promise<Result<{ inits: InitFacts[]; notes: string[] }, string>> {
+/**
+ * Every init in a built checkout, sorted by name. `notes` lists calls the walk couldn't follow and skip entries
+ * that matched nothing; empty means every internal call was followed. `externalCalls` lists the calls into other
+ * code (`file#Lline: expression`), which aren't init code and aren't followed. Both are unique and sorted.
+ */
+export async function readInits(
+  latticeDir: string,
+): Promise<Result<{ inits: InitFacts[]; notes: string[]; externalCalls: string[] }, string>> {
   const outDir = join(latticeDir, "out");
   const load = buildLoader(latticeDir);
   const inits: InitFacts[] = [];
   const notes: string[] = [];
+  const externalCalls: string[] = [];
   const missing: string[] = [];
+  const skippedSeen = new Set<string>();
   for (const path of await initSourcePaths(latticeDir)) {
     const artifacts = await artifactsOf(outDir, path);
     if (artifacts.length === 0) {
@@ -756,7 +903,12 @@ export async function readInits(latticeDir: string): Promise<Result<{ inits: Ini
       if (!r.ok) return r;
       inits.push(...r.value.facts);
       notes.push(...r.value.notes);
+      externalCalls.push(...r.value.externalCalls);
+      for (const key of r.value.skippedEntryPoints) skippedSeen.add(key);
     }
+  }
+  for (const key of Object.keys(SKIPPED_ENTRY_POINTS)) {
+    if (!skippedSeen.has(key)) notes.push(`SKIPPED_ENTRY_POINTS lists ${key}, which no init has at the pin.`);
   }
   if (missing.length > 0) {
     return err(
@@ -764,7 +916,8 @@ export async function readInits(latticeDir: string): Promise<Result<{ inits: Ini
     );
   }
   inits.sort((a, b) => (a.spec.name < b.spec.name ? -1 : a.spec.name > b.spec.name ? 1 : 0));
-  return ok({ inits, notes });
+  const unique = (xs: string[]): string[] => [...new Set(xs)].sort();
+  return ok({ inits, notes: unique(notes), externalCalls: unique(externalCalls) });
 }
 
 /** One artifact per stateless init contract (no constructor arguments), for CG2's release data. */
@@ -808,11 +961,17 @@ export type InitMerge = {
   conflicts: string[];
   /** Parameters (dot paths) with no doc from NatSpec or the overlay. */
   undocumented: string[];
+  /**
+   * Where an overlay doc replaces a different, non-empty doc from the source. The overlay wins, but the lint shows
+   * each one, so a doc that drifts after a Lattice bump gets looked at.
+   */
+  docOverrides: { path: string; source: string; overlay: string }[];
 };
 
 function mergeParam(p: InitParam, o: InitParamOverlay | undefined, path: string, out: InitMerge): InitParam {
   const merged: InitParam = { name: p.name, type: p.type, doc: o?.doc ?? p.doc };
   if (merged.doc === "") out.undocumented.push(path);
+  if (o?.doc !== undefined && p.doc !== "" && o.doc !== p.doc) out.docOverrides.push({ path, source: p.doc, overlay: o.doc });
   if (o?.unit !== undefined) merged.unit = o.unit;
   if (o?.rule !== undefined) merged.rule = o.rule;
   if (o?.example !== undefined) merged.example = o.example;
@@ -836,7 +995,7 @@ function mergeParam(p: InitParam, o: InitParamOverlay | undefined, path: string,
  * `sameCall` and `sequence`. `initializes` and `registersInterfaces` stay as the source states them.
  */
 export function mergeInitOverlay(skeletons: InitSkeleton[], overlay: Record<string, InitOverlay>): InitMerge {
-  const out: InitMerge = { inits: [], withoutOverlay: [], unknownOverlay: [], conflicts: [], undocumented: [] };
+  const out: InitMerge = { inits: [], withoutOverlay: [], unknownOverlay: [], conflicts: [], undocumented: [], docOverrides: [] };
   const names = new Set(skeletons.map((s) => s.name));
   out.unknownOverlay = Object.keys(overlay).filter((n) => !names.has(n)).sort();
   for (const s of skeletons) {
