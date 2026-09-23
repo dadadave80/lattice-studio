@@ -11,6 +11,7 @@ import { describeMismatch, scanLatticeStorage, WAIVED_SLOT } from "../../src/sto
 const LATTICE = join(import.meta.dir, "fixtures", "lattice");
 const DUPLICATE = join(import.meta.dir, "fixtures", "duplicate");
 const UNVERIFIED = join(import.meta.dir, "fixtures", "unverified");
+const UNCLASSIFIED = join(import.meta.dir, "fixtures", "unclassified");
 
 describe("scanLatticeStorage", () => {
   test("builds the registry from every annotated namespace, verified", async () => {
@@ -22,12 +23,14 @@ describe("scanLatticeStorage", () => {
       "fixture.storage.AccessControl",
       "fixture.storage.ERC20",
       "fixture.storage.ModuleManager",
+      "fixture.storage.Widget",
     ]);
     expect(result.value.registry.get("fixture.storage.ERC20")).toEqual({
       file: "src/tokens/ERC20/libraries/ERC20Lib.sol",
       line: 5,
       slot: "0x244d9891fa3a334747a8fd738d3bd398221bda9761683399c33fc8167f013e00",
     });
+    expect(result.value.unclassified).toEqual([]);
   });
 
   test("has no unwaived mismatches", async () => {
@@ -115,5 +118,21 @@ describe("scanLatticeStorage: an annotation with no matching slot constant", () 
     if (!result.ok) throw new Error(result.error);
     expect(result.value.registry.size).toBe(0);
     expect(result.value.unverified).toEqual([{ id: "fixture.storage.NoSlot", file: "src/NoSlotLib.sol", line: 5 }]);
+  });
+});
+
+describe("scanLatticeStorage: an ERC165_MAP_* constant resolveFormula still can't classify", () => {
+  test("is surfaced as unclassified, not silently skipped", async () => {
+    const result = await scanLatticeStorage(UNCLASSIFIED);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.value.unclassified).toHaveLength(1);
+    expect(result.value.unclassified[0]).toMatchObject({
+      file: "src/WhateverLib.sol",
+      line: 5,
+      name: "ERC165_MAP_IWHATEVER_SLOT",
+      formula: undefined,
+    });
+    // it's still nobody's own namespace, so it never enters the registry or a facet's storage
+    expect(result.value.registry.size).toBe(0);
   });
 });

@@ -18,6 +18,7 @@ const FACETS = [
   { name: "ERC20Votes", sourcePath: "src/tokens/ERC20/ERC20Votes.sol" },
   { name: "ModuleManager", sourcePath: "src/modules/ModuleManager.sol" },
   { name: "ModuleView", sourcePath: "src/modules/ModuleView.sol" },
+  { name: "Widget", sourcePath: "src/widgets/Widget.sol" },
 ];
 
 async function compute() {
@@ -62,6 +63,17 @@ describe("allFacetStorage", () => {
     });
     expect(facets.get("ModuleView")).toEqual({
       touches: ["fixture.storage.AccessControl", "fixture.storage.ModuleManager"],
+    });
+  });
+
+  test("a library name mentioned only in a doc comment is never a call (isCalled ignores // and /* */ comments)", async () => {
+    // WidgetLib.sol imports AccessControlLib (so it's a real candidate ref) but only ever writes its name inside
+    // NatSpec ("Emits ... from AccessControlLib._grantRole ..."), mirroring EmergencyStopLib.sol:104. Before
+    // stripping comments, the substring "AccessControlLib." there would look exactly like a call.
+    const { facets } = await compute();
+    expect(facets.get("Widget")).toEqual({
+      storage: { id: "fixture.storage.Widget", slot: "0xa9e789f03ff5d9c6dc8db8a7738dbd7f4e4c404f8712a279f0cd6e8e7563f400" },
+      touches: [],
     });
   });
 

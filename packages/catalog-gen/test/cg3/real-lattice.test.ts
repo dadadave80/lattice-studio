@@ -68,6 +68,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     expect(scan.value.mismatches).toEqual([]);
     expect(scan.value.duplicateIds).toEqual([]);
     expect(scan.value.unverified).toEqual([]);
+    expect(scan.value.unclassified).toEqual([]);
     expect(scan.value.waived).toHaveLength(1);
     expect(scan.value.waived[0]).toMatchObject({ file: WAIVED_SLOT.file, line: WAIVED_SLOT.line });
   });
