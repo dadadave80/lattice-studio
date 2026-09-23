@@ -7,13 +7,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { concat, encodeFunctionData, getAddress, keccak256, type Hex } from "viem";
 import {
-  ARACHNID_PROXY, ARACHNID_PROXY_CODEHASH, MULTICALL3, MULTICALL3_ABI, arachnidAddress, decodeRevert, sharedSalt, type Catalog,
+  ARACHNID_PROXY, ARACHNID_PROXY_CODEHASH, MULTICALL3, MULTICALL3_ABI, arachnidAddress, decodeRevert, sharedSalt,
 } from "@lattice-studio/core";
-import { builtCatalog, creationCode, neededFor, revertDetails, sharedContracts } from "./harness/catalog";
+import { builtCatalog, creationCode, revertDetails, sharedContracts } from "./harness/catalog";
 import { diagnoseArachnid } from "./harness/diagnose";
 import { ANVIL_SKIP_REASON, PORT, anvilPort, announceSkip } from "./harness/env";
 import { ALICE, BOB, send, startNode, type Node } from "./harness/node";
-import { PATHS, entropyFor, fixture, v1Recipes } from "./harness/recipes";
+import { neededByV1 } from "./harness/prepare";
 import { GAS_CAP, chainState, deployMissing } from "./harness/shared";
 import { etchVendored } from "./harness/vendor";
 
@@ -21,18 +21,6 @@ announceSkip("shared contracts", ANVIL_SKIP_REASON);
 
 /** A constructor that reverts with no data: PUSH1 0, PUSH1 0, REVERT. */
 const REVERTING_CREATION: Hex = "0x60006000fd";
-
-/** Every shared contract the v1 recipes need on either path. */
-function neededByV1(catalog: Catalog): string[] {
-  const names = new Set<string>();
-  for (const name of v1Recipes(catalog)) {
-    for (const path of PATHS) {
-      const f = fixture(catalog, name, path, entropyFor(name));
-      for (const n of neededFor(catalog, f.recipe, f.analysis.plan, path)) names.add(n);
-    }
-  }
-  return [...names];
-}
 
 describe.skipIf(ANVIL_SKIP_REASON !== undefined)("shared contracts through Arachnid's proxy", () => {
   const { catalog } = builtCatalog();

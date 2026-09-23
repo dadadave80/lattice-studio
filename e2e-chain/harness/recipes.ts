@@ -39,7 +39,7 @@ export function v1Recipes(catalog: Catalog): string[] {
     .map((item) => item.name);
 }
 
-/** Fills what each v1 template leaves empty (INIT-01); throws for a v1 recipe this harness doesn't know. */
+/** Fills what each v1 template leaves empty (INIT-01); a new v1 recipe that needs more fails `fixture`'s blocker check. */
 function fill(name: string, recipe: Recipe, overrides: Record<string, Arg>): void {
   const init = recipe.init;
   if (init.kind === "bundle") {
@@ -60,15 +60,25 @@ function fill(name: string, recipe: Recipe, overrides: Record<string, Arg>): voi
 
 export type Fixture = { name: string; catalog: Catalog; recipe: Recipe; analysis: Analysis; project: Project };
 
-/** Template `name`, filled in, analyzed with no chain. Throws if it still has a blocker. */
-export function fixture(catalog: Catalog, name: string, path: DeployPath, entropy: Hex, overrides: Record<string, Arg> = {}): Fixture {
+/**
+ * Template `name`, filled in, analyzed with no chain. Throws if it still has a blocker, unless `allowBlockers`:
+ * the forced-failure tests send arguments the checks would stop (INIT-01) to see what the chain says.
+ */
+export function fixture(
+  catalog: Catalog,
+  name: string,
+  path: DeployPath,
+  entropy: Hex,
+  overrides: Record<string, Arg> = {},
+  options: { allowBlockers?: boolean } = {},
+): Fixture {
   const loaded = loadTemplate(catalog, name);
   if (!loaded.ok) throw new Error(loaded.error);
   const recipe = loaded.value;
   fill(name, recipe, overrides);
   const analysis = analyze(recipe, catalog, { known: [], unconfirmed: [] });
   const blockers = analysis.problems.filter((p) => p.severity === "blocker");
-  if (blockers.length > 0) throw new Error(`${name} still has blockers: ${blockers.map((p) => `${p.code} ${p.message}`).join("; ")}`);
+  if (blockers.length > 0 && options.allowBlockers !== true) throw new Error(`${name} still has blockers: ${blockers.map((p) => `${p.code} ${p.message}`).join("; ")}`);
   const base = makeProject({ name, recipe });
   const project: Project = {
     ...base,
