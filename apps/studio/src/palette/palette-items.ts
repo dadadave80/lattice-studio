@@ -99,10 +99,21 @@ function searchText(...parts: (string | undefined)[]): string {
   return parts.filter((p) => p !== undefined && p !== "").join(" ").toLowerCase();
 }
 
+/**
+ * The console line that does what the row does, where it's one word away: `place erc20`, `recipe erc20`
+ * (IR L165). Other rows show their command's syntax.
+ */
+function filledSyntax(ref: CommandRef): string | undefined {
+  const args = ref.args ?? {};
+  if (ref.id === "facet.place" && typeof args.facet === "string") return `place ${args.facet.toLowerCase()}`;
+  if (ref.id === "recipe.load" && typeof args.name === "string") return `recipe ${args.name.toLowerCase()}`;
+  return undefined;
+}
+
 function item(group: GroupId, ref: CommandRef, shown: NonNullable<ReturnType<Describe>>, extra: {
-  syntax?: string; note?: string; keywords?: string;
+  note?: string; keywords?: string;
 } = {}): PaletteItem {
-  const syntax = extra.syntax ?? shown.syntax;
+  const syntax = filledSyntax(ref) ?? shown.syntax;
   return {
     key: `${group}:${refKey(ref)}`,
     group,
@@ -181,7 +192,6 @@ function facets(catalog: Catalog | null, placed: ReadonlySet<string>, at: SheetP
       const shown = describe(ref);
       if (!shown) return null;
       return item("facets", ref, shown, {
-        syntax: `place ${facet.name.toLowerCase()}`,
         ...(placed.has(facet.name) ? { note: ON_SHEET } : {}),
         keywords: `${facet.name} ${facet.area}`,
       });
@@ -196,11 +206,7 @@ function facets(catalog: Catalog | null, placed: ReadonlySet<string>, at: SheetP
 function recipes(catalog: Catalog | null, sheetHasFacets: boolean, describe: Describe): PaletteItem[] {
   if (!catalog) return [];
   const templates: TemplateItem[] = templateList(catalog);
-  const load = templates.map((t) => {
-    const ref: CommandRef = { id: "recipe.load", args: { name: t.name } };
-    const shown = describe(ref);
-    return shown ? item("recipes", ref, shown, { syntax: `recipe ${t.name.toLowerCase()}` }) : null;
-  });
+  const load = templates.map((t) => fromRef("recipes", { id: "recipe.load", args: { name: t.name } }, describe));
   const replace = sheetHasFacets
     ? templates.filter((t) => t.loadable).map((t) => fromRef("recipes", { id: "recipe.replace", args: { name: t.name } }, describe))
     : [];
