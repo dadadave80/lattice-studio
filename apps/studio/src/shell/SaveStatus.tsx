@@ -1,5 +1,10 @@
 import { useSaveStatus, type SaveStatus as SaveStatusValue } from "@/contracts";
-import { Button, CommandButton, cx, IconButton, Popover, type IconName } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
+import { CommandButton } from "@/ui/buttons/CommandButton";
+import { IconButton } from "@/ui/buttons/IconButton";
+import type { IconName } from "@/ui/icons/icon-paths";
+import { Popover } from "@/ui/overlays/Popover";
+import { cx } from "@/ui/shared/cx";
 
 type SaveStatusState = SaveStatusValue["state"];
 import styles from "./TitleBar.module.css";

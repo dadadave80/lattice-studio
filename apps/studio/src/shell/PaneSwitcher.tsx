@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { commandRef, runCommand, useSession, type NarrowPane } from "@/contracts";
-import { Tabs } from "@/ui";
+import { Tabs } from "@/ui/nav/Tabs";
 import styles from "./TitleBar.module.css";
 
 const PANES = [

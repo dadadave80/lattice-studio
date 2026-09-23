@@ -3,7 +3,9 @@ import { commandRef, useRegion, useSession, type RegionId, type RegionProps } fr
 import { ConsolePanel } from "@/panels/console";
 import { InspectorPanel } from "@/panels/inspector";
 import { Sheet } from "@/sheet/canvas";
-import { CommandButton, cx, Splitter } from "@/ui";
+import { CommandButton } from "@/ui/buttons/CommandButton";
+import { Splitter } from "@/ui/nav/Splitter";
+import { cx } from "@/ui/shared/cx";
 import { useNeedsFillIn } from "./fill-in";
 import { useFocusReturn } from "./focus-return";
 import { isDrawerTier, useLayoutTier, useWindowHeight } from "./layout-tier";

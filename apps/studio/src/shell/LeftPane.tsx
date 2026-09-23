@@ -1,7 +1,9 @@
 import { commandRef, runCommand, useSession, type LeftTab } from "@/contracts";
 import { CatalogPanel } from "@/panels/catalog";
 import { StructurePanel } from "@/panels/structure";
-import { PaneSizeMenu, TabPanel, Tabs } from "@/ui";
+import { PaneSizeMenu } from "@/ui/nav/PaneSizeMenu";
+import { TabPanel } from "@/ui/nav/TabPanel";
+import { Tabs } from "@/ui/nav/Tabs";
 import type { LayoutTier } from "./layout-tier";
 import { PANE_SIZES } from "./panes";
 import { setLeftSize } from "./sizes";
