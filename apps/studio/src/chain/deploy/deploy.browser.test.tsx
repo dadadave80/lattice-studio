@@ -8,7 +8,7 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import {
   commandState, deployController, deployState, getAnalysis, listDeployments, provideAnalysis, provideDeployController, putDeployment,
-  registerDialog, runCommand,
+  dialogComponent, overrideDialog, runCommand,
   session, useDeployState, type DeployController, type DeployPhase, type DeployState,
 } from "@/contracts";
 import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio, seedDeployState, seedStudio } from "../../../test/harness";
@@ -191,11 +191,16 @@ describe("commands", () => {
   test("Show deploy progress reopens the review at its progress, or says the review isn't built", async () => {
     seedStudio();
     seedDeployState({ phase: "pending", chainId: SEPOLIA });
-    await runCommand({ id: "deploy.showProgress" }, "button");
-    expect(bufferedServices().log.at(-1)?.text).toBe("Not built yet · WP-S8b");
-    onCleanup(registerDialog("deploy-review", () => null));
+    // Follows the registry: S8b's review when it has landed, else a stand-in for it.
+    if (dialogComponent("deploy-review") === null) onCleanup(overrideDialog("deploy-review", () => null));
     await runCommand({ id: "deploy.showProgress" }, "button");
     expect(session.get().dialogs.at(-1)).toMatchObject({ id: "deploy-review", props: { at: "progress", chainId: SEPOLIA } });
+    // Without the review registered, it says so instead of opening nothing.
+    onCleanup(overrideDialog("deploy-review", null));
+    const opened = session.get().dialogs.length;
+    await runCommand({ id: "deploy.showProgress" }, "button");
+    expect(bufferedServices().log.at(-1)?.text).toBe("Not built yet · WP-S8b");
+    expect(session.get().dialogs).toHaveLength(opened);
   });
 });
 
