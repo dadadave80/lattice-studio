@@ -21,7 +21,7 @@ export const INIT_AUTH_LINK: readonly ProblemDocEntry[] = [
     meaning:
       "A step init runs before another step it needs to have already run — an order Lattice's own library documents, not one Studio invents.",
     why:
-      "[VaultCore reads ERC4626's share accounting during its own init](lattice:src/defi/libraries/VaultCoreLib.sol#64-65), so ERC4626 has to initialize first or VaultCore reads nothing. Order constraints like this live in the overlay, one per documented dependency, and only apply to step inits — a bundle's order is fixed in Solidity and shown read-only, never something Studio could reorder.",
+      "[VaultCoreLib documents that its init must run after `ERC4626Lib.__ERC4626_init`, and after AccessControl is initialized](lattice:src/defi/libraries/VaultCoreLib.sol#64-65). Order constraints like this live in the overlay, one per documented dependency, and only apply to step inits — a bundle's order is fixed in Solidity and shown read-only, never something Studio could reorder.",
     fixes: ["Reorder the steps automatically.", "Move the step by hand."],
     exampleParams: { path: "steps[2]", spec: "VaultCoreInit", module: "VaultCore", after: "ERC4626" },
     exampleNote: "VaultCoreInit is placed before the ERC4626 step it depends on:",

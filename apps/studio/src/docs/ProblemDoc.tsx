@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react";
 import { useCatalog } from "@/contracts";
 import { PROBLEM_DOC_CONTENT } from "./content";
 import { renderList, renderParagraphs } from "./markdown";
+import { hasUserInteracted } from "./navigation";
 import styles from "./ProblemDoc.module.css";
 
 const SEVERITY_LABEL: Record<Severity, string> = { blocker: "Blocker", warning: "Warning", info: "Info" };
@@ -43,8 +44,9 @@ export function ProblemDoc({ code, onBack }: ProblemDocProps) {
 
   // In-place navigation (opened from HelpIndex, or from another code): focus moves to this page's own
   // heading, never left on the control that opened it or dropped to <body> (spec L751-L761, WCAG 2.4.3).
+  // Only once the user has interacted this session: a view restored on load must not steal focus.
   useEffect(() => {
-    headingRef.current?.focus();
+    if (hasUserInteracted()) headingRef.current?.focus();
   }, [code]);
 
   return (

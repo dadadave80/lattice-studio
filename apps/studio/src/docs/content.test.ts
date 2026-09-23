@@ -113,6 +113,7 @@ describe("problem doc content", () => {
       const start = Number(startStr);
       const end = endStr ? Number(endStr) : start;
       expect(Number.isInteger(start) && start >= 1, `${ref}: "${lines}" isn't a valid line or range`).toBe(true);
+      expect(Number.isInteger(end) && end >= start, `${ref}: "${lines}" has an end before its start`).toBe(true);
       const lineCount = readFileSync(filePath, "utf8").split("\n").length;
       expect(end, `${ref}: line ${end} is past ${path}'s ${lineCount} lines`).toBeLessThanOrEqual(lineCount);
     }

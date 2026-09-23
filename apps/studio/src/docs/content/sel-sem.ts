@@ -9,7 +9,7 @@ export const SEL_SEM: readonly ProblemDocEntry[] = [
     meaning:
       "Two or more placed facets export the same selector, and nothing decides which one wins: no seam, no single default owner, and no owner chosen yet. A diamond can cut a selector to one facet only, so the deploy and the Foundry export both stay blocked until someone chooses.",
     why:
-      "A diamond cut can route a selector to one facet only ([EIP-2535](https://eips.ethereum.org/EIPS/eip-2535)'s cut rules: adding an already-mapped selector reverts). Lattice's [`LatticeFactory`](lattice:src/LatticeFactory.sol) enforces this on-chain, so Studio raises it before a deploy or an export ever reaches a wallet.",
+      "A diamond cut can route a selector to one facet only: [EIP-2535](https://eips.ethereum.org/EIPS/eip-2535)'s cut rules make adding an already-mapped selector revert, and every Lattice diamond runs that check through diamond-lib's cut logic. Studio raises it before a deploy or an export ever reaches a wallet.",
     fixes: [
       "Keep the facet already routed, or route it to another contender.",
       "Three or more contenders: choose an owner from a list.",
@@ -77,7 +77,7 @@ export const SEL_SEM: readonly ProblemDocEntry[] = [
     meaning:
       "A seam selector — one that several facets share state through — is routed to a facet the seam doesn't allow, or every facet that could serve it is missing from the sheet. A seam has one job: keep related selectors on versions that agree about shared state.",
     why:
-      "With ERC20Votes placed, `transfer` and `transferFrom` must run a version that [updates vote checkpoints](lattice:src/tokens/ERC20/ERC20Votes.sol#32-37), or a transfer would move balances without moving the votes that track them; `delegate` and `delegateBySig` must run ERC20Votes' own version for the same reason. GovernedVault carries its own seams: `deposit`, `mint`, `withdraw`, `redeem` and `castVoteBySig` must run GovernedVault's version, `totalAssets` VaultCore's, and `decimals` ERC4626's. Once every facet a seam needs is placed, Studio routes it automatically and blocks any explicit owner outside the allowed set.",
+      "With ERC20Votes placed, `transfer` and `transferFrom` must run a version that [updates vote checkpoints](lattice:src/tokens/ERC20/ERC20Votes.sol#32-40), or a transfer would move balances without moving the votes that track them; `delegate` and `delegateBySig` must run ERC20Votes' own version for the same reason. GovernedVault carries its own seams: `deposit`, `mint`, `withdraw`, `redeem` and `castVoteBySig` must run GovernedVault's version, `totalAssets` VaultCore's, and `decimals` ERC4626's. Once every facet a seam needs is placed, Studio routes it automatically and blocks any explicit owner outside the allowed set.",
     fixes: [
       "Route the selector to an allowed facet.",
       "Remove the facet that's routed there instead.",

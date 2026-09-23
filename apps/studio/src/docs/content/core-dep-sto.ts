@@ -33,7 +33,7 @@ export const CORE_DEP_STO: readonly ProblemDocEntry[] = [
     meaning:
       "Two members of the upgrade-mechanism family are placed together. DiamondCutFacet, AccessControlDiamondCut, GovernedDiamondCut, SafeDiamondCut and GovernedSafeDiamondCut all provide a way to cut the diamond, and a diamond holds one, even when the two share no selector.",
     why:
-      "A second upgrade path can bypass the protection the first one exists for: [`AccessControlDiamondCut`](lattice:src/governance/AccessControlDiamondCut.sol#16-19) would let its admin skip the [delay `GovernedSafeDiamondCut` enforces](lattice:src/governance/GovernedSafeDiamondCut.sol#150-169) (`scheduleCut`, `minDelay`, `executeCut`). This isn't a routing conflict Studio can resolve by choosing an owner; it means removing one of the two facets.",
+      "A second upgrade path can bypass the protection the first one exists for: [`AccessControlDiamondCut`](lattice:src/governance/AccessControlDiamondCut.sol#10-19) lets its `DEFAULT_ADMIN_ROLE` admin cut synchronously, at any time, while [`GovernedSafeDiamondCut`](lattice:src/governance/GovernedSafeDiamondCut.sol#14-21) deliberately withholds that synchronous path so every cut waits out `minDelay` through `scheduleCut` and `executeCut`. Placing both gives the admin a way around the delay. This isn't a routing conflict Studio can resolve by choosing an owner; it means removing one of the two facets.",
     fixes: ["Remove one of the two facets."],
     exampleParams: {
       facets: ["AccessControlDiamondCut", "GovernedSafeDiamondCut"],
@@ -46,9 +46,9 @@ export const CORE_DEP_STO: readonly ProblemDocEntry[] = [
     family: "Diamond core, dependencies and storage",
     title: "No Receive facet",
     meaning:
-      "Nothing on the sheet accepts plain ETH sent to the diamond. A `.transfer` or `.send` call to it will revert, because there's no `receive()` to catch it.",
+      "Nothing on the sheet accepts plain ETH sent to the diamond: a bare `call{value: ...}(\"\")` reverts without Receive placed. `.transfer` and `.send` can't pay a Lattice diamond even with Receive placed — their 2,300-gas stipend is less than the routing costs.",
     why:
-      "A diamond only accepts plain ETH through a facet that routes selector `0x00000000` to a `receive()` function, and only [`Receive`](lattice:src/Receive.sol#12-31) does that in the catalog. This is a warning, not a blocker: many diamonds never need to receive ETH directly.",
+      "A diamond only accepts plain ETH through a facet that routes selector `0x00000000` to a `receive()` function, and only [`Receive`](lattice:src/Receive.sol#12-31) does that in the catalog. Routing there costs more gas than `.transfer` and `.send` forward, so callers always need `call{value: ...}(\"\")`, whether or not Receive is placed. This is a warning, not a blocker: many diamonds never need to receive ETH directly.",
     fixes: ["Place Receive."],
     exampleParams: { facet: "Receive" },
     exampleNote: "The message is the same every time:",

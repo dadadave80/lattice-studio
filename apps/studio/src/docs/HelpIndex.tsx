@@ -3,6 +3,7 @@ import type { ProblemCode } from "@lattice-studio/core";
 import { useEffect, useRef } from "react";
 import { commandRef, runCommand, useCommandState } from "@/contracts";
 import { PROBLEM_DOC_ENTRIES, type DocFamily } from "./content";
+import { hasUserInteracted } from "./navigation";
 import styles from "./HelpIndex.module.css";
 
 const FAMILIES: readonly DocFamily[] = [
@@ -36,10 +37,11 @@ function DocLink({ code, title }: { code: ProblemCode; title: string }) {
 export function HelpIndex() {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  // Coming back here from a code's page (or opening the index for the first time in the inspector) moves
-  // focus to this heading, never dropping it to <body> (spec L751-L761, WCAG 2.4.3).
+  // Coming back here from a code's page (or opening the index) moves focus to this heading, never
+  // dropping it to <body> (spec L751-L761, WCAG 2.4.3) — but only once the user has interacted this
+  // session: an index restored on load must not steal focus.
   useEffect(() => {
-    headingRef.current?.focus();
+    if (hasUserInteracted()) headingRef.current?.focus();
   }, []);
 
   return (
