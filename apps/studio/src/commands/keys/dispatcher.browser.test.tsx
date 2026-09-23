@@ -163,8 +163,8 @@ describe("inert contexts (spec L753)", () => {
   });
 });
 
-describe("interactive controls inside the sheet (FX13 item c)", () => {
-  test("Enter, Space, arrows, Home and End go to a tool-strip button, not the sheet's bindings", async () => {
+describe("interactive controls inside the sheet and card-rows (FX13 item c, CR2)", () => {
+  test("Enter and Space go to a tool-strip button; a button does nothing with arrows, Home or End", async () => {
     overrideCommands([
       fake("layout.tidy", ["t"], SHEET),
       fake("sheet.enterRows", ["Enter"], SHEET),
@@ -178,23 +178,21 @@ describe("interactive controls inside the sheet (FX13 item c)", () => {
         </button>
       </div>,
     );
-    for (const init of [
-      { key: "Enter", code: "Enter" },
-      { key: " ", code: "Space" },
-      { key: "ArrowLeft", code: "ArrowLeft" },
-      { key: "Home", code: "Home" },
-      { key: "End", code: "End" },
-    ]) {
+    for (const init of [{ key: "Enter", code: "Enter" }, { key: " ", code: "Space" }]) {
       const event = key(el("tool"), init);
       expect(event.defaultPrevented, init.key).toBe(false);
     }
     expect(ran).toEqual([]);
-    // A key that isn't exempted still reaches the sheet's own binding.
+    // A button does nothing native with arrows, Home or End: the sheet's own bindings still get them.
+    key(el("tool"), { key: "ArrowLeft", code: "ArrowLeft" });
+    key(el("tool"), { key: "Home", code: "Home" });
+    expect(ran).toEqual(["sheet.nudge", "sheet.focusFirst"]);
+    // A key that isn't exempted at all still reaches the sheet's own binding.
     key(el("tool"), { key: "t", code: "KeyT" });
-    expect(ran).toEqual(["layout.tidy"]);
-    // The same keys still work on the sheet itself.
+    expect(ran).toEqual(["sheet.nudge", "sheet.focusFirst", "layout.tidy"]);
+    // The exempted keys still work on the sheet itself.
     key(el("sheet"), { key: "Enter", code: "Enter" });
-    expect(ran).toEqual(["layout.tidy", "sheet.enterRows"]);
+    expect(ran).toEqual(["sheet.nudge", "sheet.focusFirst", "layout.tidy", "sheet.enterRows"]);
   });
 
   test("a control that declares its own context isn't exempted", async () => {
@@ -208,6 +206,35 @@ describe("interactive controls inside the sheet (FX13 item c)", () => {
     );
     key(el("own"), { key: "Enter", code: "Enter" });
     expect(ran).toEqual(["sheet.enterRows"]);
+  });
+
+  test("a range input inside the sheet keeps arrows, Home and End for itself", async () => {
+    overrideCommands([fake("sheet.nudge", ["ArrowLeft"], SHEET)]);
+    await renderWithStudio(
+      <div data-keyctx="sheet" data-testid="sheet">
+        <input type="range" data-testid="range" />
+      </div>,
+    );
+    const event = key(el("range"), { key: "ArrowLeft", code: "ArrowLeft" });
+    expect(event.defaultPrevented).toBe(false);
+    expect(ran).toEqual([]);
+  });
+
+  test("a card-row button keeps card-rows bindings for arrows, Home, End, Enter and Space (CR2)", async () => {
+    overrideCommands([
+      fake("selector.copy", [" "], ["card-rows"]),
+      fake("sheet.focusDirection", ["ArrowDown"], ["card-rows"]),
+    ]);
+    await renderWithStudio(
+      <div data-keyctx="card-rows" data-testid="rows">
+        <button type="button" data-card-row data-testid="pin">
+          Pin
+        </button>
+      </div>,
+    );
+    key(el("pin"), { key: " ", code: "Space" });
+    key(el("pin"), { key: "ArrowDown", code: "ArrowDown" });
+    expect(ran).toEqual(["selector.copy", "sheet.focusDirection"]);
   });
 });
 
