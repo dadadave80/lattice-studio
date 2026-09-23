@@ -86,6 +86,17 @@ describe("parseRecipe", () => {
     expect(recipeHash(result.value.value)).toBe(recipeHash(stepsRecipe(), catalog));
   });
 
+  test("unknown fields inside init and its steps are listed too", () => {
+    const steps = fromText(stepsRecipe()) as { init: { steps: Record<string, unknown>[] } } & Record<string, unknown>;
+    (steps.init as Record<string, unknown>)["note"] = "x";
+    const first = steps.init.steps[0];
+    if (first) first["why"] = 1;
+    const result = parseRecipe(steps, file);
+    expect(result.ok && result.value.unknownFields).toEqual(["init.steps[0].why", "init.note"]);
+    const none = parseRecipe({ ...(fromText(stepsRecipe()) as Record<string, unknown>), init: { kind: "none", note: "x" } }, file);
+    expect(none.ok && none.value.unknownFields).toEqual(["init.note"]);
+  });
+
   test("a facet the named catalog lacks reads like spec L501", () => {
     const json = fromText(stepsRecipe({ facets: ["DiamondLoupeFacet", "AccessControl", "ERC20", "ERC20X"] }));
     const issues = issuesOf(parseRecipe(json, file));

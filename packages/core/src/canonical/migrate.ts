@@ -12,7 +12,7 @@ export type MigrationStep = (recipe: JsonObject) => JsonObject;
 
 /**
  * Forward steps keyed by the version they migrate from (spec L289, L923). v1 is current, so there are none
- * yet; a breaking change bumps `RECIPE_SCHEMA_VERSION` and registers `MIGRATIONS.set(1, …)` here.
+ * yet; a breaking change bumps `RECIPE_SCHEMA_VERSION` and adds its step here: `new Map([[1, v1ToV2]])`.
  */
 export const MIGRATIONS: ReadonlyMap<number, MigrationStep> = new Map();
 
