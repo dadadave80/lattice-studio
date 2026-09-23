@@ -4,7 +4,8 @@
  */
 import { afterEach, expect, test } from "vitest";
 import { page } from "vitest/browser";
-import { runCommand, type CommandRef } from "@/contracts";
+import type { CommandRef } from "@lattice-studio/core";
+import { runCommand } from "@/contracts";
 import { Shell } from "@/shell";
 import { renderWithStudio } from "../../../test/harness";
 import { drawn, drawnViewport, flowElement, settled, sheetProject, storedViewport, wheel } from "./testing/sheet-harness";
