@@ -7,7 +7,7 @@
     "versionSource": "src/LatticeVersion.sol#L22"
   },
   "real": {
-    "inventory": "script/lib/FacetInventory.sol#L20-L124",
+    "inventory": "script/lib/FacetInventory.sol#L20-L228",
     "selectors": {
       "AcrossBridgeAdapter": "src/crosschain/across/AcrossBridgeAdapter.sol#L51",
       "AxelarGatewayAdapter": "src/crosschain/axelar/AxelarGatewayAdapter.sol#L88",
@@ -142,6 +142,41 @@
         "source": "script/base/accounts/DeployAccount6900.s.sol#L23-L23"
       }
     ],
+    "touchesOnly": [
+      {
+        "facet": "DiamondCutFacet",
+        "namespace": "diamond.lib.storage",
+        "source": "lib/diamond-lib/src/facets/DiamondCutFacet.sol#L28-L28"
+      },
+      {
+        "facet": "DiamondLoupeFacet",
+        "namespace": "diamond.lib.storage",
+        "source": "lib/diamond-lib/src/facets/DiamondLoupeFacet.sol#L18-L18"
+      }
+    ],
+    "summaries": [
+      {
+        "facet": "DiamondCutFacet",
+        "source": "lib/diamond-lib/src/facets/DiamondCutFacet.sol#L24-L28"
+      }
+    ],
+    "after": [
+      {
+        "name": "VaultCoreInit",
+        "after": [
+          "AccessControl",
+          "ERC4626"
+        ],
+        "source": "src/defi/libraries/VaultCoreLib.sol#L64-L65"
+      },
+      {
+        "name": "GovernedDiamondCutInit",
+        "after": [
+          "AccessControl"
+        ],
+        "source": "src/governance/libraries/GovernedDiamondCutLib.sol#L113-L114"
+      }
+    ],
     "requires": [
       {
         "facet": "VaultCore",
@@ -176,84 +211,12 @@
         "source": "src/governance/libraries/GovernedSafeDiamondCutLib.sol#L298-L298"
       },
       {
-        "facet": "GovernedDiamondCut",
-        "anyOf": [
-          "AccessControl",
-          "AccessControlEnumerable",
-          "AccessControlTimed"
-        ],
-        "strength": "convention",
-        "source": "src/governance/libraries/GovernedDiamondCutLib.sol#L119-L119"
-      },
-      {
-        "facet": "SafeDiamondCut",
-        "anyOf": [
-          "AccessControl",
-          "AccessControlEnumerable",
-          "AccessControlTimed"
-        ],
-        "strength": "convention",
-        "source": "src/governance/libraries/SafeDiamondCutLib.sol#L222-L222"
-      },
-      {
-        "facet": "GovernedSafeDiamondCut",
-        "anyOf": [
-          "AccessControl",
-          "AccessControlEnumerable",
-          "AccessControlTimed"
-        ],
-        "strength": "convention",
-        "source": "src/governance/libraries/GovernedSafeDiamondCutLib.sol#L298-L298"
-      },
-      {
         "facet": "AccessControlDiamondCut",
         "anyOf": [
-          "AccessControl",
-          "AccessControlEnumerable",
-          "AccessControlTimed"
+          "EmergencyStop"
         ],
         "strength": "convention",
         "source": "src/governance/AccessControlDiamondCut.sol#L11-L11"
-      },
-      {
-        "facet": "EmergencyStop",
-        "anyOf": [
-          "AccessControl",
-          "AccessControlEnumerable",
-          "AccessControlTimed"
-        ],
-        "strength": "convention",
-        "source": "src/security/libraries/EmergencyStopLib.sol#L87-L87"
-      },
-      {
-        "facet": "TimelockController",
-        "anyOf": [
-          "AccessControl",
-          "AccessControlEnumerable",
-          "AccessControlTimed"
-        ],
-        "strength": "convention",
-        "source": "src/governance/libraries/TimelockControllerLib.sol#L103-L103"
-      },
-      {
-        "facet": "Pausable",
-        "anyOf": [
-          "AccessControl",
-          "AccessControlEnumerable",
-          "AccessControlTimed"
-        ],
-        "strength": "convention",
-        "source": "src/security/libraries/PausableLib.sol#L93-L93"
-      },
-      {
-        "facet": "VaultCore",
-        "anyOf": [
-          "AccessControl",
-          "AccessControlEnumerable",
-          "AccessControlTimed"
-        ],
-        "strength": "convention",
-        "source": "src/defi/libraries/VaultCoreLib.sol#L128-L128"
       }
     ],
     "defaultOwnerOf": [
@@ -523,7 +486,7 @@
       },
       {
         "name": "AccountInit",
-        "source": "src/accounts/erc7579/AccountInit.sol#L53-L64"
+        "source": "src/accounts/erc7579/AccountInit.sol#L35-L37"
       },
       {
         "name": "AccountInit6900",
@@ -557,14 +520,18 @@
   "invented": [
     "lattice.tag (`fixture`, `fixture-next`)",
     "every creation code: the UTF-8 bytes of `fixture:<Name>` (`fixture-next:<Name>` for the rebuilt facet); initCodeHash and addresses follow from it by the real formulas",
-    "every runtime codehash: keccak256(`fixture:<Name>:runtime`), including Arachnid's proxy",
+    "every runtime codehash but Arachnid's proxy (whose real one C5b pins): keccak256(`fixture:<Name>:runtime`)",
     "json/Lattice.standard.json",
     "ABI state mutability (all `nonpayable`) and outputs (all empty); ABIs carry functions only, no errors or events",
     "examples marked `studio` (ERC20Init name_ and symbol_, SafeDiamondCutInit minThreshold)",
     "template recipes' catalog.hash (zero: an index can't hold its own hash)",
-    "fixture-next's changes: EmergencyStop gains guardianCount(), Governor loses version(), ERC20 gets new code"
+    "the DiamondCutFacet summary (its source NatSpec is OwnableFacet's)",
+    "fixture-next's changes: EmergencyStop gains guardianCount() and Governor loses version(), both with new code; ERC20 gets new code with the same selectors"
   ],
   "prototypeDifferences": [
-    "Prototype lists TimelockControllerStandalone, which isn't in FacetInventory at the pin: dropped."
+    "Prototype lists TimelockControllerStandalone, which isn't in FacetInventory at the pin: dropped.",
+    "DiamondCutFacet: the prototype gives it diamond.lib.storage as its own storage; it only calls into that library's storage, so the fixture lists it in touches.",
+    "DiamondCutFacet: the prototype's summary is stale NatSpec; the fixture writes its own.",
+    "DiamondLoupeFacet: the prototype gives it diamond.lib.storage as its own storage; it only calls into that library's storage, so the fixture lists it in touches."
   ]
 }

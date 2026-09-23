@@ -9,12 +9,15 @@ import { keccak256, toFunctionSelector } from "viem";
 import type { Catalog, Facet, InitParam, SharedContract, ShardRef } from "../packages/core/src/model/catalog.ts";
 import type { Hex, Hex4 } from "../packages/core/src/model/hex.ts";
 import type { Recipe } from "../packages/core/src/model/recipe.ts";
+import { ARACHNID_PROXY_CODEHASH } from "../packages/core/src/address/shared.ts";
+import { catalogHash } from "../packages/core/src/canonical/hash.ts";
 import { validateCatalogManifest } from "../packages/core/src/model/schema.ts";
 import { loadFixtureCatalog, loadFixtureShard } from "../packages/core/src/testing/fixtures.ts";
 import { ARACHNID, create2Address, erc7201Slot, fileHash, indexHash, releaseSalt, versionlessSalt } from "./gen/formulas.ts";
 import { latticeDir, readExportSelectors, readInventory, readScriptCuts } from "./gen/lattice-source.ts";
 
 const ROOT = join(import.meta.dir, "catalog");
+const GOLDEN = join(import.meta.dir, "..", "golden", "expected");
 const IDS = ["fixture", "fixture-next"] as const;
 const EXPORT_SELECTORS = "0x0ef22643";
 
@@ -41,7 +44,7 @@ function template(catalog: Catalog, name: string): Recipe {
   return t.recipe;
 }
 
-// ── routing, as the spec defines it (R1, R19, spec L167-L174), for counting ────────────────────────
+// ── routing, as the spec defines it (R1, R19, spec L167-L174, L302), for counting ──────────────────
 
 type Routing = {
   /** Selectors the placed facets export, counted per facet. */
@@ -67,9 +70,10 @@ function route(catalog: Catalog, recipe: Pick<Recipe, "facets" | "owners" | "exc
       routed.set(hex, from[0]);
       continue;
     }
+    // Seams first, then explicit owners, then default owners (spec L302).
     const seam = catalog.seams.find((s) => s.selector === hex && s.when.every((w) => names.has(w)));
     const defaults = from.filter((name) => facetOf(catalog, name).defaultOwnerOf?.includes(hex));
-    const owner = recipe.owners[hex] ?? seam?.anyOf.find((a) => names.has(a)) ?? (defaults.length === 1 ? defaults[0] : undefined);
+    const owner = seam?.anyOf.find((a) => names.has(a)) ?? recipe.owners[hex] ?? (defaults.length === 1 ? defaults[0] : undefined);
     if (owner) routed.set(hex, owner);
     else unresolved.push(hex);
   }
@@ -130,6 +134,7 @@ describe("files and hashes", () => {
     test(`${id}: hash is keccak256 of the canonical index without its hash`, () => {
       const raw = JSON.parse(readFileSync(join(ROOT, id, "index.json"), "utf8")) as Record<string, unknown>;
       expect(indexHash(raw)).toBe(catalogs[id].hash);
+      expect(catalogHash(catalogs[id])).toBe(catalogs[id].hash);
     });
 
     test(`${id}: no file anywhere mentions exportSelectors() 0x0ef22643`, () => {
@@ -169,7 +174,7 @@ describe("release data is fake but formula-correct", () => {
   for (const id of IDS) {
     test(`${id}: facet, init, registry and factory releases`, () => {
       const catalog = catalogs[id];
-      expect(catalog.deployer.address).toBe(ARACHNID);
+      expect(catalog.deployer).toEqual({ address: ARACHNID, codehash: ARACHNID_PROXY_CODEHASH });
       for (const f of catalog.facets) expectRelease(id, f.release, releaseSalt(f.name, version));
       for (const init of catalog.inits) {
         if (init.ctorArgs) expect(init.release).toBeUndefined();
@@ -191,6 +196,22 @@ describe("release data is fake but formula-correct", () => {
 
   test("storage slots follow ERC-7201 (R13)", () => {
     for (const f of fixture.facets) if (f.storage) expect(f.storage.slot).toBe(erc7201Slot(f.storage.id));
+  });
+
+  for (const id of IDS) {
+    test(`${id}: no two facets declare the same storage id or slot`, () => {
+      const owned = catalogs[id].facets.flatMap((f) => (f.storage ? [f.storage] : []));
+      expect(new Set(owned.map((s) => s.id)).size).toBe(owned.length);
+      expect(new Set(owned.map((s) => s.slot)).size).toBe(owned.length);
+    });
+  }
+
+  test("DiamondCutFacet and DiamondLoupeFacet only touch diamond.lib.storage, as OwnableFacet does", () => {
+    for (const name of ["DiamondCutFacet", "DiamondLoupeFacet", "OwnableFacet"]) {
+      expect(facetOf(fixture, name).storage).toBeUndefined();
+      expect(facetOf(fixture, name).touches).toContain("diamond.lib.storage");
+    }
+    expect(facetOf(fixture, "DiamondCutFacet").summary).not.toBe(facetOf(fixture, "OwnableFacet").summary);
   });
 });
 
@@ -262,7 +283,7 @@ describe("overlay facts the v1 flows need", () => {
     expect(family("account")).toEqual(["AccountSigner", "ERC6900Validation"]);
   });
 
-  test("VaultCore requires ERC4626 (hard); GovernedDiamondCut ships with EmergencyStop (convention)", () => {
+  test("VaultCore requires ERC4626 (hard); the four cut mechanisms ship with EmergencyStop (convention)", () => {
     expect(facetOf(fixture, "VaultCore").requires).toContainEqual({
       anyOf: ["ERC4626"],
       strength: "hard",
@@ -273,8 +294,19 @@ describe("overlay facts the v1 flows need", () => {
       strength: "convention",
       reason: "a guardian can halt upgrades",
     });
-    for (const name of ["TimelockController", "EmergencyStop", "GovernedDiamondCut", "AccessControlDiamondCut"]) {
-      expect(facetOf(fixture, name).requires.some((r) => r.strength === "convention" && r.anyOf.includes("AccessControl"))).toBe(true);
+    for (const name of ["AccessControlDiamondCut", "SafeDiamondCut", "GovernedSafeDiamondCut"]) {
+      expect(facetOf(fixture, name).requires).toEqual([{ anyOf: ["EmergencyStop"], strength: "convention", reason: "a guardian can halt upgrades" }]);
+    }
+    // Role writers carry no requires on AccessControl: C3 derives namespace DEP-02 from touches (contracts §4).
+    for (const f of fixture.facets) for (const r of f.requires) expect([f.name, r.anyOf.includes("AccessControl")]).toEqual([f.name, false]);
+  });
+
+  test("`after` names modules, and every fixture spec satisfies its own", () => {
+    const vault = fixture.inits.find((i) => i.name === "VaultCoreInit");
+    expect(vault?.after).toEqual(["AccessControl", "ERC4626"]);
+    for (const spec of fixture.inits) {
+      const own = spec.initializes.map((m) => m.module);
+      for (const m of spec.after) expect([spec.name, m, own.includes(m)]).toEqual([spec.name, m, true]);
     }
   });
 
@@ -382,6 +414,25 @@ describe("templates", () => {
     expect([blank.routed.size, blank.unresolved]).toEqual([12, []]);
   });
 
+  test("unmet requirements: only the Blank diamond's EmergencyStop convention (one DEP-02 warning)", () => {
+    const unmet = (facets: string[]): string[] =>
+      facets.flatMap((name) =>
+        facetOf(fixture, name).requires.filter((r) => !r.anyOf.some((a) => facets.includes(a))).map((r) => `${name}:${r.strength}:${r.anyOf.join("|")}`),
+      );
+    expect(unmet(BLANK)).toEqual(["AccessControlDiamondCut:convention:EmergencyStop"]);
+    for (const { name, recipe } of fixture.recipes) expect([name, unmet(recipe.facets)]).toEqual([name, []]);
+  });
+
+  const goldens = existsSync(GOLDEN) ? readdirSync(GOLDEN).filter((f) => f.endsWith(".routing.json")) : [];
+  test.skipIf(goldens.length === 0)("each template's routing equals golden/expected (GT1's Foundry run)", () => {
+    for (const file of goldens) {
+      const golden = JSON.parse(readFileSync(join(GOLDEN, file), "utf8")) as { recipe: string; routing: Record<string, string> };
+      const routed = Object.fromEntries(route(fixture, template(fixture, golden.recipe)).routed);
+      expect([golden.recipe, routed]).toEqual([golden.recipe, golden.routing]);
+    }
+    expect(goldens.length).toBeGreaterThanOrEqual(3);
+  });
+
   test("seams and default owners alone reproduce GovernedVault's owners", () => {
     const recipe = template(fixture, "GovernedVault");
     expect(route(fixture, { ...recipe, owners: {} }).routed).toEqual(route(fixture, recipe).routed);
@@ -396,7 +447,7 @@ describe("templates", () => {
 });
 
 describe("fixture-next, for the migrate flow", () => {
-  test("EmergencyStop gains guardianCount(), Governor loses version(), ERC20's code changes; nothing else", () => {
+  test("EmergencyStop gains guardianCount() and Governor loses version(), both with new code; ERC20 gets new code; nothing else", () => {
     const changed: string[] = [];
     for (const [i, f] of fixture.facets.entries()) {
       const g = next.facets[i] as Facet;
@@ -411,7 +462,11 @@ describe("fixture-next, for the migrate flow", () => {
     expect(hexes(next, "Governor")).toEqual(hexes(fixture, "Governor").filter((h) => h !== toFunctionSelector("function version()")));
     expect(facetOf(next, "ERC20").selectors).toEqual(facetOf(fixture, "ERC20").selectors);
     expect(facetOf(next, "ERC20").release.codehash).not.toBe(facetOf(fixture, "ERC20").release.codehash);
-    for (const name of ["Governor", "EmergencyStop"]) expect(facetOf(next, name).release).toEqual(facetOf(fixture, name).release);
+    for (const name of ["ERC20", "Governor", "EmergencyStop"]) {
+      const [a, b] = [facetOf(fixture, name).release, facetOf(next, name).release];
+      expect([b.salt, b.version]).toEqual([a.salt, a.version]);
+      expect([b.codehash === a.codehash, b.initCodeHash === a.initCodeHash, b.address === a.address]).toEqual([false, false, false]);
+    }
     expect(next.inits).toEqual(fixture.inits);
     expect(next.seams).toEqual(fixture.seams);
     expect(next.hash).not.toBe(fixture.hash);

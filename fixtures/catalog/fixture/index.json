@@ -7,10 +7,10 @@
     "foundry": "1.8.3",
     "solc": "0.8.36"
   },
-  "hash": "0x94515d79c0ac52c598970dcc704591debf5bcf52bbc1381f69b039786796ba33",
+  "hash": "0xca0c8ded4e485ac04a9d10d4e3c31aa8e6896b1835f90fc1fcc5ee4fa83781d9",
   "deployer": {
     "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
-    "codehash": "0xd1379ad9048f83af1f3056f4bcd0f54616f0d430354bc0fc15dda39fc8d728b4"
+    "codehash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989"
   },
   "registry": {
     "salt": "0xc78231000c48b308a55c9ed0de492d4ee766bc920c611d52ef984a4d9baa3a9c",
@@ -3888,15 +3888,6 @@
           ],
           "strength": "hard",
           "reason": "it runs the assets behind ERC4626's shares and initializes after it"
-        },
-        {
-          "anyOf": [
-            "AccessControl",
-            "AccessControlEnumerable",
-            "AccessControlTimed"
-          ],
-          "strength": "convention",
-          "reason": "its roles can be managed after deploy"
         }
       ],
       "defaultOwnerOf": [
@@ -4348,12 +4339,10 @@
       "requires": [
         {
           "anyOf": [
-            "AccessControl",
-            "AccessControlEnumerable",
-            "AccessControlTimed"
+            "EmergencyStop"
           ],
           "strength": "convention",
-          "reason": "its roles can be managed after deploy"
+          "reason": "a guardian can halt upgrades"
         }
       ],
       "family": "upgrade",
@@ -4433,15 +4422,6 @@
           ],
           "strength": "convention",
           "reason": "a guardian can halt upgrades"
-        },
-        {
-          "anyOf": [
-            "AccessControl",
-            "AccessControlEnumerable",
-            "AccessControlTimed"
-          ],
-          "strength": "convention",
-          "reason": "its roles can be managed after deploy"
         }
       ],
       "family": "upgrade",
@@ -4562,15 +4542,6 @@
           ],
           "strength": "convention",
           "reason": "a guardian can halt upgrades"
-        },
-        {
-          "anyOf": [
-            "AccessControl",
-            "AccessControlEnumerable",
-            "AccessControlTimed"
-          ],
-          "strength": "convention",
-          "reason": "its roles can be managed after deploy"
         }
       ],
       "family": "upgrade",
@@ -4837,15 +4808,6 @@
           ],
           "strength": "convention",
           "reason": "a guardian can halt upgrades"
-        },
-        {
-          "anyOf": [
-            "AccessControl",
-            "AccessControlEnumerable",
-            "AccessControlTimed"
-          ],
-          "strength": "convention",
-          "reason": "its roles can be managed after deploy"
         }
       ],
       "family": "upgrade",
@@ -5015,17 +4977,7 @@
           "hash": "0xefee492d86c3b421624d46a0d7ac1651881891fdb8dfb5ee1afb10fc215aeb8e"
         }
       },
-      "requires": [
-        {
-          "anyOf": [
-            "AccessControl",
-            "AccessControlEnumerable",
-            "AccessControlTimed"
-          ],
-          "strength": "convention",
-          "reason": "its roles can be managed after deploy"
-        }
-      ],
+      "requires": [],
       "detail": {
         "path": "shards/TimelockController.json",
         "bytes": 6765,
@@ -5210,17 +5162,7 @@
           "hash": "0x407fe694340ba2f526d9d02458df2a7951b80148b65f85a32eeb36a576d66bab"
         }
       },
-      "requires": [
-        {
-          "anyOf": [
-            "AccessControl",
-            "AccessControlEnumerable",
-            "AccessControlTimed"
-          ],
-          "strength": "convention",
-          "reason": "its roles can be managed after deploy"
-        }
-      ],
+      "requires": [],
       "detail": {
         "path": "shards/EmergencyStop.json",
         "bytes": 1885,
@@ -5318,17 +5260,7 @@
           "hash": "0xaf8a99425e0a679a29a3211ad1b849659d1e2a2f9a3768eb6a5f18660e25ef66"
         }
       },
-      "requires": [
-        {
-          "anyOf": [
-            "AccessControl",
-            "AccessControlEnumerable",
-            "AccessControlTimed"
-          ],
-          "strength": "convention",
-          "reason": "its roles can be managed after deploy"
-        }
-      ],
+      "requires": [],
       "detail": {
         "path": "shards/Pausable.json",
         "bytes": 817,
@@ -6011,18 +5943,16 @@
       "name": "DiamondCutFacet",
       "area": "diamond",
       "source": "lib/diamond-lib/src/facets/DiamondCutFacet.sol",
-      "summary": "Simple single owner and multiroles authorization mixin.",
+      "summary": "Owner-gated EIP-2535 diamondCut: adds, replaces and removes functions, then optionally runs an init through delegatecall.",
       "selectors": [
         {
           "hex": "0x1f931c1c",
           "signature": "diamondCut((address,uint8,bytes4[])[],address,bytes)"
         }
       ],
-      "storage": {
-        "id": "diamond.lib.storage",
-        "slot": "0x6d5a93fec60e12d72b781fe97b2b5406e385b9eaa23d3ec2fbfa067f9d0dc000"
-      },
-      "touches": [],
+      "touches": [
+        "diamond.lib.storage"
+      ],
       "release": {
         "salt": "0xeae0538f633a56e733b15ad474e3244c6504a94335eaaa7ad9f0908fcda3f487",
         "version": "0.2.0",
@@ -6040,8 +5970,8 @@
       "init": "OwnableInit",
       "detail": {
         "path": "shards/DiamondCutFacet.json",
-        "bytes": 978,
-        "hash": "0x6ca1d4cd65d5c35fa46bc0a2aa49afac693331d2b6e46dce5d40b82896f4c0b2"
+        "bytes": 1044,
+        "hash": "0x80d01e083873ef4c82e7abaaf431fbf109181aca6530e91346f41dcf40835313"
       }
     },
     {
@@ -6067,11 +5997,9 @@
           "signature": "facetAddress(bytes4)"
         }
       ],
-      "storage": {
-        "id": "diamond.lib.storage",
-        "slot": "0x6d5a93fec60e12d72b781fe97b2b5406e385b9eaa23d3ec2fbfa067f9d0dc000"
-      },
-      "touches": [],
+      "touches": [
+        "diamond.lib.storage"
+      ],
       "release": {
         "salt": "0xaf2d7db6b6770a518db29275ad27e7f9008f8047c20cc3fc21f926f5baaabb6b",
         "version": "0.2.0",
@@ -6532,7 +6460,15 @@
           "module": "VaultCore"
         }
       ],
-      "after": [],
+      "after": [
+        "AccessControl",
+        "ERC4626"
+      ],
+      "afterSource": {
+        "path": "src/defi/libraries/VaultCoreLib.sol",
+        "needle": "after ERC4626Lib.__ERC4626_init",
+        "lines": 2
+      },
       "sameCall": [],
       "release": {
         "salt": "0x45048efceb8d9b05cec3b0b7db3da77eb2628a2ed99b0a2e69eb2d195a48be77",
@@ -6786,7 +6722,14 @@
           "module": "GovernedDiamondCut"
         }
       ],
-      "after": [],
+      "after": [
+        "AccessControl"
+      ],
+      "afterSource": {
+        "path": "src/governance/libraries/GovernedDiamondCutLib.sol",
+        "needle": "AccessControl must already be initialized",
+        "lines": 2
+      },
       "sameCall": [],
       "registersInterfaces": true,
       "release": {

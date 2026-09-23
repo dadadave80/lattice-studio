@@ -25,6 +25,8 @@ import type {
 } from "../../packages/core/src/model/catalog.ts";
 import type { Hex, Hex4 } from "../../packages/core/src/model/hex.ts";
 import type { Recipe } from "../../packages/core/src/model/recipe.ts";
+import { ARACHNID_PROXY_CODEHASH } from "../../packages/core/src/address/shared.ts";
+import { catalogHash } from "../../packages/core/src/canonical/hash.ts";
 import { validateCatalog, validateCatalogManifest, validateFacetDetail } from "../../packages/core/src/model/schema.ts";
 import {
   ARACHNID,
@@ -59,7 +61,9 @@ import {
   NEXT_CHANGES,
   REQUIRES,
   SEAMS,
+  SUMMARIES,
   TEMPLATES,
+  TOUCHES_ONLY,
 } from "./overlay.ts";
 
 // ── inputs ─────────────────────────────────────────────────────────────────────────────────────────
@@ -203,7 +207,11 @@ function buildFacet(files: Files, entry: { name: string; path: string }): FacetB
 
   if (!AREAS.includes(proto.area as Area)) throw new Error(`${entry.name}: area ${proto.area} isn't an Area`);
   let storage: Facet["storage"];
-  if (proto.ns) {
+  const touchesOnly = TOUCHES_ONLY.find((t) => t.facet === entry.name);
+  const touches = proto.uses.filter((ns) => ns !== proto.ns);
+  if (touchesOnly && !touches.includes(touchesOnly.namespace)) touches.push(touchesOnly.namespace);
+  if (touchesOnly) notes.add(`${entry.name}: the prototype gives it ${proto.ns} as its own storage; it only calls into that library's storage, so the fixture lists it in touches.`);
+  if (proto.ns && !touchesOnly) {
     const slot = erc7201Slot(proto.ns);
     if (slot !== proto.slot.toLowerCase()) notes.add(`${entry.name}: prototype slot ${proto.slot} for ${proto.ns} isn't its ERC-7201 slot ${slot}; the fixture uses ${slot}.`);
     if (!sourceSlots.has(slot)) notes.add(`${entry.name}: ERC-7201 slot ${slot} of ${proto.ns} appears nowhere in the source as a constant.`);
@@ -218,20 +226,22 @@ function buildFacet(files: Files, entry: { name: string; path: string }): FacetB
   const abi: AbiItem[] = selectors.map((s) =>
     s.hex === "0x00000000" ? { type: "receive", stateMutability: "payable" } : abiFunction(entry.name, s.signature, declarations),
   );
+  const summary = SUMMARIES.find((x) => x.facet === entry.name)?.summary ?? proto.summary;
+  if (summary !== proto.summary) notes.add(`${entry.name}: the prototype's summary is stale NatSpec; the fixture writes its own.`);
   const detail: FacetDetail = {
     name: entry.name,
     abi,
-    natspec: { notice: proto.summary, functions: {} },
+    natspec: { notice: summary, functions: {} },
     source: { path: entry.path, url: sourceUrl(entry.path) },
   };
   const facet: Facet = {
     name: entry.name,
     area: proto.area as Area,
     source: entry.path,
-    summary: proto.summary,
+    summary,
     selectors,
     ...(storage ? { storage } : {}),
-    touches: proto.uses.filter((ns) => ns !== proto.ns),
+    touches,
     release: shared(files, entry.name, releaseSalt(entry.name, VERSION as string)),
     requires,
     ...(family ? { family } : {}),
@@ -350,7 +360,7 @@ function buildCatalog(tag: string, next: boolean): Built {
     lattice: { tag, commit: COMMIT },
     toolchain: { foundry: "1.8.3", solc: "0.8.36" },
     hash: ZERO_HASH,
-    deployer: { address: ARACHNID, codehash: fakeCodehash("ArachnidDeploymentProxy") },
+    deployer: { address: ARACHNID, codehash: ARACHNID_PROXY_CODEHASH },
     registry: shared(files, "LatticeRegistry", versionlessSalt("LatticeRegistry")),
     factory: shared(files, "LatticeFactory", versionlessSalt("LatticeFactory")),
     proxy: {
@@ -369,8 +379,23 @@ function buildCatalog(tag: string, next: boolean): Built {
     seams: SEAMS.map(({ source: _source, ...seam }) => seam),
     provisional: `Lattice ${VERSION} at dev ${COMMIT.slice(0, 7)}; v1 targets 0.4.0. Fixture catalog: invented release data.`,
   };
-  index.hash = indexHash(index);
+  assertOwnStorage(facets);
+  index.hash = catalogHash(index);
+  if (index.hash !== indexHash(index as unknown as Record<string, unknown>)) throw new Error(`${tag}: C1's catalogHash and the fixture's indexHash disagree`);
   return { index, files };
+}
+
+/** No two facets may declare the same storage id or slot (contracts §4 rulings). */
+function assertOwnStorage(facets: Facet[]): void {
+  const seen = new Map<string, string>();
+  for (const f of facets) {
+    if (!f.storage) continue;
+    for (const key of [f.storage.id, f.storage.slot]) {
+      const other = seen.get(key);
+      if (other) throw new Error(`${f.name} and ${other} both declare storage ${key}`);
+      seen.set(key, f.name);
+    }
+  }
 }
 
 function applyNext(files: Files, builds: FacetBuild[]): void {
@@ -383,12 +408,14 @@ function applyNext(files: Files, builds: FacetBuild[]): void {
   const sig = NEXT_CHANGES.gains.signature;
   gains.facet.selectors = [...gains.facet.selectors, { hex: toFunctionSelector(`function ${sig}`) as Hex4, signature: sig }];
   gains.detail.abi = [...gains.detail.abi, parseAbiItem(`function ${sig}`) as AbiItem];
+  gains.facet.release = shared(files, gains.facet.name, gains.facet.release.salt, "fixture-next");
 
   const loses = find(NEXT_CHANGES.loses.facet);
   const lost = toFunctionSelector(`function ${NEXT_CHANGES.loses.signature}`);
   if (!loses.facet.selectors.some((s) => s.hex === lost)) throw new Error(`fixture-next: ${loses.facet.name} doesn't export ${lost}`);
   loses.facet.selectors = loses.facet.selectors.filter((s) => s.hex !== lost);
   loses.detail.abi = loses.detail.abi.filter((item) => !(item.type === "function" && item.name === NEXT_CHANGES.loses.signature.split("(")[0]));
+  loses.facet.release = shared(files, loses.facet.name, loses.facet.release.salt, "fixture-next");
 
   const rebuilt = find(NEXT_CHANGES.rebuilt);
   rebuilt.facet.release = shared(files, rebuilt.facet.name, rebuilt.facet.release.salt, "fixture-next");
@@ -401,11 +428,14 @@ function provenance(fixture: Catalog, builds: Map<string, number>): unknown {
     note: "Where each fact in fixtures/catalog comes from. `real` facts cite Lattice at the pin; `invented` values are fake. Written by fixtures/gen/build.ts.",
     lattice: { commit: COMMIT, diamondLib: DIAMOND_LIB_COMMIT, version: VERSION, versionSource: VERSION_CITE },
     real: {
-      inventory: `${INVENTORY_PATH}#L${lineOf(dir as string, INVENTORY_PATH, "string[100] memory n")}-L${lineOf(dir as string, INVENTORY_PATH, "string[100] memory p") - 1}`,
+      inventory: `${INVENTORY_PATH}#L${lineOf(dir as string, INVENTORY_PATH, "string[100] memory n")}-L${inventoryEnd()}`,
       selectors: Object.fromEntries(fixture.facets.map((f) => [f.name, `${f.source}#L${builds.get(f.name)}`])),
       signatures: "The design prototype's signatures, each checked: keccak256(signature)[:4] equals the exported selector.",
       storage: "Namespaces from the prototype; slots computed with the ERC-7201 formula (R13) and found as constants in the source.",
       families: FAMILIES.map((f) => ({ family: f.family, facets: f.facets, source: cite(f.source) })),
+      touchesOnly: TOUCHES_ONLY.map((t) => ({ facet: t.facet, namespace: t.namespace, source: cite(t.source) })),
+      summaries: SUMMARIES.map((x) => ({ facet: x.facet, source: cite(x.source) })),
+      after: INITS.flatMap((i) => (i.afterSource ? [{ name: i.name, after: i.after, source: cite(i.afterSource) }] : [])),
       requires: REQUIRES.map((r) => ({ facet: r.facet, anyOf: r.anyOf, strength: r.strength, source: cite(r.source) })),
       defaultOwnerOf: DEFAULT_OWNERS.map((d) => ({ facet: d.facet, selectors: d.selectors, source: cite(d.source) })),
       seams: SEAMS.map((s) => ({ selector: s.selector, when: s.when, anyOf: s.anyOf, source: cite(s.source) })),
@@ -417,15 +447,23 @@ function provenance(fixture: Catalog, builds: Map<string, number>): unknown {
     invented: [
       "lattice.tag (`fixture`, `fixture-next`)",
       "every creation code: the UTF-8 bytes of `fixture:<Name>` (`fixture-next:<Name>` for the rebuilt facet); initCodeHash and addresses follow from it by the real formulas",
-      "every runtime codehash: keccak256(`fixture:<Name>:runtime`), including Arachnid's proxy",
+      "every runtime codehash but Arachnid's proxy (whose real one C5b pins): keccak256(`fixture:<Name>:runtime`)",
       "json/Lattice.standard.json",
       "ABI state mutability (all `nonpayable`) and outputs (all empty); ABIs carry functions only, no errors or events",
       "examples marked `studio` (ERC20Init name_ and symbol_, SafeDiamondCutInit minThreshold)",
       "template recipes' catalog.hash (zero: an index can't hold its own hash)",
-      "fixture-next's changes: EmergencyStop gains guardianCount(), Governor loses version(), ERC20 gets new code",
+      "the DiamondCutFacet summary (its source NatSpec is OwnableFacet's)",
+      "fixture-next's changes: EmergencyStop gains guardianCount() and Governor loses version(), both with new code; ERC20 gets new code with the same selectors",
     ],
     prototypeDifferences: [...notes],
   };
+}
+
+/** The line that closes the inventory's path array (`];` after `string[100] memory p`). */
+function inventoryEnd(): number {
+  const lines = readSource(dir as string, INVENTORY_PATH).split("\n");
+  const p = lines.findIndex((l) => l.includes("string[100] memory p"));
+  return lines.findIndex((l, i) => i > p && l.trim() === "];") + 1;
 }
 
 // ── write ──────────────────────────────────────────────────────────────────────────────────────────

@@ -60,9 +60,6 @@ export const FAMILIES: { family: NonNullable<Facet["family"]>; facets: string[];
 
 type Requirement = Facet["requires"][number] & { facet: string; source: Cite };
 
-const ACCESS_CONTROL = ["AccessControl", "AccessControlEnumerable", "AccessControlTimed"];
-const ROLES_REASON = "its roles can be managed after deploy";
-
 export const REQUIRES: Requirement[] = [
   {
     facet: "VaultCore",
@@ -92,25 +89,43 @@ export const REQUIRES: Requirement[] = [
     reason: "a guardian can halt upgrades",
     source: { path: "src/governance/libraries/GovernedSafeDiamondCutLib.sol", needle: "AccessControlLib.checkRole(EMERGENCY_GUARDIAN_ROLE)" },
   },
-  // Role writers and role-gated modules: AccessControl (or a variant) manages the roles they write or check.
-  ...(
-    [
-      ["GovernedDiamondCut", "src/governance/libraries/GovernedDiamondCutLib.sol", "AccessControlLib._grantRole(UPGRADE_EXECUTOR_ROLE"],
-      ["SafeDiamondCut", "src/governance/libraries/SafeDiamondCutLib.sol", "AccessControlLib.checkRole(EMERGENCY_GUARDIAN_ROLE)"],
-      ["GovernedSafeDiamondCut", "src/governance/libraries/GovernedSafeDiamondCutLib.sol", "AccessControlLib.checkRole(EMERGENCY_GUARDIAN_ROLE)"],
-      ["AccessControlDiamondCut", "src/governance/AccessControlDiamondCut.sol", "gated behind EmergencyStop + `DEFAULT_ADMIN_ROLE`"],
-      ["EmergencyStop", "src/security/libraries/EmergencyStopLib.sol", "AccessControlLib.hasRole(EMERGENCY_GUARDIAN_ROLE, caller)"],
-      ["TimelockController", "src/governance/libraries/TimelockControllerLib.sol", "AccessControlLib._grantRole(PROPOSER_ROLE"],
-      ["Pausable", "src/security/libraries/PausableLib.sol", "AccessControlLib.checkRole(0x00)"],
-      ["VaultCore", "src/defi/libraries/VaultCoreLib.sol", "AccessControlLib.checkRole(DEFAULT_ADMIN_ROLE)"],
-    ] as const
-  ).map(([facet, path, needle]): Requirement => ({
-    facet,
-    anyOf: ACCESS_CONTROL,
+  {
+    // Source wins (contracts §4 rulings): its NatSpec gates cuts behind EmergencyStop like the other three.
+    facet: "AccessControlDiamondCut",
+    anyOf: ["EmergencyStop"],
     strength: "convention",
-    reason: ROLES_REASON,
-    source: { path, needle },
-  })),
+    reason: "a guardian can halt upgrades",
+    source: { path: "src/governance/AccessControlDiamondCut.sol", needle: "gated behind EmergencyStop + `DEFAULT_ADMIN_ROLE`" },
+  },
+  // No `requires` on AccessControl for role writers: C3 derives namespace DEP-02 from `touches` vs `storage.id`.
+];
+
+// ── storage and summaries the prototype got wrong ──────────────────────────────────────────────────
+
+/**
+ * Facets that only call into DiamondLib's storage: they list `diamond.lib.storage` in `touches`, never as their
+ * own `storage` (contracts §4 rulings), so placing both raises no STO-01.
+ */
+export const TOUCHES_ONLY: { facet: string; namespace: string; source: Cite }[] = [
+  {
+    facet: "DiamondCutFacet",
+    namespace: "diamond.lib.storage",
+    source: { path: "lib/diamond-lib/src/facets/DiamondCutFacet.sol", needle: "DiamondLib.diamondCut(_diamondCut, _init, _calldata)" },
+  },
+  {
+    facet: "DiamondLoupeFacet",
+    namespace: "diamond.lib.storage",
+    source: { path: "lib/diamond-lib/src/facets/DiamondLoupeFacet.sol", needle: "DiamondStorage storage ds = DiamondLib.diamondStorage()" },
+  },
+];
+
+/** Summaries written here because the source NatSpec is stale (DiamondCutFacet's is OwnableFacet's). */
+export const SUMMARIES: { facet: string; summary: string; source: Cite }[] = [
+  {
+    facet: "DiamondCutFacet",
+    summary: "Owner-gated EIP-2535 diamondCut: adds, replaces and removes functions, then optionally runs an init through delegatecall.",
+    source: { path: "lib/diamond-lib/src/facets/DiamondCutFacet.sol", needle: "function diamondCut(", lines: 5 },
+  },
 ];
 
 // ── default owners (spec L168) ─────────────────────────────────────────────────────────────────────
@@ -201,7 +216,8 @@ export const FACET_INITS: { facet: string; init: string; source: Cite }[] = [
 // ── init specs (spec L175-L191, contracts §3.1) ────────────────────────────────────────────────────
 
 /** An InitSpec before the generator adds `release`, with the source of its signature. */
-export type InitSource = Omit<InitSpec, "release"> & { path: string; source: Cite };
+/** `afterSource` cites the library note an `after` constraint comes from (R10). */
+export type InitSource = Omit<InitSpec, "release"> & { path: string; source: Cite; afterSource?: Cite };
 
 const ADMIN_ROLE = "DEFAULT_ADMIN_ROLE";
 
@@ -352,7 +368,9 @@ export const INITS: InitSource[] = [
       { module: "ERC4626", with: { asset: "asset_", decimalsOffset: "decimalsOffset_" } },
       { module: "VaultCore" },
     ],
-    after: [],
+    // Satisfied by VaultCoreInit itself, which runs AccessControl and ERC4626 first (contracts §4 `after`).
+    after: ["AccessControl", "ERC4626"],
+    afterSource: { path: "src/defi/libraries/VaultCoreLib.sol", needle: "after ERC4626Lib.__ERC4626_init", lines: 2 },
     sameCall: [],
     path: "src/defi/VaultCoreInit.sol",
     source: { path: "src/defi/VaultCoreInit.sol", needle: "function init(address asset_", lines: 7 },
@@ -468,7 +486,9 @@ export const INITS: InitSource[] = [
       }),
     ],
     initializes: [{ module: "AccessControl", with: { admin: "admin" } }, { module: "EmergencyStop" }, { module: "GovernedDiamondCut" }],
-    after: [],
+    // Satisfied by GovernedDiamondCutInit itself, which runs AccessControl first.
+    after: ["AccessControl"],
+    afterSource: { path: "src/governance/libraries/GovernedDiamondCutLib.sol", needle: "AccessControl must already be initialized", lines: 2 },
     sameCall: [],
     registersInterfaces: true,
     path: "src/governance/GovernedDiamondCutInit.sol",
@@ -609,7 +629,7 @@ export const INITS: InitSource[] = [
     registersInterfaces: true,
     ctorArgs: [{ name: "entryPoint_", type: "address" }],
     path: "src/accounts/erc7579/AccountInit.sol",
-    source: { path: "src/accounts/erc7579/AccountInit.sol", needle: "function _init(address owner)", lines: 12 },
+    source: { path: "src/accounts/erc7579/AccountInit.sol", needle: "function init(address owner)", lines: 3 },
   },
   {
     name: "AccountInit6900",
@@ -741,10 +761,10 @@ export const BLANK_DIAMOND = {
 
 /** What `fixture-next` changes. Every change is invented; the README lists them. */
 export const NEXT_CHANGES = {
-  /** Gains an invented selector. */
+  /** Gains an invented selector, with new (fake) code. */
   gains: { facet: "EmergencyStop", signature: "guardianCount()" },
-  /** Loses a selector it exports at the pin. */
+  /** Loses a selector it exports at the pin, with new (fake) code. */
   loses: { facet: "Governor", signature: "version()" },
-  /** Gets new (fake) code: codehash, init code hash and address change. */
+  /** Gets new (fake) code with the same selectors: codehash, init code hash and address change. */
   rebuilt: "ERC20",
 } as const;

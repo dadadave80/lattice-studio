@@ -41,7 +41,9 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
 | Each facet's selectors, in order | its `exportSelectors()` body (packed `hex"…"`, or `this.f.selector` for diamond-lib's four) |
 | Signatures | the prototype's, each checked: `keccak256(signature)[:4]` equals the exported selector |
 | ABI mutability, parameter names, elementary outputs | the facet's own `function` declaration |
-| Storage ids | the prototype's namespaces; slots computed with ERC-7201 (R13) and each found as a constant in the source |
+| Storage ids | the prototype's namespaces; slots computed with ERC-7201 (R13) and each found as a constant in the source. DiamondCutFacet and DiamondLoupeFacet only call into `diamond.lib.storage` (`DiamondCutFacet.sol#L28`, `DiamondLoupeFacet.sol#L18`), so it's in their `touches` |
+| Arachnid's proxy runtime codehash | the real one, `ARACHNID_PROXY_CODEHASH` from `packages/core/src/address` |
+| `after` | `VaultCoreLib.sol#L64-L65`, `GovernedDiamondCutLib.sol#L113-L114` |
 | GovernedVault template | `script/base/defi/DeployGovernedVault.s.sol#L76-L92` (cuts) and `#L117-L167` (exclusions) |
 | ERC20 template (immutable default) | `script/base/tokens/DeployERC20.s.sol#L58-L64`, init chain `#L30-L37` |
 | SafeDiamondCut template | `script/base/governance/DeploySafeDiamondCut.s.sol#L35-L43` |
@@ -62,7 +64,9 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
   formulas on top are real: `initCodeHash = keccak256(code)`, facet and init salts
   `keccak256(abi.encodePacked("lattice.", name, ".", version))`, LatticeRegistry and LatticeFactory
   `keccak256("lattice.<Name>")`, addresses CREATE2 through Arachnid's proxy `0x4e59b44847b379578588920cA78FbF26c0B4956C`.
-- Every runtime codehash, Arachnid's proxy's included: `keccak256("fixture:<Name>:runtime")`.
+- Every runtime codehash except Arachnid's proxy's: `keccak256("fixture:<Name>:runtime")`.
+- DiamondCutFacet's summary: its source NatSpec is OwnableFacet's ("Simple single owner and multiroles
+  authorization mixin."), so the fixture writes one from its `diamondCut` function.
 - `json/Lattice.standard.json`: an empty stand-in.
 - Shard ABIs carry functions only (no errors or events); outputs are listed only when every return type is
   elementary. NatSpec: the contract notice (the prototype's summary), no per-function docs.
@@ -71,9 +75,10 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
 - Template recipes' `catalog.hash` is the zero hash: an index can't contain its own hash, so `loadTemplate`
   stamps the live catalog's.
 - `chains` is empty.
-- `fixture-next`: EmergencyStop gains `guardianCount()` (invented) and Governor loses `version()`, both keeping
-  their code values; ERC20 gets new code (codehash, init code hash and address change). Everything else equals
-  `fixture`.
+- `fixture-next`: EmergencyStop gains `guardianCount()` (invented) and Governor loses `version()`; both get new
+  code, as a real release would, and ERC20 gets new code with the same selectors. New code is
+  `fixture-next:<Name>`, so the codehash, init code hash and address change and the salt stays. Everything else
+  equals `fixture`.
 
 ## Modeling choices
 
@@ -82,8 +87,13 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
   release. Both have `registersInterfaces`.
 - **Template inits hold only what the script passes.** The automatic ERC-165 step isn't stored (the planner
   appends it). SafeDiamondCut calls its init directly; the template stores it as one step.
-- **`initializes[].with`**: a value that names a parameter (`name_`, `p.name`) refers to it; anything else is a
-  literal (`"1"`, `"ERC6538Registry"`, `"address(this)"`, `"[address(0)]"`).
+- **`initializes[].with`**: a value that names a parameter (`name_`, `p.name`) or a constructor argument
+  (`entryPoint_` in the account inits' `ctorArgs`) refers to it; anything else is a literal (`"1"`,
+  `"ERC6538Registry"`, `"address(this)"`, `"[address(0)]"`).
+- **`after` names modules** (contracts §4): an init satisfies `after: [M]` when earlier steps initialize M or it
+  initializes M itself. VaultCoreInit has `after: ["AccessControl", "ERC4626"]` and GovernedDiamondCutInit
+  `after: ["AccessControl"]`; both run those modules themselves, so neither fires on its own. `sameCall` is empty
+  everywhere (ERC20VotesInit, which needs it, isn't in the fixture).
 - **OwnableInit and the account inits initialize `Ownable`** through `OwnableLib.initializeOwner`, which isn't a
   `__X_init`; they list it so INIT-04 can see DiamondCutFacet's owner is set.
 - **Facet `init`** is set only where the facet has its own init contract in the fixture. ERC165Facet has none:
@@ -92,9 +102,11 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
 - **Families**: `upgrade` is R4's five; `access` is AccessControl, AccessControlEnumerable and
   AccessControlTimed (the same role selectors over one store); `account` marks one facet per account model,
   AccountSigner and ERC6900Validation (spec L324), so the account templates don't raise DEP-03 against themselves.
-- **Requirements**: VaultCore → ERC4626 (hard); GovernedDiamondCut, SafeDiamondCut and GovernedSafeDiamondCut →
-  EmergencyStop (convention); every module that writes or checks AccessControl roles → one of the AccessControl
-  variants (convention). AccessControlDiamondCut gets no EmergencyStop convention, so the Blank diamond stays clean.
+- **Requirements**: VaultCore → ERC4626 (hard); all four `diamondCut` mechanisms (AccessControlDiamondCut,
+  GovernedDiamondCut, SafeDiamondCut, GovernedSafeDiamondCut) → EmergencyStop (convention, "a guardian can halt
+  upgrades"), so the Blank diamond shows that one DEP-02 warning. Role writers carry no `requires` on
+  AccessControl: C3 derives the namespace DEP-02 from `touches` against `storage.id` (contracts §4).
+- **Storage**: `storage` is a namespace the facet owns; no two facets share a `storage.id` or slot.
 - **Roles on authority parameters**: `DEFAULT_ADMIN_ROLE`, `owner`, `diamondCut` (SafeDiamondCut's Safe),
   `scheduleCut` (GovernedSafeDiamondCut's Safe), `signer` (AccountInit's owner).
 - **GovernedVaultInit's `sequence`** names modules, plus `ERC-165 flags` for `DiamondLib.registerInterface()`.

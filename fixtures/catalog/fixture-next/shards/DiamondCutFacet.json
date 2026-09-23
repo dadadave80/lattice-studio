@@ -34,7 +34,7 @@
     }
   ],
   "natspec": {
-    "notice": "Simple single owner and multiroles authorization mixin.",
+    "notice": "Owner-gated EIP-2535 diamondCut: adds, replaces and removes functions, then optionally runs an init through delegatecall.",
     "functions": {}
   },
   "source": {
