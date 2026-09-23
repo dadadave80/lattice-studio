@@ -66,10 +66,16 @@ function useChainReadiness(chainId: number | null): ChainReadiness | null {
   return entry && entry.chainId === chainId ? entry.readiness : null;
 }
 
-/** The chain picker's list (id and display name), synchronous once the chain module loads: no probe needed. */
-function useKnownChains(): readonly ChainInfo[] {
+/**
+ * The chain picker's list (id and display name), synchronous once the chain module loads: no probe needed.
+ * Touches `chainService()` only once a chain is selected: the catalog is on screen at first paint, and the
+ * chain module (wagmi, viem clients, probes) loads only when a chain is chosen or a deploy starts (spec
+ * D13 L25; S8a's brief). With nothing selected there's nothing to name, so nothing loads.
+ */
+function useKnownChains(chainId: number | null): readonly ChainInfo[] {
   const [chains, setChains] = useState<readonly ChainInfo[]>([]);
   useEffect(() => {
+    if (chainId === null) return undefined;
     let cancelled = false;
     chainService()
       .then((service) => {
@@ -81,7 +87,7 @@ function useKnownChains(): readonly ChainInfo[] {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [chainId]);
   return chains;
 }
 
@@ -96,7 +102,7 @@ export function CatalogPanel() {
   const online = useOnline();
   const chainId = useSession((s) => s.chainId);
   const readiness = useChainReadiness(chainId);
-  const knownChains = useKnownChains();
+  const knownChains = useKnownChains(chainId);
 
   const [query, setQuery] = useState("");
   const [manualExpanded, setManualExpanded] = useState<string[]>([]);

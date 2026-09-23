@@ -2,7 +2,7 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
-  command, doc, session, setCatalogStatus, subscribeCatalogDrag, useCatalogStatus, type CatalogDrag,
+  command, doc, provideServices, session, setCatalogStatus, subscribeCatalogDrag, useCatalogStatus, type CatalogDrag,
 } from "@/contracts";
 import {
   bufferedServices, fakeChainService, fixtureCatalog, healthyChainState, onCleanup, overrideCommands, renderWithStudio,
@@ -248,6 +248,16 @@ describe("Catalog availability filter", () => {
     await renderWithStudio(<CatalogPanel />);
     await expect.element(page.getByRole("checkbox")).toHaveAttribute("aria-disabled", "true");
     await expect.element(page.getByRole("checkbox")).toHaveAccessibleDescription("Choose a chain first.");
+  });
+
+  test("with no chain selected, mounting the panel never touches chainService: the lazy boundary (spec D13) stays closed at first paint", async () => {
+    const spy = vi.fn(async () => fakeChainService());
+    onCleanup(provideServices({ chain: spy }));
+    await renderWithStudio(<CatalogPanel />);
+    await expect.element(page.getByRole("checkbox")).toHaveAttribute("aria-disabled", "true");
+    // Give any stray microtask a turn before asserting the negative.
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
   });
 
   test("a chain is selected but not probed yet: named from the picker's synchronous list, not left generic", async () => {
