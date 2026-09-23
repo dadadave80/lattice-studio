@@ -1,25 +1,37 @@
-// WP-C1 replaces this file with its real tests: until it lands, every function here is a stub.
 import { expect, test } from "bun:test";
 import { API_OWNERS, type ApiName } from "../model/api";
 import { NotImplemented } from "../model/wp";
 import * as mod from "./index";
+import { catalog, stepsRecipe } from "./test-support";
 
-const stubs = Object.entries(mod).filter(([, value]) => typeof value === "function");
+const C1 = (Object.keys(API_OWNERS) as ApiName[]).filter((name) => API_OWNERS[name] === "C1");
 
-test("the module exports its stubs", () => {
-  expect(stubs.length).toBeGreaterThan(0);
+test("the barrel exports every C1 function", () => {
+  const exported = mod as Record<string, unknown>;
+  expect(C1.map((name) => [name, typeof exported[name]])).toEqual(C1.map((name) => [name, "function"]));
 });
 
-test.each(stubs)("%s throws NotImplemented naming WP-C1", (name, fn) => {
-  expect(API_OWNERS[name as ApiName]).toBe("C1");
-  let caught: unknown;
-  try {
-    (fn as (...args: unknown[]) => unknown)();
-  } catch (error) {
-    caught = error;
+test("no C1 function is a stub any more", () => {
+  const recipe = stepsRecipe();
+  const opts = { catalogs: [catalog], source: "file" as const };
+  const calls: (() => unknown)[] = [
+    () => mod.canonicalJson(recipe),
+    () => mod.normalizeRecipe(recipe, catalog),
+    () => mod.recipeHash(recipe, catalog),
+    () => mod.catalogHash(catalog),
+    () => mod.parseRecipe(recipe, opts),
+    () => mod.parseProject({}, opts),
+    () => mod.parseProjectFile({}, opts),
+    () => mod.migrate(recipe),
+  ];
+  expect(calls).toHaveLength(C1.length);
+  for (const call of calls) {
+    let caught: unknown;
+    try {
+      call();
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught instanceof NotImplemented).toBe(false);
   }
-  expect(caught).toBeInstanceOf(NotImplemented);
-  expect((caught as NotImplemented).wp).toBe("C1");
-  expect((caught as NotImplemented).fn).toBe(name);
-  expect((caught as NotImplemented).message).toBe("Not built yet · WP-C1");
 });
