@@ -7,13 +7,13 @@ import { lintCopy } from "../../format";
 import { decodeInit, UNSUPPORTED_IN_V1 } from "../../init/encode";
 import type { Catalog } from "../../model/catalog";
 import type { ChainState } from "../../model/chain";
-import type { Address, Hex } from "../../model/hex";
+import { toChecksum, type Address, type Hex } from "../../model/hex";
 import type { SafeBatchArgs } from "../../model/io";
 import type { Arg, Recipe } from "../../model/recipe";
 import { loadTemplate } from "../../plan";
-import { loadFixtureCatalog } from "../../testing";
+import { loadFixtureCatalog, makeShard } from "../../testing";
 import { batchChecksum, hasValidChecksum, serializeForChecksum, withChecksum, type BatchFile } from "./checksum";
-import { exportSafeBatch, plainText } from "./index";
+import { exportSafeBatch, plainText, SAFE_LABEL_MAX, safeBatchTarget } from "./index";
 
 const SAFE: Address = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"; // Anvil account 2, standing in for a Safe
 const OTHER: Address = "0x90F79bf6EB2c4f870365E785982E1f101E93b906"; // Anvil account 3
@@ -217,11 +217,16 @@ describe("exportSafeBatch", () => {
     const { chain: _probe, ...unprobed } = args();
     const none = exportSafeBatch(unprobed);
     const stale = exportSafeBatch(args({ chain: sepolia({ chainId: 1, name: "Ethereum" }) }));
-    for (const result of [none, stale]) {
+    const blank = exportSafeBatch(args({ chain: sepolia({ name: " ​\n" }) }));
+    for (const result of [none, stale, blank]) {
       if (!result.ok) throw new Error(result.error);
       const file = JSON.parse(result.value.text) as BatchFile;
-      expect(file.meta.name).toContain("chain 11155111");
+      const description = file.meta.description ?? "";
+      expect(file.meta.name).toEndWith(" · chain 11155111");
       expect(file.meta.name).not.toContain("Ethereum");
+      expect(description).toContain(" on chain 11155111, from Safe ");
+      expect(description).not.toMatch(/\(chain 11155111\)/);
+      expect(description).not.toContain("Chain 11155111");
     }
   });
 
@@ -318,12 +323,70 @@ describe("exportSafeBatch", () => {
       { now: -1 },
       { now: Number.NaN },
       { entropy: "0x01" },
+      { safe: "0x0000000000000000000000000000000000000000" },
     ];
     for (const over of cases) {
       const result = exportSafeBatch(args(over));
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.length).toBeGreaterThan(0);
     }
+    const zero = exportSafeBatch(args({ safe: "0x0000000000000000000000000000000000000000" }));
+    expect(zero).toEqual({ ok: false, error: "The Safe address is the zero address, which no Safe can have. Enter the Safe's address." });
+  });
+
+  test("an unconfirmed authority address (LINK-01) or an earlier prediction (AUTH-02) in the context refuses the export", () => {
+    const link = exportSafeBatch(args({ context: { known: [], unconfirmed: ["steps[0].safe"], unconfirmedFrom: { "steps[0].safe": "link" } } }));
+    expect(link).toEqual({ ok: false, error: "Resolve 1 blocker to export: LINK-01." });
+    const stale = exportSafeBatch(args({ context: { known: [OTHER], unconfirmed: [], knownFrom: { [OTHER.toLowerCase()]: { source: "prediction", chainId: SEPOLIA } } } }));
+    expect(stale).toEqual({ ok: false, error: "Resolve 1 blocker to export: AUTH-02." });
+    expect(exportSafeBatch(args({ context: { known: [], unconfirmed: [] } })).ok).toBe(true);
+  });
+
+  test("safeBatchTarget gives the salt and address the batch deploys at, on both paths", () => {
+    const code = "0x6080604052348015600e575f5ffd5b50" as Hex;
+    const cat: Catalog = { ...catalog, proxy: { ...catalog.proxy, initCodeHash: keccak256(code) } };
+    for (const over of [{}, { catalog: cat, path: "createx", scope: "this-chain", proxyCreationCode: code }] as Partial<SafeBatchArgs>[]) {
+      const target = safeBatchTarget(args(over));
+      if (!target.ok) throw new Error(target.error);
+      const { file } = exported(over);
+      expect(target.value.salt.slice(0, 42)).toBe(SAFE.toLowerCase());
+      expect(file.meta.name).toContain(`to ${target.value.address} ·`);
+      expect(only(file).data).toContain(target.value.salt.slice(2));
+    }
+    expect(safeBatchTarget(args({ safe: "0x0000000000000000000000000000000000000000" })).ok).toBe(false);
+    expect(safeBatchTarget(args({ entropy: "0x01" })).ok).toBe(false);
+  });
+
+  test("a chain-specific factory: the call and the address follow it, and every-chain batches warn about other chains", () => {
+    const factory: Address = "0x1111111111111111111111111111111111111111";
+    const proxyInitCodeHash = keccak256("0x60016002");
+    const cat: Catalog = {
+      ...catalog,
+      chains: [...catalog.chains.filter((c) => c.chainId !== SEPOLIA), {
+        chainId: SEPOLIA,
+        factory: { address: factory, codehash: keccak256("0x01"), buildCommit: "abc1234", proxyStandardJson: makeShard(`json/Factory-${SEPOLIA}.standard.json`), proxyInitCodeHash },
+      }],
+    };
+    const target = safeBatchTarget(args({ catalog: cat }));
+    if (!target.ok) throw new Error(target.error);
+    expect(target.value.address).toBe(factoryPredict({ factory, proxyInitCodeHash, from: SAFE, salt: target.value.salt }));
+    const every = exported({ catalog: cat });
+    expect(only(every.file).to).toBe(toChecksum(factory));
+    expect(every.file.meta.name).toContain(target.value.address);
+    expect(every.file.meta.description).toContain(`${toChecksum(factory)} is Sepolia's own LatticeFactory: on another chain that address may have no code, and the call would do nothing.`);
+    expect(exported({ catalog: cat, scope: "this-chain" }).file.meta.description).not.toContain("own LatticeFactory");
+    expect(exported().file.meta.description).not.toContain("own LatticeFactory");
+  });
+
+  test("a huge recipe name is capped in the meta and the file name", () => {
+    const name = `Vault ${"x".repeat(5000)}`;
+    const batch = exported({ recipe: { ...safeDiamondCut(), name } });
+    const label = /^Deploy (.*) to 0x/.exec(batch.file.meta.name)?.[1] ?? "";
+    expect([...label]).toHaveLength(SAFE_LABEL_MAX);
+    expect(label.endsWith("…")).toBe(true);
+    expect(batch.filename.length).toBeLessThanOrEqual(SAFE_LABEL_MAX + ".safe.json".length);
+    expect(batch.filename).toEndWith(".safe.json");
+    expect(plainText("short", "x", SAFE_LABEL_MAX)).toBe("short");
   });
 
   test("refuses a recipe with blockers, naming them", () => {
