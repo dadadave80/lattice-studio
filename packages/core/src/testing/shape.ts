@@ -191,7 +191,9 @@ export function markdownProse(text: string): string {
       i = j + 1;
       continue;
     }
-    prose.push(line.replace(/(`+)[\s\S]*?\1/g, ""));
+    // A backtick run preceded by a backslash is a backslash-escaped literal (escapeMarkdown's doing), not a
+    // code-span delimiter: it must not pair with a later real span and swallow the text between them.
+    prose.push(line.replace(/(?<!\\)(`+)[\s\S]*?\1/g, ""));
     i++;
   }
   return prose.join("\n");
