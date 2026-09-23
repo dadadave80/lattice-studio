@@ -5,11 +5,14 @@ import { validateDeployment, validateProject, validateRecipe } from "../model/sc
 import { analyze } from "../analysis";
 import { deploymentArb, projectArb, recipeArb } from "./arbitraries";
 import { loadBuiltCatalog, loadFixtureCatalog, propertyCatalogs } from "./fixtures";
-import { HOSTILE_NAMES, hostileString, wellFormed } from "./hostile";
+import { HOSTILE_NAMES, hostileKey, hostileString, wellFormed } from "./hostile";
 import { formatJsonPath, jsonKind, jsonWith, mutationArb, pathsRelated, retyped, stringSites, withBrokenString, withExtraKey } from "./mutate";
 import { checkProperty } from "./property";
-import { lexSolidity, markdownOutline, overlappingPairs, solidityShape, solidityStringBytes, tableCells } from "./shape";
-import { exportableTemplates, fillFor, filledTemplate, fitText, loadableTemplates, mapStringArgs, offlineRule, stringArgPaths } from "./templates";
+import { lexSolidity, markdownOutline, markdownProse, overlappingPairs, solidityShape, solidityStringBytes, tableCells } from "./shape";
+import {
+  exportableTemplates, fillFor, filledTemplate, fitText, keyedArg, loadableTemplates, mapStringArgs, offlineRule, scalarArgPaths,
+  stringArgPaths,
+} from "./templates";
 
 describe("rules", () => {
   test("offlineRule reads every term of the grammar, tightening bounds; code() is a chain rule", () => {
@@ -39,6 +42,13 @@ describe("rules", () => {
     expect(fitText("🦊🦊🦊", "maxlen(2)")).toBe("🦊🦊");
     expect(fitText("anything", "enum(x|y)")).toBe("x");
     expect(fitText("kept", undefined)).toBe("kept");
+  });
+
+  test("hostileKey never draws the literal \"$ref\" or \"__proto__\"", () => {
+    for (const key of fc.sample(hostileKey(), { seed: 4, numRuns: 500 })) {
+      expect(key).not.toBe("$ref");
+      expect(key).not.toBe("__proto__");
+    }
   });
 });
 
@@ -85,6 +95,12 @@ describe("shape", () => {
     expect(markdownOutline("```\nopen").balanced).toBe(false);
     expect(markdownOutline("# a b").headings).toEqual([[1, "a b"]]);
     expect(tableCells("| a \\| b | c |")).toBe(2);
+  });
+
+  test("markdownProse drops fenced bodies and inline code, leaving only what a viewer reads as text", () => {
+    const text = "# <Title>\n\nSee `<code>` here.\n\n```html\n<script>\n```\n\nAnd `` ` `` a lone backtick span.";
+    expect(markdownProse(text)).toBe("# <Title>\n\nSee  here.\n\n\nAnd  a lone backtick span.");
+    expect(markdownProse("plain")).toBe("plain");
   });
 
   test("overlappingPairs ignores touching edges", () => {
@@ -190,5 +206,24 @@ describe.skipIf(!fixture.ok)("arbitraries and templates on the fixture catalog",
     const renamed = mapStringArgs(token.value, catalog, (path) => path);
     expect(renamed.init.kind === "steps" && renamed.init.steps[0]?.args).toEqual({ name_: "steps[0].name_", symbol_: "steps[0].symbol_" });
     expect(HOSTILE_NAMES.length).toBeGreaterThan(5);
+  });
+
+  test("scalarArgPaths finds every scalar leaf (not just string), and keyedArg wraps one in a hostile-keyed object", () => {
+    if (catalog === undefined) return;
+    const vault = filledTemplate(catalog, "GovernedVault");
+    if (!vault.ok) throw new Error("GovernedVault missing");
+    const paths = scalarArgPaths(vault.value, catalog);
+    // Every field of GovernedVaultInit's tuple `p` is a scalar leaf; `asset` (address) and `decimalsOffset`
+    // (uint8) prove this reaches beyond the `string`-typed leaves `stringArgPaths` finds.
+    expect(paths).toContain("bundle.p.asset");
+    expect(paths).toContain("bundle.p.decimalsOffset");
+    expect(paths).toEqual(expect.arrayContaining(stringArgPaths(vault.value, catalog)));
+    const keyed = keyedArg(vault.value, catalog, "bundle.p.asset", "__inject__");
+    expect(keyed.init.kind === "bundle" && (keyed.init.args["p"] as { asset?: unknown } | undefined)?.asset).toEqual({
+      __inject__: vault.value.init.kind === "bundle" ? (vault.value.init.args["p"] as { asset?: unknown })?.asset : undefined,
+    });
+    // A path `scalarArgPaths` doesn't have, or a tuple's own path, leaves the recipe unchanged.
+    expect(keyedArg(vault.value, catalog, "no.such.path", "k")).toEqual(vault.value);
+    expect(keyedArg(vault.value, catalog, "bundle.p", "k")).toEqual(vault.value);
   });
 });

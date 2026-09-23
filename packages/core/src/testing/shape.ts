@@ -122,6 +122,12 @@ export function tableCells(line: string): number {
   return Math.max(0, pipes - 1);
 }
 
+/** Whether `candidate` closes a fence opened by `marker` (CommonMark §4.5: same character, at least as long). */
+function fenceCloses(marker: string, candidate: string): boolean {
+  const close = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(candidate);
+  return close !== null && (close[1] ?? "").startsWith(marker[0] ?? "`") && (close[1] ?? "").length >= marker.length && [...(close[1] ?? "")].every((c) => c === marker[0]);
+}
+
 /**
  * The outline of a Markdown document: ATX headings, GFM tables (a header, a `---` rule, body rows) and fenced
  * code blocks (a fence closes only with the same character, at least as long, CommonMark §4.5). Lines split
@@ -138,11 +144,7 @@ export function markdownOutline(text: string): MarkdownOutline {
       const marker = fence[1] ?? "```";
       const body: string[] = [];
       let j = i + 1;
-      const closes = (candidate: string): boolean => {
-        const close = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(candidate);
-        return close !== null && (close[1] ?? "").startsWith(marker[0] ?? "`") && (close[1] ?? "").length >= marker.length && [...(close[1] ?? "")].every((c) => c === marker[0]);
-      };
-      while (j < lines.length && !closes(lines[j] ?? "")) body.push(lines[j++] ?? "");
+      while (j < lines.length && !fenceCloses(marker, lines[j] ?? "")) body.push(lines[j++] ?? "");
       if (j >= lines.length) outline.balanced = false;
       outline.codeBlocks.push({ line: i + 1, info: (fence[2] ?? "").trim(), body: body.join("\n") });
       i = j + 1;
@@ -166,6 +168,33 @@ export function markdownOutline(text: string): MarkdownOutline {
     i++;
   }
   return outline;
+}
+
+/**
+ * `text` with every fenced code block's body dropped and every inline code span removed from what's left, so
+ * what remains is the prose a Markdown viewer reads as text (or as HTML, if it isn't escaped): headings,
+ * table cells, list items. An inline span is a backtick run closed by the next run of the same length; this
+ * project never generates one that crosses a line, so spans are found one line at a time (CommonMark §6.1
+ * without needing its multi-line case).
+ */
+export function markdownProse(text: string): string {
+  const lines = text.split(/\r\n|\r|\n/);
+  const prose: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i] ?? "";
+    const fence = /^ {0,3}(`{3,}|~{3,})(.*)$/s.exec(line);
+    if (fence !== null) {
+      const marker = fence[1] ?? "```";
+      let j = i + 1;
+      while (j < lines.length && !fenceCloses(marker, lines[j] ?? "")) j++;
+      i = j + 1;
+      continue;
+    }
+    prose.push(line.replace(/(`+)[\s\S]*?\1/g, ""));
+    i++;
+  }
+  return prose.join("\n");
 }
 
 /** True when two rectangles share any area (touching edges don't count). */

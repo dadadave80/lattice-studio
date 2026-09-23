@@ -147,26 +147,36 @@ export function exportableTemplates(catalog: Catalog): Recipe[] {
   });
 }
 
-/** The parameter shape a string mapper sees: its ABI type and its rule (for `maxlen` or `enum`). */
+/** The parameter shape a leaf mapper sees: its ABI type and its rule (for `maxlen` or `enum`). */
 export type StringArgParam = Pick<InitParam, "type" | "components" | "rule">;
 
 /** Replaces one `string` argument: its path, its current value and its parameter. */
 export type StringArgMapper = (path: string, value: string, param: StringArgParam) => string;
 
-function mapArg(value: Arg, param: StringArgParam | undefined, path: string, f: StringArgMapper): Arg {
+/**
+ * Replaces one argument site: its path, its current value and its parameter shape. Runs on every scalar leaf
+ * (`string`, `address`, `bool`, an integer or `bytes` type) and, after their elements or components are
+ * mapped, on a tuple or an array itself, so a mapper can also replace a whole object or list. Returning the
+ * value unchanged leaves it; `Arg`'s shape isn't checked against `param.type`, so a mapper may deliberately
+ * replace a scalar's value with an object (model/schema.ts's `ArgSchema` allows any object shape but the
+ * literal `"$ref"` key — a hostile file or share link can do the same).
+ */
+export type ArgMapper = (path: string, value: Arg, param: StringArgParam) => Arg;
+
+function mapArg(value: Arg, param: StringArgParam | undefined, path: string, f: ArgMapper): Arg {
   if (param === undefined) return value;
-  if (param.type === "string" && typeof value === "string") return f(path, value, param);
-  if (param.type === "tuple" && isObject(value)) return mapFields(value, param.components ?? [], path, f);
+  if (param.type === "tuple" && isObject(value)) return f(path, mapFields(value, param.components ?? [], path, f), param);
   if (param.type.endsWith("]") && Array.isArray(value)) {
     const element: StringArgParam = { type: param.type.replace(/\[[0-9]*\]$/, "") };
     if (param.components !== undefined) element.components = param.components;
     if (param.rule !== undefined) element.rule = param.rule;
-    return value.map((item, i) => mapArg(item, element, `${path}[${i}]`, f));
+    const mapped = value.map((item, i) => mapArg(item, element, `${path}[${i}]`, f));
+    return f(path, mapped, param);
   }
-  return value;
+  return f(path, value, param);
 }
 
-function mapFields(args: { [field: string]: Arg }, params: readonly Pick<InitParam, "name" | "type" | "components" | "rule">[], at: string, f: StringArgMapper): { [field: string]: Arg } {
+function mapFields(args: { [field: string]: Arg }, params: readonly Pick<InitParam, "name" | "type" | "components" | "rule">[], at: string, f: ArgMapper): { [field: string]: Arg } {
   const out: { [field: string]: Arg } = {};
   for (const [field, value] of Object.entries(args)) {
     out[field] = mapArg(value, params.find((param) => param.name === field), at === "" ? field : `${at}.${field}`, f);
@@ -175,10 +185,10 @@ function mapFields(args: { [field: string]: Arg }, params: readonly Pick<InitPar
 }
 
 /**
- * `recipe` with every `string`-typed init argument (tuple components and array elements included) replaced by
- * `f(path, value, param)`. Paths read like C4a's: `bundle.p.name`, `steps[0].name_`.
+ * `recipe` with every init argument site (scalar leaves, then tuples and arrays once their contents are
+ * mapped) replaced by `f(path, value, param)`. Paths read like C4a's: `bundle.p.name`, `steps[0].name_`.
  */
-export function mapStringArgs(recipe: Recipe, catalog: Catalog, f: StringArgMapper): Recipe {
+export function mapArgs(recipe: Recipe, catalog: Catalog, f: ArgMapper): Recipe {
   const paramsOf = (spec: string): InitParam[] => catalog.inits.find((init) => init.name === spec)?.params ?? [];
   const { init } = recipe;
   if (init.kind === "bundle") return { ...recipe, init: { ...init, args: mapFields(init.args, paramsOf(init.spec), "bundle", f) } };
@@ -191,6 +201,14 @@ export function mapStringArgs(recipe: Recipe, catalog: Catalog, f: StringArgMapp
   return recipe;
 }
 
+/**
+ * `recipe` with every `string`-typed init argument (tuple components and array elements included) replaced by
+ * `f(path, value, param)`; every other site is left as `mapArgs` found it.
+ */
+export function mapStringArgs(recipe: Recipe, catalog: Catalog, f: StringArgMapper): Recipe {
+  return mapArgs(recipe, catalog, (path, value, param) => (param.type === "string" && typeof value === "string" ? f(path, value, param) : value));
+}
+
 /** The paths of every `string`-typed init argument `recipe` holds. */
 export function stringArgPaths(recipe: Recipe, catalog: Catalog): string[] {
   const paths: string[] = [];
@@ -199,4 +217,28 @@ export function stringArgPaths(recipe: Recipe, catalog: Catalog): string[] {
     return value;
   });
   return paths;
+}
+
+/** The paths of every scalar-typed init argument leaf `recipe` holds: not a tuple and not an array. */
+export function scalarArgPaths(recipe: Recipe, catalog: Catalog): string[] {
+  const paths: string[] = [];
+  mapArgs(recipe, catalog, (path, value, param) => {
+    if (param.type !== "tuple" && !param.type.endsWith("]")) paths.push(path);
+    return value;
+  });
+  return paths;
+}
+
+/**
+ * `recipe` with the scalar leaf at `path` (from `scalarArgPaths`) replaced by `{ [key]: value }`: the field's
+ * original value, now the sole entry of a hostile-keyed object. Exercises the gap `describeArg` documents
+ * (export/docs/brief.ts): a scalar-typed field's declared ABI type isn't checked against its stored value
+ * until it's encoded, so a hostile file or share link can put an object there, and its field key renders as
+ * prose. `{ [key]: value }` (never `out[key] = value`) so a key like `"__proto__"` sets a property instead of
+ * silently vanishing into the object's prototype. `recipe` unchanged if `path` isn't a scalar leaf it has.
+ */
+export function keyedArg(recipe: Recipe, catalog: Catalog, path: string, key: string): Recipe {
+  return mapArgs(recipe, catalog, (at, value, param) =>
+    at === path && param.type !== "tuple" && !param.type.endsWith("]") ? { [key]: value } : value,
+  );
 }
