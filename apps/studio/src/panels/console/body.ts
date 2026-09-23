@@ -4,8 +4,10 @@
  * the registrations, the drawer frame and the summary line.
  */
 export { ConsoleBody } from "./ConsoleBody";
-export { briefFile, copyExport, exportFailed, exportSafe, saveExport } from "./actions";
+export { briefFile, exportFailed, exportSafe, saveExport } from "./actions";
 export { findOnSheet, findSummary, firstAnchor, foundFacets } from "./find";
 export { locatable, selectAndLocate } from "./locate";
 export { problemLines } from "./problem-lines";
 export { help } from "./verbs";
+export { ExportItems } from "./ExportItems";
+export { warmHighlighter } from "./highlight";

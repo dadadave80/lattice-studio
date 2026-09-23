@@ -1,43 +1,37 @@
-import { useCommandState } from "@/contracts";
+import { lazy } from "react";
+import { LazyPart } from "@/shell/LazyPart";
 import { Button } from "@/ui/buttons/Button";
 import { Menu } from "@/ui/overlays/Menu";
-import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
-import { MenuItem } from "@/ui/overlays/MenuItem";
-import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
 import { loadConsoleBody } from "./load-body";
 
-export const IMAGE_LATER = "Arrives in v1.1";
+/** The items, with the exports they run: the console body's chunk. */
+const ExportItems = lazy(() => loadConsoleBody().then((m) => ({ default: m.ExportItems })));
 
-async function copyBrief(): Promise<void> {
-  const { briefFile, copyExport, exportFailed } = await loadConsoleBody();
-  const file = await briefFile();
-  if (file.ok) await copyExport(file.value);
-  else exportFailed(file.error);
+/** Pointer or focus on the trigger fetches the items before the menu opens. */
+function warmItems(): void {
+  // A chunk that fails here fails again when the menu renders its items; the PWA reports it there (spec L831).
+  loadConsoleBody().catch(() => undefined);
 }
 
 /**
- * The Export menu in the console header (spec L509-L518, IR L132): Foundry script, Agent brief, Recipe JSON,
- * Project file (S7b's `project.exportFile`), Safe batch…, and Image, which arrives in v1.1. Each item is its
- * command, disabled with the command's reason. The trigger sits in the drawer's header, so the menu is part of
- * the frame; building and copying a file reach the body's chunk through `loadConsoleBody()`.
+ * The Export menu in the console header (spec L509-L518, IR L132). The trigger and the popup are the drawer's
+ * frame, so the header is the same before and after the body loads; the items (`ExportItems`) arrive with the
+ * body's chunk, already loaded while the drawer is open and fetched when the trigger is pointed at or focused.
  */
 export function ExportMenu() {
-  const brief = useCommandState({ id: "export.brief" }, "menu");
   return (
-    <Menu label="Export" align="end" trigger={<Button size="small" icon="export">Export</Button>}>
-      <MenuCommandItem command={{ id: "export.foundry" }} label="Foundry script" />
-      <MenuCommandItem command={{ id: "export.brief" }} label="Agent brief" />
-      <MenuItem
-        label="Copy agent brief"
-        icon="copy"
-        disabledReason={brief.ok ? null : brief.reason}
-        onSelect={() => void copyBrief()}
-      />
-      <MenuCommandItem command={{ id: "export.recipeJson" }} label="Recipe JSON" />
-      <MenuCommandItem command={{ id: "project.exportFile" }} label="Project file" />
-      <MenuCommandItem command={{ id: "export.safe" }} label="Safe batch…" />
-      <MenuSeparator />
-      <MenuItem label="Image" disabledReason={IMAGE_LATER} onSelect={() => {}} />
+    <Menu
+      label="Export"
+      align="end"
+      trigger={
+        <Button size="small" icon="export" onPointerEnter={warmItems} onFocus={warmItems}>
+          Export
+        </Button>
+      }
+    >
+      <LazyPart>
+        <ExportItems />
+      </LazyPart>
     </Menu>
   );
 }
