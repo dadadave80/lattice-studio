@@ -1,7 +1,7 @@
 /**
  * What the panes do on their own as the window and the session change (spec L367-L370):
  *
- * - 1024-1279 px: the inspector opens on selection.
+ * - 1024-1279 px: the inspector opens on selection, unless the selection was made in the left pane.
  * - Below 1280 px: a view routed to the inspector (a problem, a doc page, the init plan) opens its drawer or,
  *   under 768 px, its switcher tab, so the thing asked for shows.
  * - 768-1023 px: the console collapses to its summary line on arrival, and comes back as it was once the
@@ -55,8 +55,12 @@ export function usePaneFollow(): void {
 
     const stopSession = session.subscribe((next, previous) => {
       if (tier === "wide") return;
+      // A selection made in the left pane (the Structure tree syncs it both ways) leaves that drawer open.
       const selected =
-        tier === "mid" && next.selection.length > 0 && !sameSelection(next.selection, previous.selection);
+        tier === "mid" &&
+        next.selection.length > 0 &&
+        !sameSelection(next.selection, previous.selection) &&
+        !(document.getElementById("shell-left")?.contains(document.activeElement) ?? false);
       if (!selected && !inspectorAsked(next, previous)) return;
       const panes = showPane(next.panes, tier, "inspector");
       if (panes !== next.panes) session.set({ panes });

@@ -1,5 +1,4 @@
 import { lazy, Suspense } from "react";
-import { env } from "@/contracts";
 import { SkipLink } from "@/a11y";
 import { Toasts } from "@/feedback";
 import { CommandPalette } from "@/palette";
@@ -10,8 +9,10 @@ import { useDocumentTitle } from "./document-title";
 import { useRoute, useRouter } from "./router";
 import styles from "./App.module.css";
 
-/** S0's primitives gallery, in its own chunk and only in dev builds (`#/__ui`). */
-const UiGallery = lazy(() => import("@/ui/UiGallery").then((m) => ({ default: m.UiGallery })));
+/** S0's primitives gallery (`#/__ui`): declared only in dev builds, so production emits no gallery chunk. */
+const UiGallery = import.meta.env.DEV
+  ? lazy(() => import("@/ui/UiGallery").then((m) => ({ default: m.UiGallery })))
+  : null;
 
 /**
  * The app: "Skip to sheet" first in Tab order (spec L743), the shell, then what floats over it: the dialog
@@ -23,7 +24,7 @@ export function App() {
   useRouter(route);
   useDocumentTitle();
 
-  if (env.dev && route.kind === "gallery") {
+  if (UiGallery && route.kind === "gallery") {
     return (
       <Suspense fallback={null}>
         <UiGallery />

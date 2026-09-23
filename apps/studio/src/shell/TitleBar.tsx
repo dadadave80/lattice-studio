@@ -18,9 +18,9 @@ import styles from "./TitleBar.module.css";
 /**
  * The title bar (spec L355, IR L60-L74), 40 px tall. At every width: the App menu, the project name, the
  * status chip. 1024 px and wider: Undo, Redo, the save status, Share, Shop/Draft and ⌘K; 768-1279 px adds the
- * pane toggles. Below 1024 px Deploy… moves here, the product name shrinks to its icon, the save status shows
- * only when something needs saying, and an overflow menu (⋯) takes Share, the theme and ⌘K; under 768 px it
- * also takes Undo, Redo, Export and the tool strip. When the middle runs out of room, the name truncates
+ * pane toggles. Below 1024 px Deploy… moves here, the product name and the save status shrink to icons, and
+ * an overflow menu (⋯) takes Share, the theme and ⌘K; under 768 px it also takes Undo, Redo, Export and the
+ * tool strip, and the save status shows only when something needs saying. When the middle runs out of room, the name truncates
  * first, then the chip shrinks, then the save status moves into the overflow menu.
  */
 export function TitleBar() {
@@ -31,7 +31,7 @@ export function TitleBar() {
   const middle = useRef<HTMLDivElement>(null);
   const phone = tier === "phone";
   const short = tier === "narrow" || phone;
-  const showSave = !short || saveState === "not-saved" || saveState === "read-only";
+  const showSave = !phone || saveState === "not-saved" || saveState === "read-only";
   const crowded = useCrowded(middle, `${tier}|${name}|${chip.text}|${saveState}`);
   const saveInMenu = showSave && short && crowded;
   return (

@@ -1,11 +1,37 @@
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { commandRef, doc, runCommand, session } from "@/contracts";
-import { fixtureCatalog, renderWithStudio, seedDeployState } from "../../test/harness";
+import type { Problem } from "@lattice-studio/core";
+import {
+  commandRef, doc, emptyAnalysis, provideAnalysis, provideServices, runCommand, session, type ProjectsService,
+  type SaveStatus,
+} from "@/contracts";
+import { fixtureCatalog, onCleanup, renderWithStudio, seedDeployState } from "../../test/harness";
 import { Shell } from "./Shell";
 
-const WIDTHS = [1440, 1280, 1100, 900, 600, 320] as const;
+const WIDTHS = [1440, 1280, 1100, 1024, 900, 768, 600, 320] as const;
+
+/** An analysis with one INIT-01: a required argument is missing, so Fill in shows. */
+function missingArgument(): void {
+  const problem: Problem = {
+    id: "INIT-01:asset", code: "INIT-01", severity: "blocker", where: [], params: {}, message: "", fixes: [],
+  };
+  const analysis = { ...emptyAnalysis(), problems: [problem] };
+  onCleanup(provideAnalysis({ getAnalysis: () => analysis, subscribe: () => () => undefined }));
+}
+
+/** A projects service whose save status is `status`. */
+function saveStatusOf(status: SaveStatus): void {
+  const projects: ProjectsService = {
+    createProject: () => Promise.reject(new Error("not in this test")),
+    openProject: () => Promise.reject(new Error("not in this test")),
+    saveStatus: () => status,
+    subscribeSaveStatus: () => () => undefined,
+    loadViewport: () => Promise.resolve(null),
+    saveViewport: () => undefined,
+  };
+  onCleanup(provideServices({ projects }));
+}
 
 afterEach(async () => {
   await page.viewport(1440, 900);
@@ -159,6 +185,58 @@ describe("drawers, 768-1279 px", () => {
     await expect.element(toggle).toHaveFocus();
   });
 
+  test("768-1023 px: the save status shows as an icon in every state", async () => {
+    saveStatusOf({ state: "saved", text: "Saved" });
+    await renderAt(900);
+    await expect.element(bar().getByRole("button", { name: "Saved" })).toBeVisible();
+  });
+
+  test("a toggle moves focus into the drawer it opens; Esc brings it back", async () => {
+    await renderAt(1100);
+    const toggle = bar().getByRole("button", { name: "Catalog" });
+    await toggle.click();
+    await expect.element(page.getByRole("tab", { name: "Catalog" })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(toggle).toHaveFocus();
+  });
+
+  test("the inspector opening on selection leaves focus where it was", async () => {
+    await renderAt(1100);
+    const undo = bar().getByRole("button", { name: "Undo" });
+    (undo.element() as HTMLElement).focus();
+    session.set({ selection: ["ERC20"] });
+    await expect.poll(showing).toContain("inspector");
+    await expect.element(undo).toHaveFocus();
+  });
+
+  test("1024-1279 px: a selection made in the left drawer keeps that drawer open", async () => {
+    await renderAt(1100);
+    await bar().getByRole("button", { name: "Structure" }).click();
+    await expect.element(page.getByRole("tab", { name: "Structure" })).toHaveFocus();
+    session.set({ selection: ["ERC20"] });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(showing()).toEqual(["left", "sheet", "console"]);
+  });
+
+  test("closing a drawer from its splitter hands focus to its toggle", async () => {
+    await renderAt(1100);
+    await bar().getByRole("button", { name: "Catalog" }).click();
+    const splitter = page.getByRole("separator", { name: "Resize left pane" });
+    (splitter.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(showing).toEqual(["sheet", "console"]);
+    await expect.element(bar().getByRole("button", { name: "Catalog" })).toHaveFocus();
+  });
+
+  test("hiding a pane from the keyboard never drops focus on the body", async () => {
+    await renderAt(1440);
+    const tab = page.getByRole("tab", { name: "Catalog" });
+    (tab.element() as HTMLElement).focus();
+    await runCommand(commandRef("pane.toggle", { pane: "left" }), "keys");
+    await expect.poll(showing).toEqual(["sheet", "inspector", "console"]);
+    await expect.element(page.getByRole("region", { name: "Sheet", exact: true })).toHaveFocus();
+  });
+
   test("768-1023 px: Share, the theme and the palette move into the overflow menu", async () => {
     await renderAt(900);
     await bar().getByRole("button", { name: "More" }).click();
@@ -218,12 +296,56 @@ describe("under 768 px", () => {
     await userEvent.keyboard("{Escape}");
   });
 
-  test("Fill in sits at the top of the Inspector pane while arguments are missing", async () => {
+  test("Fill in shows only while arguments are missing", async () => {
     await renderAt(600);
     await runCommand(commandRef("pane.show", { pane: "inspector" }), "api");
     await expect.poll(showing).toEqual(["inspector"]);
-    // No INIT-01 on an empty sheet: nothing to fill in.
     await expect.element(page.getByRole("button", { name: /^Fill in/ })).not.toBeInTheDocument();
+  });
+
+  test("Fill in sits at the top of the Inspector pane and in the overflow menu", async () => {
+    missingArgument();
+    await renderAt(600);
+    await runCommand(commandRef("pane.show", { pane: "inspector" }), "api");
+    const inspector = pane("inspector");
+    const fillIn = page.getByRole("region", { name: "Inspector", exact: true }).getByRole("button", { name: /^Fill in/ });
+    await expect.element(fillIn).toBeVisible();
+    expect(inspector.querySelector("button")).toBe(fillIn.element());
+    await bar().getByRole("button", { name: "More" }).click();
+    await expect.element(page.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: "Fill in" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+  });
+
+  test("each switcher tab points at the region it shows", async () => {
+    await renderAt(600);
+    const switcher = bar().getByRole("tablist", { name: "Panes" });
+    for (const [tab, id] of [
+      ["Sheet", "shell-sheet"], ["Structure", "shell-left"], ["Catalog", "shell-left"], ["Inspector", "shell-inspector"],
+      ["Console", "shell-console"],
+    ] as const) {
+      await expect.element(switcher.getByRole("tab", { name: tab })).toHaveAttribute("aria-controls", id);
+    }
+  });
+
+  test("the theme and the Select and Hand tools are radios in the overflow menu", async () => {
+    await renderAt(600);
+    await bar().getByRole("button", { name: "More" }).click();
+    await page.getByRole("menuitem", { name: "Theme" }).click();
+    await expect.element(page.getByRole("menuitemradio", { name: "Shop" })).toHaveAttribute("aria-checked", "true");
+    await expect.element(page.getByRole("menuitemradio", { name: "Draft" })).toHaveAttribute("aria-checked", "false");
+    await userEvent.keyboard("{Escape}{Escape}");
+    await bar().getByRole("button", { name: "More" }).click();
+    await page.getByRole("menuitem", { name: "Tools" }).click();
+    const tools = page.getByRole("menu", { name: "Tools" });
+    await expect.element(tools.getByRole("menuitemradio", { name: "Select" })).toHaveAttribute("aria-checked", "true");
+    const labels = [...(tools.element() as HTMLElement).querySelectorAll("[role^='menuitem'], [role='separator']")].map(
+      (el) => (el.getAttribute("role") === "separator" ? "·" : document.getElementById(el.getAttribute("aria-labelledby") ?? "")?.textContent),
+    );
+    expect(labels).toEqual([
+      "Select", "Hand", "·", "Zoom out", "Zoom in", "Fit", "·", "Init order", "Tidy", "Auto-layout", "·", "Minimap",
+    ]);
+    await expect.element(tools.getByRole("menuitem", { name: "Auto-layout" })).toHaveAccessibleDescription("Arrives in v1.1");
+    await userEvent.keyboard("{Escape}{Escape}");
   });
 
   test("320 px: no horizontal scroll outside the sheet; the name truncates and the chip shrinks", async () => {

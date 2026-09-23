@@ -30,6 +30,31 @@ describe("the project name", () => {
     await expect.element(bar().getByRole("button", { name: "Treasury" })).toHaveFocus();
   });
 
+  test("leaving the field commits, once; Enter and Esc aren't followed by a second commit", async () => {
+    await renderWithStudio(<Shell />, { project: project() });
+    let edits = 0;
+    onCleanup(doc.subscribe((state, previous) => {
+      if (state.lastChange !== previous.lastChange && state.lastChange?.kind === "edit") edits += 1;
+    }));
+
+    await bar().getByRole("button", { name: "GovernedVault" }).click();
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}Treasury");
+    (bar().getByRole("button", { name: "Undo" }).element() as HTMLElement).focus();
+    await expect.poll(() => doc.get().name).toBe("Treasury");
+    expect(edits).toBe(1);
+
+    await bar().getByRole("button", { name: "Treasury" }).click();
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}Vault{Enter}");
+    await expect.poll(() => doc.get().name).toBe("Vault");
+    (bar().getByRole("button", { name: "Undo" }).element() as HTMLElement).focus();
+    await bar().getByRole("button", { name: "Vault" }).click();
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}Other{Escape}");
+    (bar().getByRole("button", { name: "Undo" }).element() as HTMLElement).focus();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(doc.get().name).toBe("Vault");
+    expect(edits).toBe(2);
+  });
+
   test("Esc reverts", async () => {
     await renderWithStudio(<Shell />, { project: project() });
     await bar().getByRole("button", { name: "GovernedVault" }).click();

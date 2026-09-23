@@ -1,6 +1,15 @@
-import { useSaveStatus } from "@/contracts";
-import { Button, CommandButton, cx, IconButton, Popover } from "@/ui";
+import { useSaveStatus, type SaveStatus as SaveStatusValue } from "@/contracts";
+import { Button, CommandButton, cx, IconButton, Popover, type IconName } from "@/ui";
+
+type SaveStatusState = SaveStatusValue["state"];
 import styles from "./TitleBar.module.css";
+
+const ICONS: Readonly<Record<SaveStatusState, IconName>> = {
+  saved: "check",
+  saving: "upload",
+  "not-saved": "warning",
+  "read-only": "lock",
+};
 
 /**
  * The save status (IR L66): "Saved", "Saving…", "Not saved" or "Read-only"; a click shows the details. When
@@ -10,7 +19,7 @@ import styles from "./TitleBar.module.css";
 export function SaveStatus({ compact }: { compact: boolean }) {
   const status = useSaveStatus();
   const trigger = compact ? (
-    <IconButton icon={status.state === "read-only" ? "lock" : "warning"} label={status.text} />
+    <IconButton icon={ICONS[status.state]} label={status.text} />
   ) : (
     <Button variant="quiet" size="small" className={cx(styles.saveText)}>
       {status.text}

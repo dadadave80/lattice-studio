@@ -46,6 +46,17 @@ describe("routes", () => {
     await expect.poll(() => session.get().panes.inspector.view).toEqual({ kind: "doc", code: "NET-06" });
   });
 
+  test("a route change keeps the same sheet", async () => {
+    await renderWithStudio(<App />);
+    const sheet = document.getElementById("shell-sheet")?.firstElementChild;
+    expect(sheet).toBeTruthy();
+    location.hash = "#/docs/problems/SEL-01";
+    await expect.poll(() => session.get().panes.inspector.view).toEqual({ kind: "doc", code: "SEL-01" });
+    location.hash = "#/";
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.getElementById("shell-sheet")?.firstElementChild).toBe(sheet);
+  });
+
   test("#/settings runs Settings, which says it isn't built yet", async () => {
     go("#/settings");
     await renderWithStudio(<App />);

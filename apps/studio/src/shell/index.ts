@@ -5,7 +5,7 @@
 export { Shell, PANE_IDS } from "./Shell";
 export { TitleBar } from "./TitleBar";
 export { LeftPane } from "./LeftPane";
-export { shellToasts } from "./toasts";
+export { setShellToastDrop, shellToasts } from "./toasts";
 export {
   currentTier, isDrawerTier, subscribeWindowSize, TIER_MIN, tierForWidth, useLayoutTier, useWindowHeight, windowSize,
 } from "./layout-tier";

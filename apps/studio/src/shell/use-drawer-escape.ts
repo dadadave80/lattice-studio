@@ -1,36 +1,19 @@
 /**
  * Esc closes an open drawer (IR L14: the top overlay first). The drawer joins S2's escape stack while it's
  * open, and also handles Esc pressed inside it itself, stopping it there so the next layer (clearing the
- * selection) doesn't run as well. Closing a drawer that holds focus hands focus back to its title-bar toggle,
- * else to the sheet.
+ * selection) doesn't run as well. Where focus goes afterwards is `focus-return.ts`'s job.
  */
 import { useEffect } from "react";
 import { pushEscape, session } from "@/contracts";
-import { focusRegion } from "@/a11y";
 
 export type DrawerSide = "left" | "inspector";
-
-/**
- * The title bar's pane toggles sit in an element with this attribute ("catalog", "structure", "inspector"),
- * so focus can go back to the one that opened the drawer.
- */
-export const DRAWER_TOGGLE_ATTRIBUTE = "data-drawer-toggle";
 
 const DRAWER_IDS: Readonly<Record<DrawerSide, string>> = { left: "shell-left", inspector: "shell-inspector" };
 
 /** Closes the open drawer. Returns false when none was open. */
 export function closeDrawer(): boolean {
-  const open = session.get().panes.drawer;
-  if (open === null) return false;
-  const drawer = document.getElementById(DRAWER_IDS[open]);
-  const hadFocus = drawer !== null && drawer.contains(document.activeElement);
-  const toggleFor = open === "left" ? session.get().panes.left.tab : "inspector";
+  if (session.get().panes.drawer === null) return false;
   session.set((s) => ({ panes: { ...s.panes, drawer: null } }));
-  if (hadFocus) {
-    const toggle = document.querySelector<HTMLElement>(`[${DRAWER_TOGGLE_ATTRIBUTE}="${toggleFor}"] button`);
-    if (toggle) toggle.focus();
-    else focusRegion("sheet");
-  }
   return true;
 }
 

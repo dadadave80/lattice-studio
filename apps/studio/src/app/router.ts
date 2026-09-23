@@ -3,7 +3,8 @@
  * applies each route once, when the app mounts and whenever the hash or history changes.
  */
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import { announce, commandRef, env, log, openShareLink, runCommand } from "@/contracts";
+import { announce, commandRef, env, log, openShareLink, runCommand, session } from "@/contracts";
+import { currentTier, paneShowing } from "@/shell";
 import { parseRoute, type Route, type RouteLocation } from "./routes";
 
 function readLocation(): string {
@@ -61,7 +62,10 @@ export async function applyRoute(route: Route): Promise<void> {
       if (route.invalid !== undefined) say(`"${route.invalid}" isn't a problem code. Showing the help index.`);
       const help = route.code === undefined ? commandRef("help.open") : commandRef("help.open", { code: route.code });
       const opened = await runCommand(help, "api");
-      if (opened.ok) await runCommand(commandRef("pane.show", { pane: "inspector" }), "api");
+      // help.open opens the inspector at 1280 px and wider; a drawer or the switcher needs pane.show.
+      if (opened.ok && !paneShowing(session.get().panes, currentTier(), "inspector")) {
+        await runCommand(commandRef("pane.show", { pane: "inspector" }), "api");
+      }
       return;
     }
     case "unknown":

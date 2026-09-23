@@ -5,6 +5,7 @@ import { InspectorPanel } from "@/panels/inspector";
 import { Sheet } from "@/sheet/canvas";
 import { CommandButton, cx, Splitter } from "@/ui";
 import { useNeedsFillIn } from "./fill-in";
+import { useFocusReturn } from "./focus-return";
 import { isDrawerTier, useLayoutTier, useWindowHeight } from "./layout-tier";
 import { LeftPane } from "./LeftPane";
 import { PaneSwitcher } from "./PaneSwitcher";
@@ -55,6 +56,7 @@ export function Shell() {
   useDrawerEscape(isDrawerTier(tier) ? panes.drawer : null);
 
   const seen = paneVisibility(panes, tier);
+  useFocusReturn(seen);
   const phone = tier === "phone";
   const drawers = seen.drawers;
   const maxConsole = consoleMax(height);

@@ -60,16 +60,17 @@
   border-inline-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
 }
 
-/* The sheet pans in two dimensions inside its own pane, the Reflow exception (spec L372). */
+/*
+ * The sheet pans in two dimensions inside its own pane, the Reflow exception (spec L372). Its 8 px dot grid
+ * belongs to S4b's canvas, which pans and zooms it.
+ */
 .sheet {
   position: relative;
   flex: 1 1 0;
   min-inline-size: 0;
   min-block-size: 0;
   overflow: hidden;
-  background-color: var(--lx-ground);
-  background-image: radial-gradient(var(--lx-dot) 1px, transparent 1px);
-  background-size: var(--lx-grid) var(--lx-grid);
+  background: var(--lx-ground);
 }
 
 .console {

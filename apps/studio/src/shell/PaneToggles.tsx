@@ -1,8 +1,8 @@
 import { commandRef, runCommand, useSession } from "@/contracts";
 import { ToggleButton } from "@/ui";
+import { DRAWER_TOGGLE_ATTRIBUTE, focusDrawer } from "./focus-return";
 import type { LayoutTier } from "./layout-tier";
 import { paneShowing } from "./panes";
-import { DRAWER_TOGGLE_ATTRIBUTE } from "./use-drawer-escape";
 import styles from "./TitleBar.module.css";
 
 const TOGGLES = [
@@ -13,7 +13,8 @@ const TOGGLES = [
 
 /**
  * The pane toggles (IR L68, L249): open the catalog, Structure or the inspector as an overlay drawer, one at a
- * time. Pressing an open one closes its drawer. Shown while the side panes are drawers (768-1279 px).
+ * time, and move focus into it; Esc brings focus back here. Pressing an open one closes its drawer. Shown
+ * while the side panes are drawers (768-1279 px).
  */
 export function PaneToggles({ tier }: { tier: LayoutTier }) {
   const panes = useSession((s) => s.panes);
@@ -25,10 +26,14 @@ export function PaneToggles({ tier }: { tier: LayoutTier }) {
             size="small"
             pressed={paneShowing(panes, tier, pane)}
             onPressedChange={(open) => {
-              const ref = open
-                ? commandRef("pane.show", { pane })
-                : commandRef("pane.toggle", { pane: pane === "inspector" ? "inspector" : "left" });
-              void runCommand(ref, "button");
+              const side = pane === "inspector" ? "inspector" : "left";
+              if (!open) {
+                void runCommand(commandRef("pane.toggle", { pane: side }), "button");
+                return;
+              }
+              void runCommand(commandRef("pane.show", { pane }), "button").then((done) => {
+                if (done.ok) requestAnimationFrame(() => focusDrawer(side));
+              });
             }}
           >
             {label}
