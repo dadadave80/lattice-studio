@@ -3,12 +3,18 @@
  * `startCatalog`; the catalog loader (K2's minimal one, then S14's) loads an index and publishes it with
  * `setCatalogStatus`. Detail shards and creation code load on demand: `useFacetDetail` in render,
  * `loadFacetDetail` and `loadCreationCode` elsewhere (revert decoding, missing-contract deploys).
+ *
+ * Names resolve as core's missing-contract deploys resolve them (`packages/core/src/deploy/missing.ts`):
+ * "LatticeRegistry" and "LatticeFactory"; a library by name (`catalog.libraries`, e.g. PoseidonT3); a facet
+ * by name; an init by `name` or by `contract` (DiamondIntrospectionInit's specs share one contract); and
+ * "Lattice" for the proxy.
  */
-import type { Catalog, CatalogManifest, FacetDetail, Hex, Result, ShardRef } from "@lattice-studio/core";
+import type { Catalog, CatalogManifest, FacetDetail, Hex, Result, ShardRef, SharedContract } from "@lattice-studio/core";
 import { isHex, validateCatalog, validateFacetDetail } from "@lattice-studio/core";
 import { useSyncExternalStore } from "react";
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
+import { listenerSet, relay } from "./relay";
 
 export type CatalogStatus =
   | { status: "loading" }
@@ -26,16 +32,15 @@ export type CatalogLoader = {
   start(manifest: Result<CatalogManifest, string>): void;
   /** A hook: the detail shard of a facet or shared contract, loading it on first use. */
   useFacetDetail(name: string): FacetDetailState;
-  /**
-   * The ABI shard of a facet, or of a shared contract that has one (`SharedContract.detail`: LatticeRegistry,
-   * LatticeFactory, init contracts), plus "Lattice" for the proxy (`catalog.proxy.detail`).
-   */
+  /** The ABI shard of a facet or shared contract, by the names in this module's doc comment. */
   loadShard(name: string): Promise<Result<FacetDetail, string>>;
-  /** Creation code of a shared contract by name, or "Lattice" for the proxy (`code/<Name>.creation.hex`). */
+  /** Creation code by the names in this module's doc comment (`code/<Name>.creation.hex`). */
   loadCode(name: string): Promise<Result<Hex, string>>;
 };
 
-const store = createStore<{ status: CatalogStatus }>(() => ({ status: { status: "loading" } }));
+const source = createStore<{ status: CatalogStatus }>(() => ({ status: { status: "loading" } }));
+/** Subscribers attach to a tracked relay, so the contracts' tests can isolate them. */
+const store = relay(source).api;
 
 /** Where catalogs are served: `/catalog/` under the app's base. */
 export function catalogBase(): string {
@@ -54,20 +59,30 @@ function catalogDir(status: Extract<CatalogStatus, { status: "ready" }>): string
   return `${catalogBase()}${dirOf(entry?.path ?? status.id)}`;
 }
 
+/** The shared contract (or facet) a name refers to, as core's `deploy/missing.ts` resolves it. */
+function resolveRelease(catalog: Catalog, name: string): { release: SharedContract; detail?: ShardRef } | undefined {
+  if (name === "LatticeRegistry") return { release: catalog.registry };
+  if (name === "LatticeFactory") return { release: catalog.factory };
+  const library = catalog.libraries?.find((l) => l.name === name);
+  if (library) return { release: library.release };
+  const facet = catalog.facets.find((f) => f.name === name);
+  if (facet) return { release: facet.release, detail: facet.detail };
+  const init = catalog.inits.find((i) => i.name === name) ?? catalog.inits.find((i) => i.contract === name);
+  return init?.release ? { release: init.release } : undefined;
+}
+
 function shardRef(catalog: Catalog, name: string, kind: "detail" | "code"): ShardRef | undefined {
   if (name === "Lattice") return kind === "detail" ? catalog.proxy.detail : catalog.proxy.creationCode;
-  const facet = catalog.facets.find((f) => f.name === name);
-  if (facet) return kind === "detail" ? facet.detail : facet.release.creationCode;
-  const shared =
-    name === "LatticeRegistry" ? catalog.registry
-    : name === "LatticeFactory" ? catalog.factory
-    : catalog.inits.find((i) => i.name === name)?.release;
-  return kind === "detail" ? shared?.detail : shared?.creationCode;
+  const found = resolveRelease(catalog, name);
+  if (!found) return undefined;
+  return kind === "code" ? found.release.creationCode : (found.detail ?? found.release.detail);
 }
+
+const NOT_LOADED = "The catalog hasn't loaded.";
 
 async function fetchRef(name: string, kind: "detail" | "code"): Promise<Result<string, string>> {
   const status = store.getState().status;
-  if (status.status !== "ready") return { ok: false, error: "The catalog hasn't loaded." };
+  if (status.status !== "ready") return { ok: false, error: NOT_LOADED };
   const ref = shardRef(status.catalog, name, kind);
   if (!ref) return { ok: false, error: `${name} has no ${kind === "detail" ? "ABI shard" : "creation code"} in this catalog.` };
   try {
@@ -79,9 +94,15 @@ async function fetchRef(name: string, kind: "detail" | "code"): Promise<Result<s
   }
 }
 
+function readyId(): string | null {
+  const { status } = store.getState();
+  return status.status === "ready" ? status.id : null;
+}
+
 function minimalLoader(): CatalogLoader {
+  /** By `<catalog id>/<name>`, so a project on another catalog never reads this one's shard. */
   const details = new Map<string, FacetDetailState>();
-  const changed = new Set<() => void>();
+  const changed = listenerSet<() => void>();
   const loadShard: CatalogLoader["loadShard"] = async (name) => {
     const text = await fetchRef(name, "detail");
     if (!text.ok) return text;
@@ -95,11 +116,15 @@ function minimalLoader(): CatalogLoader {
     return parsed.ok ? parsed : { ok: false, error: `${name}'s shard doesn't match the shard schema.` };
   };
   const ensure = (name: string) => {
-    if (details.has(name)) return;
-    details.set(name, { status: "loading" });
+    const id = readyId();
+    if (id === null) return; // Nothing is cached until the catalog is ready.
+    const key = `${id}/${name}`;
+    if (details.has(key)) return;
+    details.set(key, { status: "loading" });
     void loadShard(name).then((result) => {
-      details.set(name, result.ok ? { status: "ready", detail: result.value } : { status: "error", reason: result.error });
-      for (const fn of Array.from(changed)) fn();
+      if (!result.ok && result.error === NOT_LOADED) details.delete(key);
+      else details.set(key, result.ok ? { status: "ready", detail: result.value } : { status: "error", reason: result.error });
+      changed.emit();
     });
   };
   const LOADING: FacetDetailState = { status: "loading" };
@@ -130,13 +155,22 @@ function minimalLoader(): CatalogLoader {
     useFacetDetail(name) {
       return useSyncExternalStore(
         (onChange) => {
-          changed.add(onChange);
+          const stopDetails = changed.add(onChange);
+          // Loads once the catalog is ready, and again for a different catalog.
+          const stopCatalog = store.subscribe(() => {
+            ensure(name);
+            onChange();
+          });
           ensure(name);
           return () => {
-            changed.delete(onChange);
+            stopDetails();
+            stopCatalog();
           };
         },
-        () => details.get(name) ?? LOADING,
+        () => {
+          const id = readyId();
+          return (id === null ? undefined : details.get(`${id}/${name}`)) ?? LOADING;
+        },
       );
     },
     loadShard,
@@ -183,7 +217,9 @@ export function getCatalogStatus(): CatalogStatus {
 
 /** Subscribes to catalog status changes, outside React. */
 export function subscribeCatalog(listener: (status: CatalogStatus) => void): () => void {
-  return store.subscribe((s) => listener(s.status));
+  return store.subscribe((s, previous) => {
+    if (s.status !== previous.status) listener(s.status);
+  });
 }
 
 export function useCatalogStatus(): CatalogStatus {

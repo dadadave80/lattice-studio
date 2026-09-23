@@ -11,6 +11,7 @@ import { studioCsp } from "./build/csp.ts";
 import { studioPwa } from "./build/pwa.ts";
 import { studioCatalog } from "./catalog-plugin.ts";
 import { appDir, localPort, repoRoot } from "./local-env.ts";
+import { isE2EFlag } from "./src/contracts/e2e-flag.ts";
 
 /** Where catalogs come from, in lookup order: the generated catalog (CG8), then the fixtures (K3). */
 const catalogSources = [join(repoRoot, "catalog"), join(repoRoot, "fixtures", "catalog")];
@@ -21,7 +22,7 @@ const catalogSources = [join(repoRoot, "catalog"), join(repoRoot, "fixtures", "c
  * The dev server and Vitest (`serve`) may use it.
  */
 export function e2eGuard(mode: string, command: "build" | "serve", flag: string | undefined): void {
-  if (command === "build" && flag !== undefined && flag !== "" && mode !== "e2e") {
+  if (command === "build" && isE2EFlag(flag) && mode !== "e2e") {
     throw new Error(
       `VITE_STUDIO_E2E is set, so this build would include the Anvil chain and the mock connector. ` +
         `Only an end-to-end build can (this one's mode is "${mode}"): build with --mode e2e.`,
@@ -37,6 +38,9 @@ export default defineConfig(async (configEnv): Promise<UserConfig> => {
 
   return {
     root: appDir,
+    // One dependency cache per port, so two dev servers in one worktree never race on it. Under node_modules/,
+    // so @rolldown/plugin-babel's default exclude keeps the React Compiler off pre-bundled dependencies.
+    cacheDir: join(appDir, "node_modules", `.vite-${port}`),
     plugins: [
       react(),
       await babel({ presets: [reactCompilerPreset()] }),

@@ -17,6 +17,7 @@ import type { ChainService } from "./chain";
 import type { DialogEntry, DialogId, DialogPropsMap } from "./dialogs";
 import { clearLog, provideKernel, randomBytes, recordedLog, resetKernel as resetKernelForServices } from "./kernel";
 import { REGION_LABELS, type RegionId } from "./regions";
+import { listenerSet } from "./relay";
 import { doc, session, settings, type Viewport } from "./stores";
 
 export { log, now, randomBytes } from "./kernel";
@@ -171,16 +172,37 @@ function capped<T>(list: T[], item: T): void {
 }
 
 function listeners<T>(): { add(fn: (v: T) => void): () => void; emit(v: T): void } {
-  const set = new Set<(v: T) => void>();
+  return listenerSet<(v: T) => void>();
+}
+
+/**
+ * A stable subscription to a service's events. Listeners attach here, not to the implementation, so a
+ * subscription made before the real service registers hears the real service afterwards: `reattach` moves
+ * the one upstream subscription to the current implementation and, when given, re-announces the current value.
+ */
+type ServiceRelay<T> = { subscribe(listener: (value: T) => void): () => void; reattach(): void };
+
+function serviceRelay<T>(
+  upstream: () => (listener: (value: T) => void) => () => void,
+  current?: (emit: (value: T) => void) => void,
+): ServiceRelay<T> {
+  let detach: (() => void) | null = null;
+  const fan = (value: T) => set.emit(value);
+  const sync = () => {
+    if (set.size > 0 && !detach) detach = upstream()(fan);
+    else if (set.size === 0 && detach) {
+      detach();
+      detach = null;
+    }
+  };
+  const set = listenerSet<(value: T) => void>(sync);
   return {
-    add(fn) {
-      set.add(fn);
-      return () => {
-        set.delete(fn);
-      };
-    },
-    emit(v) {
-      for (const fn of Array.from(set)) fn(v);
+    subscribe: (listener) => set.add(listener),
+    reattach() {
+      detach?.();
+      detach = null;
+      sync();
+      if (set.size > 0) current?.(fan);
     },
   };
 }
@@ -202,7 +224,7 @@ function browserConnection(): ConnectionService {
   };
 }
 
-function memoryDeployments(): DeploymentsService {
+function memoryDeployments(): DeploymentsService & { clear(): void } {
   const records = new Map<string, Deployment>();
   const changed = listeners<string>();
   return {
@@ -212,8 +234,12 @@ function memoryDeployments(): DeploymentsService {
       changed.emit(d.projectId);
     },
     subscribe: (listener) => changed.add(listener),
+    clear: () => records.clear(),
   };
 }
+
+/** K2's in-memory deployment records, the default until S7a registers. */
+let memory = memoryDeployments();
 
 function hex(bytes: Uint8Array): `0x${string}` {
   return `0x${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
@@ -324,7 +350,7 @@ function defaults(): Rest {
       };
     },
     projects: minimalProjects(),
-    deployments: memoryDeployments(),
+    deployments: memory,
     chain: () => Promise.reject(new NotImplemented("S8a", "chainService")),
     dnd: minimalDnd(),
     openProblemDoc: (code) => {
@@ -335,6 +361,40 @@ function defaults(): Rest {
 }
 
 let impl: Rest = defaults();
+
+// Stable subscriptions over the current implementation (see `serviceRelay`).
+const saveStatusRelay = serviceRelay<SaveStatus>(
+  () => (fan) => impl.projects.subscribeSaveStatus(fan),
+  (emit) => emit(impl.projects.saveStatus()),
+);
+const onlineRelay = serviceRelay<boolean>(
+  () => (fan) => impl.connection.subscribe(fan),
+  (emit) => emit(impl.connection.isOnline()),
+);
+const dragRelay = serviceRelay<CatalogDrag | null>(() => (fan) => impl.dnd.subscribeDrag(fan), (emit) => emit(null));
+const deploymentsRelay = serviceRelay<string>(
+  () => (fan) => impl.deployments.subscribe(fan),
+  // New records service: every project someone is watching may read differently now.
+  (emit) => {
+    for (const projectId of deploymentCache.keys()) emit(projectId);
+  },
+);
+
+/** Drop targets registered so far, each with its registration on the current dnd service. */
+const dropTargets = new Map<DropTarget, () => void>();
+
+function reattach(previous: Rest): void {
+  if (previous.dnd !== impl.dnd) {
+    for (const [target, dispose] of dropTargets) {
+      dispose();
+      dropTargets.set(target, impl.dnd.registerDropTarget(target));
+    }
+  }
+  if (previous.projects !== impl.projects) saveStatusRelay.reattach();
+  if (previous.connection !== impl.connection) onlineRelay.reattach();
+  if (previous.dnd !== impl.dnd) dragRelay.reattach();
+  if (previous.deployments !== impl.deployments) deploymentsRelay.reattach();
+}
 
 /**
  * Replaces services with real implementations. Held announcements, toasts and shown banners are replayed
@@ -351,6 +411,7 @@ export function provideServices(provided: Partial<Services>): () => void {
 
   const previous = impl;
   impl = { ...impl, ...rest };
+  reattach(previous);
   if (rest.announce) for (const [text, options] of pending.announce.splice(0)) rest.announce(text, options);
   if (rest.toast) for (const input of pending.toast.splice(0)) rest.toast(input);
   if (rest.showBanner) {
@@ -359,27 +420,39 @@ export function provideServices(provided: Partial<Services>): () => void {
   }
   return () => {
     disposeKernel();
+    const before = impl;
     const restored: Record<string, unknown> = { ...impl };
     for (const key of Object.keys(rest) as (keyof Rest)[]) {
       if (impl[key] === rest[key]) restored[key] = previous[key];
     }
     impl = restored as Rest;
+    reattach(before);
   };
 }
 
 /** @internal K2's defaults, empty records (contract tests). Returns a disposer that restores the previous state. */
 export function resetServices(): () => void {
-  const saved = { impl, records, pending };
+  const saved = { impl, records, pending, memory };
   const restoreKernel = resetKernelForServices();
+  memory = memoryDeployments();
   impl = defaults();
+  reattach(saved.impl);
   records = freshRecords();
   pending = freshRecords();
   return () => {
     restoreKernel();
+    const before = impl;
     impl = saved.impl;
+    memory = saved.memory;
+    reattach(before);
     records = saved.records;
     pending = saved.pending;
   };
+}
+
+/** @internal Empties K2's in-memory deployment records (the harness, between tests). */
+export function clearMemoryDeployments(): void {
+  memory.clear();
 }
 
 /**
@@ -468,12 +541,14 @@ export function saveStatus(): SaveStatus {
   return impl.projects.saveStatus();
 }
 
+/** Subscribes to save-status changes; follows the projects service when S7a registers. */
+export function subscribeSaveStatus(listener: (status: SaveStatus) => void): () => void {
+  return saveStatusRelay.subscribe(listener);
+}
+
 /** The save status, re-rendering when it changes. */
 export function useSaveStatus(): SaveStatus {
-  return useSyncExternalStore(
-    (onChange) => impl.projects.subscribeSaveStatus(onChange),
-    () => impl.projects.saveStatus(),
-  );
+  return useSyncExternalStore(saveStatusRelay.subscribe, () => impl.projects.saveStatus());
 }
 
 export function loadViewport(id: string): Promise<Viewport | null> {
@@ -492,9 +567,12 @@ export function putDeployment(deployment: Deployment): Promise<void> {
   return impl.deployments.putDeployment(deployment);
 }
 
-/** Subscribes to deployment-record writes; the listener gets the project id whose records changed. */
+/**
+ * Subscribes to deployment-record writes; the listener gets the project id whose records changed. Follows
+ * the deployments service when S7a registers.
+ */
 export function subscribeDeployments(listener: (projectId: string) => void): () => void {
-  return impl.deployments.subscribe(listener);
+  return deploymentsRelay.subscribe(listener);
 }
 
 type DeploymentsSnapshot = { status: "loading" } | { status: "ready"; deployments: Deployment[] };
@@ -516,17 +594,20 @@ function refreshDeployments(projectId: string): void {
   );
 }
 
-/** A project's deployment records, re-rendering after every write. `loading` until the first read returns. */
+/**
+ * A project's deployment records, re-rendering after every write. Each mount reads them again (records
+ * written while nothing watched still show); until the first read returns it's `loading`, or the last list read.
+ */
 export function useDeployments(projectId: string): DeploymentsSnapshot {
   return useSyncExternalStore(
     (onChange) => {
-      const stopWrites = impl.deployments.subscribe((changed) => {
+      const stopWrites = deploymentsRelay.subscribe((changed) => {
         if (changed === projectId) refreshDeployments(projectId);
       });
       const stopCache = deploymentListeners.add((changed) => {
         if (changed === projectId) onChange();
       });
-      if (!deploymentCache.has(projectId)) refreshDeployments(projectId);
+      refreshDeployments(projectId);
       return () => {
         stopWrites();
         stopCache();
@@ -548,12 +629,19 @@ export function startCatalogDrag(facet: string, pointer: { pointerId: number; cl
   impl.dnd.startCatalogDrag(facet, pointer);
 }
 
+/** Registers a drop target; it moves to the real dnd service when that registers. Returns a disposer. */
 export function registerDropTarget(target: DropTarget): () => void {
-  return impl.dnd.registerDropTarget(target);
+  dropTargets.get(target)?.();
+  dropTargets.set(target, impl.dnd.registerDropTarget(target));
+  return () => {
+    dropTargets.get(target)?.();
+    dropTargets.delete(target);
+  };
 }
 
+/** Subscribes to the catalog drag in progress; follows the dnd service when it registers. */
 export function subscribeCatalogDrag(listener: (drag: CatalogDrag | null) => void): () => void {
-  return impl.dnd.subscribeDrag(listener);
+  return dragRelay.subscribe(listener);
 }
 
 /** Shows the problem's doc page in the inspector (K2's default routes there; S12 replaces it). */
@@ -566,11 +654,13 @@ export function isOnline(): boolean {
 }
 
 /** Whether the browser is online, re-rendering when it changes. */
+/** Subscribes to online and offline changes; follows the connection service when S11a registers. */
+export function subscribeOnline(listener: (online: boolean) => void): () => void {
+  return onlineRelay.subscribe(listener);
+}
+
 export function useOnline(): boolean {
-  return useSyncExternalStore(
-    (onChange) => impl.connection.subscribe(onChange),
-    () => impl.connection.isOnline(),
-  );
+  return useSyncExternalStore(onlineRelay.subscribe, () => impl.connection.isOnline());
 }
 
 /** @internal Forgets cached deployment lists (between tests). */

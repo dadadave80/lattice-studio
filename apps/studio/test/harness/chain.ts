@@ -73,8 +73,14 @@ export function healthyChainState(chainId: number, name: string, catalog?: Catal
       shared[facet.name] = { present: true, codehash: facet.release.codehash };
       records[`${facet.name}@${facet.release.version}`] = { facet: facet.release.address, codehash: facet.release.codehash };
     }
+    for (const library of catalog.libraries ?? []) {
+      shared[library.name] = { present: true, codehash: library.release.codehash };
+    }
+    // Inits by contract and by spec name, as core's missing-contract deploys resolve them.
     for (const init of catalog.inits) {
-      if (init.release) shared[init.name] = { present: true, codehash: init.release.codehash };
+      if (!init.release) continue;
+      shared[init.contract] = { present: true, codehash: init.release.codehash };
+      shared[init.name] = { present: true, codehash: init.release.codehash };
     }
   }
   return {

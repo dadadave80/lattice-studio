@@ -1,7 +1,7 @@
 /**
  * Registration discovery. Importing this module evaluates every module's `commands.ts` (contracts §5.3) and
  * `services.ts` (the file where a module calls `provideServices`, `provideStores`, `provideAnalysis`,
- * `provideCatalogLoader`, `provideDeployController`, `provideSheetInteractions`, `registerDialog`,
+ * `provideCatalogLoader`, `provideDeployController`, `provideSheetInteractions`, `registerDialog`, `registerInspectorView`,
  * `registerSheetLayer`, `registerNodeType` or `registerEdgeType`), so their registrations run before the app
  * renders. `main.tsx` and the test harness import it; S2's registry may glob the same files. Files under
  * `src/contracts/` are never discovered.

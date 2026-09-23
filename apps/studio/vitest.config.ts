@@ -7,7 +7,8 @@
 import { playwright } from "@vitest/browser-playwright";
 import { mergeConfig, type UserConfig } from "vite";
 import { defineConfig } from "vitest/config";
-import { localPort } from "./local-env.ts";
+import { join } from "node:path";
+import { appDir, localPort } from "./local-env.ts";
 import viteConfig from "./vite.config.ts";
 
 export default defineConfig(async (env) => {
@@ -17,11 +18,15 @@ export default defineConfig(async (env) => {
 
   return mergeConfig(base, {
     server: { port, strictPort: true },
-    // Pre-bundle the shared libraries up front: a dependency discovered mid-run makes Vite re-optimize and
-    // reload, which can leave a test file with a second copy of Vitest ("failed to find the runner").
+    // One dependency cache per Vitest port: an implementer and its helpers run Vitest in one worktree at once,
+    // and a shared cache raced when it was clean or invalidated ("Vitest failed to find the runner"). It stays
+    // under node_modules/, so @rolldown/plugin-babel's default exclude keeps the React Compiler off pre-bundled deps.
+    cacheDir: join(appDir, "node_modules", `.vite-vitest-${port}`),
+    // Pre-bundling the shared libraries up front only saves a reload when a test first imports one; the
+    // per-port cache above is what keeps concurrent runs apart.
     optimizeDeps: {
       include: [
-        "react", "react/jsx-dev-runtime", "react-dom/client", "zustand", "zustand/vanilla", "zustand/traditional",
+        "react", "react/jsx-dev-runtime", "react-dom/client", "zustand", "zustand/vanilla",
         "vitest-browser-react", "@base-ui/react/csp-provider", "@xyflow/react", "viem", "zod", "fflate",
       ],
     },

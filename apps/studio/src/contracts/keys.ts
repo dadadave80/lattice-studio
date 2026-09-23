@@ -36,8 +36,13 @@ export type KeyBinding = {
   /** Default keys; remappable. */
   keys: KeySpec[];
   args?: Record<string, Json>;
-  /** Shown in Settings → Keyboard and the shortcuts dialog when it differs from the command's title. */
+  /**
+   * Shown in Settings → Keyboard, the shortcuts dialog and the palette when it differs from the command's
+   * title for these arguments ("Go to inspector").
+   */
   label?: string;
+  /** Also a row in the palette's Commands group, running the command with these arguments (IR L10, L16). */
+  palette?: boolean;
 };
 
 /**

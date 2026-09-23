@@ -10,7 +10,7 @@ import type { ThemeId } from "@lattice-studio/tokens";
 import type { ReactNode } from "react";
 import { render, type RenderResult } from "vitest-browser-react";
 import {
-  DEFAULT_SETTINGS, doc, initialSession, provideServices, session, setCatalogStatus, settings, type ChainService,
+  applyMotion, DEFAULT_SETTINGS, doc, initialSession, provideServices, session, setCatalogStatus, settings, type ChainService,
   type SessionState, type SettingsState,
 } from "@/contracts";
 import { fixtureCatalog } from "./catalog";
@@ -45,6 +45,7 @@ export function seedStudio(options: StudioOptions = {}): { project: Project; cat
   const project = options.project ?? makeProject({ recipe: makeRecipe({}, catalog ?? undefined) });
   doc.load(project);
   document.documentElement.dataset.theme = theme;
+  applyMotion(settings.get().reduceMotion);
 
   if (options.chain) {
     const chain = options.chain === true ? fakeChainService() : options.chain;

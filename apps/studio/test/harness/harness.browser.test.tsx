@@ -5,8 +5,8 @@ import { page } from "vitest/browser";
 import { createStore } from "zustand/vanilla";
 import {
   applyMotion, chainService, command, DEFAULT_SETTINGS, deployState, doc, emptyAnalysis, getCatalog, layoutMetrics,
-  log, provideAnalysis, provideStores, session, settings, useAnalysis, useCatalog, useCommandState, useDocument,
-  useSession, useSettings, type SettingsState,
+  log, provideAnalysis, provideServices, provideStores, putDeployment, session, settings, useAnalysis, useCatalog,
+  useCommandState, useDeployments, useDocument, useOnline, useSession, useSettings, type SettingsState,
 } from "@/contracts";
 import {
   bufferedServices, fakeChainService, fakeClock, fixtureCatalog, MULTICALL3_CODEHASH, onCleanup, overrideCommands,
@@ -102,6 +102,39 @@ describe("reactive reads", () => {
     notify();
     await expect.element(page.getByText("0x02")).toBeVisible();
     expect(renders.slice(before)).toEqual(["0x02"]);
+  });
+
+  test("mounted service hooks follow a service provided after they subscribed", async () => {
+    function Online() {
+      return <p>{useOnline() ? "Online" : "Offline"}</p>;
+    }
+    await renderWithStudio(<Online />);
+    await expect.element(page.getByText("Online")).toBeVisible();
+    let emit: (online: boolean) => void = () => {};
+    onCleanup(provideServices({ connection: { isOnline: () => true, subscribe: (l) => ((emit = l), () => {}) } }));
+    const offline = { isOnline: () => false, subscribe: (l: (online: boolean) => void) => ((emit = l), () => {}) };
+    onCleanup(provideServices({ connection: offline }));
+    await expect.element(page.getByText("Offline")).toBeVisible();
+    emit(false);
+  });
+
+  test("useDeployments reads again on mount, so records written while nothing watched show", async () => {
+    await putDeployment({
+      projectId: "p1", chainId: 11155111, address: "0x5FbDB2315678afecb367f032d93F642f64180aa3", path: "factory",
+      deployer: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", salt: "0x01", status: "confirmed", recipeHash: "0x02",
+      catalogHash: "0x03", at: "2026-09-23T12:00:00.000Z", verification: "pending", revision: 1,
+    });
+    function Records() {
+      const records = useDeployments("p1");
+      return <p>{records.status === "ready" ? `${records.deployments.length} records` : "Checking"}</p>;
+    }
+    await renderWithStudio(<Records />);
+    await expect.element(page.getByText("1 records")).toBeVisible();
+  });
+
+  test("renderWithStudio sets data-motion from the Reduce motion setting", async () => {
+    await renderWithStudio(<Probe />, { settings: { reduceMotion: "on" } });
+    expect(document.documentElement.dataset.motion).toBe("reduce");
   });
 
   test("seedDeployState sets what deployState() reads, and it's reset after the test", () => {

@@ -12,7 +12,7 @@
  * - **Interactions** (S4e): one hook returning React Flow props (pointer handlers, selection, drag), merged
  *   under the props S4b sets itself.
  */
-import type { ReactFlowProps } from "@xyflow/react";
+import type { EdgeTypes, NodeTypes, ReactFlowProps } from "@xyflow/react";
 import type { ComponentType } from "react";
 
 export type SheetLayer = {
@@ -23,8 +23,8 @@ export type SheetLayer = {
 };
 
 const layers = new Map<string, SheetLayer>();
-const nodeTypes: Record<string, ComponentType<never>> = {};
-const edgeTypes: Record<string, ComponentType<never>> = {};
+const nodeTypes: NodeTypes = {};
+const edgeTypes: EdgeTypes = {};
 
 /** Adds a layer inside `<ReactFlow>`. Throws on a duplicate id. Returns a disposer. */
 export function registerSheetLayer(layer: SheetLayer): () => void {
@@ -41,24 +41,24 @@ export function sheetLayers(): SheetLayer[] {
 }
 
 /** Registers a React Flow node type ("facet"). Throws on a duplicate. */
-export function registerNodeType(type: string, component: ComponentType<never>): void {
+export function registerNodeType(type: string, component: NodeTypes[string]): void {
   if (nodeTypes[type]) throw new Error(`Node type ${type} is already registered.`);
   nodeTypes[type] = component;
 }
 
 /** Registers a React Flow edge type ("dependency", "tie"). Throws on a duplicate. */
-export function registerEdgeType(type: string, component: ComponentType<never>): void {
+export function registerEdgeType(type: string, component: EdgeTypes[string]): void {
   if (edgeTypes[type]) throw new Error(`Edge type ${type} is already registered.`);
   edgeTypes[type] = component;
 }
 
 /** The registered node types: one object for the app's lifetime. */
-export function sheetNodeTypes(): Readonly<Record<string, ComponentType<never>>> {
+export function sheetNodeTypes(): NodeTypes {
   return nodeTypes;
 }
 
 /** The registered edge types: one object for the app's lifetime. */
-export function sheetEdgeTypes(): Readonly<Record<string, ComponentType<never>>> {
+export function sheetEdgeTypes(): EdgeTypes {
   return edgeTypes;
 }
 

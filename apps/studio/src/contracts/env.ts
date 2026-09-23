@@ -6,12 +6,17 @@
  * Keep e2e-only code (the Anvil chain, wagmi's `mock` connector) behind a dynamic `import()` guarded by
  * `env.e2e`, so a production build never fetches it.
  */
+import { isE2EFlag } from "./e2e-flag";
+
 export const env: {
-  /** `VITE_STUDIO_E2E=1`: the Anvil chain (31337) and wagmi's `mock` connector. Production builds refuse it. */
+  /**
+   * `VITE_STUDIO_E2E` set to any non-empty value: the Anvil chain (31337) and wagmi's `mock` connector.
+   * Only `--mode e2e` builds may set it (`vite.config.ts`'s guard reads it the same way).
+   */
   readonly e2e: boolean;
   /** A dev server: enables the `#/__ui` primitives gallery. */
   readonly dev: boolean;
 } = {
-  e2e: import.meta.env.VITE_STUDIO_E2E === "1",
+  e2e: isE2EFlag(import.meta.env.VITE_STUDIO_E2E),
   dev: import.meta.env.DEV === true,
 };

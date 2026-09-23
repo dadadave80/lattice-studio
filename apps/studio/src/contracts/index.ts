@@ -32,7 +32,7 @@ export {
   announce, chainService, closeDialog, createProject, hideBanner, isOnline, listDeployments, loadViewport,
   openDialog, openProblemDoc, openProject, provideServices, pushEscape, putDeployment, registerDropTarget,
   saveStatus, saveViewport, showBanner, startCatalogDrag, subscribeCatalogDrag, subscribeDeployments, toast,
-  useDeployments, useOnline, useRegion, useSaveStatus,
+  subscribeOnline, subscribeSaveStatus, useDeployments, useOnline, useRegion, useSaveStatus,
 } from "./services";
 export type {
   AnnounceOptions, BannerProps, CatalogDrag, ConnectionService, DeploymentsService, DndService, DropTarget,
@@ -43,16 +43,18 @@ export type {
   AccountKind, ChainInfo, ChainReadiness, ChainService, ProbeOptions, WalletAccount, WalletConnector,
 } from "./chain";
 
-export { deployController, deployState, provideDeployController, useDeployState } from "./deploy";
+export { deployController, deployState, provideDeployController, subscribeDeployState, useDeployState } from "./deploy";
 export type { DeployController, DeployPhase, DeployState } from "./deploy";
 
 export {
   command, commandContext, commandState, defineCommands, getCommand, isPlaceholder, listBindings, listCommands,
-  onCommandRun, runCommand, subscribeCommands, useCommandState,
+  listPaletteRows, onCommandRun, runCommand, subscribeCommands, useCommandState,
 } from "./commands";
+export { commandRef } from "./command-args";
+export type { CommandArgsMap, CommandArgsOf, Direction, SheetPoint } from "./command-args";
 export type {
   Command, CommandArgs, CommandCategory, CommandConsole, CommandContext, CommandSource, Enablement,
-  ResolvedBinding,
+  PaletteRow, ResolvedBinding,
 } from "./commands";
 
 export { bindingId, KEY_CONTEXT_ATTRIBUTE, KEY_CONTEXTS } from "./keys";
@@ -71,6 +73,9 @@ export {
   sheetLayers, sheetNodeTypes, useSheetInteractions,
 } from "./sheet";
 export type { SheetInteractionProps, SheetLayer } from "./sheet";
+
+export { inspectorViewComponent, registerInspectorView } from "./inspector";
+export type { InspectorViewKind, InspectorViewProps } from "./inspector";
 
 export { env } from "./env";
 export { applyMotion, applyTheme, resolveMotion, resolveTheme, syncTheme } from "./theme";

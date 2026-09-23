@@ -15,6 +15,7 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 import type { DialogEntry } from "./dialogs";
 import type { BindingId, KeySpec } from "./keys";
 import { log } from "./kernel";
+import { relay } from "./relay";
 
 // ---------------------------------------------------------------------------------------------------------
 // Document store (undoable)
@@ -313,41 +314,6 @@ type Stores = {
   session: StoreApi<SessionState>;
   settings: StoreApi<SettingsState>;
 };
-
-/** A stable store that forwards to whichever store is current, and re-attaches when it's replaced. */
-type Relay<S> = { api: StoreApi<S>; point(next: StoreApi<S>): void };
-
-function relay<S>(initial: StoreApi<S>): Relay<S> {
-  let target = initial;
-  const listeners = new Set<(state: S, previous: S) => void>();
-  const fanout = (state: S, previous: S) => {
-    for (const listener of Array.from(listeners)) listener(state, previous);
-  };
-  let detach = target.subscribe(fanout);
-  const api: StoreApi<S> = {
-    getState: () => target.getState(),
-    getInitialState: () => target.getInitialState(),
-    setState: ((partial: never, replace: never) => target.setState(partial, replace)) as StoreApi<S>["setState"],
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-  };
-  return {
-    api,
-    point(next) {
-      if (next === target) return;
-      const previous = target.getState();
-      detach();
-      target = next;
-      detach = target.subscribe(fanout);
-      const state = target.getState();
-      if (state !== previous) fanout(state, previous);
-    },
-  };
-}
 
 function minimalStores(): Stores {
   const session = createStore<SessionState>(() => initialSession());

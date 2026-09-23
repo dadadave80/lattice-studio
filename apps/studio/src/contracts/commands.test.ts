@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { COMMAND_IDS, COMMAND_OWNERS, NotImplemented } from "@lattice-studio/core";
 import {
   command, commandContext, commandState, commandsVersion, defineCommands, getCommand, isPlaceholder, listBindings,
-  listCommands, onCommandRun, overrideCommands, runCommand, subscribeCommands,
+  listCommands, listPaletteRows, onCommandRun, overrideCommands, runCommand, subscribeCommands,
 } from "./commands";
 import { seedDeployState } from "./deploy";
 import { bufferedServices } from "./services";
@@ -39,7 +39,9 @@ describe("placeholders", () => {
 describe("registration", () => {
   test("a module-level commands.ts registration replaces the placeholder", async () => {
     expect(isPlaceholder("about.open")).toBe(true);
-    await import("../../test/harness/fixtures/commands");
+    // A fresh evaluation every run (the query makes a new module), so a rerun in one process passes too.
+    const fresh: string = `../../test/harness/fixtures/commands.ts?run=${crypto.randomUUID()}`;
+    await import(fresh);
     expect(isPlaceholder("about.open")).toBe(false);
     expect(commandState({ id: "about.open" })).toEqual({ ok: true, title: "About Lattice Studio" });
     // Registration order decides console verbs: real commands follow the placeholders.
@@ -127,6 +129,37 @@ describe("key bindings", () => {
     expect(bindings.find((b) => b.id === "sheet.nudge#left-large")?.keys).toEqual([]);
   });
 
+  test("palette rows: the bare command and each palette binding with its arguments", () => {
+    defineCommands([
+      command<{ region: string }>({
+        id: "region.focus",
+        title: (a) => `Go to ${a.region}`,
+        category: "Session",
+        bindings: [
+          { name: "inspector", keys: [], args: { region: "inspector" }, label: "Go to inspector", palette: true },
+          { name: "sheet", keys: [], args: { region: "sheet" }, palette: true },
+          { name: "console", keys: ["Ctrl+`"], args: { region: "console" } },
+        ],
+        enabled: () => ({ ok: true }),
+        run: noop,
+      }),
+      command({
+        id: "layout.tidy",
+        title: () => "Tidy",
+        category: "Sheet",
+        palette: true,
+        console: { verb: "tidy", syntax: "tidy", parse: () => ({ ok: true, value: {} }) },
+        enabled: () => ({ ok: true }),
+        run: noop,
+      }),
+    ]);
+    expect(listPaletteRows()).toEqual([
+      { ref: { id: "region.focus", args: { region: "inspector" } }, title: "Go to inspector", category: "Session", binding: "region.focus#inspector" },
+      { ref: { id: "region.focus", args: { region: "sheet" } }, title: "Go to sheet", category: "Session", binding: "region.focus#sheet" },
+      { ref: { id: "layout.tidy" }, title: "Tidy", category: "Sheet", binding: "layout.tidy", syntax: "tidy" },
+    ]);
+  });
+
   test("two bindings with one name throw", () => {
     expect(() =>
       defineCommands([{ ...nudge, bindings: [{ name: "x", keys: ["a"] }, { name: "x", keys: ["b"] }] }]),
@@ -189,6 +222,8 @@ describe("runCommand and commandState", () => {
     const original = console.error;
     console.error = noop;
     try {
+      // Reads (render, the dispatcher) log a distinct error once; a run logs every time.
+      expect(commandState({ id: "layout.tidy" })).toEqual({ ok: false, reason: "layout is broken", title: "Tidy" });
       expect(commandState({ id: "layout.tidy" })).toEqual({ ok: false, reason: "layout is broken", title: "Tidy" });
       expect(await runCommand({ id: "layout.tidy" }, "menu")).toEqual({ ok: false, reason: "layout is broken" });
     } finally {

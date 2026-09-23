@@ -10,10 +10,11 @@ import { COMMAND_IDS, COMMAND_OWNERS, isCommandId, isNotImplemented } from "@lat
 import { useSyncExternalStore } from "react";
 import { getAnalysis, subscribeAnalysis } from "./analysis";
 import { getCatalog, subscribeCatalog } from "./catalog";
-import { deployState, useDeployState, type DeployState } from "./deploy";
+import { deployState, subscribeDeployState, type DeployState } from "./deploy";
 import { log } from "./kernel";
 import { bindingId, type BindingId, type KeyBinding, type KeyContext, type KeySpec } from "./keys";
-import { announce, isOnline, useOnline } from "./services";
+import { listenerSet } from "./relay";
+import { announce, isOnline, subscribeOnline } from "./services";
 import { doc, session, settings, type SessionState, type SettingsState } from "./stores";
 
 export type CommandArgs = Record<string, Json>;
@@ -125,11 +126,11 @@ function pristine(): { entries: Map<CommandId, Entry>; order: CommandId[] } {
 
 let { entries, order } = pristine();
 let version = 0;
-const registryListeners = new Set<() => void>();
+const registryListeners = listenerSet<() => void>();
 
 function registryChanged(): void {
   version += 1;
-  for (const listener of Array.from(registryListeners)) listener();
+  registryListeners.emit();
 }
 
 /**
@@ -203,10 +204,43 @@ export function listBindings(keymap: SettingsState["keymap"] = settings.get().ke
 
 /** Calls back whenever a registration changes the registry. */
 export function subscribeCommands(listener: () => void): () => void {
-  registryListeners.add(listener);
-  return () => {
-    registryListeners.delete(listener);
-  };
+  return registryListeners.add(listener);
+}
+
+/** A palette row: a command, with the arguments one of its bindings carries ("Go to inspector"). */
+export type PaletteRow = {
+  ref: CommandRef;
+  title: string;
+  category: CommandCategory;
+  /** The binding the row runs, for its shortcut chip; the command id for the bare command. */
+  binding: BindingId;
+  /** Console syntax in grey (IR L165). */
+  syntax?: string;
+};
+
+/**
+ * The palette's Commands group: each command with `palette: true` as one row, and each binding with
+ * `palette: true` as its own row with the binding's arguments, titled by its `label` (else the command's
+ * title for those arguments).
+ */
+export function listPaletteRows(): PaletteRow[] {
+  const rows: PaletteRow[] = [];
+  for (const c of listCommands()) {
+    const syntax = c.console ? { syntax: c.console.syntax } : {};
+    if (c.palette) rows.push({ ref: { id: c.id }, title: title(c, {}), category: c.category, binding: bindingId(c.id), ...syntax });
+    for (const b of c.bindings ?? []) {
+      if (!b.palette) continue;
+      const args = b.args ?? {};
+      rows.push({
+        ref: b.args ? { id: c.id, args: b.args } : { id: c.id },
+        title: b.label ?? title(c, args),
+        category: c.category,
+        binding: bindingId(c.id, b.name),
+        ...syntax,
+      });
+    }
+  }
+  return rows;
 }
 
 /**
@@ -214,16 +248,17 @@ export function subscribeCommands(listener: () => void): () => void {
  * it. With `{ pristine: true }` the registry starts over from placeholders for the test.
  */
 export function snapshotCommands(options: { pristine?: boolean } = {}): () => void {
-  const saved = { entries: new Map(entries), order: [...order], listeners: new Set(runListeners) };
+  const saved = { entries: new Map(entries), order: [...order], logged: new Set(loggedThrows) };
   if (options.pristine) {
     ({ entries, order } = pristine());
+    loggedThrows.clear();
     registryChanged();
   }
   return () => {
     entries = saved.entries;
     order = saved.order;
-    runListeners.clear();
-    for (const listener of saved.listeners) runListeners.add(listener);
+    loggedThrows.clear();
+    for (const text of saved.logged) loggedThrows.add(text);
     registryChanged();
   };
 }
@@ -264,15 +299,26 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** `enabled()`, where a throw disables the command: NotImplemented with its reason, anything else logged as an Error. */
-function check(c: Command, ctx: CommandContext, args: CommandArgs): Enablement {
+/** `${id}: ${reason}` of enabled() throws already logged by a render-path read. */
+const loggedThrows = new Set<string>();
+
+/**
+ * `enabled()`, where a throw disables the command: NotImplemented with its reason, anything else logged as
+ * an Error. `once` logs each distinct error a single time (reads during render); `always` logs every time
+ * (a person ran the command).
+ */
+function check(c: Command, ctx: CommandContext, args: CommandArgs, logging: "once" | "always"): Enablement {
   try {
     return c.enabled(ctx, args);
   } catch (error) {
     if (isNotImplemented(error)) return { ok: false, reason: error.message };
     const reason = reasonOf(error);
-    log({ tag: "Error", text: `${c.id}: ${reason}` });
-    console.error(error);
+    const text = `${c.id}: ${reason}`;
+    if (logging === "always" || !loggedThrows.has(text)) {
+      loggedThrows.add(text);
+      log({ tag: "Error", text });
+      console.error(error);
+    }
     return { ok: false, reason };
   }
 }
@@ -292,7 +338,7 @@ function title(c: Command, args: CommandArgs): string {
 export function commandState(ref: CommandRef, source: CommandSource = "api"): Enablement & { title: string } {
   const c = getCommand(ref.id);
   const args = ref.args ?? {};
-  return { ...check(c, commandContext(source, ref), args), title: title(c, args) };
+  return { ...check(c, commandContext(source, ref), args, "once"), title: title(c, args) };
 }
 
 type CommandStateValue = Enablement & { title: string };
@@ -311,6 +357,9 @@ function subscribeEverything(onChange: () => void): () => void {
     subscribeCatalog(onChange),
     subscribeAnalysis(onChange),
     subscribeCommands(onChange),
+    // enabled() reads ctx.deploy and ctx.online in full.
+    subscribeDeployState(onChange),
+    subscribeOnline(onChange),
   ];
   return () => {
     for (const stop of stops) stop();
@@ -322,9 +371,6 @@ function subscribeEverything(onChange: () => void): () => void {
  * and tooltips. `ref` may be a new object each render; it's compared by value.
  */
 export function useCommandState(ref: CommandRef, source: CommandSource = "button"): CommandStateValue {
-  // Online and deploy state re-render through their own hooks; their values reach enabled() via the context.
-  useOnline();
-  useDeployState((s) => s.phase);
   const key = `${source}|${JSON.stringify(ref)}`;
   return useSyncExternalStore(subscribeEverything, () => stableState(key, ref, source));
 }
@@ -340,14 +386,11 @@ function stableState(key: string, ref: CommandRef, source: CommandSource): Comma
   return next;
 }
 
-const runListeners = new Set<(ref: CommandRef, source: CommandSource) => void>();
+const runListeners = listenerSet<(ref: CommandRef, source: CommandSource) => void>();
 
 /** Subscribes to commands that ran (the palette's Recent group). */
 export function onCommandRun(listener: (ref: CommandRef, source: CommandSource) => void): () => void {
-  runListeners.add(listener);
-  return () => {
-    runListeners.delete(listener);
-  };
+  return runListeners.add(listener);
 }
 
 /**
@@ -358,7 +401,7 @@ export async function runCommand(ref: CommandRef, source: CommandSource): Promis
   const c = getCommand(ref.id);
   const args = ref.args ?? {};
   const ctx = commandContext(source, ref);
-  const enablement = check(c, ctx, args);
+  const enablement = check(c, ctx, args, "always");
   if (!enablement.ok) {
     log({ tag: "Note", text: enablement.reason });
     announce(enablement.reason);
@@ -372,7 +415,7 @@ export async function runCommand(ref: CommandRef, source: CommandSource): Promis
     if (!isNotImplemented(error)) console.error(error);
     return { ok: false, reason };
   }
-  for (const listener of Array.from(runListeners)) listener(ref, source);
+  runListeners.emit(ref, source);
   return { ok: true };
 }
 

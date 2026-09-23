@@ -9,9 +9,9 @@
  */
 import type { Analysis, Catalog, Recipe } from "@lattice-studio/core";
 import { analyze, isNotImplemented } from "@lattice-studio/core";
-import { useStoreWithEqualityFn } from "zustand/traditional";
-import type { StoreApi } from "zustand/vanilla";
+import { useRef, useSyncExternalStore } from "react";
 import { getCatalog, subscribeCatalog } from "./catalog";
+import { listenerSet } from "./relay";
 import { doc } from "./stores";
 
 export type AnalysisProvider = {
@@ -67,7 +67,6 @@ function minimalProvider(): AnalysisProvider {
 }
 
 let provider: AnalysisProvider = minimalProvider();
-const listeners = new Set<(state: Analysis, previous: Analysis) => void>();
 let last: Analysis = EMPTY;
 let detach: (() => void) | null = null;
 
@@ -75,60 +74,71 @@ function fanout(): void {
   const previous = last;
   last = provider.getAnalysis();
   if (last === previous) return;
-  for (const listener of Array.from(listeners)) listener(last, previous);
+  listeners.emit(last, previous);
 }
 
-/** (Re)subscribes to the current provider while anyone listens; `notify` tells listeners if the value moved. */
-function attach(notify = false): void {
+/** Subscribes upstream while anyone listens, and lets go when nobody does. */
+function sync(): void {
+  if (listeners.size > 0 && !detach) {
+    last = provider.getAnalysis();
+    detach = provider.subscribe(fanout);
+  } else if (listeners.size === 0 && detach) {
+    detach();
+    detach = null;
+  }
+}
+
+const listeners = listenerSet<(state: Analysis, previous: Analysis) => void>(sync);
+
+/** Moves the upstream subscription to the current provider and tells listeners if the value moved. */
+function repoint(): void {
   detach?.();
   detach = null;
-  if (listeners.size === 0) return;
   const before = last;
-  last = provider.getAnalysis();
-  detach = provider.subscribe(fanout);
-  if (notify && last !== before) for (const listener of Array.from(listeners)) listener(last, before);
+  sync();
+  if (listeners.size > 0 && last !== before) listeners.emit(last, before);
 }
-
-/** A stable read-only store over whichever provider is current. */
-const analysisStore: StoreApi<Analysis> = {
-  getState: () => provider.getAnalysis(),
-  getInitialState: () => provider.getAnalysis(),
-  setState: () => {
-    throw new Error("The analysis is derived; it can't be set.");
-  },
-  subscribe(listener) {
-    listeners.add(listener);
-    if (listeners.size === 1) attach();
-    return () => {
-      listeners.delete(listener);
-      if (listeners.size === 0) attach();
-    };
-  },
-};
 
 /** S1 registers its provider at module evaluation. Mounted readers follow it. Returns a disposer. */
 export function provideAnalysis(provided: AnalysisProvider): () => void {
   const previous = provider;
   provider = provided;
-  attach(true);
+  repoint();
   return () => {
     if (provider !== provided) return;
     provider = previous;
-    attach(true);
+    repoint();
   };
 }
 
 const identity = (analysis: Analysis): Analysis => analysis;
 
+type Memo = { source: Analysis; pick: (analysis: Analysis) => unknown; value: unknown };
+
 /**
  * The analysis, or the part `selector` picks. Re-renders only when the selection changes by `equal`
- * (default `Object.is`; pass a shallow or structural equality for derived objects).
+ * (default `Object.is`; pass a shallow or structural equality for derived objects). Built on React's own
+ * `useSyncExternalStore`: the last selection is kept and returned while `equal` says nothing changed.
  */
 export function useAnalysis(): Analysis;
 export function useAnalysis<T>(selector: (analysis: Analysis) => T, equal?: (a: T, b: T) => boolean): T;
 export function useAnalysis<T>(selector?: (analysis: Analysis) => T, equal?: (a: T, b: T) => boolean): T | Analysis {
   const pick = (selector ?? identity) as (analysis: Analysis) => T | Analysis;
-  return useStoreWithEqualityFn(analysisStore, pick, equal as ((a: T | Analysis, b: T | Analysis) => boolean) | undefined);
+  const same = (equal ?? Object.is) as (a: T | Analysis, b: T | Analysis) => boolean;
+  const memo = useRef<Memo | null>(null);
+  const getSnapshot = (): T | Analysis => {
+    const source = provider.getAnalysis();
+    const previous = memo.current;
+    if (previous && previous.source === source && previous.pick === pick) return previous.value as T | Analysis;
+    const next = pick(source);
+    if (previous && same(previous.value as T | Analysis, next)) {
+      memo.current = { source, pick, value: previous.value };
+      return previous.value as T | Analysis;
+    }
+    memo.current = { source, pick, value: next };
+    return next;
+  };
+  return useSyncExternalStore(subscribeAnalysis, getSnapshot);
 }
 
 /** The analysis now, for commands and services. Never call it in render. */
@@ -138,16 +148,16 @@ export function getAnalysis(): Analysis {
 
 /** Subscribes to analysis changes outside React. */
 export function subscribeAnalysis(listener: (analysis: Analysis, previous: Analysis) => void): () => void {
-  return analysisStore.subscribe(listener);
+  return listeners.add(listener);
 }
 
 /** @internal Contract tests: K2's provider. Returns a disposer that restores the previous one. */
 export function resetAnalysis(): () => void {
   const previous = provider;
   provider = minimalProvider();
-  attach();
+  repoint();
   return () => {
     provider = previous;
-    attach();
+    repoint();
   };
 }

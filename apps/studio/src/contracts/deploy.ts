@@ -11,6 +11,7 @@ import type { Address, Hex } from "@lattice-studio/core";
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
 import { log } from "./kernel";
+import { listenerSet } from "./relay";
 
 export type DeployPhase =
   | "idle" | "review" | "simulating" | "ready" | "awaitingSignature" | "pending" | "stale"
@@ -80,13 +81,20 @@ function idleController(): DeployController {
 }
 
 const mirror = createStore<{ state: DeployState }>(() => ({ state: IDLE }));
+const mirrorListeners = listenerSet<(state: DeployState) => void>();
+mirror.subscribe((s, p) => {
+  if (s.state !== p.state) mirrorListeners.emit(s.state);
+});
 
 const defaultLoader = async () => idleController();
 let loader: () => Promise<DeployController> = defaultLoader;
 let loading: Promise<DeployController> | null = null;
 let unsubscribe: (() => void) | null = null;
+/** Bumped by every reset, so a load that started before one never touches the mirror after it. */
+let generation = 0;
 
 function detach(): void {
+  generation += 1;
   unsubscribe?.();
   unsubscribe = null;
   loading = null;
@@ -96,8 +104,11 @@ function detach(): void {
 /** The controller, loading its lazy chunk on first call. A failed load is retried on the next call. */
 export function deployController(): Promise<DeployController> {
   if (loading) return loading;
+  const started = generation;
   const attempt = loader().then(
     (controller) => {
+      // A reset (detach, seedDeployState, a new provideDeployController) ran while this loaded: leave the mirror alone.
+      if (started !== generation) return controller;
       unsubscribe?.();
       mirror.setState({ state: controller.state() });
       unsubscribe = controller.subscribe((state) => mirror.setState({ state }));
@@ -122,6 +133,11 @@ export function useDeployState<T>(selector: (state: DeployState) => T): T {
   return useStore(mirror, (s) => selector(s.state));
 }
 
+/** Subscribes to the deploy state outside React. */
+export function subscribeDeployState(listener: (state: DeployState) => void): () => void {
+  return mirrorListeners.add(listener);
+}
+
 /**
  * S8c registers its controller's loader (`() => import("./controller").then(...)`) at module evaluation.
  * Returns a disposer that restores the previous loader, unsubscribes and resets the mirror to `idle`.
@@ -142,6 +158,7 @@ export function provideDeployController(load: () => Promise<DeployController>): 
  * (default `idle`); the registered loader stays. Returns a disposer that resets again.
  */
 export function seedDeployState(state: DeployState = IDLE): () => void {
+  generation += 1;
   unsubscribe?.();
   unsubscribe = null;
   loading = null;
