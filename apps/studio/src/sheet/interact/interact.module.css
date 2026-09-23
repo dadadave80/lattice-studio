@@ -1,0 +1,108 @@
+/*
+ * The interactions layer (Flow 3, Flow 8, IR L40-L58): the marquee, Move to…'s ghosts and crosshair, and the
+ * catalog drop ghost with its "x · y". Nothing here takes pointer events; the layer listens on the sheet.
+ * No board draws Move to…'s crosshair yet (PA L77): it follows the marquee and the selected card's accent.
+ */
+
+/* The marquee: an accent hairline over a soft accent wash, in screen px over the sheet. */
+.marquee {
+  position: absolute;
+  z-index: 5;
+  box-sizing: border-box;
+  border: var(--lx-stroke-hair) solid var(--lx-accent);
+  background: var(--lx-accent-soft);
+  pointer-events: none;
+}
+
+/* A ghost: where a card would land, drawn in sheet units inside the viewport. */
+.ghost {
+  position: absolute;
+  box-sizing: border-box;
+  border: max(var(--lx-stroke-hair), 1.5px) dashed var(--lx-accent);
+  background: var(--lx-accent-soft);
+  pointer-events: none;
+}
+
+/* The ghost's position, "x · y", in code type on the panel ground so it reads over cards and dots. */
+.coordinates {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 0;
+  margin-block-end: var(--lx-space-1);
+  padding: 0 var(--lx-space-2);
+  border: var(--lx-stroke-hair) solid var(--lx-accent);
+  background: var(--lx-panel);
+  color: var(--lx-text);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Move to…'s crosshair at the drop point: two accent lines crossing at the group's top-left corner. */
+.crosshair {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.crosshair::before,
+.crosshair::after {
+  content: "";
+  position: absolute;
+  background: var(--lx-accent);
+}
+
+.crosshair::before {
+  inset-inline-start: calc(-1 * var(--lx-space-6));
+  inset-block-start: calc(-0.5 * var(--lx-stroke-heavy));
+  width: calc(2 * var(--lx-space-6));
+  height: var(--lx-stroke-heavy);
+}
+
+.crosshair::after {
+  inset-block-start: calc(-1 * var(--lx-space-6));
+  inset-inline-start: calc(-0.5 * var(--lx-stroke-heavy));
+  width: var(--lx-stroke-heavy);
+  height: calc(2 * var(--lx-space-6));
+}
+
+/* While Move to… places the selection, the whole sheet is the target. */
+:global(.react-flow[data-placing]) :global(.react-flow__pane),
+:global(.react-flow[data-placing]) :global(.react-flow__node) {
+  cursor: crosshair;
+}
+
+/* What the tour points at when it says where a facet goes (S10): the middle of the view, never painted. */
+.placeTarget {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  width: var(--lx-card-width);
+  height: calc(var(--lx-header-height) + var(--lx-footer-height));
+  transform: translate(-50%, -50%);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The point a context menu opens from: nothing to see or press. */
+.menuPoint {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+@media (forced-colors: active) {
+  .marquee,
+  .ghost {
+    border-color: Highlight;
+    background: transparent;
+  }
+
+  .crosshair::before,
+  .crosshair::after {
+    background: Highlight;
+  }
+}
