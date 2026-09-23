@@ -1,0 +1,41 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the brief's own fixed prose and structure (never another WP's copy) the section headings, in order 1`] = `
+[
+  "## Recipe",
+  "## Cut plan",
+  "## Init plan",
+  "## Authority table",
+  "## Open problems",
+  "## Acceptance checks",
+  "## What this leaves out",
+]
+`;
+
+exports[`the brief's own fixed prose and structure (never another WP's copy) the acceptance-checks text 1`] = `
+"Compare what the diamond returns with the plan above:
+
+\`\`\`bash
+cast call <diamond> "facets()((address,bytes4[])[])" --rpc-url $RPC_URL
+\`\`\`
+
+Compare per facet as sets, address and selectors together: the factory applies registry cuts before custom cuts, so \`facets()\` can list them in a different order than the plan.
+
+Check each facet's codehash on the selected chain before trusting it, one \`cast codehash <address> --rpc-url $RPC_URL\` per row of the plan.
+
+Do not redeploy facets; check their codehashes."
+`;
+
+exports[`the brief's own fixed prose and structure (never another WP's copy) the what-this-leaves-out text, with and without open blockers 1`] = `
+"This brief leaves out the project's layout, deploy path, salt and scope, and its deployment records.
+
+"This diamond" and "Deploying account" are shown symbolically: no deploy context is set to resolve them to addresses."
+`;
+
+exports[`the brief's own fixed prose and structure (never another WP's copy) the what-this-leaves-out text, with and without open blockers 2`] = `
+"This brief leaves out the project's layout, deploy path, salt and scope, and its deployment records.
+
+"This diamond" and "Deploying account" are shown symbolically: no deploy context is set to resolve them to addresses.
+
+3 blockers still open above; deploy and export stay blocked until they're resolved."
+`;
