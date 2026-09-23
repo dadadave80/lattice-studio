@@ -1,0 +1,344 @@
+/*
+ * The init plan (Flow 7, IR L125). No board yet (PA L75): built from the inspector's ruled spec sheet
+ * (current-inspector.png): small-caps eyebrows, hairline rules, mono values, the cut-plan list's two-digit
+ * indices on sunken ground. Tokens only (contracts §5.4).
+ */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-4);
+  padding: var(--lx-space-3);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  min-inline-size: 0;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lx-space-2);
+  padding-block-end: var(--lx-space-2);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border);
+}
+
+.title {
+  margin: 0;
+  font: var(--lx-font-subheading);
+  letter-spacing: var(--lx-tracking-subheading);
+}
+
+.eyebrow {
+  margin: 0;
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-2);
+}
+
+.empty {
+  margin: 0;
+  color: var(--lx-text-muted);
+}
+
+/* Steps: an ordered list, each step a ruled block with its two-digit index. */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  padding: var(--lx-space-3);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  background: var(--lx-panel);
+  min-inline-size: 0;
+}
+
+.stepLocked {
+  background: var(--lx-sunken);
+  border-style: dashed;
+}
+
+.stepHead {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  min-inline-size: 0;
+}
+
+.index {
+  flex: none;
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-accent-line);
+  color: var(--lx-accent);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.stepName {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.stepTitle {
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.signature {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.stepTools {
+  flex: none;
+  display: flex;
+  gap: var(--lx-space-1);
+}
+
+/* A bundle's internal order, read-only (spec L460). */
+.sequence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  margin: 0;
+  padding: var(--lx-space-2) var(--lx-space-3);
+  background: var(--lx-sunken);
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  list-style: none;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.sequenceItem {
+  display: flex;
+  gap: var(--lx-space-2);
+}
+
+.sequenceIndex {
+  color: var(--lx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A step's problem (INIT-02) inline, with its fixes. */
+.stepProblem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  padding-inline-start: var(--lx-space-2);
+  border-inline-start: var(--lx-stroke-heavy) solid var(--lx-accent);
+}
+
+.problemText {
+  display: flex;
+  gap: var(--lx-space-1);
+  align-items: flex-start;
+  margin: 0;
+}
+
+/* Fields. */
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  min-inline-size: 0;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  margin: 0;
+  padding: var(--lx-space-2) var(--lx-space-3) var(--lx-space-3);
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  min-inline-size: 0;
+}
+
+.legend {
+  padding-inline: var(--lx-space-1);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  min-inline-size: 0;
+}
+
+.help {
+  display: inline;
+}
+
+/* The example / set by you dot (spec L466): a word beside the dot, never the dot alone. */
+.dot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-1);
+  margin-inline-end: var(--lx-space-1);
+  color: var(--lx-text);
+  white-space: nowrap;
+}
+
+.dot::before {
+  content: "";
+  inline-size: var(--lx-space-2);
+  block-size: var(--lx-space-2);
+  border-radius: 50%;
+  border: var(--lx-stroke-heavy) solid var(--lx-accent);
+}
+
+.dot[data-state="set"]::before {
+  background: var(--lx-accent);
+}
+
+.dot[data-state="example"]::before {
+  background: transparent;
+}
+
+.picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-1);
+}
+
+.resolved {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.suffix {
+  align-self: center;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-code-sm);
+}
+
+.status {
+  color: var(--lx-text-muted);
+}
+
+/* From link / From file (LINK-01): hatched border and a word, not color alone. */
+.origin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lx-space-2);
+}
+
+.originMark {
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) dashed var(--lx-accent);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  padding: var(--lx-space-3);
+  border: var(--lx-stroke-heavy) solid var(--lx-accent);
+  background: var(--lx-raised);
+}
+
+.fullAddress {
+  margin: 0;
+  font: var(--lx-font-code);
+  letter-spacing: var(--lx-tracking-code);
+  overflow-wrap: anywhere;
+}
+
+/* The Authority table (spec L469): full addresses, how each holder gets its role. */
+.authority {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  padding-block-start: var(--lx-space-3);
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border);
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  padding: var(--lx-space-1) var(--lx-space-2);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.table thead th {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.roleCell {
+  inline-size: 38%;
+  font-weight: 600;
+}
+
+.holder {
+  display: block;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.via {
+  display: block;
+  color: var(--lx-text-muted);
+}
+
+.rowAction {
+  margin-block-start: var(--lx-space-1);
+}
+
+code.code {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+}
+
+fieldset.picks {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+fieldset.picks > legend {
+  padding: 0;
+}
