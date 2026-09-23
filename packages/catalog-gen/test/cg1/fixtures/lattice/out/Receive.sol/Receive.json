@@ -1,0 +1,37 @@
+{
+  "abi": [
+    {
+      "type": "receive",
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "exportSelectors",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "selectors",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "pure"
+    }
+  ],
+  "bytecode": {
+    "object": "0x6080604052348015600e575f5ffd5b5060e28061001b5f395ff3fe608060405260043610601e575f3560e01c80630ef22643146028575f5ffd5b36602457005b5f5ffd5b3480156032575f5ffd5b50604080518082018252600481525f60208201529051605091906059565b60405180910390f35b602081525f82518060208401528060208501604085015e5f6040828501015260407fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f8301168401019150509291505056fea264697066735822122052b0aa16ff27d6207eb6f1391082eb65d3a86d2fd15ac8936da97776c9a3a64964736f6c63430008240033",
+    "linkReferences": {}
+  },
+  "deployedBytecode": {
+    "object": "0x608060405260043610601e575f3560e01c80630ef22643146028575f5ffd5b36602457005b5f5ffd5b3480156032575f5ffd5b50604080518082018252600481525f60208201529051605091906059565b60405180910390f35b602081525f82518060208401528060208501604085015e5f6040828501015260407fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f8301168401019150509291505056fea264697066735822122052b0aa16ff27d6207eb6f1391082eb65d3a86d2fd15ac8936da97776c9a3a64964736f6c63430008240033",
+    "linkReferences": {}
+  },
+  "methodIdentifiers": {
+    "exportSelectors()": "0ef22643"
+  },
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.36+commit.8a079791\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"exportSelectors\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"selectors\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}],\"devdoc\":{\"author\":\"David Dada <daveproxy80@gmail.com> (https://github.com/dadadave80)\",\"details\":\"Stateless, no init, no interface, no ERC-165 registration (there is nothing to register \\u2014      `receive()` has no selector). Only genuinely EMPTY calldata succeeds: 1-4 zero bytes still      route here via the zero-padded `msg.sig` but match no function and revert. NOTE the routing      costs a cold selector-map `SLOAD` + delegatecall (~4,700 gas), so Solidity `.transfer()` /      `.send()` with their 2,300-gas stipend CANNOT pay a Lattice diamond \\u2014 senders must use      `call{value: ...}(\\\"\\\")`.\",\"kind\":\"dev\",\"methods\":{\"exportSelectors()\":{\"details\":\"The single export is the ZERO selector `0x00000000` \\u2014 the empty-calldata `msg.sig` the      diamond fallback looks up. `receive()` has no selector of its own, so this is the ONE      facet whose export deliberately diverges from `forge inspect` methodIdentifiers      (ExportSelectorsParityTest carries the documented special case). Excludes      `exportSelectors()` itself (0x0ef22643) \\u2014 it is never cut into a diamond.\"}},\"title\":\"Receive\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"exportSelectors()\":{\"notice\":\"ERC-8153 selector export: this facet's cuttable selectors, tightly packed (4 bytes each).\"}},\"notice\":\"Bare-ETH acceptance as a facet: cut this under the ZERO selector (`bytes4(0)`) and the         diamond accepts plain ETH sends. An empty-calldata call reads as `msg.sig == 0x00000000`         in the diamond's fallback, routes to this facet, and the empty-calldata delegatecall runs         this contract's `receive()` in the diamond's context. Every Lattice recipe cuts it \\u2014         {Lattice} itself deliberately declares NO `receive()`, so a diamond without this         facet rejects bare ETH (an explicit opt-out for contracts that should never hold value).\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"src/Receive.sol\":\"Receive\"},\"evmVersion\":\"osaka\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[\":@diamond-script/=lib/diamond-lib/script/\",\":@diamond-test/=lib/diamond-lib/test/\",\":@diamond/=lib/diamond-lib/src/\",\":@lattice-script/=script/\",\":@lattice-test/=test/\",\":@lattice/=src/\",\":@semaphore/=lib/semaphore/\",\":@zk-kit/lean-imt.sol/=lib/zk-kit/lean-imt/\",\":diamond-lib/=lib/diamond-lib/\",\":forge-std/=lib/forge-std/src/\",\":poseidon-solidity/=lib/poseidon-solidity/\",\":semaphore/=lib/semaphore/\",\":zk-kit/=lib/zk-kit/\"]},\"sources\":{\"src/Receive.sol\":{\"keccak256\":\"0x14901ad676ee7a5c263d6d5fd504efeb1fa1455a14e1d2b21ed38ca9c63a36ec\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://ee0e4b1b2963ce2433ff624729a60d81c610676bf5934038920502de08191671\",\"dweb:/ipfs/QmZUmoh2tA5qBibMarXHJpvr3PfbiNU5Q3VjZHcDUKMKDe\"]}},\"version\":1}",
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  }
+}
