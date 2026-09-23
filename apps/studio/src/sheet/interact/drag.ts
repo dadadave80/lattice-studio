@@ -60,10 +60,11 @@ function tick(): void {
 }
 
 /**
- * Starts moving `names` (the selection, with the grabbed card `grabbed` among them) from the pointer at
- * `client`. Refused, and nothing moves, while the session is read-only (the store logs why).
+ * Starts moving `names` (the selection, with the grabbed card `grabbed` among them): the card was pressed at
+ * `pressed` and the pointer is at `client` now (past the threshold). Refused, and nothing moves, while the
+ * session is read-only (the store logs why).
  */
-export function beginDrag(names: readonly string[], grabbed: string, client: Point, root: HTMLElement | null): void {
+export function beginDrag(names: readonly string[], grabbed: string, pressed: Point, client: Point, root: HTMLElement | null): void {
   endDrag(null);
   const base = doc.get().layout;
   const entry = base[grabbed];
@@ -76,13 +77,14 @@ export function beginDrag(names: readonly string[], grabbed: string, client: Poi
     names: moving,
     base,
     anchor: { x: entry.x, y: entry.y },
-    start: toSheet(client, root),
+    start: toSheet(pressed, root),
     root,
     client,
     offset: { x: 0, y: 0 },
     frame: requestAnimationFrame(tick),
     scrolled: false,
   };
+  follow(drag);
 }
 
 /** The pointer moved. */

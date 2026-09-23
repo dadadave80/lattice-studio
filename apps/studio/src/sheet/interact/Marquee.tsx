@@ -63,7 +63,12 @@ export function Marquee() {
         moved: false,
         shift: event.shiftKey,
       };
-      (event.target as Element).setPointerCapture?.(event.pointerId);
+      try {
+        // Moves outside the sheet keep drawing it.
+        (event.target as Element).setPointerCapture(event.pointerId);
+      } catch {
+        // Not an active pointer (a synthetic one): the window listeners still follow it.
+      }
     };
     const move = (event: PointerEvent) => {
       if (!drag || event.pointerId !== drag.pointerId) return;

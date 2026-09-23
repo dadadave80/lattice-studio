@@ -10,10 +10,8 @@
  */
 import type { Hex4 } from "@lattice-studio/core";
 import type { Node, NodeMouseHandler, OnNodeDrag } from "@xyflow/react";
-import { useMemo, type FocusEvent, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from "react";
-import {
-  commandRef, runCommand, session, useSession, type SheetInteractionProps,
-} from "@/contracts";
+import type { FocusEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, TouchEvent } from "react";
+import { commandRef, runCommand, session, type SheetInteractionProps } from "@/contracts";
 import { isContextMenuKey } from "@/ui/overlays/context-menu-key";
 import { beginDrag, endDrag, moveDrag } from "./drag";
 import { DRAG_THRESHOLD, toggled } from "./geometry";
@@ -54,6 +52,15 @@ const onNodeDoubleClick: NodeMouseHandler<Node> = (_event, node) => {
   void runCommand(commandRef("inspector.focusSelectors", { facet: node.id }), "button");
 };
 
+/** Where the last press on a card was, for the drag that may follow it. */
+let press: { facet: string; client: { x: number; y: number } } | null = null;
+
+function onPress(event: ReactMouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>): void {
+  const facet = cardOf(event.target instanceof Element ? event.target : null);
+  const client = clientPoint(event.nativeEvent);
+  press = facet !== null && client ? { facet, client } : null;
+}
+
 /**
  * A drag moves the selection. Grabbing a card that isn't selected selects it first (with Shift, ⌘ or Ctrl held,
  * adds it), so what moves is always what's selected.
@@ -62,8 +69,11 @@ const onNodeDragStart: OnNodeDrag<Node> = (event, node) => {
   const selection = session.get().selection;
   const next = selection.includes(node.id) ? selection : adds(event) ? [...selection, node.id] : [node.id];
   select(next);
+  // From where the card was grabbed, not where the pointer crossed the threshold, so it stays under the pointer.
   const client = clientPoint(event);
-  if (client) beginDrag(next, node.id, client, flowRoot(event.target));
+  const pressed = press?.facet === node.id ? press.client : client;
+  press = null;
+  if (client && pressed) beginDrag(next, node.id, pressed, client, flowRoot(event.target));
 };
 
 const onNodeDrag: OnNodeDrag<Node> = (event) => {
@@ -148,34 +158,36 @@ function onBlur(event: FocusEvent<HTMLDivElement>): void {
   leaveRows(false);
 }
 
-/** S4e's props for `<ReactFlow>`, spread under S4b's own (contracts `sheet.ts`). */
+/**
+ * S4e's props for `<ReactFlow>`, spread under S4b's own (contracts `sheet.ts`). One object for the app's
+ * lifetime, and no hooks: a test may swap the interactions between renders. Read-only needs no prop of its own:
+ * a drag's `doc.begin` is refused (and says why), and the cards follow the document, which doesn't change.
+ * While Move to… places the selection, its layer takes the presses, so nothing drags.
+ */
+const PROPS: SheetInteractionProps = {
+  elementsSelectable: false,
+  selectNodesOnDrag: false,
+  selectionOnDrag: false,
+  selectionKeyCode: null,
+  multiSelectionKeyCode: MULTI_KEYS,
+  nodeDragThreshold: DRAG_THRESHOLD,
+  nodeClickDistance: DRAG_THRESHOLD,
+  autoPanOnNodeDrag: false,
+  autoPanOnSelection: false,
+  onNodeClick,
+  onNodeDoubleClick,
+  onNodeDragStart,
+  onNodeDrag,
+  onNodeDragStop,
+  onNodeContextMenu,
+  onPaneContextMenu,
+  onKeyDown,
+  onFocus,
+  onMouseDownCapture: onPress,
+  onTouchStartCapture: onPress,
+  onBlur,
+};
+
 export function useSheetInteractionProps(): SheetInteractionProps {
-  const readOnly = useSession((s) => s.readOnly);
-  const moving = useSession((s) => s.modes.moveTo);
-  return useMemo<SheetInteractionProps>(
-    () => ({
-      elementsSelectable: false,
-      selectNodesOnDrag: false,
-      selectionOnDrag: false,
-      selectionKeyCode: null,
-      multiSelectionKeyCode: MULTI_KEYS,
-      nodeDragThreshold: DRAG_THRESHOLD,
-      nodeClickDistance: DRAG_THRESHOLD,
-      autoPanOnNodeDrag: false,
-      autoPanOnSelection: false,
-      // Read-only, or while Move to… places the selection: cards don't drag (the document would refuse anyway).
-      nodesDraggable: readOnly === null && !moving,
-      onNodeClick,
-      onNodeDoubleClick,
-      onNodeDragStart,
-      onNodeDrag,
-      onNodeDragStop,
-      onNodeContextMenu,
-      onPaneContextMenu,
-      onKeyDown,
-      onFocus,
-      onBlur,
-    }),
-    [readOnly, moving],
-  );
+  return PROPS;
 }
