@@ -1,11 +1,17 @@
+import { useState } from "react";
 import { commandRef, runCommand, useSession, type LeftTab } from "@/contracts";
 import { CatalogPanel } from "@/panels/catalog";
-import { StructurePanel } from "@/panels/structure";
-import { PaneSizeMenu, TabPanel, Tabs } from "@/ui";
+import { PaneSizeMenu } from "@/ui/nav/PaneSizeMenu";
+import { TabPanel } from "@/ui/nav/TabPanel";
+import { Tabs } from "@/ui/nav/Tabs";
+import { LazyPart, lazyNamed } from "./LazyPart";
 import type { LayoutTier } from "./layout-tier";
 import { PANE_SIZES } from "./panes";
 import { setLeftSize } from "./sizes";
 import styles from "./LeftPane.module.css";
+
+/** Behind the Catalog tab at first paint, so it loads in its own chunk the first time its tab shows. */
+const StructurePanel = lazyNamed(() => import("@/panels/structure"), "StructurePanel");
 
 const TABS = [
   { value: "catalog", label: "Catalog" },
@@ -14,13 +20,15 @@ const TABS = [
 
 /**
  * The left pane (spec L356): tabs Catalog and Structure over `CatalogPanel` and `StructurePanel`, both kept
- * mounted so a tree keeps its place. The header's menu has Narrower, Wider and Collapse (spec L764). Under
+ * mounted so a tree keeps its place (Structure from the first time its tab shows). The header's menu has Narrower, Wider and Collapse (spec L764). Under
  * 768 px the pane switcher picks the tab, so the pane shows only its content.
  */
 export function LeftPane({ tier }: { tier: LayoutTier }) {
   const tab = useSession((s) => s.panes.left.tab);
   const size = useSession((s) => s.panes.left.size);
   const phone = tier === "phone";
+  const [structureShown, setStructureShown] = useState(tab === "structure");
+  if (tab === "structure" && !structureShown) setStructureShown(true);
   return (
     <div className={styles.pane} data-layout={tier}>
       <Tabs<LeftTab>
@@ -36,7 +44,11 @@ export function LeftPane({ tier }: { tier: LayoutTier }) {
           <CatalogPanel />
         </TabPanel>
         <TabPanel value="structure" keepMounted className={styles.panel}>
-          <StructurePanel />
+          {structureShown ? (
+            <LazyPart>
+              <StructurePanel />
+            </LazyPart>
+          ) : null}
         </TabPanel>
       </Tabs>
       {phone ? null : (

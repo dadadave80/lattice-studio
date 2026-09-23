@@ -57,6 +57,7 @@ function App() {
 
 describe("DialogHost", () => {
   test("shows a placeholder for a dialog nobody registered yet", async () => {
+    onCleanup(overrideDialog("deploy-review", null)); // Whether or not S8b's dialog has landed.
     await renderWithStudio(<DialogHost />);
     openDialog("deploy-review");
     const dialog = page.getByRole("dialog", { name: "Deploy review" });

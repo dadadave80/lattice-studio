@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { commandRef, KEY_CONTEXT_ATTRIBUTE, runCommand, useCommandState, useDocument } from "@/contracts";
-import { Button, cx } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
+import { cx } from "@/ui/shared/cx";
 import styles from "./TitleBar.module.css";
 
 /**

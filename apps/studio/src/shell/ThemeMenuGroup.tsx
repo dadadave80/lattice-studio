@@ -1,7 +1,8 @@
 import type { ThemeId } from "@lattice-studio/tokens";
 import { commandRef, resolveTheme, runCommand, useCommandState, useSettings } from "@/contracts";
 import { useMediaQuery } from "@/a11y";
-import { MenuRadioGroup, MenuRadioItem } from "@/ui";
+import { MenuRadioGroup } from "@/ui/overlays/MenuRadioGroup";
+import { MenuRadioItem } from "@/ui/overlays/MenuRadioItem";
 
 /** Shop and Draft as menu radios (the overflow menu's theme switch): the checked one is the theme in use. */
 export function ThemeMenuGroup() {
