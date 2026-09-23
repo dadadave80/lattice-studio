@@ -60,36 +60,61 @@ async function startAnvil(binary: string): Promise<void> {
       await spawnAnvil(binary, own);
       return;
     } catch {
-      node?.kill();
+      // spawnAnvil already stopped that node; try a port the OS picks.
     }
   }
   await spawnAnvil(binary, "0");
 }
 
+const START_TIMEOUT_MS = 10_000;
+
+/** Starts Anvil and waits for its "Listening on" line, never longer than START_TIMEOUT_MS in total. */
 async function spawnAnvil(binary: string, port: string): Promise<void> {
-  node = Bun.spawn([binary, "--port", port, "--chain-id", "31337"], { stdout: "pipe", stderr: "ignore" });
-  const reader = (node.stdout as ReadableStream<Uint8Array>).getReader();
+  const child = Bun.spawn([binary, "--port", port, "--chain-id", "31337"], { stdout: "pipe", stderr: "ignore" });
+  node = child;
+  const reader = child.stdout.getReader();
   const decoder = new TextDecoder();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), START_TIMEOUT_MS);
+  });
   let seen = "";
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    seen += decoder.decode(value);
-    const match = /Listening on ([\d.]+):(\d+)/.exec(seen);
-    if (match) {
-      url = `http://${match[1]}:${match[2]}`;
-      reader.releaseLock();
-      return;
+  try {
+    for (;;) {
+      // A hung node that prints nothing can't block past the deadline: every read races the same timer.
+      const next = await Promise.race([reader.read(), timeout]);
+      if (next === "timeout") throw new Error(`anvil printed no "Listening on" line within ${START_TIMEOUT_MS} ms: ${seen.slice(-400)}`);
+      if (next.done) throw new Error(`anvil exited before listening: ${seen.slice(-400)}`);
+      seen += decoder.decode(next.value);
+      const match = /Listening on ([\d.]+):(\d+)/.exec(seen);
+      if (match) {
+        url = `http://${match[1]}:${match[2]}`;
+        void drain(reader);
+        return;
+      }
     }
+  } catch (error) {
+    child.kill();
+    await child.exited;
+    throw error;
+  } finally {
+    clearTimeout(timer);
   }
-  throw new Error(`anvil didn't start: ${seen.slice(-400)}`);
+}
+
+/** Keeps reading Anvil's stdout until it closes, so its logging can never fill the pipe and stall the node. */
+async function drain(reader: { read(): Promise<{ done: boolean }> }): Promise<void> {
+  try {
+    while (!(await reader.read()).done);
+  } catch {
+    // The node was killed; nothing left to read.
+  }
 }
 
 describe.skipIf(ANVIL === null)("on Anvil", () => {
   beforeAll(async () => {
     if (ANVIL !== null) await startAnvil(ANVIL);
-  });
+  }, 2 * START_TIMEOUT_MS + 5_000);
 
   afterAll(async () => {
     node?.kill();
@@ -107,6 +132,7 @@ describe.skipIf(ANVIL === null)("on Anvil", () => {
     expect(getAddress(await call(ALICE, ARACHNID_PROXY, concat([salt, INIT_CODE])))).toBe(predicted);
     await send({ from: BOB, to: ARACHNID_PROXY, data: concat([salt, INIT_CODE]) });
     expect(await code(predicted)).toBe("0x2a");
+    expect(predicted).toBe("0xfae5C553f52bB00C2f965bdD299d159A5b78f11d"); // pinned in index.test.ts
   });
 
   test("factoryPredict equals LatticeFactory.predict(address,bytes32) at the pin", async () => {
@@ -120,6 +146,7 @@ describe.skipIf(ANVIL === null)("on Anvil", () => {
     const { contractAddress } = await send({ from: ALICE, data: concat([fixture.latticeFactoryCreationCode as Hex, args]) });
     if (contractAddress === null) throw new Error("the factory wasn't created");
     const factory = getAddress(contractAddress);
+    expect(factory).toBe("0x5FbDB2315678afecb367f032d93F642f64180aa3"); // Alice's first transaction
     for (const from of [ALICE, BOB]) {
       for (const scope of ["every-chain", "this-chain"] as const) {
         const salt = buildSalt(from, scope, ENTROPY);
@@ -127,6 +154,7 @@ describe.skipIf(ANVIL === null)("on Anvil", () => {
         expect(slice(data, 0, 4)).toBe(FACTORY_PREDICT_SELECTOR);
         const live = word(await call(ALICE, factory, data));
         expect(factoryPredict({ factory, proxyInitCodeHash: fixture.latticeInitCodeHash as Hex, from, salt })).toBe(live);
+        if (from === ALICE && scope === "every-chain") expect(live).toBe("0x7E6EDbe7eC66DC17D0aebd572FaF9e3F75510631"); // pinned in index.test.ts
       }
     }
   });
@@ -148,7 +176,10 @@ describe.skipIf(ANVIL === null)("on Anvil", () => {
     test("createxPredict equals deployCreate3 for both scopes and a foreign salt", async () => {
       for (const scope of ["every-chain", "this-chain"] as const) {
         const salt = buildSalt(ALICE, scope, ENTROPY);
-        expect(createxPredict({ from: ALICE, salt, chainId: 31337 })).toBe(await liveCreate3(ALICE, salt));
+        const live = await liveCreate3(ALICE, salt);
+        expect(createxPredict({ from: ALICE, salt, chainId: 31337 })).toBe(live);
+        // Pinned in index.test.ts.
+        expect(live).toBe(scope === "every-chain" ? "0xCC01deC73922ed62B57f9f0d73fC4F733578Fe77" : "0x45A0595f1a42CD051B20905dF00Dc227031fD786");
       }
       const foreign = buildSalt(BOB, "this-chain", ENTROPY);
       expect(createxPredict({ from: ALICE, salt: foreign, chainId: 31337 })).toBe(await liveCreate3(ALICE, foreign));

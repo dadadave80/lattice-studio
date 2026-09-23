@@ -25,12 +25,15 @@ const VERSIONLESS = new Set(["LatticeRegistry", "LatticeFactory"]);
  * The raw CREATE2 salt of a shared contract, passed unhashed to the deployer (spec L150).
  * Facets and inits mirror `DeployRelease.facetSalt` (L237-L238):
  * `keccak256(abi.encodePacked("lattice.", name, ".", version))`. LatticeRegistry and LatticeFactory are
- * versionless whatever `version` says (L93-L97). Without a version any other name hashes `"lattice.<name>"`,
- * which is also its registry name hash (L204).
+ * versionless whatever `version` says (L93-L97). Any other name without a version throws a TypeError:
+ * `"lattice.<name>"` alone is the registry name hash (L204), not a release salt.
  */
 export const sharedSalt: SharedSaltFn = (name, version) => {
-  const text = VERSIONLESS.has(name) || version === undefined ? `lattice.${name}` : `lattice.${name}.${version}`;
-  return keccak256(stringToHex(text));
+  if (VERSIONLESS.has(name)) return keccak256(stringToHex(`lattice.${name}`));
+  if (version === undefined || version === "") {
+    throw new TypeError(`${name} needs a version: only LatticeRegistry and LatticeFactory have versionless salts`);
+  }
+  return keccak256(stringToHex(`lattice.${name}.${version}`));
 };
 
 /**

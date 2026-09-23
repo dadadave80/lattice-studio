@@ -45,8 +45,36 @@ describe("sharedSalt", () => {
     expect(sharedSalt("GovernedVaultInit", "0.4.0")).toBe(keccak256(stringToHex("lattice.GovernedVaultInit.0.4.0")));
   });
 
-  test("without a version a facet name hashes to its registry name hash (DeployRelease L204)", () => {
-    expect(sharedSalt("ERC20")).toBe(keccak256(encodePacked(["string", "string"], ["lattice.", "ERC20"])));
+  test("a versioned name without a version throws: lattice.<name> is the registry name hash, not a salt", () => {
+    expect(() => sharedSalt("ERC20")).toThrow(TypeError);
+    expect(() => sharedSalt("ERC20", "")).toThrow(TypeError);
+  });
+});
+
+// Literals from the Anvil run in anvil.test.ts, which asserts the EVM produces these same addresses.
+describe("vectors pinned from Anvil", () => {
+  const entropy: Hex = "0xc5b0c5b0c5b0c5b0c5b0c5";
+
+  test("Arachnid's proxy deploys 0x6001600c60003960016000f32a with salt lattice.ERC20.0.4.0 here", () => {
+    expect(arachnidAddress(sharedSalt("ERC20", "0.4.0"), keccak256("0x6001600c60003960016000f32a"))).toBe(
+      "0xfae5C553f52bB00C2f965bdD299d159A5b78f11d",
+    );
+  });
+
+  test("LatticeFactory at 0x5FbD…0aa3 (pin f4a32c8) predicts this for Alice, every chain", () => {
+    const salt = buildSalt(ALICE, "every-chain", entropy);
+    expect(factoryPredict({ factory: "0x5FbDB2315678afecb367f032d93F642f64180aa3", proxyInitCodeHash: HASH, from: ALICE, salt })).toBe(
+      "0x7E6EDbe7eC66DC17D0aebd572FaF9e3F75510631",
+    );
+  });
+
+  test("CreateX deployCreate3 on chain 31337 for Alice, both flags", () => {
+    expect(createxPredict({ from: ALICE, salt: buildSalt(ALICE, "every-chain", entropy), chainId: 31337 })).toBe(
+      "0xCC01deC73922ed62B57f9f0d73fC4F733578Fe77",
+    );
+    expect(createxPredict({ from: ALICE, salt: buildSalt(ALICE, "this-chain", entropy), chainId: 31337 })).toBe(
+      "0x45A0595f1a42CD051B20905dF00Dc227031fD786",
+    );
   });
 });
 
