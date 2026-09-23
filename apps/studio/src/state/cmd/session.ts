@@ -11,8 +11,11 @@ import { disabled, edit, guard, isString, OK, sayNote } from "./shared";
 type AckArgs = CommandArgsOf<"ack.set">;
 type RenameArgs = CommandArgsOf<"project.rename">;
 
-/** Undo and redo are live everywhere except text fields and the palette's search, which keep native text undo (IR L11). */
-const EVERYWHERE_BUT_TEXT: KeyContext[] = ["global", "sheet", "card-rows", "tree", "list", "menu", "console", "dialog"];
+/**
+ * Undo and redo are live everywhere except text fields, which keep native text undo (IR L11): the console's
+ * command line and the palette's search are text too.
+ */
+const EVERYWHERE_BUT_TEXT: KeyContext[] = ["global", "sheet", "card-rows", "tree", "list", "menu", "dialog"];
 
 export const NOTHING_TO_UNDO = "Nothing to undo";
 export const NOTHING_TO_REDO = "Nothing to redo";

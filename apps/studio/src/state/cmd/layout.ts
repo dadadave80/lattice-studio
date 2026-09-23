@@ -4,7 +4,7 @@
  * narrate no problems; each says what it did.
  */
 import type { EditResult, Project } from "@lattice-studio/core";
-import { applyLayout, flipPins, lines, pushBelow, setExpanded, tidy } from "@lattice-studio/core";
+import { applyLayout, flipPins, lines, plural, pushBelow, setExpanded, tidy } from "@lattice-studio/core";
 import { command, doc, isPlaceholder, layoutMetrics, runCommand, type CommandArgsOf, type CommandContext } from "@/contracts";
 import { cardSizes, sizeOf } from "./geometry";
 import { disabled, edit, guard, isString, notOnSheet, OK } from "./shared";
@@ -78,7 +78,7 @@ function tidyLayout(ctx: CommandContext, selection?: readonly string[]): EditRes
   return edit(
     (p) => applyLayout(p, tidy(p, catalog, ctx.analysis, layoutMetrics, selection)),
     {
-      label: `Tidied ${selection ? selection.length : Object.keys(ctx.project.layout).length || ctx.project.recipe.facets.length} facets`,
+      label: `Tidied ${plural(selection ? selection.length : Object.keys(ctx.project.layout).length || ctx.project.recipe.facets.length, "facet")}`,
       say: (r) => [lines.tidied({ facets: selection ? selection.length : Object.keys(r.project.layout).length })],
     },
   );

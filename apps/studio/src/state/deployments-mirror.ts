@@ -73,7 +73,8 @@ export function createDeploymentsMirror(): DeploymentsMirror {
           if (changed === projectId) read(changed);
         }),
       );
-      follow(doc.get().id);
+      // Only once a project has loaded: never a read at module evaluation (contracts/discover.ts).
+      if (doc.state().lastChange !== null) follow(doc.get().id);
       return () => {
         started = false;
         projectId = null;
