@@ -131,15 +131,66 @@ function harness(item: Case, catalog: Catalog): string {
     shared
       .map((s) => `        vm.etch(${s.address}, ${s.name === skip ? 'hex"01"' : hexLit(fixtureRuntime(s.name))});`)
       .join("\n") + (path === "createx" ? `\n        vm.etch(${target}, hex"00");` : "");
-  // The deploy call runs a mock that returns the predicted address and only then gives it a loupe, so the
-  // script's empty-address check sees no code, as on a real chain.
+  const FOREIGN = "0x000000000000000000000000000000000000bEEF";
+  const wrongPrediction = "0x000000000000000000000000000000000000dEaD";
+  const fewer = encodeAbiParameters(loupeType, [analysis.plan.slice(0, -1).map((entry) => [entry.address, entry.selectors] as const)]);
+  const foreign = encodeAbiParameters(loupeType, [
+    analysis.plan.map((entry, i) => [i === 0 ? FOREIGN : entry.address, entry.selectors] as const),
+  ]);
+  const createxAt = `CreateX at ${toChecksum(target)}`;
+  const firstAt = `${first?.facet} at ${toChecksum(first?.address ?? FOREIGN)}`;
+  const predictMock = (answer: string): string =>
+    path === "factory"
+      ? `        vm.mockCall(${target}, abi.encodeWithSignature("predict(address,bytes32)", SENDER, bytes32(${salt})), abi.encode(${answer}));`
+      : `        vm.mockCall(${target}, abi.encodeWithSelector(bytes4(${toFunctionSelector("function computeCreate3Address(bytes32)")})), abi.encode(${answer}));`;
+  // The deploy call runs a mock that checks the calldata, returns the predicted address and only then gives it a
+  // loupe, so the script's empty-address check sees no code, as on a real chain.
   const mocks = (deployer: "MockDeployOk" | "MockDeployShort"): string =>
     [
-      path === "factory"
-        ? `        vm.mockCall(${target}, abi.encodeWithSignature("predict(address,bytes32)", SENDER, bytes32(${salt})), abi.encode(${predicted}));`
-        : `        vm.mockCall(${target}, abi.encodeWithSelector(bytes4(${toFunctionSelector("function computeCreate3Address(bytes32)")})), abi.encode(${predicted}));`,
+      predictMock(predicted),
       `        vm.mockFunction(${target}, address(new ${deployer}()), abi.encodeWithSelector(bytes4(${deployCall.slice(0, 10)})));`,
     ].join("\n");
+  const loupeMock = (data: Hex): string => `        vm.mockCall(${predicted}, abi.encodeWithSelector(bytes4(0x7a0ed627)), ${hexLit(data)});`;
+  // Only the factory path can run end to end here: CreateX's real runtime code isn't in the repo, so no etched
+  // code can match CREATEX_CODEHASH. Q5 runs the CreateX script on a fork; this harness drives its parts.
+  const runTests =
+    path === "factory"
+      ? `
+    function test_addressTaken() public {
+${etch()}
+${mocks("MockDeployOk")}
+        vm.etch(${predicted}, hex"00");
+        vm.expectRevert(abi.encodeWithSelector(${contract}.AddressTaken.selector, ${predicted}));
+        script.run();
+    }
+
+    function test_runSendsTheDeployCall() public {
+${etch()}
+${mocks("MockDeployOk")}
+        assertEq(script.run(), ${predicted});
+    }
+
+    function test_runRefusesOtherSelectors() public {
+${etch()}
+${mocks("MockDeployShort")}
+        vm.expectRevert(abi.encodeWithSelector(${contract}.SelectorsDiffer.selector, ${toChecksum(first?.address ?? FOREIGN)}));
+        script.run();
+    }
+
+    function test_runRefusesAnotherPrediction() public {
+${etch()}
+${predictMock(wrongPrediction)}
+        vm.expectRevert(abi.encodeWithSelector(${contract}.PredictionDiffers.selector, ${predicted}, ${wrongPrediction}));
+        script.run();
+    }
+`
+      : `
+    function test_createxWithOtherCode() public {
+${etch()}
+        vm.expectRevert(abi.encodeWithSelector(${contract}.UnexpectedCode.selector, ${solidityString(createxAt)}));
+        script.run();
+    }
+`;
   const mockDeploy = (name: string, facetsData: Hex): string => `contract ${name} {
     fallback(bytes calldata data) external returns (bytes memory) {
         require(keccak256(data) == ${keccak256(deployCall)}, "the deploy call differs from Studio's");
@@ -169,6 +220,18 @@ contract Exposed is ${contract} {
 
     function saltFor(address deployer) external pure returns (bytes32) {
         return _salt(deployer);
+    }
+
+    function predictFor(address deployer, bytes32 salt) external view returns (address) {
+        return _predict(_chainConfig(), deployer, salt);
+    }
+
+    function deployFor(bytes32 salt, address init, bytes memory data) external returns (address) {
+        return _deploy(_chainConfig(), salt, init, data);
+    }
+
+    function checkFacetsFor(address diamond) external view {
+        _checkFacets(diamond);
     }
 }
 
@@ -206,31 +269,52 @@ contract ${contract}Test is Test {
 
     function test_unexpectedCode() public {
 ${etch(first?.facet)}
-        vm.expectRevert(abi.encodeWithSelector(${contract}.UnexpectedCode.selector, ${solidityString(`${first?.facet} at ${toChecksum(first?.address ?? "0x0000000000000000000000000000000000000000")}`)}));
+        vm.expectRevert(abi.encodeWithSelector(${contract}.UnexpectedCode.selector, ${solidityString(path === "createx" ? `${createxAt}, ${firstAt}` : firstAt)}));
         script.run();
     }
 
-    function test_addressTaken() public {
+    function test_predictMatches() public {
 ${etch()}
-${mocks("MockDeployOk")}
-        vm.etch(${predicted}, hex"00");
-        vm.expectRevert(abi.encodeWithSelector(${contract}.AddressTaken.selector, ${predicted}));
-        script.run();
+${predictMock(predicted)}
+        assertEq(script.predictFor(SENDER, bytes32(${salt})), ${predicted});
     }
 
-    function test_runSendsTheDeployCall() public {
+    function test_predictionDiffers() public {
+${etch()}
+${predictMock(wrongPrediction)}
+        vm.expectRevert(abi.encodeWithSelector(${contract}.PredictionDiffers.selector, ${predicted}, ${wrongPrediction}));
+        script.predictFor(SENDER, bytes32(${salt}));
+    }
+
+    function test_deployCallMatches() public {
 ${etch()}
 ${mocks("MockDeployOk")}
-        assertEq(script.run(), ${predicted});
+        assertEq(script.deployFor(bytes32(${salt}), ${toChecksum(init.value.target)}, ${hexLit(init.value.data)}), ${predicted});
+    }
+
+    function test_facetsMatchAsSets() public {
+${loupeMock(loupe)}
+        script.checkFacetsFor(${predicted});
     }
 
     function test_facetsDiffer() public {
-${etch()}
-${mocks("MockDeployShort")}
-        vm.expectRevert(abi.encodeWithSelector(${contract}.SelectorsDiffer.selector, ${toChecksum(first?.address ?? "0x0000000000000000000000000000000000000000")}));
-        script.run();
+${loupeMock(fewer)}
+        vm.expectRevert(abi.encodeWithSelector(${contract}.FacetsDiffer.selector, uint256(${analysis.plan.length}), uint256(${analysis.plan.length - 1})));
+        script.checkFacetsFor(${predicted});
     }
-}
+
+    function test_unexpectedFacet() public {
+${loupeMock(foreign)}
+        vm.expectRevert(abi.encodeWithSelector(${contract}.UnexpectedFacet.selector, ${FOREIGN}));
+        script.checkFacetsFor(${predicted});
+    }
+
+    function test_selectorsDiffer() public {
+${loupeMock(short)}
+        vm.expectRevert(abi.encodeWithSelector(${contract}.SelectorsDiffer.selector, ${toChecksum(first?.address ?? FOREIGN)}));
+        script.checkFacetsFor(${predicted});
+    }
+${runTests}}
 `;
 }
 
@@ -280,7 +364,7 @@ function kitchenSink(fixture: Fixture): Fixture {
       blob: "0xdeadbeef",
       tiers: [
         { label: 'gold"; } /*', weights: ["1", "255"] },
-        { label: "‮silver\n", weights: ["0", "7"] },
+        { label: "\u202Esilver\n", weights: ["0", "7"] },
       ],
     },
     admins: [{ $ref: "deployer" }, "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"],
@@ -298,7 +382,7 @@ function kitchenSink(fixture: Fixture): Fixture {
 }
 
 /** A project name and vault name that try to break out of every string and comment they land in. */
-const HOSTILE_NAME = 'Vault"; } contract Evil { /* */ \n// ‮evil⁦ \\" café \u{1F600}';
+const HOSTILE_NAME = 'Vault"; } contract Evil { /* */ \n// \u202Eevil\u2066 \\" café \u{1F600}';
 
 /** Strings no encoder should let through: quotes, backslashes, newlines, comment ends, bidi controls, astral and lone surrogates. */
 const HOSTILE = [
@@ -459,7 +543,16 @@ describe.skipIf(!ENABLED)("generated scripts under forge", () => {
     expect(failures).toEqual([]);
     const names = Object.keys(tests);
     for (const item of cases) {
-      for (const t of ["test_initEqualsEncodeInit", "test_saltEqualsBuildSalt", "test_unsupportedChain", "test_missingSharedContracts", "test_unexpectedCode", "test_addressTaken", "test_runSendsTheDeployCall", "test_facetsDiffer"]) {
+      const common = [
+        "test_initEqualsEncodeInit", "test_saltEqualsBuildSalt", "test_unsupportedChain", "test_missingSharedContracts",
+        "test_unexpectedCode", "test_predictMatches", "test_predictionDiffers", "test_deployCallMatches",
+        "test_facetsMatchAsSets", "test_facetsDiffer", "test_unexpectedFacet", "test_selectorsDiffer",
+      ];
+      const own =
+        item.path === "factory"
+          ? ["test_addressTaken", "test_runSendsTheDeployCall", "test_runRefusesOtherSelectors", "test_runRefusesAnotherPrediction"]
+          : ["test_createxWithOtherCode"];
+      for (const t of [...common, ...own]) {
         expect(names).toContain(`${item.contract}Test.${t}`);
       }
     }

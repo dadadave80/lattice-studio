@@ -42,7 +42,7 @@ describe("solidityString", () => {
 
   test("writes controls as \\x, BMP characters (bidi controls included) as \\u and astral ones as UTF-8 bytes", () => {
     expect(solidityString("\u0000\u007f")).toBe('"\\x00\\x7f"');
-    expect(solidityString("‮evil⁦")).toBe('"\\u202eevil\\u2066"');
+    expect(solidityString("\u202Eevil\u2066")).toBe('"\\u202eevil\\u2066"');
     expect(solidityString("café")).toBe('"caf\\u00e9"');
     expect(solidityString("\u{1F600}")).toBe('"\\xf0\\x9f\\x98\\x80"');
     expect(solidityString("a\ud800b")).toBe('"a\\ufffdb"');
@@ -69,7 +69,7 @@ describe("commentText", () => {
   test("breaks a star-slash and makes bidi and other hidden characters visible", () => {
     expect(commentText("x */ y")).toBe("x * / y");
     expect(commentText("**/")).toBe("** /");
-    expect(commentText("‮abc")).toBe("\\u202eabc");
+    expect(commentText("\u202Eabc")).toBe("\\u202eabc");
     expect(commentText(" \u0085")).toBe("\\u2028\\u0085");
     expect(commentText("\u{1F600}")).toBe("\\u{1f600}");
   });
@@ -102,7 +102,7 @@ describe("identifiers", () => {
     expect(pascalIdentifier("GovernedVault (shared)")).toBe("GovernedVaultShared");
     expect(pascalIdentifier("my token v2")).toBe("MyTokenV2");
     expect(pascalIdentifier('"; drop */', "Diamond")).toBe("Drop");
-    expect(pascalIdentifier("‮", "Diamond")).toBe("Diamond");
+    expect(pascalIdentifier("\u202E", "Diamond")).toBe("Diamond");
   });
 
   test("any text sanitizes to [A-Za-z0-9_], never a keyword or a leading digit", () => {

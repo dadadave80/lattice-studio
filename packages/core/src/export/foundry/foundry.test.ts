@@ -7,7 +7,9 @@ import { analyze } from "../../analysis";
 import type { Catalog } from "../../model/catalog";
 import type { Recipe } from "../../model/recipe";
 import { exportFoundry, scriptContractName } from "./foundry";
-import { fixtureCatalog, fixtureProject, v1Recipes, type Fixture } from "./test-support";
+import { CREATEX_CODEHASH } from "../../checks/net";
+import { planInit } from "../../init/plan/plan";
+import { fixtureCatalog, fixtureProject, MINIMAL_PROXY_CODE, minimalFixture, v1Recipes, type Fixture } from "./test-support";
 
 const catalog = fixtureCatalog();
 const CHAINS = [11155111, 84532];
@@ -64,18 +66,55 @@ function shape(source: string, contract: string): string[] {
 }
 
 describe("exportFoundry", () => {
+  // The snapshot pins C7a's own structure only: a catalog, recipe and analysis written by hand in test-support.ts,
+  // with the recipe hash (C1's) masked. Fixture recipes are checked below with composed assertions.
+  for (const path of ["factory", "createx"] as const) {
+    test(`structure snapshot through ${path}`, () => {
+      const fixture = minimalFixture(path);
+      const out = exportOf(fixture, path === "createx" ? { proxyCreationCode: MINIMAL_PROXY_CODE } : {});
+      if (!out.ok) throw new Error(out.error);
+      expect(out.value.filename).toBe("DeployMinimal.s.sol");
+      expect(out.value.mime).toBe("text/plain");
+      expect(out.value.text.replaceAll(fixture.analysis.recipeHash, "<recipe hash>")).toMatchSnapshot();
+    });
+  }
+
   for (const name of v1Recipes(catalog)) {
     for (const path of ["factory", "createx"] as const) {
-      test(`snapshot: ${name} through ${path}`, () => {
+      test(`${name} through ${path}: every plan entry, selector, codehash and init call`, () => {
         const fixture = fixtureProject(catalog, name, { path, scope: path === "factory" ? "every-chain" : "this-chain" });
         const out = exportOf(fixture, path === "createx" ? { proxyCreationCode: PROXY_CODE } : {});
         if (!out.ok) throw new Error(out.error);
+        const text = out.value.text;
         expect(out.value.filename).toBe(`Deploy${name}.s.sol`);
-        expect(out.value.mime).toBe("text/plain");
-        expect(out.value.text).toMatchSnapshot();
+        expect(text).toContain(`bytes32 internal constant RECIPE_HASH = ${fixture.analysis.recipeHash};`);
+        expect(text.match(/FacetCut\([A-Z0-9_]+_ADDRESS, FacetCutAction\.Add, selectors\);/g)?.length).toBe(fixture.analysis.plan.length);
+        for (const entry of fixture.analysis.plan) {
+          expect(text).toContain(`//   ${entry.facet} ${entry.version}, `);
+          expect(text).toContain(`// ${entry.facet} ${entry.version}\n        selectors = new bytes4[](${entry.selectors.length});`);
+          expect(text).toContain(entry.address);
+          expect(text).toContain(entry.codehash);
+          for (const selector of entry.selectors) expect(text).toContain(`bytes4(${selector});`);
+        }
+        const steps = planInit(fixture.project.recipe, catalog).steps;
+        for (const step of steps) expect(text).toContain(`//   ${step.contract}.${step.fn}\n`);
+        if (path === "createx") {
+          expect(text).toContain(`bytes32 internal constant CREATEX_CODEHASH = ${CREATEX_CODEHASH};`);
+          expect(text).toContain('_expect("CreateX", CREATEX, CREATEX_CODEHASH);');
+        } else {
+          expect(text).toContain('_expect("LatticeFactory", config.factory, config.factoryCodehash);');
+        }
       });
     }
   }
+
+  test("the run log prints a comment-safe project name, never the raw one", () => {
+    const base = fixtureProject(catalog, "ERC20");
+    const name = "Vault\u001b]8;;https://evil\u0007x\u001b[2J\u202E\n";
+    const text = textOf({ ...base, project: { ...base.project, name } });
+    expect(text).toContain('string internal constant PROJECT = "Vault\\\\u001b]8;;https://evil\\\\u0007x\\\\u001b[2J\\\\u202e";');
+    expect(text).toContain('console.log("Deployed", PROJECT, "at", diamond);');
+  });
 
   test("the same inputs give the same bytes, and the inputs are left as they were", () => {
     const fixture = fixtureProject(catalog, "GovernedVault");
@@ -218,7 +257,7 @@ describe("hostile project names", () => {
     expect(scriptContractName("GovernedVault (shared)")).toBe("DeployGovernedVaultShared");
     expect(scriptContractName('x"; } contract Evil { function f() {} /*')).toBe("DeployXContractEvilFunctionF");
     expect(scriptContractName("")).toBe("DeployDiamond");
-    expect(scriptContractName("‮⁦")).toBe("DeployDiamond");
+    expect(scriptContractName("\u202E\u2066")).toBe("DeployDiamond");
   });
 
   test("a name never escapes its string literal or comment: the code tokens match a plain name's", () => {
@@ -229,7 +268,7 @@ describe("hostile project names", () => {
       fc.property(
         fc.oneof(
           fc.string({ unit: "binary", maxLength: 40 }),
-          fc.constantFrom('"; selfdestruct(payable(msg.sender)); "', "*/ contract X {} /*", "a\nb\r\nc", "‮txt⁦", "\\\"", "// x"),
+          fc.constantFrom('"; selfdestruct(payable(msg.sender)); "', "*/ contract X {} /*", "a\nb\r\nc", "\u202Etxt\u2066", "\\\"", "// x"),
         ),
         (name) => {
           const out = exportOf({ ...base, project: { ...base.project, name } });

@@ -6,6 +6,7 @@
  * call in its own simulation, `facets()` equals the plan per facet as sets.
  */
 import { CREATEX } from "../../address/diamond";
+import { CREATEX_CODEHASH } from "../../checks/net";
 import { SCOPE_FLAG } from "../../address/salt";
 import type { PlanEntry } from "../../model/analysis";
 import type { Catalog, InitSpec } from "../../model/catalog";
@@ -74,7 +75,7 @@ function upperSnake(name: string): string {
 const TEMPLATE_NAMES = [
   "Script", "console", "FacetCutAction", "FacetCut", "Facet", "RecipeEntry", "ChainConfig", "ILatticeFactory",
   "IDiamondLoupe", "ICreateX", "ILattice", "Values", "CREATEX", "CREATE3_PROXY_CHILD_HASH", "SCOPE", "ENTROPY",
-  "RECIPE_HASH", "PROJECT", "SUPPORTED_CHAINS", "MISSING_HELP", "LATTICE_CREATION_CODE", "missing", "wrongCode",
+  "RECIPE_HASH", "PROJECT", "SUPPORTED_CHAINS", "MISSING_HELP", "LATTICE_CREATION_CODE", "CREATEX_CODEHASH", "missing", "wrongCode",
 ];
 
 class SharedRegistry {
@@ -120,6 +121,7 @@ function headerLines(input: ScriptInput): string[] {
       ? "Deploys through: LatticeFactory.deploy, one transaction with its init"
       : "Deploys through: CreateX.deployCreate3AndInit, one transaction with its init",
   );
+  if (input.path === "createx") add(`CreateX must hold its published runtime code, codehash ${CREATEX_CODEHASH}`);
   add(`Salt: deploying account, scope ${SCOPE_FLAG[input.scope]} (${input.scope}), entropy ${input.entropy}`);
   add(`Chains: ${chainList}`);
   add();
@@ -143,7 +145,7 @@ function headerLines(input: ScriptInput): string[] {
   add('References: "This diamond" is the predicted address; "Deploying account" is the broadcaster.');
   add();
   add("Verify: the script creates no contract forge could match. Verify the diamond against the published Lattice");
-  add(`standard JSON, in a Lattice checkout at commit ${catalog.lattice.commit}:`);
+  add(`standard JSON, in a Lattice checkout at ${catalog.lattice.tag} (commit ${catalog.lattice.commit}):`);
   item("FOUNDRY_PROFILE=ci forge verify-contract <diamond> src/Lattice.sol:Lattice --verifier sourcify --chain <chain id>");
   if (input.path === "factory") {
     for (const chain of input.chains.filter((c) => c.chainSpecific)) {
@@ -305,7 +307,9 @@ export function renderScript(input: ScriptInput): string {
     "    error SelectorsDiffer(address facet);",
     "",
   );
-  push(...declarationLines(1, "string internal constant PROJECT", stringLiteral(input.projectName)));
+  // The name the run log prints: made comment-safe at export time, so no control, bidi or escape sequence reaches
+  // a terminal (commentText leaves printable ASCII only).
+  push(...declarationLines(1, "string internal constant PROJECT", stringLiteral(commentText(input.projectName))));
   push(`    bytes32 internal constant RECIPE_HASH = ${fixedBytesLiteral(input.recipeHash, 32)};`);
   push(`    bytes1 internal constant SCOPE = ${fixedBytesLiteral(SCOPE_FLAG[input.scope], 1)};`);
   push(`    bytes11 internal constant ENTROPY = ${fixedBytesLiteral(input.entropy, 11)};`);
@@ -313,6 +317,7 @@ export function renderScript(input: ScriptInput): string {
   push(...declarationLines(1, "string internal constant MISSING_HELP", stringLiteral(MISSING_HELP)));
   if (!factoryPath) {
     push(`    address internal constant CREATEX = ${addressLiteral(CREATEX)};`);
+    push(...declarationLines(1, "bytes32 internal constant CREATEX_CODEHASH", fixedBytesLiteral(CREATEX_CODEHASH, 32)));
     push(...declarationLines(1, "bytes32 internal constant CREATE3_PROXY_CHILD_HASH", fixedBytesLiteral(CREATE3_PROXY_CHILD_HASH, 32)));
     push(...declarationLines(1, "bytes internal constant LATTICE_CREATION_CODE", hexStringLiteral(input.proxyCreationCode ?? "0x")));
   }
@@ -337,20 +342,7 @@ export function renderScript(input: ScriptInput): string {
     "        address predicted = _predict(config, deployer, salt);",
     "        if (predicted.code.length != 0) revert AddressTaken(predicted);",
     `        (address init, bytes memory initCalldata) = _init(${initArgs});`,
-  );
-  if (factoryPath) {
-    push(
-      "        RecipeEntry[] memory entries = new RecipeEntry[](0);",
-      "        diamond = ILatticeFactory(config.factory).deploy(entries, _cuts(), init, initCalldata, salt);",
-    );
-  } else {
-    push(
-      "        bytes memory initialize = abi.encodeCall(ILattice.initialize, (_cuts(), init, initCalldata));",
-      "        ICreateX.Values memory values = ICreateX.Values(0, 0);",
-      "        diamond = ICreateX(CREATEX).deployCreate3AndInit(salt, LATTICE_CREATION_CODE, initialize, values);",
-    );
-  }
-  push(
+    "        diamond = _deploy(config, salt, init, initCalldata);",
     "        vm.stopBroadcast();",
     "",
     "        if (diamond != predicted) revert PredictionDiffers(predicted, diamond);",
@@ -379,7 +371,7 @@ export function renderScript(input: ScriptInput): string {
       '        _expect("LatticeFactory", config.factory, config.factoryCodehash);',
     );
   } else {
-    push("    function _checkSharedContracts(ChainConfig memory) internal {", '        if (CREATEX.code.length == 0) missing = "CreateX";');
+    push("    function _checkSharedContracts(ChainConfig memory) internal {", '        _expect("CreateX", CREATEX, CREATEX_CODEHASH);');
   }
   for (const item of shared.list) {
     push(...callLines(2, "", "_expect", [stringLiteral(item.name), `${item.base}_ADDRESS`, `${item.base}_CODEHASH`]));
@@ -435,6 +427,30 @@ export function renderScript(input: ScriptInput): string {
       "        address reported = ICreateX(CREATEX).computeCreate3Address(guarded);",
       "        if (reported != predicted) revert PredictionDiffers(predicted, reported);",
       "        return predicted;",
+      "    }",
+      "",
+    );
+  }
+
+  if (factoryPath) {
+    push(
+      "    // Every facet as a custom Add cut; no RecipeEntry, since registry records aren't known when the script is written.",
+      "    function _deploy(ChainConfig memory config, bytes32 salt, address init, bytes memory data)",
+      "        internal",
+      "        returns (address)",
+      "    {",
+      "        RecipeEntry[] memory entries = new RecipeEntry[](0);",
+      "        return ILatticeFactory(config.factory).deploy(entries, _cuts(), init, data, salt);",
+      "    }",
+      "",
+    );
+  } else {
+    push(
+      "    // The raw sender-prefixed salt, which CreateX guards itself, then the proxy's initialize(cuts, init, data).",
+      "    function _deploy(ChainConfig memory, bytes32 salt, address init, bytes memory data) internal returns (address) {",
+      "        bytes memory initialize = abi.encodeCall(ILattice.initialize, (_cuts(), init, data));",
+      "        ICreateX.Values memory values = ICreateX.Values(0, 0);",
+      "        return ICreateX(CREATEX).deployCreate3AndInit(salt, LATTICE_CREATION_CODE, initialize, values);",
       "    }",
       "",
     );
