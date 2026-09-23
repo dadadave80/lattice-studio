@@ -1,0 +1,26 @@
+# diamond-lib's initializers (lib/diamond-lib/src/initializers). DiamondInit is left out: Lattice can't use it
+# (src/utils/DiamondIntrospectionInit.sol#L15-L17).
+
+ERC165Init:
+  kind: step
+  source: lib/diamond-lib/src/initializers/ERC165Init.sol#L12-L14
+
+MultiInit:
+  kind: step
+  source: lib/diamond-lib/src/initializers/MultiInit.sol#L15-L38
+  params:
+    _initAddresses:
+      doc: The init contracts, delegatecalled in order.
+    _initData:
+      doc: The calldata for each init contract, index-aligned with the addresses.
+
+OwnableInit:
+  kind: step
+  source: lib/diamond-lib/src/initializers/OwnableInit.sol#L15-L18
+  params:
+    _owner:
+      rule: nonzero
+      authority: true
+      role: owner
+      # initializeOwner stores address(0) as "no owner", so every owner-gated call, diamondCut included, reverts.
+      source: lib/diamond-lib/src/libraries/OwnableLib.sol#L107-L129

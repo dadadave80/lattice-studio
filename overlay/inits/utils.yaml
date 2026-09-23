@@ -1,0 +1,15 @@
+# DiamondIntrospectionInit has two entry points, so it is two specs (contracts §3.1). The planner appends one of
+# them to step inits: initUpgradeable when an upgrade mechanism is placed, initImmutable when none is (spec R11).
+
+DiamondIntrospectionInit.initImmutable:
+  kind: step
+  source: src/utils/DiamondIntrospectionInit.sol#L31-L35
+  registersInterfaces: true
+  notes: >-
+    Registers only the IDiamondLoupe flag, so supportsInterface(0x1f931c1c) stays false on an immutable
+    diamond (src/utils/DiamondIntrospectionInit.sol#L11-L13).
+
+DiamondIntrospectionInit.initUpgradeable:
+  kind: step
+  source: src/utils/DiamondIntrospectionInit.sol#L21-L23
+  registersInterfaces: true

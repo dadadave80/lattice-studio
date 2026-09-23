@@ -1,0 +1,26 @@
+ENSResolver:
+  requires: []
+  init:
+    name: ENSResolverInit
+    source: src/ens/ENSResolverInit.sol#L19-L22
+  notes: >-
+    ENSResolverInit grants only DEFAULT_ADMIN_ROLE; the admin grants ENS_MANAGER_ROLE after deploy to rotate the
+    registry (src/ens/libraries/ENSResolverLib.sol L66-L72).
+ENSReverseClaimer:
+  requires: []
+  init:
+    name: ENSReverseClaimerInit
+    source: src/ens/ENSReverseClaimerInit.sol#L20-L23
+  notes: >-
+    GovernedVaultENSInit also initializes this module and must not be combined with ENSReverseClaimerInit, which
+    would re-run AccessControl's init (src/defi/GovernedVaultENSInit.sol L45-L46). ENSReverseClaimerInit grants only
+    DEFAULT_ADMIN_ROLE; setEnsName needs ENS_MANAGER_ROLE, granted after deploy.
+ENSSubnameIssuer:
+  requires: []
+  init:
+    name: ENSSubnameIssuerInit
+    source: src/ens/ENSSubnameIssuerInit.sol#L20-L23
+  notes: >-
+    The diamond must own or approve the parent node in the NameWrapper before issueSubname works
+    (src/ens/libraries/ENSSubnameIssuerLib.sol L89-L90). ENSSubnameIssuerInit grants only DEFAULT_ADMIN_ROLE;
+    issuing needs ENS_SUBNAME_ISSUER_ROLE, granted after deploy.

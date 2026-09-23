@@ -1,0 +1,241 @@
+# Crosschain adapters, bridges and the composition layer (src/crosschain). Only what Lattice states: no deploy
+# script in script/base/crosschain carries exclusion notes, so none of these facets has a seam or a default owner.
+
+AcrossBridgeAdapter:
+  requires: []
+  init:
+    name: AcrossBridgeAdapterInit
+    source: src/crosschain/across/AcrossBridgeAdapterInit.sol#L19-L21
+  notes: >-
+    No admin surface, so its recipe cuts no AccessControl (script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L16-L21).
+
+AxelarGatewayAdapter:
+  requires: []
+  init:
+    name: AxelarGatewayAdapterInit
+    source: src/crosschain/axelar/AxelarGatewayAdapterInit.sol#L20-L23
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter and
+    ERC7786OpenBridge (sendMessage also with CrosschainLink), and gateway() 0x116191b6 with ZetaChainGatewayAdapter.
+    Each version uses only its own adapter's storage and no Lattice script pins an owner, so the user chooses
+    (SEL-01).
+
+BridgeERC20:
+  requires:
+    - anyOf: [CrosschainLink]
+      strength: hard
+      reason: it is a handler that only CrosschainLink's receiveMessage dispatch can call, and it sends through CrosschainLink's links
+      source: src/crosschain/BridgeERC20.sol#L12-L15
+  init:
+    name: BridgeERC20Init
+    source: src/crosschain/BridgeERC20Init.sol#L20-L24
+  seamReview: >-
+    crosschainTransfer 0x28dcc8d8, processMessage 0x902d5027 and token() 0xfc0c546a are shared with BridgeERC7802;
+    crosschainTransfer and processMessage also with ERC20Crosschain, processMessage with CrosschainTimelockHandler,
+    and token() with Governor. CrosschainLink calls processMessage on the diamond itself and each handler requires
+    msg.sender to be the diamond, so only the facet that owns processMessage handles inbound messages. No Lattice
+    script cuts two of these together or pins an owner, so the user chooses (SEL-01).
+  notes: >-
+    The recipe registers it as CrosschainLink's handler after deploy with an admin setHandler call
+    (script/base/crosschain/DeployBridgeERC20.s.sol#L17-L21).
+
+BridgeERC7802:
+  requires:
+    - anyOf: [CrosschainLink]
+      strength: hard
+      reason: it is a handler that only CrosschainLink's receiveMessage dispatch can call, and it sends through CrosschainLink's links
+      source: src/crosschain/BridgeERC7802.sol#L12-L15
+  init:
+    name: BridgeERC7802Init
+    source: src/crosschain/BridgeERC7802Init.sol#L20-L24
+  seamReview: >-
+    crosschainTransfer 0x28dcc8d8, processMessage 0x902d5027 and token() 0xfc0c546a are shared with BridgeERC20;
+    crosschainTransfer and processMessage also with ERC20Crosschain, processMessage with CrosschainTimelockHandler,
+    and token() with Governor. CrosschainLink calls processMessage on the diamond itself and each handler requires
+    msg.sender to be the diamond, so only the facet that owns processMessage handles inbound messages. No Lattice
+    script cuts two of these together or pins an owner, so the user chooses (SEL-01).
+  notes: >-
+    The recipe registers it as CrosschainLink's handler after deploy with an admin setHandler call
+    (script/base/crosschain/DeployBridgeERC7802.s.sol#L17-L21).
+
+CCIPGatewayAdapter:
+  requires: []
+  init:
+    name: CCIPGatewayAdapterInit
+    source: src/crosschain/chainlink/CCIPGatewayAdapterInit.sol#L21-L24
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter and
+    ERC7786OpenBridge (sendMessage also with CrosschainLink); quoteFee 0x58d14c04 with HyperlaneGatewayAdapter and
+    LayerZeroGatewayAdapter; getRemoteGateway 0x752bcf06 and registerRemoteGateway 0x997ce1f0 with
+    WormholeGatewayAdapter. Each version uses only its own adapter's storage and no Lattice script pins
+    an owner, so the user chooses (SEL-01).
+
+CCTPBridgeAdapter:
+  requires: []
+  init:
+    name: CCTPBridgeAdapterInit
+    source: src/crosschain/circle/CCTPBridgeAdapterInit.sol#L23-L26
+  notes: >-
+    Its init deploys the diamond's CCTPHookExecutor with new (src/crosschain/circle/CCTPBridgeAdapterLib.sol#L161-L162).
+    The CCTP domain table is registered by the admin after deploy
+    (script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L20-L21).
+
+ChainRegistry:
+  requires: []
+  init:
+    name: ChainRegistryInit
+    source: src/crosschain/ChainRegistryInit.sol#L19-L22
+  notes: >-
+    No requirement on purpose: the facet states it works without any adapter facet, and addEvmChain's writes for
+    an adapter that isn't cut go unread (src/crosschain/ChainRegistry.sol#L13-L19). Its recipe notes that in
+    production the adapter facets the fan-out targets are cut into the same diamond
+    (script/base/crosschain/DeployChainRegistry.s.sol#L21-L22).
+
+CrosschainLink:
+  requires: []
+  init:
+    name: CrosschainLinkInit
+    source: src/crosschain/CrosschainLinkInit.sol#L18-L21
+  seamReview: >-
+    sendMessage 0xcdfe7f5c is shared with every ERC-7786 gateway adapter and ERC7786OpenBridge, but CrosschainLink's
+    version is an admin-gated send to a linked counterpart, not a gateway; receiveMessage 0x2432ef26 is shared with
+    ERC7786OpenBridge. CrosschainLink's NatSpec says it owns the diamond's receiveMessage selector, but no Lattice
+    script cuts it with OpenBridge or pins an owner, so the user chooses (SEL-01).
+
+CrosschainTimelockHandler:
+  requires:
+    - anyOf: [CrosschainLink]
+      strength: hard
+      reason: it is a handler that only CrosschainLink's authenticated receiveMessage dispatch can call
+      source: src/crosschain/CrosschainTimelockHandler.sol#L12-L17
+    - anyOf: [TimelockController]
+      strength: hard
+      reason: it schedules operations on the co-mounted timelock, which executes them
+      source: src/crosschain/CrosschainTimelockHandler.sol#L12-L17
+  init:
+    name: CrosschainTimelockHandlerInit
+    source: src/crosschain/CrosschainTimelockHandlerInit.sol#L21-L31
+  seamReview: >-
+    processMessage 0x902d5027 is shared with BridgeERC20, BridgeERC7802 and ERC20Crosschain. CrosschainLink calls
+    processMessage on the diamond itself and each handler requires msg.sender to be the diamond, so only the facet
+    that owns processMessage handles inbound messages. No Lattice script cuts two of these together or pins an
+    owner, so the user chooses (SEL-01).
+  notes: >-
+    Its init initializes TimelockController with the diamond as sole proposer and open execution
+    (src/crosschain/CrosschainTimelockHandlerInit.sol#L24-L28). The NatSpec warns that the linked counterpart can
+    schedule any operation; the safety net is the timelock delay plus a local canceller
+    (src/crosschain/CrosschainTimelockHandler.sol#L21-L24).
+
+ERC7786OpenBridge:
+  requires: []
+  init:
+    name: ERC7786OpenBridgeInit
+    source: src/crosschain/ERC7786OpenBridgeInit.sol#L19-L22
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter
+    (sendMessage also with CrosschainLink), and receiveMessage 0x2432ef26 with CrosschainLink. The bridge is
+    gateway-agnostic, and no Lattice script cuts it with a gateway adapter or CrosschainLink or pins an owner, so
+    the user chooses (SEL-01).
+  notes: >-
+    Works without ChainRegistry: minDirectCoverage defaults to 0, which skips the registry read
+    (src/crosschain/libraries/ERC7786OpenBridgeLib.sol#L128-L130).
+
+HyperbridgeGatewayAdapter:
+  requires: []
+  init:
+    name: HyperbridgeGatewayAdapterInit
+    source: src/crosschain/hyperbridge/HyperbridgeGatewayAdapterInit.sol#L24-L27
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter and
+    ERC7786OpenBridge (sendMessage also with CrosschainLink). Each version uses only its own adapter's storage and
+    no Lattice script pins an owner, so the user chooses (SEL-01).
+
+HyperlaneGatewayAdapter:
+  requires: []
+  init:
+    name: HyperlaneGatewayAdapterInit
+    source: src/crosschain/hyperlane/HyperlaneGatewayAdapterInit.sol#L21-L24
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter and
+    ERC7786OpenBridge (sendMessage also with CrosschainLink); quoteFee 0x58d14c04 with CCIPGatewayAdapter and
+    LayerZeroGatewayAdapter. EnableAurora targets a diamond hosting both the LayerZero and Hyperlane adapters
+    (script/config/EnableAurora.s.sol#L71-L72) but pins no owner, so the user chooses (SEL-01).
+
+L1ToL2CrossDomainMessengerGatewayAdapter:
+  requires: []
+  init:
+    name: L1ToL2CrossDomainMessengerGatewayAdapterInit
+    source: src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterInit.sol#L26-L31
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter and
+    ERC7786OpenBridge (sendMessage also with CrosschainLink); messenger() 0x3cb747bf and receiveCrossChainMessage
+    0x610683bc with L2ToL2CrossDomainMessengerGatewayAdapter, so with both placed only one of the two OP adapters
+    receives. No Lattice script pins an owner, so the user chooses (SEL-01).
+
+L2ToL2CrossDomainMessengerGatewayAdapter:
+  requires: []
+  init:
+    name: L2ToL2CrossDomainMessengerGatewayAdapterInit
+    source: src/crosschain/optimism/L2ToL2CrossDomainMessengerGatewayAdapterInit.sol#L22-L25
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter and
+    ERC7786OpenBridge (sendMessage also with CrosschainLink); messenger() 0x3cb747bf and receiveCrossChainMessage
+    0x610683bc with L1ToL2CrossDomainMessengerGatewayAdapter, so with both placed only one of the two OP adapters
+    receives. No Lattice script pins an owner, so the user chooses (SEL-01).
+
+LayerZeroGatewayAdapter:
+  requires: []
+  init:
+    name: LayerZeroGatewayAdapterInit
+    source: src/crosschain/layerzero/LayerZeroGatewayAdapterInit.sol#L21-L24
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter and
+    ERC7786OpenBridge (sendMessage also with CrosschainLink); quoteFee 0x58d14c04 with CCIPGatewayAdapter and
+    HyperlaneGatewayAdapter. EnableAurora targets a diamond hosting both the LayerZero and Hyperlane adapters
+    (script/config/EnableAurora.s.sol#L71-L72) but pins no owner, so the user chooses (SEL-01).
+
+StargateBridgeAdapter:
+  requires: []
+  init:
+    name: StargateBridgeAdapterInit
+    source: src/crosschain/layerzero/StargateBridgeAdapterInit.sol#L21-L24
+  notes: >-
+    No protocol addresses at init: the admin registers the chainId-to-eid map and the ERC-20 pools after deploy
+    (script/base/crosschain/DeployStargateBridgeAdapter.s.sol#L20-L22).
+
+StarknetGatewayAdapter:
+  requires: []
+  init:
+    name: StarknetGatewayAdapterInit
+    source: src/crosschain/starknet/StarknetGatewayAdapterInit.sol#L23-L26
+
+SuperchainETHBridgeAdapter:
+  requires: []
+  init:
+    name: SuperchainETHBridgeAdapterInit
+    source: src/crosschain/optimism/SuperchainETHBridgeAdapterInit.sol#L14-L16
+  notes: >-
+    Stateless with no admin surface, so its recipe cuts no AccessControl
+    (script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L16-L20).
+
+WormholeGatewayAdapter:
+  requires: []
+  init:
+    name: WormholeGatewayAdapterInit
+    source: src/crosschain/wormhole/WormholeGatewayAdapterInit.sol#L21-L24
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter and
+    ERC7786OpenBridge (sendMessage also with CrosschainLink); getRemoteGateway 0x752bcf06 and registerRemoteGateway
+    0x997ce1f0 with CCIPGatewayAdapter. Each version uses only its own adapter's storage and no Lattice
+    script pins an owner, so the user chooses (SEL-01).
+
+ZetaChainGatewayAdapter:
+  requires: []
+  init:
+    name: ZetaChainGatewayAdapterInit
+    source: src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol#L24-L35
+  seamReview: >-
+    sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter and
+    ERC7786OpenBridge (sendMessage also with CrosschainLink), and gateway() 0x116191b6 with AxelarGatewayAdapter.
+    Each version uses only its own adapter's storage and no Lattice script pins an owner, so the user chooses
+    (SEL-01).

@@ -180,32 +180,38 @@ function renderAuth01(p: ProblemParams["AUTH-01"]): string {
   return `${roles} rest with ${holder}, a single key. If it's a Safe that isn't deployed yet, deploy it first.`;
 }
 
-function renderAuth02(p: ProblemParams["AUTH-02"]): string {
-  const address = formatAddress(p.address);
-  if (p.source === "prediction") {
-    return `The admin is ${address}, where this diamond would have been before the salt changed.`;
-  }
-  if (p.source === "deployment") {
-    return `The admin is ${address}, an address a deployment on ${p.chain ?? "another chain"} recorded.`;
-  }
-  return `The admin is ${address}, an address this diamond had or a recorded deployment holds.`;
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  DEFAULT_ADMIN_ROLE: "The admin role",
-  UPGRADER_ROLE: "The upgrade role",
+/** One role-wording table for AUTH-02's subject and LINK-01's role label (spec L333-L334). */
+const ROLE_WORDS: Record<string, { label: string; subject: string }> = {
+  DEFAULT_ADMIN_ROLE: { label: "The admin role", subject: "The admin" },
+  diamondCut: { label: "The upgrade role", subject: "The upgrade holder" },
+  scheduleCut: { label: "The upgrade role", subject: "The upgrade holder" },
+  owner: { label: "Ownership", subject: "The owner" },
+  signer: { label: "The signer role", subject: "The signer" },
 };
 
-function roleLabel(role: string): string {
-  return ROLE_LABELS[role] ?? `The \`${role}\` role`;
+function roleWords(role: string): { label: string; subject: string } {
+  return ROLE_WORDS[role] ?? { label: `The \`${role}\` role`, subject: `The \`${role}\` holder` };
+}
+
+function renderAuth02(p: ProblemParams["AUTH-02"]): string {
+  const address = formatAddress(p.address);
+  const subject = roleWords(p.role).subject;
+  if (p.source === "prediction") {
+    return `${subject} is ${address}, where this diamond would have been before the salt changed.`;
+  }
+  if (p.source === "deployment") {
+    return `${subject} is ${address}, an address a deployment on ${p.chain ?? "another chain"} recorded.`;
+  }
+  return `${subject} is ${address}, an address this diamond had or a recorded deployment holds.`;
 }
 
 function renderLink01(p: ProblemParams["LINK-01"]): string {
   const address = formatAddress(p.address);
   const source = p.source === "link" ? "a shared link" : p.source === "file" ? "an opened file" : undefined;
+  const label = roleWords(p.role).label;
   return source
-    ? `${roleLabel(p.role)} goes to ${address}, which came from ${source}.`
-    : `${roleLabel(p.role)} goes to ${address}, which came from a link or a file and hasn't been confirmed.`;
+    ? `${label} goes to ${address}, which came from ${source}.`
+    : `${label} goes to ${address}, which came from a link or a file and hasn't been confirmed.`;
 }
 
 // ── NET ────────────────────────────────────────────────────────────────────────────────────────────
