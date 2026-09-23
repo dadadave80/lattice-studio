@@ -217,7 +217,7 @@ const backToContent = command({
 
 const minimapToggle = command({
   id: "sheet.minimapToggle",
-  title: () => "Toggle minimap",
+  title: () => "Minimap",
   category: "Sheet",
   palette: true,
   enabled: () => OK,
