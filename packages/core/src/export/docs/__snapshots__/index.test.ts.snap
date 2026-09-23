@@ -1,0 +1,92 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`exportBrief matches the snapshot 1`] = `
+"# Test Vault agent brief
+
+- Recipe hash: \`0x53521c0effe552dc47af8185256d4d4786a5f456412f3a4bf7d68eb2676d56e7\`
+- Catalog: \`test\`
+- Studio: v0.1.0-test
+- Facets: DiamondLoupeFacet 0.4.0, AccessControl 0.4.0, ERC20 0.4.0
+
+## Recipe
+
+\`\`\`json
+{
+  "$schema": "https://lattice-studio.invalid/schema/recipe.v1.json",
+  "schemaVersion": 1,
+  "name": "Test Vault",
+  "catalog": {
+    "tag": "test",
+    "hash": "0xe4f2e940750cb664b4a16f8c492f3993a0b9334e24c48d83a9600d8d9fb555cf"
+  },
+  "facets": [
+    "DiamondLoupeFacet",
+    "AccessControl",
+    "ERC20"
+  ],
+  "owners": {},
+  "exclude": [],
+  "init": {
+    "kind": "steps",
+    "steps": [
+      {
+        "spec": "AccessControlInit",
+        "args": {
+          "admin": {
+            "$ref": "self"
+          }
+        }
+      }
+    ]
+  }
+}
+\`\`\`
+
+## Cut plan
+
+| Cut | Facet | Address | Codehash | Version | Selectors |
+| --- | --- | --- | --- | --- | --- |
+| [00] | DiamondLoupeFacet | 0xDF4bA5bc37D61F95bb9aF0a7aA07eb2d6497C528 | 0x210d5294a74b2dc4c88af6839f9a43bec94e35ce49c95e23a2a0a182877f25ef | 0.4.0 | \`facets · 0x7a0ed627\`, \`facetFunctionSelectors · 0xadfca15e\`, \`facetAddresses · 0x52ef6b2c\`, \`facetAddress · 0xcdffacc6\` |
+| [01] | AccessControl | 0xCdD3d471204a1d3e976290BF67d1da668c86db6a | 0xf2e55c649f4eaf4092c87d35ddb25d462d9f93d26f009152d05855aef4842310 | 0.4.0 | \`grantRole · 0x2f2ff15d\`, \`hasRole · 0x91d14854\` |
+| [02] | ERC20 | 0x82177785D7310348F98fDB67971c688b4D2B6896 | 0xb887d4e761f7bcee3cdc0719c047a91ea7f3d1a65932e7d4d175bcd7603744af | 0.4.0 | \`transfer · 0xa9059cbb\`, \`approve · 0x095ea7b3\` |
+
+## Init plan
+
+2 calls through \`multiInit(address[],bytes[])\`.
+
+1. \`init(address)\` on \`AccessControlInit\`
+   - **Admin** (\`admin\`): This diamond
+
+2. \`initUpgradeable()\` on \`DiamondIntrospectionInit\` (automatic)
+   - no arguments
+
+## Authority table
+
+| Role | Holder | Via |
+| --- | --- | --- |
+| DEFAULT_ADMIN_ROLE | This diamond | AccessControlInit(admin) |
+
+## Open problems
+
+- **warning** \`CORE-04\` Plain ETH sent to this diamond will revert.
+- **warning** \`CORE-05\` \`supportsInterface()\` won't exist; wallets and explorers can't detect interfaces.
+
+## Acceptance checks
+
+Compare what the diamond returns with the plan above:
+
+\`\`\`bash
+cast call <diamond> "facets()((address,bytes4[])[])" --rpc-url $RPC_URL
+\`\`\`
+
+Check each facet's codehash on the selected chain before trusting it, one \`cast codehash <address> --rpc-url $RPC_URL\` per row of the plan.
+
+Do not redeploy facets; check their codehashes.
+
+## What this leaves out
+
+This brief leaves out the project's layout, deploy path, salt and scope, and its deployment records.
+
+"This diamond" and "Deploying account" are shown symbolically: no deploy context is set to resolve them to addresses.
+"
+`;
