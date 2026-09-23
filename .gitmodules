@@ -1,0 +1,3 @@
+[submodule "lattice"]
+	path = lattice
+	url = https://github.com/dadadave80/lattice.git
