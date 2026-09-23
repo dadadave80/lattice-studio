@@ -663,9 +663,10 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     }
     patch({ phase: "awaitingSignature", since: iso(), error: undefined, changedSinceReview: undefined });
     banner(true);
-    const back = (error: string): void => {
+    const back = (error: string, keepSimulation = false): void => {
       banner(false);
-      patch({ phase: "review", error, since: undefined });
+      if (!keepSimulation) simulatedKey = null;
+      patch({ phase: "review", error, since: undefined, ...(keepSimulation ? {} : { simulation: undefined }) });
     };
     const probed = await port.value.probe(s.chainId, { refresh: true, path: s.path });
     if (!alive()) return;
@@ -688,7 +689,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     // A sent transaction is recorded whatever happened meanwhile: it's on its way.
     if (sent.kind === "rejected") {
       if (!alive()) return;
-      back(CANCELED_IN_WALLET);
+      back(CANCELED_IN_WALLET, true);
       note(CANCELED_IN_WALLET);
       return;
     }
@@ -1158,6 +1159,11 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     // The rest in the background: From file records are re-read, other proposals checked for code.
     void track(Promise.all(records.map(async (d) => {
       if (d === resumable) return;
+      if (d.fromFile === true && d.status === "failed") return;
+      if (d.fromFile === true && d.status === "proposed") {
+        await recheckProposal(d, false);
+        return;
+      }
       if (d.fromFile === true) {
         const key = recordKey(d);
         if (checking.has(key)) return;
@@ -1186,20 +1192,6 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     }, () => {}));
   };
 
-  /** "The sheet now differs from what's live on Sepolia (r1)." when the recipe hash leaves a live record's (spec L728). */
-  const diverged = (projectId: string, from: Hex, to: Hex): void => {
-    const seen = new Set<number>();
-    for (const d of records) {
-      if (d.projectId !== projectId || d.status !== "confirmed" || d.fromFile === true || seen.has(d.chainId)) continue;
-      if (d.recipeHash.toLowerCase() !== from.toLowerCase()) continue;
-      const stillLive = records.some((other) => other.chainId === d.chainId && other.status === "confirmed" && other.fromFile !== true
-        && other.recipeHash.toLowerCase() === to.toLowerCase());
-      if (stillLive) continue;
-      seen.add(d.chainId);
-      void track(loadPort().then((port) => emit(lines.diverged({ chain: chainName(port.ok ? port.value : null, d.chainId), revision: d.revision }))));
-    }
-  };
-
   const onInputs = (): void => {
     if (disposed) return;
     const project = inputs.project();
@@ -1218,7 +1210,6 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       void track(refresh());
       return;
     }
-    if (lastRecipe && lastRecipe.hash !== hash && recordsFor === project.id) diverged(project.id, lastRecipe.hash, hash);
     lastRecipe = { projectId: project.id, hash };
 
     const online = inputs.online();

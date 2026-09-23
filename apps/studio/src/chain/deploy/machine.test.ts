@@ -510,14 +510,37 @@ describe("resume, proposals and From file records", () => {
     expect(h.said.texts()).toContain("Discarded the proposal to Safe 0x71C7…976F on Sepolia.");
   });
 
-  test("an edit that leaves a live recipe says the sheet now differs from what's live", async () => {
+  test("a failed record from a file is history: nothing re-reads it", async () => {
     const { h, m } = rig();
-    h.records.seed([record(h, { status: "confirmed", tx: `0x${"12".repeat(32)}` })]);
+    h.records.seed([record(h, { status: "failed", fromFile: true })]);
     await m.refresh();
-    const p = h.inputs.project();
-    h.inputs.setProject({ ...p, recipe: { ...p.recipe, facets: p.recipe.facets.slice(0, -1) } });
     await flush();
-    expect(h.said.texts()).toContain("The sheet now differs from what's live on Sepolia (r1).");
+    expect(h.port.methods()).not.toContain("readFacets");
+    expect(h.records.get(SEPOLIA_ID, predicted(h))?.fromFile).toBe(true);
+  });
+
+  test("a proposal from a file waits quietly until code appears", async () => {
+    const { h, m } = rig();
+    h.records.seed([record(h, { status: "proposed", fromFile: true })]);
+    await m.refresh();
+    await flush();
+    expect(h.said.texts()).toEqual([]);
+    h.port.setCode(predicted(h), "0x6000");
+    h.port.setFacets(predicted(h), loupeOf(h.inputs.analysis().plan));
+    await m.refresh();
+    await flush();
+    expect(h.records.get(SEPOLIA_ID, predicted(h))?.status).toBe("confirmed");
+    expect(h.records.get(SEPOLIA_ID, predicted(h))?.fromFile).toBeUndefined();
+  });
+
+  test("a sign stopped by anything but a rejection needs a new simulation", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    h.port.setCode(predicted(h), "0x6000");
+    await m.sign();
+    expect(m.state().simulation).toBeUndefined();
+    expect(h.port.methods()).not.toContain("send");
   });
 });
 

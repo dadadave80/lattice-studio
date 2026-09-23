@@ -7,7 +7,8 @@ import type { Address, Deployment } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import {
-  commandState, deployController, deployState, listDeployments, provideDeployController, putDeployment, registerDialog, runCommand,
+  commandState, deployController, deployState, getAnalysis, listDeployments, provideAnalysis, provideDeployController, putDeployment,
+  registerDialog, runCommand,
   session, useDeployState, type DeployController, type DeployPhase, type DeployState,
 } from "@/contracts";
 import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio, seedDeployState, seedStudio } from "../../../test/harness";
@@ -16,6 +17,7 @@ import { appDeployDeps } from "./app-deps";
 import { setAppDeployMachine } from "./controller";
 import { createDeployMachine, type DeployMachine, type MissingStep } from "./machine";
 import { MissingContractsDialog } from "./MissingContractsDialog";
+import { startDivergenceWatch } from "./diverged";
 import { needsController, startDeployTracking } from "./services";
 import { deployHarness, flush } from "./testing";
 
@@ -222,5 +224,23 @@ describe("resume after a reload", () => {
     await putDeployment({ ...base, address: "0x1111111111111111111111111111111111111111", status: "pending", tx: `0x${"33".repeat(32)}` });
     await flush();
     await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("the sheet leaving what's live (spec L728)", () => {
+  test("an edit that moves the recipe hash off a live record's says so in the console", async () => {
+    const { project } = seedStudio();
+    const live = { ...getAnalysis(), recipeHash: `0x${"aa".repeat(32)}` as const };
+    onCleanup(provideAnalysis({ getAnalysis: () => live, subscribe: () => () => {} }));
+    await putDeployment({
+      projectId: project.id, chainId: SEPOLIA, address: "0x5FbDB2315678afecb367f032d93F642f64180aa3", path: "factory",
+      deployer: SAFE, salt: `0x${"00".repeat(32)}`, status: "confirmed", recipeHash: live.recipeHash,
+      catalogHash: `0x${"22".repeat(32)}`, at: "2026-09-23T12:00:00.000Z", verification: "exact_match", revision: 1,
+    });
+    onCleanup(startDivergenceWatch());
+    await flush();
+    const edited = { ...live, recipeHash: `0x${"bb".repeat(32)}` as const };
+    onCleanup(provideAnalysis({ getAnalysis: () => edited, subscribe: () => () => {} }));
+    await vi.waitFor(() => expect(bufferedServices().log.map((l) => l.text)).toContain("The sheet now differs from what's live on Sepolia (r1)."));
   });
 });
