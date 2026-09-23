@@ -1,0 +1,76 @@
+/*
+ * A pane splitter (spec L352-L356, L757): a 24 px hit area that takes no room in the layout (negative margins),
+ * drawn as a hairline in `border-subtle`. Hover, drag and focus thicken it to `stroke-heavy` in `accent`;
+ * keyboard focus also gets the global outline.
+ */
+.splitter {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  touch-action: none;
+  user-select: none;
+  background: transparent;
+}
+
+.splitter[data-orientation="vertical"] {
+  inline-size: var(--lx-space-6);
+  min-block-size: var(--lx-space-6);
+  margin-inline: calc(var(--lx-space-6) / -2);
+  align-self: stretch;
+  cursor: col-resize;
+}
+
+.splitter[data-orientation="horizontal"] {
+  block-size: var(--lx-space-6);
+  min-inline-size: var(--lx-space-6);
+  margin-block: calc(var(--lx-space-6) / -2);
+  cursor: row-resize;
+}
+
+.splitter::before {
+  content: "";
+  position: absolute;
+  background: var(--lx-border-subtle);
+  transition: background-color 120ms ease-out;
+}
+
+.splitter[data-orientation="vertical"]::before {
+  inset-block: 0;
+  inset-inline-start: calc(50% - var(--lx-stroke-hair) / 2);
+  inline-size: var(--lx-stroke-hair);
+}
+
+.splitter[data-orientation="horizontal"]::before {
+  inset-inline: 0;
+  inset-block-start: calc(50% - var(--lx-stroke-hair) / 2);
+  block-size: var(--lx-stroke-hair);
+}
+
+.splitter:is(:hover, :active, :focus-visible)::before {
+  background: var(--lx-accent);
+}
+
+.splitter[data-orientation="vertical"]:is(:hover, :active, :focus-visible)::before {
+  inset-inline-start: calc(50% - var(--lx-stroke-heavy) / 2);
+  inline-size: var(--lx-stroke-heavy);
+}
+
+.splitter[data-orientation="horizontal"]:is(:hover, :active, :focus-visible)::before {
+  inset-block-start: calc(50% - var(--lx-stroke-heavy) / 2);
+  block-size: var(--lx-stroke-heavy);
+}
+
+/* The focus ring sits inside the hit area so neighboring panes don't clip it. */
+.splitter:focus-visible {
+  outline-offset: calc(var(--lx-stroke-heavy) * -1);
+}
+
+@media (forced-colors: active) {
+  .splitter::before {
+    background: CanvasText;
+  }
+
+  .splitter:is(:hover, :active, :focus-visible)::before {
+    background: Highlight;
+  }
+}

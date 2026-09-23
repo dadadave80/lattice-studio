@@ -1,0 +1,102 @@
+/*
+ * Menus and context menus: a raised, outlined list; rows 28 px tall with the accent edge when highlighted
+ * (the ⌘K palette board). Disabled rows stay navigable in faint ink with their reason under the label.
+ */
+.positioner {
+  z-index: 50;
+  outline: 0;
+}
+
+.popup {
+  composes: surface from "../shared/controls.module.css";
+  min-inline-size: calc(var(--lx-space-12) * 4);
+  max-inline-size: calc(var(--lx-card-width) + var(--lx-space-12) * 2);
+  max-block-size: var(--available-height);
+  padding-block: var(--lx-space-1);
+  overflow-y: auto;
+  border-color: var(--lx-border-strong);
+  outline: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  opacity: 0;
+}
+
+/* Keyboard focus lands on the item itself; the shared `.item` draws its inset ring. Never remove it here. */
+.item {
+  composes: item from "../shared/controls.module.css";
+  gap: var(--lx-space-2);
+  padding-block: var(--lx-space-1);
+}
+
+.slot {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--lx-space-4);
+  color: var(--lx-text-muted);
+}
+
+.text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.reason {
+  color: var(--lx-text-muted);
+}
+
+.item[data-disabled] .slot {
+  color: var(--lx-text-faint);
+}
+
+.shortcut {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.chevron {
+  flex: none;
+  margin-inline-start: auto;
+  color: var(--lx-text-muted);
+}
+
+.separator {
+  margin-block: var(--lx-space-1);
+  border: 0;
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.groupLabel {
+  composes: label from "../shared/controls.module.css";
+  display: flex;
+  align-items: center;
+  min-block-size: var(--lx-space-6);
+  padding-inline: calc(var(--lx-space-3) + var(--lx-stroke-heavy));
+}
+
+@media (forced-colors: active) {
+  .popup {
+    border-color: CanvasText;
+  }
+
+  .separator {
+    border-block-start-color: CanvasText;
+  }
+
+  .reason {
+    color: GrayText;
+  }
+
+  .item[data-highlighted] .reason,
+  .item[data-highlighted] .slot,
+  .item[data-highlighted] .chevron {
+    color: HighlightText;
+  }
+}

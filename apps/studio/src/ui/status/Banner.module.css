@@ -1,0 +1,55 @@
+/* A banner across a region: the read-only notice, "Resolve 2 blockers to export · F8" (spec L700). */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lx-space-2) var(--lx-space-3);
+  padding-block: var(--lx-space-2);
+  padding-inline: var(--lx-space-4);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  border-inline-start: var(--lx-stroke-heavy) solid var(--lx-border);
+  background: var(--lx-panel);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.warning {
+  border-inline-start-color: var(--lx-accent);
+}
+
+/* Errors carry weight and the accent edge; the icon's name says "Error". */
+.error {
+  border-inline-start-color: var(--lx-accent);
+  font-weight: 600;
+}
+
+.icon {
+  color: var(--lx-text-muted);
+}
+
+.warning .icon,
+.error .icon {
+  color: var(--lx-accent);
+}
+
+.text {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lx-space-2);
+}
+
+@media (forced-colors: active) {
+  .banner,
+  .warning,
+  .error {
+    border-color: CanvasText;
+  }
+}

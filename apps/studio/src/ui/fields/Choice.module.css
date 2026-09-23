@@ -1,0 +1,230 @@
+/*
+ * Switch, Checkbox and Radio: a small indicator and its sentence-case label in one clickable row, with
+ * optional help underneath. The row is the pointer target, and the focusable indicator itself is at least
+ * 24 x 24 px: the 16 px box is drawn inside it (spec L770).
+ */
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  min-inline-size: 0;
+}
+
+.row {
+  composes: target from "../shared/controls.module.css";
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--lx-space-1);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+.row:has([aria-disabled="true"]) {
+  color: var(--lx-text-faint);
+  cursor: not-allowed;
+}
+
+/* The first line of text centers on the 24 px indicator. */
+.text {
+  min-inline-size: 0;
+  padding-block: calc(var(--lx-space-1) / 2);
+  overflow-wrap: anywhere;
+}
+
+/* Help sits under the label text, aligned with it rather than with the indicator. */
+.description {
+  composes: description from "../shared/controls.module.css";
+  padding-inline-start: calc(var(--lx-space-6) + var(--lx-space-1));
+  overflow-wrap: anywhere;
+}
+
+.switchDescription {
+  padding-inline-start: calc(var(--lx-space-8) + var(--lx-space-3));
+}
+
+/* The focusable indicator: a 24 px tall hit box; ::before draws the visible box or track inside it. */
+.box,
+.radio,
+.switch {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  block-size: var(--lx-space-6);
+  border-radius: var(--lx-radius);
+  color: var(--lx-on-accent);
+}
+
+.box,
+.radio {
+  inline-size: var(--lx-space-6);
+}
+
+.box::before,
+.radio::before,
+.switch::before {
+  content: "";
+  position: absolute;
+  inset: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-border-strong);
+  border-radius: var(--lx-radius);
+  background: var(--lx-ground-well);
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.box[data-checked]::before,
+.radio[data-checked]::before,
+.switch[data-checked]::before {
+  background: var(--lx-accent);
+  border-color: var(--lx-accent);
+}
+
+.row:hover .box:not([aria-disabled="true"])::before,
+.row:hover .radio:not([aria-disabled="true"])::before,
+.row:hover .switch:not([aria-disabled="true"])::before {
+  border-color: var(--lx-accent);
+}
+
+/* Marks paint above the drawn box. */
+.indicator,
+.dot,
+.thumb {
+  position: relative;
+}
+
+.indicator {
+  display: inline-flex;
+}
+
+/* A radio's mark is a filled square inside the square: corners stay square (design-system-rules.md). */
+.dot {
+  inline-size: calc(var(--lx-space-2) - var(--lx-stroke-heavy));
+  block-size: calc(var(--lx-space-2) - var(--lx-stroke-heavy));
+  background: var(--lx-on-accent);
+}
+
+/* Switch: a 36 x 16 track with a square thumb that slides right when on. */
+.switch {
+  justify-content: flex-start;
+  inline-size: calc(var(--lx-space-8) + var(--lx-space-1));
+  margin-inline-end: var(--lx-space-1);
+  padding-inline: calc(var(--lx-stroke-hair) + var(--lx-space-1) / 2);
+}
+
+.switch::before {
+  inset-inline: 0;
+}
+
+.thumb {
+  inline-size: calc(var(--lx-space-3) - var(--lx-stroke-heavy));
+  block-size: calc(var(--lx-space-3) - var(--lx-stroke-heavy));
+  background: var(--lx-text-muted);
+  transition: translate 120ms ease-out, background-color 120ms ease-out;
+}
+
+.thumb[data-checked] {
+  translate: calc(var(--lx-space-8) - var(--lx-space-3) + var(--lx-stroke-heavy) - 2 * var(--lx-stroke-hair)) 0;
+  background: var(--lx-on-accent);
+}
+
+/* Disabled but focusable: dashed edge, faint ink, the reason in a tooltip (spec L661). */
+.box[aria-disabled="true"]::before,
+.radio[aria-disabled="true"]::before,
+.switch[aria-disabled="true"]::before {
+  border-style: dashed;
+  border-color: var(--lx-text-faint);
+  background: transparent;
+}
+
+.box[aria-disabled="true"][data-checked]::before,
+.radio[aria-disabled="true"][data-checked]::before,
+.switch[aria-disabled="true"][data-checked]::before {
+  background: var(--lx-text-faint);
+}
+
+.switch[aria-disabled="true"] .thumb:not([data-checked]) {
+  background: var(--lx-text-faint);
+}
+
+/* A radio group: the small-caps legend over its options. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  min-inline-size: 0;
+}
+
+.legend {
+  composes: label from "../shared/controls.module.css";
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+}
+
+@media (forced-colors: active) {
+  .box::before,
+  .radio::before,
+  .switch::before {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+    background: Canvas;
+  }
+
+  .box[data-checked]::before,
+  .radio[data-checked]::before,
+  .switch[data-checked]::before {
+    background: Highlight;
+    border-color: Highlight;
+  }
+
+  .box,
+  .radio,
+  .switch,
+  .dot,
+  .thumb {
+    forced-color-adjust: none;
+    color: HighlightText;
+  }
+
+  .dot,
+  .thumb[data-checked] {
+    background: HighlightText;
+  }
+
+  /* The check mark follows the box's forced ink instead of the icon's CanvasText default. */
+  .indicator > svg {
+    stroke: currentColor;
+  }
+
+  .thumb {
+    background: CanvasText;
+  }
+
+  .box[aria-disabled="true"]::before,
+  .radio[aria-disabled="true"]::before,
+  .switch[aria-disabled="true"]::before {
+    border-color: GrayText;
+    background: Canvas;
+  }
+
+  .box[aria-disabled="true"][data-checked]::before,
+  .radio[aria-disabled="true"][data-checked]::before,
+  .switch[aria-disabled="true"][data-checked]::before {
+    background: GrayText;
+  }
+
+  .switch[aria-disabled="true"] .thumb:not([data-checked]) {
+    background: GrayText;
+  }
+
+  .row:has([aria-disabled="true"]) {
+    color: GrayText;
+  }
+}

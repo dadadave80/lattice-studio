@@ -1,0 +1,130 @@
+/*
+ * Tabs (final-shop-sample: the left pane's header). Text tabs on a hairline; the open tab is `text` with a
+ * 2 px `accent` underline, the others `text-muted`. Focus is the global outline, drawn inside the tab.
+ */
+.root {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.root[data-orientation="vertical"] {
+  flex-direction: row;
+}
+
+.list {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.list[data-orientation="vertical"] {
+  flex-direction: column;
+  border-block-end: 0;
+  border-inline-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+/* At least 24 x 24 (spec L770); set here rather than composed, so the 40 px header height never loses on order. */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lx-space-2);
+  min-inline-size: var(--lx-space-6);
+  min-block-size: calc(var(--lx-space-8) + var(--lx-space-2));
+  padding-block: 0;
+  padding-inline: var(--lx-space-4);
+  border: 0;
+  background: transparent;
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: color 120ms ease-out;
+}
+
+.tab[data-orientation="vertical"] {
+  justify-content: flex-start;
+}
+
+.compact .tab {
+  min-block-size: calc(var(--lx-space-6) + var(--lx-space-1));
+  padding-inline: var(--lx-space-3);
+}
+
+.fill .tab {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.tab:hover:not([aria-disabled="true"]) {
+  color: var(--lx-text);
+}
+
+.tab[data-active] {
+  color: var(--lx-text);
+}
+
+.tab[aria-disabled="true"] {
+  color: var(--lx-text-faint);
+  cursor: not-allowed;
+}
+
+.tab:focus-visible {
+  outline-offset: calc(var(--lx-stroke-heavy) * -1);
+}
+
+.count {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--lx-text-muted);
+}
+
+.indicator {
+  position: absolute;
+  inset-block-end: calc(var(--lx-stroke-hair) * -1);
+  inset-inline-start: 0;
+  inline-size: var(--active-tab-width);
+  block-size: var(--lx-stroke-heavy);
+  translate: var(--active-tab-left) 0;
+  background: var(--lx-accent);
+  pointer-events: none;
+  transition: translate 150ms ease-out, inline-size 150ms ease-out;
+}
+
+.indicator[data-orientation="vertical"] {
+  inset-block: 0 auto;
+  inset-inline: auto calc(var(--lx-stroke-hair) * -1);
+  inline-size: var(--lx-stroke-heavy);
+  block-size: var(--active-tab-height);
+  translate: 0 var(--active-tab-top);
+  transition: translate 150ms ease-out, block-size 150ms ease-out;
+}
+
+.panel {
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.panel:focus-visible {
+  outline-offset: calc(var(--lx-stroke-heavy) * -1);
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+@media (forced-colors: active) {
+  .indicator {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+
+  .tab[aria-disabled="true"] {
+    color: GrayText;
+  }
+}

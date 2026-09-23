@@ -1,0 +1,119 @@
+/*
+ * Buttons (design-system-rules.md "Colour"; spec L672 rule 5-7). Sentence case, Inter 600 at body-sm.
+ * One `primary` per view wears `accent`; `secondary` is outlined; `quiet` has no outline until hovered.
+ */
+.button {
+  composes: target from "../shared/controls.module.css";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lx-space-2);
+  min-block-size: var(--lx-space-8);
+  padding-block: 0;
+  padding-inline: var(--lx-space-3);
+  border: var(--lx-stroke-hair) solid transparent;
+  border-radius: var(--lx-radius);
+  background: transparent;
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  font-weight: 600;
+  letter-spacing: var(--lx-tracking-body-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out;
+}
+
+.small {
+  min-block-size: var(--lx-space-6);
+  padding-inline: var(--lx-space-2);
+}
+
+.block {
+  inline-size: 100%;
+}
+
+.primary {
+  background: var(--lx-accent);
+  border-color: var(--lx-accent);
+  color: var(--lx-on-accent);
+}
+
+.primary:hover:not([aria-disabled="true"]) {
+  background: var(--lx-accent-strong);
+  border-color: var(--lx-accent-strong);
+}
+
+.secondary {
+  border-color: var(--lx-border);
+}
+
+.secondary:hover:not([aria-disabled="true"]) {
+  border-color: var(--lx-accent);
+  color: var(--lx-accent);
+}
+
+.quiet {
+  color: var(--lx-text-muted);
+}
+
+.quiet:hover:not([aria-disabled="true"]) {
+  background: var(--lx-panel);
+  color: var(--lx-text);
+}
+
+/* Disabled but focusable: dimmed ink, dashed edge, the reason in a tooltip (spec L661). */
+.button[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--lx-text-faint);
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--lx-border-subtle);
+}
+
+.quiet[aria-disabled="true"] {
+  border-color: transparent;
+}
+
+/* An icon-only button: square, at least 24 px (spec L770). */
+.icon {
+  padding-inline: 0;
+  inline-size: calc(var(--lx-space-6) + var(--lx-space-1));
+  min-block-size: calc(var(--lx-space-6) + var(--lx-space-1));
+  color: var(--lx-text-muted);
+}
+
+.icon.small {
+  inline-size: var(--lx-space-6);
+  min-block-size: var(--lx-space-6);
+}
+
+.icon:hover:not([aria-disabled="true"]) {
+  color: var(--lx-text);
+  background: var(--lx-panel);
+}
+
+@media (forced-colors: active) {
+  .button {
+    border-color: ButtonText;
+  }
+
+  .quiet,
+  .icon {
+    border-color: transparent;
+  }
+
+  .primary {
+    forced-color-adjust: none;
+    background: Highlight;
+    border-color: Highlight;
+    color: HighlightText;
+  }
+
+  .button[aria-disabled="true"] {
+    forced-color-adjust: none;
+    color: GrayText;
+    background: Canvas;
+    border-color: GrayText;
+  }
+}

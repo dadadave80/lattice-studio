@@ -1,0 +1,23 @@
+/* Collision hatching (spec L773: collisions are hatched and labelled, never color alone). */
+
+/* For HTML: a pin row or a note that collides. */
+.hatched {
+  background-image: var(--lx-hatch);
+}
+
+/* For SVG: the pattern's stripes. */
+.stripe {
+  fill: var(--lx-accent-soft);
+}
+
+@media (forced-colors: active) {
+  .hatched {
+    forced-color-adjust: none;
+    background-image: repeating-linear-gradient(45deg, CanvasText 0 1px, transparent 1px 6px);
+  }
+
+  .stripe {
+    fill: CanvasText;
+    fill-opacity: 0.35;
+  }
+}

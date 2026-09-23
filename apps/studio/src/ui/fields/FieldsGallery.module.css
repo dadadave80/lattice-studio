@@ -1,0 +1,10 @@
+/* Gallery cells for fields: a card-and-a-half wide, never wider than the page. */
+.cell {
+  inline-size: calc(var(--lx-card-width) + var(--lx-space-12));
+  max-inline-size: 100%;
+}
+
+.wide {
+  inline-size: calc(var(--lx-card-width) * 2);
+  max-inline-size: 100%;
+}

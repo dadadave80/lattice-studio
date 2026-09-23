@@ -1,0 +1,118 @@
+/*
+ * Dialogs (IR L170-L187). A raised, outlined surface over a low scrim; square corners, no shadow.
+ * 480 px (medium) or 640 px (wide); full screen and scrolling under 768 px.
+ */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: color-mix(in oklab, var(--lx-sunken) 72%, transparent);
+  transition: opacity 120ms ease-out;
+}
+
+.backdrop[data-starting-style],
+.backdrop[data-ending-style] {
+  opacity: 0;
+}
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--lx-space-6);
+  overflow: auto;
+}
+
+.popup {
+  composes: surface from "../shared/controls.module.css";
+  display: flex;
+  flex-direction: column;
+  inline-size: min(100%, calc(var(--lx-space-8) * 15));
+  max-block-size: 100%;
+  margin-block: auto;
+  border-color: var(--lx-border-strong);
+  outline-offset: calc(var(--lx-stroke-heavy) * -1);
+  transition: opacity 120ms ease-out;
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  opacity: 0;
+}
+
+.wide {
+  inline-size: min(100%, calc(var(--lx-space-8) * 20));
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  padding: var(--lx-space-4);
+  padding-block-end: var(--lx-space-3);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.title {
+  margin: 0;
+  font: var(--lx-font-heading);
+  letter-spacing: var(--lx-tracking-heading);
+  color: var(--lx-text);
+  overflow-wrap: anywhere;
+}
+
+.description {
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text-muted);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  padding: var(--lx-space-4);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--lx-space-2);
+  padding: var(--lx-space-3) var(--lx-space-4);
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+@media (width < 768px) {
+  .viewport {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .popup,
+  .wide {
+    inline-size: 100%;
+    min-block-size: 100%;
+    max-block-size: none;
+    margin: 0;
+    border: 0;
+  }
+
+  .body {
+    overflow: visible;
+  }
+}
+
+@media (forced-colors: active) {
+  .backdrop {
+    background: transparent;
+  }
+
+  .popup {
+    border: var(--lx-stroke-hair) solid CanvasText;
+  }
+}
