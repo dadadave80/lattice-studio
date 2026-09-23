@@ -30,7 +30,6 @@
   flex: none;
   min-inline-size: 0;
   background: var(--lx-panel);
-  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
 }
 
 .body {

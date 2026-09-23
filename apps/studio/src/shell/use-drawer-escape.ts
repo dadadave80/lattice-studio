@@ -1,8 +1,10 @@
 /**
  * Esc closes an open drawer (IR L14: the top overlay first). The drawer joins S2's escape stack while it's
- * open; closing it while it holds focus hands focus back to its title-bar toggle, else to the sheet.
+ * open, and also handles Esc pressed inside it itself, stopping it there so the next layer (clearing the
+ * selection) doesn't run as well. Closing a drawer that holds focus hands focus back to its title-bar toggle,
+ * else to the sheet.
  */
-import { useEffect, type KeyboardEvent } from "react";
+import { useEffect } from "react";
 import { pushEscape, session } from "@/contracts";
 import { focusRegion } from "@/a11y";
 
@@ -14,11 +16,13 @@ export type DrawerSide = "left" | "inspector";
  */
 export const DRAWER_TOGGLE_ATTRIBUTE = "data-drawer-toggle";
 
+const DRAWER_IDS: Readonly<Record<DrawerSide, string>> = { left: "shell-left", inspector: "shell-inspector" };
+
 /** Closes the open drawer. Returns false when none was open. */
 export function closeDrawer(): boolean {
   const open = session.get().panes.drawer;
   if (open === null) return false;
-  const drawer = document.getElementById(open === "left" ? "shell-left" : "shell-inspector");
+  const drawer = document.getElementById(DRAWER_IDS[open]);
   const hadFocus = drawer !== null && drawer.contains(document.activeElement);
   const toggleFor = open === "left" ? session.get().panes.left.tab : "inspector";
   session.set((s) => ({ panes: { ...s.panes, drawer: null } }));
@@ -31,13 +35,15 @@ export function closeDrawer(): boolean {
 }
 
 /**
- * Esc pressed inside an open drawer closes it. The drawer handles it itself (the escape stack may not be
- * listening) and stops it there, so the next layer (clearing the selection) doesn't run too. Keys from
- * portaled popups (a menu opened from the drawer) close only the popup.
+ * Esc pressed inside the drawer itself, heard on the document after the drawer's own controls had their say
+ * (a search field clearing its query prevents the default, and the drawer stays). Keys from popups the drawer
+ * opened (portaled menus) aren't inside it, so they close only the popup.
  */
-export function onDrawerKeyDown(event: KeyboardEvent<HTMLElement>): void {
+function onKeyDown(event: KeyboardEvent): void {
   if (event.key !== "Escape" || event.defaultPrevented) return;
-  if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return;
+  const open = session.get().panes.drawer;
+  const drawer = open === null ? null : document.getElementById(DRAWER_IDS[open]);
+  if (!drawer || !(event.target instanceof Node) || !drawer.contains(event.target)) return;
   if (!closeDrawer()) return;
   event.preventDefault();
   event.stopPropagation();
@@ -47,6 +53,11 @@ export function onDrawerKeyDown(event: KeyboardEvent<HTMLElement>): void {
 export function useDrawerEscape(open: DrawerSide | null): void {
   useEffect(() => {
     if (open === null) return;
-    return pushEscape(() => closeDrawer());
+    document.addEventListener("keydown", onKeyDown);
+    const popEscape = pushEscape(() => closeDrawer());
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      popEscape();
+    };
   }, [open]);
 }

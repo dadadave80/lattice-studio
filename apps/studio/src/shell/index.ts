@@ -7,8 +7,7 @@ export { TitleBar } from "./TitleBar";
 export { LeftPane } from "./LeftPane";
 export { shellToasts } from "./toasts";
 export {
-  COMPACT_CHIP_BELOW, currentTier, isDrawerTier, subscribeWindowSize, TIER_MIN, tierForWidth, useCompactChip,
-  useLayoutTier, useWindowHeight, windowSize,
+  currentTier, isDrawerTier, subscribeWindowSize, TIER_MIN, tierForWidth, useLayoutTier, useWindowHeight, windowSize,
 } from "./layout-tier";
 export type { LayoutTier } from "./layout-tier";
 export {

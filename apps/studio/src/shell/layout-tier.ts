@@ -16,9 +16,6 @@ export type LayoutTier = "wide" | "mid" | "narrow" | "phone";
 /** Where each tier starts, in CSS px. */
 export const TIER_MIN = { wide: 1280, mid: 1024, narrow: 768 } as const;
 
-/** Below this width the status chip shrinks to its dot and one word (spec L370: after the name truncates). */
-export const COMPACT_CHIP_BELOW = 400;
-
 export function tierForWidth(width: number): LayoutTier {
   if (width >= TIER_MIN.wide) return "wide";
   if (width >= TIER_MIN.mid) return "mid";
@@ -79,11 +76,6 @@ export function subscribeWindowSize(listener: () => void): () => void {
 /** The tier, re-rendering when it changes. */
 export function useLayoutTier(): LayoutTier {
   return useSyncExternalStore(subscribe, currentTier, () => "wide");
-}
-
-/** Whether the status chip takes its compact form (dot and one word). */
-export function useCompactChip(): boolean {
-  return useSyncExternalStore(subscribe, () => windowSize().width < COMPACT_CHIP_BELOW, () => false);
 }
 
 /** The window's height in CSS px, re-rendering when it changes (the console's half-height limit). */

@@ -10,6 +10,7 @@
   block-size: calc(var(--lx-space-8) + var(--lx-space-2));
   min-inline-size: 0;
   padding-inline: var(--lx-space-2);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
 }
 
 .start,
@@ -20,13 +21,24 @@
   gap: var(--lx-space-1);
 }
 
+/* The space left between the start and the end, whatever its content (so crowding can be measured). */
 .middle {
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   gap: var(--lx-space-2);
   min-inline-size: 0;
+}
+
+.bar[data-layout="phone"],
+.bar[data-layout="phone"] .middle {
+  gap: var(--lx-space-1);
+  padding-inline: var(--lx-space-1);
+}
+
+.bar[data-layout="phone"] .middle {
+  padding-inline: 0;
 }
 
 .bar[data-layout="phone"] .middle {
@@ -48,15 +60,23 @@
   border: 0;
 }
 
-/* The name truncates first at 320 px (spec L370); the chip keeps its words until the bar is narrower still. */
+/*
+ * The name truncates first (spec L370), down to a few letters; then the chip shrinks, and only then does the
+ * name give up the rest.
+ */
 .name {
   flex: 0 1 auto;
-  min-inline-size: 0;
+  min-inline-size: var(--lx-space-12);
   max-inline-size: 100%;
   overflow: hidden;
   color: var(--lx-text);
   font: var(--lx-font-code-sm);
   letter-spacing: var(--lx-tracking-code-sm);
+}
+
+.middle[data-crowded] .name {
+  min-inline-size: 0;
+  padding-inline: var(--lx-space-1);
 }
 
 .nameText {
@@ -116,7 +136,7 @@
   font: var(--lx-font-code-sm);
 }
 
-/* The pane switcher under 768 px: a second row of the title bar region. */
+/* The pane switcher under 768 px: a second row of the title bar region (its tab list draws the hairline). */
 .switcher {
-  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  min-inline-size: 0;
 }

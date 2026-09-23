@@ -37,7 +37,7 @@ export function AppMenu({ compact }: { compact: boolean }) {
       open={open}
       onOpenChange={setAppMenuOpen}
       trigger={
-        <Button variant="quiet" icon="menu" className={cx(styles.brand)}>
+        <Button variant="quiet" icon="menu" size={compact ? "small" : "medium"} className={cx(styles.brand)}>
           {compact ? <VisuallyHidden>Lattice Studio</VisuallyHidden> : "Lattice Studio"}
         </Button>
       }

@@ -11,7 +11,7 @@ import { PaneSwitcher } from "./PaneSwitcher";
 import { consoleMax, PANE_SIZES, paneVisibility } from "./panes";
 import { setConsoleSize, setInspectorSize, setLeftSize, setPaneOpen } from "./sizes";
 import { TitleBar } from "./TitleBar";
-import { closeDrawer, onDrawerKeyDown, useDrawerEscape } from "./use-drawer-escape";
+import { closeDrawer, useDrawerEscape } from "./use-drawer-escape";
 import { usePaneFollow } from "./use-pane-follow";
 import styles from "./Shell.module.css";
 
@@ -85,7 +85,6 @@ export function Shell() {
           {...regionProps(regions.left, styles.left)}
           id={PANE_IDS.left}
           hidden={!seen.left}
-          onKeyDown={drawers ? onDrawerKeyDown : undefined}
         >
           <LeftPane tier={tier} />
         </aside>
@@ -128,7 +127,6 @@ export function Shell() {
           {...regionProps(regions.inspector, styles.inspector)}
           id={PANE_IDS.inspector}
           hidden={!seen.inspector}
-          onKeyDown={drawers ? onDrawerKeyDown : undefined}
         >
           {phone && fillIn ? (
             <div className={styles.fillIn}>
