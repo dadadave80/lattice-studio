@@ -1,11 +1,10 @@
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
-import { useId, useSyncExternalStore } from "react";
+import { lazy, Suspense, useId, useSyncExternalStore } from "react";
 import { runCommand, useSession, type ConsoleTab } from "@/contracts";
 import { IconButton } from "@/ui/buttons/IconButton";
 import { PaneSizeMenu } from "@/ui/nav/PaneSizeMenu";
 import { cx } from "@/ui/shared/cx";
 import { Chevron } from "./Chevron";
-import { CodeTab } from "./CodeTab";
 import { CommandLine } from "./CommandLine";
 import styles from "./ConsolePanel.module.css";
 import { ConsoleSummary } from "./ConsoleSummary";
@@ -13,6 +12,9 @@ import { CONSOLE_SIZES, consoleMax, setConsoleOpen, setConsoleSize, showConsoleT
 import { ExportMenu } from "./ExportMenu";
 import { warmHighlighter } from "./highlight";
 import { LogView } from "./LogView";
+
+/** The Script and Recipe JSON tabs load with the first one opened (spec L822). */
+const CodeTab = lazy(() => import("./CodeTab").then((m) => ({ default: m.CodeTab })));
 
 const TABS: readonly { value: ConsoleTab; label: string; code: boolean }[] = [
   { value: "log", label: "Log", code: false },
@@ -99,10 +101,14 @@ export function ConsolePanel() {
           <LogView />
         </BaseTabs.Panel>
         <BaseTabs.Panel value="script" className={cx(styles.panel, styles.codePanel)}>
-          <CodeTab kind="script" />
+          <Suspense fallback={null}>
+            <CodeTab kind="script" />
+          </Suspense>
         </BaseTabs.Panel>
         <BaseTabs.Panel value="recipe" className={cx(styles.panel, styles.codePanel)}>
-          <CodeTab kind="recipe" />
+          <Suspense fallback={null}>
+            <CodeTab kind="recipe" />
+          </Suspense>
         </BaseTabs.Panel>
         <CommandLine />
       </div>
