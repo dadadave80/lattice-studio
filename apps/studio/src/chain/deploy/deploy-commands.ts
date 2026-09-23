@@ -11,7 +11,7 @@ import {
   type DeployController, type DeployState, type Enablement,
 } from "@/contracts";
 import { chainName } from "../infra/chains";
-import { CANCELED_IN_WALLET, DEPLOY_NEEDS_CONNECTION, DEPLOY_NOT_BUILT } from "./copy";
+import { CANCELED_IN_WALLET, DEPLOY_NEEDS_CONNECTION, DEPLOY_NOT_BUILT, signNeedsTick } from "./copy";
 
 type MissingArgs = CommandArgsOf<"deploy.missingContracts">;
 
@@ -75,6 +75,9 @@ export const signCommand = command({
     if (ctx.session.readOnly !== null) return { ok: false, reason: ctx.session.readOnly };
     if (phase === "idle") return { ok: false, reason: "Open the deploy review first." };
     if (phase === "simulating") return { ok: false, reason: "Simulating…" };
+    if (phase === "review" && simulation?.unavailable === true) {
+      return { ok: false, reason: signNeedsTick(chainName(ctx.deploy.chainId ?? ctx.session.chainId ?? 0, env.e2e)) };
+    }
     if (phase !== "ready" && !(phase === "review" && simulation?.ok === true)) {
       return { ok: false, reason: phase === "review" ? "The simulation has to pass first." : "A deploy is already in flight." };
     }

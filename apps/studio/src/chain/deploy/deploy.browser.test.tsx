@@ -156,6 +156,11 @@ describe("commands", () => {
     expect(commandState({ id: "deploy.sign" })).toMatchObject({ ok: false, reason: "Simulating…" });
     seedDeployState({ phase: "review", error: "You canceled in your wallet.", simulation: { ok: true, block: 1 } });
     expect(commandState({ id: "deploy.sign" }).title).toBe("Sign again");
+    // Spec L575: an RPC that can't simulate at all asks for the review's extra tick, not a passing simulation.
+    seedDeployState({ phase: "review", chainId: SEPOLIA, simulation: { ok: false, unavailable: true } });
+    expect(commandState({ id: "deploy.sign" })).toMatchObject({
+      ok: false, reason: "Sepolia's RPC can't simulate this deploy. Tick the review's extra box to sign without a simulation.",
+    });
   });
 
   test("a read-only tab can't sign or deploy missing contracts, and says why", () => {

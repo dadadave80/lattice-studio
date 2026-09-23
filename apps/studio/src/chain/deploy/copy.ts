@@ -106,6 +106,16 @@ export function droppedRecorded(hash: string, chain: string): string {
   return `${chain} no longer knows ${hash} and nothing landed: it was dropped. Recorded as failed.`;
 }
 
+/** Review again, or Sign, while the first transaction with this salt is still known to the node. */
+export function stillWaiting(hash: string, chain: string): string {
+  return `${hash} is still waiting on ${chain} with this salt. Keep waiting, speed it up in your wallet, or use a new salt.`;
+}
+
+/** Sign & deploy's reason while the RPC can't simulate: the review's extra tick is the way on (spec L575). */
+export function signNeedsTick(chain: string): string {
+  return `${chain}'s RPC can't simulate this deploy. Tick the review's extra box to sign without a simulation.`;
+}
+
 /** Spec L575: the RPC can't simulate at all. The review asks for one more tick before signing. */
 export function cantSimulate(chain: string): string {
   return `${chain}'s RPC can't simulate this deploy. Signing without a simulation needs one more tick.`;

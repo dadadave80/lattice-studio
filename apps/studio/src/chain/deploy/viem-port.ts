@@ -63,6 +63,48 @@ function named(error: unknown, name: string): boolean {
   return error instanceof Error && error.name === name;
 }
 
+function coded(error: unknown, ...codes: number[]): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "number" && codes.includes(code);
+}
+
+/** Not enough funds for the gas (Flow 14): its own words, never "can't simulate". */
+export const NOT_ENOUGH_FUNDS = "This account doesn't have enough funds to pay for this deploy's gas.";
+
+/** The RPC refused the method itself: JSON-RPC -32601 or -32004, EIP-1193 4200, or its words for that. */
+function refusesMethod(error: BaseError): boolean {
+  return error.walk((e) =>
+    named(e, "MethodNotFoundRpcError") || named(e, "MethodNotSupportedRpcError") || named(e, "UnsupportedProviderMethodError")
+    || coded(e, -32601, -32004, 4200)
+    || (e instanceof Error && /method (not found|not supported|not allowed|is not available)|not (supported|allowed|whitelisted)|does not exist/i.test(e.message))) !== null;
+}
+
+/**
+ * What a failed simulation means, from an allow-list (spec L575, L588, L590):
+ * - down, timed out or rate-limited (-32005) → the RPC "isn't answering", which Retry reading answers;
+ * - insufficient funds → its own words;
+ * - a revert, with revert data or only "execution reverted" → a revert to decode;
+ * - only a refusal of the method itself, on a chain without `eth_simulateV1` → it can't simulate at all;
+ * - anything else (a node a block behind, an internal error) → the error's own words, to try again.
+ */
+export function simulationFailure(
+  error: unknown, context: { simulateV1: boolean; block: number; unreachable: string },
+): SimulationOutcome {
+  const method = context.simulateV1 ? "simulate" : "call";
+  const data = revertData(error);
+  if (data !== null) return { kind: "reverted", block: context.block, data, method };
+  if (!(error instanceof BaseError)) return { kind: "error", message: context.unreachable };
+  const down = error.walk((e) =>
+    named(e, "HttpRequestError") || named(e, "TimeoutError") || named(e, "LimitExceededRpcError") || coded(e, -32005)) !== null;
+  if (down) return { kind: "error", message: context.unreachable };
+  if (error.walk((e) => named(e, "InsufficientFundsError")) !== null) return { kind: "error", message: NOT_ENOUGH_FUNDS };
+  const reverted = error.walk((e) => named(e, "ExecutionRevertedError") || named(e, "ContractFunctionRevertedError")
+    || coded(e, 3) || (e instanceof Error && /execution reverted|\brevert/i.test(e.message))) !== null;
+  if (reverted) return { kind: "reverted", block: context.block, data: "0x", method };
+  if (!context.simulateV1 && refusesMethod(error)) return { kind: "unavailable", message: reason(error) };
+  return { kind: "error", message: reason(error) };
+}
+
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     if (signal.aborted) return resolve();
@@ -151,21 +193,13 @@ export function createViemPort(options: ViemPortOptions): DeployChainPort {
         const blockNumber = await getBlockNumber(client, { cacheTime: 0 });
         try {
           await call(client, { account: from, to: tx.to, data: tx.data, value: tx.value, blockNumber });
+          const gas = await estimateGas(client, { account: from, to: tx.to, data: tx.data, value: tx.value });
+          return { kind: "ok", block: Number(blockNumber), gas, method: "call" };
         } catch (error) {
-          const data = revertData(error);
-          if (data !== null || /revert/i.test(reason(error))) return { kind: "reverted", block: Number(blockNumber), data: data ?? "0x", method: "call" };
-          throw error;
+          return simulationFailure(error, { simulateV1: false, block: Number(blockNumber), unreachable: unreachable(chainId) });
         }
-        const gas = await estimateGas(client, { account: from, to: tx.to, data: tx.data, value: tx.value });
-        return { kind: "ok", block: Number(blockNumber), gas, method: "call" };
       } catch (error) {
-        const data = revertData(error);
-        if (data !== null) return { kind: "reverted", block: 0, data, method: simulateV1 ? "simulate" : "call" };
-        const down = !(error instanceof BaseError) || error.walk((e) => named(e, "HttpRequestError") || named(e, "TimeoutError")) !== null;
-        if (down) return { kind: "error", message: unreachable(chainId) };
-        // It answered, but refused both eth_simulateV1 (the probe) and eth_call or eth_estimateGas: it can't simulate.
-        if (!simulateV1) return { kind: "unavailable", message: reason(error) };
-        return { kind: "error", message: reason(error) };
+        return simulationFailure(error, { simulateV1, block: 0, unreachable: unreachable(chainId) });
       }
     },
 

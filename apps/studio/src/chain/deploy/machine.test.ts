@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import type { Address, Catalog, Deployment, Hex, Project } from "@lattice-studio/core";
+import type { Address, Catalog, Deployment, FacetDetail, Hex, Project } from "@lattice-studio/core";
 import { loadTemplate, multicallGas, recipeHash } from "@lattice-studio/core";
 import { encodeErrorResult, parseAbi } from "viem";
 import { filledTemplate, loadBuiltCatalog, makeProject } from "@lattice-studio/core/testing";
@@ -412,6 +412,24 @@ describe("tracking", () => {
     expect(m.state().phase).toBe("ready");
   });
 
+  test("a reverted receipt is decoded against the facets on the sheet when it was signed, not the sheet now", async () => {
+    const r = rig();
+    const { h, m } = r;
+    h.details.set("Receive", {
+      name: "Receive",
+      abi: parseAbi(["error ReceiveStudioTestError(uint256 x)"]),
+      natspec: { functions: {} },
+      source: { path: "src/Receive.sol", url: "https://example.invalid/Receive.sol" },
+    } as unknown as FacetDetail);
+    const hash = await submit(r);
+    const p = h.inputs.project();
+    h.inputs.setProject({ ...p, recipe: { ...p.recipe, facets: p.recipe.facets.filter((f) => f !== "Receive") } });
+    h.port.replayData = encodeErrorResult({ abi: parseAbi(["error ReceiveStudioTestError(uint256 x)"]), errorName: "ReceiveStudioTestError", args: [7n] });
+    h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 41 });
+    await flush();
+    expect(m.state().error).toBe("Deploy reverted in Receive: `ReceiveStudioTestError(7)`.");
+  });
+
   test("offline mid-deploy says tracking resumes when you reconnect", async () => {
     const r = rig();
     await submit(r);
@@ -735,6 +753,66 @@ describe("safety and resilience", () => {
     expect(m.state().phase).toBe("ready");
   });
 
+  test("close during settle: the record is still written, and neither idle nor a new review is taken over", async () => {
+    for (const next of ["close", "open"] as const) {
+      const r = rig();
+      const { h, m } = r;
+      const hash = await submit(r);
+      const address = predicted(h);
+      // No loupe yet: settle is between its facets() tries (1 s, 3 s).
+      h.port.mine(hash, { kind: "receipt", hash, status: "success", block: 8 });
+      await flush();
+      expect(m.state().phase).toBe("confirmed");
+      m.close();
+      if (next === "open") m.open();
+      await flush();
+      const before = m.state().phase;
+      h.port.setFacets(address, loupeOf(h.inputs.analysis().plan));
+      h.clock.advance(1_000);
+      await flush();
+      expect(h.records.get(SEPOLIA_ID, address)?.status).toBe("confirmed");
+      expect(m.state().phase).toBe(before);
+      expect(before).toBe(next === "close" ? "idle" : "ready");
+    }
+  });
+
+  test("the chain module failing to load mid-tracking reads as Stale; Keep waiting picks it up again", async () => {
+    const { h, m } = rig();
+    const tx = `0x${"77".repeat(32)}` as Hex;
+    h.records.seed([{
+      projectId: "p1", chainId: SEPOLIA_ID, address: predicted(h), path: "factory", deployer: ALICE,
+      salt: `0x${ALICE.slice(2).toLowerCase()}000102030405060708090a0b` as Hex, status: "pending", tx,
+      recipeHash: h.inputs.analysis().recipeHash, catalogHash: catalog.hash, at: "2026-09-23T11:00:00.000Z",
+      verification: "pending", revision: 1,
+    }]);
+    h.chainFails = "Failed to fetch dynamically imported module";
+    await m.refresh();
+    await flush();
+    expect(m.state()).toMatchObject({ phase: "stale", tx, error: "Failed to fetch dynamically imported module." });
+    h.chainFails = null;
+    m.keepWaiting();
+    await flush();
+    expect(m.state().phase).toBe("pending");
+    expect(h.port.watching()).toContain(tx);
+  });
+
+  test("Review again while the first transaction is still known: its record stays, and Sign won't send a second", async () => {
+    const r = rig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    h.clock.advance(180_000);
+    h.port.txStatus = "pending";
+    m.reviewAgain();
+    await flush();
+    const waiting = `${hash.slice(0, 6)}…${hash.slice(-4)} is still waiting on Sepolia with this salt. Keep waiting, speed it up in your wallet, or use a new salt.`;
+    expect(h.said.texts()).toContain(waiting);
+    expect(h.records.get(SEPOLIA_ID, predicted(h))).toMatchObject({ status: "pending", tx: hash });
+    await m.sign();
+    expect(h.port.sent).toHaveLength(1);
+    expect(m.state()).toMatchObject({ phase: "review", error: waiting });
+    expect(h.records.get(SEPOLIA_ID, predicted(h))?.tx).toBe(hash);
+  });
+
   test("a proposal while a transaction is pending is refused and tracking goes on", async () => {
     const r = rig();
     const { h, m } = r;
@@ -898,6 +976,26 @@ describe("missing contracts", () => {
     h.port.autoMine = true;
     await m.deployMissing(names);
     expect(m.missingStep().items.map((i) => i.status)).toEqual(["deployed", "deployed", "deployed"]);
+  });
+
+  test("a speed-up restarts the wait: the first deadline no longer aborts it", async () => {
+    const { h, m, names } = missingRig();
+    h.port.patch(SEPOLIA_ID, { multicall3: { present: false } });
+    h.port.autoMine = false;
+    const running = m.deployMissing(names);
+    await flush();
+    const [first] = h.port.watching();
+    if (!first) throw new Error("nothing sent");
+    h.clock.advance(100_000);
+    const next = `0x${"ef".repeat(32)}` as Hex;
+    h.port.reprice(first, next);
+    h.clock.advance(100_000);
+    await flush();
+    expect(m.missingStep().running).toBe(true);
+    expect(h.port.watching()).toEqual([next]);
+    h.clock.advance(80_000);
+    await running;
+    expect(m.missingStep()).toMatchObject({ running: false, error: "Not seen for 3 minutes. It may have been dropped." });
   });
 
   test("a stuck EIP-5792 batch times out the same way", async () => {

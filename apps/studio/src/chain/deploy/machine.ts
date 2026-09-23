@@ -41,7 +41,7 @@ import {
   couldntReadRecord, DEPLOY_BANNER_ID, DEPLOY_NEEDS_CONNECTION, DEPLOYING_BANNER, discardedProposal, droppedRecorded,
   fileRecordConfirmed, fileRecordMismatch, fileRecordUnchecked, groupDigits, landedAfterAll, MISMATCH, missingDone,
   missingReverts, missingWouldDeploy, notSeenFor, NOTHING_MISSING, OFFLINE_TRACKING, proposalExecuted, recordNotSaved,
-  REPLACED_TRANSACTION, SIMULATE_FIRST, simulatedWithCall, simulationSummary, spedUp, truncateHex6, walletOn,
+  REPLACED_TRANSACTION, SIMULATE_FIRST, simulatedWithCall, simulationSummary, spedUp, stillWaiting, truncateHex6, walletOn,
 } from "./copy";
 import { judgeDiamond, releaseOf, templatePlan, withDependencies } from "./judge";
 import type { DeployChainPort, DeployDeps } from "./ports";
@@ -535,7 +535,9 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
    */
   const settle = async (record: Deployment, source: PlanSource, drive: boolean, block?: number, probed?: ChainState): Promise<void> => {
     const alive = (): boolean => !disposed;
-    const driving = (): boolean => drive && !disposed && state.chainId === record.chainId
+    // A review opened or closed since (same salt, same address) belongs to someone else: this settle only records.
+    const started = epoch;
+    const driving = (): boolean => drive && !disposed && epoch === started && state.chainId === record.chainId
       && state.address !== undefined && sameAddress(state.address, record.address);
     const catalog = inputs.catalog();
     const port = await loadPort();
@@ -601,10 +603,12 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const port = await loadPort();
     if (tracker !== t) return;
     if (!port.ok) {
-      // Let go, so the next refresh (focus, back online, Keep waiting) picks the transaction up again.
+      // Nothing can watch it now: say so as Stale, whose Keep waiting (or focus, or back online) picks the
+      // transaction up again from its record through `refresh()`.
       clock.clearTimeout(t.timer);
       tracker = null;
-      patch({ error: port.error });
+      patch({ phase: "stale", error: port.error });
+      note(port.error, "warn");
       return;
     }
     const chain = chainName(record.chainId);
@@ -767,6 +771,11 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       }
       return back(addressTaken(s.address, s.chain));
     }
+    // An earlier transaction with this salt still waiting: a second would overwrite its record (same address) and
+    // lose its hash, and the factory would hand back whichever lands first.
+    const waiting = records.find((d) => d.chainId === s.chainId && sameAddress(d.address, s.address) && d.status === "pending"
+      && d.tx !== undefined && d.fromFile !== true);
+    if (waiting?.tx !== undefined) return back(stillWaiting(truncateHex6(waiting.tx), s.chain), true);
     const built = await buildTx(s, probed.value);
     if (!alive()) return;
     if (!built.ok) return back(built.error);
@@ -850,12 +859,15 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
   };
 
   const reviewAgain = (): void => {
-    if (state.phase !== "stale" || !tracker) {
+    // The tracker's record; or, when nothing could watch it (the chain module didn't load), the stale record itself.
+    const address = state.address;
+    const record = tracker?.record ?? (address === undefined ? undefined
+      : records.find((d) => d.chainId === state.chainId && sameAddress(d.address, address) && d.status === "pending"));
+    if (state.phase !== "stale" || !record) {
       note("Review again applies to a transaction not seen for a while.");
       return;
     }
-    const record = tracker.record;
-    const source = tracker.plan;
+    const source = tracker?.plan ?? null;
     stopTracking();
     banner(false);
     epoch += 1;
@@ -879,6 +891,9 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
         if (status.ok && status.value === "unknown") {
           await save({ ...record, status: "failed" });
           note(droppedRecorded(truncateHex6(record.tx), chainName(record.chainId)), "warn");
+        } else {
+          // Still known to the node: its record stays, and Sign won't send a second with this salt while it waits.
+          note(stillWaiting(truncateHex6(record.tx), chainName(record.chainId)), "warn");
         }
       }
       publish({ phase: "review", snapshot: inputs.analysis().recipeHash, chainId: record.chainId });
@@ -1221,7 +1236,9 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     stopped.addEventListener("abort", onStop);
     let timedOut = false;
     let timer: unknown = null;
+    // Each (re)arm replaces the deadline: a speed-up starts the wait again for its new hash.
     const arm = (): void => {
+      clock.clearTimeout(timer);
       timer = clock.setTimeout(() => {
         timedOut = true;
         abort.abort();
