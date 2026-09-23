@@ -30,7 +30,7 @@ Lattice Studio is a static, local-first web app that composes EIP-2535 diamonds 
 | `bun run e2e [paths]` | Playwright |
 | `bun run test:chain` | Anvil and Foundry tests |
 | `bun run golden` | Golden tests against Lattice's deploy scripts |
-| `bun run catalog` | Rebuild the catalog from the pinned Lattice (Foundry 1.8.1) |
+| `bun run catalog` | Rebuild the catalog from the pinned Lattice (Foundry 1.8.3) |
 | `bun run typecheck` · `bun run typecheck:ts6` · `bun run lint` · `bun run check` | Static checks |
 | `bun scripts/wp/status.ts` | Where every work package stands |
 
