@@ -94,7 +94,7 @@ describe("pin states and what a click does (Flow 6)", () => {
     expect(name.action).toEqual({ id: "selector.route", args: { selector: "0x06fdde03", facet: "ERC20" } });
   });
 
-  test("owner by default among three: a click opens the owner choice in the inspector", () => {
+  test("owner by default among three: a click opens the per-selector owner choice", () => {
     const three = pinView({
       facet: "A",
       selector: { hex: "0x06fdde03", signature: "name()" },
@@ -102,7 +102,8 @@ describe("pin states and what a click does (Flow 6)", () => {
       excluded: false,
       catalog,
     });
-    expect(three.action).toEqual({ id: "inspector.focusSelectors", args: { facet: "A" } });
+    expect(three.action).toEqual({ id: "collision.choosePerSelector", args: { selectors: ["0x06fdde03"] } });
+    expect(three.tooltip.text).toBe("Owner by default. Click to change.");
   });
 
   test("seam: stays on its server, says why, and offers no route", () => {

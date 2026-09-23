@@ -214,8 +214,8 @@ export function pinView({ facet, selector, route, excluded, catalog }: PinInputs
     };
   }
   if (route.via === "default") {
-    // "Click to change": with one rival, the change is routing to it; with more, the owner menu in the
-    // inspector's Selectors list chooses among them (spec L303, L437).
+    // "Click to change" changes the owner (contracts §6 ruling): with one rival, route to it; with more, the
+    // per-selector owner choice (S4c's Choose per selector…) picks among them (spec L303, L436).
     const others = route.contenders.filter((c) => c !== facet);
     const [only] = others;
     return {
@@ -225,7 +225,7 @@ export function pinView({ facet, selector, route, excluded, catalog }: PinInputs
       action:
         others.length === 1 && only !== undefined
           ? commandRef("selector.route", { selector: hex, facet: only })
-          : commandRef("inspector.focusSelectors", { facet }),
+          : commandRef("collision.choosePerSelector", { selectors: [hex] }),
     };
   }
   return {
