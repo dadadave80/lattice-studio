@@ -1,4 +1,4 @@
-import { createRef, useState } from "react";
+import { createRef, useEffect, useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { renderWithStudio } from "../../../test/harness";
@@ -112,6 +112,30 @@ describe("TextField", () => {
     await expect.element(input).toHaveValue("");
     expect(onChange).not.toHaveBeenCalled();
     await expect.element(page.getByText("Connect a wallet first", { exact: true }).last()).toBeVisible();
+  });
+
+  test("a reason coming or going keeps the input and its focus (no remount)", async () => {
+    const control = { set: (_reason: string | undefined) => {} };
+    function Toggled() {
+      const [reason, setReason] = useState<string | undefined>(undefined);
+      useEffect(() => {
+        control.set = setReason;
+      }, []);
+      return <TextField label="Deploying account" defaultValue="" disabledReason={reason} mono />;
+    }
+    await renderWithStudio(<Toggled />);
+    const input = page.getByRole("textbox", { name: "Deploying account" });
+    await userEvent.tab();
+    await expect.element(input).toHaveFocus();
+    const before = input.element();
+    control.set("Connect a wallet first");
+    await expect.element(input).toHaveAttribute("aria-disabled", "true");
+    expect(input.element()).toBe(before);
+    await expect.element(input).toHaveFocus();
+    control.set(undefined);
+    await expect.element(input).not.toHaveAttribute("aria-disabled", "true");
+    expect(input.element()).toBe(before);
+    await expect.element(input).toHaveFocus();
   });
 
   test("inputRef gives the input; id sets its id and the label still names it", async () => {

@@ -5,11 +5,13 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./testing": "./src/testing/index.ts"
+    "./testing": "./src/testing/index.ts",
+    "./schema": "./src/model/schema.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",
     "viem": "^2.56.8",
     "zod": "^4.6.5"
-  }
+  },
+  "sideEffects": false
 }

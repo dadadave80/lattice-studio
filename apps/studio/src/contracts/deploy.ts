@@ -30,7 +30,8 @@ export type DeployState = {
   safe?: Address;
   tx?: Hex;
   since?: string;
-  simulation?: { ok: boolean; block?: number; summary?: string; revert?: string };
+  /** `unavailable`: the RPC can't simulate at all (spec L575); the review offers Sign without a simulation. */
+  simulation?: { ok: boolean; block?: number; summary?: string; revert?: string; unavailable?: true };
   /** The missing-contracts sub-step. */
   missing?: { name: string; status: "pending" | "deployed" | "failed" }[];
   /** The spec's message for the current failure. */
@@ -44,7 +45,8 @@ export type DeployController = {
   open(): void;
   /** Recipe, account or chain changed: simulate again. */
   changed(): void;
-  sign(): Promise<void>;
+  /** `withoutSimulation`: sign although the RPC couldn't simulate (spec L575, one extra tick; CCR from S8c). */
+  sign(options?: { withoutSimulation?: true }): Promise<void>;
   /** A Safe batch was downloaded (review or Export): save the record as Proposed. */
   proposed(batch: { safe: Address; chainId: number; address: Address; salt: Hex }): void;
   deployMissing(names: string[]): Promise<void>;

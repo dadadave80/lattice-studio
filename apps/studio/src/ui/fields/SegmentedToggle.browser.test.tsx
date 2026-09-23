@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { renderWithStudio } from "../../../test/harness";
+import { emulateForcedColors } from "../testing/axe";
 import { SegmentedToggle } from "./SegmentedToggle";
 
 const THEMES = [
@@ -139,6 +140,38 @@ describe("SegmentedToggle", () => {
     await expect.element(shop).not.toHaveAttribute("aria-disabled", "true");
     await expect.poll(() => document.querySelector("[data-tooltip]")).toBeNull();
     expect(shop.element()).toBe(before);
+  });
+
+  afterEach(async () => {
+    await emulateForcedColors(false);
+  });
+
+  for (const theme of ["shop", "draft"] as const) {
+    test(`a disabled pressed segment keeps its accent bar a thin line, not a fill, in ${theme}`, async () => {
+      // Button.tsx defines the same `.button[aria-disabled="true"]` class Toggle.module.css's `.segment`
+      // composes from. Whichever of the two stylesheets a page loads second wins ties in the cascade; importing
+      // Button here reproduces a page that also renders a plain Button, so the reset has to win regardless.
+      await import("../buttons/Button");
+      await renderWithStudio(
+        <SegmentedToggle label="Theme" value="draft" options={THEMES} onValueChange={() => {}} disabledReason="Resolve 2 blockers · F8" />,
+        { theme },
+      );
+      const cs = getComputedStyle(page.getByRole("button", { name: "Draft" }).element());
+      expect(cs.backgroundSize).toBe("100% 2px");
+      expect(cs.backgroundRepeat).toBe("no-repeat");
+      expect(cs.backgroundPosition).toBe("50% 100%");
+    });
+  }
+
+  test("in forced colors, a disabled pressed segment uses the system palette, underlined", async () => {
+    await renderWithStudio(
+      <SegmentedToggle label="Theme" value="draft" options={THEMES} onValueChange={() => {}} disabledReason="Resolve 2 blockers · F8" />,
+    );
+    await emulateForcedColors(true);
+    expect(matchMedia("(forced-colors: active)").matches).toBe(true);
+    const cs = getComputedStyle(page.getByRole("button", { name: "Draft" }).element());
+    expect(cs.backgroundImage).toBe("none");
+    expect(cs.textDecorationLine).toContain("underline");
   });
 
   test("each option is at least 24 px square", async () => {

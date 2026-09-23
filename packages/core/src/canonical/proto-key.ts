@@ -1,5 +1,5 @@
 import type { ParseSource } from "../model/io";
-import { MAX_JSON_DEPTH } from "../model/schema";
+import { MAX_JSON_DEPTH } from "../model/path";
 
 /**
  * The one object key untrusted JSON may not carry. `JSON.parse` keeps `"__proto__"` as an own property, but

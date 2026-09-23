@@ -5,7 +5,8 @@ import { commandState, now, type ToastInput } from "@/contracts";
 /** What each toast carries for `ToastRegion` to render. */
 export type ToastData = {
   kind: "info" | "error";
-  /** The toast's one action and its button label (the command's title when the toast was added). */
+  /** The toast's one action and its button label: `action.label` when the toast set one, else the command's
+   * title when the toast was added. */
   action?: { ref: CommandRef; title: string };
 };
 
@@ -118,7 +119,7 @@ export function createToasts(options: ToastsOptions = {}): Toasts {
     }
     showing = { entry, until: timeout > 0 ? now() + timeout : null };
     const data: ToastData = input.action
-      ? { kind, action: { ref: input.action, title: commandState(input.action, "toast").title } }
+      ? { kind, action: { ref: input.action, title: input.action.label ?? commandState(input.action, "toast").title } }
       : { kind };
     manager.add({ id, title: input.text, type: kind, timeout, data, onClose: () => closed(id) });
   };

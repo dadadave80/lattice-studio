@@ -1,6 +1,6 @@
 import type { Catalog, InitParam } from "../model/catalog";
 import type { Arg, Recipe } from "../model/recipe";
-import { formatPath } from "../model/schema";
+import { formatPath } from "../model/path";
 
 /** One literal init argument: a string or boolean, at its argument path ("bundle.p.asset", "steps[2].admin"). */
 export type ArgLeaf = {

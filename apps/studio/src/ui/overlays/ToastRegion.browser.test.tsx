@@ -81,6 +81,23 @@ describe("ToastRegion", () => {
     await expect.element(page.getByText("Removed 2 facets")).not.toBeInTheDocument();
   });
 
+  test("a toast's action shows action.label when set, else the command's title", async () => {
+    const restore = vi.fn();
+    overrideCommands([
+      command({
+        id: "project.restore", title: () => "Restore project", category: "Session", enabled: () => ({ ok: true }),
+        run: restore,
+      }),
+    ]);
+    await render();
+    toasts.add({ text: "Deleted Vault Diamond", action: { id: "project.restore", label: "Undo" } });
+    await expect.element(page.getByText("Deleted Vault Diamond")).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Undo" })).toBeVisible();
+    expect(page.getByRole("button", { name: "Restore project" }).elements()).toHaveLength(0);
+    await page.getByRole("button", { name: "Undo" }).click();
+    expect(restore).toHaveBeenCalledTimes(1);
+  });
+
   test("an error says so and stays until closed", async () => {
     await render();
     toasts.add({ text: "Couldn't write the file", kind: "error" });
