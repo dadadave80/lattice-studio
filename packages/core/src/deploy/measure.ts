@@ -14,8 +14,9 @@ export const calldataHash: CalldataHashFn = (data) => {
 /**
  * The estimate against the chain's per-transaction cap (R16, NET-06): `share` is gas / cap to four decimal places
  * (rounded down), `level` is "over" above the cap, "warning" from 80% up to and including the cap (EIP-7825 allows
- * exactly the cap), else "ok". A cap of zero or less is a programmer error and throws a RangeError, as does a
- * negative estimate.
+ * exactly the cap), else "ok". Callers must pass a positive cap (`ChainState.gasCap`, parsed) and a non-negative
+ * estimate: the frozen type returns `GasShare`, not a `Result`, so anything else throws a RangeError. Without a
+ * known cap, don't call it.
  */
 export const gasShare: GasShareFn = (gas, cap) => {
   if (cap <= 0n) throw new RangeError(`the gas cap must be positive, got ${cap}`);

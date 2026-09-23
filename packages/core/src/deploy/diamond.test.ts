@@ -130,6 +130,15 @@ describe("factory path", () => {
     expect(deploy.customCuts).toEqual(["DiamondLoupeFacet"]);
   });
 
+  test("a probe of another chain never shapes RecipeEntries (spec L302)", () => {
+    const stale = { ...chain({ "ERC20@0.4.0": listed(erc20) }), chainId: 11155111, name: "Sepolia" };
+    const deploy = build({ chain: stale });
+    expect(deploy.registryEntries).toEqual([]);
+    expect(deploy.customCuts).toEqual(["DiamondLoupeFacet", "ERC20"]);
+    expect(decodeFactory(deploy.tx.data).entries).toEqual([]);
+    expect(build({ chain: stale, chainId: 11155111 }).registryEntries).toEqual(["ERC20"]);
+  });
+
   test("record addresses compare case-insensitively", () => {
     const record = { facet: erc20.release.address.toLowerCase() as Address, codehash: erc20.release.codehash };
     expect(build({ chain: chain({ "ERC20@0.4.0": record }) }).registryEntries).toEqual(["ERC20"]);
@@ -253,7 +262,20 @@ describe("refusals", () => {
     const unplaced = buildDiamondDeploy(args({ recipe: makeRecipe({ facets: ["DiamondLoupeFacet"] }) }));
     expect(unplaced).toEqual({ ok: false, error: "ERC20 is in the plan but not on the sheet. Rebuild the plan." });
     const exported = buildDiamondDeploy(args({ plan: [entry(loupe), entry(erc20, ["0x0ef22643"])] }));
-    expect(exported.ok).toBe(false);
+    expect(exported).toEqual({
+      ok: false, error: "ERC20 carries exportSelectors() (0x0ef22643), which LatticeFactory refuses in a cut. Rebuild the plan.",
+    });
+  });
+
+  test("a plan entry with a selector its catalog facet doesn't export", () => {
+    const facets = loupe.selectors[0]?.hex ?? "0x";
+    const stale = buildDiamondDeploy(args({ plan: [entry(loupe), entry(erc20, [erc20.selectors[0]?.hex ?? "0x", facets])] }));
+    expect(stale).toEqual({
+      ok: false, error: `ERC20 doesn't export ${facets} in catalog test, so it can't be cut to it. Rebuild the plan.`,
+    });
+    for (const path of ["factory", "createx"] as const) {
+      expect(buildDiamondDeploy(args({ path, proxyCreationCode: PROXY_CODE, plan: [entry(loupe), entry(erc20, ["0xdeadbeef"])] })).ok).toBe(false);
+    }
   });
 
   test("an init target that isn't an address", () => {

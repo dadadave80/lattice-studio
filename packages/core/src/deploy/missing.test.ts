@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { concat, decodeFunctionData, keccak256, stringToHex, toFunctionSelector } from "viem";
-import { ARACHNID_PROXY, arachnidAddress } from "../address";
+import { ARACHNID_PROXY, ARACHNID_PROXY_CODEHASH, arachnidAddress } from "../address";
 import type { Catalog, SharedContract } from "../model/catalog";
 import type { ChainState, MissingDeploysArgs } from "../model/chain";
 import type { Hex } from "../model/hex";
@@ -48,6 +48,9 @@ const catalog: Catalog = makeCatalog({
   ],
 });
 
+/** A modest single-transaction estimate for every contract, so the default cap batches them. */
+const ESTIMATES: Record<string, bigint> = Object.fromEntries(Object.keys(CODE).map((name) => [name, 500_000n]));
+
 function chain(over: Partial<ChainState> = {}): ChainState {
   return {
     chainId: 31337, name: "Anvil", online: true, probedAt: "2026-09-23T00:00:00Z",
@@ -57,7 +60,10 @@ function chain(over: Partial<ChainState> = {}): ChainState {
 }
 
 function args(over: Partial<MissingDeploysArgs> = {}): MissingDeploysArgs {
-  return { catalog, names: ["ERC20", "ERC20Init"], chain: chain(), code: CODE, multicall3Canonical: true, ...over };
+  return {
+    catalog, names: ["ERC20", "ERC20Init"], chain: chain(), code: CODE, multicall3Canonical: true,
+    gasCap: 30_000_000n, gas: ESTIMATES, ...over,
+  };
 }
 
 function build(over: Partial<MissingDeploysArgs> = {}) {
@@ -197,6 +203,26 @@ describe("batching", () => {
     expect(result.txs.map((t) => [t.tx.to, t.names])).toEqual([[ARACHNID_PROXY, ["ERC20"]], [ARACHNID_PROXY, ["ERC20Init"]]]);
   });
 
+  test("without a gas cap nothing goes through Multicall3: one transaction each, or one EIP-5792 call list", () => {
+    const { gasCap: _, ...uncapped } = args({ names: ["ERC20", "ERC20Init", "OwnableFacet"] });
+    const plain = buildMissingDeploys(uncapped);
+    if (!plain.ok) throw new Error(plain.error);
+    expect(plain.value.mode).toBe("transactions");
+    expect(plain.value.txs.map((t) => [t.tx.to, t.names])).toEqual([
+      [ARACHNID_PROXY, ["ERC20"]], [ARACHNID_PROXY, ["ERC20Init"]], [ARACHNID_PROXY, ["OwnableFacet"]],
+    ]);
+    const atomic = buildMissingDeploys({ ...uncapped, atomicCalls: true });
+    expect(atomic.ok && atomic.value.mode).toBe("calls");
+  });
+
+  test("a canonical Multicall3 that batches nothing falls through to EIP-5792 calls when the wallet has them", () => {
+    const over = { names: ["ERC20", "ERC20Init"], gas: { ERC20: 20_000_000n, ERC20Init: 20_000_000n }, atomicCalls: true };
+    const result = build(over);
+    expect(result.mode).toBe("calls");
+    expect(result.txs.map((t) => [t.tx.to, t.names])).toEqual([[ARACHNID_PROXY, ["ERC20"]], [ARACHNID_PROXY, ["ERC20Init"]]]);
+    expect(build({ ...over, atomicCalls: false }).mode).toBe("transactions");
+  });
+
   test("Multicall3 missing from the chain falls back too", () => {
     expect(build({ chain: chain({ multicall3: { present: false } }) }).mode).toBe("transactions");
   });
@@ -214,6 +240,32 @@ describe("batching", () => {
 });
 
 describe("refusals", () => {
+  test("a different contract at Arachnid's proxy address (spec L842), when something needs deploying", () => {
+    const odd = keccak256(stringToHex("not arachnid"));
+    expect(buildMissingDeploys(args({ chain: chain({ deployer: { present: true, codehash: odd } }) }))).toEqual({
+      ok: false,
+      error: `Anvil has a different contract at Arachnid's deployment proxy address (codehash ${odd}), so shared contracts can't be deployed through it.`,
+    });
+    const canonical = { present: true, codehash: ARACHNID_PROXY_CODEHASH.toUpperCase().replace("0X", "0x") as Hex };
+    expect(buildMissingDeploys(args({ chain: chain({ deployer: canonical }) })).ok).toBe(true);
+    const nothing = chain({ deployer: { present: true, codehash: odd }, shared: { ERC20: { present: true }, ERC20Init: { present: true } } });
+    expect(buildMissingDeploys(args({ chain: nothing })).ok).toBe(true);
+  });
+
+  test("LatticeFactory on a chain with its own factory", () => {
+    const own = {
+      address: toChecksum(`0x${"fa".repeat(20)}`), codehash: keccak256("0x01"), buildCommit: "a".repeat(40),
+      proxyStandardJson: makeShard("json/Factory-31337.standard.json"), proxyInitCodeHash: keccak256("0x02"),
+    };
+    const withOwn = { ...catalog, chains: [{ chainId: 31337, factory: own }] };
+    expect(buildMissingDeploys(args({ catalog: withOwn, names: ["LatticeRegistry", "LatticeFactory"] }))).toEqual({
+      ok: false,
+      error: `Anvil uses its own LatticeFactory at ${own.address}, which isn't deployed through Arachnid's proxy; the diamond deploy targets it.`,
+    });
+    expect(buildMissingDeploys(args({ catalog: withOwn, names: ["LatticeRegistry"] })).ok).toBe(true);
+    expect(buildMissingDeploys(args({ catalog: withOwn, names: ["LatticeFactory"], chain: chain({ chainId: 1 }) })).ok).toBe(true);
+  });
+
   test("an unknown name, or an init deployed per diamond", () => {
     expect(buildMissingDeploys(args({ names: ["Nope"] }))).toEqual({ ok: false, error: "Nope isn't a shared contract in catalog test." });
     expect(buildMissingDeploys(args({ names: ["PerDiamondInit"] })).ok).toBe(false);
@@ -253,7 +305,8 @@ describe("with the fixture catalog", () => {
   test("real dependsOn: PoseidonT3 first, then Semaphore and ShieldedPool, each hash-checked", () => {
     const names = ["Semaphore", "ShieldedPool", "LatticeRegistry", "LatticeFactory"];
     const code = Object.fromEntries([...names, "PoseidonT3"].map((name) => [name, read(name)]));
-    const result = buildMissingDeploys({ catalog: cat, names, chain: chain(), code, multicall3Canonical: true });
+    const gas = Object.fromEntries([...names, "PoseidonT3"].map((name) => [name, 500_000n]));
+    const result = buildMissingDeploys({ catalog: cat, names, chain: chain(), code, multicall3Canonical: true, gasCap: 16_777_216n, gas });
     if (!result.ok) throw new Error(result.error);
     expect(result.value.txs.flatMap((t) => t.names)).toEqual(["PoseidonT3", "Semaphore", "ShieldedPool", "LatticeRegistry", "LatticeFactory"]);
     const calls = decodeBatch(result.value.txs[0]?.tx.data ?? "0x");

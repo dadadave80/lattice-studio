@@ -107,9 +107,13 @@ export const CREATEX_ABI = [
 ] as const;
 
 /**
- * Multicall3 `aggregate3((address target, bool allowFailure, bytes callData)[])`, returning
- * `(bool success, bytes returnData)[]`. For an Arachnid call, `returnData` is the 20 raw address bytes the proxy
- * returns, not an ABI-encoded address.
+ * Multicall3 `aggregate3((address target, bool allowFailure, bytes callData)[])`. Its `(bool success, bytes
+ * returnData)[]` result exists only for an `eth_call` or simulation (where an Arachnid call's `returnData` is the 20
+ * raw address bytes the proxy returns, not an ABI-encoded address): a mined receipt carries no return data. So after
+ * the receipt, S8c detects a failed sub-call by reading `extcodehash` at each contract's release address, and
+ * replays a missing one with `eth_call` to Arachnid's proxy to diagnose it (the proxy reverts without a reason).
+ * A CREATE2 collision at the proxy burns all the gas forwarded to it (EIP-684), so a contract that landed after the
+ * last probe can starve the rest of its batch; when no gas estimates exist this goes unnoticed until the receipt.
  */
 export const MULTICALL3_ABI = [
   {

@@ -73,6 +73,11 @@ function checkPlan(args: DiamondDeployArgs): Result<null, string> {
     if (entry.selectors.some((selector) => selector.toLowerCase() === EXPORT_SELECTOR)) {
       return err(`${entry.facet} carries exportSelectors() (0x0ef22643), which LatticeFactory refuses in a cut. Rebuild the plan.`);
     }
+    const exported = new Set(facet.selectors.map((selector) => selector.hex.toLowerCase()));
+    const foreign = entry.selectors.find((selector) => !exported.has(selector.toLowerCase()));
+    if (foreign !== undefined) {
+      return err(`${entry.facet} doesn't export ${foreign.toLowerCase()} in catalog ${args.catalog.lattice.tag}, so it can't be cut to it. Rebuild the plan.`);
+    }
   }
   return ok(null);
 }
@@ -114,8 +119,12 @@ function checkInit(init: DiamondDeployArgs["init"]): Result<null, string> {
  * `facets()` at the predicted address and `comparePlan` reports the Mismatch. On the CreateX path a used salt
  * reverts instead.
  *
+ * `chain` counts only when `chain.chainId === chainId`: a probe of another chain is ignored, so every facet then
+ * goes as a custom cut (spec L302).
+ *
  * Errors (never throws for these): a salt that doesn't start with `from` or has a bad scope byte, an empty or
- * stale plan, a bad init, and on the CreateX path missing or wrong `Lattice` creation code.
+ * stale plan (a facet that differs from its release, isn't on the sheet, or is given a selector it doesn't
+ * export), a bad init, and on the CreateX path missing or wrong `Lattice` creation code.
  */
 export const buildDiamondDeploy: BuildDiamondDeployFn = (args) => {
   const { catalog, plan, init, path, from, salt, chainId } = args;
@@ -155,12 +164,14 @@ export const buildDiamondDeploy: BuildDiamondDeployFn = (args) => {
   const factory = toChecksum(own?.address ?? catalog.factory.address);
   const proxyInitCodeHash = own?.proxyInitCodeHash ?? catalog.proxy.initCodeHash;
   const address = factoryPredict({ factory, proxyInitCodeHash, from, salt: raw });
+  // A probe of another chain (a stale one after a chain switch) must never decide RecipeEntries.
+  const probed = args.chain?.chainId === chainId ? args.chain : undefined;
   const entries: Entry[] = [];
   const cuts: Cut[] = [];
   const registryEntries: string[] = [];
   const customCuts: string[] = [];
   for (const entry of plan) {
-    const version = registryVersion(entry, catalog, args.chain);
+    const version = registryVersion(entry, catalog, probed);
     if (version === null) {
       cuts.push(customCut(entry));
       customCuts.push(entry.facet);
