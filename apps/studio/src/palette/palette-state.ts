@@ -69,9 +69,17 @@ function sameRef(a: CommandRef, b: CommandRef): boolean {
   return a.id === b.id && JSON.stringify(a.args ?? {}) === JSON.stringify(b.args ?? {});
 }
 
+/** A place from Add facet here… belongs to that opening: Recent places the facet the usual way. */
+function withoutPlace(ref: CommandRef): CommandRef {
+  if (ref.id !== "facet.place" || !ref.args || !("at" in ref.args)) return ref;
+  const { at: _at, ...args } = ref.args;
+  return { id: ref.id, args };
+}
+
 /** Records a command run from the palette: most recent first, each once, at most five. */
-export function recordRecent(ref: CommandRef): void {
-  if (ref.id === "palette.open") return;
+export function recordRecent(ran: CommandRef): void {
+  if (ran.id === "palette.open") return;
+  const ref = withoutPlace(ran);
   recent = [ref, ...recent.filter((r) => !sameRef(r, ref))].slice(0, RECENT_LIMIT);
   for (const listener of recentListeners) listener();
 }
