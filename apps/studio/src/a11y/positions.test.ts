@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Layout } from "@lattice-studio/core";
-import { matchesKey, type KeyInput } from "./keys";
+import { isSingleKey, matchesKey, type KeyInput } from "./keys";
 import { describeMove, nextAfterDelete, positionInWords, readingOrder, restoredCard } from "./positions";
 
 function at(x: number, y: number): Layout[string] {
@@ -96,5 +96,16 @@ describe("matchesKey", () => {
     expect(matchesKey("Shift+[Digit0]", { ...key("="), code: "Digit0", shiftKey: true }, "other")).toBe(true);
     expect(matchesKey("Mod++", key("+", { metaKey: true }), "mac")).toBe(true);
     expect(matchesKey("Hyper+x", key("x"), "mac")).toBe(false);
+  });
+
+  test("single keys: no modifier but Shift, and not a function key", () => {
+    expect(isSingleKey("n")).toBe(true);
+    expect(isSingleKey("Shift+[Digit0]")).toBe(true);
+    expect(isSingleKey("+")).toBe(true);
+    expect(isSingleKey("F6")).toBe(false);
+    expect(isSingleKey("Shift+F6")).toBe(false);
+    expect(isSingleKey("Alt+n")).toBe(false);
+    expect(isSingleKey({ keys: "Ctrl+F6", platform: "other" })).toBe(false);
+    expect(isSingleKey("Mod++")).toBe(false);
   });
 });

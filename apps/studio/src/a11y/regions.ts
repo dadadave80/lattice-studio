@@ -4,17 +4,19 @@
  * Linux) cycle them from a capture-phase listener on `window` that stops the event there, because Base UI's
  * toast viewport listens for F6 with any modifier on `window`.
  *
- * The keys are the `region.next` and `region.prev` bindings with the keymap applied, so a remap moves them;
- * this listener is their one handler. Entering a region focuses what last had focus inside it, else the
+ * The keys are the `region.next`, `region.prev` and "Go to …" (`region.focus`) bindings with the keymap
+ * applied, so a remap moves them; this listener is their one handler. A binding remapped to a single key
+ * follows the single-key rules. Entering a region focuses what last had focus inside it, else the
  * region's container (`tabIndex -1`).
  */
 import type { CommandRef } from "@lattice-studio/core";
 import {
-  commandState, doc, listBindings, REGION_IDS, REGION_LABELS, runCommand, session, type RegionId, type ResolvedBinding,
+  commandState, doc, KEY_CONTEXT_ATTRIBUTE, listBindings, REGION_IDS, REGION_LABELS, runCommand, session, settings,
+  type KeySpec, type RegionId, type ResolvedBinding,
 } from "@/contracts";
 import { ensureLiveRegions } from "./announcer";
 import { followDocument } from "./focus";
-import { currentPlatform, matchesKey } from "./keys";
+import { currentPlatform, isSingleKey, matchesKey } from "./keys";
 
 const elements = new Map<RegionId, HTMLElement>();
 /** What last had focus inside each region. */
@@ -125,16 +127,31 @@ export function regionPhrase(id: RegionId): string {
 // ---------------------------------------------------------------------------------------------------------
 // The capture-phase listener
 
-const REGION_COMMANDS = new Set(["region.next", "region.prev"]);
+/** Every region binding is handled here, so S2's dispatcher never needs to. */
+const REGION_COMMANDS = new Set(["region.next", "region.prev", "region.focus"]);
+
+/** Where single keys are inert (IR L1). */
+const SINGLE_KEY_INERT = new Set(["text", "tree", "list", "menu", "console", "palette", "card-rows"]);
 
 function regionBindings(): ResolvedBinding[] {
   return listBindings().filter((b) => REGION_COMMANDS.has(b.ref.id));
 }
 
+/** A key remapped to a single key follows the single-key rules: off in settings, or focus where typing or lists own keys. */
+function singleKeyInert(target: EventTarget | null): boolean {
+  if (!settings.get().singleKeys) return true;
+  if (!(target instanceof Element)) return false;
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true;
+  if (target instanceof HTMLElement && target.isContentEditable) return true;
+  const context = target.closest(`[${KEY_CONTEXT_ATTRIBUTE}]`)?.getAttribute(KEY_CONTEXT_ATTRIBUTE);
+  return !!context && SINGLE_KEY_INERT.has(context);
+}
+
 function onKeyDown(event: KeyboardEvent): void {
   if (event.defaultPrevented || event.isComposing) return;
   const platform = currentPlatform();
-  const binding = regionBindings().find((b) => b.keys.some((k) => matchesKey(k, event, platform)));
+  const live = (k: KeySpec) => matchesKey(k, event, platform) && !(isSingleKey(k) && singleKeyInert(event.target));
+  const binding = regionBindings().find((b) => b.keys.some(live));
   if (!binding) return;
   event.preventDefault();
   event.stopPropagation();

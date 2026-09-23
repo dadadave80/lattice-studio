@@ -18,10 +18,15 @@ export function currentPlatform(): Platform {
   return /mac|iphone|ipad|ipod/i.test(name) ? "mac" : "other";
 }
 
+/** Modifiers, then the key: "+" and "Mod++" name the + key. */
+function split(keys: string): string[] {
+  if (keys === "+") return ["+"];
+  if (keys.endsWith("++")) return [...keys.slice(0, -2).split("+"), "+"];
+  return keys.split("+");
+}
+
 function parse(keys: string, platform: Platform): Parsed | null {
-  const parts = keys.split("+");
-  // "Mod++" is the + key.
-  if (keys.endsWith("++")) parts.splice(-2, 2, "+");
+  const parts = split(keys);
   const last = parts.pop();
   if (!last) return null;
   const parsed: Parsed = { ctrl: false, alt: false, shift: false, meta: false };
@@ -56,4 +61,17 @@ export function matchesKey(spec: KeySpec, event: KeyInput, platform: Platform): 
   if (!typed && event.shiftKey !== parsed.shift) return false;
   if (parsed.code !== undefined) return event.code === parsed.code;
   return key.length === 1 ? event.key.toLowerCase() === key.toLowerCase() : event.key === key;
+}
+
+/**
+ * A single-key shortcut (no modifier but Shift, not a function key): Settings → Keyboard can switch these
+ * off, and they never fire while typing or inside trees, lists, menus, the console or the palette (spec
+ * L757, WCAG 2.1.4).
+ */
+export function isSingleKey(spec: KeySpec): boolean {
+  const keys = typeof spec === "string" ? spec : spec.keys;
+  const parts = split(keys);
+  const key = parts.pop() ?? "";
+  if (parts.some((mod) => mod !== "Shift")) return false;
+  return !/^F\d{1,2}$/.test(key);
 }

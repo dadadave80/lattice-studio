@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { listPaletteRows, openDialog, REGION_LABELS, runCommand, type RegionId } from "@/contracts";
+import { listPaletteRows, openDialog, REGION_LABELS, runCommand, settings, type RegionId } from "@/contracts";
 import { bufferedServices, renderWithStudio } from "../../test/harness";
 import { resetAnnouncer } from "./announcer";
 import { currentRegion } from "./regions";
@@ -118,6 +118,35 @@ describe("regions", () => {
     await renderWithStudio(<RegionFrame />, { settings: { keymap: { "region.next": ["Alt+n"] } } });
     expect(await press("{F6}")).toBeNull();
     expect(await press("{Alt>}n{/Alt}")).toBe("titlebar");
+  });
+
+  test("a region shortcut remapped to a single key is inert while typing and when single keys are off", async () => {
+    await renderWithStudio(<RegionFrame />, { settings: { keymap: { "region.next": ["n"] } } });
+    const field = document.createElement("input");
+    page.getByRole("region", { name: "Console" }).element().append(field);
+    field.focus();
+    await userEvent.keyboard("n");
+    expect(document.activeElement).toBe(field);
+    expect(field.value).toBe("n");
+
+    const tree = document.createElement("div");
+    tree.dataset.keyctx = "tree";
+    tree.tabIndex = 0;
+    page.getByRole("region", { name: "Inspector" }).element().append(tree);
+    tree.focus();
+    await userEvent.keyboard("n");
+    expect(document.activeElement).toBe(tree);
+
+    (document.activeElement as HTMLElement).blur();
+    expect(await press("n")).toBe("titlebar");
+    settings.set({ singleKeys: false });
+    expect(await press("n")).toBe("titlebar");
+  });
+
+  test("a remapped Go to shortcut works", async () => {
+    await renderWithStudio(<RegionFrame />, { settings: { keymap: { "region.focus#inspector": ["Alt+i"] } } });
+    await userEvent.keyboard("{Alt>}i{/Alt}");
+    await expect.element(page.getByRole("region", { name: "Inspector" })).toHaveFocus();
   });
 
   test("with a dialog open, F6 stays put and says why", async () => {
