@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { DEFAULT_SETTINGS } from "@/contracts";
+import { bufferedServices, clearServiceBuffers } from "@/contracts/services";
 import { createSettingsStore, readSettings, SETTINGS_KEY, type SettingsStorage } from "./settings-store";
 
 function memory(initial: Record<string, string> = {}): SettingsStorage & { data: Record<string, string> } {
@@ -41,6 +42,27 @@ describe("settings store", () => {
     expect(read).toEqual({ ...DEFAULT_SETTINGS, wheel: "zoom", deployAnnouncements: "all" });
     expect(readSettings("not json")).toEqual(DEFAULT_SETTINGS);
     expect(readSettings("[1,2]")).toEqual(DEFAULT_SETTINGS);
+  });
+
+  test("a stored __proto__ key is refused: defaults are kept, the built keymap's prototype is untouched, and it's logged once", () => {
+    clearServiceBuffers();
+    // A raw JSON string, not an object literal: JSON.parse keeps "__proto__" as an own property (the bug this
+    // guards against), while `{ __proto__: … }` in JS source would set the literal's own prototype instead.
+    // The value is a valid KeySpec array, so the old loop (`keymap[binding] = valid`) would have gone
+    // through, setting the built keymap object's own prototype to it instead of the whole thing being refused.
+    const read = readSettings('{"theme":"draft","keymap":{"__proto__":["Shift+t"]}}');
+    expect(read).toEqual(DEFAULT_SETTINGS);
+    expect(Object.getPrototypeOf(read.keymap)).toBe(Object.prototype);
+    const errors = bufferedServices().log.filter((line) => line.tag === "Error");
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.text).toContain("keymap.__proto__");
+    clearServiceBuffers();
+  });
+
+  test("readSettings builds the keymap as own properties, not through the prototype, for an ordinary binding", () => {
+    const read = readSettings(JSON.stringify({ keymap: { "layout.tidy": ["Shift+t"] } }));
+    expect(Object.getPrototypeOf(read.keymap)).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(read.keymap, "layout.tidy")).toBe(true);
   });
 
   test("blocked storage keeps working in memory", () => {
