@@ -166,10 +166,15 @@ describe("DEP, STO", () => {
     );
   });
 
-  test("DEP-02: namespace with a reason", () => {
-    expect(render("DEP-02", { kind: "namespace", namespace: "lattice.storage.AccessControl", anyOf: ["AccessControl"], reason: "roles are never revoked" })).toBe(
-      "`lattice.storage.AccessControl` is written at init, but without AccessControl roles are never revoked.",
-    );
+  test("DEP-02: namespace with a reason — the reason is the whole message, verbatim (contracts §3.1, spec L323)", () => {
+    expect(
+      render("DEP-02", {
+        kind: "namespace",
+        namespace: "lattice.storage.AccessControl",
+        anyOf: ["AccessControl"],
+        reason: "Roles are written at init, but without AccessControl nobody can manage them later.",
+      }),
+    ).toBe("Roles are written at init, but without AccessControl nobody can manage them later.");
   });
 
   test("DEP-03: spec example", () => {
@@ -202,8 +207,8 @@ describe("INIT", () => {
     );
   });
 
-  test("INIT-01: a missing required argument", () => {
-    expect(render("INIT-01", { path: "bundle.p.asset", label: "Asset", missing: true, detail: "this field is required" })).toBe("this field is required.");
+  test("INIT-01: a missing required argument — detail is a complete sentence", () => {
+    expect(render("INIT-01", { path: "bundle.p.asset", label: "Asset", missing: true, detail: "This field is required." })).toBe("This field is required.");
   });
 
   test("INIT-02: spec example", () => {

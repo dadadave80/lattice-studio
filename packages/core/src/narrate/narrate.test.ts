@@ -31,6 +31,18 @@ function dep01(facet: string, anyOf: string[]): Problem {
 const core04Params: ProblemParams["CORE-04"] = { facet: "Receive" };
 const core04: Problem = { ...problem("CORE-04", [{ kind: "diamond" }], core04Params, []), message: renderProblem("CORE-04", core04Params) };
 
+const sel03Params: ProblemParams["SEL-03"] = { facet: "ERC20Pausable", count: 2, why: "seams", servedBy: ["GovernedVault"], movable: [] };
+const sel03: Problem = { ...problem("SEL-03", [{ kind: "facet", facet: "ERC20Pausable" }], sel03Params, []), message: renderProblem("SEL-03", sel03Params) };
+
+const auth01Params: ProblemParams["AUTH-01"] = {
+  holder: "0x0000000000000000000000000000000000000001",
+  roles: ["DEFAULT_ADMIN_ROLE"],
+  paths: [],
+  delegated: false,
+  chain: "Sepolia",
+};
+const auth01: Problem = { ...problem("AUTH-01", [{ kind: "diamond" }], auth01Params, []), message: renderProblem("AUTH-01", auth01Params) };
+
 describe("narrate", () => {
   test("prev = null narrates nothing", () => {
     expect(narrate(null, analysis([]))).toEqual([]);
@@ -74,12 +86,13 @@ describe("narrate", () => {
     expect(lines[0]?.text).toBe("Resolved: `transfer · 0xa9059cbb` routes to V20.");
   });
 
-  test("a resolved SEL-01 with no owner in the new routing falls back to the rendered message", () => {
+  test("a resolved SEL-01 with no owner in the new routing falls back to the rendered message, minus its 'Choose one owner.' instruction", () => {
     const p = sel01("0xa9059cbb", ["A20", "V20"]);
     const lines = narrate(analysis([p]), analysis([]));
     expect(lines).toHaveLength(1);
     expect(lines[0]?.tag).toBe("Resolved");
-    expect(lines[0]?.text).toBe(`Resolved: ${p.message}`);
+    expect(p.message.endsWith(" Choose one owner.")).toBe(true);
+    expect(lines[0]?.text).toBe("Resolved: `transfer(address,uint256)` 0xa9059cbb is exported by A20 and V20.");
   });
 
   test("a new DEP-01 becomes a Missing line", () => {
@@ -104,6 +117,20 @@ describe("narrate", () => {
     expect(added).toEqual([{ tag: "Note", text: core04.message, anchor: { kind: "diamond" } }]);
     const resolved = narrate(analysis([core04]), analysis([]));
     expect(resolved).toEqual([{ tag: "Resolved", text: `Resolved: ${core04.message}`, anchor: { kind: "diamond" } }]);
+  });
+
+  test("a generic Resolved line drops a known trailing instruction sentence, but a new one keeps it", () => {
+    expect(sel03.message).toBe("ERC20Pausable cuts nothing: both its selectors are seams that GovernedVault serves. Remove it.");
+    const [addedSel03] = narrate(analysis([]), analysis([sel03]));
+    expect(addedSel03?.text).toBe(sel03.message);
+    const [resolvedSel03] = narrate(analysis([sel03]), analysis([]));
+    expect(resolvedSel03?.text).toBe("Resolved: ERC20Pausable cuts nothing: both its selectors are seams that GovernedVault serves.");
+
+    expect(auth01.message).toBe(
+      "`DEFAULT_ADMIN_ROLE` rest with 0x0000…0001, a single key. If it's a Safe that isn't deployed yet, deploy it first.",
+    );
+    const [resolvedAuth] = narrate(analysis([auth01]), analysis([]));
+    expect(resolvedAuth?.text).toBe("Resolved: `DEFAULT_ADMIN_ROLE` rest with 0x0000…0001, a single key.");
   });
 
   test("undo and redo dim every narrated line", () => {

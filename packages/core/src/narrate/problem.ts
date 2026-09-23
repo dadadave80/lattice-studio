@@ -106,8 +106,11 @@ function renderDep02(p: ProblemParams["DEP-02"]): string {
   if (p.kind === "companion") {
     return `${p.facet} usually ships with ${joinOr(p.anyOf)}, so ${clause(p.reason)}.`;
   }
-  const tail = p.reason ? clause(p.reason) : "nobody can manage it later";
-  return `\`${p.namespace}\` is written at init, but without ${joinOr(p.anyOf)} ${tail}.`;
+  // Namespace, with a reason: the check already wrote the whole sentence (contracts §3.1; spec L323's
+  // "Roles are written at init, but without AccessControl nobody can manage them later."), so it's used
+  // verbatim. Only without one does C10 word it generically from `namespace` and `anyOf`.
+  if (p.reason) return p.reason;
+  return `\`${p.namespace}\` is written at init, but without ${joinOr(p.anyOf)} nobody can manage it later.`;
 }
 
 function renderDep03(p: ProblemParams["DEP-03"]): string {

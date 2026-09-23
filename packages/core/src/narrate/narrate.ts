@@ -1,9 +1,31 @@
 import type { NarrateFn } from "../model/api";
 import type { Analysis } from "../model/analysis";
 import type { LineDraft } from "../model/console";
-import type { Anchor, Problem, ProblemParams } from "../model/problems";
+import type { Anchor, Problem, ProblemCode, ProblemParams } from "../model/problems";
 import { joinOr } from "../format/text";
 import { lines } from "./lines";
+
+/**
+ * Codes whose rendered `message` ends with a separate instruction sentence, and that sentence's exact text
+ * (leading space included). A generic "Resolved:" line drops it: the spec's resolved examples (L713, L715)
+ * state only what happened, never repeat the instruction that led to the fix. Explicit per code, not a
+ * heuristic: every other code's message ends in a statement of fact, which a "Resolved:" line keeps.
+ */
+const TRAILING_INSTRUCTION: Partial<Record<ProblemCode, string>> = {
+  "SEL-01": " Choose one owner.",
+  "SEL-03": " Remove it.",
+  "AUTH-01": " If it's a Safe that isn't deployed yet, deploy it first.",
+};
+
+/** `message` with its code's trailing instruction sentence dropped, when it has one and ends with it. */
+function withoutInstruction(p: Problem): string {
+  const suffix = TRAILING_INSTRUCTION[p.code];
+  return suffix && p.message.endsWith(suffix) ? p.message.slice(0, -suffix.length) : p.message;
+}
+
+function resolvedLine(p: Problem): LineDraft {
+  return withAnchor({ tag: "Resolved", text: `Resolved: ${withoutInstruction(p)}` }, p.where[0]);
+}
 
 function withAnchor(draft: LineDraft, anchor: Anchor | undefined): LineDraft {
   return anchor ? { ...draft, anchor } : draft;
@@ -59,7 +81,7 @@ function narrateResolvedCollisions(problems: readonly Problem[], next: Analysis)
   const out: LineDraft[] = [];
   for (const [owner, group] of groups) {
     if (!owner) {
-      for (const p of group) out.push(withAnchor({ tag: "Resolved", text: `Resolved: ${p.message}` }, p.where[0]));
+      for (const p of group) out.push(resolvedLine(p));
       continue;
     }
     const first = group[0] as Problem;
@@ -102,7 +124,7 @@ export const narrate: NarrateFn = (prev, next, cause) => {
     ...addedRest.map((p) => withAnchor({ tag: "Note", text: p.message }, p.where[0])),
     ...narrateResolvedCollisions(resolvedSel01, next),
     ...narrateResolvedDependencies(resolvedDep01),
-    ...resolvedRest.map((p) => withAnchor({ tag: "Resolved", text: `Resolved: ${p.message}` }, p.where[0])),
+    ...resolvedRest.map(resolvedLine),
   ];
 
   return cause?.kind === "undo" || cause?.kind === "redo" ? out.map((line) => ({ ...line, dim: true })) : out;
