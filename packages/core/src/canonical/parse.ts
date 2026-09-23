@@ -9,6 +9,7 @@ import { formatPath, MAX_JSON_DEPTH, validateProject, validateProjectFile, valid
 import { LONE_SURROGATE } from "./json";
 import { runMigrations, type MigrateTarget } from "./migrate";
 import { normalizeWith } from "./normalize";
+import { findProtoKey, PROTO_KEY_MESSAGE } from "./proto-key";
 
 /**
  * One issue as a line: `recipe.json: facets[3] ‘ERC20X’ isn't in Lattice 0.4.0.` (spec L501). The file comes
@@ -152,8 +153,13 @@ type Shape<T> = {
   normalize: (value: T, recipe: Recipe) => T;
 };
 
-/** Migrate, validate, check names against the pinned catalog, normalize. Never throws. */
+/**
+ * Refuse a `"__proto__"` key, then a lone surrogate; migrate, validate, check names against the pinned catalog,
+ * normalize. The key check runs first, before anything copies the input. Never throws.
+ */
 function parseAs<T>(shape: Shape<T>, json: unknown, opts: ParseOptions): Result<Parsed<T>, ParseIssue[]> {
+  const protoPath = findProtoKey(json);
+  if (protoPath !== null) return err([issue(formatPath(protoPath), PROTO_KEY_MESSAGE, opts)]);
   const badPath = findLoneSurrogate(json, []);
   if (badPath !== null) {
     return err([issue(formatPath(badPath), "has a broken character. Fix the text and try again.", opts)]);

@@ -227,30 +227,19 @@ describe("hostile links", () => {
     expect(decoded.ok && decoded.value.recipe.name).toBe("<img src=x onerror=alert(1)>");
   });
 
-  test("__proto__ in a link sets no prototype, and nothing is inherited from it", () => {
+  test("__proto__ in a link is refused with its path (FX8), and nothing is inherited from it", () => {
     const base = JSON.stringify(tokenWithAdmin());
-    // JSON.parse keeps "__proto__" as an own key; a careless copy would turn it into the prototype.
+    // JSON.parse keeps "__proto__" as an own key; a careless copy would drop it or turn it into the prototype.
     const text = base
       .replace(/^\{/, `{"__proto__":{"immutable":true,"exclude":["0xa9059cbb"]},`)
       .replace(`"args":{"admin":"${ADMIN}"}`, `"args":{"__proto__":{"admin":"${SAFE}","extra":"${SAFE}"}}`);
     expect(text).toContain(`"args":{"__proto__"`);
-    const decoded = decodeShareLink(linkOf(strToU8(text)), [catalog]);
-    if (!decoded.ok) throw new Error(decoded.error.map(formatParseIssue).join("\n"));
-    const { recipe } = decoded.value;
-    expect(Object.getPrototypeOf(recipe)).toBe(Object.prototype);
-    expect(recipe.immutable).toBeUndefined();
-    expect("immutable" in recipe).toBe(false);
-    expect(recipe.exclude).toEqual(["0x095ea7b3"]);
-    if (recipe.init.kind !== "steps") throw new Error("expected steps");
-    const args = recipe.init.steps[0]?.args ?? {};
-    expect(Object.getPrototypeOf(args)).toBe(Object.prototype);
-    expect(args["admin"]).toBeUndefined();
-    expect("admin" in args).toBe(false);
-    // The smuggled key reaches neither the recipe nor its hash: the admin is simply missing (INIT-01's job).
-    expect(Object.keys(args)).toEqual([]);
-    expect(Object.hasOwn(recipe, "__proto__")).toBe(false);
+    expect(messages(linkOf(strToU8(text)))).toEqual(["__proto__ is a reserved field name. Remove the field and try again."]);
     expect(({} as Record<string, unknown>)["immutable"]).toBeUndefined();
-    expect(decoded.value.unconfirmed).not.toContain("steps[0].admin");
+    const argsOnly = base.replace(`"args":{"admin":"${ADMIN}"}`, `"args":{"__proto__":{"admin":"${SAFE}"}}`);
+    expect(messages(linkOf(strToU8(argsOnly)))).toEqual([
+      "init.steps[0].args.__proto__ is a reserved field name. Remove the field and try again.",
+    ]);
   });
 
   test("deep nesting is refused, not thrown", () => {
