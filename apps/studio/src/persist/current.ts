@@ -1,6 +1,7 @@
 /**
  * The app's persistence instance, loaded on first use: this file stays in the entry chunk (through
- * `services.ts`), so it imports no IndexedDB code, only types and a lazy `import()`. The projects and
+ * `services.ts`), so it imports no IndexedDB code, only types, `isUnpinned` from `state/document-store` (in the entry chunk
+ * already) and a lazy `import()`. The projects and
  * deployments services registered with the contracts forward here, and so does the public API in `index.ts`.
  * Subscriptions made before the instance loads (or before a test provides one) follow it.
  */
