@@ -1,0 +1,71 @@
+/* The command line (final-*-sample: the "›" prompt in the accent, examples as the placeholder). */
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  min-block-size: var(--lx-space-8);
+  padding-inline: var(--lx-space-3);
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  background: var(--lx-panel);
+  flex: none;
+}
+
+.prompt {
+  color: var(--lx-accent);
+  font: var(--lx-font-code);
+}
+
+.field {
+  position: relative;
+  flex: 1 1 0;
+  min-inline-size: 0;
+  display: flex;
+}
+
+.input,
+.ghost {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  padding-block: 0;
+  padding-inline: var(--lx-space-1);
+}
+
+.input {
+  position: relative;
+  flex: 1 1 0;
+  min-inline-size: 0;
+  min-block-size: var(--lx-space-6);
+  border: 0;
+  background: transparent;
+  color: var(--lx-text);
+}
+
+.input::placeholder {
+  color: var(--lx-text-faint);
+}
+
+.input:focus-visible {
+  outline-offset: 0;
+}
+
+.ghost {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  color: var(--lx-text-faint);
+  white-space: pre;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.typed {
+  color: transparent;
+}
+
+.hint {
+  flex: none;
+  color: var(--lx-text-faint);
+  font: var(--lx-font-body-sm);
+  white-space: nowrap;
+}
