@@ -3,7 +3,7 @@ import { page } from "vitest/browser";
 import {
   command, defineCommands, dialogComponent, getCommand, isPlaceholder, listBindings, listPaletteRows, pushEscape,
 } from "@/contracts";
-import { onCleanup, overrideCommands, renderWithStudio } from "../../test/harness";
+import { onCleanup, overrideCommands, pristineCommands, renderWithStudio } from "../../test/harness";
 import { S2_COMMANDS } from "./definitions";
 import { escapeDepth } from "./escape";
 import { installShortcuts } from "./keys/dispatcher";
@@ -38,7 +38,11 @@ describe("discovery (contracts §5.3)", () => {
     expect(ran).toEqual(["tidy"]);
   });
 
-  test("a second real registration throws; a command without an owner's registration stays a placeholder", () => {
+  test("a second real registration throws; a command without a registration stays a placeholder", () => {
+    // Pristine and re-register S2 alone, so this doesn't depend on which other WPs have merged their
+    // commands into the ambient registry (palette.open is WP-S6's; it may or may not be real by now).
+    pristineCommands();
+    defineCommands(S2_COMMANDS);
     expect(() => defineCommands(S2_COMMANDS)).toThrow("Command ui.escape is already registered. WP-S2 registers it once.");
     expect(isPlaceholder("palette.open")).toBe(true);
     const state = getCommand("palette.open").enabled({} as never, {});
