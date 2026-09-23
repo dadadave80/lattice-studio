@@ -8,7 +8,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev] # dev is scripts/wp/merge.ts's integration branch
 
 # A PR gate never needs write access; release-please and publish-cli (separate workflows) ask for more.
 permissions:
@@ -69,7 +69,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-1.63.0
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
       - run: bun x playwright install --with-deps chromium
       - run: bun run test:browser
 
@@ -89,7 +89,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-1.63.0
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
       # Chromium for Flows 1-14 and 17; WebKit for the @smoke set only (spec "Screen readers, tier 1").
       - run: bun x playwright install --with-deps chromium webkit
       - run: bun run e2e
@@ -177,14 +177,17 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       - run: bun install --frozen-lockfile
       - run: bun run build
-      # @lhci/cli isn't in bun.lock (a WP never adds a dependency); fetched at workflow run time, pinned by
-      # exact version. See Q6's report, Dependency requests, if it should move into devDependencies instead.
-      # Reports stay in this run's own artifact storage (upload.target "filesystem" in lighthouserc.json), not
-      # a public URL: no analytics and nothing published without David (spec "Privacy").
+      # @lhci/cli is apps/studio's devDependency (contracts §2, ^0.15.1, resolved 0.15.1 in bun.lock): `bun x
+      # lhci` resolves the installed binary, never fetches from the registry. Reports stay in this run's own
+      # artifact storage (upload.target "filesystem" in lighthouserc.json), not a public URL: no analytics and
+      # nothing published without David (spec "Privacy").
       - name: Preview and audit
-        run: bun x @lhci/cli@0.13.0 autorun --config=scripts/ci/lighthouserc.json
+        run: bun x lhci autorun --config=scripts/ci/lighthouserc.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

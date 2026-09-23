@@ -4,11 +4,14 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
+import { findPinnedRunners, isLockfilePinned } from "./workflow-lockfile-check.ts";
 
-const workflowsDir = join(import.meta.dir, "..", "..", ".github", "workflows");
+const repoRoot = join(import.meta.dir, "..", "..");
+const workflowsDir = join(repoRoot, ".github", "workflows");
 const files = readdirSync(workflowsDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
 
-type JobLike = { "runs-on"?: unknown; uses?: unknown; steps?: unknown };
+type StepLike = { run?: unknown };
+type JobLike = { "runs-on"?: unknown; uses?: unknown; steps?: readonly StepLike[] };
 type WorkflowLike = { name?: unknown; jobs?: Record<string, JobLike> };
 
 describe("GitHub Actions workflows", () => {
@@ -33,6 +36,25 @@ describe("GitHub Actions workflows", () => {
         for (const [id, job] of jobs) {
           expect(typeof job["runs-on"], `${id} needs runs-on`).toBe("string");
           expect(Array.isArray(job.steps), `${id} needs steps`).toBe(true);
+        }
+      });
+
+      // spec "Compromised npm dependency": a frozen lockfile, reviewed dependencies. `bun x lhci` or
+      // `bun x playwright` (no `@version`) resolve whatever bun.lock already pins; a step is never allowed to
+      // pin its own, unreviewed `pkg@version` and fetch it straight from the registry at run time.
+      test("no `bunx`/`bun x`/`npx` step pins a package@version outside bun.lock", () => {
+        const bunLock = readFileSync(join(repoRoot, "bun.lock"), "utf8");
+        const doc = Bun.YAML.parse(text) as WorkflowLike;
+        for (const [jobId, job] of Object.entries(doc.jobs ?? {})) {
+          for (const [i, step] of (job.steps ?? []).entries()) {
+            if (typeof step.run !== "string") continue;
+            for (const runner of findPinnedRunners(step.run)) {
+              expect(
+                isLockfilePinned(runner, bunLock),
+                `${jobId} step ${i} runs ${runner.pkg}@${runner.version}, not in bun.lock`,
+              ).toBe(true);
+            }
+          }
         }
       });
     });
