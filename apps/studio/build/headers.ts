@@ -7,6 +7,7 @@
  * hashes must be computed from the final HTML, after vite-plugin-sri-gen has written the import map.
  */
 import { createHash } from "node:crypto";
+import { isE2EFlag } from "../src/contracts/e2e-flag.ts";
 
 export type InlineHashes = {
   /** `sha256-…` of each inline script's text, in document order, without repeats. */
@@ -56,11 +57,31 @@ export function inlineAttributeProblems(html: string): string[] {
 /** The WalletConnect verify and auth frames (spec L873). */
 const FRAME_SOURCES = "https://verify.walletconnect.org https://secure.walletconnect.org";
 
+/** The local Anvil nodes an end-to-end build's page talks to (contracts §5.5). Loopback only. */
+export const E2E_CONNECT_SOURCE = "http://127.0.0.1:*";
+
+/**
+ * Whether this process builds or serves the end-to-end build: `VITE_STUDIO_E2E` is set. `vite.config.ts`'s guard
+ * refuses a build with the flag in any mode but `e2e`, so a production (Vercel) or IPFS build never gets here.
+ */
+export function isE2EBuild(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  return isE2EFlag(env.VITE_STUDIO_E2E);
+}
+
+export type PolicyOptions = {
+  /** Off for the IPFS `<meta>`, which can't carry `frame-ancestors`. */
+  frameAncestors: boolean;
+  /** The end-to-end build: `connect-src` also allows `E2E_CONNECT_SOURCE`. Default: `isE2EBuild()`. */
+  e2e?: boolean;
+};
+
 /**
  * The policy of spec L871-L875, with the page's hashes. `frameAncestors: false` for the IPFS `<meta>`, which
- * can't carry `frame-ancestors` (browsers ignore it there).
+ * can't carry `frame-ancestors` (browsers ignore it there). In `--mode e2e` only, `connect-src` also allows the
+ * loopback Anvil nodes the end-to-end tests start (Q0).
  */
-export function contentSecurityPolicy(hashes: InlineHashes, options: { frameAncestors: boolean }): string {
+export function contentSecurityPolicy(hashes: InlineHashes, options: PolicyOptions): string {
+  const e2e = options.e2e ?? isE2EBuild();
   const sources = (list: string[]) => list.map((h) => ` '${h}'`).join("");
   const directives = [
     "default-src 'self'",
@@ -73,7 +94,7 @@ export function contentSecurityPolicy(hashes: InlineHashes, options: { frameAnce
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'none'",
-    "connect-src 'self' https: wss:",
+    `connect-src 'self' https: wss:${e2e ? ` ${E2E_CONNECT_SOURCE}` : ""}`,
     `frame-src ${FRAME_SOURCES}`,
   ];
   if (options.frameAncestors) directives.push("frame-ancestors 'none'");
@@ -175,7 +196,7 @@ export function metaCspOf(html: string): string | null {
 }
 
 /** Recomputes the policy from the built page; null when `sent` matches, else why not. */
-export function cspMismatch(html: string, sent: string | null, options: { frameAncestors: boolean }): string | null {
+export function cspMismatch(html: string, sent: string | null, options: PolicyOptions): string | null {
   const expected = contentSecurityPolicy(inlineHashes(html), options);
   if (sent === null) return "No Content-Security-Policy is set.";
   if (sent === expected) return null;

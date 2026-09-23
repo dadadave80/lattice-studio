@@ -9,7 +9,7 @@ import { localPort, repoRoot } from "../../local-env.ts";
 
 export { repoRoot };
 
-/** The loopback host every local server of the kit listens on. The e2e preview's CSP allows it (`preview-csp.ts`). */
+/** The loopback host every local server of the kit listens on. The e2e build's CSP allows it (`build/headers.ts`). */
 export const LOOPBACK = "127.0.0.1";
 
 /**

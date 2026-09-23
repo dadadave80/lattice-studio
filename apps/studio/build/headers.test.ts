@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
-  contentSecurityPolicy, cspHash, cspMismatch, cspOf, formatJson, inlineAttributeProblems, inlineHashes, injectCspMeta,
-  metaCspOf, vercelConfig,
+  E2E_CONNECT_SOURCE, contentSecurityPolicy, cspHash, cspMismatch, cspOf, formatJson, inlineAttributeProblems,
+  inlineHashes, injectCspMeta, isE2EBuild, metaCspOf, vercelConfig,
 } from "./headers.ts";
 import { secureHtml, vercelJsonTarget } from "./csp.ts";
+import { e2eGuard } from "../vite.config.ts";
 
 const sha = (text: string) => `sha256-${createHash("sha256").update(text).digest("base64")}`;
 
@@ -50,6 +51,52 @@ describe("contentSecurityPolicy", () => {
     const csp = contentSecurityPolicy({ scripts: [], styles: [] }, { frameAncestors: false });
     expect(csp).not.toContain("frame-ancestors");
     expect(csp).toContain("script-src 'self'; style-src 'self';");
+  });
+});
+
+describe("the end-to-end build's connect-src (Q0)", () => {
+  const connectSrc = (csp: string) => csp.split("; ").find((d) => d.startsWith("connect-src"));
+
+  /** Runs `fn` with `VITE_STUDIO_E2E` set to `value` (or unset), then puts the environment back. */
+  function withFlag<T>(value: string | undefined, fn: () => T): T {
+    const before = process.env.VITE_STUDIO_E2E;
+    if (value === undefined) delete process.env.VITE_STUDIO_E2E;
+    else process.env.VITE_STUDIO_E2E = value;
+    try {
+      return fn();
+    } finally {
+      if (before === undefined) delete process.env.VITE_STUDIO_E2E;
+      else process.env.VITE_STUDIO_E2E = before;
+    }
+  }
+
+  test("adds the loopback Anvil origin in --mode e2e (the flag set)", () => {
+    const csp = withFlag("1", () => secureHtml(PAGE, "vercel").csp);
+    expect(connectSrc(csp)).toBe(`connect-src 'self' https: wss: ${E2E_CONNECT_SOURCE}`);
+    expect(E2E_CONNECT_SOURCE).toBe("http://127.0.0.1:*");
+    expect(isE2EBuild({ VITE_STUDIO_E2E: "1" })).toBe(true);
+  });
+
+  test("production and IPFS builds don't get it", () => {
+    withFlag(undefined, () => {
+      expect(connectSrc(secureHtml(PAGE, "vercel").csp)).toBe("connect-src 'self' https: wss:");
+      expect(connectSrc(secureHtml(PAGE, "ipfs").csp)).toBe("connect-src 'self' https: wss:");
+      expect(metaCspOf(secureHtml(PAGE, "ipfs").html)).not.toContain("127.0.0.1");
+    });
+    expect(isE2EBuild({})).toBe(false);
+    expect(isE2EBuild({ VITE_STUDIO_E2E: "" })).toBe(false);
+  });
+
+  test("the flag can't reach a production or IPFS build: the config's guard refuses it", () => {
+    expect(() => e2eGuard("production", "build", "1")).toThrow(/--mode e2e/);
+    expect(() => e2eGuard("ipfs", "build", "1")).toThrow(/--mode e2e/);
+    expect(() => e2eGuard("e2e", "build", "1")).not.toThrow();
+  });
+
+  test("an explicit option wins over the environment", () => {
+    const hashes = { scripts: [], styles: [] };
+    withFlag("1", () => expect(contentSecurityPolicy(hashes, { frameAncestors: true, e2e: false })).not.toContain("127.0.0.1"));
+    withFlag(undefined, () => expect(contentSecurityPolicy(hashes, { frameAncestors: true, e2e: true })).toContain(E2E_CONNECT_SOURCE));
   });
 });
 

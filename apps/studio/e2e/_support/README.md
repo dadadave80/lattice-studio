@@ -10,8 +10,8 @@ this folder builds and serves the app, seeds state, runs Anvil and holds the hel
   `apps/studio/dist-e2e-<PLAYWRIGHT_PORT>` and serves it with `vite preview` on this worktree's `PLAYWRIGHT_PORT`
   (the config's `baseURL`). The e2e build adds the Anvil chain (31337) and wagmi's mock connector (contracts §5.5).
   While writing a spec, `STUDIO_E2E_REUSE_BUILD=1 bun run e2e …` skips the build when one is there.
-- **Headers**: production's, except that `connect-src` also allows `http://127.0.0.1:*` so the page can reach the
-  kit's Anvil nodes (`preview-csp.ts`). Everything else, CSP included, is what the host sends.
+- **Headers**: production's, except that in `--mode e2e` `connect-src` also allows `http://127.0.0.1:*` so the page
+  can reach the kit's Anvil nodes (`build/headers.ts`). Everything else, CSP included, is what the host sends.
 - **Network**: every request to a host other than the loopback is aborted and listed in `blockedRequests`. Nothing
   reaches a public RPC, Sourcify or ENS; a suite that needs an answer stubs it with its own `page.route`.
 - **Service workers** are blocked, so routes see every request. A suite about offline or updates opts in with

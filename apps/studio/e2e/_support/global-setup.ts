@@ -11,7 +11,6 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { build, preview } from "vite";
 import { appDir, localEnv, localPort } from "../../local-env.ts";
-import { e2eConnectSrc } from "./preview-csp.ts";
 
 /** The build folder for a Playwright port. */
 export function e2eOutDir(port: number): string {
@@ -24,7 +23,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   const port = localPort("PLAYWRIGHT_PORT");
   const outDir = e2eOutDir(port);
   const configFile = join(appDir, "vite.config.ts");
-  // Vite's loadEnv reads VITE_* from the process, and the config's guard allows the flag only in `--mode e2e`.
+  // Vite's loadEnv reads VITE_* from the process, and the config's guard allows the flag only in `--mode e2e`. The
+  // preview's CSP reads it too: in the e2e build `connect-src` allows the loopback Anvil nodes (build/headers.ts).
   process.env.VITE_STUDIO_E2E = "1";
 
   const reuse = localEnv("STUDIO_E2E_REUSE_BUILD") === "1" && existsSync(join(outDir, "index.html"));
@@ -43,7 +43,6 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     logLevel: "warn",
     build: { outDir },
     preview: { port, strictPort: true, host: "localhost" },
-    plugins: [e2eConnectSrc()],
   });
   return async () => {
     await server.close();
