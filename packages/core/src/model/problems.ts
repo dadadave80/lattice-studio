@@ -59,7 +59,7 @@ type SelectorParams = { selector: Hex4; signature: string };
 export type ProblemParams = {
   /** "`sendMessage(bytes,bytes,bytes[])` 0xcdfe7f5c is exported by A and B. Choose one owner." Contenders in catalog order. */
   "SEL-01": SelectorParams & { contenders: string[] };
-  /** "ERC20 gives 4 selectors to GovernedVault and ERC4626." `to`: the owners, in catalog order. */
+  /** "ERC20 gives 4 selectors to GovernedVault and ERC4626." `to`: the owners, most selectors first, then catalog order (spec L312). */
   "SEL-02": { facet: string; count: number; selectors: Hex4[]; to: string[] };
   /**
    * "ERC20Pausable cuts nothing: both its selectors are seams that GovernedVault serves. Remove it."
@@ -176,7 +176,9 @@ export type ProblemParams = {
   "NET-02": { chain: string; case: "missing" | "codehash"; expected: Hex; actual?: Hex };
   /**
    * "LatticeFactory and 3 of 15 facets and init contracts aren't on {chain} yet. …" `core`: LatticeRegistry
-   * and LatticeFactory when missing; `missing`: absent facets and init contracts, of `total` the plan needs.
+   * and LatticeFactory when missing; `missing`: absent facets, init contracts and the linked libraries they
+   * depend on (`Catalog.libraries`, e.g. PoseidonT3), of `total` the plan needs; the message still says "facets and
+   * init contracts".
    */
   "NET-03": { chain: string; core: string[]; missing: string[]; total: number };
   /** "The code at 0x5FbD…0aa3 isn't Lattice ERC20 0.4.0." */

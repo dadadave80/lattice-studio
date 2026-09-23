@@ -1,0 +1,28 @@
+CircuitBreaker:
+  requires: []
+  notes: >-
+    Lattice ships no CircuitBreakerInit; DeployCircuitBreaker composes a recipe-local init that calls
+    CircuitBreakerLib.__CircuitBreaker_init.
+
+EmergencyStop:
+  requires: []
+  notes: >-
+    Lattice ships no EmergencyStopInit; DeployEmergencyStop composes a recipe-local init that calls
+    EmergencyStopLib.__EmergencyStop_init. Guardians live in AccessControl's role store.
+
+InvariantChecker:
+  requires: []
+  notes: >-
+    Lattice ships no InvariantCheckerInit; DeployInvariantChecker composes a recipe-local init that calls
+    InvariantCheckerLib.__InvariantChecker_init.
+
+Pausable:
+  requires: []
+  notes: >-
+    Lattice ships no PausableInit; DeployPausable composes a recipe-local init that calls PausableLib.__Pausable_init.
+
+RateLimiter:
+  requires: []
+  notes: >-
+    Lattice ships no RateLimiterInit; DeployRateLimiter composes a recipe-local init that calls
+    RateLimiterLib.__RateLimiter_init.

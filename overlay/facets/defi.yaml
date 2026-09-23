@@ -1,0 +1,52 @@
+AggregatorExecAdapter:
+  requires: []
+  init:
+    name: AggregatorExecAdapterInit
+    source: src/defi/AggregatorExecAdapterInit.sol#L20-L24
+
+GovernedVault:
+  requires: []
+  defaultOwnerOf:
+    - selectors: ["0x06fdde03", "0x91ddadf4", "0x4bf5d7e9"]
+      source: docs/guides/compose-your-own-diamond.md#L41-L42
+  init:
+    name: GovernedVaultInit
+    source: src/defi/GovernedVaultInit.sol#L44-L87
+  seamReview: >-
+    deposit, mint, withdraw, redeem and castVoteBySig must be GovernedVault's once it is placed, and transfer and
+    transferFrom GovernedVault's or ERC20Votes' (seams.yaml, script/base/defi/DeployGovernedVault.s.sol#L27-L35).
+    name, clock and CLOCK_MODE are its defaults: it owns the shared name and clock
+    (docs/guides/compose-your-own-diamond.md#L41-L42).
+  notes: >-
+    A reconciliation facet: it serves only the selectors that clash across VaultCore, ERC4626, ERC20, ERC20Votes,
+    Governor and TimelockController, which the recipe cuts as their own facets (src/defi/GovernedVault.sol#L18-L23).
+    GovernedVaultENSInit initializes it too.
+
+StrategyManager:
+  requires: []
+  init:
+    name: StrategyManagerInit
+    source: src/defi/StrategyManagerInit.sol#L18-L21
+  notes: >-
+    Manages strategies for one ERC-4626 vault, which may be another diamond; the vault must name it with
+    setStrategyManager before rebalance() works (src/defi/StrategyManager.sol#L16-L19).
+
+VaultCore:
+  requires:
+    - anyOf: [ERC4626]
+      strength: hard
+      reason: it runs the assets behind ERC4626's shares and initializes after it
+      source: src/defi/libraries/VaultCoreLib.sol#L64-L65
+  defaultOwnerOf:
+    - selectors: ["0x01e1d114"]
+      source: docs/guides/compose-your-own-diamond.md#L40-L40
+    # deposit, mint, withdraw, redeem: DeployVaultCore replaces ERC4626's with VaultCore's guarded variants.
+    - selectors: ["0x6e553f65", "0x94bf804d", "0xb460af94", "0xba087652"]
+      source: script/base/defi/DeployVaultCore.s.sol#L21-L23
+  init:
+    name: VaultCoreInit
+    source: src/defi/VaultCoreInit.sol#L24-L31
+  seamReview: >-
+    totalAssets is VaultCore's by default and a seam in GovernedVault. deposit, mint, withdraw and redeem are
+    VaultCore's by default over ERC4626's, as DeployVaultCore cuts them, but GovernedVault's seams once
+    GovernedVault is placed (script/base/defi/DeployGovernedVault.s.sol#L30-L32).

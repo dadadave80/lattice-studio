@@ -1,0 +1,39 @@
+ENSResolverInit:
+  kind: step
+  source: src/ens/ENSResolverInit.sol#L19-L22
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/ens/ENSResolverInit.sol#L20-L20
+    registry:
+      rule: nonzero
+      source: src/ens/libraries/ENSResolverLib.sol#L69-L69
+ENSReverseClaimerInit:
+  kind: step
+  source: src/ens/ENSReverseClaimerInit.sol#L20-L23
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/ens/ENSReverseClaimerInit.sol#L21-L21
+    registrar:
+      rule: nonzero
+      source: src/ens/libraries/ENSReverseClaimerLib.sol#L72-L72
+ENSSubnameIssuerInit:
+  kind: step
+  source: src/ens/ENSSubnameIssuerInit.sol#L20-L23
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/ens/ENSSubnameIssuerInit.sol#L21-L21
+    wrapper:
+      rule: nonzero
+      source: src/ens/libraries/ENSSubnameIssuerLib.sol#L69-L69
