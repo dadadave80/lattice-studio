@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { closeDialog, openDialog, registerDialog, session, type DialogComponentProps } from "@/contracts";
+import { closeDialog, openDialog, overrideDialog, registerDialog, session, type DialogComponentProps } from "@/contracts";
 import { onCleanup, renderWithStudio } from "../../../test/harness";
 import { Button } from "../buttons/Button";
 import { Dialog } from "./Dialog";
@@ -24,10 +24,11 @@ function TestSettings({ entry, top }: DialogComponentProps<"settings">) {
   );
 }
 
-// A stand-in for whatever dialog Settings opens over itself, on an id nobody's registered a real component
-// for yet ("browse-recipes"): the stacking tests below are about DialogHost's own mechanics (inert lower
-// dialog, focus trap, Esc and scrim behavior), independent of what a real "Clear data" dialog looks like once
-// its owner lands (S7b already has: apps/studio/src/projects/dialogs/ClearDataDialogPanel.tsx).
+// A stand-in for whatever dialog Settings opens over itself. The stacking tests below use `overrideDialog` to
+// put these on "settings" and "browse-recipes" regardless of what their real owners (S10, S4d) have registered,
+// so they're about DialogHost's own mechanics (inert lower dialog, focus trap, Esc and scrim behavior), not
+// about what a real Settings or Clear data dialog looks like (S7b already has a real "clear-data":
+// apps/studio/src/projects/dialogs/ClearDataDialogPanel.tsx).
 function TestClearData({ entry, top }: DialogComponentProps<"browse-recipes">) {
   return (
     <Dialog
@@ -86,8 +87,8 @@ describe("DialogHost", () => {
   });
 
   test("stacks: the lower dialog stays mounted but inert; closing the top returns focus into it", async () => {
-    onCleanup(registerDialog("settings", TestSettings));
-    onCleanup(registerDialog("browse-recipes", TestClearData));
+    onCleanup(overrideDialog("settings", TestSettings));
+    onCleanup(overrideDialog("browse-recipes", TestClearData));
     await renderWithStudio(<App />);
     await page.getByRole("button", { name: "Open settings" }).click();
     const clearButton = page.getByRole("button", { name: "Clear data…" });
@@ -127,8 +128,8 @@ describe("DialogHost", () => {
   });
 
   test("a scrim click on the stack closes only the top lossless dialog", async () => {
-    onCleanup(registerDialog("settings", TestSettings));
-    onCleanup(registerDialog("browse-recipes", TestClearData));
+    onCleanup(overrideDialog("settings", TestSettings));
+    onCleanup(overrideDialog("browse-recipes", TestClearData));
     await renderWithStudio(<App />);
     await page.getByRole("button", { name: "Open settings" }).click();
     await page.getByRole("button", { name: "Clear data…" }).click();
@@ -136,5 +137,28 @@ describe("DialogHost", () => {
     await page.elementLocator(document.body).click({ position: { x: 8, y: 8 }, force: true });
     await expect.element(page.getByRole("dialog", { name: "Clear data" })).not.toBeInTheDocument();
     await expect.element(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  });
+
+  test("overrideDialog wins over whatever a real owner registered", async () => {
+    function RealAbout({ entry, top }: DialogComponentProps<"about">) {
+      return (
+        <Dialog open onOpenChange={() => {}} title="Real about" lossless top={top}>
+          <p>{entry.id}</p>
+        </Dialog>
+      );
+    }
+    function TestAbout({ top }: DialogComponentProps<"about">) {
+      return (
+        <Dialog open onOpenChange={() => {}} title="Test about" lossless top={top}>
+          <p>stand-in</p>
+        </Dialog>
+      );
+    }
+    onCleanup(registerDialog("about", RealAbout)); // stands in for a WP's own services.ts registration
+    onCleanup(overrideDialog("about", TestAbout));
+    await renderWithStudio(<DialogHost />);
+    openDialog("about");
+    await expect.element(page.getByRole("dialog", { name: "Test about" })).toBeVisible();
+    expect(page.getByRole("dialog", { name: "Real about" }).elements()).toHaveLength(0);
   });
 });
