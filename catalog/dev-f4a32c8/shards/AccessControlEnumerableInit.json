@@ -1,0 +1,58 @@
+{
+  "name": "AccessControlEnumerableInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x19ab453c": {
+        "notice": "Seeds the AccessControl + enumeration modules.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE`."
+        }
+      }
+    },
+    "notice": "One-shot initializer for an AccessControlEnumerable diamond — seeds the base role storage (`DEFAULT_ADMIN_ROLE` to `admin`, IAccessControl ERC-165) AND registers the IAccessControlEnumerable interface, both inside the ONE initializing window {Diamond.initialize} opens (no pre/postInitializer)."
+  },
+  "source": {
+    "path": "src/access/AccessControlEnumerableInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/access/AccessControlEnumerableInit.sol"
+  }
+}

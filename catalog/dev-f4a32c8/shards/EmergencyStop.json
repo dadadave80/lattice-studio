@@ -1,0 +1,292 @@
+{
+  "name": "EmergencyStop",
+  "abi": [
+    {
+      "type": "function",
+      "name": "addGuardian",
+      "inputs": [
+        {
+          "name": "guardian",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "emergencyResume",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "emergencyStop",
+      "inputs": [
+        {
+          "name": "reason",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "isGuardian",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isStopped",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "removeGuardian",
+      "inputs": [
+        {
+          "name": "guardian",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "stoppedReason",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "EmergencyResumed",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "EmergencyStopped",
+      "inputs": [
+        {
+          "name": "guardian",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "GuardianAdded",
+      "inputs": [
+        {
+          "name": "guardian",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "GuardianRemoved",
+      "inputs": [
+        {
+          "name": "guardian",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleRevoked",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EmergencyStopActive",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EmergencyStopNotActive",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EmergencyStopUnauthorizedGuardian",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xa526d83b": {
+        "notice": "Grants the guardian role to `guardian`.",
+        "dev": "Requires DEFAULT_ADMIN_ROLE. Emits `GuardianAdded`.",
+        "params": {
+          "guardian": "The address to grant guardian status."
+        }
+      },
+      "0x93c87f03": {
+        "notice": "Resumes operations after an emergency stop.",
+        "dev": "Requires DEFAULT_ADMIN_ROLE. Reverts with `EmergencyStopNotActive` if not stopped. Emits `EmergencyResumed`."
+      },
+      "0xb1e3268b": {
+        "notice": "Activates the emergency stop.",
+        "dev": "Requires the caller to hold the guardian role (EMERGENCY_GUARDIAN_ROLE). Reverts with `EmergencyStopActive` if the stop is already active. Emits `EmergencyStopped`.",
+        "params": {
+          "reason": "A human-readable description of why the stop is being triggered."
+        }
+      },
+      "0x0c68ba21": {
+        "notice": "Returns whether `account` holds the guardian role.",
+        "params": {
+          "account": "The address to query."
+        }
+      },
+      "0x3f683b6a": {
+        "notice": "Returns whether the emergency stop is currently active."
+      },
+      "0x71404156": {
+        "notice": "Revokes the guardian role from `guardian`.",
+        "dev": "Requires DEFAULT_ADMIN_ROLE. Emits `GuardianRemoved`.",
+        "params": {
+          "guardian": "The address to revoke guardian status from."
+        }
+      },
+      "0x5b0b0c07": {
+        "notice": "Returns the reason string recorded when the emergency stop was last triggered."
+      }
+    },
+    "notice": "Thin Diamond facet that exposes multi-guardian emergency stop functionality.",
+    "dev": "All logic lives in {EmergencyStopLib}. This contract is stateless and forwards every call to the library. Inherit this in your Diamond facet to add emergency-stop."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/security/EmergencyStop.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/security/EmergencyStop.sol"
+  }
+}

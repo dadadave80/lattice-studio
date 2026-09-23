@@ -1,0 +1,468 @@
+{
+  "name": "ZetaChainGatewayAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "defaultOnRevertGasLimit",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "gateway",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getChainIdForApp",
+      "inputs": [
+        {
+          "name": "remoteApp",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getRemoteApp",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "onCall",
+      "inputs": [
+        {
+          "name": "context",
+          "type": "tuple",
+          "internalType": "struct MessageContext",
+          "components": [
+            {
+              "name": "sender",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "message",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "registerRemote",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "remoteApp",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "sendMessage",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "attributes",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "setDefaultOnRevertGasLimit",
+      "inputs": [
+        {
+          "name": "onRevertGasLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setGateway",
+      "inputs": [
+        {
+          "name": "gateway_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "supportsAttribute",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "event",
+      "name": "DefaultOnRevertGasLimitSet",
+      "inputs": [
+        {
+          "name": "onRevertGasLimit",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "GatewaySet",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MessageSent",
+      "inputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "sender",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "attributes",
+          "type": "bytes[]",
+          "indexed": false,
+          "internalType": "bytes[]"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemote",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "remoteApp",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidGateway",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidOriginApp",
+      "inputs": [
+        {
+          "name": "app",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidRemote",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MessageAlreadyExecuted",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "id",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NotGateway",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RecipientExecutionFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RemoteAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SourceChainMismatch",
+      "inputs": [
+        {
+          "name": "declaredChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "registeredChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnknownDestinationChain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedAttribute",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "WrongDestinationChain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x6aff513e": {
+        "notice": "The default `onRevertGasLimit` used to build per-message `RevertOptions`."
+      },
+      "0x116191b6": {
+        "notice": "The ZetaChain `GatewayEVM` this adapter dispatches to / accepts `onCall` deliveries from."
+      },
+      "0xbe7acd1a": {
+        "notice": "The source `chainId` a trusted remote ZEVM universal app resolves to (0 = unset)."
+      },
+      "0xb4a6414c": {
+        "notice": "The trusted remote ZEVM universal app (hub) registered for `chainId` (0 = unset)."
+      },
+      "0x676cc054": {
+        "notice": "Inbound delivery hook invoked by the `GatewayEVM` on message arrival.",
+        "params": {
+          "context": "The ZetaChain message context (`sender` = the ZEVM universal app that originated the call).",
+          "message": "The delivered message payload."
+        }
+      },
+      "0xb5efb8fd": {
+        "notice": "Registers a trusted remote ZEVM universal app (hub) for a chain in BOTH maps. One-shot. Admin only."
+      },
+      "0xcdfe7f5c": {
+        "dev": "Endpoint for creating a new message. If the message requires further (gateway specific) processing before it can be sent to the destination chain, then a non-zero `sendId` must be returned. Otherwise, the message MUST be sent and this function must return 0. * MUST emit a {MessageSent} event. If any of the `attributes` is not supported, this function SHOULD revert with an {UnsupportedAttribute} error. Other errors SHOULD revert with errors not specified in ERC-7786."
+      },
+      "0x80f9c692": {
+        "notice": "Sets the default `onRevertGasLimit` used to build per-message `RevertOptions`. Admin only."
+      },
+      "0x90646b4a": {
+        "notice": "Sets the ZetaChain `GatewayEVM` address. Rejects zero. Admin only."
+      },
+      "0xdc680a0f": {
+        "dev": "Getter to check whether an attribute is supported or not."
+      }
+    },
+    "notice": "ERC-7786 cross-chain gateway facet over ZetaChain's `GatewayEVM`. `sendMessage` dispatches a message via the gateway to the destination's ZEVM universal app (the hub); `onCall` is the gateway's inbound delivery hook. EVM chains only. HUB-ROUTED — messages flow through a ZetaChain ZEVM universal app, not a direct peer.",
+    "dev": "Stateless delegator — logic/storage live in {ZetaChainGatewayAdapterLib}. The `GatewayEVM` is a DEPLOYED contract (address varies per connected chain), stored at init and mutable by an admin setter. The trusted-remote registry is a forward (`chainId ⇒ app`) + reverse (`app ⇒ chainId`) map of ZEVM universal apps; the gateway-gated `onCall` is the inbound analogue of CCIP's `ccipReceive` / LayerZero's `lzReceive`. Implements {Callable} (`onCall`) so the ZetaChain `GatewayEVM` can deliver inbound messages."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/zetachain/ZetaChainGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/zetachain/ZetaChainGatewayAdapter.sol"
+  }
+}

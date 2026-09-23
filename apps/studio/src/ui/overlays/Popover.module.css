@@ -1,0 +1,58 @@
+/* A popover: a raised, outlined panel anchored to its trigger; no shadow, square corners. */
+.positioner {
+  z-index: 50;
+}
+
+.popup {
+  composes: surface from "../shared/controls.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  inline-size: max-content;
+  max-inline-size: min(calc(100vw - var(--lx-space-4)), calc(var(--lx-card-width) + var(--lx-space-12) * 2));
+  max-block-size: var(--available-height);
+  padding: var(--lx-space-3);
+  overflow: auto;
+  overflow-wrap: anywhere;
+  border-color: var(--lx-border-strong);
+  transition: opacity 120ms ease-out;
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  opacity: 0;
+}
+
+.popup:focus-visible {
+  outline-offset: calc(var(--lx-stroke-heavy) * -1);
+}
+
+.title {
+  margin: 0;
+  font: var(--lx-font-subheading);
+  letter-spacing: var(--lx-tracking-subheading);
+  color: var(--lx-text);
+}
+
+.description {
+  margin: 0;
+  color: var(--lx-text-muted);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--lx-space-2);
+}
+
+@media (forced-colors: active) {
+  .popup {
+    border-color: CanvasText;
+  }
+}

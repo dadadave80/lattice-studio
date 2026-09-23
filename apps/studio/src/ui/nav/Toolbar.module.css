@@ -1,0 +1,75 @@
+/*
+ * A toolbar (final-shop-sample: the sheet's tool strip). An outlined strip on `panel`; icon buttons are the
+ * 28 px square `IconButton` look. A pressed tool takes the accent edge and `accent-soft`; focus is the global
+ * outline, so the two never look alike.
+ */
+.toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-1);
+  padding: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  border-radius: var(--lx-radius);
+  background: var(--lx-panel);
+}
+
+.toolbar[data-orientation="vertical"] {
+  flex-direction: column;
+}
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-1);
+}
+
+.group[data-orientation="vertical"] {
+  flex-direction: column;
+}
+
+.button {
+  composes: button icon from "../buttons/Button.module.css";
+  position: relative;
+}
+
+.button[aria-pressed="true"],
+.toolbar .button[aria-pressed="true"]:hover {
+  color: var(--lx-text);
+  background: var(--lx-accent-soft);
+  border-color: transparent;
+  border-inline-start: var(--lx-stroke-heavy) solid var(--lx-accent);
+}
+
+.separator {
+  flex: none;
+  align-self: stretch;
+  background: var(--lx-border-subtle);
+}
+
+.separator[data-orientation="vertical"] {
+  inline-size: var(--lx-stroke-hair);
+  margin-inline: var(--lx-space-1);
+}
+
+.separator[data-orientation="horizontal"] {
+  block-size: var(--lx-stroke-hair);
+  margin-block: var(--lx-space-1);
+}
+
+@media (forced-colors: active) {
+  .toolbar {
+    border-color: CanvasText;
+  }
+
+  .button[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    border-color: Highlight;
+    color: HighlightText;
+  }
+
+  .separator {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}

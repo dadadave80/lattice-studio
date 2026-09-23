@@ -1,0 +1,37 @@
+{
+  "name": "ERC20WrapperInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "underlying_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "ERC20InvalidUnderlying",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-20 Wrapper extension — records the underlying token (caching its decimals) and registers IERC20Wrapper via ERC-165. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC20Init}; it must NOT open its own pre/postInitializer. Reverts with {IERC20Wrapper-ERC20InvalidUnderlying} when `underlying_` is the wrapper itself."
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20WrapperInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC20/ERC20WrapperInit.sol"
+  }
+}

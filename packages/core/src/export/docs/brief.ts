@@ -10,7 +10,7 @@ import type { FieldModel, InitPlan, InitStepView } from "../../model/init";
 import type { Problem } from "../../model/problems";
 import type { Arg, Recipe } from "../../model/recipe";
 import { buildPlan } from "../../plan";
-import { cell, codeBlock, escapedLine, table } from "./markdown";
+import { cell, codeBlock, escapedLine, formattedLine, table } from "./markdown";
 import { exportRecipeJson } from "./recipe-json";
 import { slug } from "./slug";
 
@@ -103,7 +103,7 @@ function cutPlanSection(
     cell(entry.address),
     cell(entry.codehash),
     cell(entry.version),
-    cell(selectorsOf(byName.get(entry.facet), entry.selectors)),
+    formattedLine(selectorsOf(byName.get(entry.facet), entry.selectors), true),
   ]);
   const head = table(["Cut", "Facet", "Address", "Codehash", "Version", "Selectors"], rows);
   const omittedLine =
@@ -116,13 +116,15 @@ function authoritySection(recipe: Recipe, catalog: BriefExportArgs["catalog"]): 
   if (rows.length === 0) return "No authority rows: this diamond grants no role or right at init.";
   return table(
     ["Role", "Holder", "Via"],
-    rows.map((row) => [cell(row.role), cell(describeHolder(row)), cell(row.via)]),
+    // describeHolder's leaves are already escapedLine'd (which escapes `|` too); a second pass would render
+    // its escapes (`\_`, `&amp;lt;`) as visible text.
+    rows.map((row) => [cell(row.role), describeHolder(row), cell(row.via)]),
   );
 }
 
 function problemsSection(problems: readonly Problem[]): string {
   if (problems.length === 0) return "No open problems.";
-  return problems.map((p) => `- **${p.severity}** \`${p.code}\` ${escapedLine(p.message)}`).join("\n");
+  return problems.map((p) => `- **${p.severity}** \`${p.code}\` ${formattedLine(p.message)}`).join("\n");
 }
 
 /**

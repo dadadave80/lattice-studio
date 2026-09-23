@@ -1,0 +1,176 @@
+{
+  "name": "ENSSubnameIssuer",
+  "abi": [
+    {
+      "type": "function",
+      "name": "issueSubname",
+      "inputs": [
+        {
+          "name": "parentNode",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "resolver",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ttl",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "fuses",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "expiry",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "nameWrapper",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setNameWrapper",
+      "inputs": [
+        {
+          "name": "nameWrapper_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "NameWrapperSet",
+      "inputs": [
+        {
+          "name": "nameWrapper",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SubnameIssued",
+      "inputs": [
+        {
+          "name": "parentNode",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "node",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "owner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ENSSubnameIssuerZeroNameWrapper",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf15cd0d2": {
+        "notice": "Mints `label`.<parent> via the NameWrapper, owned by `owner` with `resolver` set.",
+        "dev": "Gated on `ENS_SUBNAME_ISSUER_ROLE`. The diamond must own/approve `parentNode` in the NameWrapper. To make the subname forward-resolve, the owner sets the addr record on `resolver`; the child sets its reverse record via a future ENS reverse-record module.",
+        "params": {
+          "expiry": "The expiry timestamp for the new subname.",
+          "fuses": "The fuses to burn on the new subname.",
+          "label": "The subname label.",
+          "owner": "The owner of the new subname.",
+          "parentNode": "The parent name's node (wrapped + controlled by this diamond).",
+          "resolver": "The resolver to set for the new subname.",
+          "ttl": "The TTL for the new subname."
+        }
+      },
+      "0xa8e5fbc0": {
+        "notice": "Returns the configured NameWrapper."
+      },
+      "0x371412f1": {
+        "notice": "Sets or rotates the NameWrapper (per-chain configuration).",
+        "dev": "Gated on `ENS_SUBNAME_ISSUER_ROLE`. Reverts {ENSSubnameIssuerZeroNameWrapper} for zero.",
+        "params": {
+          "nameWrapper": "The NameWrapper to use."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet letting a diamond that owns a parent ENS name mint subnames (e.g. `treasury.myproto.eth`) via the ENS NameWrapper.",
+    "dev": "All logic lives in {ENSSubnameIssuerLib}. Issuance is gated on `ENS_SUBNAME_ISSUER_ROLE`; the NameWrapper is supplied at init and rotated per chain via {setNameWrapper}."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/ens/ENSSubnameIssuer.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/ens/ENSSubnameIssuer.sol"
+  }
+}

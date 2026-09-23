@@ -1,0 +1,69 @@
+{
+  "name": "BridgeERC7802Init",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "BridgeZeroToken",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf09a4016": {
+        "notice": "Runs the access-control + reentrancy-guard + crosschain-link + bridge initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the link/handler registry).",
+          "token": "The ERC-7802 token minted/burned by the bridge."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a mint/burn-bridge diamond over an ERC-7802 token — seeds AccessControl, the reentrancy guard (the burn/mint path is `nonReentrant`), the {CrosschainLink} messaging registry, and configures the bridged token. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Reverts `BridgeZeroToken` if `token` is the zero address."
+  },
+  "source": {
+    "path": "src/crosschain/BridgeERC7802Init.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/BridgeERC7802Init.sol"
+  }
+}

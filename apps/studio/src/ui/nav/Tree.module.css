@@ -1,0 +1,100 @@
+/*
+ * A tree (the Catalog and Structure panes, spec L743, IR L76-L100). Rows are at least 24 px (default 28).
+ * Selection is the accent edge on `accent-soft`; focus is the global 2 px outline, drawn inside the row so the
+ * scroll container never clips it. The two never look alike.
+ */
+.tree {
+  position: relative;
+  overflow: auto;
+  overscroll-behavior: contain;
+  min-block-size: 0;
+}
+
+.spacer {
+  position: relative;
+  inline-size: 100%;
+}
+
+/* The row height comes inline from `rowHeight` (never under 24 px). */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-1);
+  box-sizing: border-box;
+  padding-inline-end: var(--lx-space-2);
+  border-inline-start: var(--lx-stroke-heavy) solid transparent;
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  cursor: default;
+  user-select: none;
+}
+
+.row:hover {
+  background: var(--lx-raised);
+}
+
+.row[aria-selected="true"] {
+  background: var(--lx-accent-soft);
+  border-inline-start-color: var(--lx-accent);
+}
+
+.row:focus-visible {
+  outline-offset: calc(var(--lx-stroke-heavy) * -1);
+}
+
+.row[aria-disabled="true"] {
+  color: var(--lx-text-faint);
+}
+
+.chevron {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--lx-space-6);
+  block-size: var(--lx-space-6);
+  color: var(--lx-text-muted);
+}
+
+.toggle {
+  cursor: pointer;
+}
+
+.toggle:hover {
+  color: var(--lx-text);
+}
+
+.content {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  overflow-wrap: anywhere;
+}
+
+/* Virtualized rows have a fixed height: one line, cut with an ellipsis. */
+.tree[data-virtual] .content {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (forced-colors: active) {
+  .row[aria-selected="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    border-inline-start-color: HighlightText;
+    color: HighlightText;
+  }
+
+  /* The ring sits inside the row, on its Highlight fill: draw it in HighlightText there. */
+  .row[aria-selected="true"]:focus-visible {
+    outline-color: HighlightText;
+  }
+
+  .row[aria-disabled="true"] {
+    color: GrayText;
+  }
+}

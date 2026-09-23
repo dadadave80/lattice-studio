@@ -1,0 +1,24 @@
+{
+  "name": "ERC5564AnnouncerInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe1c7392a": {
+        "notice": "Runs the announcer module initializer. MUST be invoked via the diamond's `initialize` `_init` delegatecall."
+      }
+    },
+    "notice": "One-shot initializer for an ERC-5564 stealth-address announcer diamond — registers the IERC5564Announcer interface (ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; the `__ERC5564Announcer_init` guard passes because the window is already open). The announcer is permissionless, so no AccessControl is seeded."
+  },
+  "source": {
+    "path": "src/privacy/ERC5564AnnouncerInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/ERC5564AnnouncerInit.sol"
+  }
+}

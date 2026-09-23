@@ -1,0 +1,27 @@
+/* The blocked-clipboard fallback: the value, selected, with "Press ⌘C to copy" (spec L865, PA L32). */
+.fallback {
+  composes: surface from "../shared/controls.module.css";
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  inline-size: min(calc(100vw - var(--lx-space-8)), calc(var(--lx-card-width) * 2));
+  padding: var(--lx-space-3);
+  border-color: var(--lx-border-strong);
+}
+
+.hint {
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text);
+}
+
+.value {
+  composes: control mono from "../shared/controls.module.css";
+  display: block;
+  inline-size: 100%;
+  padding-block: var(--lx-space-2);
+  resize: none;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}

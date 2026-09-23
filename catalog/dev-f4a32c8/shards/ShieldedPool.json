@@ -1,0 +1,464 @@
+{
+  "name": "ShieldedPool",
+  "abi": [
+    {
+      "type": "function",
+      "name": "createPool",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "denomination",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "verifier",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "deposit",
+      "inputs": [
+        {
+          "name": "poolId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "commitment",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getPool",
+      "inputs": [
+        {
+          "name": "poolId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "denomination",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "verifier",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "merkleRoot",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "numLeaves",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isKnownRoot",
+      "inputs": [
+        {
+          "name": "poolId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "root",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isSpent",
+      "inputs": [
+        {
+          "name": "poolId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "nullifierHash",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "poolCount",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "withdraw",
+      "inputs": [
+        {
+          "name": "poolId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "proof",
+          "type": "tuple",
+          "internalType": "struct IShieldedPool.WithdrawProof",
+          "components": [
+            {
+              "name": "a",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "b",
+              "type": "uint256[2][2]",
+              "internalType": "uint256[2][2]"
+            },
+            {
+              "name": "c",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            }
+          ]
+        },
+        {
+          "name": "root",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "nullifierHash",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "relayer",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "fee",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Deposit",
+      "inputs": [
+        {
+          "name": "poolId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "commitment",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "leafIndex",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "merkleRoot",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PoolCreated",
+      "inputs": [
+        {
+          "name": "poolId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "denomination",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "verifier",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Withdrawal",
+      "inputs": [
+        {
+          "name": "poolId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "nullifierHash",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "relayer",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "fee",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LeafAlreadyExists",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LeafCannotBeZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LeafGreaterThanSnarkScalarField",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NullifierAlreadySpent",
+      "inputs": [
+        {
+          "name": "nullifier",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NullifierIsZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NullifierOutOfField",
+      "inputs": [
+        {
+          "name": "nullifier",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ShieldedPoolDoesNotExist",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ShieldedPoolFeeExceedsDenomination",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ShieldedPoolInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ShieldedPoolInvalidProof",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ShieldedPoolNullifierAlreadySpent",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ShieldedPoolTransferFailed",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ShieldedPoolUnknownRoot",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x9bb62b76": {
+        "notice": "Creates a fixed-denomination shielded pool. Gated on the default admin role.",
+        "params": {
+          "denomination": "The fixed deposit/withdraw amount.",
+          "token": "The ERC-20 token escrowed.",
+          "verifier": "The withdraw-circuit verifier (see {IShieldedWithdrawVerifier})."
+        }
+      },
+      "0xe2bbb158": {
+        "notice": "Deposits one `denomination` and inserts `commitment = Poseidon(nullifier, secret)`.",
+        "dev": "Pulls `denomination` of the pool token from `msg.sender` (requires prior approval).",
+        "params": {
+          "commitment": "The commitment to insert.",
+          "poolId": "The pool."
+        }
+      },
+      "0x068bcd8d": {
+        "notice": "Returns pool config + state: token, denomination, verifier, current root, leaf count."
+      },
+      "0xc17d30f1": {
+        "notice": "Returns whether `root` is a known recent root of `poolId`."
+      },
+      "0xe1056c3e": {
+        "notice": "Returns whether `nullifierHash` has been spent in `poolId`."
+      },
+      "0xf525cb68": {
+        "notice": "Returns the number of pools created."
+      },
+      "0x258702c3": {
+        "notice": "Withdraws `denomination - fee` to `recipient` and `fee` to `relayer`, against a proof.",
+        "params": {
+          "fee": "The relayer fee, `<= denomination`.",
+          "nullifierHash": "The one-time spend tag (blocks double-spends).",
+          "poolId": "The pool.",
+          "proof": "The Groth16 withdrawal proof.",
+          "recipient": "The withdrawal recipient.",
+          "relayer": "The relayer paid `fee` (may be the recipient; `fee` may be 0).",
+          "root": "A known recent Merkle root the proof was built against."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet for fixed-denomination shielded (private) ERC-20 transfers (Tornado-style): deposit a commitment, then withdraw to an arbitrary recipient by proving membership in zero knowledge and burning a one-time nullifier hash.",
+    "dev": "All logic lives in {ShieldedPoolLib}. The withdraw circuit + verifier are consumer-supplied per pool. SECURITY: escrows funds — deploy only with an AUDITED circuit/verifier and honest trusted setup before any mainnet-with-funds use."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/privacy/ShieldedPool.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/ShieldedPool.sol"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "name": "ERC20VotesInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "admin_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidName",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidVersion",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StringTooLong",
+      "inputs": [
+        {
+          "name": "str",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-20 Votes extension recipe — seeds the EIP-712 domain (name `name_`, version \"1\") and nonce storage the `delegateBySig` digest reads, the checkpoint/clock state (registering IVotes and IERC20Votes), and grants `admin_` the DEFAULT_ADMIN_ROLE that gates a consumer's minting authority. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC20Init}; it must NOT open its own pre/postInitializer."
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20VotesInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC20/ERC20VotesInit.sol"
+  }
+}

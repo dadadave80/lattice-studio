@@ -1,0 +1,99 @@
+/*
+ * ToggleButton and SegmentedToggle: buttons that stay pressed. The pressed state is carried by an accent
+ * bar along the bottom edge as well as the fill, so it never rests on color alone (spec L676 rule 7).
+ */
+.toggle {
+  composes: button secondary from "../buttons/Button.module.css";
+}
+
+.small {
+  composes: small from "../buttons/Button.module.css";
+}
+
+.icon {
+  composes: icon from "../buttons/Button.module.css";
+}
+
+.pressedMark[data-pressed] {
+  background-color: var(--lx-accent-soft);
+  background-image: linear-gradient(var(--lx-accent), var(--lx-accent));
+  background-position: bottom;
+  background-repeat: no-repeat;
+  background-size: 100% var(--lx-stroke-heavy);
+  color: var(--lx-text);
+}
+
+.toggle[data-pressed] {
+  border-color: var(--lx-accent);
+}
+
+/* Segmented: one outlined strip, options divided by hairlines. */
+.segmented {
+  display: inline-flex;
+  align-items: stretch;
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  border-radius: var(--lx-radius);
+}
+
+.segmented[aria-disabled="true"] {
+  border-style: dashed;
+  border-color: var(--lx-border-subtle);
+}
+
+.segment {
+  composes: button quiet from "../buttons/Button.module.css";
+  min-block-size: calc(var(--lx-space-8) - 2 * var(--lx-stroke-hair));
+}
+
+.segment + .segment {
+  border-inline-start: var(--lx-stroke-hair) solid var(--lx-border);
+}
+
+.segmented[aria-disabled="true"] .segment {
+  color: var(--lx-text-faint);
+  cursor: not-allowed;
+}
+
+.segmented[aria-disabled="true"] .segment:hover {
+  background-color: transparent;
+}
+
+.pressedMark[data-pressed][aria-disabled="true"],
+.segmented[aria-disabled="true"] .segment[data-pressed] {
+  border-color: var(--lx-border-subtle);
+  background-color: transparent;
+  background-image: linear-gradient(var(--lx-text-faint), var(--lx-text-faint));
+  color: var(--lx-text-faint);
+}
+
+.segmented[aria-disabled="true"] .segment + .segment {
+  border-inline-start-color: var(--lx-border-subtle);
+}
+
+@media (forced-colors: active) {
+  .pressedMark[data-pressed] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .segmented {
+    border-color: ButtonText;
+  }
+
+  .segment + .segment {
+    border-inline-start-color: ButtonText;
+  }
+
+  .segmented[aria-disabled="true"],
+  .segmented[aria-disabled="true"] .segment {
+    border-color: GrayText;
+    color: GrayText;
+  }
+
+  .segmented[aria-disabled="true"] .segment[data-pressed] {
+    background: Canvas;
+    color: GrayText;
+    text-decoration: underline;
+  }
+}

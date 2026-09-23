@@ -1,0 +1,87 @@
+.gallery {
+  min-block-size: 100%;
+  padding: var(--lx-space-8);
+  background: var(--lx-ground);
+  color: var(--lx-text);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-12);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-4);
+}
+
+.title {
+  font: var(--lx-font-title);
+  letter-spacing: var(--lx-tracking-title);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-6);
+  padding-block-start: var(--lx-space-6);
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.sectionTitle {
+  font: var(--lx-font-heading);
+  letter-spacing: var(--lx-tracking-heading);
+}
+
+.specimen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+}
+
+.specimenLabel {
+  composes: label from "../shared/controls.module.css";
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lx-space-4);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  inline-size: 100%;
+}
+
+.swatch {
+  inline-size: calc(var(--lx-space-12) * 2);
+  block-size: var(--lx-space-8);
+  border: var(--lx-stroke-hair) solid var(--lx-accent);
+}
+
+.code {
+  composes: mono from "../shared/controls.module.css";
+}
+
+.icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--lx-space-12) * 2), 1fr));
+  gap: var(--lx-space-4);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.iconCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lx-space-2);
+  font: var(--lx-font-code-sm);
+  color: var(--lx-text-muted);
+}

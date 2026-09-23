@@ -1,0 +1,175 @@
+/*
+ * TextField, NumberField and Select: a small-caps label over an outlined control on the well, help or an
+ * error underneath. Values wrap or scroll and are never clipped (spec L787, text spacing).
+ */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  min-inline-size: 0;
+}
+
+.label {
+  composes: label from "../shared/controls.module.css";
+}
+
+.hiddenLabel {
+  composes: hidden from "../shared/VisuallyHidden.module.css";
+}
+
+.description {
+  composes: description from "../shared/controls.module.css";
+  overflow-wrap: anywhere;
+}
+
+.error {
+  composes: error from "../shared/controls.module.css";
+  align-items: flex-start;
+  overflow-wrap: anywhere;
+}
+
+.errorIcon {
+  margin-block-start: calc(var(--lx-space-1) / 2);
+}
+
+.required {
+  color: var(--lx-text-muted);
+}
+
+/* Text inputs. */
+.input {
+  composes: control from "../shared/controls.module.css";
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding-block: var(--lx-space-1);
+}
+
+.input::placeholder {
+  color: var(--lx-text-muted);
+  opacity: 1;
+}
+
+.input[readonly] {
+  background: transparent;
+}
+
+.mono {
+  composes: mono from "../shared/controls.module.css";
+}
+
+/* An input with a unit select beside it. */
+.inputRow {
+  display: flex;
+  align-items: stretch;
+  gap: var(--lx-space-2);
+  min-inline-size: 0;
+}
+
+.inputRow > .input {
+  flex: 1 1 auto;
+}
+
+/* The compact unit select beside an amount: it keeps its width; the amount takes the rest. */
+.unitField {
+  flex: none;
+}
+
+.unit {
+  white-space: nowrap;
+  min-inline-size: calc(var(--lx-space-12) + var(--lx-space-6));
+  padding-inline: var(--lx-space-2);
+}
+
+/* Select trigger: looks like an input, opens a list. */
+.trigger {
+  composes: control from "../shared/controls.module.css";
+  justify-content: space-between;
+  padding-block: var(--lx-space-1);
+  text-align: start;
+  cursor: pointer;
+}
+
+.trigger[data-popup-open] {
+  border-color: var(--lx-accent);
+}
+
+.value {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.value[data-placeholder] {
+  color: var(--lx-text-muted);
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  color: var(--lx-text-muted);
+}
+
+.positioner {
+  z-index: 50;
+  outline: 0;
+}
+
+.popup {
+  composes: surface from "../shared/controls.module.css";
+  min-inline-size: var(--anchor-width);
+  max-inline-size: var(--available-width);
+  max-block-size: var(--available-height);
+  overflow-y: auto;
+  padding-block: var(--lx-space-1);
+  border-color: var(--lx-border-strong);
+  outline: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  opacity: 0;
+}
+
+.option {
+  composes: item from "../shared/controls.module.css";
+  gap: var(--lx-space-2);
+  padding-inline-start: var(--lx-space-2);
+}
+
+.check {
+  display: inline-flex;
+  flex: none;
+  inline-size: var(--lx-space-3);
+}
+
+.optionText {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  padding-block: var(--lx-space-1);
+  overflow-wrap: anywhere;
+}
+
+.optionDescription {
+  color: var(--lx-text-muted);
+}
+
+@media (forced-colors: active) {
+  .trigger[data-popup-open] {
+    border-color: Highlight;
+  }
+
+  .input::placeholder,
+  .value[data-placeholder] {
+    color: GrayText;
+  }
+
+  .option[data-highlighted] .optionDescription {
+    color: HighlightText;
+  }
+
+  .option[data-highlighted] .check svg {
+    stroke: currentColor;
+  }
+}

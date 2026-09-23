@@ -1,0 +1,58 @@
+{
+  "name": "ChainRegistryInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x19ab453c": {
+        "notice": "Runs the access-control + chain-registry initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every registry setter and the fan-out)."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a chain-registry diamond — seeds AccessControl (every registry setter and the {ChainRegistry.addEvmChain} fan-out are `DEFAULT_ADMIN_ROLE`-gated) and registers the IChainRegistry interface via ERC-165. There are NO module config params: the registry starts empty and is populated post-deploy by the admin. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open)."
+  },
+  "source": {
+    "path": "src/crosschain/ChainRegistryInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/ChainRegistryInit.sol"
+  }
+}

@@ -1,0 +1,32 @@
+.positioner {
+  z-index: 60;
+}
+
+.popup {
+  composes: surface from "../shared/controls.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  max-inline-size: calc(var(--lx-card-width) + var(--lx-space-12));
+  padding-block: var(--lx-space-1);
+  padding-inline: var(--lx-space-2);
+  border-color: var(--lx-border-strong);
+  overflow-wrap: anywhere;
+  transition: opacity 120ms ease-out;
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  opacity: 0;
+}
+
+.line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lx-space-3);
+}
+
+.reason {
+  color: var(--lx-text-muted);
+}

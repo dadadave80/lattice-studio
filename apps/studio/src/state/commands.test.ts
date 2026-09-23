@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Catalog, CommandId, CommandRef, Hex4, Project } from "@lattice-studio/core";
 import { blankDiamond, cardSize, contestedSelectors, loadTemplate } from "@lattice-studio/core";
-import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
+import { makeCatalog, makeFacet, makeProject, makeRecipe, sel } from "@lattice-studio/core/testing";
 import {
   commandState, doc, getAnalysis, getCommand, layoutMetrics, runCommand, session, setCatalogStatus, type CommandSource,
 } from "@/contracts";
@@ -166,6 +166,37 @@ describe("facet.place", () => {
     expect(doc.state().canUndo).toBe(false);
     for (let i = 0; i < 30; i++) await run("history.redo");
     expect(doc.get().recipe.facets).toHaveLength(30);
+  });
+
+  test("a new card is sized from the recipe after placement, so it can't grow over the card below (spec L425, L479)", async () => {
+    // Existing and Growing share 8 selectors: no collision while Growing isn't on the sheet, but a SEL-01 as
+    // soon as it joins. Growing has 12 selectors (collapsible), so those 8 contested rows can't collapse away
+    // and it's taller once placed than a size computed from the sheet before it.
+    const shared = Array.from({ length: 8 }, (_, i) => ({ hex: sel(9000 + i), signature: `shared${i}()` }));
+    const existing = makeFacet({ name: "Existing", selectors: [...shared, { hex: sel(9100), signature: "ownE()" }] });
+    const growing = makeFacet({ name: "Growing", selectors: [...shared, ...Array.from({ length: 4 }, (_, i) => ({ hex: sel(9200 + i), signature: `ownG${i}()` }))] });
+    const blocker = makeFacet({ name: "Blocker", selectors: [{ hex: sel(9300), signature: "blocked()" }] });
+    const catalog = makeCatalog({ facets: [existing, growing, blocker] });
+    const small = cardSize(growing, { metrics: layoutMetrics, expanded: false, pins: "right", compact: false, contested: [] });
+    const layout: Project["layout"] = {
+      // Far away: only on the sheet so it contends Growing's shared selectors once Growing joins.
+      Existing: { x: 2000, y: 2000, pins: "right" },
+      // Flush against the bottom of Growing's pre-placement (undersized) box: touching, not overlapping.
+      Blocker: { x: 96, y: 96 + small.height, pins: "right" },
+    };
+    start(makeProject({ recipe: makeRecipe({ facets: ["Existing", "Blocker"] }, catalog), layout }), catalog);
+    await run("facet.place", { facet: "Growing", at: { x: 96, y: 96 } });
+    // The premise: placing it really did contest those 8 selectors, so Growing really did grow.
+    expect(contestedSelectors(getAnalysis(), "Growing")).toHaveLength(8);
+    const at = doc.get().layout.Growing;
+    const blockerEntry = doc.get().layout.Blocker;
+    if (!at || !blockerEntry) throw new Error("Growing or Blocker missing from the layout");
+    const grown = cardSize(growing, { metrics: layoutMetrics, expanded: false, pins: "right", compact: false, contested: contestedSelectors(getAnalysis(), "Growing") });
+    const blockerSize = cardSize(blocker, { metrics: layoutMetrics, expanded: false, pins: "right", compact: false, contested: [] });
+    const overlapsBlocker =
+      at.x < blockerEntry.x + blockerSize.width && at.x + grown.width > blockerEntry.x &&
+      at.y < blockerEntry.y + blockerSize.height && at.y + grown.height > blockerEntry.y;
+    expect(overlapsBlocker).toBe(false);
   });
 });
 
@@ -425,6 +456,16 @@ describe("layout", () => {
     session.set({ selection: ["ERC20", "ERC4626"] });
     expect(await run("layout.tidy", undefined, "keys")).toEqual(["Tidied 2 facets."]);
     expect(await run("layout.tidySelection")).toEqual(["Nothing moved: the sheet already has this layout."]);
+  });
+
+  test("Tidy's undo label and console line count the same facets, including one an imported recipe left out of its layout", async () => {
+    // ERC4626 is in the recipe but has no layout entry: an imported recipe missing one (S1 review, WP-FX6).
+    const project = withFacets(["ERC20"], { recipe: makeRecipe({ facets: ["ERC20", "ERC4626"] }, fixture()) });
+    start(project);
+    const lines = await run("layout.tidy");
+    expect(lines).toEqual(["Tidied 2 facets."]);
+    expect(doc.state().undoLabel).toBe("Tidied 2 facets");
+    expect(Object.keys(doc.get().layout)).toHaveLength(2);
   });
 
   test("an empty sheet has nothing to tidy", () => {

@@ -1,0 +1,263 @@
+{
+  "name": "CommitReveal",
+  "abi": [
+    {
+      "type": "function",
+      "name": "commit",
+      "inputs": [
+        {
+          "name": "commitment",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "commitmentInfo",
+      "inputs": [
+        {
+          "name": "commitment",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct ICommitReveal.Commitment",
+          "components": [
+            {
+              "name": "committer",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "committedAt",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "revealed",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "computeCommitment",
+      "inputs": [
+        {
+          "name": "committer",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "isRevealed",
+      "inputs": [
+        {
+          "name": "commitment",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "reveal",
+      "inputs": [
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Committed",
+      "inputs": [
+        {
+          "name": "commitment",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "committer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "committedAt",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Revealed",
+      "inputs": [
+        {
+          "name": "commitment",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "committer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "CommitRevealAlreadyCommitted",
+      "inputs": [
+        {
+          "name": "commitment",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CommitRevealAlreadyRevealed",
+      "inputs": [
+        {
+          "name": "commitment",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CommitRevealNotCommitted",
+      "inputs": [
+        {
+          "name": "commitment",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CommitRevealZeroCommitment",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf14fcbc8": {
+        "notice": "Records a commitment hash. The hash should be `computeCommitment(msg.sender, data, salt)`.",
+        "params": {
+          "commitment": "The commitment hash to record."
+        }
+      },
+      "0xfa3f7e8c": {
+        "notice": "Returns the record for `commitment`.",
+        "params": {
+          "commitment": "The commitment hash to query."
+        }
+      },
+      "0xc15f7d29": {
+        "notice": "Computes the commitment hash for `(committer, data, salt)`.",
+        "dev": "`keccak256(abi.encode(committer, data, salt))`. Use off-chain (or in a consuming contract) to build the {commit} hash consistently with {reveal}.",
+        "params": {
+          "committer": "The address to bind into the commitment.",
+          "data": "The data to commit.",
+          "salt": "The blinding salt."
+        }
+      },
+      "0xd321c77a": {
+        "notice": "Returns whether `commitment` has been revealed.",
+        "params": {
+          "commitment": "The commitment hash to query."
+        }
+      },
+      "0xfa7fe7a0": {
+        "notice": "Reveals `data` + `salt` for a commitment previously made by `msg.sender`.",
+        "dev": "Recomputes `keccak256(abi.encode(msg.sender, data, salt))` and marks that commitment revealed.",
+        "params": {
+          "data": "The committed data.",
+          "salt": "The blinding salt used in the commitment."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet implementing a generic commit–reveal primitive — a building block for sealed-bid auctions, commit–reveal voting, and MEV mitigation. No ZK / circuits.",
+    "dev": "All logic lives in {CommitRevealLib}. Permissionless: anyone may commit and reveal their own. The commitment binds the committer's address, so reveal is front-run-proof."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/privacy/CommitReveal.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/CommitReveal.sol"
+  }
+}

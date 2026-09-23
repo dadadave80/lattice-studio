@@ -1,0 +1,229 @@
+{
+  "name": "ERC6538Registry",
+  "abi": [
+    {
+      "type": "function",
+      "name": "DOMAIN_SEPARATOR",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "ERC6538REGISTRY_ENTRY_TYPE_HASH",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "incrementNonce",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "nonceOf",
+      "inputs": [
+        {
+          "name": "registrant",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerKeys",
+      "inputs": [
+        {
+          "name": "schemeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "stealthMetaAddress",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "registerKeysOnBehalf",
+      "inputs": [
+        {
+          "name": "registrant",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "schemeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "signature",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "stealthMetaAddress",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "stealthMetaAddressOf",
+      "inputs": [
+        {
+          "name": "registrant",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "schemeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "NonceIncremented",
+      "inputs": [
+        {
+          "name": "registrant",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newNonce",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "StealthMetaAddressSet",
+      "inputs": [
+        {
+          "name": "registrant",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "schemeId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "stealthMetaAddress",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "ERC6538Registry__InvalidSignature",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x3644e515": {
+        "notice": "Returns the EIP-712 domain separator used for {registerKeysOnBehalf} signatures."
+      },
+      "0xfe04b106": {
+        "notice": "Returns the EIP-712 type hash used in {registerKeysOnBehalf}."
+      },
+      "0x627cdcb9": {
+        "notice": "Advances the caller's nonce by one, invalidating any outstanding on-behalf signatures."
+      },
+      "0xed2a2d64": {
+        "notice": "Returns the current on-behalf-registration nonce for `registrant`.",
+        "params": {
+          "registrant": "The account to query."
+        }
+      },
+      "0x042c7aa3": {
+        "notice": "Sets the caller's stealth meta-address for `schemeId` (last-write-wins).",
+        "params": {
+          "schemeId": "The stealth-address scheme id.",
+          "stealthMetaAddress": "The caller's stealth meta-address bytes."
+        }
+      },
+      "0x428d3d0b": {
+        "notice": "Sets `registrant`'s stealth meta-address using an EIP-712 signature from `registrant`.",
+        "dev": "Verifies via ECDSA or ERC-1271 over the `Erc6538RegistryEntry` typed data bound to the registrant's current nonce; the nonce is consumed so the signature is single-use.",
+        "params": {
+          "registrant": "The account authorizing the registration.",
+          "schemeId": "The stealth-address scheme id.",
+          "signature": "The registrant's EIP-712 signature (EOA or ERC-1271).",
+          "stealthMetaAddress": "The stealth meta-address bytes to store."
+        }
+      },
+      "0x7aa8b5ad": {
+        "notice": "Returns the stealth meta-address registered by `registrant` for `schemeId`.",
+        "params": {
+          "registrant": "The account to query.",
+          "schemeId": "The stealth-address scheme id."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet implementing the ERC-6538 stealth meta-address registry.",
+    "dev": "All logic lives in {ERC6538RegistryLib}. Owns ONLY the registry selectors. It does NOT inherit the {EIP712} facet — doing so would re-export `eip712Domain()` and collide with the standalone {EIP712} facet in a Diamond. ERC-5267 domain discovery comes from a separately-cut {EIP712} facet; {DeployERC6538Registry} composes both. The EIP-712 domain (name \"ERC6538Registry\" / version \"1.0\") and the registry must be initialized in the diamond initializer."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/privacy/ERC6538Registry.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/privacy/ERC6538Registry.sol"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "name": "EIP712",
+  "abi": [
+    {
+      "type": "function",
+      "name": "eip712Domain",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "fields",
+          "type": "bytes1",
+          "internalType": "bytes1"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "verifyingContract",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "extensions",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "InvalidShortString",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x84b0196e": {
+        "notice": "Returns the ERC-5267 domain descriptor for this contract.",
+        "dev": "Delegates to EIP712Lib.eip712Domain()."
+      }
+    },
+    "notice": "Thin facet that exposes the ERC-5267 `eip712Domain()` view.",
+    "dev": "All signing helpers (domainSeparatorV4, hashTypedDataV4) are internal functions in EIP712Lib and consumed by other modules (e.g. Permit variants). Only the ERC-5267 discovery function needs a public entry point."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/utils/EIP712.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/utils/EIP712.sol"
+  }
+}

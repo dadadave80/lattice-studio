@@ -1,0 +1,639 @@
+{
+  "name": "StarknetGatewayAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "cancel",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "selector",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "consumeMessage",
+      "inputs": [
+        {
+          "name": "fromAddress",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "expectedChainReference",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "initiatorOf",
+      "inputs": [
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isTrustedL2Sender",
+      "inputs": [
+        {
+          "name": "fromAddress",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "l1HandlerSelector",
+      "inputs": [
+        {
+          "name": "l2Target",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerL2Handler",
+      "inputs": [
+        {
+          "name": "l2Target",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "selector",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "sendMessage",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "setTrustedL2Sender",
+      "inputs": [
+        {
+          "name": "fromAddress",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "trusted",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "starknetCore",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "starknetSelector",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "startCancellation",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "selector",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RegisteredL2Handler",
+      "inputs": [
+        {
+          "name": "l2Target",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "selector",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SetTrustedL2Sender",
+      "inputs": [
+        {
+          "name": "fromAddress",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "trusted",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "StarknetCancellationStarted",
+      "inputs": [
+        {
+          "name": "initiator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "StarknetMessageCancelled",
+      "inputs": [
+        {
+          "name": "initiator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "StarknetMessageConsumed",
+      "inputs": [
+        {
+          "name": "fromAddress",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "StarknetMessageSent",
+      "inputs": [
+        {
+          "name": "initiator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "toAddress",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "selector",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "fee",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressEmpty",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressInvalidEvmWidth",
+      "inputs": [
+        {
+          "name": "length",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressNotAFelt",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressTooLong",
+      "inputs": [
+        {
+          "name": "length",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressZeroFelt",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StarknetChainReferenceMismatch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StarknetEmptyChainReference",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StarknetMalformedFeltPayload",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StarknetNotAFelt",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StarknetNotInitiator",
+      "inputs": [
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StarknetTargetNotRegistered",
+      "inputs": [
+        {
+          "name": "toAddress",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StarknetUntrustedSender",
+      "inputs": [
+        {
+          "name": "fromAddress",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StarknetWrongChainType",
+      "inputs": [
+        {
+          "name": "chainType",
+          "type": "bytes2",
+          "internalType": "bytes2"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StarknetZeroAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StarknetZeroFee",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x71dcb2b0": {
+        "notice": "Completes the cancellation started by {startCancellation} (same arguments), at least `messageCancellationDelay()` seconds later. Initiator only. The escrowed fee is NOT refunded."
+      },
+      "0x367bd9dd": {
+        "notice": "Permissionless keeper-driven pull: consumes an L2 -> L1 message from the trusted L2 sender `fromAddress` addressed to this diamond, and emits it. Emit-only in v1.",
+        "dev": "The core is the real authenticator (it only consumes messages addressed to `msg.sender` — the diamond — and reverts when the message counter is zero). Counter semantics: duplicates are N DISTINCT consumes, not replays — consuming the same message twice requires the L2 to have SENT it twice. NOT routed into CrosschainLink / OpenBridge."
+      },
+      "0x743bb3f6": {
+        "notice": "The ERC-7930 chain reference this adapter accepts (UTF-8 chain-id string, e.g. `SN_MAIN`)."
+      },
+      "0x5b8cbad8": {
+        "notice": "The initiator recorded for an in-flight outbound message (address(0) = unknown/cancelled)."
+      },
+      "0x3984b96c": {
+        "notice": "Whether `fromAddress` is a trusted L2 sender for the inbound consume path."
+      },
+      "0xc9aacd1d": {
+        "notice": "The registered `l1_handler` selector for `l2Target` (0 = unregistered)."
+      },
+      "0x3b70379a": {
+        "notice": "Registers the `l1_handler` selector to invoke when sending to `l2Target`. Both values must be non-zero felt252s. Admin only."
+      },
+      "0x48e6fa23": {
+        "notice": "Sends `payload` (felt-chunk encoded) to the ERC-7930 Starknet `recipient`'s registered `l1_handler`, escrowing `msg.value` as the message fee.",
+        "dev": "The fee is escrowed by the Starknet core and NEVER refunded — cancellation included. The caller is recorded as the message's initiator and is the only party able to cancel it.",
+        "params": {
+          "payload": "The raw bytes payload (encoded per the felt-chunk convention v1 on the wire).",
+          "recipient": "The ERC-7930 interoperable recipient (starknet chainType + chain reference + felt252)."
+        }
+      },
+      "0x92126474": {
+        "notice": "Sets the trusted flag of the L2 sender `fromAddress` (a non-zero felt252) for the inbound consume path. Admin only."
+      },
+      "0x39e730ab": {
+        "notice": "The Starknet core (`StarknetMessaging`) contract on this chain."
+      },
+      "0xeafe2ebf": {
+        "notice": "Computes the Starknet selector (`starknet_keccak`) of an `l1_handler` entry-point `name`: `uint256(keccak256(bytes(name))) & ((1 << 250) - 1)` (keccak256 masked to its low 250 bits).",
+        "dev": "Convenience for admins registering handlers — selectors CANNOT be derived from the ERC-7930 address, they are a property of the target contract's Cairo code."
+      },
+      "0xd75ed921": {
+        "notice": "Starts the two-step cancellation of a previously sent message, re-derived from the ORIGINAL `recipient`/`selector`/`payload`/`nonce`. Initiator only.",
+        "dev": "`selector` is the SEND-TIME `l1_handler` selector (emitted in {StarknetMessageSent}) — passed explicitly and NOT re-read from the mutable handler registry, so an admin re-registering the target's selector while the message is in flight cannot lock the initiator out of cancelling. The core enforces a `messageCancellationDelay()` wait between this call and {cancel}."
+      }
+    },
+    "notice": "L1-side (Ethereum-only) Starknet L1 <-> L2 connector facet: {sendMessage} escrows a non-refundable fee and dispatches a felt-chunk-encoded payload to a registered L2 `l1_handler`; {startCancellation}/{cancel} are the initiator-gated two-step cancellation of an in-flight message; {consumeMessage} is the permissionless keeper-driven PULL of a trusted L2 sender's message from the core. DELIBERATELY BESPOKE, not an `IERC7786GatewaySource` — the inbound path is a counter-based pull (no message id), attributes cannot express the escrowed fee + cancellation lifecycle, and the wire payload is a felt array (see {IStarknetGatewayAdapter}).",
+    "dev": "Stateless delegator — logic/storage live in {StarknetGatewayAdapterLib}. The send/cancel/consume paths are `nonReentrant`; cancellation authority is re-derived at the facet level because the DIAMOND is the L1 sender on the Starknet core. FEE WARNING: the message fee is escrowed by Starknet and NEVER refunded, cancellation included."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/starknet/StarknetGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/starknet/StarknetGatewayAdapter.sol"
+  }
+}

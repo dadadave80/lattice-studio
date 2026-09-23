@@ -1,0 +1,118 @@
+{
+  "name": "L1ToL2CrossDomainMessengerGatewayAdapterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "counterpartChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "counterpartAdapter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "minGasLimit",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "CounterpartConfigured",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "adapter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MinGasLimitConfigured",
+      "inputs": [
+        {
+          "name": "minGasLimit",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "InvalidCounterpartAdapter",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidMinGasLimit",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xce7fba63": {
+        "notice": "Runs the access-control + adapter module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the counterpart/min-gas setters).",
+          "counterpartAdapter": "The sibling adapter on the paired domain (must be non-zero).",
+          "counterpartChainId": "The paired-domain chain id.",
+          "minGasLimit": "The `minGasLimit` the messenger relays outbound messages with."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a canonical OP Stack L1<->L2 `CrossDomainMessenger` gateway-adapter diamond — seeds AccessControl so the counterpart/min-gas setters are admin-gated, seeds the fixed counterpart `(counterpartChainId, counterpartAdapter)` + relay `minGasLimit`, and registers the ERC-7786 gateway-source interface via ERC-165. Unlike the {LayerZeroGatewayAdapterInit} / {CCIPGatewayAdapterInit} siblings there is NO endpoint/router ctor arg: the messenger is the fixed predeploy constant (`0x4200000000000000000000000000000000000007`). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). A first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapterInit.sol"
+  }
+}

@@ -1,0 +1,314 @@
+{
+  "name": "ChainlinkVRF",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getConfig",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IChainlinkVRF.VRFConfig",
+          "components": [
+            {
+              "name": "coordinator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "subscriptionId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "keyHash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "requestConfirmations",
+              "type": "uint16",
+              "internalType": "uint16"
+            },
+            {
+              "name": "callbackGasLimit",
+              "type": "uint32",
+              "internalType": "uint32"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getUserKey",
+      "inputs": [
+        {
+          "name": "vrfRequestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "rawFulfillRandomWords",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "randomWords",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "requestRandomWords",
+      "inputs": [
+        {
+          "name": "userKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "numWords",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "vrfRequestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setConfig",
+      "inputs": [
+        {
+          "name": "config",
+          "type": "tuple",
+          "internalType": "struct IChainlinkVRF.VRFConfig",
+          "components": [
+            {
+              "name": "coordinator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "subscriptionId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "keyHash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "requestConfirmations",
+              "type": "uint16",
+              "internalType": "uint16"
+            },
+            {
+              "name": "callbackGasLimit",
+              "type": "uint32",
+              "internalType": "uint32"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RandomWordsFulfilled",
+      "inputs": [
+        {
+          "name": "vrfRequestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "userKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RandomWordsRequested",
+      "inputs": [
+        {
+          "name": "vrfRequestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "userKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "numWords",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "VRFConfigSet",
+      "inputs": [
+        {
+          "name": "coordinator",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "subscriptionId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "keyHash",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "VRFInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "VRFInvalidUserKey",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "VRFNotConfigured",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "VRFOnlyCoordinator",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "VRFRequestNotFound",
+      "inputs": [
+        {
+          "name": "vrfRequestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xc3f909d4": {
+        "notice": "Returns the current VRF configuration."
+      },
+      "0xdd1e2651": {
+        "notice": "Returns the user key associated with a pending VRF request.",
+        "params": {
+          "vrfRequestId": "The coordinator-assigned request ID."
+        }
+      },
+      "0x1fe543e3": {
+        "notice": "Called by the VRF coordinator to deliver random words.",
+        "dev": "Verifies the caller is the configured coordinator, looks up the user key, clears the pending entry, and emits `RandomWordsFulfilled`. Consumer facets should override this function to consume the randomness.",
+        "params": {
+          "randomWords": "The generated random words.",
+          "requestId": "The coordinator-assigned request ID."
+        }
+      },
+      "0x5eff05e5": {
+        "notice": "Requests random words from the VRF coordinator.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. Stores the `userKey` against the returned `vrfRequestId` so the fulfilment callback can look it up.",
+        "params": {
+          "numWords": "Number of random words to request.",
+          "userKey": "Arbitrary key the caller wants associated with this request."
+        }
+      },
+      "0xb289a570": {
+        "notice": "Sets or replaces the VRF configuration.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. Reverts `VRFInvalidConfig` if coordinator is zero, subscriptionId is zero, or keyHash is zero.",
+        "params": {
+          "config": "The new VRF configuration."
+        }
+      }
+    },
+    "notice": "Diamond facet for Chainlink VRF V2.5 subscription-funded random words.",
+    "dev": "Stateless delegator — all logic and storage live in ChainlinkVRFLib. This facet handles the request/track layer only. Consumer facets that inherit this contract should override `rawFulfillRandomWords` to act on delivered randomness after calling `super.rawFulfillRandomWords`."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/chainlink/ChainlinkVRF.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/chainlink/ChainlinkVRF.sol"
+  }
+}

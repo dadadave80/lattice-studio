@@ -1,0 +1,80 @@
+{
+  "name": "ConstantProductInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenA",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenB",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "ConstantProductAlreadyInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ConstantProductInvalidTokens",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x184b9559": {
+        "notice": "Runs the access-control + ConstantProduct module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE`.",
+          "tokenA": "One of the two pool reserve tokens.",
+          "tokenB": "The other pool reserve token."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a ConstantProduct AMM diamond — seeds AccessControl (so any admin-gated operation is `DEFAULT_ADMIN_ROLE`-gated) and binds the pool to its two ERC-20 reserve tokens (sorted token0 < token1), registering IConstantProduct via ERC-165 and arming the reentrancy guard. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to the {ERC2981Init}/{VaultCoreInit} patterns — a first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/amm/ConstantProductInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/amm/ConstantProductInit.sol"
+  }
+}

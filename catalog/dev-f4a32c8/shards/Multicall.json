@@ -1,0 +1,45 @@
+{
+  "name": "Multicall",
+  "abi": [
+    {
+      "type": "function",
+      "name": "multicall",
+      "inputs": [
+        {
+          "name": "data",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "results",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xac9650d8": {
+        "notice": "Batch multiple calls to this contract in a single transaction.",
+        "dev": "Each call is executed via `delegatecall` so it runs in the context of the calling contract. If any call reverts, the entire batch reverts with the same revert data.",
+        "params": {
+          "data": "An array of calldata payloads to execute."
+        }
+      }
+    },
+    "notice": "Thin Diamond facet that enables batched calls in a single transaction.",
+    "dev": "All logic lives in {MulticallLib}. This contract is stateless and has no initializer. Inherit this in your Diamond facet to enable multicall functionality."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/utils/Multicall.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/utils/Multicall.sol"
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "name": "CrosschainTimelockHandler",
+  "abi": [
+    {
+      "type": "function",
+      "name": "crosschainTimelockTag",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "processMessage",
+      "inputs": [
+        {
+          "name": "receiveId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "CallSalt",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "CallScheduled",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "index",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "target",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "predecessor",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "delay",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "CrosschainOperationScheduled",
+      "inputs": [
+        {
+          "name": "receiveId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "operationId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "target",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "delay",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CrosschainTimelockUnauthorizedCaller",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TimelockInsufficientDelay",
+      "inputs": [
+        {
+          "name": "delay",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minDelay",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TimelockUnexpectedOperationState",
+      "inputs": [
+        {
+          "name": "operationId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "expectedStates",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xae5501c0": {
+        "notice": "The handler tag this facet must be registered under on the {CrosschainLink} facet."
+      },
+      "0x902d5027": {
+        "notice": "Process a validated, de-duplicated cross-chain message.",
+        "params": {
+          "payload": "The message payload with the leading 4-byte handler tag stripped.",
+          "receiveId": "The gateway-assigned unique message id (already checked for replay by the facet).",
+          "sender": "The ERC-7930 interoperable address of the source (includes the source chain)."
+        }
+      }
+    },
+    "notice": "Cross-chain governance handler facet: on an authenticated inbound ERC-7786 message routed by {CrosschainLink}, schedules the encoded operation on the co-mounted {TimelockController}. This realises remote governance — an L1 governor proposing a timelocked action on an L2 Diamond.",
+    "dev": "Stateless delegator — no storage. Mount alongside {CrosschainLink} + {TimelockController}; register this handler under {CROSSCHAIN_TIMELOCK_TAG} and grant the Diamond PROPOSER_ROLE. `processMessage` is callable only via the Diamond's own `receiveMessage` dispatch (`msg.sender == address(this)`). Payload: `abi.encode(address target, uint256 value, bytes data, bytes32 predecessor, bytes32 salt, uint256 delay)`. SECURITY: the linked counterpart is a full timelock proposer and can schedule ANY operation — including grants on the Diamond's own roles (the timelock self-administers DEFAULT_ADMIN_ROLE). The only safety net is the timelock delay plus a CANCELLER_ROLE held by a LOCAL guardian that is NOT reachable through this same cross-chain channel. Deploy accordingly."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/CrosschainTimelockHandler.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/CrosschainTimelockHandler.sol"
+  }
+}

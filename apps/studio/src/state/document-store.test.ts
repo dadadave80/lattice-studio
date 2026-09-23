@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { EditResult, Project } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
-import { doc, history, session } from "@/contracts";
+import { doc, history, session, setCatalogStatus } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
-import { BURST_GAP_MS, HISTORY_LIMIT, UNPINNED_HASH } from "./document-store";
+import { BURST_GAP_MS, HISTORY_LIMIT, isUnpinned, UNPINNED_HASH } from "./document-store";
 import { settle, setupKit, type Kit } from "./testing";
 
 const rename = (name: string) => (p: Project): EditResult =>
@@ -229,5 +229,42 @@ describe("catalog pin", () => {
     session.set({ readOnly: "Another tab is editing this project." });
     await settle();
     expect(doc.get().recipe.catalog.hash).toBe(UNPINNED_HASH);
+  });
+
+  test("an edit before the catalog loads never comes back unpinned: pin rewrites past and future history", async () => {
+    kit.dispose();
+    // No catalog yet: setupKit's own pinning check has nothing to pin against.
+    kit = setupKit({ project: makeProject({ recipe: makeRecipe({ catalog: { tag: "", hash: UNPINNED_HASH } }) }), catalog: null });
+    doc.apply("Renamed to A", rename("A"));
+    doc.apply("Renamed to B", rename("B"));
+    doc.undo(); // A step still undone (a future entry) when the catalog loads and pins.
+    expect(doc.get().recipe.catalog.hash).toBe(UNPINNED_HASH);
+
+    setCatalogStatus({ status: "ready", id: kit.catalog.lattice.tag, catalog: kit.catalog, manifest: null });
+    await settle();
+    const pinned = { tag: kit.catalog.lattice.tag, hash: kit.catalog.hash };
+    expect(doc.get().recipe.catalog).toEqual(pinned);
+
+    // Every past and future entry is rewritten too, not just the current document.
+    const { pastStates, futureStates } = kit.state.document.history.getState();
+    expect(pastStates.length).toBeGreaterThan(0);
+    expect(futureStates.length).toBeGreaterThan(0);
+    for (const entry of [...pastStates, ...futureStates]) {
+      const tracked = entry.tracked;
+      if (!tracked) throw new Error("a history entry has no tracked state");
+      expect(isUnpinned(tracked.recipe)).toBe(false);
+      expect(tracked.recipe.catalog).toEqual(pinned);
+    }
+
+    // No move, in either direction, ever brings back the zero hash or the empty tag.
+    expect(doc.redo()).toBe("Renamed to B");
+    expect(doc.get().name).toBe("B");
+    expect(doc.get().recipe.catalog).toEqual(pinned);
+    expect(doc.undo()).toBe("Renamed to B");
+    expect(doc.get().name).toBe("A");
+    expect(doc.get().recipe.catalog).toEqual(pinned);
+    expect(doc.undo()).toBe("Renamed to A");
+    expect(doc.get().name).toBe("Untitled");
+    expect(doc.get().recipe.catalog).toEqual(pinned);
   });
 });

@@ -3,6 +3,8 @@ import type { Migrated } from "../model/io";
 import type { Json, JsonObject } from "../model/json";
 import { RECIPE_SCHEMA_VERSION } from "../model/recipe";
 import { err, ok, type Result } from "../model/result";
+import { formatPath } from "../model/schema";
+import { findProtoKey } from "./proto-key";
 
 /**
  * One forward step: takes a recipe at schema version `n` (its registry key) and returns it at `n + 1`.
@@ -74,6 +76,11 @@ export function runMigrations(
 
 /**
  * Forward-only migrations keyed by `schemaVersion` (spec L289). Takes a recipe, a project or a project file.
- * A newer version fails with "This file needs Studio schema v2. This Studio reads v1."
+ * A newer version fails with "This file needs Studio schema v2. This Studio reads v1." A `"__proto__"` key
+ * anywhere is refused first, with its path, since a step's copies could drop it or turn it into a prototype.
  */
-export const migrate: MigrateFn = (json) => runMigrations(json, detectDocument(json));
+export const migrate: MigrateFn = (json) => {
+  const protoPath = findProtoKey(json);
+  if (protoPath !== null) return err(`This file has a reserved field name at ${formatPath(protoPath)}. Remove the field and try again.`);
+  return runMigrations(json, detectDocument(json));
+};

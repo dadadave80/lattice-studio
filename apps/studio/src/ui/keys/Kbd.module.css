@@ -1,0 +1,23 @@
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+  white-space: nowrap;
+}
+
+/* A shortcut chip: the keys in a hairline box, as the title bar's ⌘K chip. */
+.chip {
+  composes: kbd;
+  padding-block: 0;
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  border-radius: var(--lx-radius);
+}
+
+@media (forced-colors: active) {
+  .chip {
+    border-color: CanvasText;
+  }
+}

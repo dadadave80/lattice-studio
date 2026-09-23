@@ -1,0 +1,57 @@
+{
+  "name": "AccessManagedInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "authority",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "AuthorityUpdated",
+      "inputs": [
+        {
+          "name": "newAuthority",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessManagedInvalidAuthority",
+      "inputs": [
+        {
+          "name": "authority",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x19ab453c": {
+        "notice": "Seeds the AccessManaged module. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "authority": "The AccessManager authority governing this contract."
+        }
+      }
+    },
+    "notice": "One-shot initializer for an AccessManaged diamond — points the contract at its external AccessManager `authority` and registers the IAccessManaged interface (ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; the `__AccessManaged_init` guard passes because the window is already open). Reverts with {AccessManagedInvalidAuthority} if `authority` is not a contract."
+  },
+  "source": {
+    "path": "src/access/AccessManagedInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/access/AccessManagedInit.sol"
+  }
+}

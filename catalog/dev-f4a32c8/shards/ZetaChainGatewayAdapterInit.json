@@ -1,0 +1,148 @@
+{
+  "name": "ZetaChainGatewayAdapterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gateway",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "hubChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "hubRemoteApp",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "defaultOnRevertGasLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "DefaultOnRevertGasLimitSet",
+      "inputs": [
+        {
+          "name": "onRevertGasLimit",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "GatewaySet",
+      "inputs": [
+        {
+          "name": "gateway",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemote",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "remoteApp",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "InvalidGateway",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidRemote",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RemoteAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x965ec1d2": {
+        "notice": "Runs the access-control + ZetaChain-adapter module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+          "defaultOnRevertGasLimit": "The default `onRevertGasLimit` used to build per-message `RevertOptions`.",
+          "gateway": "The ZetaChain `GatewayEVM` the adapter dispatches `call` to and accepts `onCall` from.",
+          "hubChainId": "The hub chainId whose ZEVM universal app terminates the route.",
+          "hubRemoteApp": "The trusted ZEVM universal app (hub) for `hubChainId`."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a ZetaChain `GatewayEVM` gateway-adapter diamond — seeds AccessControl so the gateway/remote/revert-gas setters are admin-gated, wires the DEPLOYED `GatewayEVM` (address varies per connected chain), registers the hub route (ZEVM universal app) in BOTH the forward and reverse maps, seeds the default `onRevertGasLimit`, and registers the ERC-7786 gateway-source interface via ERC-165. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to the {LayerZeroGatewayAdapterInit} pattern — a first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/crosschain/zetachain/ZetaChainGatewayAdapterInit.sol"
+  }
+}

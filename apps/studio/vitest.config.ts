@@ -22,12 +22,14 @@ export default defineConfig(async (env) => {
     // and a shared cache raced when it was clean or invalidated ("Vitest failed to find the runner"). It stays
     // under node_modules/, so @rolldown/plugin-babel's default exclude keeps the React Compiler off pre-bundled deps.
     cacheDir: join(appDir, "node_modules", `.vite-vitest-${port}`),
-    // Pre-bundling the shared libraries up front only saves a reload when a test first imports one; the
-    // per-port cache above is what keeps concurrent runs apart.
+    // Every dependency the app's own code imports is found and pre-bundled at startup (`entries`), so none is first
+    // met mid-run: a mid-run optimize reloads the page and the run loses its runner. `include` is the backstop for
+    // test-only libraries and subpaths the scan can't see.
     optimizeDeps: {
+      entries: ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"],
       include: [
         "react", "react/jsx-dev-runtime", "react-dom/client", "zustand", "zustand/vanilla",
-        "vitest-browser-react", "@xyflow/react", "viem", "zod", "fflate", "fast-check",
+        "vitest-browser-react", "@xyflow/react", "viem", "zod", "fflate", "fast-check", "idb", "workbox-window",
         ...["csp-provider", "button", "tooltip", "toggle", "toggle-group", "switch", "checkbox", "radio", "radio-group",
           "select", "input", "menu", "context-menu", "popover", "dialog", "toast", "tabs", "toolbar"]
           .map((part) => `@base-ui/react/${part}`),
