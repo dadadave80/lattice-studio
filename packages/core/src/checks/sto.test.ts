@@ -3,6 +3,7 @@ import type { CheckInput } from "../model/analysis";
 import type { Catalog } from "../model/catalog";
 import type { Recipe } from "../model/recipe";
 import { renderProblem } from "../narrate/problem";
+import { blankDiamond } from "../plan";
 import { loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe } from "../testing";
 import { checkSto } from "./sto";
 
@@ -79,7 +80,7 @@ describe("STO-02 · a namespace shared by design", () => {
     const problems = checkSto(input(catalog, { facets: ["ERC20", "ERC20Votes"] }));
     expect(problems).toEqual([
       {
-        id: "STO-02:ERC20Votes",
+        id: "STO-02:ERC20Votes+lattice.storage.ERC20",
         code: "STO-02",
         severity: "info",
         where: [{ kind: "facet", facet: "ERC20Votes" }],
@@ -91,11 +92,12 @@ describe("STO-02 · a namespace shared by design", () => {
     expect(renderProblem("STO-02", problems[0]?.params ?? {})).toBe("ERC20Votes shares `lattice.storage.ERC20` with ERC20.");
   });
 
-  test("one per facet, naming the first shared namespace in its touches order; its own namespace doesn't count", () => {
+  test("one per facet and shared namespace, in touches order; a facet's own namespace doesn't count", () => {
     const problems = checkSto(input(catalog, { facets: ["ERC20", "ERC20Votes", "Votes"] }));
-    expect(problems.map((p) => [p.id, p.params.namespace, p.params.owner])).toEqual([
-      ["STO-02:ERC20Votes", "lattice.storage.Votes", "Votes"],
-      ["STO-02:Votes", "lattice.storage.ERC20", "ERC20"],
+    expect(problems.map((p) => [p.id, p.params])).toEqual([
+      ["STO-02:ERC20Votes+lattice.storage.Votes", { facet: "ERC20Votes", namespace: "lattice.storage.Votes", owner: "Votes" }],
+      ["STO-02:ERC20Votes+lattice.storage.ERC20", { facet: "ERC20Votes", namespace: "lattice.storage.ERC20", owner: "ERC20" }],
+      ["STO-02:Votes+lattice.storage.ERC20", { facet: "Votes", namespace: "lattice.storage.ERC20", owner: "ERC20" }],
     ]);
   });
 
@@ -116,14 +118,13 @@ describe("the fixture catalog", () => {
   test.skipIf(!fixture.ok)("v1 templates and the Blank diamond raise no STO-01", () => {
     if (!fixture.ok) return;
     const cat = fixture.value;
-    const blank = ["DiamondLoupeFacet", "ERC165Facet", "Receive", "AccessControl", "AccessControlDiamondCut"];
-    const recipes = [...cat.recipes.filter((r) => r.phase === "v1").map((r) => r.recipe), makeRecipe({ facets: blank }, cat)];
+    const recipes = [...cat.recipes.filter((r) => r.phase === "v1").map((r) => r.recipe), blankDiamond(cat)];
     expect(recipes).toHaveLength(4);
     for (const recipe of recipes) {
       expect(checkSto(input(cat, recipe)).filter((p) => p.code === "STO-01")).toEqual([]);
     }
     const gv = cat.recipes.find((r) => r.name === "GovernedVault");
-    expect(checkSto(input(cat, gv?.recipe ?? {})).find((p) => p.id === "STO-02:ERC4626")?.params).toEqual({
+    expect(checkSto(input(cat, gv?.recipe ?? {})).find((p) => p.id === "STO-02:ERC4626+lattice.storage.ERC20")?.params).toEqual({
       facet: "ERC4626",
       namespace: "lattice.storage.ERC20",
       owner: "ERC20",

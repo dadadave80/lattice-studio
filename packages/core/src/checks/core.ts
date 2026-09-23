@@ -26,7 +26,7 @@ const MECHANISMS: Readonly<Record<string, { rank: number; authority: string; gua
   DiamondCutFacet: { rank: 0, authority: "the owner", guard: "owner check" },
   AccessControlDiamondCut: { rank: 1, authority: "the admin", guard: "admin role" },
   SafeDiamondCut: { rank: 2, authority: "the Safe", guard: "multisig" },
-  GovernedDiamondCut: { rank: 3, authority: "the upgrade executor", guard: "governance vote" },
+  GovernedDiamondCut: { rank: 3, authority: "the upgrade executor", guard: "upgrade executor role" },
   GovernedSafeDiamondCut: { rank: 4, authority: "the Safe", guard: "delay" },
 };
 

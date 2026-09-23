@@ -49,15 +49,18 @@ function checkRequirements(placed: readonly Facet[]): Problem[] {
 
 /**
  * DEP-02 namespace (contracts §4 "Overlay semantics"): a placed facet touches a namespace, or a placed init
- * writes one, and no placed facet owns it (`storage.id`). `anyOf` is every catalog facet that owns it; a
- * namespace no catalog facet owns (a shared library's, `diamond.lib.storage`, or `lattice.storage.Nonces`)
- * has nothing to place and raises nothing. A namespace whose owner a DEP-01 or companion DEP-02 already asks
+ * writes one, and no placed facet owns it (`storage.id`). `anyOf` is every access-family catalog facet that
+ * owns it: roles someone must manage after deploy. Any other namespace (EIP712, Nonces, a shared library's
+ * `diamond.lib.storage`) is written once with nothing to manage later, or has nothing to place, and raises
+ * nothing. A namespace whose owner a DEP-01 or companion DEP-02 already asks
  * for is skipped, so one gap is reported once.
  */
 function checkNamespaces(input: CheckInput, placed: readonly Facet[], raised: readonly Problem[]): Problem[] {
   const { catalog } = input;
   const owned = new Set(placed.flatMap((f) => (f.storage ? [f.storage.id] : [])));
-  const ownersOf = (namespace: string) => catalog.facets.filter((f) => f.storage?.id === namespace).map((f) => f.name);
+  // Only roles need managing after deploy: namespaces an access-family facet owns (contracts §4, ruling 2026-09-23).
+  const ownersOf = (namespace: string) =>
+    catalog.facets.filter((f) => f.storage?.id === namespace && f.family === "access").map((f) => f.name);
   const asked = new Set(raised.flatMap((p) => (Array.isArray(p.params.anyOf) ? p.params.anyOf.filter((x) => typeof x === "string") : [])));
 
   // Namespaces in first-seen order: facets in catalog order, then the inits in call order.

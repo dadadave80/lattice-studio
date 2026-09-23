@@ -4,6 +4,7 @@ import type { Catalog } from "../model/catalog";
 import type { Problem } from "../model/problems";
 import type { Recipe } from "../model/recipe";
 import { renderProblem } from "../narrate/problem";
+import { blankDiamond } from "../plan";
 import { loadFixtureCatalog, makeCatalog, makeFacet, makeInit, makeRecipe } from "../testing";
 import { checkDep } from "./dep";
 
@@ -52,10 +53,16 @@ const catalog = makeCatalog({
     makeFacet({ name: "AccountSigner", family: "account", storage: own("AccountSigner", 11) }),
     makeFacet({ name: "ERC6900Validation", family: "account" }),
     makeFacet({ name: "DiamondLoupeFacet", touches: ["diamond.lib.storage"] }),
+    makeFacet({
+      name: "RoleUser",
+      touches: ["lattice.storage.AccessControl"],
+      requires: [{ anyOf: ["AccessControl"], strength: "convention", reason: "an admin can grant its roles" }],
+    }),
   ],
   inits: [
     makeInit({ name: "AccessControlInit", initializes: [{ module: "AccessControl" }] }),
     makeInit({ name: "PausableInit", initializes: [{ module: "Pausable" }, { module: "Nonces" }] }),
+    makeInit({ name: "EnumerableInit", initializes: [{ module: "AccessControlEnumerable" }] }),
   ],
 });
 
@@ -147,37 +154,57 @@ describe("DEP-02 · conventions", () => {
     );
   });
 
-  test("namespace written by a facet and an init: anchored on the facets, generic wording", () => {
+  test("namespace written by a facet and an init: anchored on the facets, with the roles sentence", () => {
     const problems = checkDep(
-      input(catalog, { facets: ["ERC20", "ERC20Pausable"], init: { kind: "steps", steps: [{ spec: "PausableInit", args: {} }] } }),
+      input(catalog, { facets: ["ERC20", "EmergencyStop"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: {} }] } }),
     );
     expect(problems).toEqual([
       {
-        id: "DEP-02:diamond+lattice.storage.Pausable",
+        id: "DEP-02:diamond+lattice.storage.AccessControl",
         code: "DEP-02",
         severity: "warning",
-        where: [{ kind: "facet", facet: "ERC20Pausable" }],
-        params: { kind: "namespace", namespace: "lattice.storage.Pausable", anyOf: ["Pausable"], facet: "ERC20Pausable" },
+        where: [{ kind: "facet", facet: "EmergencyStop" }],
+        params: {
+          kind: "namespace",
+          namespace: "lattice.storage.AccessControl",
+          anyOf: ["AccessControl"],
+          facet: "EmergencyStop",
+          reason: "Roles are written at init, but without AccessControl nobody can manage them later.",
+        },
         message: "",
-        fixes: [{ id: "facet.place", args: { facet: "Pausable" } }],
+        fixes: [{ id: "facet.place", args: { facet: "AccessControl" } }],
       },
     ]);
-    expect(renderProblem("DEP-02", problems[0]?.params ?? {})).toBe(
-      "`lattice.storage.Pausable` is written at init, but without Pausable nobody can manage it later.",
-    );
   });
 
   test("namespace written only by facets: the reason says which facet writes it, not 'at init'", () => {
-    const [p] = checkDep(input(catalog, { facets: ["ERC20", "ERC20Pausable"] }));
+    const [p, ...rest] = checkDep(input(catalog, { facets: ["ERC20", "EmergencyStop"] }));
+    expect(rest).toEqual([]);
     expect(p?.params).toEqual({
       kind: "namespace",
-      namespace: "lattice.storage.Pausable",
-      anyOf: ["Pausable"],
-      facet: "ERC20Pausable",
-      reason: "ERC20Pausable writes `lattice.storage.Pausable`, but without Pausable nobody can manage it later.",
+      namespace: "lattice.storage.AccessControl",
+      anyOf: ["AccessControl"],
+      facet: "EmergencyStop",
+      reason: "EmergencyStop writes `lattice.storage.AccessControl`, but without AccessControl nobody can manage it later.",
     });
     expect(renderProblem("DEP-02", p?.params ?? {})).toBe(
-      "ERC20Pausable writes `lattice.storage.Pausable`, but without Pausable nobody can manage it later.",
+      "EmergencyStop writes `lattice.storage.AccessControl`, but without AccessControl nobody can manage it later.",
+    );
+  });
+
+  test("another access-family namespace written at init: C10's generic wording (no reason)", () => {
+    const problems = checkDep(
+      input(catalog, { facets: ["AccessControl"], init: { kind: "steps", steps: [{ spec: "EnumerableInit", args: {} }] } }),
+    );
+    expect(problems.map((p) => [p.id, p.where, p.params])).toEqual([
+      [
+        "DEP-02:diamond+lattice.storage.AccessControlEnumerable",
+        [{ kind: "diamond" }],
+        { kind: "namespace", namespace: "lattice.storage.AccessControlEnumerable", anyOf: ["AccessControlEnumerable"] },
+      ],
+    ]);
+    expect(renderProblem("DEP-02", problems[0]?.params ?? {})).toBe(
+      "`lattice.storage.AccessControlEnumerable` is written at init, but without AccessControlEnumerable nobody can manage it later.",
     );
   });
 
@@ -195,17 +222,24 @@ describe("DEP-02 · conventions", () => {
     ]);
   });
 
+  test("a namespace whose owner isn't in the access family raises nothing, by facet or by init", () => {
+    // lattice.storage.Pausable is owned by Pausable, which has no family: nothing to manage after deploy.
+    expect(ids({ facets: ["ERC20", "ERC20Pausable"] })).toEqual([]);
+    expect(ids({ facets: ["ERC20", "ERC20Pausable"], init: { kind: "steps", steps: [{ spec: "PausableInit", args: {} }] } })).toEqual([]);
+    // Nor does VaultCore's lattice.storage.ERC4626, beyond its DEP-01.
+    expect(ids({ facets: ["ERC20", "VaultCore"] })).toEqual(["DEP-01:VaultCore+ERC4626"]);
+  });
+
   test("no report for a namespace no catalog facet owns, or one a placed facet owns", () => {
     // diamond.lib.storage (a shared library's) and lattice.storage.Nonces have no owner to place.
     expect(ids({ facets: ["DiamondLoupeFacet", "ERC20", "ERC20Permit"] })).toEqual([]);
-    expect(ids({ facets: ["ERC20", "ERC20Pausable", "Pausable", "AccessControl"] })).toEqual([]);
+    expect(ids({ facets: ["ERC20", "EmergencyStop", "Pausable", "AccessControl"] })).toEqual([]);
   });
 
-  test("a gap already asked for by a companion or DEP-01 is reported once", () => {
-    // GovernedDiamondCut touches lattice.storage.EmergencyStop and carries the EmergencyStop convention.
+  test("a gap a companion already asks for is reported once", () => {
+    // RoleUser touches lattice.storage.AccessControl and carries an AccessControl convention.
+    expect(ids({ facets: ["RoleUser"] })).toEqual(["DEP-02:RoleUser+AccessControl"]);
     expect(ids({ facets: ["GovernedDiamondCut", "AccessControl"] })).toEqual(["DEP-02:GovernedDiamondCut+EmergencyStop"]);
-    // VaultCore touches lattice.storage.ERC4626 and requires ERC4626.
-    expect(ids({ facets: ["ERC20", "VaultCore"] })).toEqual(["DEP-01:VaultCore+ERC4626"]);
   });
 });
 
@@ -257,36 +291,23 @@ describe("the fixture catalog's templates and the Blank diamond", () => {
     ]);
   });
 
-  test.skipIf(!fixture.ok)("v1 templates and the Blank diamond raise no DEP-01 or DEP-03", () => {
+  test.skipIf(!fixture.ok)("v1 templates and the Blank diamond raise no DEP-01 or DEP-03; the templates no DEP-02", () => {
     if (!fixture.ok) return;
     const cat = fixture.value;
     const v1 = cat.recipes.filter((r) => r.phase === "v1");
     expect(v1.map((r) => r.name).sort()).toEqual(["ERC20", "GovernedVault", "SafeDiamondCut"]);
+    // GovernedVault loads with only INIT-01 for `asset` (spec Flow 2): no DEP problem of any kind.
     for (const template of v1) {
-      const found = checkDep(input(cat, template.recipe)).map((p) => p.code);
-      expect({ name: template.name, found: found.filter((c) => c === "DEP-01" || c === "DEP-03") }).toEqual({ name: template.name, found: [] });
+      expect({ name: template.name, found: checkDep(input(cat, template.recipe)).map((p) => p.id) }).toEqual({ name: template.name, found: [] });
     }
-    // GovernedVault's bundle and facets write lattice.storage.EIP712, which only the unplaced EIP712 facet owns.
-    const byName = (name: string) => checkDep(input(cat, cat.recipes.find((r) => r.name === name)?.recipe ?? {})).map((p) => p.id);
-    expect(byName("GovernedVault")).toEqual(["DEP-02:diamond+lattice.storage.EIP712"]);
-    expect(byName("ERC20")).toEqual([]);
-    expect(byName("SafeDiamondCut")).toEqual([]);
   });
 
   test.skipIf(!fixture.ok)("the Blank diamond shows exactly one DEP-02: AccessControlDiamondCut usually ships with EmergencyStop", () => {
     if (!fixture.ok) return;
-    const blank: Partial<Recipe> = {
-      facets: ["DiamondLoupeFacet", "ERC165Facet", "Receive", "AccessControl", "AccessControlDiamondCut"],
-      init: {
-        kind: "steps",
-        steps: [
-          { spec: "AccessControlInit", args: {} },
-          { spec: "DiamondIntrospectionInit.initUpgradeable", args: {} },
-        ],
-      },
-    };
-    const problems = checkDep(input(fixture.value, blank));
-    expect(problems.map((p) => p.id)).toEqual(["DEP-02:AccessControlDiamondCut+EmergencyStop"]);
+    const blank = blankDiamond(fixture.value);
+    expect(blank.init).toEqual({ kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: { $ref: "deployer" } } }] });
+    const problems = checkDep({ recipe: blank, catalog: fixture.value, routing: {}, ctx: { known: [], unconfirmed: [] } });
+    expect(problems.map((p) => [p.id, p.params.kind])).toEqual([["DEP-02:AccessControlDiamondCut+EmergencyStop", "companion"]]);
     expect(renderProblem("DEP-02", problems[0]?.params ?? {})).toBe(
       "AccessControlDiamondCut usually ships with EmergencyStop, so a guardian can halt upgrades.",
     );

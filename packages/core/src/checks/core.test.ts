@@ -4,6 +4,7 @@ import type { Catalog } from "../model/catalog";
 import type { Hex4 } from "../model/hex";
 import type { Recipe } from "../model/recipe";
 import { renderProblem } from "../narrate/problem";
+import { blankDiamond } from "../plan";
 import { loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe } from "../testing";
 import { checkCore, upgradeConflictReason } from "./core";
 
@@ -179,7 +180,7 @@ describe("CORE-03 · two upgrade mechanisms", () => {
     );
     expect(upgradeConflictReason("SafeDiamondCut", "DiamondCutFacet")).toBe("DiamondCutFacet would let the owner skip SafeDiamondCut's multisig");
     expect(upgradeConflictReason("GovernedDiamondCut", "SafeDiamondCut")).toBe(
-      "SafeDiamondCut would let the Safe skip GovernedDiamondCut's governance vote",
+      "SafeDiamondCut would let the Safe skip GovernedDiamondCut's upgrade executor role",
     );
     expect(upgradeConflictReason("AccessControlDiamondCut", "OtherUpgrade")).toBe(
       "AccessControlDiamondCut and OtherUpgrade could each upgrade it without the other",
@@ -250,7 +251,7 @@ describe("the fixture catalog's templates and the Blank diamond", () => {
     const cat = fixture.value;
     const v1 = cat.recipes.filter((r) => r.phase === "v1");
     expect(v1.map((r) => r.name).sort()).toEqual(["ERC20", "GovernedVault", "SafeDiamondCut"]);
-    const blank = { facets: ["DiamondLoupeFacet", "ERC165Facet", "Receive", "AccessControl", "AccessControlDiamondCut"] };
+    const blank = blankDiamond(cat);
     const recipes: [string, Partial<Recipe>][] = [...v1.map((t): [string, Partial<Recipe>] => [t.name, t.recipe]), ["Blank", blank]];
     for (const [name, recipe] of recipes) {
       const found = checkCore(input(cat, recipe)).map((p) => p.code);
@@ -270,7 +271,7 @@ describe("the fixture catalog's templates and the Blank diamond", () => {
     const gv = fixture.value.recipes.find((r) => r.name === "GovernedVault");
     const problems = checkCore(input(fixture.value, { ...gv?.recipe, facets: [...(gv?.recipe.facets ?? []), "SafeDiamondCut"] }));
     expect(problems.map((p) => [p.id, p.params.reason])).toEqual([
-      ["CORE-03:GovernedDiamondCut+SafeDiamondCut", "SafeDiamondCut would let the Safe skip GovernedDiamondCut's governance vote"],
+      ["CORE-03:GovernedDiamondCut+SafeDiamondCut", "SafeDiamondCut would let the Safe skip GovernedDiamondCut's upgrade executor role"],
     ]);
   });
 });

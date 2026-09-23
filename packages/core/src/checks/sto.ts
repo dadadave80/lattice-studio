@@ -46,8 +46,8 @@ function checkClaims(owning: readonly Owning[]): Problem[] {
 
 /**
  * STO-02 (info): a placed facet touches a namespace another placed facet owns ("ERC20Votes shares
- * `lattice.storage.ERC20` with ERC20"). One per facet, its identity anchor: the first such namespace in the
- * facet's `touches` order.
+ * `lattice.storage.ERC20` with ERC20"). One per facet and shared namespace, in the facet's `touches` order
+ * (contracts §4, ruling 2026-09-23).
  */
 function checkShared(placed: readonly Facet[], owning: readonly Owning[]): Problem[] {
   const problems: Problem[] = [];
@@ -55,8 +55,11 @@ function checkShared(placed: readonly Facet[], owning: readonly Owning[]): Probl
     for (const namespace of facet.touches) {
       const owner = owning.find((f) => f.storage.id === namespace && f.name !== facet.name);
       if (!owner) continue;
-      problems.push(problem("STO-02", [{ kind: "facet", facet: facet.name }], { facet: facet.name, namespace, owner: owner.name }, []));
-      break;
+      problems.push(
+        problem("STO-02", [{ kind: "facet", facet: facet.name }], { facet: facet.name, namespace, owner: owner.name }, [], {
+          id: problemId("STO-02", [facet.name, namespace]),
+        }),
+      );
     }
   }
   return problems;
