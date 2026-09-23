@@ -1,5 +1,5 @@
-export * from "./hash";
-export * from "./json";
-export * from "./migrate";
-export * from "./normalize";
-export * from "./parse";
+export { canonicalJson } from "./json";
+export { catalogHash, recipeHash } from "./hash";
+export { migrate, MIGRATIONS, type MigrationStep } from "./migrate";
+export { normalizeRecipe } from "./normalize";
+export { formatParseIssue, parseProject, parseProjectFile, parseRecipe } from "./parse";
