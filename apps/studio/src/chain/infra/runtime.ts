@@ -7,18 +7,12 @@ import type { Result } from "@lattice-studio/core";
 import type { CreateConnectorFn } from "@wagmi/core";
 import type { Chain } from "viem";
 import { custom } from "viem";
-import { env, settings } from "@/contracts";
+import { env, log, settings } from "@/contracts";
 import { findKnownChain, pickerChains, publicRpcUrls } from "./chains";
 import { createClients, viemChain, type Clients } from "./clients";
 import { WALLETCONNECT_NOT_SET_UP } from "./copy";
 import { createChainService, type ChainRuntime } from "./service";
-import { createWallet } from "./wallet";
-
-/**
- * WalletConnect's project id. None is configured yet (CCR: `env.walletConnectProjectId`), so choosing
- * "Other wallets (QR)" says WalletConnect isn't set up in this build.
- */
-const WALLETCONNECT_PROJECT_ID: string | undefined = undefined;
+import { createWallet, type Wallet } from "./wallet";
 
 function storage(): Storage | null {
   try {
@@ -53,11 +47,56 @@ export async function loadWalletConnect(
   return { ok: true, value: walletConnectConnector(projectId) };
 }
 
-/** While no project id is configured, the `import()` below folds away and the build carries no WalletConnect code. */
-const walletConnect = (): Promise<Result<CreateConnectorFn, string>> =>
-  WALLETCONNECT_PROJECT_ID
-    ? loadWalletConnect(WALLETCONNECT_PROJECT_ID, () => import("./walletconnect"))
-    : Promise.resolve({ ok: false, error: WALLETCONNECT_NOT_SET_UP });
+type WalletConnectImporter = () => Promise<Pick<typeof import("./walletconnect"), "walletConnectConnector">>;
+
+/**
+ * WalletConnect's own chunk, or null in a build without a project id. The id itself is `env.walletConnectProjectId`;
+ * this direct read of the same variable only gates the `import()`, because the bundler can fold a literal here but
+ * not a property of `env` read from another module. Unfolded, the `import()` makes every viem, ox and noble module
+ * the chain module shares with WalletConnect's SDK common to two lazy chunks, and the build's first-load group then
+ * moves them into the entry (+79 KB gz).
+ */
+const importWalletConnect: WalletConnectImporter | null = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID
+  ? () => import("./walletconnect")
+  : null;
+
+/**
+ * The wallet's WalletConnect loader: with a project id and its chunk, loads the connector when chosen; without
+ * either, choosing "Other wallets (QR)" says WalletConnect isn't set up in this build and fetches nothing.
+ */
+export function walletConnectLoader(
+  projectId: string | undefined,
+  importer: WalletConnectImporter | null,
+): () => Promise<Result<CreateConnectorFn, string>> {
+  return () => (importer ? loadWalletConnect(projectId, importer) : Promise.resolve({ ok: false, error: WALLETCONNECT_NOT_SET_UP }));
+}
+
+/**
+ * Settings → Wallet (spec L635) as the chain module sees it. On: WalletConnect's connector is registered, so its
+ * session is restored after a reload. Turned on with no project id, or with a chunk that won't load, it goes back
+ * off, and the console says why (a failed chunk is S11a's banner's to say). Off: a WalletConnect session ends and
+ * the connector is dropped, so its relay sees nothing more. "Other wallets (QR)" stays listed either way: choosing
+ * it is what turns the setting on ("off until chosen"; spec L564, L590). Returns the unsubscribe.
+ */
+export function followWalletConnectSetting(wallet: Pick<Wallet, "loadWalletConnect" | "dropWalletConnect">): () => void {
+  const load = async (): Promise<void> => {
+    let loaded: Result<void, string>;
+    try {
+      loaded = await wallet.loadWalletConnect();
+    } catch {
+      loaded = { ok: false, error: "" };
+    }
+    if (loaded.ok || !settings.get().walletConnect) return;
+    settings.set({ walletConnect: false });
+    if (loaded.error) log({ tag: "Note", text: loaded.error });
+  };
+  if (settings.get().walletConnect) void load();
+  return settings.subscribe((state, previous) => {
+    if (state.walletConnect === previous.walletConnect) return;
+    if (state.walletConnect) void load();
+    else void wallet.dropWalletConnect();
+  });
+}
 
 /**
  * The wallet's chains, with public RPC URLs only. wagmi's connectors read a chain's `rpcUrls` (WalletConnect puts
@@ -73,7 +112,7 @@ export function walletChains(e2e: boolean, overrides: Readonly<Record<number, st
 
 async function build(): Promise<ChainRuntime> {
   // The service hands the clients the person's RPC overrides once they've settled.
-  const clients = createClients();
+  const clients = createClients({ e2e: env.e2e });
   const chains = walletChains(env.e2e, settings.get().rpc);
   const connectors = env.e2e ? (await import("./e2e")).e2eConnectors() : [];
   const wallet = typeof window === "undefined"
@@ -83,10 +122,15 @@ async function build(): Promise<ChainRuntime> {
       transport: (chainId) => delegate(clients, chainId),
       connectors,
       storage: storage(),
-      walletConnect,
+      walletConnect: walletConnectLoader(env.walletConnectProjectId, importWalletConnect),
     });
   const service = createChainService({ e2e: env.e2e, clients, wallet });
-  if (wallet) void wallet.reconnect();
+  if (wallet) {
+    // When it's on, WalletConnect is registered first, so its session is among what reconnecting restores.
+    const registered = settings.get().walletConnect ? wallet.loadWalletConnect().catch(() => undefined) : Promise.resolve();
+    followWalletConnectSetting(wallet);
+    void registered.then(() => wallet.reconnect());
+  }
   return service;
 }
 
