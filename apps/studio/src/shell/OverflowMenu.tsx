@@ -80,8 +80,9 @@ export function OverflowMenu({ saveStatus, partial = false }: { saveStatus: bool
             <TitledMenuItem key={label} command={ref} label={label} />
           ))}
           <MenuSeparator />
+          {/* Short labels here (contracts §6): the registry titles read "Show init order" / "Tidy facets". */}
           {ARRANGE.map(([label, ref]) => (
-            <TitledMenuItem key={label} command={ref} label={label} />
+            <MenuCommandItem key={label} command={ref} label={label} />
           ))}
           <MenuItem label="Auto-layout" disabledReason="Arrives in v1.1" onSelect={() => undefined} />
           <MenuSeparator />
