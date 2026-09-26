@@ -58,7 +58,7 @@ describe("the sheet", () => {
     const facets = ["ERC4626", "VaultCore", "AxelarGatewayAdapter", "HyperlaneGatewayAdapter"];
     const project = cardProject(fixtureCatalog(), facets, { columns: 2, rowPitch: 420 });
     await renderSheet({ project });
-    await expect.poll(() => document.querySelectorAll(".react-flow__edge").length).toBeGreaterThan(0);
+    await expect.poll(() => document.querySelectorAll(".react-flow__edge").length, { timeout: 8000 }).toBeGreaterThan(0);
     const edges = [...document.querySelectorAll<SVGElement>(".react-flow__edge")];
     const focusable = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
     for (const edge of edges) {

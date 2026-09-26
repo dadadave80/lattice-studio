@@ -89,7 +89,7 @@ describe("auto-pan clears what floats over the sheet (spec L771)", () => {
     const toasts = createToasts();
     await renderWithStudio(
       <>
-        <div data-region="sheet" style={{ position: "fixed", left: 0, top: 0, width: 1600, height: 700 }}>
+        <div data-region="sheet" style={{ position: "fixed", left: 0, top: 0, width: 2400, height: 700 }}>
           <Sheet />
         </div>
         <ToastRegion manager={toasts.manager} />
@@ -101,7 +101,7 @@ describe("auto-pan clears what floats over the sheet (spec L771)", () => {
     await expect.poll(() => document.querySelector('[data-region="toasts"] > *')).not.toBeNull();
     const toast = document.querySelector('[data-region="toasts"] > *');
     if (!toast) throw new Error("no toast");
-    expect(overlapArea(onSheet(toast), new DOMRect(0, 0, 1600, 700))).toBeGreaterThan(0);
+    expect(overlapArea(onSheet(toast), new DOMRect(0, 0, 2400, 700))).toBeGreaterThan(0);
     // Nothing else floats where the toast is.
     for (const panel of document.querySelectorAll(".react-flow__panel")) expect(overlapArea(onSheet(panel), onSheet(toast))).toBe(0);
     await clearsOf(toast);
