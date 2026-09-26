@@ -22,6 +22,11 @@ export function startHint(paletteKeys: string): string {
 /** Spec L400: the tour line under the Start block. */
 export const TOUR_PROMPT = "New here?";
 export const TOUR_LINK = "Take the 60-second tour";
+/** Spec L696: the sheet's error state's buttons (its text is persist's `openFailureText`). */
+export const OPEN_ANOTHER_PROJECT = "Open another project";
+export const COPY_DETAILS = "Copy details";
+/** What Copy details' toast names: "Copied details". */
+export const DETAILS_LABEL = "details";
 /** Spec L405: what each of v1's recipe cards is. */
 export const RECIPE_BLURBS: Readonly<Record<string, string>> = {
   GovernedVault: "Self-governed ERC-4626 vault",

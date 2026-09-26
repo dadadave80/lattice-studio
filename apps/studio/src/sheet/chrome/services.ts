@@ -6,9 +6,9 @@
  * exception: it's the empty sheet's largest paint (spec L815), so it ships in the entry and draws as soon as the
  * canvas does, without waiting for the chunk or the catalog.
  *
- * Orders: the Start block (1) takes the card grid's place on an empty sheet; the tool strip and zoom readout (2)
- * come before S4c's notes (10 by the contract's suggestion); init order mode's chip and legend (28) and the title
- * block (30) come after them.
+ * Orders: the Start block (1) takes the card grid's place on an empty sheet, and the sheet's open error (1) takes
+ * the block's; the tool strip and zoom readout (2) come before S4c's notes (10 by the contract's suggestion); init
+ * order mode's chip and legend (28) and the title block (30) come after them.
  */
 import { createElement, lazy, Suspense, type ComponentType } from "react";
 import { registerDialog, registerSheetLayer, type DialogComponentProps } from "@/contracts";
@@ -26,11 +26,14 @@ function layer(load: () => Promise<{ default: ComponentType }>): ComponentType {
 }
 
 export const START_LAYER = { id: "start", order: 1 } as const;
+/** The sheet's error state (spec L696) in the Start block's place; the block gives way while it shows. */
+export const OPEN_ERROR_LAYER = { id: "open-error", order: 1 } as const;
 export const TOOL_STRIP_LAYER = { id: "tool-strip", order: 2 } as const;
 export const INIT_ORDER_LAYER = { id: "init-order", order: 28 } as const;
 export const TITLE_BLOCK_LAYER = { id: "title-block", order: 30 } as const;
 
 registerSheetLayer({ ...START_LAYER, Component: StartBlock });
+registerSheetLayer({ ...OPEN_ERROR_LAYER, Component: layer(() => chunk().then((m) => ({ default: m.OpenError }))) });
 registerSheetLayer({ ...TOOL_STRIP_LAYER, Component: layer(() => chunk().then((m) => ({ default: m.ToolStripLayer }))) });
 registerSheetLayer({ ...INIT_ORDER_LAYER, Component: layer(() => chunk().then((m) => ({ default: m.InitOrderOverlay }))) });
 registerSheetLayer({ ...TITLE_BLOCK_LAYER, Component: layer(() => chunk().then((m) => ({ default: m.TitleBlockLayer }))) });

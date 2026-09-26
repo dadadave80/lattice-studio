@@ -2,6 +2,7 @@ import { templateList } from "@lattice-studio/core";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { focusSheet } from "@/a11y/focus";
 import { commandRef, runCommand, useCatalog, useCommandState, useDocument } from "@/contracts";
+import { useOpenFailure } from "@/persist/current";
 import { SHEET_FLOAT_ATTRIBUTE } from "@/sheet/canvas/sheet-view";
 import { BLANK_DIAMOND } from "@/state";
 import { Button } from "@/ui/buttons/Button";
@@ -79,8 +80,10 @@ export function StartBlock() {
     return START_RECIPES.filter((name) => loadable.has(name));
   }, [catalog]);
   const tour = useCommandState(TOUR, "button");
+  // The sheet's open error (`OpenError.tsx`) takes the block's place while it shows (spec L696).
+  const failed = useOpenFailure() !== null;
   useKeepFocusOnSheet(empty);
-  if (!empty) return null;
+  if (!empty || failed) return null;
   return (
     <div className={styles.startLayer} data-chrome="start">
       <section className={styles.start} aria-labelledby="sheet-start-title" {...FLOAT}>

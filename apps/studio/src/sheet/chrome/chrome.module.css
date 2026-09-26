@@ -292,6 +292,17 @@ a.address {
   white-space: nowrap;
 }
 
+/* The sheet's error state (spec L696): the Start block's frame (StartBlock.module.css) around the message. */
+.openError {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lx-space-2);
+  margin: 0;
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text);
+  overflow-wrap: anywhere;
+}
+
 @media (forced-colors: active) {
   .readout,
   .titleBlock,
