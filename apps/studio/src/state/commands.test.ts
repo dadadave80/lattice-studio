@@ -4,7 +4,7 @@ import { analyze, blankDiamond, cardSize, contestedSelectors, loadTemplate, tidy
 import { makeCatalog, makeFacet, makeProject, makeRecipe, sel } from "@lattice-studio/core/testing";
 import {
   command, commandState, defineCommands, doc, getAnalysis, getCommand, layoutMetrics, runCommand, session, setCatalogStatus,
-  type CommandSource,
+  type CommandArgs, type CommandSource,
 } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
 import { S1_COMMANDS } from "./cmd";
@@ -46,9 +46,9 @@ function withFacets(facets: string[], extra: Partial<Project> = {}): Project {
  * Stands in for S4b's `sheet.zoomFit` or `sheet.locate` (a placeholder under `bun test`) and records each run's
  * arguments. The kit's `dispose()` puts the placeholder back.
  */
-function fakeSheetCommand(id: "sheet.zoomFit" | "sheet.locate"): Record<string, unknown>[] {
-  const runs: Record<string, unknown>[] = [];
-  defineCommands([command<Record<string, unknown>>({
+function fakeSheetCommand(id: "sheet.zoomFit" | "sheet.locate"): CommandArgs[] {
+  const runs: CommandArgs[] = [];
+  defineCommands([command<CommandArgs>({
     id, title: () => id, category: "Sheet", enabled: () => ({ ok: true }), run: (_ctx, args) => void runs.push(args),
   })]);
   return runs;
