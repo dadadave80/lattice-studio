@@ -185,7 +185,8 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     const cached = cache.get(chainId);
     const client = clients.get(chain);
     const known = Object.keys(cached?.key === key ? cached.codeAt : {});
-    // A refresh replaces the cache: until its read finishes, other probes join it rather than read the old state.
+    // A refresh replaces the cache: until its read finishes, other probes join it rather than read the old state
+    // (which stays published meanwhile when the refresh re-reads the same chain; see below).
     if (probeOptions.refresh) cache.delete(chainId);
 
     if (!probeOptions.refresh && cached?.key === key) {
@@ -203,10 +204,15 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
       return { ok: true, value: current() ? publish(chainId, state) : state };
     }
 
-    // A full read: whatever was published came from another catalog or RPC, or is being read again. Nothing
-    // stale stays ready (S1 passes a ready state to analyze()).
-    setReadiness(chainId, { status: "checking" });
+    // A full read. State from another catalog or RPC isn't kept ready while it runs (S1 passes a ready state to
+    // analyze()). Reading the same chain again (the deploy engine does before and after every send, Retry does)
+    // keeps the last ready state until the new one publishes: dropping to "checking" would take every NET problem
+    // out of the analysis and put it back, and the console would say "Resolved" and the Note again each time.
     const pending = reading.get(chainId);
+    // A probe that lands while such a re-read runs (a path edit, the review's own read) joins or follows it.
+    const rereading = readiness.get(chainId)?.status === "ready"
+      && ((probeOptions.refresh === true && cached?.key === key) || pending?.key === key);
+    if (!rereading) setReadiness(chainId, { status: "checking" });
     const joinable = pending?.key === key && !probeOptions.refresh && asked.every((address) => pending.addresses.has(address));
     let running: Promise<Result<ProbeResult, string>>;
     if (pending && joinable) {
