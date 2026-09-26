@@ -20,9 +20,12 @@ export const env: {
   readonly test: boolean;
   /** The IPFS build (`--mode ipfs`, relative base): routes live in the hash; CCR from S11a. */
   readonly hashRouting: boolean;
+  /** `VITE_WALLETCONNECT_PROJECT_ID`: WalletConnect Cloud's public project id; unset, "Other wallets (QR)" says it isn't set up (CCR from FX34). */
+  readonly walletConnectProjectId: string | undefined;
 } = {
   e2e: isE2EFlag(import.meta.env.VITE_STUDIO_E2E),
   dev: import.meta.env.DEV === true,
   test: import.meta.env.MODE === "test",
   hashRouting: import.meta.env.MODE === "ipfs",
+  walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || undefined,
 };

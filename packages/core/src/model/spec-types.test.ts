@@ -192,8 +192,9 @@ export type SpecTypeAssertions = [
   Assert<Mutual<M.Recipe["init"], Recipe["init"]>>,
   Assert<Mutual<M.Arg, Arg>>,
   // Project, Deployment, ProjectFile (L233-L254)
-  Assert<Equals<Keys<M.Project>, Keys<Project>>>,
-  Assert<Mutual<M.Project, Project>>,
+  // + labels (contract addition, FX42: ENS names kept with the project, spec L462)
+  Assert<Equals<Keys<M.Project>, Keys<Project> | "labels">>,
+  Assert<Mutual<Omit<M.Project, "labels">, Project>>,
   Assert<Equals<Keys<Value<M.Project["layout"]>>, Keys<Value<Project["layout"]>>>>,
   Assert<Equals<Keys<M.Project["deploy"]>, Keys<Project["deploy"]>>>,
   // + verificationReason (contract addition, FX21: spec L606's reason survives a reload)

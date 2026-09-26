@@ -283,6 +283,7 @@ export const ProjectSchema = z.looseObject({
   }),
   provenance: z.record(text, z.enum(["link", "file", "confirmed"])),
   predicted: z.array(z.looseObject({ chainId: z.int().positive(), address: AddressSchema })),
+  labels: opt(z.record(text, text)),
 }) satisfies z.ZodType<Project>;
 
 /** A deployment record (spec L244-L253). */

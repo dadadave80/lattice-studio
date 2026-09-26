@@ -19,6 +19,8 @@ export type Project = {
   provenance: Record<string, "link" | "file" | "confirmed">;
   /** This diamond's earlier predicted addresses, for AUTH-02. */
   predicted: { chainId: number; address: Address }[];
+  /** Per init-argument path, the ENS name its address was resolved from (spec L462; contract addition, FX42). */
+  labels?: Record<string, string>;
 };
 
 /** Own store, keyed by [chainId, address], indexed by project id (spec L244-L253). */
