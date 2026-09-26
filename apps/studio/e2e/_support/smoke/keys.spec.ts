@@ -31,10 +31,14 @@ test.describe("keyboard helpers @smoke", () => {
 
   test("F8 moves focus to a problem's note", async ({ page }) => {
     await seedProject(page, { project: collisionsProject() });
-    await nextProblem(page);
-    // Either focus lands on a note, or a placeholder answers (S4c's is announced once F8 runs it).
-    const settled = async () =>
-      (await focusedRegion(page)) === "Sheet" || (await showsNotBuilt(page, "S4b")) || (await showsNotBuilt(page, "S4c"));
+    // The analysis that finds the collision runs after the seeded project loads, so F8 (`problem.next`) is
+    // disabled (no problems yet) for a moment: retry it inside the poll instead of pressing it once and waiting,
+    // or a press that lands before the analysis catches up never gets a second try.
+    const settled = async () => {
+      await nextProblem(page);
+      // Either focus lands on a note, or a placeholder answers (S4c's is announced once F8 runs it).
+      return (await focusedRegion(page)) === "Sheet" || (await showsNotBuilt(page, "S4b")) || (await showsNotBuilt(page, "S4c"));
+    };
     await expect.poll(settled).toBe(true);
     await skipUnlessBuilt(page, "S4b", "S4c");
     expect(await focusedRegion(page)).toBe("Sheet");

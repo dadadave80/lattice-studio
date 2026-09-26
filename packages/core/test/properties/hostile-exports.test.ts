@@ -8,7 +8,10 @@
  * than encode something wrong. Nothing here pins another WP's copy: structure is compared with the plain run
  * of the same functions.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, setDefaultTimeout } from "bun:test";
+
+// Real catalogs and real Foundry builds take seconds each, and more under a loaded machine (the merge gate).
+setDefaultTimeout(60_000);
 import fc from "fast-check";
 import {
   analyze, exportBrief, exportFoundry, exportProjectFile, exportRecipeJson, exportSafeBatch, type Analysis, type Catalog,

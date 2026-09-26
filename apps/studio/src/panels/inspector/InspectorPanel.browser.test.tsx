@@ -168,6 +168,9 @@ describe("commands", () => {
       ok: false,
       reason: "Governor isn't on the sheet.",
     });
+    // SEL-03's fix carries verb "route" and reads the spec's words (L313); without it, the facet's selectors.
+    expect(commandState(commandRef("inspector.focusSelectors", { facet: "ERC20", verb: "route" })).title).toBe("Route a selector…");
+    expect(commandState(commandRef("inspector.focusSelectors", { facet: "ERC20" })).title).toBe("Show ERC20's selectors");
   });
 
   test("dependency.compare opens the options side by side as catalog previews", async () => {

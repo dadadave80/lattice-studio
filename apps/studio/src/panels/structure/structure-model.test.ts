@@ -193,7 +193,6 @@ describe("helpers", () => {
       { code: false, text: " with ERC20." },
     ]);
     expect(placeholderFixLabel("INIT-01", { id: "init.focusField", args: { path: "bundle.p.asset" } })).toBeUndefined();
-    expect(placeholderFixLabel("SEL-03", { id: "inspector.focusSelectors", args: { facet: "X" } })).toBe("Route a selector…");
     expect(placeholderFixLabel("NET-05", { id: "deploy.newSalt" })).toBe("Use a new salt");
     expect(placeholderFixLabel("SEL-01", { id: "selector.route" })).toBeUndefined();
   });
