@@ -11,6 +11,7 @@ import { copyText } from "@/ui/copy/copy-text";
 import { downloadFile } from "./download";
 import { CATALOG_NOT_LOADED } from "./export-enablement";
 import { loadExporter } from "./exporters";
+import { exportRecipe } from "./exporters/recipe";
 
 type Sources = { project: Project; catalog: Catalog; analysis: Analysis };
 
@@ -32,14 +33,14 @@ export async function briefFile(): Promise<Result<ExportFile, string>> {
   if (!input.ok) return input;
   const { agentBrief } = await loadExporter("brief");
   const { project, catalog, analysis } = input.value;
-  return { ok: true, value: agentBrief({ recipe: project.recipe, catalog, analysis }) };
+  return { ok: true, value: agentBrief({ recipe: exportRecipe(project), catalog, analysis }) };
 }
 
 export async function recipeFile(from: Pick<Sources, "project" | "catalog"> | null = null): Promise<Result<ExportFile, string>> {
   const input = from ? { ok: true as const, value: from } : sources();
   if (!input.ok) return input;
   const { recipeJson } = await loadExporter("recipe");
-  return { ok: true, value: recipeJson({ recipe: input.value.project.recipe, catalog: input.value.catalog }) };
+  return { ok: true, value: recipeJson({ recipe: exportRecipe(input.value.project), catalog: input.value.catalog }) };
 }
 
 /** Downloads the file and logs "Exported DeployGovernedVault.s.sol · recipe 0x3f2a…a1c4" (spec L729). */

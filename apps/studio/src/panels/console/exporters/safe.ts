@@ -10,6 +10,7 @@ import type {
 import { exportSafeBatch, safeBatchTarget } from "@lattice-studio/core";
 import { loadCreationCode } from "@/contracts";
 import { studioState } from "@/state/runtime";
+import { exportRecipe } from "./recipe";
 import { STUDIO_VERSION } from "./version";
 
 export type SafeInput = { project: Project; catalog: Catalog; safe: Address; chainId: number; now: number };
@@ -44,7 +45,7 @@ export async function safeBatch({ project, catalog, safe, chainId, now }: SafeIn
   };
   const chain = ctx?.chain?.chainId === chainId ? ctx.chain : undefined;
   const file = exportSafeBatch({
-    recipe: project.recipe,
+    recipe: exportRecipe(project),
     catalog,
     safe,
     chainId,

@@ -56,10 +56,20 @@ export function useAccount(service: ChainService | null): WalletAccount | null {
 }
 
 export function useConnectors(service: ChainService | null): readonly WalletConnector[] {
+  // connectors() builds a new list per call; hand React the last one while its contents are the same, or it loops (#185).
+  const last = useRef<readonly WalletConnector[]>(EMPTY);
   return useSyncExternalStore(
     (onChange) => (service ? service.subscribeConnectors(onChange) : noop()),
-    () => (service ? service.connectors() : EMPTY),
+    () => {
+      const next = service ? service.connectors() : EMPTY;
+      if (!sameConnectors(next, last.current)) last.current = next;
+      return last.current;
+    },
   );
+}
+
+function sameConnectors(a: readonly WalletConnector[], b: readonly WalletConnector[]): boolean {
+  return a.length === b.length && a.every((c, i) => c.id === b[i]?.id && c.name === b[i]?.name && c.kind === b[i]?.kind && c.rdns === b[i]?.rdns);
 }
 
 const EMPTY: readonly WalletConnector[] = [];
