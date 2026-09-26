@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { SkipLink } from "@/a11y";
-import { Toasts } from "@/feedback";
+import { BannerHost } from "@/feedback";
 import { CommandPalette } from "@/palette";
 import { Shell, shellToasts } from "@/shell";
 import { LazyPart, lazyNamed } from "@/shell/LazyPart";
@@ -54,7 +54,7 @@ export function App() {
       <div className={styles.overlays}>
         <CommandPalette />
         <Tour />
-        <Toasts />
+        <BannerHost />
       </div>
     </>
   );
