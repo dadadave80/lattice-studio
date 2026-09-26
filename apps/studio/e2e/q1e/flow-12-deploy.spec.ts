@@ -171,20 +171,27 @@ test.describe("Flow 12. Deploy", () => {
   });
 
   test.describe("steps 4-5: confirm and sign", () => {
-    test("Sign & deploy sends the reviewed transaction and the diamond goes Live", async ({ page, anvil }) => {
-      const crashed = watchReactErrors(page);
-      await routeMockSends(page, anvil.url);
-      await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
-      await connectOnAnvil(page);
-      await runPalette(page, "Deploy…");
-      const review = new DeployReview(page, "GovernedVault");
-      await review.expectOpenOrSkip(crashed);
-      await expect(review.section("Simulation")).toContainText(/Simulated at block [\d,]+: diamond at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} with 14 facets, 120 selectors/);
-      await activate(page, "pointer", review.sign());
-      const log = new ConsoleLog(page);
-      await expect(log.lineMatching("Deploy", /Deployed at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} in block [\d,]+\. Matches the sheet\./)).toBeVisible();
-      await expect(new TitleBlock(page).stamp("Live · Anvil · r1")).toBeVisible();
-    });
+    const paths = [
+      { path: "factory" as const, name: "LatticeFactory", mode: "pointer" as const },
+      { path: "createx" as const, name: "CreateX", mode: "keyboard" as const },
+    ];
+    for (const { path, name, mode } of paths) {
+      test(`Sign & deploy through ${name} sends the reviewed transaction and the diamond goes Live (${mode})`, async ({ page, anvil }) => {
+        const crashed = watchReactErrors(page);
+        await routeMockSends(page, anvil.url);
+        const project = recipeProject("GovernedVault", { filled: true });
+        await seedProject(page, { project: { ...project, deploy: { ...project.deploy, path } } });
+        await connectOnAnvil(page);
+        await runPalette(page, "Deploy…");
+        const review = new DeployReview(page, "GovernedVault");
+        await review.expectOpenOrSkip(crashed);
+        await expect(review.section("Simulation")).toContainText(/Simulated at block [\d,]+: diamond at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} with 14 facets, 120 selectors/);
+        await activate(page, mode, review.sign());
+        const log = new ConsoleLog(page);
+        await expect(log.lineMatching("Deploy", /Deployed at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} in block [\d,]+\. Matches the sheet\./)).toBeVisible();
+        await expect(new TitleBlock(page).stamp("Live · Anvil · r1")).toBeVisible();
+      });
+    }
   });
 
   test.describe("steps 6-9: pending, confirmed, verify and live, resumed from the record", () => {
