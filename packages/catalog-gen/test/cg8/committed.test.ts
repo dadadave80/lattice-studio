@@ -77,9 +77,12 @@ describe("the committed index", () => {
     expect(new TextDecoder().decode(indexBytes)).toBe(new TextDecoder().decode(sortedJsonFileBytes(index)));
   });
 
-  test("records the pin, Foundry 1.8.3 and solc 0.8.36, and is provisional at 0.2.0", () => {
+  test("records the pin, Foundry 1.8.3, solc 0.8.36 and its long version, and is provisional at 0.2.0", () => {
     expect(index.lattice).toEqual({ tag: manifest.default, commit: "f4a32c8330934d39bcfdffff87d35a04b7fa6a79" });
-    expect(index.toolchain).toEqual({ foundry: "1.8.3", solc: "0.8.36" });
+    expect(index.toolchain.foundry).toBe("1.8.3");
+    expect(index.toolchain.solc).toBe("0.8.36");
+    // FX20: the catalog also carries solc's full version, which Sourcify's v2 API needs to resolve the compiler.
+    expect(index.toolchain.solcLong).toMatch(/^0\.8\.36\+commit\.[0-9a-f]{8}$/);
     expect(index.provisional).toBe("Lattice 0.2.0 at dev f4a32c8; v1 targets 0.4.0");
     expect(index.registryOwner).toBe(REGISTRY_OWNER_PLACEHOLDER);
     expect(index.chains).toEqual([]);
