@@ -14,7 +14,8 @@ import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
 import { prediction } from "@/state";
 import {
-  DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, fixtureBlock, ON_ITS_WAY, SCOPE_TITLES, WAITING_FOR_SAFE, resolveBlockers, tickFirst,
+  DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, PLACE_FACETS_FIRST, fixtureBlock, ON_ITS_WAY, SCOPE_TITLES, WAITING_FOR_SAFE,
+  resolveBlockers, tickFirst,
 } from "./entry-copy";
 
 const OK: Enablement = { ok: true };
@@ -77,6 +78,10 @@ const open = command<CommandArgsOf<"deploy.open">>({
     if (locked) return locked;
     // Spec L385: while a Safe proposal waits, Deploy is disabled; the proposal shows in the Deployments list.
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
+    // Spec L378: an empty sheet says so. Checks still fire on zero facets (CORE-01 among them), but the Empty
+    // state's own words are more specific than a blocker count, and this keeps the palette, ⌘Enter and the
+    // title block agreeing on them (S4d's CCR 3).
+    if (ctx.project.recipe.facets.length === 0) return no(PLACE_FACETS_FIRST);
     const count = blockers(ctx).length;
     // ⌘/Ctrl+Enter jumps to the first blocker instead (spec L561); every other way in is disabled with the reason.
     if (count > 0 && ctx.source !== "keys") return no(resolveBlockers(count), { id: "problem.next" });
@@ -97,6 +102,7 @@ const again = command({
     const block = openBlock(ctx);
     if (block) return no(block);
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
+    if (ctx.project.recipe.facets.length === 0) return no(PLACE_FACETS_FIRST);
     const count = blockers(ctx).length;
     if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
     return readOnly(ctx) ?? OK;

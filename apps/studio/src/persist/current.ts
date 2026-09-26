@@ -1,16 +1,16 @@
 /**
  * The app's persistence instance, loaded on first use: this file stays in the entry chunk (through
- * `services.ts`), so it imports no IndexedDB code, only types, `isUnpinned` from `state/document-store` (in the entry chunk
- * already) and a lazy `import()`. The projects and
+ * `services.ts`), so it imports no IndexedDB code, only types, `untouched.ts` (whose one import,
+ * `state/document-store`, is in the entry chunk already) and a lazy `import()`. The projects and
  * deployments services registered with the contracts forward here, and so does the public API in `index.ts`.
  * Subscriptions made before the instance loads (or before a test provides one) follow it.
  */
-import type { Project, Recipe, Result } from "@lattice-studio/core";
+import type { Project, Result } from "@lattice-studio/core";
 import { useSyncExternalStore } from "react";
 import { log, type DeploymentsService, type ProjectsService, type SaveStatus } from "@/contracts";
-import { isUnpinned } from "@/state/document-store";
 import type { EditLockState } from "./lock";
 import type { Persistence } from "./persistence";
+import { untouched } from "./untouched";
 
 const SAVED: SaveStatus = { state: "saved", text: "Saved" };
 const NO_LOCK: EditLockState = { state: "none" };
@@ -121,6 +121,7 @@ export const projectsService: ProjectsService = {
 export const deploymentsService: DeploymentsService = {
   listDeployments: async (projectId) => (await persistence()).deployments.listDeployments(projectId),
   putDeployment: async (deployment) => (await persistence()).deployments.putDeployment(deployment),
+  deleteDeployment: async (chainId, address) => (await persistence()).deployments.deleteDeployment(chainId, address),
   subscribe(listener) {
     deploymentListeners.add(listener);
     return () => void deploymentListeners.delete(listener);
@@ -133,35 +134,6 @@ export const deploymentsService: DeploymentsService = {
  */
 function routeOpensProject(hash: string): boolean {
   return hash.startsWith("#s=") || hash.startsWith("#open=");
-}
-
-/**
- * Whether the recipe differs from the boot's only by the catalog pin: the boot's recipe named no catalog, and
- * `state/pinning.ts` pinned it to the one that loaded, leaving every other key as it was.
- */
-function onlyPinned(booted: Recipe, now: Recipe): boolean {
-  if (now === booted) return true;
-  if (!isUnpinned(booted) || isUnpinned(now)) return false;
-  const keys = new Set([...Object.keys(booted), ...Object.keys(now)] as (keyof Recipe)[]);
-  for (const key of keys) if (key !== "catalog" && booted[key] !== now[key]) return false;
-  return true;
-}
-
-/**
- * Whether the document is still the one the boot started on. Neither a recorded prediction nor the catalog pin
- * counts, since neither is the visitor's doing: a wallet that reconnects on load records a prediction
- * (`state/prediction.ts`), and a catalog that loads before storage answers pins the untitled project
- * (`state/pinning.ts`). The project that opens keeps its own pin.
- */
-function untouched(booted: Project, now: Project): boolean {
-  if (now === booted) return true;
-  const keys = new Set([...Object.keys(booted), ...Object.keys(now)] as (keyof Project)[]);
-  for (const key of keys) {
-    if (key === "predicted" || booted[key] === now[key]) continue;
-    if (key === "recipe" && onlyPinned(booted.recipe, now.recipe)) continue;
-    return false;
-  }
-  return true;
 }
 
 /**

@@ -62,8 +62,9 @@ export function OverflowMenu({ saveStatus, partial = false }: { saveStatus: bool
       <MenuCommandItem command={commandRef("share.copyLink")} label="Share" />
       {partial ? null : (
         <Submenu label="Export">
+          {/* Short labels inside the Export submenu (contracts §6); the registry titles read "Export project file". */}
           {EXPORTS.map(([label, ref]) => (
-            <TitledMenuItem key={label} command={ref} label={label} />
+            <MenuCommandItem key={label} command={ref} label={label} />
           ))}
           <MenuItem label="Image" disabledReason="Arrives in v1.1" onSelect={() => undefined} />
         </Submenu>

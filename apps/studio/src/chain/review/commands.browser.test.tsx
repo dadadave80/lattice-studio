@@ -90,7 +90,7 @@ describe("deploy.open (Flow 12 step 1, IR L13)", () => {
         },
       }),
     ]);
-    await studio({ project: makeProject({ recipe: makeRecipe({}, deployableCatalog()) }) });
+    await studio({ project: makeProject({ recipe: makeRecipe({ facets: ["Receive"] }, deployableCatalog()) }) });
     expect(reason("deploy.open")).toBe("Resolve 1 blocker · F8");
     expect(commandState({ id: "deploy.open" }, "button")).toMatchObject({ fix: { id: "problem.next" } });
     expect(reason("deploy.open", "keys")).toBeNull();
@@ -99,6 +99,13 @@ describe("deploy.open (Flow 12 step 1, IR L13)", () => {
     await expect.poll(() => focused).toEqual(["CORE-01:0x7a0ed627"]);
     expect(bufferedServices().announce.map(([text]) => text)).toContain("The loupe is incomplete: `facets()` is missing. Every Lattice diamond needs all four.");
     expect(session.get().dialogs).toEqual([]);
+  });
+
+  test("an empty recipe says Place facets first, before a blocker count, and ⌘/Ctrl+Enter only announces it (spec L378)", async () => {
+    await studio({ project: makeProject({ recipe: makeRecipe({}, deployableCatalog()) }) });
+    expect(reason("deploy.open")).toBe("Place facets first");
+    expect(reason("deploy.open", "keys")).toBe("Place facets first");
+    expect(commandState({ id: "deploy.open" }, "button")).not.toHaveProperty("fix");
   });
 
   test("while a deploy is in flight it reopens the review at its progress; a Safe proposal disables it (spec L385)", async () => {
@@ -148,6 +155,12 @@ describe("deploy.again (Flow 13)", () => {
     await runCommand({ id: "deploy.again" }, "button");
     expect(doc.get().deploy.entropy).toBe(before);
     expect(bufferedServices().log.map((l) => l.text)).toContain("Nothing is live yet, so the salt stays as it is.");
+  });
+
+  test("an empty recipe says Place facets first, before a blocker count (spec L378)", async () => {
+    await studio({ project: makeProject({ recipe: makeRecipe({}, deployableCatalog()) }) });
+    await putDeployment(record({}));
+    expect(reason("deploy.again")).toBe("Place facets first");
   });
 });
 
@@ -248,7 +261,7 @@ describe("the review's own commands", () => {
   });
 
   test("Choose another chain waits while a Safe proposal does, and works with blockers", async () => {
-    await studio({ project: makeProject({ recipe: makeRecipe({}, deployableCatalog()) }) });
+    await studio({ project: makeProject({ recipe: makeRecipe({ facets: ["Receive"] }, deployableCatalog()) }) });
     expect(reason("deploy.open")).toBe("Resolve 1 blocker · F8");
     expect(reason("chain.focusPicker")).toBeNull();
     seedDeployState({ phase: "proposed", chainId: SEPOLIA });

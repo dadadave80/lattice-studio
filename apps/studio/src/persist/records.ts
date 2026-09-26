@@ -144,6 +144,16 @@ export async function putDeployment(db: StudioDb, deployment: Deployment): Promi
   await db.put("deployments", normalizeRecord(deployment));
 }
 
+/** Deletes the record stored under `[chainId, address]` (any case); returns it, or undefined when there's none. */
+export async function deleteDeployment(db: StudioDb, chainId: number, address: string): Promise<Deployment | undefined> {
+  const tx = db.transaction("deployments", "readwrite");
+  const key: [number, string] = [chainId, toChecksum(address)];
+  const found = await tx.store.get(key);
+  if (found) await tx.store.delete(key);
+  await tx.done;
+  return found;
+}
+
 /**
  * Adds records whose `[chainId, address]` isn't stored yet; never overwrites one (an imported file can't
  * replace a live record). Returns how many were added and skipped.

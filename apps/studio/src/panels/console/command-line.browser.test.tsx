@@ -1,7 +1,7 @@
 import type { Address } from "@lattice-studio/core";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { command, doc, provideDeployController, session, type DeployController, type DeployState } from "@/contracts";
+import { command, doc, getAnalysis, provideDeployController, session, type DeployController, type DeployState } from "@/contracts";
 import { listVerbs } from "@/commands/console/router";
 import { overridePlatform } from "@/ui/shared/platform";
 import { onCleanup, overrideCommands, renderWithStudio } from "../../../test/harness";
@@ -211,6 +211,9 @@ describe("console verbs for exports", () => {
     const files = captureDownloads();
     const safe: Address = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
     await renderConsole();
+    // The Safe batch waits for the review's acknowledgements (spec L573): tick every one the analysis raises.
+    const analysis = getAnalysis();
+    session.set({ acks: { [analysis.recipeHash]: analysis.problems.filter((p) => p.ack === true).map((p) => p.id) } });
     await run(`export safe ${safe.toLowerCase()} sepolia`);
     await vi.waitFor(() => expect(proposals).toHaveLength(1));
     expect(proposals[0]).toMatchObject({ safe, chainId: 11155111 });

@@ -8,6 +8,9 @@ import type { DeployPhase } from "@/contracts";
 /** Spec L561, IR L13: Deploy offline; ⌘/Ctrl+Enter only announces it. */
 export const DEPLOY_NEEDS_CONNECTION = "Deploy needs a connection";
 
+/** Spec L378: the title block's words for an empty sheet; deploy.open and deploy.again agree with it. */
+export const PLACE_FACETS_FIRST = "Place facets first";
+
 /** Spec L385: Deploy while a Safe proposal waits. */
 export const WAITING_FOR_SAFE = "Waiting for the Safe to execute the batch";
 
