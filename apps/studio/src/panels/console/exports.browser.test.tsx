@@ -303,4 +303,18 @@ describe("safeExportable: the Safe batch waits for the review's acknowledgements
     expect(safeExportable({ catalog: fixture, project: noFacets, analysis: empty, session: initialSession() }))
       .toEqual({ ok: false, reason: "Place facets first" });
   });
+
+  test("its own ack filter and wording agree with chain/review/model.ts's pendingAcks and entry-copy.ts's tickFirst (drift guard)", async () => {
+    const { pendingAcks } = await import("@/chain/review/model");
+    const { tickFirst } = await import("@/chain/review/entry-copy");
+    const ticked: Problem = { id: "AUTH-01:0xabc", code: "AUTH-01", severity: "warning", where: [], params: {}, message: "", ack: true, fixes: [] };
+    // A plain warning (no `ack`) never counts, in either module.
+    const plain: Problem = { id: "CORE-04:diamond", code: "CORE-04", severity: "warning", where: [], params: {}, message: "", fixes: [] };
+    const problems = [acknowledgement, ticked, plain];
+    const acked = [ticked.id];
+    const mixed = { ...analysis, problems };
+    const mixedSession = { ...initialSession(), acks: { [mixed.recipeHash]: acked } };
+    expect(safeExportable({ catalog: fixture, project, analysis: mixed, session: mixedSession }))
+      .toEqual({ ok: false, reason: tickFirst(pendingAcks(problems, acked).length) });
+  });
 });

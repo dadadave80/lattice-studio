@@ -39,12 +39,17 @@ export function deployableExport(ctx: Pick<CommandContext, "catalog" | "project"
   return OK;
 }
 
-/** "Tick the acknowledgement first" (the same words as `chain/review/entry-copy.ts`'s `tickFirst`, spec L573). */
+/**
+ * "Tick the acknowledgement first" (the same words as `chain/review/entry-copy.ts`'s `tickFirst`, spec L573).
+ * Kept as its own copy rather than an import: `chain/review/model.ts` is the review's lazy chunk, and
+ * importing its `pendingAcks` here grew the entry by ~2.9 KB gz (measured with `size.ts --build`); the review's
+ * words are covered against this copy in `exports.browser.test.tsx`.
+ */
 export function tickAcknowledgementsFirst(count: number): string {
   return count === 1 ? "Tick the acknowledgement first" : `Tick the ${count} acknowledgements first`;
 }
 
-/** Acknowledgement problems (spec L326-L342) not yet ticked for this recipe hash. */
+/** Acknowledgement problems (spec L326-L342) not yet ticked for this recipe hash; the same filter as `chain/review/model.ts`'s `pendingAcks`. */
 function pendingAcks(session: Pick<SessionState, "acks">, analysis: Pick<Analysis, "problems" | "recipeHash">): Problem[] {
   const acked = session.acks[analysis.recipeHash] ?? [];
   return analysis.problems.filter((p) => p.ack === true && p.severity === "warning" && !acked.includes(p.id));

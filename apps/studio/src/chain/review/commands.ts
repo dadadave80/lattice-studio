@@ -78,7 +78,9 @@ const open = command<CommandArgsOf<"deploy.open">>({
     if (locked) return locked;
     // Spec L385: while a Safe proposal waits, Deploy is disabled; the proposal shows in the Deployments list.
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
-    // Spec L378: an empty sheet says so, before a blocker count that a truly empty recipe never has.
+    // Spec L378: an empty sheet says so. Checks still fire on zero facets (CORE-01 among them), but the Empty
+    // state's own words are more specific than a blocker count, and this keeps the palette, ⌘Enter and the
+    // title block agreeing on them (S4d's CCR 3).
     if (ctx.project.recipe.facets.length === 0) return no(PLACE_FACETS_FIRST);
     const count = blockers(ctx).length;
     // ⌘/Ctrl+Enter jumps to the first blocker instead (spec L561); every other way in is disabled with the reason.
