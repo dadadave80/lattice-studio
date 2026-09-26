@@ -8,10 +8,13 @@ import type {
 } from "@lattice-studio/core";
 import { CREATEX_CODEHASH, planInit, sameAddress } from "@lattice-studio/core";
 import type { AccountKind, ChainReadiness, DeployPhase, DeployState } from "@/contracts";
+import { env } from "@/contracts";
+import { chainName } from "@/chain/infra/chains";
 import {
   CHANGED_SINCE_REVIEW, CHOOSE_A_CHAIN, CONNECT_A_WALLET, checking, needsFunds, walletOn, DEPLOY_NEEDS_CONNECTION, SAFE_SIGNS_BY_BATCH, SIMULATING, TYPE_THE_NAME, resolveBlockers, tickFirst,
   type SectionId, type SectionStatus,
 } from "./copy";
+import { cantSimulate as cantSimulateSentence } from "../deploy/command-copy";
 import { ON_ITS_WAY, pathName } from "./entry-copy";
 
 export { IN_FLIGHT_PHASES, pathName } from "./entry-copy";
@@ -181,11 +184,31 @@ export function resimulating(deploy: Pick<DeployState, "phase" | "snapshot" | "c
  * canceled in your wallet.", or another step before the send (an earlier transaction still waiting, the wallet on
  * another chain). Null when there's none, or when the Simulation section already says it (an RPC that can't simulate).
  */
-export function signStepNote(deploy: Pick<DeployState, "phase" | "error" | "simulation">): string | null {
+export function signStepNote(
+  deploy: Pick<DeployState, "phase" | "error" | "simulation" | "chainId">, chainName: (chainId: number) => string,
+): string | null {
   const { phase, error, simulation } = deploy;
   if ((phase !== "review" && phase !== "ready") || !error || simulation === undefined) return null;
-  if (cantSimulate(simulation) && error.includes("can't simulate")) return null;
-  return error;
+  return simulationOwnsError(deploy, chainName) ? null : error;
+}
+
+/** A chain named as S8c's controller names it in its sentences (the app's chain table, e2e chains included). */
+export function controllerChainName(chainId: number): string {
+  return chainName(chainId, env.e2e);
+}
+
+/**
+ * Whether `deploy.error` is the controller's own "can't simulate" sentence (spec L575), which the Simulation section
+ * shows. Told by the controller's `unavailable` flag, then the exact sentence it writes for that chain: a stop at
+ * Sign (a refusal in the wallet) replaces the error while the flag stands. `chainName` names chains as the
+ * controller does.
+ */
+export function simulationOwnsError(
+  deploy: Pick<DeployState, "error" | "simulation" | "chainId">, chainName: (chainId: number) => string,
+): boolean {
+  const { error, simulation, chainId } = deploy;
+  if (simulation?.unavailable !== true || error === undefined || chainId === undefined) return false;
+  return error === cantSimulateSentence(chainName(chainId));
 }
 
 /** Phases after Sign & deploy (or a Safe batch): the review shows the deploy's progress instead of its sections. */

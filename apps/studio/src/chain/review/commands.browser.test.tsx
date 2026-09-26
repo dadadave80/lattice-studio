@@ -1,10 +1,15 @@
-import type { Deployment, Hex } from "@lattice-studio/core";
+import type { Address, Deployment, Hex } from "@lattice-studio/core";
+import { formatAddress } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import {
-  command, commandState, doc, getAnalysis, getCommand, history, putDeployment, runCommand, session, type CommandContext,
+  command, commandState, doc, getAnalysis, getCatalog, getCommand, history, provideDeployController, putDeployment, runCommand,
+  session, type CommandContext, type DeployController,
 } from "@/contracts";
+import { appDeployDeps } from "../deploy/app-deps";
+import { createDeployMachine, type DeployMachine } from "../deploy/machine";
+import { fakePort } from "../deploy/testing";
 import { handleKeyDown } from "@/commands/keys/dispatcher";
 import { FIXTURE_CATALOG } from "@/chain/infra";
 import { NEEDS_WALLET, predict, prediction } from "@/state";
@@ -157,23 +162,64 @@ describe("deploy.again (Flow 13)", () => {
     expect(bufferedServices().log.map((l) => l.text)).toContain("Nothing is live yet, so the salt stays as it is.");
   });
 
-  test("the live diamond at the old salt's address (NET-05) doesn't hold it back; Deploy… with the same salt still counts it (spec L584)", async () => {
+  /** ERC20 on Sepolia whose predicted address already has code (NET-05), with `status` recorded there, then edited. */
+  async function takenAddress(status: Deployment["status"], controller?: () => Promise<DeployController>) {
     const catalog = deployableCatalog();
     const chain = fakeChainService({ account: account(), catalog, state: { [SEPOLIA]: { predictedHasCode: true } } });
     chain.install();
-    installController(fakeDeployController());
+    if (controller) onCleanup(provideDeployController(controller));
+    else installController(fakeDeployController());
     installFees();
     await renderWithStudio(<DialogHost />, { project: templateProject("ERC20"), catalog, session: { chainId: SEPOLIA } });
     const address = await predicted();
-    await putDeployment(record({ address: address as Deployment["address"] }));
-    // The chain read that finds the live diamond at the predicted address (the title block and review do the same).
+    await putDeployment(record({ address: address as Deployment["address"], status }));
+    // The chain read that finds the diamond at the predicted address (the title block and review do the same).
     await chain.probe(SEPOLIA, { path: "factory" });
     // The recipe moved on since it went live.
     await runCommand({ id: "init.setArg", args: { path: "steps[0].name_", value: "Vault" } }, "api");
     await vi.waitFor(() => expect(getAnalysis().problems.map((p) => `${p.id}:${p.severity}`)).toContain(`NET-05:${SEPOLIA}:blocker`));
+    return { chain, address };
+  }
+
+  test("after a confirmed deploy, NET-05 at the old salt's address doesn't hold it back; Deploy… keeps the salt and counts it (spec L584)", async () => {
+    await takenAddress("confirmed");
     await vi.waitFor(() => expect(reason("deploy.open")).toBe("Resolve 1 blocker · F8"));
     expect(commandState({ id: "deploy.open" }, "button")).toMatchObject({ fix: { id: "problem.next" } });
-    expect(reason("deploy.again")).toBeNull();
+    await vi.waitFor(() => expect(reason("deploy.again")).toBeNull());
+  });
+
+  test("with nothing confirmed the salt stays, so NET-05 still counts (spec L286)", async () => {
+    await takenAddress("pending");
+    await vi.waitFor(() => expect(reason("deploy.again")).toBe("Resolve 1 blocker · F8"));
+  });
+
+  test("with S8c's machine, the review Deploy again… opens simulates at the new salt's address", async () => {
+    let machine: DeployMachine | null = null;
+    const load = async (): Promise<DeployMachine> => {
+      if (machine) return machine;
+      const catalog = getCatalog();
+      if (!catalog) throw new Error("no catalog");
+      const port = fakePort({
+        catalog: () => catalog,
+        predicted: () => {
+          const p = prediction();
+          return p.status === "ready" ? p.address : null;
+        },
+      });
+      const built = createDeployMachine({ ...appDeployDeps(), chain: async () => port });
+      onCleanup(() => built.dispose());
+      machine = built;
+      return built;
+    };
+    const { chain, address } = await takenAddress("confirmed", load);
+    await vi.waitFor(() => expect(reason("deploy.again")).toBeNull());
+    // Nothing at the new address: the chain answers for whatever the prediction is next.
+    chain.setState(SEPOLIA, { predictedHasCode: false });
+    await runCommand({ id: "deploy.again" }, "button");
+    const next = await predicted();
+    expect(next).not.toBe(address);
+    const simulation = page.getByRole("region", { name: "Simulation", exact: true });
+    await expect.element(simulation.getByText(`diamond at ${formatAddress(next as Address)} with`, { exact: false })).toBeVisible();
   });
 
   test("any other blocker still holds Deploy again… back", async () => {

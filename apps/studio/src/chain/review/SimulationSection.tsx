@@ -1,6 +1,8 @@
 import { Button, copyText } from "@/ui";
 import { NO_SIMULATION_NOTE, SIMULATING, type SectionStatus } from "./copy";
-import { CONTROLLER_NOT_BUILT, cantSimulate, grouped, pathName, resimulating } from "./model";
+import {
+  CONTROLLER_NOT_BUILT, cantSimulate, controllerChainName, grouped, pathName, resimulating, simulationOwnsError,
+} from "./model";
 import { simulationReport } from "./progress-view";
 import { useReview, type Review } from "./review-data";
 import { useReviewState } from "./review-state";
@@ -26,7 +28,10 @@ function shown(review: Review, ticked: boolean): Shown {
     return { status: "ok", text };
   }
   // Before the revert branch: an RPC that can't simulate isn't a revert, whatever text it carries (spec L575).
-  if (cantSimulate(simulation)) return { status: ticked ? "ok" : "tick", text: deploy.error?.includes("can't simulate") ? deploy.error : NO_SIMULATION_NOTE };
+  if (cantSimulate(simulation)) {
+    const text = simulationOwnsError(deploy, controllerChainName) ? (deploy.error ?? NO_SIMULATION_NOTE) : NO_SIMULATION_NOTE;
+    return { status: ticked ? "ok" : "tick", text };
+  }
   if (simulation?.revert) return { status: "blocked", text: simulation.revert, revert: simulation.revert };
   return { status: "waiting", text: NOT_YET };
 }

@@ -5,7 +5,8 @@ import { CHOOSE_A_CHAIN, CONNECT_A_WALLET } from "@/chain/infra/copy";
 import { CHANGED_SINCE_REVIEW, DEPLOY_NEEDS_CONNECTION, SAFE_SIGNS_BY_BATCH, SIMULATING, TYPE_THE_NAME } from "./copy";
 import {
   CONTROLLER_NOT_BUILT, ackProblems, cantSimulate, changedSinceReview, cutRows, fundsShort, gasByFacet, grouped, magnitude,
-  pendingAcks, problemStatus, readinessLine, resimulating, sectionOf, shortHash, signEnablement, signStepNote, worse, type SignInput,
+  pendingAcks, problemStatus, readinessLine, resimulating, sectionOf, shortHash, signEnablement, signStepNote, simulationOwnsError,
+  worse, type SignInput,
 } from "./model";
 
 const loaded = loadFixtureCatalog();
@@ -242,13 +243,20 @@ describe("the review's marks after a change or a sign (spec L562, L574, L601)", 
 
   test("the sign step's reason shows while the simulation stands, unless the Simulation section says it", () => {
     const canceled = "You canceled in your wallet.";
-    expect(signStepNote({ phase: "review", error: canceled, simulation: { ok: true, block: 1 } })).toBe(canceled);
-    expect(signStepNote({ phase: "review", error: canceled, simulation: { ok: false, unavailable: true } })).toBe(canceled);
+    const named = (id: number) => (id === 11155111 ? "Sepolia" : `Chain ${id}`);
+    const note = (deploy: Parameters<typeof signStepNote>[0]) => signStepNote(deploy, named);
+    const unavailable = { ok: false, unavailable: true } as const;
+    expect(note({ phase: "review", error: canceled, simulation: { ok: true, block: 1 } })).toBe(canceled);
+    expect(note({ phase: "review", chainId: 11155111, error: canceled, simulation: unavailable })).toBe(canceled);
+    // The controller's own sentence, told by its flag and the exact words it writes for the chain.
     const cant = "Sepolia's RPC can't simulate this deploy. Signing without a simulation needs one more tick.";
-    expect(signStepNote({ phase: "review", error: cant, simulation: { ok: false, unavailable: true } })).toBeNull();
+    expect(note({ phase: "review", chainId: 11155111, error: cant, simulation: unavailable })).toBeNull();
+    expect(simulationOwnsError({ chainId: 11155111, error: cant, simulation: unavailable }, named)).toBe(true);
+    expect(simulationOwnsError({ chainId: 11155111, error: cant, simulation: { ok: false } }, named)).toBe(false);
+    expect(simulationOwnsError({ chainId: 11155111, error: canceled, simulation: unavailable }, named)).toBe(false);
     // An error with no simulation standing is the simulation's own (or the chain's): its section says it.
-    expect(signStepNote({ phase: "review", error: "Sepolia's public RPC isn't answering." })).toBeNull();
-    expect(signStepNote({ phase: "failed", error: canceled, simulation: { ok: true } })).toBeNull();
-    expect(signStepNote({ phase: "ready", simulation: { ok: true } })).toBeNull();
+    expect(note({ phase: "review", error: "Sepolia's public RPC isn't answering." })).toBeNull();
+    expect(note({ phase: "failed", error: canceled, simulation: { ok: true } })).toBeNull();
+    expect(note({ phase: "ready", simulation: { ok: true } })).toBeNull();
   });
 });

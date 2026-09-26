@@ -18,7 +18,8 @@ import { CutSection } from "./CutSection";
 import { DeployerSection } from "./DeployerSection";
 import { InitSection } from "./InitSection";
 import {
-  IN_FLIGHT_PHASES, PRE_SIGN_PHASES, PROGRESS_PHASES, changedSinceReview, resimulating, shortHash, signStepNote,
+  IN_FLIGHT_PHASES, PRE_SIGN_PHASES, PROGRESS_PHASES, changedSinceReview, controllerChainName, resimulating, shortHash,
+  signStepNote,
 } from "./model";
 import { NetworkSection } from "./NetworkSection";
 import { ProgressView } from "./ProgressView";
@@ -136,7 +137,7 @@ function ReviewDialog({ catalog, entry, top }: DialogComponentProps<"deploy-revi
 
   const progress = PROGRESS_PHASES.has(deploy.phase);
   const changed = changedSinceReview(deploy, analysis.recipeHash);
-  const signNote = signStepNote(deploy);
+  const signNote = signStepNote(deploy, controllerChainName);
   // Flow 13: the live diamond this deploy leaves as it is.
   const live = status.deployAgain && status.deployment ? status.deployment.address : null;
 

@@ -713,6 +713,27 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     return null;
   };
 
+  /**
+   * Sign stopped before anything went out: back to Review, never silently. The review shows why (while the simulation
+   * stands) and the console logs it as an Error, the deploy not having gone out, so the default "errors"
+   * announcements read it (spec L778). Politely: a refusal in the wallet is the person's own choice. The phase moves
+   * first, so the console doesn't read it too. An edit, account or chain change during the wallet round-trip wasn't
+   * watched (a new simulation then would have cut the send short), so it marks the review and simulates now (L562).
+   */
+  const stopSign = (error: string, keepSimulation = false): void => {
+    banner(false);
+    if (!keepSimulation) {
+      simulatedKey = null;
+      unavailableKey = null;
+    }
+    patch({ phase: "review", error, since: undefined, ...(keepSimulation ? {} : { simulation: undefined }) });
+    emit({ tag: "Error", text: error }, "warn");
+    const key = inputKey();
+    if (seenKey === null || key === seenKey) return;
+    if (!seenKey.startsWith(`${reviewKey()}|`)) patch({ changedSinceReview: true });
+    void track(simulate());
+  };
+
   const sign = async (options?: { withoutSimulation?: true }): Promise<void> => {
     if (disposed) return;
     const withoutSimulation = options?.withoutSimulation === true;
@@ -722,10 +743,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       return;
     }
     const snap = snapshotOf();
-    if (!snap.ok) {
-      patch({ phase: "review", error: snap.error });
-      return;
-    }
+    if (!snap.ok) return stopSign(snap.error);
     const s = snap.value;
     if (s.key !== (withoutSimulation ? unavailableKey : simulatedKey)) {
       note(SIMULATE_FIRST);
@@ -736,40 +754,18 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const alive = (): boolean => mine === epoch && !disposed;
     const port = await loadPort();
     if (!alive()) return;
-    if (!port.ok) {
-      patch({ error: port.error });
-      return;
-    }
+    if (!port.ok) return stopSign(port.error, true);
     const account = port.value.account();
-    if (!account) {
-      patch({ error: CONNECT_A_WALLET });
-      return;
-    }
+    if (!account) return stopSign(CONNECT_A_WALLET, true);
     if (!sameAddress(account.address, s.from)) {
       note(SIMULATE_FIRST);
       await track(simulate());
       return;
     }
-    if (account.chainId !== s.chainId) {
-      patch({ error: walletOn(chainName(account.chainId)) });
-      return;
-    }
+    if (account.chainId !== s.chainId) return stopSign(walletOn(chainName(account.chainId)), true);
     patch({ phase: "awaitingSignature", since: iso(), error: undefined, changedSinceReview: undefined });
     banner(true);
-    /**
-     * Back to Review, never silently: the review shows why (while the simulation stands) and the console logs it as
-     * an Error, the deploy not having gone out, so the default "errors" announcements read it (spec L778). Politely:
-     * a refusal in the wallet is the person's own choice. The phase moves first, so the console doesn't read it too.
-     */
-    const back = (error: string, keepSimulation = false): void => {
-      banner(false);
-      if (!keepSimulation) {
-        simulatedKey = null;
-        unavailableKey = null;
-      }
-      patch({ phase: "review", error, since: undefined, ...(keepSimulation ? {} : { simulation: undefined }) });
-      emit({ tag: "Error", text: error }, "warn");
-    };
+    const back = stopSign;
     // The predicted address itself, read now: the session's prediction may already be for another account.
     const probed = await port.value.probe(s.chainId, { refresh: true, path: s.path, codeAt: [s.address] });
     if (!alive()) return;

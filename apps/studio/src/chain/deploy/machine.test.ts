@@ -280,6 +280,50 @@ describe("signing", () => {
     expect(h.said.lines.at(-1)).toEqual({ tag: "Error", text: error });
   });
 
+  test("after a refusal, a wallet gone or on another chain stops Sign again with an Error line, announced", async () => {
+    for (const next of [null, { address: ALICE, chainId: 84532 }]) {
+      const { h, m } = rig();
+      m.open();
+      await flush();
+      h.port.sendQueue.push({ kind: "rejected" });
+      await m.sign();
+      await flush();
+      h.port.setAccount(next);
+      await m.sign();
+      await flush();
+      const error = m.state().error ?? "";
+      expect(error).not.toBe(CANCELED_IN_WALLET);
+      expect(error).toMatch(next === null ? /wallet/i : /^Your wallet is on Base Sepolia\.$/);
+      expect(h.said.lines.at(-1)).toEqual({ tag: "Error", text: error });
+      expect(h.said.announced).toContainEqual([error, { politeness: "polite" }]);
+      expect(h.port.sent).toHaveLength(0);
+    }
+  });
+
+  test("an edit during the wallet round-trip marks Changed since review on the way back and simulates it", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    let answer: () => void = () => {};
+    h.port.hold = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    h.port.sendQueue.push({ kind: "rejected" });
+    const signing = m.sign();
+    await flush();
+    expect(m.state().phase).toBe("awaitingSignature");
+    const p = h.inputs.project();
+    h.inputs.setProject({ ...p, deploy: { ...p.deploy, entropy: "0x0b0a090807060504030201" as Hex } });
+    // Nothing simulates while the wallet asks: a new simulation would cut the send short.
+    expect(h.port.methods().filter((x) => x === "simulate")).toHaveLength(1);
+    answer();
+    await signing;
+    await flush();
+    expect(m.state()).toMatchObject({ phase: "ready", changedSinceReview: true, address: predicted(h) });
+    expect(h.port.methods().filter((x) => x === "simulate")).toHaveLength(2);
+    expect(h.said.lines).toContainEqual({ tag: "Error", text: CANCELED_IN_WALLET });
+  });
+
   test("with announcements off, a refusal is logged but not read", async () => {
     const { h, m } = rig();
     h.settings.deployAnnouncements = "none";

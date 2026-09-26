@@ -13,6 +13,7 @@ import { command, defineCommands, env, type CommandArgsOf, type CommandContext, 
 import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra/chains";
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
 import { prediction } from "@/state";
+import { studioState } from "@/state/runtime";
 import {
   DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, PLACE_FACETS_FIRST, fixtureBlock, ON_ITS_WAY, SCOPE_TITLES, WAITING_FOR_SAFE,
   resolveBlockers, tickFirst,
@@ -32,6 +33,19 @@ function runs(): Promise<typeof import("./lazy")> {
 
 function blockers(ctx: CommandContext): Problem[] {
   return ctx.analysis.problems.filter((p) => p.severity === "blocker");
+}
+
+/**
+ * Whether the open project has a confirmed deploy (verified and live records are "confirmed" too), read from S1's
+ * records mirror, the same one the analysis reads: when it changes the analysis runs again, and so does this.
+ * `runAgain` asks the store itself before drawing the salt.
+ */
+function confirmedDeploy(ctx: CommandContext): boolean {
+  try {
+    return studioState().deployments.list().some((d) => d.projectId === ctx.project.id && d.status === "confirmed");
+  } catch {
+    return false;
+  }
 }
 
 function names(): string[] {
@@ -103,9 +117,11 @@ const again = command({
     if (block) return no(block);
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
     if (ctx.project.recipe.facets.length === 0) return no(PLACE_FACETS_FIRST);
-    // Deploy again… draws a new salt before the review opens (spec L584), so the current salt's address being taken
-    // (NET-05: the live diamond itself) doesn't hold it back. Deploy… keeps the salt, so it still counts it.
-    const count = blockers(ctx).filter((p) => p.code !== "NET-05").length;
+    // After a confirmed deploy, Deploy again… draws a new salt before the review opens (spec L286, L584), so the
+    // current salt's address being taken (NET-05: the live diamond itself) doesn't hold it back. With nothing
+    // confirmed the salt stays, so NET-05 counts, as it does for Deploy….
+    const redraws = confirmedDeploy(ctx);
+    const count = blockers(ctx).filter((p) => !(redraws && p.code === "NET-05")).length;
     if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
     return readOnly(ctx) ?? OK;
   },
