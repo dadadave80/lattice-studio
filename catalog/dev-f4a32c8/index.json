@@ -6259,7 +6259,7 @@
     "salt": "0x23ac1297d420218079953740f312f2c5385edfea1f817c984d2e6effea132efe",
     "version": "0.2.0"
   },
-  "hash": "0xc308b3d4623b3a96c67e5e937ee74985a1fd5059f16099c78272c9baa931a34a",
+  "hash": "0x2ab42999bbfac307417b4265a7e9dbb8e004a8473bc9fc532b9bf33efa1d20c1",
   "inits": [
     {
       "after": [],
@@ -13692,6 +13692,7 @@
   ],
   "toolchain": {
     "foundry": "1.8.3",
-    "solc": "0.8.36"
+    "solc": "0.8.36",
+    "solcLong": "0.8.36+commit.8a079791"
   }
 }

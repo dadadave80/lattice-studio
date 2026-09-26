@@ -139,6 +139,15 @@ export function parseToolVersion(output: string, bin: string): string | undefine
   return new RegExp(`^${bin}\\s+(?:Version:\\s*)?v?(\\d+\\.\\d+\\.\\d+)`, "m").exec(output)?.[1];
 }
 
+/**
+ * Splits solc's metadata version ("0.8.36+commit.11a8f77a") into the catalog's short `solc` (what recipes and the
+ * UI show) and full `solcLong` (what Sourcify's v2 API wants for verification, S8d). A version with no build
+ * metadata carries the same string in both.
+ */
+export function solcVersions(version: string): { solc: string; solcLong: string } {
+  return { solc: version.split("+")[0] ?? version, solcLong: version };
+}
+
 /** Foundry must be `FOUNDRY_VERSION` exactly, forge and anvil both; the error says how to fix it. */
 export async function checkFoundry(run: Runner = runCommand): Promise<Result<string, string>> {
   const fix = `Switch to Foundry ${FOUNDRY_VERSION} (foundryup --install ${FOUNDRY_VERSION}), then run bun run catalog again.`;
@@ -821,7 +830,7 @@ async function generateFrom(ctx: Context): Promise<Result<Generated, string>> {
 
   const input: CatalogInput = {
     lattice: { tag: id, commit: identity.commit },
-    toolchain: { foundry: ctx.foundry, solc: r.compiler.version.split("+")[0] ?? r.compiler.version },
+    toolchain: { foundry: ctx.foundry, ...solcVersions(r.compiler.version) },
     deployer: r.deployer,
     registry: sharedInput(registryEntry, registryDetail.value),
     factory: sharedInput(factoryEntry, factoryDetail.value),
