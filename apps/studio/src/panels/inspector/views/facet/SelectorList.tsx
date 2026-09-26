@@ -52,6 +52,9 @@ export function SelectorList({ facet, catalog, readOnly }: SelectorListProps) {
 
   const move = (event: KeyboardEvent<HTMLUListElement>) => {
     if (rows.length === 0) return;
+    // Only a pin button's own arrows move between rows: a row's actions menu (its trigger, or an item in its
+    // portaled popup, which still bubbles React events through this tree) keeps its own arrow handling.
+    if (!(event.target instanceof HTMLElement) || !event.target.hasAttribute("data-selector")) return;
     let next: number;
     switch (event.key) {
       case "ArrowDown":
@@ -86,6 +89,7 @@ export function SelectorList({ facet, catalog, readOnly }: SelectorListProps) {
               key={selector.hex}
               selector={selector}
               action={action}
+              facet={facet.name}
               readOnly={readOnly}
               tabIndex={index === current ? 0 : -1}
               onFocus={() => setActive(index)}

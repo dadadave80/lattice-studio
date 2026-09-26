@@ -78,6 +78,12 @@ button.row[aria-disabled="true"] {
   color: var(--lx-text-muted);
 }
 
+/* Copy selector, Copy signature, Show owner (ruling R3): stays fixed size beside the row's own button. */
+.actions {
+  flex: none;
+  margin-block: var(--lx-space-1);
+}
+
 .routed .state,
 .default .state {
   color: var(--lx-accent);
