@@ -25,7 +25,8 @@ export type CommandArgsMap = {
   "facet.routeContested": { facet: string };
   /** `verb: "keep"` titles it Keep {facet} instead of Route to {facet} (SEL-01). */
   "selector.route": { selector: Hex4; facet: string; verb?: "keep" };
-  "selector.clearOwner": { selector: Hex4 };
+  /** `verb: "remove"` titles it "Remove it" (SEL-04, spec L314). */
+  "selector.clearOwner": { selector: Hex4; verb?: "remove" };
   "selector.exclude": { selector: Hex4 };
   /** `facet` routes it when it's contested. */
   "selector.include": { selector: Hex4; facet?: string };
@@ -33,7 +34,8 @@ export type CommandArgsMap = {
   "recipe.load": { name: string };
   "recipe.replace": { name: string };
   /** `path` as C4a's field paths: "bundle.p.asset", "steps[2].admin". `value` is a recipe `Arg`. */
-  "init.setArg": { path: string; value: Arg };
+  /** `verb: "oneAdmin"` titles it "Use one admin" (INIT-03, spec L329); a `{ $ref: "self" }` value reads Use "This diamond" (AUTH-02, L333). */
+  "init.setArg": { path: string; value: Arg; verb?: "oneAdmin" };
   "init.addStep": { spec: string };
   /** A step path: "steps[2]". */
   "init.removeStep": { path: string };
@@ -69,7 +71,8 @@ export type CommandArgsMap = {
   "catalog.preview": { facet: string };
   // S5c
   "inspector.show": { facet?: string };
-  "inspector.focusSelectors": { facet: string };
+  /** `verb: "route"` titles it "Route a selector…" (SEL-03, spec L313). */
+  "inspector.focusSelectors": { facet: string; verb?: "route" };
   "dependency.compare": { options: string[] };
   "deploy.compare": { chainId: number; address: Address };
   // S5d
