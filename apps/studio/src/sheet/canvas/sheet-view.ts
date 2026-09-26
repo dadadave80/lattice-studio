@@ -246,18 +246,30 @@ function pushed(rect: Rect, dir: Direction, need: number): Rect {
   return shiftRect(rect, 0, need);
 }
 
+/** Total px² `rect` overlaps every float in `floats`, at their real size (no margin): the letter of 2.4.11. */
+function overlapPx(rect: Rect, floats: readonly Rect[]): number {
+  let total = 0;
+  for (const f of floats) {
+    const w = Math.min(rect.x + rect.width, f.x + f.width) - Math.max(rect.x, f.x);
+    const h = Math.min(rect.y + rect.height, f.y + f.height) - Math.max(rect.y, f.y);
+    if (w > 0 && h > 0) total += w * h;
+  }
+  return total;
+}
+
 /**
  * `clearOf` clears one float at a time by whichever direction moves it least (spec L771, 2.4.11), which can
  * walk a card into a *second* float its first move never crossed, then back again: each fix is locally
  * shortest but neither considers the other, and after its four passes the card can still be covered (the
  * Panel `floatingRects` lists, not cleared, spec L771). This starts from `clearOf`'s move and, while any float
- * still covers the card, finds whichever single direction clears every float still covering it at once — never
- * only the one that was checked last — and takes the shortest one that lands inside the sheet. Unrounded: a
- * fraction of a px left over from `clearOf`'s own rounding is exactly the kind of sliver this is for.
+ * still covers the card at `margin`, finds whichever single direction clears every float still covering it at
+ * once (grown by `margin`) — never only the one that was checked last — and takes the shortest one that lands
+ * inside the sheet. Unrounded: a fraction of a px left over from `clearOf`'s own rounding is exactly the kind
+ * of sliver this is for.
  */
-function clearResidual(target: Rect, size: Size, floats: readonly Rect[], from: { dx: number; dy: number }): { dx: number; dy: number } {
+function residualAt(target: Rect, size: Size, floats: readonly Rect[], from: { dx: number; dy: number }, margin: number): { dx: number; dy: number } {
   const sheet = { x: 0, y: 0, ...size };
-  const grown = grownFloats(floats, CLEAR_MARGIN);
+  const grown = grownFloats(floats, margin);
   let dx = from.dx;
   let dy = from.dy;
   for (let pass = 0; pass < 4; pass++) {
@@ -277,6 +289,23 @@ function clearResidual(target: Rect, size: Size, floats: readonly Rect[], from: 
     dy += moved.y - current.y;
   }
   return { dx, dy };
+}
+
+/**
+ * Runs `residualAt` at `CLEAR_MARGIN`'s breathing room, then, only if the card still truly overlaps a float
+ * (not just sits within another float's margin), retries at zero margin and keeps whichever leaves less real
+ * overlap. A card near three floats can have every direction blocked at `CLEAR_MARGIN` because clearing one
+ * float's real rect would land inside a second float's *margin* alone (never its real rect): 2.4.11 asks that
+ * a focused card isn't covered, not that it keeps the margin's gap, so a fix that exists only once the margin
+ * gives way still counts and is worth taking over one that leaves the card genuinely covered.
+ */
+function clearResidual(target: Rect, size: Size, floats: readonly Rect[], from: { dx: number; dy: number }): { dx: number; dy: number } {
+  const withMargin = residualAt(target, size, floats, from, CLEAR_MARGIN);
+  const marginOverlap = overlapPx(shiftRect(target, withMargin.dx, withMargin.dy), floats);
+  if (marginOverlap === 0) return withMargin;
+  const noMargin = residualAt(target, size, floats, from, 0);
+  const noMarginOverlap = overlapPx(shiftRect(target, noMargin.dx, noMargin.dy), floats);
+  return noMarginOverlap < marginOverlap ? noMargin : withMargin;
 }
 
 /** Pans so a rect on screen (relative to the sheet) lies inside it and clear of every floating element. */

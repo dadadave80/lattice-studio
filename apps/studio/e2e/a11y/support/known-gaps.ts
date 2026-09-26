@@ -15,14 +15,7 @@ export type KnownGap = {
   matches(finding: string): boolean;
 };
 
-export const KNOWN_GAPS: readonly KnownGap[] = [
-  {
-    id: "zoom-readout-covers-focused-card",
-    owner: "FX28 round 2 · S4b · apps/studio/src/sheet/canvas/sheet-view.ts (ensureVisible, clearOf, cardRect)",
-    rule: "spec L771 · WCAG 2.4.11 (partly obscured, so the spec's stricter reading): at 200% on the 30-card sheet, ⌘/Ctrl+↓ to DIAAdapter leaves the card's bottom-left corner 9 x 24 px under the \"Zoom 200%\" readout, though the readout is a Panel that floatingRects lists",
-    matches: (finding) => /under floating UI at \{"x":\d+(\.\d+)?,"y":\d+(\.\d+)?,"width":56,"height":24\}/.test(finding),
-  },
-];
+export const KNOWN_GAPS: readonly KnownGap[] = [];
 
 /** Splits findings into known gaps (annotated on `info`) and the rest, which fail the test. */
 export function withoutKnownGaps(findings: readonly string[], info: TestInfo): string[] {

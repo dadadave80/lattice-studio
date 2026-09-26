@@ -626,4 +626,63 @@ describe("locate, Back to content, minimap, auto-pan", () => {
       expect(covered, `${name}'s focused card lands under floating UI: ${JSON.stringify(card)}`).toBe(0);
     }
   });
+
+  test("a card between three floats clears the one it truly overlaps, not just every float's margin (2.4.11, FX31)", async () => {
+    // The a11y e2e suite's exact case (spec L771): at 200% on a 30-card sheet, ⌘/Ctrl+↓ to DIAAdapter (5
+    // selectors) left the card's bottom-left corner 9 x 24 px under the zoom readout. clearResidual (FX28)
+    // found no single direction that cleared every float's CLEAR_MARGIN at once — the readout and the tool
+    // strip only need a small push right, but that same push crosses into the title block's margin, and
+    // nothing clears the title block's real rect without leaving the sheet — so it gave up entirely, though a
+    // real (unmargined) gap existed all along.
+    const catalog = fixtureCatalog();
+    const name = "DIAAdapter";
+    const project = cardProject(catalog, [name], { expanded: [name] });
+    await renderSheet({ project });
+    await runCommand({ id: "sheet.zoomTo", args: { zoom: 2 } }, "palette");
+    const entry = project.layout[name];
+    if (!entry) throw new Error("no entry");
+
+    const toolStrip = document.createElement("div");
+    toolStrip.dataset.sheetFloat = "";
+    Object.assign(toolStrip.style, { position: "absolute", left: "16px", top: "16px", width: "38px", height: "297px" });
+    const zoomReadout = document.createElement("div");
+    zoomReadout.dataset.sheetFloat = "";
+    Object.assign(zoomReadout.style, { position: "absolute", left: "16px", top: "660px", width: "56px", height: "24px" });
+    const titleBlock = document.createElement("div");
+    titleBlock.dataset.sheetFloat = "";
+    Object.assign(titleBlock.style, { position: "absolute", left: "543.203125px", top: "406px", width: "324.796875px", height: "278px" });
+    flowElement().append(toolStrip, zoomReadout, titleBlock);
+    onCleanup(() => {
+      toolStrip.remove();
+      zoomReadout.remove();
+      titleBlock.remove();
+    });
+
+    // Measure the card's real (token-computed) size at 200%, then place it so its bottom-left corner truly
+    // overlaps the readout while its top only grazes the tool strip's CLEAR_MARGIN, never its real rect.
+    session.set((s) => ({ viewports: { ...s.viewports, [project.id]: { x: -entry.x * 2, y: -entry.y * 2, zoom: 2 } } }));
+    await drawn();
+    const natural = cardScreenRect(name);
+    const targetX = 63;
+    const targetY = 684 - natural.height;
+    session.set((s) => ({
+      viewports: { ...s.viewports, [project.id]: { x: targetX - entry.x * 2, y: targetY - entry.y * 2, zoom: 2 } },
+    }));
+    await expect.poll(() => cardScreenRect(name).x).toBeCloseTo(targetX, 0);
+
+    function overlapArea(a: DOMRect, b: DOMRect): number {
+      const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      return w > 0 && h > 0 ? w * h : 0;
+    }
+
+    expect(ensureVisible(name)).toBe(true);
+    await expect.poll(() => {
+      const r = cardScreenRect(name);
+      const sheet = flowElement().getBoundingClientRect();
+      const rel = (b: DOMRect) => new DOMRect(b.left - sheet.left, b.top - sheet.top, b.width, b.height);
+      const floats = [toolStrip, zoomReadout, titleBlock].map((el) => rel(el.getBoundingClientRect()));
+      return floats.reduce((sum, f) => sum + overlapArea(r, f), 0);
+    }).toBe(0);
+  });
 });
