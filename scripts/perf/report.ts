@@ -34,12 +34,12 @@ export type BudgetKey = "firstLoadGate" | "lcp" | "inp" | "drag" | "analysis";
  * enforces again.
  */
 export const REPORT_ONLY: Readonly<Partial<Record<BudgetKey, string>>> = {
-  // FX30: the LCP element (StartBlock's recipe cards, lazy `layers` chunk) paints after the entry, the catalog
-  // index and ~45 more chunks.
-  lcp: "FX30",
-  // FX30: every drag move re-places every note (OverlayLayer → C9 placeNotes → nearestFree). A reference row
-  // (spec L816 gives no budget), so it isn't enforced either way.
-  drag: "FX30",
+  // Q19 (David): the LCP element (the Start block) renders in the lazy canvas, so it paints after the entry, the
+  // catalog index and ~45 chunks; FX30 couldn't move it. The fix is the sheet lazy after a static first paint.
+  lcp: "Q19",
+  // Q19: FX30 cut it from ~47 to ~32 ms per move; the rest is React Flow, the canvas and shell subscriptions.
+  // A reference row (spec L816 gives no budget), so it isn't enforced either way.
+  drag: "Q19",
 };
 
 export type Status = "ok" | "over" | "above reference" | "warn" | "info" | "missing";

@@ -117,21 +117,21 @@ describe("evaluate", () => {
     expect(e.fixes.some((f) => f.includes("analysis/analyze.ts 34%") && f.includes("analyze.ts:105 20%"))).toBe(true);
   });
 
-  test("the ruling: LCP report-only until FX30, the drag row names FX30, the rest (analysis since FX29) enforced", () => {
-    expect(REPORT_ONLY).toEqual({ lcp: "FX30", drag: "FX30" });
+  test("the ruling: LCP report-only until Q19, the drag row names Q19, the rest (analysis since FX29) enforced", () => {
+    expect(REPORT_ONLY).toEqual({ lcp: "Q19", drag: "Q19" });
     const e = evaluate(inputs({ lighthouse: lighthouse(7900) }));
     expect(e.ok).toBe(true);
-    expect(e.rows.find((r) => r.item.startsWith("Largest Contentful Paint"))).toMatchObject({ status: "over", enforced: false, until: "FX30" });
+    expect(e.rows.find((r) => r.item.startsWith("Largest Contentful Paint"))).toMatchObject({ status: "over", enforced: false, until: "Q19" });
     const slow = evaluate(inputs({ analysis: analysis(6.7) }));
     expect(slow.rows.find((r) => r.item.startsWith("Analysis, 30 colliding"))).toMatchObject({ status: "over", enforced: true });
     expect(slow.ok).toBe(false);
-    expect(e.rows.find((r) => r.item.startsWith("Drag, added per move"))).toMatchObject({ enforced: false, until: "FX30" });
+    expect(e.rows.find((r) => r.item.startsWith("Drag, added per move"))).toMatchObject({ enforced: false, until: "Q19" });
     expect(e.fixes.some((f) => f.startsWith("LCP is 7.90 s"))).toBe(true);
     // INP and the first-load gate still fail the run.
     expect(evaluate(inputs({ drag: drag(232) })).ok).toBe(false);
     expect(evaluate(inputs({ size: size(380_000) })).ok).toBe(false);
     const text = renderEvaluation(e, [], false);
-    expect(text).toMatch(/Largest Contentful Paint \(mobile, median of 3\)\s+7\.90 s\s+2\.5 s\s+over \(report-only until FX30\)/);
+    expect(text).toMatch(/Largest Contentful Paint \(mobile, median of 3\)\s+7\.90 s\s+2\.5 s\s+over \(report-only until Q19\)/);
   });
 
   test("smoke never fails on a budget, only on a missing measurement", () => {
