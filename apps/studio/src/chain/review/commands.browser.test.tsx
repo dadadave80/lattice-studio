@@ -3,7 +3,7 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import {
-  command, commandState, doc, getCommand, history, putDeployment, runCommand, session, type CommandContext,
+  command, commandState, doc, getAnalysis, getCommand, history, putDeployment, runCommand, session, type CommandContext,
 } from "@/contracts";
 import { handleKeyDown } from "@/commands/keys/dispatcher";
 import { FIXTURE_CATALOG } from "@/chain/infra";
@@ -155,6 +155,32 @@ describe("deploy.again (Flow 13)", () => {
     await runCommand({ id: "deploy.again" }, "button");
     expect(doc.get().deploy.entropy).toBe(before);
     expect(bufferedServices().log.map((l) => l.text)).toContain("Nothing is live yet, so the salt stays as it is.");
+  });
+
+  test("the live diamond at the old salt's address (NET-05) doesn't hold it back; Deploy… with the same salt still counts it (spec L584)", async () => {
+    const catalog = deployableCatalog();
+    const chain = fakeChainService({ account: account(), catalog, state: { [SEPOLIA]: { predictedHasCode: true } } });
+    chain.install();
+    installController(fakeDeployController());
+    installFees();
+    await renderWithStudio(<DialogHost />, { project: templateProject("ERC20"), catalog, session: { chainId: SEPOLIA } });
+    const address = await predicted();
+    await putDeployment(record({ address: address as Deployment["address"] }));
+    // The chain read that finds the live diamond at the predicted address (the title block and review do the same).
+    await chain.probe(SEPOLIA, { path: "factory" });
+    // The recipe moved on since it went live.
+    await runCommand({ id: "init.setArg", args: { path: "steps[0].name_", value: "Vault" } }, "api");
+    await vi.waitFor(() => expect(getAnalysis().problems.map((p) => `${p.id}:${p.severity}`)).toContain(`NET-05:${SEPOLIA}:blocker`));
+    await vi.waitFor(() => expect(reason("deploy.open")).toBe("Resolve 1 blocker · F8"));
+    expect(commandState({ id: "deploy.open" }, "button")).toMatchObject({ fix: { id: "problem.next" } });
+    expect(reason("deploy.again")).toBeNull();
+  });
+
+  test("any other blocker still holds Deploy again… back", async () => {
+    const recipe = makeRecipe({}, deployableCatalog());
+    await studio({ project: makeProject({ recipe: { ...recipe, facets: ["ERC20"] } }) });
+    await putDeployment(record({}));
+    await vi.waitFor(() => expect(reason("deploy.again")).toMatch(/^Resolve \d+ blockers? · F8$/));
   });
 
   test("an empty recipe says Place facets first, before a blocker count (spec L378)", async () => {

@@ -103,7 +103,9 @@ const again = command({
     if (block) return no(block);
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
     if (ctx.project.recipe.facets.length === 0) return no(PLACE_FACETS_FIRST);
-    const count = blockers(ctx).length;
+    // Deploy again… draws a new salt before the review opens (spec L584), so the current salt's address being taken
+    // (NET-05: the live diamond itself) doesn't hold it back. Deploy… keeps the salt, so it still counts it.
+    const count = blockers(ctx).filter((p) => p.code !== "NET-05").length;
     if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
     return readOnly(ctx) ?? OK;
   },
