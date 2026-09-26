@@ -42,11 +42,12 @@ export async function focusedStop(page: Page): Promise<TabStop | null> {
 }
 
 /**
- * Tabs through the whole page from the top until focus comes back to the first stop (or `limit` presses), and
- * returns every stop in order.
+ * Tabs through the whole page from the top (or, with `fromHere`, from the focused element: inside a modal dialog)
+ * until focus comes back to the first stop (or `limit` presses), and returns every stop in order.
  */
-export async function tabStops(page: Page, limit = 400): Promise<TabStop[]> {
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+export async function tabStops(page: Page, options: { limit?: number; fromHere?: boolean } = {}): Promise<TabStop[]> {
+  const { limit = 400, fromHere = false } = options;
+  if (!fromHere) await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const stops: TabStop[] = [];
   for (let presses = 0; presses < limit; presses += 1) {
     await page.keyboard.press("Tab");

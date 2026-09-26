@@ -8,9 +8,9 @@ import { runAxe } from "../_support/axe.ts";
 import { expect, test } from "../_support/fixtures.ts";
 import { DEPLOY_REVIEW_CRASH, withoutKnownGaps } from "./support/known-gaps.ts";
 import { findings } from "./support/report.ts";
-import { EMULATIONS, STATES, THEMES, expectTheme, seedTheme } from "./support/states.ts";
+import { DIALOG_STATES, EMULATIONS, STATES, THEMES, expectTheme, seedTheme } from "./support/states.ts";
 
-for (const state of STATES) {
+for (const state of [...STATES, ...DIALOG_STATES]) {
   test.describe(`axe · ${state.name}`, () => {
     for (const theme of THEMES) {
       test(`${theme} theme, every emulation`, async ({ page, context }) => {
@@ -18,9 +18,13 @@ for (const state of STATES) {
         await state.reach(page);
         await expectTheme(page, theme);
         const found: string[] = [];
+        const include = state.scope?.(page);
         for (const emulation of EMULATIONS) {
           await page.emulateMedia(emulation.media);
-          const results = await runAxe(page, emulation.disable ? { disable: emulation.disable } : {});
+          const results = await runAxe(page, {
+            ...(include ? { include } : {}),
+            ...(emulation.disable ? { disable: emulation.disable } : {}),
+          });
           for (const line of findings(results)) found.push(`${emulation.name}: ${line}`);
         }
         const unknown = withoutKnownGaps(found, test.info());

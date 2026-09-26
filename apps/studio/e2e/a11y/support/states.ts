@@ -2,7 +2,7 @@
  * The states the accessibility suite checks (the Q2 brief's list, spec L795-L797), each reached from a seeded
  * project with the keyboard only, and the themes and media emulations every state is checked under.
  */
-import { expect, type BrowserContext, type Page } from "@playwright/test";
+import { expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import type { ThemeChoice } from "../../../src/contracts/stores.ts";
 import { focusRegion, focusedRegion, region } from "../../_support/keys.ts";
 import { collisionsProject, recipeProject } from "../../_support/projects.ts";
@@ -50,20 +50,21 @@ export const EMULATIONS: readonly Emulation[] = [
   { name: "more contrast", media: { ...NEUTRAL, contrast: "more" } },
 ];
 
-export type StateName =
-  | "empty"
-  | "30 cards with collisions"
-  | "a focused card"
-  | "init order mode"
-  | "filtered catalog"
-  | "palette"
-  | "export";
-
 export type AppState = {
-  name: StateName;
+  name: string;
   /** Opens the app (after the theme is seeded) and reaches the state, keyboard only once it has loaded. */
   reach(page: Page): Promise<void>;
+  /**
+   * A modal state checks its dialog only: the page behind it is inert and dimmed by the backdrop, so axe would
+   * measure blended colors nobody reads (the page itself is checked in the other states).
+   */
+  scope?(page: Page): Locator;
 };
+
+/** The one open modal dialog. */
+function openDialog(page: Page): Locator {
+  return page.getByRole("dialog");
+}
 
 /** The sheet's first card, as Tab reaches it: a group named "{facet}, {n} selectors…" (spec L745). */
 export function cards(page: Page) {
@@ -125,6 +126,7 @@ export const STATES: readonly AppState[] = [
   },
   {
     name: "palette",
+    scope: openDialog,
     async reach(page) {
       await seedCollisions(page);
       await openPalette(page);
@@ -142,6 +144,57 @@ export const STATES: readonly AppState[] = [
       await page.keyboard.press("Enter");
       await expect(page.getByRole("menu", { name: "Export" })).toBeVisible();
       await expect(page.getByRole("menuitem").first()).toBeVisible();
+    },
+  },
+];
+
+async function seedErc20(page: Page): Promise<void> {
+  await seedProject(page, { project: recipeProject("ERC20", { filled: true }) });
+  await waitForSheet(page);
+}
+
+/** Beyond the brief's list: dialogs most sessions meet, checked the same way. */
+export const DIALOG_STATES: readonly AppState[] = [
+  {
+    name: "Keyboard shortcuts dialog",
+    scope: openDialog,
+    async reach(page) {
+      await seedErc20(page);
+      await focusFirstCard(page);
+      await page.keyboard.press("?");
+      await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
+    },
+  },
+  {
+    name: "Settings dialog",
+    scope: openDialog,
+    async reach(page) {
+      await seedErc20(page);
+      await runInPalette(page, "Open Settings");
+      await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+    },
+  },
+  {
+    name: "Browse all recipes dialog",
+    scope: openDialog,
+    async reach(page) {
+      await openEmpty(page);
+      await waitForSheet(page);
+      await focusRegion(page, "Sheet");
+      await tabTo(page, region(page, "Sheet").getByRole("button", { name: "Browse all recipes" }));
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("dialog", { name: /recipes/i })).toBeVisible();
+    },
+  },
+  {
+    name: "Choose per selector dialog",
+    scope: openDialog,
+    async reach(page) {
+      await seedCollisions(page);
+      await focusRegion(page, "Sheet");
+      await tabTo(page, region(page, "Sheet").getByRole("button", { name: "Choose per selector…" }).first());
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("dialog", { name: /per selector/i })).toBeVisible();
     },
   },
 ];

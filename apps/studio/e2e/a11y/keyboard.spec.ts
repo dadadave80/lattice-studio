@@ -3,13 +3,14 @@
  * without a toast, a visible 2 px focus outline on every Tab stop, single-key shortcuts inert in text fields and
  * trees, and `document.title` following the project. Keyboard only once the page has loaded.
  */
+import type { Page } from "@playwright/test";
 import { expect, test } from "../_support/fixtures.ts";
 import { REGIONS, focusRegion, focusedRegion, nextRegion, pagePlatform, previousRegion, region } from "../_support/keys.ts";
 import { collisionsProject, recipeProject } from "../_support/projects.ts";
 import { openEmpty, seedProject } from "../_support/seed.ts";
-import { commandLine, isFocused, pressMod, runConsole, tabTo, waitForSheet } from "./support/keyboard.ts";
+import { focusRing, tabStops, type TabStop } from "./support/focus.ts";
+import { commandLine, isFocused, pressMod, runConsole, runInPalette, tabTo, waitForSheet } from "./support/keyboard.ts";
 import { focusFirstCard } from "./support/states.ts";
-import { focusRing, tabStops } from "./support/focus.ts";
 
 test.describe("Skip to sheet (spec L743)", () => {
   test("is the first Tab stop and moves focus to the sheet @smoke", async ({ page, browserName }) => {
@@ -68,20 +69,40 @@ test.describe("F6 regions (spec L743, IR L16)", () => {
   });
 });
 
+function withoutRing(stops: readonly TabStop[]): string[] {
+  return stops.filter((stop) => !focusRing(stop).ok).map((stop) => `${stop.describe} · ${focusRing(stop).why}`);
+}
+
 test.describe("focus visible (spec L771, WCAG 2.4.7, 2.4.13)", () => {
   for (const [name, seed] of [
-    ["empty", (page: Parameters<typeof openEmpty>[0]) => openEmpty(page)],
-    ["30 cards with collisions", (page: Parameters<typeof openEmpty>[0]) => seedProject(page, { project: collisionsProject() })],
+    ["empty", (page: Page) => openEmpty(page)],
+    ["30 cards with collisions", (page: Page) => seedProject(page, { project: collisionsProject() })],
   ] as const) {
-    test(`every Tab stop shows a 2 px outline · ${name}`, async ({ page }) => {
-      await seed(page);
-      await waitForSheet(page);
-      const stops = await tabStops(page);
-      expect(stops.length).toBeGreaterThan(20);
-      const missing = stops.filter((stop) => !focusRing(stop).ok).map((stop) => `${stop.describe} · ${focusRing(stop).why}`);
-      expect(missing, missing.join("\n")).toEqual([]);
-    });
+    for (const forced of [false, true]) {
+      test(`every Tab stop shows a 2 px outline · ${name}${forced ? " · forced colors" : ""}`, async ({ page }) => {
+        if (forced) await page.emulateMedia({ forcedColors: "active" });
+        await seed(page);
+        await waitForSheet(page);
+        const stops = await tabStops(page);
+        expect(stops.length).toBeGreaterThan(20);
+        const missing = withoutRing(stops);
+        expect(missing, missing.join("\n")).toEqual([]);
+      });
+    }
   }
+
+  test("every Tab stop inside Settings shows a 2 px outline", async ({ page }) => {
+    await seedProject(page, { project: recipeProject("ERC20") });
+    await waitForSheet(page);
+    await runInPalette(page, "Open Settings");
+    const settings = page.getByRole("dialog", { name: "Settings" });
+    await expect(settings).toBeVisible();
+    const stops = await tabStops(page, { fromHere: true, limit: 120 });
+    expect(stops.length).toBeGreaterThan(3);
+    const missing = withoutRing(stops);
+    expect(missing, missing.join("\n")).toEqual([]);
+    await expect(settings, "Tab stays inside the modal").toBeVisible();
+  });
 });
 
 /**
