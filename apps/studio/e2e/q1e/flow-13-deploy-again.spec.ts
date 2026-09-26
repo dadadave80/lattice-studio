@@ -95,10 +95,6 @@ test.describe("Flow 13. Deploy again after changes", () => {
   }
 
   test("with the deployer's wallet connected, Deploy again… stays enabled once modified", async ({ page, anvil }) => {
-    test.fail(
-      true,
-      "NET-05 fires on the recorded live diamond itself once the deployer connects (\"This account already deployed a diamond with this salt…\"), so Live shows 1 blocker and Deploy again… is disabled with \"Resolve 1 blocker · F8\"; spec L584 has Deploy again draw the new salt · follow-up for C6/S8b from Q1e",
-    );
     const project = recipeProject("GovernedVault", { filled: true });
     const live = await deployOnAnvil(anvil, project);
     await seedProject(page, { project, deployments: [live] });
