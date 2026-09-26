@@ -7,7 +7,10 @@
  *   prediction is left out: AUTH-02 is about addresses this diamond had before (spec L333).
  * - `unconfirmed` and `unconfirmedFrom` from `project.provenance`: argument paths that came from a link or a
  *   file (LINK-01 keeps only the ones that receive authority).
- * - `chain` from the selected chain's readiness, once its probes are in.
+ * - `chain` from the selected chain's readiness, once its probes are in. When the predicted address is this
+ *   project's own confirmed deployment on that chain (Live, before Deploy again draws a new salt, spec L584),
+ *   the code there is the diamond Studio deployed, not a collision: `predictedHasCode` is left out, so NET-05
+ *   doesn't block Deploy again. A mismatch, pending, proposed or failed record doesn't count; NET-05 still fires.
  */
 import type { Address, AnalysisContext, ChainState, Deployment, Project } from "@lattice-studio/core";
 import { sameAddress, toChecksum } from "@lattice-studio/core";
@@ -71,6 +74,17 @@ export function buildContext(input: ContextInput): AnalysisContext {
     ctx.unconfirmedFrom = unconfirmedFrom;
   }
 
-  if (chain) ctx.chain = chain;
+  if (chain) ctx.chain = current !== null && isOwnDiamond(chain, current, deployments) ? withoutPredictedCode(chain) : chain;
   return ctx;
+}
+
+/** Whether the code at the predicted address is this project's own confirmed diamond on the probed chain. */
+function isOwnDiamond(chain: ChainState, predicted: Address, deployments: readonly Deployment[]): boolean {
+  if (chain.predictedHasCode !== true) return false;
+  return deployments.some((d) => d.status === "confirmed" && d.chainId === chain.chainId && sameAddress(d.address, predicted));
+}
+
+function withoutPredictedCode(chain: ChainState): ChainState {
+  const { predictedHasCode: _, ...rest } = chain;
+  return rest;
 }
