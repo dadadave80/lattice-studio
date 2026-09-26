@@ -40,7 +40,8 @@ defineCommands([
   }),
   command<CommandArgsMap["inspector.focusSelectors"]>({
     id: "inspector.focusSelectors",
-    title: ({ facet }) => `Show ${facet}'s selectors`,
+    // SEL-03 passes `verb: "route"` for the spec's fix words (L313); otherwise it shows the facet's selectors.
+    title: ({ facet, verb }) => (verb === "route" ? "Route a selector…" : `Show ${facet}'s selectors`),
     category: "Build",
     enabled: (ctx, { facet }) => onSheet(ctx.project.recipe.facets, facet),
     run: (_ctx, { facet }) => {

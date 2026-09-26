@@ -19,12 +19,14 @@ function ownerProblems(view: RecipeView): Problem[] {
   for (const [selector, facet] of view.owners) {
     const placed = view.placedNames.has(facet);
     const where: Anchor[] = [placed ? { kind: "selector", selector, facet } : { kind: "selector", selector }];
-    const fixes: CommandRef[] = [{ id: "selector.clearOwner", args: { selector } }];
     const id = problemId(selector === EXPORT_SELECTORS ? "SEL-04" : "SEL-05", selector);
     if (selector === EXPORT_SELECTORS) {
+      // SEL-04's fix reads "Remove it" (spec L314); SEL-05's stays "Clear owner".
+      const fixes: CommandRef[] = [{ id: "selector.clearOwner", args: { selector, verb: "remove" } }];
       out.push(problem("SEL-04", where, { selector, signature: EXPORT_SELECTORS_SIGNATURE, facet }, fixes, { id }));
       continue;
     }
+    const fixes: CommandRef[] = [{ id: "selector.clearOwner", args: { selector } }];
     const exports = view.contenders.get(selector)?.includes(facet) ?? false;
     if (placed && exports) continue;
     const params: ProblemParams["SEL-05"] = { selector, facet, reason: placed ? "not-exported" : "not-placed" };
@@ -111,7 +113,8 @@ function facetProblems(view: RecipeView, routing: Routing): Problem[] {
       excluded.length === selectors.length ? "excluded" : seams.length === selectors.length ? "seams" : given.length === selectors.length && seams.length === 0 ? "owned" : "mixed";
     const movable = selectors.filter((s) => view.exclude.has(s) || (routing[s] !== undefined && routing[s]?.via !== "seam"));
     const fixes: CommandRef[] = [{ id: "facet.remove", args: { facets: [facet.name] } }];
-    if (movable.length > 0) fixes.push({ id: "inspector.focusSelectors", args: { facet: facet.name } });
+    // SEL-03's second fix reads "Route a selector…" (spec L313).
+    if (movable.length > 0) fixes.push({ id: "inspector.focusSelectors", args: { facet: facet.name, verb: "route" } });
     out.push(problem("SEL-03", where, { facet: facet.name, count: selectors.length, why, servedBy: owners, movable }, fixes));
   }
   return out;

@@ -5,10 +5,11 @@ import type { ChainState } from "../model/chain";
 import type { Problem, ProblemCode } from "../model/problems";
 import type { Arg, Recipe } from "../model/recipe";
 import { autoOrder } from "../init/plan/plan";
+import { addInitStep } from "../edit/recipe-ops";
 import { lintCopy } from "../format/copy-lint";
 import { renderProblem } from "../narrate/problem";
-import { makeCatalog, makeFacet, makeInit, makeRecipe } from "../testing/builders";
-import { loadFixtureCatalog } from "../testing/fixtures";
+import { makeCatalog, makeFacet, makeInit, makeProject, makeRecipe } from "../testing/builders";
+import { loadBuiltCatalog, loadFixtureCatalog } from "../testing/fixtures";
 import { checkInit } from "./init";
 
 const fixture = loadFixtureCatalog();
@@ -41,6 +42,19 @@ function only(problems: Problem[], code: ProblemCode): Problem[] {
 
 function steps(facets: string[], list: { spec: string; args: Record<string, Arg> }[]): Recipe {
   return makeRecipe({ facets, init: { kind: "steps", steps: list } }, catalog);
+}
+
+/** Applies every `init.addStep` fix a problem offers, and checks `addInitStep` doesn't refuse it. */
+function applyAddStepFixes(recipe: Recipe, cat: Catalog, problems: Problem[]): void {
+  const project = makeProject({ recipe });
+  for (const problem of problems) {
+    for (const fix of problem.fixes) {
+      if (fix.id !== "init.addStep") continue;
+      const spec = fix.args?.["spec"];
+      const result = addInitStep(project, cat, spec as string);
+      expect([problem.id, result.changed, result.summary]).toEqual([problem.id, true, `Added ${spec as string} to the init plan`]);
+    }
+  }
 }
 
 function vault(p: Record<string, Arg>): Recipe {
@@ -268,7 +282,7 @@ describe("INIT-03", () => {
     expect(p?.fixes).toEqual([
       { id: "init.removeStep", args: { path: "steps[0]" } },
       { id: "init.removeStep", args: { path: "steps[1]" } },
-      { id: "init.setArg", args: { path: "steps[1].admin", value: ADMIN_A } },
+      { id: "init.setArg", args: { path: "steps[1].admin", value: ADMIN_A, verb: "oneAdmin" } },
     ]);
     expect(p?.message).toBe("AccessControlInit and SafeDiamondCutInit both set up AccessControl, granting its roles to different admins.");
   });
@@ -299,7 +313,7 @@ describe("INIT-03", () => {
     expect(only(run(recipe({ $ref: "self" }), synthetic), "INIT-03").map((p) => p.severity)).toEqual(["info"]);
     const [p] = only(run(recipe(ADMIN_B), synthetic), "INIT-03");
     expect(p?.severity).toBe("warning");
-    expect(p?.fixes.at(-1)).toEqual({ id: "init.setArg", args: { path: "steps[1].admin", value: { $ref: "self" } } });
+    expect(p?.fixes.at(-1)).toEqual({ id: "init.setArg", args: { path: "steps[1].admin", value: { $ref: "self" }, verb: "oneAdmin" } });
   });
 });
 
@@ -340,6 +354,134 @@ describe("INIT-04", () => {
     expect(problems[0]?.message).toBe("ERC20 has no init step; it initializes in the same call as ERC20VotesInit, so it needs one too.");
     const both = run(makeRecipe({ init: { kind: "steps", steps: [{ spec: "ERC20Init", args: {} }, { spec: "ERC20VotesInit", args: {} }] } }), synthetic);
     expect(both.map((p) => p.id)).toEqual(["INIT-04:Nonces"]);
+  });
+
+  test("a facet's own module can come before the init's last module (ERC20VotesInit ends with AccessControl, K3's real shape)", () => {
+    const synthetic = makeCatalog({
+      facets: [makeFacet({ name: "AccessControl", init: "AccessControlInit" }), makeFacet({ name: "ERC20Votes", init: "ERC20VotesInit" })],
+      inits: [
+        makeInit({ name: "AccessControlInit", initializes: [{ module: "AccessControl" }] }),
+        makeInit({
+          name: "ERC20VotesInit",
+          initializes: [{ module: "EIP712" }, { module: "Nonces" }, { module: "Votes" }, { module: "ERC20Votes" }, { module: "AccessControl" }],
+        }),
+      ],
+    });
+    const recipe = makeRecipe(
+      { facets: ["AccessControl", "ERC20Votes"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: {} }] } },
+      synthetic,
+    );
+    const problems = only(run(recipe, synthetic), "INIT-04");
+    expect(problems).toEqual([
+      {
+        id: "INIT-04:ERC20Votes",
+        code: "INIT-04",
+        severity: "blocker",
+        where: [{ kind: "facet", facet: "ERC20Votes" }],
+        params: { module: "ERC20Votes", spec: "ERC20VotesInit", facet: "ERC20Votes" },
+        message: "ERC20Votes has no init step, so ERC20Votes is never initialized.",
+        fixes: [{ id: "init.addStep", args: { spec: "ERC20VotesInit" } }],
+      },
+    ]);
+    applyAddStepFixes(recipe, synthetic, problems);
+  });
+
+  test("a bundle facet's init can't join a plan that already has steps: no fix `addInitStep` would refuse (K3's GovernedVaultInit shape)", () => {
+    const synthetic = makeCatalog({
+      facets: [makeFacet({ name: "AccessControl", init: "AccessControlInit" }), makeFacet({ name: "GovernedVault", init: "GovernedVaultInit" })],
+      inits: [
+        makeInit({ name: "AccessControlInit", initializes: [{ module: "AccessControl" }] }),
+        makeInit({ name: "GovernedVaultInit", kind: "bundle", initializes: [{ module: "AccessControl" }, { module: "Governor" }] }),
+      ],
+    });
+    const recipe = makeRecipe(
+      { facets: ["AccessControl", "GovernedVault"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: {} }] } },
+      synthetic,
+    );
+    const problems = only(run(recipe, synthetic), "INIT-04");
+    expect(problems).toEqual([
+      {
+        id: "INIT-04:Governor",
+        code: "INIT-04",
+        severity: "blocker",
+        where: [{ kind: "facet", facet: "GovernedVault" }],
+        params: { module: "Governor", spec: "", facet: "GovernedVault" },
+        message: "GovernedVault has no init step, so Governor is never initialized.",
+        fixes: [],
+      },
+    ]);
+    applyAddStepFixes(recipe, synthetic, problems);
+    // Demonstrates why: offering the bundle itself, as the buggy code did, is a fix `addInitStep` refuses.
+    const refused = addInitStep(makeProject({ recipe }), synthetic, "GovernedVaultInit");
+    expect([refused.changed, refused.summary]).toEqual([false, "GovernedVaultInit is a bundle, so it can't join other steps. Remove them first."]);
+  });
+
+  test("that same bundle facet, with no steps yet, still offers its own init", () => {
+    const synthetic = makeCatalog({
+      facets: [makeFacet({ name: "GovernedVault", init: "GovernedVaultInit" })],
+      inits: [makeInit({ name: "GovernedVaultInit", kind: "bundle", initializes: [{ module: "AccessControl" }, { module: "Governor" }] })],
+    });
+    const recipe = makeRecipe({ facets: ["GovernedVault"] }, synthetic);
+    const problems = only(run(recipe, synthetic), "INIT-04");
+    expect(problems.map((p) => [p.id, p.params["spec"], p.fixes])).toEqual([
+      ["INIT-04:Governor", "GovernedVaultInit", [{ id: "init.addStep", args: { spec: "GovernedVaultInit" } }]],
+    ]);
+    applyAddStepFixes(recipe, synthetic, problems);
+  });
+
+  test("a plain step init offers no fix once the plan is already a different bundle: `addInitStep` refuses any addition then", () => {
+    const synthetic = makeCatalog({
+      facets: [makeFacet({ name: "Vault", init: "VaultInit" }), makeFacet({ name: "ERC20", init: "ERC20Init" })],
+      inits: [
+        makeInit({ name: "VaultInit", kind: "bundle", initializes: [{ module: "VaultCore" }] }),
+        makeInit({ name: "ERC20Init", initializes: [{ module: "ERC20" }] }),
+      ],
+    });
+    const recipe = makeRecipe({ facets: ["Vault", "ERC20"], init: { kind: "bundle", spec: "VaultInit", args: {} } }, synthetic);
+    const problems = only(run(recipe, synthetic), "INIT-04");
+    expect(problems).toEqual([
+      {
+        id: "INIT-04:ERC20",
+        code: "INIT-04",
+        severity: "blocker",
+        where: [{ kind: "facet", facet: "ERC20" }],
+        params: { module: "ERC20", spec: "", facet: "ERC20", consequence: "`name()` and `symbol()` would be empty" },
+        message: "ERC20 has no init step, so `name()` and `symbol()` would be empty.",
+        fixes: [],
+      },
+    ]);
+    applyAddStepFixes(recipe, synthetic, problems);
+    // Demonstrates why: offering ERC20Init, as the buggy code did, is a fix `addInitStep` refuses.
+    const refused = addInitStep(makeProject({ recipe }), synthetic, "ERC20Init");
+    expect([refused.changed, refused.summary]).toEqual([false, "The init plan is the VaultInit bundle, so it takes no other steps."]);
+  });
+});
+
+const built = loadBuiltCatalog();
+
+describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20VotesInit and GovernedVaultInit)", () => {
+  const realCatalog = built.ok ? built.value : catalog;
+
+  test("Blank diamond + ERC20Votes raises INIT-04 for ERC20Votes, not for AccessControl (ERC20VotesInit's last module, spec L330)", () => {
+    const recipe = makeRecipe(
+      { facets: [...BLANK_FACETS, "ERC20Votes"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } },
+      realCatalog,
+    );
+    const problems = only(run(recipe, realCatalog), "INIT-04");
+    expect(problems.map((p) => p.id)).toEqual(["INIT-04:ERC20Votes"]);
+    expect(problems[0]?.fixes).toEqual([{ id: "init.addStep", args: { spec: "ERC20VotesInit" } }]);
+    applyAddStepFixes(recipe, realCatalog, problems);
+  });
+
+  test("Blank diamond + GovernedVault: its init is a bundle and the plan already has a step, so no fix `addInitStep` would refuse", () => {
+    const recipe = makeRecipe(
+      { facets: [...BLANK_FACETS, "GovernedVault"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } },
+      realCatalog,
+    );
+    const problems = only(run(recipe, realCatalog), "INIT-04").filter((p) => p.where.some((w) => w.kind === "facet" && w.facet === "GovernedVault"));
+    expect(problems.length).toBeGreaterThan(0);
+    for (const p of problems) expect(p.fixes.some((f) => f.args?.["spec"] === "GovernedVaultInit")).toBe(false);
+    applyAddStepFixes(recipe, realCatalog, problems);
   });
 });
 
