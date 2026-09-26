@@ -294,6 +294,24 @@ describe("Checks, acknowledgements and Sign & deploy (spec L569, L573)", () => {
     await expect.element(section("Checks").getByText("Blocks deploy")).toBeVisible();
   });
 
+  test("a plain warning (CORE-04) is listed in Checks and doesn't gate Sign & deploy (spec L296)", async () => {
+    const project = templateProject("ERC20");
+    // Dropping Receive leaves nothing serving plain ETH: a warning with no acknowledgement (contracts §3.1).
+    const recipe = { ...project.recipe, facets: project.recipe.facets.filter((f) => f !== "Receive") };
+    const { controller } = await readyReview({ project: { ...project, recipe } });
+    const checks = section("Checks");
+    await expect.element(checks.getByText("Plain ETH sent to this diamond will revert.")).toBeVisible();
+    await expect.element(checks.getByRole("img", { name: "Warning" })).toBeVisible();
+    // ERC20's own example-values tick still gates it; CORE-04 adds nothing to that count.
+    await expect.element(signButton()).toHaveAccessibleDescription("Tick the acknowledgement first");
+    await tickExamples();
+    await expect.element(checks.getByText("Ready")).toBeVisible();
+    await expect.element(checks.getByText("Plain ETH sent to this diamond will revert.")).toBeVisible();
+    await expect.element(signButton()).not.toHaveAttribute("aria-disabled");
+    await signButton().click();
+    expect(controller.methods()).toContain("sign");
+  });
+
   test("offline it says Deploy needs a connection", async () => {
     goOffline();
     await readyReview();

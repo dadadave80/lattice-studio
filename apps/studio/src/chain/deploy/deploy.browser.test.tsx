@@ -8,12 +8,13 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import {
   commandState, deployController, deployState, getAnalysis, listDeployments, provideAnalysis, provideDeployController, putDeployment,
-  dialogComponent, overrideDialog, runCommand,
+  dialogComponent, overrideDialog, provideServices, runCommand,
   session, useDeployState, type DeployController, type DeployPhase, type DeployState,
 } from "@/contracts";
 import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio, seedDeployState, seedStudio } from "../../../test/harness";
 import { axeViolations } from "@/ui/testing/axe";
 import { appDeployDeps } from "./app-deps";
+import { DEPLOY_NEEDS_CONNECTION } from "./command-copy";
 import { setAppDeployMachine } from "./controller";
 import { createDeployMachine, type DeployMachine, type MissingStep } from "./machine";
 import { MissingContractsDialog } from "./MissingContractsDialog";
@@ -164,6 +165,15 @@ describe("commands", () => {
     expect(commandState({ id: "deploy.sign" })).toMatchObject({
       ok: false, reason: "This chain's RPC can't simulate this deploy. Signing without a simulation needs one more tick.",
     });
+  });
+
+  test("offline, Sign & deploy and Deploy missing contracts refuse with the same words as the review (no period, spec L561, IR L13)", () => {
+    expect(DEPLOY_NEEDS_CONNECTION).toBe("Deploy needs a connection");
+    onCleanup(provideServices({ connection: { isOnline: () => false, subscribe: () => () => {} } }));
+    seedStudio({ session: { chainId: SEPOLIA } });
+    seedDeployState({ phase: "ready", chainId: SEPOLIA, simulation: { ok: true, block: 1 } });
+    expect(commandState({ id: "deploy.sign" })).toMatchObject({ ok: false, reason: DEPLOY_NEEDS_CONNECTION });
+    expect(commandState({ id: "deploy.missingContracts", args: { names: ["ERC20"] } })).toMatchObject({ ok: false, reason: DEPLOY_NEEDS_CONNECTION });
   });
 
   test("a read-only tab can't sign or deploy missing contracts, and says why", () => {

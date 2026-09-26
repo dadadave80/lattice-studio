@@ -238,11 +238,25 @@ export function queryWords(query: string): string[] {
   return query.toLowerCase().split(/\s+/).filter((w) => w !== "");
 }
 
-/** Rows matching every word of `query` (in title, category, syntax, note, facet name or area), groups kept in order. */
+/** 0 when the title itself opens with the typed query; 1 for a row that only matches its category or a later word. */
+function titleRank(title: string, prefix: string): 0 | 1 {
+  return title.toLowerCase().startsWith(prefix) ? 0 : 1;
+}
+
+/**
+ * Rows matching every word of `query` (in title, category, syntax, note, facet name or area). Within each
+ * group (whose own order holds, IR L164) a title match leads; the sort is stable, so ties keep the group's order.
+ */
 export function filterGroups(groups: readonly PaletteGroup[], query: string): PaletteGroup[] {
   const words = queryWords(query);
   if (words.length === 0) return [...groups];
+  const prefix = words.join(" ");
   return groups
-    .map((g) => ({ ...g, items: g.items.filter((i) => words.every((w) => i.search.includes(w))) }))
+    .map((g) => ({
+      ...g,
+      items: g.items
+        .filter((i) => words.every((w) => i.search.includes(w)))
+        .toSorted((a, b) => titleRank(a.title, prefix) - titleRank(b.title, prefix)),
+    }))
     .filter((g) => g.items.length > 0);
 }

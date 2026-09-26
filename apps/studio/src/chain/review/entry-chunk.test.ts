@@ -46,7 +46,8 @@ describe("the deploy review's chunks (spec L822)", () => {
   });
 
   test("the review, Remove facets and the runs load together as S8b's one lazy chunk", () => {
-    const chunk = lazy.find((c) => c.name.startsWith("lazy-"));
+    // Other modules name their lazy entry lazy.ts too (S4c's overlays), so pick S8b's by what it carries.
+    const chunk = lazy.find((c) => c.name.startsWith("lazy-") && c.text.includes(REMOVE_MARKER));
     expect(chunk).toBeDefined();
     for (const marker of [...REVIEW_MARKERS, REMOVE_MARKER, ...RUN_MARKERS]) {
       expect({ marker, found: chunk?.text.includes(marker) }).toEqual({ marker, found: true });

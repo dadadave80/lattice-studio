@@ -1,10 +1,11 @@
-import type { ExportFile } from "@lattice-studio/core";
+import type { ExportFile, Problem } from "@lattice-studio/core";
 import { exportBrief, exportFoundry, exportRecipeJson, exportSafeBatch, loadTemplate } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
-  doc, getAnalysis, getCatalog, provideDeployController, provideServices, runCommand, session, type DeployController,
+  doc, emptyAnalysis, getAnalysis, getCatalog, initialSession, provideDeployController, provideServices, runCommand,
+  session, type DeployController,
 } from "@/contracts";
 import { DialogHost } from "@/ui/overlays/DialogHost";
 import { axeViolations } from "@/ui/testing/axe";
@@ -13,6 +14,7 @@ import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio } from ".
 import { scriptChainIds } from "./chains";
 import { ConsolePanel } from "./ConsolePanel";
 import { downloadFile } from "./download";
+import { safeExportable } from "./export-enablement";
 import { logEntries } from "./log-store";
 import { DOWNLOAD_BATCH, NOT_AN_ADDRESS, SAFE_ADDRESS_LABEL } from "./SafeBatchDialog";
 import { awaitConsoleBody, captureDownloads, collisionProject, erc20Project, resetConsole } from "./test-support";
@@ -261,4 +263,58 @@ describe("Script and Recipe JSON tabs (IR L135-L136)", () => {
       expect(await axeViolations(document.body)).toEqual([]);
     });
   }
+});
+
+describe("safeExportable: the Safe batch waits for the review's acknowledgements (spec L573)", () => {
+  const acknowledgement: Problem = {
+    id: "CORE-02:0xdeadbeef", code: "CORE-02", severity: "warning", where: [], params: {}, message: "", ack: true, fixes: [],
+  };
+  const fixture = fixtureCatalog();
+  const project = erc20Project();
+  const analysis = { ...emptyAnalysis(), recipeHash: "0xabc" as const, problems: [acknowledgement] };
+
+  test("disabled with the same reason as deploy.downloadSafeBatch while it's unticked", () => {
+    const result = safeExportable({ catalog: fixture, project, analysis, session: initialSession() });
+    expect(result).toEqual({ ok: false, reason: "Tick the acknowledgement first" });
+  });
+
+  test("several unticked acknowledgements are counted", () => {
+    const second: Problem = { ...acknowledgement, id: "INIT-05:0xfeedface", code: "INIT-05" };
+    const result = safeExportable({
+      catalog: fixture, project, analysis: { ...analysis, problems: [acknowledgement, second] }, session: initialSession(),
+    });
+    expect(result).toEqual({ ok: false, reason: "Tick the 2 acknowledgements first" });
+  });
+
+  test("once ticked for this recipe hash, it exports as before", () => {
+    const ticked = { ...initialSession(), acks: { "0xabc": [acknowledgement.id] } };
+    expect(safeExportable({ catalog: fixture, project, analysis, session: ticked })).toEqual({ ok: true });
+  });
+
+  test("a tick for a different recipe hash doesn't count", () => {
+    const ticked = { ...initialSession(), acks: { "0xother": [acknowledgement.id] } };
+    expect(safeExportable({ catalog: fixture, project, analysis, session: ticked }))
+      .toEqual({ ok: false, reason: "Tick the acknowledgement first" });
+  });
+
+  test("deployableExport's own gates still apply first: no facets, then blockers", () => {
+    const empty = { ...analysis, problems: [] };
+    const noFacets = { ...project, recipe: { ...project.recipe, facets: [] } };
+    expect(safeExportable({ catalog: fixture, project: noFacets, analysis: empty, session: initialSession() }))
+      .toEqual({ ok: false, reason: "Place facets first" });
+  });
+
+  test("its own ack filter and wording agree with chain/review/model.ts's pendingAcks and entry-copy.ts's tickFirst (drift guard)", async () => {
+    const { pendingAcks } = await import("@/chain/review/model");
+    const { tickFirst } = await import("@/chain/review/entry-copy");
+    const ticked: Problem = { id: "AUTH-01:0xabc", code: "AUTH-01", severity: "warning", where: [], params: {}, message: "", ack: true, fixes: [] };
+    // A plain warning (no `ack`) never counts, in either module.
+    const plain: Problem = { id: "CORE-04:diamond", code: "CORE-04", severity: "warning", where: [], params: {}, message: "", fixes: [] };
+    const problems = [acknowledgement, ticked, plain];
+    const acked = [ticked.id];
+    const mixed = { ...analysis, problems };
+    const mixedSession = { ...initialSession(), acks: { [mixed.recipeHash]: acked } };
+    expect(safeExportable({ catalog: fixture, project, analysis: mixed, session: mixedSession }))
+      .toEqual({ ok: false, reason: tickFirst(pendingAcks(problems, acked).length) });
+  });
 });
