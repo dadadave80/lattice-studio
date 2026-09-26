@@ -38,7 +38,7 @@
 export { edgeTypes, nodeTypes } from "./flow-types";
 export { Sheet } from "./Sheet";
 export {
-  cardInView, ensureElementVisible, ensureVisible, fitCards, locateCard, moveViewport, panSheet,
+  cardInView, ensureElementVisible, ensureVisible, fitCards, locateCard, moveViewport, panSheet, panToPlaced,
   SHEET_FLOAT_ATTRIBUTE, sheetSize, sheetViewport, storeSheetViewport, zoomSheet,
 } from "./sheet-view";
 export type { MoveOptions } from "./sheet-view";

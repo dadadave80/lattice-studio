@@ -6,6 +6,7 @@
  *
  * - `ensureVisible(facet)`: pans a card clear of everything floating over the sheet (2.4.11, spec L771). The
  *   sheet calls it itself when a card takes keyboard focus; S4e calls it before focusing a card it moves to.
+ * - `panToPlaced(facet)`: after a placement, pans only if the new card would be off-screen (spec L426).
  * - `locateCard(facet, selector?)`: selects the card and centers it (or its pin) at 75% zoom or more.
  * - `fitCards(names?)`, `zoomSheet(zoom, at?)`, `panSheet(dx, dy)`, `moveViewport(viewport)`: the moves the
  *   commands make; each glides, or jumps with reduced motion.
@@ -329,6 +330,21 @@ export function ensureVisible(facet: string, options: MoveOptions = {}): boolean
   const rect = cardRect(doc.get().layout, sizes(), facet);
   if (!rect) return false;
   return clearOnScreen(toScreen(rect, sheetViewport()), options);
+}
+
+/**
+ * After a placement, pans only if the new card would be off-screen (spec L426): when any part of it lies outside
+ * the sheet, the view pans it in and clear of the floating UI (`ensureVisible`); a card that shows whole stays
+ * put, even beside the tool strip. With no sheet mounted there's no screen for it to be off, so nothing moves.
+ * True when the view moved.
+ */
+export function panToPlaced(facet: string): boolean {
+  if (!mounted()) return false;
+  const rect = cardRect(doc.get().layout, sizes(), facet);
+  if (!rect) return false;
+  const size = sheetSize();
+  if (withinArea(toScreen(rect, sheetViewport()), { x: 0, y: 0, ...size })) return false;
+  return ensureVisible(facet);
 }
 
 /**

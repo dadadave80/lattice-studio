@@ -268,10 +268,10 @@ describe("zoom", () => {
       expect((await drawn()).zoom).toBeCloseTo(zoom);
       expect(storedViewport()?.zoom).toBeCloseTo(zoom);
     }
-    expect(commandState({ id: "sheet.zoomIn" })).toMatchObject({ ok: false, reason: "Already at 200%" });
+    expect(commandState({ id: "sheet.zoomIn" })).toMatchObject({ ok: false, reason: "Already at 200% · Zoom out or Fit" });
     expect(await runCommand({ id: "sheet.zoomTo", args: { zoom: 7 } }, "palette")).toEqual({ ok: false, reason: ZOOM_RANGE });
     expect(await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.05 } }, "palette")).toEqual({ ok: false, reason: ZOOM_RANGE });
-    expect(await runCommand({ id: "sheet.zoomTo", args: { zoom: 2 } }, "palette")).toEqual({ ok: false, reason: "Already at 200%" });
+    expect(await runCommand({ id: "sheet.zoomTo", args: { zoom: 2 } }, "palette")).toEqual({ ok: false, reason: "Already at 200% · Zoom out or Fit" });
     expect(drawnViewport().zoom).toBe(MAX_ZOOM);
     for (let i = 0; i < 6; i++) wheel({ deltaY: -400, ctrlKey: true });
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -293,7 +293,7 @@ describe("zoom", () => {
 
     await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.1 } }, "palette");
     expect((await drawn()).zoom).toBe(MIN_ZOOM);
-    await expect.poll(() => commandState({ id: "sheet.zoomOut" })).toMatchObject({ ok: false, reason: "Already at 10%" });
+    await expect.poll(() => commandState({ id: "sheet.zoomOut" })).toMatchObject({ ok: false, reason: "Already at 10% · Zoom in or Fit" });
     for (let i = 0; i < 6; i++) wheel({ deltaY: 400, ctrlKey: true });
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(drawnViewport().zoom).toBeGreaterThanOrEqual(MIN_ZOOM - 1e-6);
@@ -383,6 +383,38 @@ describe("zoom", () => {
     await expect.poll(() => document.querySelectorAll("[data-facet] [data-selector]").length).toBe(0);
     await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.5 } }, "palette");
     await expect.poll(() => document.querySelectorAll("[data-facet] [data-selector]").length).toBeGreaterThan(0);
+  });
+});
+
+describe("placing a facet (spec L426)", () => {
+  function inside(name: string): boolean {
+    const r = cardScreenRect(name);
+    return r.x >= 0 && r.right <= SHEET_WIDTH && r.y >= 0 && r.bottom <= SHEET_HEIGHT;
+  }
+
+  test("a card placed off-screen pans into view", async () => {
+    await renderSheet({ project: emptyProject("place-off") });
+    const before = drawnViewport();
+    await runCommand({ id: "facet.place", args: { facet: "ERC20", at: { x: 4000, y: 3000 } } }, "palette");
+    expect(doc.get().layout.ERC20).toBeDefined();
+    await expect.poll(() => document.querySelector('.react-flow__node[data-id="ERC20"]')).not.toBeNull();
+    await expect.poll(() => inside("ERC20")).toBe(true);
+    expect(close(storedViewport() ?? before, before)).toBe(false);
+    expect(drawnViewport().zoom).toBeCloseTo(before.zoom);
+  });
+
+  test("a card placed on screen leaves the view where it is", async () => {
+    await renderSheet({ project: emptyProject("place-on") });
+    const before = drawnViewport();
+    const stored = storedViewport();
+    // The middle of what the sheet shows, in sheet coordinates.
+    const at = { x: (SHEET_WIDTH / 2 - 150 - before.x) / before.zoom, y: (SHEET_HEIGHT / 2 - 100 - before.y) / before.zoom };
+    await runCommand({ id: "facet.place", args: { facet: "ERC20", at } }, "palette");
+    await expect.poll(() => document.querySelector('.react-flow__node[data-id="ERC20"]')).not.toBeNull();
+    expect(inside("ERC20")).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(drawnViewport()).toEqual(before);
+    expect(storedViewport()).toEqual(stored);
   });
 });
 
