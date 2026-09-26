@@ -31,10 +31,11 @@ registerInspectorView("confirm-addresses", ConfirmAddresses);
 
 provideServices({
   openShareLink(link) {
-    import("./open-link").then(
-      (m) => m.openShareLink(link),
-      (error: unknown) => log({ tag: "Error", text: `This link couldn't be opened: ${error instanceof Error ? error.message : String(error)}` }),
-    );
+    import("./open-link")
+      .then((m) => m.openShareLink(link))
+      .catch((error: unknown) => {
+        log({ tag: "Error", text: `This link couldn't be opened: ${error instanceof Error ? error.message : String(error)}` });
+      });
   },
 });
 
