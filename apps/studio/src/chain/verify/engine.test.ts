@@ -95,7 +95,7 @@ describe("verifyRecord", () => {
     expect(bufferedServices().log.at(-1)).toMatchObject({ text: "Verified on Sourcify (match)." });
   });
 
-  test("a compilation error is written as failed, with Sourcify's reason logged", async () => {
+  test("a compilation error is written as failed, with Sourcify's reason logged and stored (FX20 follow-up)", async () => {
     clearServiceBuffers();
     const { fetchImpl } = scriptedFetch([
       () => json(200, { isJobCompleted: true, error: { customCode: "compilation_error", message: "Compilation failed." } }),
@@ -104,7 +104,19 @@ describe("verifyRecord", () => {
     const clock = manualClock();
     await run(verifyRecord(deps(fetchImpl, records, clock), confirmed()), clock, []);
     expect(records.all()[0]?.verification).toBe("failed");
+    // `verificationReason` (spec L606) carries the same text as the logged line, for FX21's inspector.
+    expect(records.all()[0]?.verificationReason).toBe("Compilation failed.");
     expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Verify", text: "Couldn't verify: Compilation failed." });
+  });
+
+  test("a later match clears a previously stored verificationReason (FX20 follow-up)", async () => {
+    clearServiceBuffers();
+    const { fetchImpl } = scriptedFetch([() => json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } })]);
+    const records = memoryRecords([confirmed({ verification: "failed", verificationReason: "Compilation failed." })]);
+    const clock = manualClock();
+    await run(verifyRecord(deps(fetchImpl, records, clock), confirmed({ verification: "failed", verificationReason: "Compilation failed." })), clock, []);
+    expect(records.all()[0]?.verification).toBe("exact_match");
+    expect(records.all()[0]?.verificationReason).toBeUndefined();
   });
 
   test("a completed job with no match at all is failed with our own reason", async () => {
@@ -283,6 +295,21 @@ describe("verifyIfNeeded", () => {
 });
 
 describe("retryVerification", () => {
+  test("clears a stale verificationReason when it reopens a failed record (FX20 follow-up)", async () => {
+    clearServiceBuffers();
+    const failedRecord = confirmed({ verification: "failed", verificationReason: "Compilation failed." });
+    const { fetchImpl } = scriptedFetch([() => json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } })]);
+    const records = memoryRecords([failedRecord]);
+    const clock = manualClock();
+    const target = { chainId: CHAIN_ID, address: ADDRESS };
+    await retryVerification(target, deps(fetchImpl, records, clock));
+    // The "pending" write retryVerification makes itself already drops the old reason, before the job's own write.
+    expect(records.all()[0]?.verificationReason).toBeUndefined();
+    await flush();
+    expect(records.all()[0]?.verification).toBe("exact_match");
+    expect(records.all()[0]?.verificationReason).toBeUndefined();
+  });
+
   test("writes verification back to pending and starts a fresh job for it", async () => {
     clearServiceBuffers();
     const failedRecord = confirmed({ verification: "failed" });
