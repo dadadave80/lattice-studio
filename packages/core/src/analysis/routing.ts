@@ -40,8 +40,7 @@ function resolve(view: RecipeView, selector: Hex4, contenders: string[]): Route 
   if (only !== undefined) return { owner: only, contenders: [...contenders], via: "only" };
   if (owner !== undefined && contenders.includes(owner)) return { owner, contenders: [...contenders], via: "chosen" };
   const defaults = contenders.filter((name) => {
-    const facet = view.placed.find((f) => f.name === name);
-    return facet?.defaultOwnerOf?.some((s) => s.toLowerCase() === selector) ?? false;
+    return view.byName.get(name)?.defaultOwnerOf?.some((s) => s.toLowerCase() === selector) ?? false;
   });
   const byDefault = defaults.length === 1 ? defaults[0] : undefined;
   if (byDefault !== undefined) return { owner: byDefault, contenders: [...contenders], via: "default" };
