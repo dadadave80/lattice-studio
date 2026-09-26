@@ -14,7 +14,8 @@ import { LogView } from "./LogView";
 export function ConsoleBody() {
   return (
     <>
-      <BaseTabs.Panel value="log" keepMounted className={styles.panel}>
+      {/* The Log's own controls and lines take focus, so its panel isn't another Tab stop (the code panels scroll). */}
+      <BaseTabs.Panel value="log" keepMounted className={styles.panel} tabIndex={-1}>
         <LogView />
       </BaseTabs.Panel>
       <BaseTabs.Panel value="script" className={cx(styles.panel, styles.codePanel)}>
