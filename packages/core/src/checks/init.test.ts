@@ -428,6 +428,33 @@ describe("INIT-04", () => {
     ]);
     applyAddStepFixes(recipe, synthetic, problems);
   });
+
+  test("a plain step init offers no fix once the plan is already a different bundle: `addInitStep` refuses any addition then", () => {
+    const synthetic = makeCatalog({
+      facets: [makeFacet({ name: "Vault", init: "VaultInit" }), makeFacet({ name: "ERC20", init: "ERC20Init" })],
+      inits: [
+        makeInit({ name: "VaultInit", kind: "bundle", initializes: [{ module: "VaultCore" }] }),
+        makeInit({ name: "ERC20Init", initializes: [{ module: "ERC20" }] }),
+      ],
+    });
+    const recipe = makeRecipe({ facets: ["Vault", "ERC20"], init: { kind: "bundle", spec: "VaultInit", args: {} } }, synthetic);
+    const problems = only(run(recipe, synthetic), "INIT-04");
+    expect(problems).toEqual([
+      {
+        id: "INIT-04:ERC20",
+        code: "INIT-04",
+        severity: "blocker",
+        where: [{ kind: "facet", facet: "ERC20" }],
+        params: { module: "ERC20", spec: "", facet: "ERC20", consequence: "`name()` and `symbol()` would be empty" },
+        message: "ERC20 has no init step, so `name()` and `symbol()` would be empty.",
+        fixes: [],
+      },
+    ]);
+    applyAddStepFixes(recipe, synthetic, problems);
+    // Demonstrates why: offering ERC20Init, as the buggy code did, is a fix `addInitStep` refuses.
+    const refused = addInitStep(makeProject({ recipe }), synthetic, "ERC20Init");
+    expect([refused.changed, refused.summary]).toEqual([false, "The init plan is the VaultInit bundle, so it takes no other steps."]);
+  });
 });
 
 const built = loadBuiltCatalog();

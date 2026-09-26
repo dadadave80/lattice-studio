@@ -239,12 +239,14 @@ function init04(input: CheckInput, steps: readonly PlannedStep[]): Problem[] {
     const params: ProblemParams["INIT-04"] = { module, spec: spec.name, facet: facet.name };
     const consequence = CONSEQUENCES[module];
     if (consequence) params.consequence = consequence;
-    // A bundle can't join an init plan that already has steps, or replace another bundle (`addInitStep`
-    // refuses both): offer a step init for the module instead when the catalog has one, or no fix at all,
-    // the way the sameCall case with no step init does (FX23; ruling 2026-09-23).
-    const hasExistingPlan = recipe.init.kind === "bundle" || (recipe.init.kind === "steps" && recipe.init.steps.length > 0);
-    const blocked = spec.kind === "bundle" && hasExistingPlan;
-    const add = blocked ? specFor(module, catalog) : spec;
+    // `addInitStep` refuses to add anything, of either kind, once the plan is already a (different) bundle;
+    // it also refuses a bundle onto a plan that already has steps. Offer a step init for the module instead
+    // when the catalog has one and the plan isn't locked into another bundle, or no fix at all, the way the
+    // sameCall case with no step init does (FX23; ruling 2026-09-23).
+    const lockedToOtherBundle = recipe.init.kind === "bundle";
+    const bundleOntoSteps = spec.kind === "bundle" && recipe.init.kind === "steps" && recipe.init.steps.length > 0;
+    const blocked = lockedToOtherBundle || bundleOntoSteps;
+    const add = lockedToOtherBundle ? undefined : bundleOntoSteps ? specFor(module, catalog) : spec;
     if (blocked) params.spec = add?.name ?? "";
     const fixes: CommandRef[] = add ? [{ id: "init.addStep", args: { spec: add.name } }] : [];
     const where: Anchor[] = [{ kind: "facet", facet: facet.name }];
