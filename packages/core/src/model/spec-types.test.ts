@@ -196,8 +196,9 @@ export type SpecTypeAssertions = [
   Assert<Mutual<M.Project, Project>>,
   Assert<Equals<Keys<Value<M.Project["layout"]>>, Keys<Value<Project["layout"]>>>>,
   Assert<Equals<Keys<M.Project["deploy"]>, Keys<Project["deploy"]>>>,
-  Assert<Equals<Keys<M.Deployment>, Keys<Deployment>>>,
-  Assert<Mutual<M.Deployment, Deployment>>,
+  // + verificationReason (contract addition, FX21: spec L606's reason survives a reload)
+  Assert<Equals<Keys<M.Deployment>, Keys<Deployment> | "verificationReason">>,
+  Assert<Mutual<Omit<M.Deployment, "verificationReason">, Deployment>>,
   Assert<Equals<Keys<M.ProjectFile>, Keys<ProjectFile>>>,
   Assert<Mutual<M.ProjectFile, ProjectFile>>,
   // Analysis (L260-L267); plan rows are PlanEntry: the spec's fields plus codehash and version (contracts §3.1)

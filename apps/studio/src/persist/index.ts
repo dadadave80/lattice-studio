@@ -18,7 +18,7 @@ export {
 } from "./current";
 export type { EditLockState } from "./lock";
 export type {
-  DocPort, ExplicitSave, ImportResult, Persistence, PersistenceOptions, StorageInfo, StoragePort,
+  DocPort, ExplicitSave, ImportResult, PersistedDeployments, Persistence, PersistenceOptions, StorageInfo, StoragePort,
 } from "./persistence";
 export type { ClearDataCounts, ProjectSummary, RecordCounts, Restored, TrashSummary } from "./records";
 

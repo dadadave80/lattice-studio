@@ -1,0 +1,160 @@
+/*
+ * Margin notes (spec L435, L445, L449; IR L108; Composer-Final's `.note`): a drafter's note in the margin, not a
+ * chip or a popover. The accent rule on its left says a blocker; a missing dependency's rule is dashed, as its
+ * card's border is (spec L445); a convention's is a quiet hairline (spec L449). The seam note has no board yet
+ * (PA L77): it follows the collision note.
+ */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  /* Clipped, never a scroll container: it follows the viewport, so the browser mustn't scroll it to show a
+     focused note (the note pans into view instead, Note.tsx). */
+  overflow: clip;
+  pointer-events: none;
+}
+
+/* Follows React Flow's viewport, so notes sit in sheet units like the cards. */
+.viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+
+.leaders {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+}
+
+.leader {
+  fill: none;
+  stroke: var(--lx-accent);
+  /* A line that carries meaning: 1.5 px on screen, as the traces are (spec L772). */
+  stroke-width: max(var(--lx-stroke-hair), 1.5px);
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.leader[data-kind="convention"] {
+  stroke: var(--lx-border-strong);
+}
+
+.frame {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.note {
+  position: absolute;
+  box-sizing: border-box;
+  padding: var(--lx-space-2) var(--lx-space-2) var(--lx-space-2) var(--lx-space-3);
+  border-inline-start: var(--lx-stroke-heavy) solid var(--lx-accent);
+  background: var(--lx-raised);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  overflow-wrap: anywhere;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.missing {
+  border-inline-start-style: dashed;
+}
+
+.convention {
+  border-inline-start: var(--lx-stroke-hair) solid var(--lx-border-strong);
+}
+
+.caption {
+  margin: 0;
+  color: var(--lx-accent);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+}
+
+.convention .caption {
+  color: var(--lx-text-muted);
+}
+
+.selectors {
+  margin: var(--lx-space-1) 0 0;
+  padding: 0;
+  list-style: none;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+}
+
+.signature,
+.code {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text);
+}
+
+.signature {
+  font-weight: 600;
+}
+
+.hex {
+  white-space: nowrap;
+}
+
+.text {
+  margin: var(--lx-space-1) 0 0;
+  color: var(--lx-text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-1);
+  margin-block-start: var(--lx-space-2);
+}
+
+.actions button {
+  max-inline-size: 100%;
+  white-space: normal;
+  text-align: start;
+}
+
+/* Resolved: fades out (spec L438). With reduced motion the layer drops it at once instead (spec L784). */
+.leaving {
+  animation: fade-out 160ms ease-out forwards;
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .note {
+    border: var(--lx-stroke-hair) solid CanvasText;
+    border-inline-start: var(--lx-stroke-heavy) solid CanvasText;
+  }
+
+  .missing {
+    border-inline-start-style: dashed;
+  }
+
+  .caption,
+  .convention .caption {
+    color: CanvasText;
+  }
+
+  .leader,
+  .leader[data-kind="convention"] {
+    stroke: CanvasText;
+  }
+}

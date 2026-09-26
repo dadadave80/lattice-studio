@@ -125,6 +125,15 @@ describe("Deployer (spec L564, Flow 14)", () => {
     await expect.poll(() => chain.calls.filter((c) => c.method === "connect").map((c) => c.args[0])).toEqual(["mock"]);
   });
 
+  test("a service that builds a fresh connector list per call doesn't loop the review (React #185, Q1e)", async () => {
+    const chain = fakeChainService({ account: null, catalog: deployableCatalog() });
+    chain.connectors = () => [...FAKE_CONNECTORS]; // like S8a's service: a new list on every call
+    await renderReview({ project: templateProject("ERC20"), chain });
+    await expect.element(section("Deployer")).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(section("Deployer").elements()).toHaveLength(1);
+  });
+
   test("no wallet in the browser says so and links to one", async () => {
     const chain = fakeChainService({ account: null, catalog: deployableCatalog(), connectors: [FAKE_CONNECTORS[1]!] });
     await renderReview({ project: templateProject("ERC20"), chain });
@@ -292,6 +301,24 @@ describe("Checks, acknowledgements and Sign & deploy (spec L569, L573)", () => {
     await expect.element(signButton()).toHaveAccessibleDescription("Resolve 1 blocker · F8");
     await expect.element(section("Checks").getByText(/^The loupe is incomplete/)).toBeVisible();
     await expect.element(section("Checks").getByText("Blocks deploy")).toBeVisible();
+  });
+
+  test("a plain warning (CORE-04) is listed in Checks and doesn't gate Sign & deploy (spec L296)", async () => {
+    const project = templateProject("ERC20");
+    // Dropping Receive leaves nothing serving plain ETH: a warning with no acknowledgement (contracts §3.1).
+    const recipe = { ...project.recipe, facets: project.recipe.facets.filter((f) => f !== "Receive") };
+    const { controller } = await readyReview({ project: { ...project, recipe } });
+    const checks = section("Checks");
+    await expect.element(checks.getByText("Plain ETH sent to this diamond will revert.")).toBeVisible();
+    await expect.element(checks.getByRole("img", { name: "Warning" })).toBeVisible();
+    // ERC20's own example-values tick still gates it; CORE-04 adds nothing to that count.
+    await expect.element(signButton()).toHaveAccessibleDescription("Tick the acknowledgement first");
+    await tickExamples();
+    await expect.element(checks.getByText("Ready")).toBeVisible();
+    await expect.element(checks.getByText("Plain ETH sent to this diamond will revert.")).toBeVisible();
+    await expect.element(signButton()).not.toHaveAttribute("aria-disabled");
+    await signButton().click();
+    expect(controller.methods()).toContain("sign");
   });
 
   test("offline it says Deploy needs a connection", async () => {

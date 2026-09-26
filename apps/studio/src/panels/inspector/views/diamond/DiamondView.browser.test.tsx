@@ -390,6 +390,72 @@ describe("DiamondView: deployments", () => {
     expect(argsOf(reverify)).toEqual({ chainId: SEPOLIA, address: address("e3") });
   });
 
+  test("a failed record shows why and offers to copy the forge verify-contract command", async () => {
+    const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    onCleanup(() => writes.mockRestore());
+    const id = "deploy-failure-reason";
+    const REASON = "Sourcify didn't finish in time.";
+    await putDeployment(record(id, { address: address("e4"), verification: "failed", verificationReason: REASON }));
+    await renderWithStudio(view, { project: makeProject({ id }), chain: true });
+
+    await expect.element(page.getByText("Couldn't verify")).toBeVisible();
+    await expect.element(page.getByText(REASON)).toBeVisible();
+
+    const copyButton = page.getByRole("button", { name: "Copy verify command" });
+    await expect.element(copyButton).not.toHaveAttribute("aria-disabled", "true");
+    await copyButton.click();
+    await vi.waitFor(() =>
+      expect(writes).toHaveBeenCalledWith(`FOUNDRY_PROFILE=ci forge verify-contract ${address("e4")} src/Lattice.sol:Lattice --verifier sourcify --chain ${SEPOLIA}`),
+    );
+    await vi.waitFor(() => expect(bufferedServices().toast.at(-1)?.text).toBe("Copied verify command"));
+  });
+
+  test("a pending or verified record offers no reason and no Copy verify command", async () => {
+    const id = "deploy-no-failure";
+    await putDeployment(record(id, { address: address("e5"), verification: "pending" }));
+    await putDeployment(record(id, { address: address("e6"), verification: "exact_match" }));
+    await renderWithStudio(view, { project: makeProject({ id }), chain: true });
+
+    await expect.element(page.getByText("Verifying")).toBeVisible();
+    await expect.element(page.getByText("Verified (exact match)")).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Copy verify command" })).not.toBeInTheDocument();
+    await expect.element(page.getByRole("button", { name: "Retry verification" })).not.toBeInTheDocument();
+  });
+
+  test("Copy verify command is disabled with a reason on a chain Studio doesn't recognize", async () => {
+    const UNKNOWN_CHAIN = 1;
+    const id = "deploy-unknown-chain";
+    await putDeployment(record(id, { address: address("e7"), chainId: UNKNOWN_CHAIN, verification: "failed" }));
+    await renderWithStudio(view, { project: makeProject({ id }), chain: true });
+
+    const copyButton = page.getByRole("button", { name: "Copy verify command" });
+    await expect.element(copyButton).toHaveAttribute("aria-disabled", "true");
+    await expect.element(copyButton).toHaveAccessibleDescription("Studio doesn't recognize this chain.");
+  });
+
+  test("Copy verify command stays enabled while the chain module is still loading", async () => {
+    const id = "deploy-chain-loading";
+    await putDeployment(record(id, { address: address("e8"), verification: "failed" }));
+    // Never resolves: the module stays "loading" for the whole test, deterministically (no fake chain installed).
+    onCleanup(provideServices({ chain: () => new Promise(() => {}) }));
+    await renderWithStudio(view, { project: makeProject({ id }) });
+
+    // A plain element lookup, not a polling `expect.element`: the module never settles, so a later-passing
+    // assertion couldn't hide the bug this guards (spec L661: the reason shown must be true right now).
+    const copyButton = page.getByRole("button", { name: "Copy verify command" }).element();
+    expect(copyButton).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("Copy verify command stays enabled once the chain module is unavailable", async () => {
+    const id = "deploy-chain-unavailable";
+    await putDeployment(record(id, { address: address("e9"), verification: "failed" }));
+    onCleanup(provideServices({ chain: () => Promise.reject(new Error("Not built yet · WP-S8a")) }));
+    await renderWithStudio(view, { project: makeProject({ id }) });
+
+    const copyButton = page.getByRole("button", { name: "Copy verify command" });
+    await expect.element(copyButton).not.toHaveAttribute("aria-disabled", "true");
+  });
+
   test("Copy address copies the address and says so", async () => {
     const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
     onCleanup(() => writes.mockRestore());

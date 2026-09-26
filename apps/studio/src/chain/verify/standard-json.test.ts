@@ -71,13 +71,16 @@ describe("loadProxyBuild", () => {
     return catalogDirFor(entryId, manifest);
   }
 
-  test("fetches, hash-checks and parses the real standard JSON, with the catalog's compiler version", async () => {
+  test("fetches, hash-checks and parses the real standard JSON, with the catalog's long compiler version (FX20)", async () => {
     const dir = ready();
     const result = await loadProxyBuild(diskFetch(dir), 11155111, "factory");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // This catalog predates FX20 (no `solcLong` yet): the short form is the fallback this test exercises too.
-    expect(result.value.compilerVersion).toBe(catalog.toolchain.solc);
+    // The built catalog carries `solcLong` (FX20): Sourcify's v2 API gets the full version, not the short one.
+    const solcLong = catalog.toolchain.solcLong;
+    expect(solcLong).toBeDefined();
+    if (solcLong === undefined) return;
+    expect(result.value.compilerVersion).toBe(solcLong);
     const raw = readFileSync(new URL(catalog.proxy.standardJson.path, entryRoot), "utf8");
     expect(result.value.stdJsonInput).toEqual(JSON.parse(raw));
   });

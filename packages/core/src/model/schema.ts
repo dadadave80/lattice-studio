@@ -302,6 +302,7 @@ export const DeploymentSchema = z.looseObject({
   catalogHash: Hash32Schema,
   at: text,
   verification: z.enum(["pending", "match", "exact_match", "failed"]),
+  verificationReason: opt(text),
   revision: z.int().positive(),
   fromFile: opt(z.literal(true)),
 }) satisfies z.ZodType<Deployment>;

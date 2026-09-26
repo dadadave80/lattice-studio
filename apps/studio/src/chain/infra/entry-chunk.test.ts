@@ -41,19 +41,24 @@ afterAll(() => {
   if (out) rmSync(out, { recursive: true, force: true });
 });
 
+/** The chain module's chunk: named runtime-*, and other modules name theirs runtime.ts too (S4e), so pick by content. */
+function chainRuntime(): { name: string; text: string } | undefined {
+  return lazy.find((chunk) => chunk.name.startsWith("runtime-") && chunk.text.includes("@wagmi/core@"));
+}
+
 describe("the entry chunk", () => {
   test("carries none of wagmi, the wallet protocols or the probes", () => {
     for (const marker of [...WALLET_MARKERS, ...PROBE_MARKERS]) expect({ marker, found: firstLoad.includes(marker) }).toEqual({ marker, found: false });
   });
 
   test("a lazy chunk named for the chain module carries them", () => {
-    const runtime = lazy.find((chunk) => chunk.name.startsWith("runtime-"));
+    const runtime = chainRuntime();
     expect(runtime).toBeDefined();
     for (const marker of ["@wagmi/core@", ...PROBE_MARKERS]) expect(runtime?.text.includes(marker)).toBe(true);
   });
 
   test("WalletConnect's SDK is in neither the entry nor the chain module: it loads only when chosen", () => {
-    const runtime = lazy.find((chunk) => chunk.name.startsWith("runtime-"));
+    const runtime = chainRuntime();
     for (const marker of WALLETCONNECT_MARKERS) {
       expect({ marker, entry: firstLoad.includes(marker), runtime: runtime?.text.includes(marker) }).toEqual({ marker, entry: false, runtime: false });
     }

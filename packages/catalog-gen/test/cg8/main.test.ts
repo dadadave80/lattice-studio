@@ -35,6 +35,7 @@ import {
   type Runner,
   runCatalog,
   sharedInput,
+  solcVersions,
   sourceUrl,
   TARGET_VERSION,
 } from "../../src/main";
@@ -100,6 +101,11 @@ describe("the Foundry check", () => {
     expect(anvilOld.ok ? "" : anvilOld.error).toContain("anvil is 1.9.0");
     const missing = await checkFoundry(fakeRunner({ "forge --version": { code: -1, stderr: "ENOENT" } }));
     expect(missing.ok ? "" : missing.error).toContain("forge isn't installed");
+  });
+
+  test("solc's metadata version splits into the catalog's short and long forms", () => {
+    expect(solcVersions("0.8.36+commit.11a8f77a")).toEqual({ solc: "0.8.36", solcLong: "0.8.36+commit.11a8f77a" });
+    expect(solcVersions("0.8.36")).toEqual({ solc: "0.8.36", solcLong: "0.8.36" });
   });
 
   test("the generator stops at the check, before reading or building anything", async () => {
