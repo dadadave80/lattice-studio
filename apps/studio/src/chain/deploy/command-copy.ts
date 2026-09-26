@@ -7,8 +7,8 @@
 /** Flow 12 step 5 (the same words as the chain module's `CANCELED_IN_WALLET`). */
 export const CANCELED_IN_WALLET = "You canceled in your wallet.";
 
-/** Flow 14: Deploy disabled offline. */
-export const DEPLOY_NEEDS_CONNECTION = "Deploy needs a connection.";
+/** Flow 14: Deploy disabled offline (spec L561, IR L13; the same words as `chain/review/entry-copy.ts`, no period). */
+export const DEPLOY_NEEDS_CONNECTION = "Deploy needs a connection";
 
 /** Show deploy progress before the review (S8b) registers its dialog. */
 export const DEPLOY_NOT_BUILT = "Not built yet · WP-S8b";

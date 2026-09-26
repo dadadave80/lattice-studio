@@ -46,8 +46,8 @@ export const missingContractsCommand = command<MissingArgs>({
   id: "deploy.missingContracts",
   title: () => "Deploy missing contracts…",
   category: "Deploy",
-  // Reached from NET-03's fix and the review's Network section; in the palette it would sort before Deploy….
-  palette: false,
+  // Reached from NET-03's fix and the review's Network section; also listed in the palette (IR L164).
+  palette: true,
   enabled(ctx, args) {
     const chainId = ctx.session.chainId;
     if (ctx.session.readOnly !== null) return { ok: false, reason: ctx.session.readOnly };
@@ -111,8 +111,8 @@ export const checkWalletCommand = command({
   id: "deploy.checkWallet",
   title: () => "Check wallet",
   category: "Deploy",
-  // Reached from the stale deploy's own buttons; in the palette it would sort before Deploy….
-  palette: false,
+  // Reached from the stale deploy's own buttons; also listed in the palette (IR L164).
+  palette: true,
   enabled: stale,
   run: () => withController((c) => c.checkWallet()),
 });
