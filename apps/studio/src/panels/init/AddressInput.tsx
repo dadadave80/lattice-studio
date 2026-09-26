@@ -1,15 +1,17 @@
-import type { Arg } from "@lattice-studio/core";
-import { isNotImplemented } from "@lattice-studio/core";
-import { useEffect, useState } from "react";
-import { chainService, session, useOnline, useSession } from "@/contracts";
+import type { Arg, Catalog, FieldModel } from "@lattice-studio/core";
+import { formatAddress, isAddress, isNotImplemented, lines, toChecksum } from "@lattice-studio/core";
+import { useState } from "react";
+import { chainService, getCatalog, session, useOnline, useSession } from "@/contracts";
+import { edit } from "@/state";
 import { Button } from "@/ui/buttons/Button";
 import { TextField } from "@/ui/fields/TextField";
 import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
 import type { FieldControlProps } from "./field-props";
 import { displayText, isEnsName, parseFieldText, REF_LABELS, refOf, ZERO_ADDRESS, type Ref } from "./field-value";
 import { literalAddress, probeCode, resolvedRef, useRefAddresses } from "./hooks";
-import { dropLabelsNotOn, ensLabel, setEnsLabel, useEnsLabels } from "./init-ui-store";
+import { ensLabel, setEnsLabel, storedLabel, useEnsLabels } from "./init-ui-store";
 import styles from "./InitEditor.module.css";
+import { labeledAddress, setAddressOp } from "./ops";
 import { setArg, useDraft } from "./use-draft";
 
 /** Offline or with no chain picked, an ENS name can't be resolved (spec L462). */
@@ -21,6 +23,21 @@ export function ensChainChanged(name: string): string {
   return `The chain changed while ${name} was resolving. Enter it again to resolve it for this chain.`;
 }
 
+/** A stored address value as the console writes it: short addresses, references in words. */
+function spokenValue(value: Arg): string {
+  const ref = refOf(value);
+  if (ref) return ref === "self" ? "this diamond" : "the deploying account";
+  return isAddress(value) ? formatAddress(value) : displayText(value);
+}
+
+/** Commits `value` and its label (or none) as one undo step, saying "Set Safe to safe.eth (0x71C7…976F)." */
+function commitLabeled(catalog: Catalog, field: FieldModel, value: Arg, name: string | null): void {
+  const said = name !== null && isAddress(value) ? labeledAddress(name, toChecksum(value)) : spokenValue(value);
+  edit(setAddressOp(catalog, field.path, value, name, field.label), {
+    say: () => [lines.fieldSet({ label: field.label, value: said })],
+  });
+}
+
 /**
  * An address (spec L462): checksummed, paste-friendly (spaces trimmed, any case accepted and stored checksummed),
  * with quick picks "This diamond" and "Deploying account", stored as references and shown with the address they
@@ -30,6 +47,7 @@ export function ensChainChanged(name: string): string {
  */
 export function AddressInput({ field, value, description, error, disabledReason, projectId }: FieldControlProps) {
   const refs = useRefAddresses();
+  // Re-renders when a label changes: typed this session, stored in the project, or undone.
   useEnsLabels();
   const online = useOnline();
   const chainId = useSession((s) => s.chainId);
@@ -37,13 +55,21 @@ export function AddressInput({ field, value, description, error, disabledReason,
   const ref = refOf(value);
   const label = ensLabel(projectId, field.path, value, chainId);
 
-  // A chain switch drops names resolved for the old chain: they may point elsewhere on this one.
-  useEffect(() => {
-    dropLabelsNotOn(chainId);
-  }, [chainId]);
-
-  const store = async (next: Arg): Promise<string | null> => {
-    const failed = await setArg(field.path, next);
+  /**
+   * Stores `next`, and `name` as its label. Without a label before or after, it's `init.setArg` like any field;
+   * otherwise the value and the label change in one edit, so one undo step (spec L491).
+   */
+  const store = async (next: Arg, name: string | null = null): Promise<string | null> => {
+    const catalog = getCatalog();
+    let failed: string | null;
+    if ((name !== null || storedLabel(field.path) !== null) && catalog) {
+      // A no-op or a read-only refusal is logged by `edit`; the field has nothing to keep.
+      commitLabeled(catalog, field, next, name);
+      failed = null;
+    } else {
+      failed = await setArg(field.path, next);
+    }
+    if (failed === null) setEnsLabel(projectId, field.path, name !== null && chainId !== null && isAddress(next) ? { name, address: toChecksum(next), chainId } : null);
     const address = literalAddress(next);
     if (failed === null && address && field.needsCode) void probeCode(address);
     return failed;
@@ -59,9 +85,7 @@ export function AddressInput({ field, value, description, error, disabledReason,
       if (session.get().chainId !== chainId) return ensChainChanged(name);
       if (!resolved.ok) return resolved.error;
       if (resolved.value === null) return `${name} doesn't resolve to an address.`;
-      const failed = await store(resolved.value);
-      if (failed === null) setEnsLabel(projectId, field.path, { name, address: resolved.value, chainId });
-      return failed;
+      return await store(resolved.value, name);
     } catch (caught) {
       if (isNotImplemented(caught)) return caught.message;
       throw caught;
@@ -75,13 +99,11 @@ export function AddressInput({ field, value, description, error, disabledReason,
     if (isEnsName(trimmed)) return resolveName(trimmed);
     const parsed = parseFieldText(field, trimmed);
     if (!parsed.ok) return parsed.error;
-    setEnsLabel(projectId, field.path, null);
     return store(parsed.value);
   });
 
   const pick = (next: Arg) => {
     draft.revert();
-    setEnsLabel(projectId, field.path, null);
     void store(next);
   };
 

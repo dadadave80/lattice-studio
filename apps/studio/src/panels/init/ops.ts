@@ -4,10 +4,13 @@
  * From-link marks carried over. Pure `EditOp`s: the caller applies each as one undo step.
  */
 import type {
-  Analysis, Arg, Catalog, EditResult, InitStep, LayoutMetrics, Point, Project, Recipe, Sizes,
+  Address, Analysis, Arg, Catalog, EditResult, InitStep, LayoutMetrics, Point, Project, Recipe, Sizes,
 } from "@lattice-studio/core";
-import { analyze, cardSize, contestedSelectors, freeSlot, isNotImplemented, normalizeRecipe } from "@lattice-studio/core";
+import {
+  analyze, cardSize, contestedSelectors, formatAddress, freeSlot, isNotImplemented, normalizeRecipe, setInitArg,
+} from "@lattice-studio/core";
 import { argAt, sameArg } from "./field-value";
+import { addressAt, sameAddress } from "./init-paths";
 
 function unchanged(project: Project, summary: string): EditResult {
   return { project, changed: false, summary };
@@ -36,6 +39,80 @@ function stepsOf(recipe: Recipe): readonly InitStep[] {
   return recipe.init.kind === "steps" ? recipe.init.steps : [];
 }
 
+/** `project` with `labels`, the key left out when there are none (a project file without names stays as it was). */
+function withLabels(project: Project, labels: Readonly<Record<string, string>>): Project {
+  const { labels: _old, ...rest } = project;
+  return Object.keys(labels).length > 0 ? { ...rest, labels: { ...labels } } : rest;
+}
+
+/** An address with the ENS name it came from, as the console writes it: "safe.eth (0x71C7…976F)". */
+export function labeledAddress(name: string, address: Address): string {
+  return `${name} (${formatAddress(address)})`;
+}
+
+/**
+ * An address field's commit (spec L462): the value, and the ENS name it was resolved from kept as its label (or,
+ * with `name` null, no label), as one edit, so one undo step. `label` is the field's ("Safe"). A name that
+ * resolved to the address the field already holds only adds the label.
+ */
+export function setAddressOp(
+  catalog: Catalog, path: string, value: Arg, name: string | null, label: string,
+): (project: Project) => EditResult {
+  return (project) => {
+    const set = setInitArg(project, catalog, path, value);
+    const before = project.labels?.[path] ?? null;
+    const unchangedValue = !set.changed && typeof value === "string" && sameAddress(addressAt(project.recipe.init, path), value);
+    if (!set.changed && !(unchangedValue && name !== before)) return set;
+    const { [path]: _dropped, ...others } = project.labels ?? {};
+    const labels = name === null ? others : { ...others, [path]: name };
+    const next = before === name ? set.project : withLabels(set.project, labels);
+    if (name === null || typeof value !== "string") return { project: next, changed: true, summary: set.summary };
+    return { project: next, changed: true, summary: `Set ${label} to ${labeledAddress(name, value as Address)}` };
+  };
+}
+
+/** Which new step each old step became: the first unclaimed step of the same spec, in order. */
+function stepMoves(before: Recipe, after: Recipe): Map<number, number> {
+  const oldSteps = stepsOf(before);
+  const newSteps = stepsOf(after);
+  const taken = new Set<number>();
+  const moved = new Map<number, number>();
+  oldSteps.forEach((step, i) => {
+    const j = newSteps.findIndex((candidate, k) => !taken.has(k) && candidate.spec === step.spec);
+    if (j >= 0) {
+      taken.add(j);
+      moved.set(i, j);
+    }
+  });
+  return moved;
+}
+
+/**
+ * ENS labels keyed by the old recipe's paths, moved to the new recipe's (spec L462). A label stays with the address
+ * it names: where its step now sits if the argument kept that address, else on the argument the change carried the
+ * address to. A label whose address is gone is dropped, so it can never name another address.
+ */
+export function remapLabels(labels: Readonly<Record<string, string>>, before: Recipe, after: Recipe): Record<string, string> {
+  const moved = stepMoves(before, after);
+  const out: Record<string, string> = {};
+  const carried: { address: string; name: string }[] = [];
+  for (const [key, name] of Object.entries(labels)) {
+    const address = addressAt(before.init, key);
+    if (address === null) continue;
+    const match = STEP_KEY.exec(key);
+    const to = match ? moved.get(Number(match[1])) : undefined;
+    const target = !match ? key : to === undefined ? null : `steps[${to}]${match[2] ?? ""}`;
+    if (target !== null && sameAddress(addressAt(after.init, target), address)) out[target] = name;
+    else carried.push({ address, name });
+  }
+  for (const leaf of leaves(stepsOf(after))) {
+    if (out[leaf.path] !== undefined || typeof leaf.value !== "string") continue;
+    const hit = carried.find((c) => sameAddress(c.address, leaf.value as string));
+    if (hit) out[leaf.path] = hit.name;
+  }
+  return out;
+}
+
 /** Every argument under the steps, by path: "steps[1].admin", "steps[0].p.asset". */
 function leaves(steps: readonly InitStep[]): { path: string; value: Arg }[] {
   const out: { path: string; value: Arg }[] = [];
@@ -61,15 +138,7 @@ function leaves(steps: readonly InitStep[]): { path: string; value: Arg }[] {
 export function remapProvenance(provenance: Project["provenance"], before: Recipe, after: Recipe): Project["provenance"] {
   const oldSteps = stepsOf(before);
   const newSteps = stepsOf(after);
-  const taken = new Set<number>();
-  const moved = new Map<number, number>();
-  oldSteps.forEach((step, i) => {
-    const j = newSteps.findIndex((candidate, k) => !taken.has(k) && candidate.spec === step.spec);
-    if (j >= 0) {
-      taken.add(j);
-      moved.set(i, j);
-    }
-  });
+  const moved = stepMoves(before, after);
   const out: Project["provenance"] = {};
   const carried: { value: Arg; source: Project["provenance"][string] }[] = [];
   for (const [key, source] of Object.entries(provenance)) {
@@ -159,13 +228,14 @@ export function applyMechanismOp(
 ): (project: Project) => EditResult {
   return (project) => {
     const recipe = normalizeRecipe(next, catalog);
+    const moved: Project = {
+      ...project,
+      recipe,
+      layout: remapLayout(project, recipe, catalog, metrics),
+      provenance: remapProvenance(project.provenance, project.recipe, recipe),
+    };
     return {
-      project: {
-        ...project,
-        recipe,
-        layout: remapLayout(project, recipe, catalog, metrics),
-        provenance: remapProvenance(project.provenance, project.recipe, recipe),
-      },
+      project: project.labels ? withLabels(moved, remapLabels(project.labels, project.recipe, recipe)) : moved,
       changed: true,
       summary,
     };
