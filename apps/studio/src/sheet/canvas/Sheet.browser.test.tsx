@@ -53,6 +53,37 @@ describe("the sheet", () => {
     expect(nodes.every((n) => !n.getAttribute("aria-describedby")?.startsWith("react-flow__"))).toBe(true);
   });
 
+  test("edges take no Tab stop: Tab goes from the page to the card grid, never through an edge (spec L739, L746)", async () => {
+    // A dependency trace (VaultCore needs ERC4626) and a collision (the two gateway adapters share selectors).
+    const facets = ["ERC4626", "VaultCore", "AxelarGatewayAdapter", "HyperlaneGatewayAdapter"];
+    const project = cardProject(fixtureCatalog(), facets, { columns: 2, rowPitch: 420 });
+    await renderSheet({ project });
+    await expect.poll(() => document.querySelectorAll(".react-flow__edge").length).toBeGreaterThan(0);
+    const edges = [...document.querySelectorAll<SVGElement>(".react-flow__edge")];
+    const focusable = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    for (const edge of edges) {
+      expect(edge.tabIndex).toBeLessThan(0);
+      expect(edge.querySelector(focusable)).toBeNull();
+    }
+
+    const before = document.createElement("button");
+    before.textContent = "Before";
+    flowElement().closest("[data-region]")?.prepend(before);
+    onCleanup(() => before.remove());
+    before.focus();
+    await userEvent.tab();
+    expect(document.activeElement?.closest(".react-flow__node")).not.toBeNull();
+    const seen: Element[] = [];
+    for (let i = 0; i < 20 && flowElement().contains(document.activeElement); i++) {
+      if (document.activeElement) seen.push(document.activeElement);
+      await userEvent.tab();
+    }
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.filter((el) => el.closest(".react-flow__edge, .react-flow__edges") !== null)).toEqual([]);
+    // Tab leaves the sheet: no trap (spec L751).
+    expect(flowElement().contains(document.activeElement)).toBe(false);
+  });
+
   test("a project with no stored viewport opens fitted, and the fit is stored and saved", async () => {
     const saved = storedViewports();
     const project = sheetProject(8);
