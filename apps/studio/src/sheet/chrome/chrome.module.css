@@ -1,0 +1,383 @@
+/*
+ * The sheet's chrome (spec L357, L362, L378, L383; the title block, empty sheet and init order boards). Tokens
+ * only; Panels sit a grid step in from the sheet's edges. Forced colors keep every outline in CanvasText.
+ */
+
+/* ---- Tool strip and zoom readout ---------------------------------------------------------------------- */
+
+.toolStrip {
+  margin: var(--lx-space-4);
+}
+
+.zoomReadout {
+  margin: var(--lx-space-4);
+}
+
+.readout {
+  min-inline-size: calc(var(--lx-space-12) + var(--lx-space-2));
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  background: var(--lx-panel);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Start a diamond ---------------------------------------------------------------------------------- */
+
+.startLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: var(--lx-space-8) var(--lx-space-4);
+  overflow: auto;
+  pointer-events: none;
+}
+
+.start {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--lx-space-3);
+  inline-size: min(100%, calc(var(--lx-card-width) * 2.5));
+  padding: var(--lx-space-6);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  background: var(--lx-panel);
+  pointer-events: auto;
+}
+
+.startTitle {
+  margin: 0;
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text);
+}
+
+.recipeCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--lx-card-width) * 0.7), 1fr));
+  gap: var(--lx-space-2);
+}
+
+.recipeCards .recipeCard {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--lx-space-1);
+  min-block-size: var(--lx-space-12);
+  padding: var(--lx-space-3);
+  border-color: var(--lx-border);
+  white-space: normal;
+  text-align: start;
+}
+
+.recipeName {
+  font: var(--lx-font-body-sm);
+  font-weight: 600;
+  color: var(--lx-text);
+}
+
+.recipeBlurb {
+  font: var(--lx-font-body-sm);
+  font-weight: 400;
+  color: var(--lx-text-muted);
+}
+
+.startHint {
+  margin: 0;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+  text-align: center;
+}
+
+.tourLink {
+  text-decoration: underline;
+}
+
+/* ---- Title block -------------------------------------------------------------------------------------- */
+
+.titlePanel {
+  margin: var(--lx-space-4);
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  inline-size: calc(var(--lx-card-width) * 1.4);
+  max-inline-size: calc(100vw - var(--lx-space-8));
+  border: var(--lx-stroke-hair) solid var(--lx-border-strong);
+  background: var(--lx-panel);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.titleBlock[data-form="collapsed"],
+.titleBlock[data-form="strip"] {
+  inline-size: auto;
+}
+
+.titleRow,
+.cell,
+.fillRow,
+.deployRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lx-space-2);
+  padding: var(--lx-space-2) var(--lx-space-3);
+}
+
+.titleRow + *,
+.cell + *,
+.fillRow + * {
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border);
+}
+
+.cell {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.label {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.projectName {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker {
+  margin-inline-start: calc(var(--lx-space-2) * -1);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+}
+
+.addressRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lx-space-2);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.addressLine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-1);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.address {
+  overflow: hidden;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.address {
+  color: var(--lx-accent);
+  text-decoration: underline;
+}
+
+.addressNote {
+  color: var(--lx-text-muted);
+}
+
+.offline {
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  color: var(--lx-text-muted);
+}
+
+.stamp {
+  display: inline-flex;
+}
+
+.blockers {
+  color: var(--lx-accent);
+  font-weight: 600;
+}
+
+.fillRow {
+  justify-content: space-between;
+}
+
+.deployRow {
+  justify-content: flex-start;
+}
+
+.deploy {
+  display: inline-flex;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lx-space-2);
+  padding: var(--lx-space-1) var(--lx-space-2);
+}
+
+/* ---- Init order mode ---------------------------------------------------------------------------------- */
+
+.chip {
+  margin-block-start: var(--lx-space-4);
+}
+
+.chip :global(button) {
+  border-color: var(--lx-accent);
+  background: var(--lx-panel);
+}
+
+.initPath {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.initPath polyline {
+  fill: none;
+  stroke: var(--lx-accent);
+  stroke-width: calc(var(--lx-stroke-heavy) / var(--lx-sheet-zoom, 1));
+  stroke-dasharray: calc(var(--lx-space-2) / var(--lx-sheet-zoom, 1)) calc(var(--lx-space-1) / var(--lx-sheet-zoom, 1));
+  stroke-linejoin: round;
+}
+
+.legend {
+  margin: var(--lx-space-4);
+  max-block-size: calc(100% - var(--lx-space-8));
+  overflow: auto;
+}
+
+/* Under the minimap: `--minimap-bottom` is where it ends, measured from the sheet's top. */
+.legend[data-below-minimap] {
+  margin-block-start: calc(var(--minimap-bottom) + var(--lx-space-4));
+  max-block-size: calc(100% - var(--minimap-bottom) - var(--lx-space-4) * 2);
+}
+
+.legend > section {
+  inline-size: calc(var(--lx-card-width) * 1.1);
+  padding: var(--lx-space-2) var(--lx-space-3);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  background: var(--lx-panel);
+}
+
+.legendTitle {
+  margin: 0 0 var(--lx-space-2);
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.legendList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendList li {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  padding-block: var(--lx-space-1);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.legendQuiet {
+  color: var(--lx-text-muted);
+}
+
+.legendBadge {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: var(--lx-space-6);
+  border: var(--lx-stroke-hair) solid var(--lx-accent);
+  font: var(--lx-font-code-sm);
+  color: var(--lx-accent-strong);
+}
+
+.legendNote {
+  margin: var(--lx-space-2) 0 0;
+  color: var(--lx-text-muted);
+}
+
+.legendNote:empty {
+  display: none;
+}
+
+/* ---- Browse all recipes ------------------------------------------------------------------------------- */
+
+.browseList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.browseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-3);
+  padding-block: var(--lx-space-2);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.browseText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  min-inline-size: 0;
+}
+
+.browseScript {
+  overflow: hidden;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .readout,
+  .start,
+  .titleBlock,
+  .legend > section,
+  .legendBadge,
+  .offline {
+    border-color: CanvasText;
+  }
+
+  .initPath polyline {
+    stroke: CanvasText;
+  }
+}
