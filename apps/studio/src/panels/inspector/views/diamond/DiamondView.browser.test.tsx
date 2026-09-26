@@ -395,12 +395,7 @@ describe("DiamondView: deployments", () => {
     onCleanup(() => writes.mockRestore());
     const id = "deploy-failure-reason";
     const REASON = "Sourcify didn't finish in time.";
-    const failed = {
-      ...record(id, { address: address("e4") }),
-      verification: "failed",
-      verificationReason: REASON,
-    } as Deployment;
-    await putDeployment(failed);
+    await putDeployment(record(id, { address: address("e4"), verification: "failed", verificationReason: REASON }));
     await renderWithStudio(view, { project: makeProject({ id }), chain: true });
 
     await expect.element(page.getByText("Couldn't verify")).toBeVisible();
@@ -436,6 +431,29 @@ describe("DiamondView: deployments", () => {
     const copyButton = page.getByRole("button", { name: "Copy verify command" });
     await expect.element(copyButton).toHaveAttribute("aria-disabled", "true");
     await expect.element(copyButton).toHaveAccessibleDescription("Studio doesn't recognize this chain.");
+  });
+
+  test("Copy verify command stays enabled while the chain module is still loading", async () => {
+    const id = "deploy-chain-loading";
+    await putDeployment(record(id, { address: address("e8"), verification: "failed" }));
+    // Never resolves: the module stays "loading" for the whole test, deterministically (no fake chain installed).
+    onCleanup(provideServices({ chain: () => new Promise(() => {}) }));
+    await renderWithStudio(view, { project: makeProject({ id }) });
+
+    // A plain element lookup, not a polling `expect.element`: the module never settles, so a later-passing
+    // assertion couldn't hide the bug this guards (spec L661: the reason shown must be true right now).
+    const copyButton = page.getByRole("button", { name: "Copy verify command" }).element();
+    expect(copyButton).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("Copy verify command stays enabled once the chain module is unavailable", async () => {
+    const id = "deploy-chain-unavailable";
+    await putDeployment(record(id, { address: address("e9"), verification: "failed" }));
+    onCleanup(provideServices({ chain: () => Promise.reject(new Error("Not built yet · WP-S8a")) }));
+    await renderWithStudio(view, { project: makeProject({ id }) });
+
+    const copyButton = page.getByRole("button", { name: "Copy verify command" });
+    await expect.element(copyButton).not.toHaveAttribute("aria-disabled", "true");
   });
 
   test("Copy address copies the address and says so", async () => {

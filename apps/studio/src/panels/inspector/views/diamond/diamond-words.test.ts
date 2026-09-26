@@ -65,12 +65,12 @@ describe("diamond-words", () => {
     expect(shortHash(CURRENT)).toBe("0xabab…abab");
   });
 
-  test("verification failure reason: only for a failed record, and only once the field is stored", () => {
+  test("verification failure reason: only for a failed record", () => {
     expect(verificationFailureReason(record({ verification: "failed" }))).toBeUndefined();
-    const withReason = { ...record({ verification: "failed" }), verificationReason: "Sourcify didn't finish in time." } as Deployment;
-    expect(verificationFailureReason(withReason)).toBe("Sourcify didn't finish in time.");
-    // A stray field on a record that isn't failed never surfaces: it means nothing there.
-    const notFailed = { ...record({ verification: "match" }), verificationReason: "stale" } as Deployment;
-    expect(verificationFailureReason(notFailed)).toBeUndefined();
+    expect(
+      verificationFailureReason(record({ verification: "failed", verificationReason: "Sourcify didn't finish in time." })),
+    ).toBe("Sourcify didn't finish in time.");
+    // A stale reason on a record that isn't failed never surfaces: it means nothing there.
+    expect(verificationFailureReason(record({ verification: "match", verificationReason: "stale" }))).toBeUndefined();
   });
 });

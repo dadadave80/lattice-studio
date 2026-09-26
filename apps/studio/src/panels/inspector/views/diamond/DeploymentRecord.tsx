@@ -17,7 +17,11 @@ export type DeploymentRecordProps = {
   chainName: string;
   /** The explorer page for the address, when the chain module knows the explorer. */
   explorer: string | null;
-  /** Whether the chain module lists this record's chain (spec L606's forge command needs it to mean anything). */
+  /**
+   * False only once the chain module has loaded and its list truly lacks this chain id; true while it's still
+   * loading or unavailable, since the forge command needs only the chain id already on the record, not the
+   * module (spec L606, L661: a disabled reason must be true, not just "we don't know yet").
+   */
   chainKnown: boolean;
   check: RecordCheck | undefined;
   onRetry(): void;
