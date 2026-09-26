@@ -59,7 +59,10 @@ landed.
   ones the shell publishes: `data-layout` on the shell root (`expectTier`) and `data-theme` on `<html>`.
 - **Methods are user actions and queries** named in the spec's words (`placeFacet("ERC20")`, `routeTo("ERC20Votes")`,
   `summary()`), each with a keyboard path. Assertions stay in the spec file, not the page object.
-- **Keyboard-only variants** use `keys.ts` (below) and `page.keyboard`; after the page loads they never click.
+- **Keyboard-only variants** use `keys.ts` (below) and `page.keyboard`; after the page loads they never click. Use
+  `modifierKey(page)` for ⌘/Ctrl, not the exported `MOD` constant: Playwright's `ControlOrMeta` resolves from the
+  host running the test, not the page, so it presses ⌘ on a macOS host even against a project (Desktop Chrome) whose
+  `navigator.platform` reports Windows, where Studio binds Ctrl.
 
 ## Helpers
 
@@ -70,7 +73,7 @@ landed.
 | `projects.ts` | Projects to seed, built with core against the real catalog: `recipeProject("GovernedVault", { filled })`, `collisionsProject()` (30 cards, SEL-01), `projectFile()` and `importedProject(file)` (From file records), `filePayload(file)` for a file chooser, `shareLink(recipe)` (`page.goto("/" + link)`), `deploymentFor(project)` |
 | `anvil.ts` | `startAnvil(port)`, `acquireAnvil(port)`, `loadPrepared(node)`, `prepareAnvil(node, { recipes })`, `deployShared`, `etchVendored`, `etchSafe`, `sweepAnvils(port)`; `ALICE`, `BOB`, `SAFE` |
 | `wallet.ts` | `seedAnvilRpc(context, node)`, `connectMockWallet(page)` (console `chain anvil`, palette Connect wallet, Switch network), `MOCK_ACCOUNT` |
-| `keys.ts` | `MOD` (⌘ or Ctrl), `nextRegion` / `previousRegion` (F6, Ctrl+F6), `focusRegion`, `focusedRegion`, `nextProblem` / `previousProblem` (F8), `openPalette`, `runInPalette(page, "Connect wallet")`, `runConsole(page, "place erc20")`, `pagePlatform`, `region(page, name)` |
+| `keys.ts` | `nextRegion` / `previousRegion` (F6, Ctrl+F6), `focusRegion`, `focusedRegion`, `nextProblem` / `previousProblem` (F8), `openPalette`, `runInPalette(page, "Connect wallet")`, `runConsole(page, "place erc20")`, `pagePlatform`, `modifierKey(page)` (⌘ or Ctrl, from the page's own platform), `region(page, name)` |
 | `axe.ts` | `expectNoAxeViolations(page, { include, disable })` and `runAxe`: the `wcag2a` to `wcag22aa` tags with `target-size` on (spec L797) |
 | `viewports.ts` | `NARROW_WIDTHS` (768, 375), `viewportAt(width)` for `test.use`, `tierAt(width)`, `expectTier(page, tier)` |
 | `built.ts` | `skipUnlessBuilt(page, …wps)`, `showsNotBuilt(page, wp)` |
