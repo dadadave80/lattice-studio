@@ -212,6 +212,41 @@ describe("verifyRecord", () => {
     expect(bufferedServices().log.length).toBe(0);
   });
 
+  test("never calls Sourcify for a chain it doesn't serve (Anvil, e2e's own chain)", async () => {
+    clearServiceBuffers();
+    const fetchImpl: VerifyFetch = async () => {
+      throw new Error("shouldn't call Sourcify");
+    };
+    const records = memoryRecords([confirmed({ chainId: 31337 })]);
+    const clock = manualClock();
+    await verifyRecord(deps(fetchImpl, records, clock), confirmed({ chainId: 31337 }));
+    expect(records.all()[0]?.verification).toBe("failed");
+    expect(bufferedServices().log.at(-1)?.text).toBe("Couldn't verify: Sourcify doesn't verify contracts on Anvil.");
+  });
+
+  test("a dispose mid-poll stops the calls, and leaves the record pending for the next watcher", async () => {
+    clearServiceBuffers();
+    let polls = 0;
+    const fetchImpl: VerifyFetch = async (_input, init) => {
+      if (init?.method === "POST") return json(202, { verificationId: "job-1" });
+      polls += 1;
+      return json(200, { isJobCompleted: false });
+    };
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    const controller = new AbortController();
+    const promise = verifyRecord(deps(fetchImpl, records, clock), confirmed(), controller.signal);
+    await flush(); // submit, then the first poll, then it's waiting out the backoff
+    expect(polls).toBe(1);
+    controller.abort();
+    clock.advance(2_000); // the backoff `wait()` resolves at once on abort
+    await flush();
+    await promise;
+    expect(polls).toBe(1); // no second poll after the abort
+    expect(records.all()[0]?.verification).toBe("pending"); // untouched: the next watcher resumes it
+    expect(bufferedServices().log.length).toBe(0);
+  });
+
   test("a write the browser refuses is logged and announced, an interrupt (spec L785)", async () => {
     clearServiceBuffers();
     const { fetchImpl } = scriptedFetch([() => json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } })]);
@@ -272,5 +307,30 @@ describe("retryVerification", () => {
     await retryVerification({ chainId: CHAIN_ID, address: ADDRESS }, deps(fetchImpl, records, clock));
     expect(records.all()[0]?.verification).toBe("pending");
     expect(bufferedServices().log.at(-1)?.text).toBe("Only a confirmed deployment can be verified.");
+  });
+
+  test("refuses a record still being verified, rather than starting a second job", async () => {
+    clearServiceBuffers();
+    const records = memoryRecords([confirmed({ verification: "pending" })]);
+    const clock = manualClock();
+    const fetchImpl: VerifyFetch = async () => {
+      throw new Error("shouldn't call Sourcify");
+    };
+    await retryVerification({ chainId: CHAIN_ID, address: ADDRESS }, deps(fetchImpl, records, clock));
+    expect(records.writes()).toEqual([]);
+    expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Verify", text: "This deployment is already being verified." });
+  });
+
+  test("refuses an already-verified record, rather than taking it back to pending", async () => {
+    clearServiceBuffers();
+    const records = memoryRecords([confirmed({ verification: "exact_match" })]);
+    const clock = manualClock();
+    const fetchImpl: VerifyFetch = async () => {
+      throw new Error("shouldn't call Sourcify");
+    };
+    await retryVerification({ chainId: CHAIN_ID, address: ADDRESS }, deps(fetchImpl, records, clock));
+    expect(records.writes()).toEqual([]);
+    expect(records.all()[0]?.verification).toBe("exact_match");
+    expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Verify", text: "This deployment is already verified." });
   });
 });

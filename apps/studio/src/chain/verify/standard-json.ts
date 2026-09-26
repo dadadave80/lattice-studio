@@ -5,9 +5,10 @@
  * Every fetched file is checked against its `ShardRef.hash` before it's parsed, as `catalog/loader.ts` does for
  * every other shard.
  *
- * `compilerVersion` is `catalog.toolchain.solc` (the short form, e.g. "0.8.36"): Sourcify's schema accepts it
- * (`^v?\d+\.\d+\.\d+.*$`), and the catalog carries no long form (no `solcLongVersion` in build info) to submit
- * instead (CCR, see the WP-S8d report).
+ * `compilerVersion` is `catalog.toolchain.solcLong` (solc's full version, e.g. "0.8.36+commit.8a97fa7a"), which
+ * Sourcify's job resolves the compiler binary by; a catalog written before FX20 carries none, so this falls back
+ * to the short `solc` (Sourcify's schema accepts it, `^v?\d+\.\d+\.\d+.*$`, but the job most likely fails to
+ * resolve a binary from it, reported as an ordinary "Couldn't verify" once regenerating the catalog is the fix).
  */
 import { keccak256 } from "viem";
 import type { Catalog, Deployment, Result, ShardRef } from "@lattice-studio/core";
@@ -54,5 +55,6 @@ export async function loadProxyBuild(fetchImpl: VerifyFetch, chainId: number, pa
   } catch {
     return err(`${ref.path} isn't valid JSON.`);
   }
-  return ok({ stdJsonInput, compilerVersion: status.catalog.toolchain.solc });
+  const { solcLong, solc } = status.catalog.toolchain;
+  return ok({ stdJsonInput, compilerVersion: solcLong ?? solc });
 }

@@ -14,6 +14,7 @@ import type { Address, Deployment, LineDraft } from "@lattice-studio/core";
 import { sameAddress } from "@lattice-studio/core";
 import { announce, log, settings } from "@/contracts";
 import { appVerifyDeps } from "./app-deps";
+import { sourcifyServes, unverifiableChainName } from "./chains";
 import { couldntVerifyLine, verifiedLine } from "./copy";
 import type { VerifyDeps } from "./ports";
 import { pollSourcify, SOURCIFY_BASE, submitToSourcify } from "./sourcify";
@@ -31,9 +32,22 @@ function recordKey(d: Pick<Deployment, "chainId" | "address">): string {
 /** Jobs already running, so the watcher and a retry never submit the same record twice. */
 const inFlight = new Set<string>();
 
-function wait(deps: VerifyDeps, ms: number): Promise<void> {
+/** Resolves after `ms`, or at once when `signal` was already aborted, or as soon as it aborts meanwhile. */
+function wait(deps: VerifyDeps, ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    deps.clock.setTimeout(resolve, ms);
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+    const timer = deps.clock.setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        deps.clock.clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
   });
 }
 
@@ -74,10 +88,21 @@ async function settle(deps: VerifyDeps, record: Deployment, verification: Deploy
   if (written) log(line);
 }
 
-/** Submits and polls one record to a terminal outcome, writing it as it settles. Never throws. */
-export async function verifyRecord(deps: VerifyDeps, record: Deployment): Promise<void> {
+/**
+ * Submits and polls one record to a terminal outcome, writing it as it settles. Never throws, and never calls
+ * `fetchImpl` for a chain Sourcify doesn't serve (a local or ephemeral test network, e.g. Anvil under `test:chain`
+ * or e2e) or once `signal` aborts (the watcher stopped, or another job for this project no longer wants it):
+ * an aborted run leaves the record's `verification` exactly where it found it, still "pending", so whoever
+ * starts the next watcher (a reload, a focus event) resumes it.
+ */
+export async function verifyRecord(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
+  if (!sourcifyServes(record.chainId)) {
+    return settle(deps, record, "failed", couldntVerifyLine(`Sourcify doesn't verify contracts on ${unverifiableChainName(record.chainId)}.`));
+  }
+  if (signal?.aborted) return;
   const base = deps.baseUrl ?? SOURCIFY_BASE;
   const build = await deps.proxyBuild(record.chainId, record.path);
+  if (signal?.aborted) return;
   if (!build.ok) return settle(deps, record, "failed", couldntVerifyLine(build.error));
   const submitted = await submitToSourcify(deps.fetchImpl, base, record.chainId, record.address, {
     stdJsonInput: build.value.stdJsonInput,
@@ -85,10 +110,13 @@ export async function verifyRecord(deps: VerifyDeps, record: Deployment): Promis
     contractIdentifier: CONTRACT_IDENTIFIER,
     ...(record.tx ? { creationTransactionHash: record.tx } : {}),
   });
+  if (signal?.aborted) return;
   if (!submitted.ok) return settle(deps, record, "failed", couldntVerifyLine(submitted.error));
   const startedAt = deps.clock.now();
   for (let attempt = 0; ; attempt += 1) {
+    if (signal?.aborted) return;
     const verdict = await pollSourcify(deps.fetchImpl, base, submitted.value);
+    if (signal?.aborted) return;
     if (!verdict.ok) return settle(deps, record, "failed", couldntVerifyLine(verdict.error));
     if (verdict.value.kind === "verified") return settle(deps, record, verdict.value.match, verifiedLine(verdict.value.match));
     if (verdict.value.kind === "failed") return settle(deps, record, "failed", couldntVerifyLine(verdict.value.reason));
@@ -96,17 +124,17 @@ export async function verifyRecord(deps: VerifyDeps, record: Deployment): Promis
       return settle(deps, record, "failed", couldntVerifyLine("Sourcify didn't finish in time."));
     }
     const delay = POLL_INTERVALS_MS[Math.min(attempt, POLL_INTERVALS_MS.length - 1)] ?? 21_000;
-    await wait(deps, delay);
+    await wait(deps, delay, signal);
   }
 }
 
 /** `verifyRecord`, skipping a record whose job is already running. */
-export async function verifyIfNeeded(deps: VerifyDeps, record: Deployment): Promise<void> {
+export async function verifyIfNeeded(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
   const key = recordKey(record);
   if (inFlight.has(key)) return;
   inFlight.add(key);
   try {
-    await verifyRecord(deps, record);
+    await verifyRecord(deps, record, signal);
   } finally {
     inFlight.delete(key);
   }
@@ -128,6 +156,16 @@ export async function retryVerification(target: { chainId: number; address: Addr
   }
   if (found.status !== "confirmed") {
     log({ tag: "Verify", text: "Only a confirmed deployment can be verified." });
+    return;
+  }
+  // Only a settled failure is retried: a "pending" record is already verifying (or already resumed the
+  // watcher's own job), and a matched one is already verified. Neither the deploy machine's own phase ("live"
+  // for either) nor a second job on the same record would follow taking this back to "pending".
+  if (found.verification !== "failed") {
+    log({
+      tag: "Verify",
+      text: found.verification === "pending" ? "This deployment is already being verified." : "This deployment is already verified.",
+    });
     return;
   }
   const pending: Deployment = { ...found, verification: "pending" };

@@ -76,9 +76,26 @@ describe("loadProxyBuild", () => {
     const result = await loadProxyBuild(diskFetch(dir), 11155111, "factory");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
+    // This catalog predates FX20 (no `solcLong` yet): the short form is the fallback this test exercises too.
     expect(result.value.compilerVersion).toBe(catalog.toolchain.solc);
     const raw = readFileSync(new URL(catalog.proxy.standardJson.path, entryRoot), "utf8");
     expect(result.value.stdJsonInput).toEqual(JSON.parse(raw));
+  });
+
+  test("prefers the compiler's long version once the catalog carries one (FX20)", async () => {
+    const withLong: Catalog = { ...catalog, toolchain: { ...catalog.toolchain, solcLong: "0.8.36+commit.8a97fa7a" } };
+    setCatalogStatus({ status: "ready", id: entryId, catalog: withLong, manifest });
+    const dir = catalogDirFor(entryId, manifest);
+    const result = await loadProxyBuild(diskFetch(dir), 11155111, "factory");
+    expect(result).toMatchObject({ ok: true, value: { compilerVersion: "0.8.36+commit.8a97fa7a" } });
+  });
+
+  test("falls back to the short solc version when the catalog has no long one", async () => {
+    const withoutLong: Catalog = { ...catalog, toolchain: { foundry: catalog.toolchain.foundry, solc: catalog.toolchain.solc } };
+    setCatalogStatus({ status: "ready", id: entryId, catalog: withoutLong, manifest });
+    const dir = catalogDirFor(entryId, manifest);
+    const result = await loadProxyBuild(diskFetch(dir), 11155111, "factory");
+    expect(result).toMatchObject({ ok: true, value: { compilerVersion: catalog.toolchain.solc } });
   });
 
   test("reports a hash mismatch instead of returning tampered bytes", async () => {

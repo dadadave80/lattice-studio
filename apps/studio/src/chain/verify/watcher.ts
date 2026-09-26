@@ -15,15 +15,20 @@ function eligible(records: readonly Deployment[]): Deployment[] {
   return records.filter((d) => d.status === "confirmed" && d.verification === "pending" && d.fromFile !== true);
 }
 
-/** Starts watching the open project's records. Returns a disposer. */
+/**
+ * Starts watching the open project's records. Returns a disposer that also aborts every job this watcher
+ * started: without it, a job already inside its poll loop (up to five minutes of backoff) would keep calling
+ * `fetchImpl` after the watcher that started it was told to stop.
+ */
 export function startVerifying(deps: VerifyDeps = appVerifyDeps()): () => void {
   let stopped = false;
+  const abort = new AbortController();
   const check = (projectId: string): void => {
     if (stopped) return;
     listDeployments(projectId).then(
       (records) => {
         if (stopped || projectId !== doc.get().id) return;
-        for (const record of eligible(records)) void verifyIfNeeded(deps, record);
+        for (const record of eligible(records)) void verifyIfNeeded(deps, record, abort.signal);
       },
       () => {},
     );
@@ -37,6 +42,7 @@ export function startVerifying(deps: VerifyDeps = appVerifyDeps()): () => void {
   queueMicrotask(() => check(doc.get().id));
   return () => {
     stopped = true;
+    abort.abort();
     stopDoc();
     stopRecords();
   };
