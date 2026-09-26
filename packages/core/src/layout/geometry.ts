@@ -93,15 +93,19 @@ export function compareText(a: string, b: string): number {
  * `at` in `step` increments and taking the first free spot, but exact and fast: the nearest free point either
  * is `at` (snapped) or, on each axis, sits flush against some obstacle's far edge, so only those coordinates
  * are candidates. Ties break by y, then x. There is always an answer (right of every obstacle is free).
+ *
+ * The search goes column by column, nearest column first, and stops once a column is farther away than the best
+ * free point found: each column checks only the obstacles in its band, and most columns stop at their first
+ * free row. The answer is the one the full candidate grid sorted by (distance, y, x) would give.
  */
 export function nearestFree(obstacles: readonly Rect[], at: Point, size: Size, step: number, pad = 0): Point {
   const start = { x: snap(at.x, step), y: snap(at.y, step) };
-  const free = (p: Point): boolean => {
+  const clear = (p: Point, among: readonly Rect[]): boolean => {
     const box = { x: p.x, y: p.y, width: size.width, height: size.height };
-    for (const o of obstacles) if (overlaps(box, o, pad)) return false;
+    for (const o of among) if (overlaps(box, o, pad)) return false;
     return true;
   };
-  if (free(start)) return start;
+  if (clear(start, obstacles)) return start;
   const xs = new Set<number>([start.x]);
   const ys = new Set<number>([start.y]);
   for (const o of obstacles) {
@@ -110,16 +114,25 @@ export function nearestFree(obstacles: readonly Rect[], at: Point, size: Size, s
     ys.add(snapUp(o.y + o.height + pad, step));
     ys.add(snapDown(o.y - pad - size.height, step));
   }
-  const candidates: { x: number; y: number; d: number }[] = [];
-  for (const x of xs) {
-    for (const y of ys) {
-      const dx = x - at.x;
-      const dy = y - at.y;
-      candidates.push({ x, y, d: dx * dx + dy * dy });
+  const byDistance = (values: Iterable<number>, origin: number): { v: number; d: number }[] =>
+    [...values].map((v) => ({ v, d: (v - origin) * (v - origin) })).sort((a, b) => a.d - b.d || a.v - b.v);
+  const columns = byDistance(xs, at.x);
+  const rows = byDistance(ys, at.y);
+  let best: { x: number; y: number; d: number } | null = null;
+  for (const column of columns) {
+    if (best && column.d > best.d) break;
+    const x = column.v;
+    // Only obstacles overlapping this column's band can block a point in it.
+    const band = obstacles.filter((o) => x < o.x + o.width + pad && x + size.width + pad > o.x);
+    for (const row of rows) {
+      const d = column.d + row.d;
+      if (best && (d > best.d || (d === best.d && (row.v > best.y || (row.v === best.y && x > best.x))))) break;
+      if (!clear({ x, y: row.v }, band)) continue;
+      best = { x, y: row.v, d };
+      break;
     }
   }
-  candidates.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
-  for (const c of candidates) if (free(c)) return { x: c.x, y: c.y };
+  if (best) return { x: best.x, y: best.y };
   // Unreachable: the point right of every obstacle at `start.y` is a candidate and free.
   const right = Math.max(...obstacles.map((o) => o.x + o.width + pad));
   return { x: snapUp(right, step), y: start.y };
