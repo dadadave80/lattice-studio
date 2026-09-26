@@ -10,6 +10,7 @@
  * the pinned catalog, not a gap in the flow, so it's called out here rather than asserted against silently.
  */
 import { expect, test } from "../_support/fixtures.ts";
+import { runInPalette } from "../_support/keys.ts";
 import { seedProject } from "../_support/seed.ts";
 import { expectTier, viewportAt } from "../_support/viewports.ts";
 import { ChoosePerSelectorDialogPage } from "./pages/choose-per-selector-dialog.ts";
@@ -248,8 +249,7 @@ test.describe("Flow 4: resolve a collision", () => {
       );
 
       // The Structure tree's Problems branch (IR "Left pane": "Enter focuses its note, as F8 does") reaches
-      // the same note a fifth way (spec L436's "the palette's Resolve collision…" is the sixth; see the
-      // keyboard-only "palette path" test below for why it's skipped in this environment).
+      // the same note a fifth way.
       await structure.open();
       await structure
         .problem("Blocker: sendMessage(bytes,bytes,bytes[]) 0xcdfe7f5c is exported by AxelarGatewayAdapter and HyperlaneGatewayAdapter. Choose one owner.")
@@ -268,17 +268,24 @@ test.describe("Flow 4: resolve a collision", () => {
       ).toBeVisible();
     });
 
-    test.skip(
-      "Resolve collision… (palette) reopens the note with its choice already open",
-      async () => {
-        /* Not built yet: ⌘/Ctrl+K doesn't open the palette in this Playwright/Chromium environment at all —
-         * reproduces unmodified on `_support/smoke/keys.spec.ts`'s "⌘K opens the palette", with a fresh build
-         * and with `STUDIO_E2E_REUSE_BUILD` unset, so it isn't this spec's fixtures, staleness or key context.
-         * Flow 4's decision is still exercised five other ways in this file (Keep/Route buttons, Choose per
-         * selector…, the console's `route` verb, F8, and the Structure tree's Problems branch); only the
-         * palette path itself is blocked. See the WP-Q1b report. */
-      },
-    );
+    test("Resolve collision… (palette) reopens the note with its choice already open", async ({ page }) => {
+      await seedProject(page, { project: twoWayCollision() });
+      const sheet = new SheetPage(page);
+      const console_ = new ConsolePage(page);
+      await expect(sheet.card("AxelarGatewayAdapter")).toBeVisible();
+
+      // Resolve collision… (a sixth way in, spec L436) opens the first unresolved collision's note with its
+      // choice already focused: the first button ("Keep {A}", two contenders).
+      await runInPalette(page, "Resolve collision…");
+      const note = sheet.note(COLLISION_CAPTION);
+      const keep = sheet.keepButton(note, "AxelarGatewayAdapter");
+      await expect(keep).toBeFocused();
+      await page.keyboard.press("Enter");
+
+      await expect(
+        console_.line("Resolved: sendMessage · 0xcdfe7f5c and supportsAttribute · 0xdc680a0f route to AxelarGatewayAdapter."),
+      ).toBeVisible();
+    });
 
     test("console route verb resolves one selector, the note stays for the other", async ({ page }) => {
       await seedProject(page, { project: twoWayCollision() });

@@ -4,7 +4,7 @@
  * include a literal backtick). The Recipe JSON tab is a `role="tabpanel"` once selected.
  */
 import { expect, type Locator, type Page } from "@playwright/test";
-import { region } from "../../_support/keys.ts";
+import { region, runConsole } from "../../_support/keys.ts";
 
 export class ConsolePage {
   readonly root: Locator;
@@ -25,18 +25,9 @@ export class ConsolePage {
     return this.root.getByRole("textbox", { name: /command/i });
   }
 
-  /**
-   * Types one console line and presses Enter. Focuses the command line directly, not by Tab-cycling from the
-   * region (`_support/keys.ts`'s `runConsole`, frozen, ⇐ Q0): the Log toolbar's nine tag-filter chips (Note,
-   * Placed, Resolved, Collision, Missing, Init, Deploy, Verify, Error) push the command line to the 21st Tab
-   * stop, past that helper's hard-coded 20-press cap (reproduces on the unmodified `_support/smoke/keys.spec.ts`
-   * too — a Q0 fix-package candidate, not something owned here). `focus()` reaches the same element a real Tab
-   * sequence would, without a pointer event, so it stays valid for a keyboard-only spec.
-   */
+  /** Types one console line and presses Enter, keyboard only (`_support/keys.ts`'s `runConsole`). */
   async run(line: string): Promise<void> {
-    await this.commandLine().focus();
-    await this.page.keyboard.type(line);
-    await this.page.keyboard.press("Enter");
+    await runConsole(this.page, line);
   }
 
   /** Opens the Recipe JSON tab and returns its panel, read-only (IR "Console drawer"). */
