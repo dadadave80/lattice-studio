@@ -1,9 +1,12 @@
 import type { Deployment, Hex } from "@lattice-studio/core";
 import { formatAddress, formatTime } from "@lattice-studio/core";
+import { forgeVerifyCommand } from "@/chain/verify/copy";
 import { commandRef, now } from "@/contracts";
-import { Button, CommandButton, copyText } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
+import { CommandButton } from "@/ui/buttons/CommandButton";
+import { copyText } from "@/ui/copy/copy-text";
 import sheet from "../../shared/sheet.module.css";
-import { shortHash, statusWord, verificationWord } from "./diamond-words";
+import { shortHash, statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
 import type { RecordCheck } from "./use-record-checks";
 import styles from "./diamond.module.css";
 
@@ -14,14 +17,17 @@ export type DeploymentRecordProps = {
   chainName: string;
   /** The explorer page for the address, when the chain module knows the explorer. */
   explorer: string | null;
+  /** Whether the chain module lists this record's chain (spec L606's forge command needs it to mean anything). */
+  chainKnown: boolean;
   check: RecordCheck | undefined;
   onRetry(): void;
 };
 
 /** One deployment record in the Deployments list (IR L119): status, address, recipe hash, verification, time. */
-export function DeploymentRecord({ record, currentHash, chainName, explorer, check, onRetry }: DeploymentRecordProps) {
+export function DeploymentRecord({ record, currentHash, chainName, explorer, chainKnown, check, onRetry }: DeploymentRecordProps) {
   const { chainId, address } = record;
   const time = formatTime(record.at, new Date(now()).toISOString());
+  const failureReason = verificationFailureReason(record);
   return (
     <li className={sheet.item} data-record={`${chainId}:${address}`}>
       <div className={sheet.itemLine}>
@@ -39,6 +45,7 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, che
         </span>
       </div>
       <span className={styles.quiet}>{verificationWord(record.verification)}</span>
+      {failureReason ? <span className={sheet.text}>{failureReason}</span> : null}
       {check === "found" ? <span className={styles.quiet}>{`Code found on ${chainName}.`}</span> : null}
       {check === "empty" ? <span className={sheet.text}>{`No code at this address on ${chainName}.`}</span> : null}
       {check === "failed" ? (
@@ -59,9 +66,18 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, che
           </a>
         ) : null}
         {record.verification === "failed" ? (
-          <CommandButton command={commandRef("deploy.retryVerification", { chainId, address })} size="small">
-            Retry verification
-          </CommandButton>
+          <>
+            <CommandButton command={commandRef("deploy.retryVerification", { chainId, address })} size="small">
+              Retry verification
+            </CommandButton>
+            <Button
+              size="small"
+              disabledReason={chainKnown ? null : "Studio doesn't recognize this chain."}
+              onClick={() => void copyText(forgeVerifyCommand(address, chainId), { label: "verify command" })}
+            >
+              Copy verify command
+            </Button>
+          </>
         ) : null}
         {record.status === "mismatch" ? (
           <CommandButton command={commandRef("deploy.compare", { chainId, address })} size="small">

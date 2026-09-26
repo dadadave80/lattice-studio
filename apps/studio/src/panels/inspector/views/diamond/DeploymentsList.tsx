@@ -38,6 +38,7 @@ export function DeploymentsList({ autoCheck }: { autoCheck: boolean }) {
       ) : null}
       {groups.map((group) => {
         const name = chainName(group.chainId);
+        const known = chains.some((c) => c.id === group.chainId);
         return (
           <div key={group.chainId} className={styles.group}>
             <h4 className={styles.groupHeading}>{name}</h4>
@@ -49,6 +50,7 @@ export function DeploymentsList({ autoCheck }: { autoCheck: boolean }) {
                   currentHash={currentHash}
                   chainName={name}
                   explorer={explorerUrl(chains, record.chainId, record.address)}
+                  chainKnown={known}
                   check={checks.checkOf(record)}
                   onRetry={() => checks.retry(record)}
                 />

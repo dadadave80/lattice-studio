@@ -80,6 +80,17 @@ export function verificationWord(verification: Deployment["verification"]): stri
   }
 }
 
+/**
+ * Why a failed verification couldn't finish (spec L579, L606, Flow 14 "Verification failed: The reason"), once
+ * it's stored on the record. `Deployment` carries no such field yet (FX21's CCR asks for `verificationReason?`
+ * on the model); this reads it defensively so the record starts showing it the moment that field lands, with
+ * no further change here. Undefined for anything but a failed record, or while the field is still missing.
+ */
+export function verificationFailureReason(record: Deployment): string | undefined {
+  if (record.verification !== "failed") return undefined;
+  return "verificationReason" in record && typeof record.verificationReason === "string" ? record.verificationReason : undefined;
+}
+
 export type DeploymentGroup = { chainId: number; records: Deployment[] };
 
 /** Every record grouped by chain, newest first; the chain with the newest record comes first (Flow 13). */

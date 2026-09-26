@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Address, Deployment, Hex } from "@lattice-studio/core";
 import { formatAddress } from "@lattice-studio/core";
-import { groupDeployments, holderText, shortHash, statusWord, verificationWord } from "./diamond-words";
+import { groupDeployments, holderText, shortHash, statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
 
 const CURRENT: Hex = `0x${"ab".repeat(32)}`;
 
@@ -63,5 +63,14 @@ describe("diamond-words", () => {
 
   test("short hashes are 6 + 4", () => {
     expect(shortHash(CURRENT)).toBe("0xabab…abab");
+  });
+
+  test("verification failure reason: only for a failed record, and only once the field is stored", () => {
+    expect(verificationFailureReason(record({ verification: "failed" }))).toBeUndefined();
+    const withReason = { ...record({ verification: "failed" }), verificationReason: "Sourcify didn't finish in time." } as Deployment;
+    expect(verificationFailureReason(withReason)).toBe("Sourcify didn't finish in time.");
+    // A stray field on a record that isn't failed never surfaces: it means nothing there.
+    const notFailed = { ...record({ verification: "match" }), verificationReason: "stale" } as Deployment;
+    expect(verificationFailureReason(notFailed)).toBeUndefined();
   });
 });
