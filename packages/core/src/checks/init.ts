@@ -169,7 +169,8 @@ function oneAdmin(comparisons: readonly Comparison[]): { fixes: CommandRef[]; ar
       const source = target === right ? left : right;
       if (!target?.argPath) continue;
       admin ??= source.value;
-      if (!fixes.some((f) => f.args?.["path"] === target.argPath)) fixes.push({ id: "init.setArg", args: { path: target.argPath, value: source.value } });
+      // INIT-03's roles fix reads "Use one admin" (spec L329).
+      if (!fixes.some((f) => f.args?.["path"] === target.argPath)) fixes.push({ id: "init.setArg", args: { path: target.argPath, value: source.value, verb: "oneAdmin" } });
     }
     break;
   }
