@@ -125,6 +125,15 @@ describe("Deployer (spec L564, Flow 14)", () => {
     await expect.poll(() => chain.calls.filter((c) => c.method === "connect").map((c) => c.args[0])).toEqual(["mock"]);
   });
 
+  test("a service that builds a fresh connector list per call doesn't loop the review (React #185, Q1e)", async () => {
+    const chain = fakeChainService({ account: null, catalog: deployableCatalog() });
+    chain.connectors = () => [...FAKE_CONNECTORS]; // like S8a's service: a new list on every call
+    await renderReview({ project: templateProject("ERC20"), chain });
+    await expect.element(section("Deployer")).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(section("Deployer").elements()).toHaveLength(1);
+  });
+
   test("no wallet in the browser says so and links to one", async () => {
     const chain = fakeChainService({ account: null, catalog: deployableCatalog(), connectors: [FAKE_CONNECTORS[1]!] });
     await renderReview({ project: templateProject("ERC20"), chain });
