@@ -17,9 +17,10 @@ export type SelectorListProps = {
 };
 
 /**
- * The facet's exported selectors with a filter (IR L118). Interactive, it's one Tab stop: ↑/↓/Home/End move
- * between rows, Enter or Space does what the row's tooltip says (Flow 6). inspector.focusSelectors lands on the
- * first row.
+ * The facet's exported selectors with a filter (IR L118). Interactive, its rows are one Tab stop: ↑/↓/Home/End
+ * move between them, Enter or Space does what the row's tooltip says (Flow 6). inspector.focusSelectors lands
+ * on the first row. Tab from the active row reaches its actions menu (Copy selector, Copy signature, Show
+ * owner; ruling R3) before leaving the list, since that menu shares the row's place in tab order.
  */
 export function SelectorList({ facet, catalog, readOnly }: SelectorListProps) {
   const routing = useAnalysis((a) => a.routing);

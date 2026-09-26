@@ -294,16 +294,29 @@ describe("selectors list", () => {
   });
 
   test("a long signature wraps with no horizontal overflow (spec L787)", async () => {
-    const longest = fixtureCatalog()
-      .facets.flatMap((facet) => facet.selectors.map((selector) => ({ facet: facet.name, selector })))
-      .reduce((a, b) => (b.selector.signature.length > a.selector.signature.length ? b : a));
-    const result = await renderWithStudio(<FacetView view={{ kind: "facet", facet: longest.facet }} />, {
-      project: project({ facets: [longest.facet] }, "facet-wrap"),
+    const base = fixtureCatalog();
+    // The dense form shows the function name alone (formatSelector's "dense"): long enough on its own that
+    // without `overflow-wrap: anywhere` it would overflow the inspector's narrowest width (spec L353), no
+    // matter how short the fixture's real names are.
+    const LONG_NAME = "aFunctionNameLongEnoughThatWithoutWrapAnywhereItWouldOverflowTheInspectorAtItsNarrowestWidth";
+    const target = base.facets.find((f) => f.name === "ERC20");
+    const hex = target?.selectors[0]?.hex;
+    if (!target || !hex) throw new Error("ERC20 lost its first selector in the fixture catalog.");
+    const catalog: Catalog = {
+      ...base,
+      facets: base.facets.map((f) =>
+        f.name === "ERC20"
+          ? { ...f, selectors: f.selectors.map((s) => (s.hex === hex ? { ...s, signature: `${LONG_NAME}(address,uint256)` } : s)) }
+          : f,
+      ),
+    };
+    const result = await renderWithStudio(<FacetView view={{ kind: "facet", facet: "ERC20" }} />, {
+      catalog,
+      project: project({ facets: ["ERC20"] }, "facet-wrap", catalog),
     });
-    // The inspector's narrowest width (spec L353): text spacing (1.4.12) never clips or scrolls.
     (result.container as HTMLElement).style.width = "280px";
-    await shown(longest.facet);
-    const signatureRow = row(longest.selector.hex);
+    await shown("ERC20");
+    const signatureRow = row(hex);
     expect(signatureRow.scrollWidth).toBeLessThanOrEqual(signatureRow.clientWidth);
   });
 });
