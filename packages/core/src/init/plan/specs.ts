@@ -21,6 +21,15 @@ export function mainModule(spec: InitSpec): string {
   return spec.initializes.at(-1)?.module ?? spec.contract.replace(/Init$/, "");
 }
 
+/**
+ * The module a facet's own init is for: the `initializes` entry named after the facet, when there is one,
+ * else `mainModule` (INIT-04, WP-FX23). ERC20VotesInit ends with AccessControl even though ERC20Votes is
+ * its own module, so INIT-04 asks for this rather than assuming the last module is the facet's.
+ */
+export function facetModule(facet: string, spec: InitSpec): string {
+  return spec.initializes.some((entry) => entry.module === facet) ? facet : mainModule(spec);
+}
+
 /** True when an upgrade mechanism (a facet of the "upgrade" family) is placed (R11). */
 export function hasUpgradeMechanism(facets: readonly string[], catalog: Catalog): boolean {
   const placed = new Set(facets);

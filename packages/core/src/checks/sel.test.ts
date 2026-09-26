@@ -148,7 +148,7 @@ describe("SEL-02 and SEL-03", () => {
     expect(cuts?.params).toEqual({ facet: "X", count: 2, why: "owned", servedBy: ["Y"], movable: [one, two] });
     expect(cuts?.fixes).toEqual([
       { id: "facet.remove", args: { facets: ["X"] } },
-      { id: "inspector.focusSelectors", args: { facet: "X" } },
+      { id: "inspector.focusSelectors", args: { facet: "X", verb: "route" } },
     ]);
     expect(byCode(problems, "SEL-02")).toEqual([]);
   });
@@ -185,7 +185,7 @@ describe("SEL-04 and SEL-05", () => {
         where: [{ kind: "selector", selector: S.exportSelectors, facet: "ERC20" }],
         params: { selector: S.exportSelectors, signature: "exportSelectors()", facet: "ERC20" },
         message: "`exportSelectors()` is never cut into a diamond.",
-        fixes: [{ id: "selector.clearOwner", args: { selector: S.exportSelectors } }],
+        fixes: [{ id: "selector.clearOwner", args: { selector: S.exportSelectors, verb: "remove" } }],
       },
     ]);
   });

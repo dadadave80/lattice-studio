@@ -6,6 +6,7 @@ import type { Analysis, Catalog, ExportFile, Hex, Project, Result } from "@latti
 import { exportFoundry } from "@lattice-studio/core";
 import { loadCreationCode } from "@/contracts";
 import { scriptChainIds } from "../chains";
+import { exportRecipe } from "./recipe";
 import { STUDIO_VERSION } from "./version";
 
 export type FoundryInput = { project: Project; catalog: Catalog; analysis: Analysis };
@@ -18,7 +19,10 @@ export async function foundryScript({ project, catalog, analysis }: FoundryInput
     proxyCreationCode = code.value;
   }
   return exportFoundry({
-    project,
+    // The script's filename and contract name already key off `project.name` directly; stamping the recipe too
+    // (spec L212) costs nothing today (render.ts never reads `recipe.name`, and it's outside the hash) and
+    // keeps this exporter from silently drifting from the others if that ever changes.
+    project: { ...project, recipe: exportRecipe(project) },
     catalog,
     analysis,
     studioVersion: STUDIO_VERSION,
