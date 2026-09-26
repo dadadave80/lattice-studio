@@ -229,6 +229,23 @@ describe("memo and injected checks", () => {
     expect(frozen(ctx)).toEqual([]);
   });
 
+  test.skipIf(fixture === null)("a \"__proto__\" key in a check's params is copied as data, never as a prototype", () => {
+    const params = JSON.parse('{"facet":"AxelarGatewayAdapter","anyOf":["X"],"reason":"r","__proto__":{"polluted":true}}') as Record<string, unknown>;
+    expect(Object.hasOwn(params, "__proto__")).toBe(true);
+    const hostile: Check = () => [
+      { ...problem("DEP-01", [{ kind: "facet", facet: "AxelarGatewayAdapter" }], { facet: "AxelarGatewayAdapter", anyOf: ["X"], reason: "r" }, []), params } as Problem,
+    ];
+    const result = analyze(recipe(), fresh(), undefined, { checks: [hostile] });
+    const copied = result.problems[0]?.params as Record<string, unknown> | undefined;
+    expect(copied).toBeDefined();
+    expect(Object.hasOwn(copied ?? {}, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(copied)).toBe(Object.prototype);
+    expect(Object.getOwnPropertyDescriptor(copied, "__proto__")?.value).toEqual({ polluted: true });
+    expect("polluted" in (copied ?? {})).toBe(false);
+    expect(Object.keys(copied ?? {})).toEqual(Object.keys(params));
+    expect(Object.isFrozen(Object.getOwnPropertyDescriptor(copied, "__proto__")?.value)).toBe(true);
+  });
+
   test.skipIf(fixture === null)("injected checks replace the registry's, bypass the memo, and their problems come back sorted", () => {
     const seen: string[] = [];
     const fake: Check = (input) => {

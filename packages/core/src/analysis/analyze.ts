@@ -147,8 +147,8 @@ function freezeInit(init: Analysis["init"]): Analysis["init"] {
 function frozenCopy<T>(value: T): T {
   if (value === null || typeof value !== "object") return value;
   if (Array.isArray(value)) return Object.freeze(value.map(frozenCopy)) as T;
-  const out: Record<string, unknown> = {};
-  for (const key of Object.keys(value)) out[key] = frozenCopy((value as Record<string, unknown>)[key]);
+  // Built from entries, not by assignment, so an own "__proto__" key stays a field (as canonical's mapFields does).
+  const out = Object.fromEntries(Object.keys(value).map((key) => [key, frozenCopy((value as Record<string, unknown>)[key])]));
   return Object.freeze(out) as T;
 }
 
