@@ -1,10 +1,9 @@
 import { useAnalysis, useCatalog, useDocument } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { Banner } from "@/ui/status/Banner";
-import {
-  blockerCount, CATALOG_NOT_LOADED, copyExport, PLACE_FACETS_TO_GENERATE, resolveToExport, saveExport,
-} from "./actions";
+import { copyExport, saveExport } from "./actions";
 import { CodeLines } from "./CodeLines";
+import { blockerCount, CATALOG_NOT_LOADED, PLACE_FACETS_TO_GENERATE, resolveToExport } from "./export-enablement";
 import styles from "./CodeView.module.css";
 import { useExportFile, type CodeKind } from "./use-export-file";
 

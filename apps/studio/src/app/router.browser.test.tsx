@@ -48,8 +48,10 @@ describe("routes", () => {
 
   test("a route change keeps the same sheet", async () => {
     await renderWithStudio(<App />);
-    const sheet = document.getElementById("shell-sheet")?.firstElementChild;
-    expect(sheet).toBeTruthy();
+    // The canvas is a lazy chunk (S4b), so the sheet's first child arrives a moment after the render.
+    const sheetOf = () => document.getElementById("shell-sheet")?.firstElementChild ?? null;
+    await expect.poll(sheetOf, { timeout: 10_000 }).not.toBeNull();
+    const sheet = sheetOf();
     location.hash = "#/docs/problems/SEL-01";
     await expect.poll(() => session.get().panes.inspector.view).toEqual({ kind: "doc", code: "SEL-01" });
     location.hash = "#/";

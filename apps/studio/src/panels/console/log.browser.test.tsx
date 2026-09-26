@@ -7,7 +7,7 @@ import { ConsolePanel } from "./ConsolePanel";
 import { startKeepLog } from "./keep-log";
 import { flushLogPersistence, LOG_STORAGE_KEY, logEntries, type LogStorage } from "./log-store";
 import { EMPTY_LOG, JUMP_TO_LATEST } from "./LogView";
-import { erc20Project, recordLocate, resetConsole } from "./test-support";
+import { awaitConsoleBody, erc20Project, recordLocate, resetConsole } from "./test-support";
 
 beforeEach(() => resetConsole());
 
@@ -22,10 +22,12 @@ async function hasText(locator: { element(): Element }, text: string): Promise<v
 }
 
 async function renderConsole(options: { theme?: "shop" | "draft" } = {}) {
-  return renderWithStudio(<div style={{ height: "400px", display: "flex" }}><ConsolePanel /></div>, {
+  const rendered = await renderWithStudio(<div style={{ height: "400px", display: "flex" }}><ConsolePanel /></div>, {
     project: erc20Project(),
     ...(options.theme ? { theme: options.theme } : {}),
   });
+  await awaitConsoleBody();
+  return rendered;
 }
 
 function seedLines() {
@@ -136,8 +138,11 @@ describe("Log (IR L134)", () => {
     expect(bufferedServices().toast.at(-1)).toEqual({ text: "Copied Tidied 4 facets." });
     await userEvent.click(page.getByRole("button", { name: "Log menu" }));
     await userEvent.click(page.getByRole("menuitem", { name: "Copy all" }));
-    await vi.waitFor(() => expect(bufferedServices().toast.at(-1)).toEqual({ text: "Copied 4 lines" }));
-    expect(writeText.mock.calls.at(-1)?.[0]).toMatch(/^Placed\tPlaced ERC20[\s\S]*\nError\tDeploy reverted/);
+    // Every toast is also a console line (spec L733), so "Copied Tidied 4 facets." joins the four seeded lines.
+    await vi.waitFor(() => expect(bufferedServices().toast.at(-1)?.text).toMatch(/^Copied \d+ lines$/));
+    const copied = String(writeText.mock.calls.at(-1)?.[0]);
+    expect(bufferedServices().toast.at(-1)?.text).toBe(`Copied ${copied.split("\n").length} lines`);
+    expect(copied).toMatch(/^Placed\tPlaced ERC20[\s\S]*\nError\tDeploy reverted/);
     await userEvent.click(page.getByRole("button", { name: "Clear the log" }));
     await hasText(logRegion(), EMPTY_LOG);
     expect(bufferedServices().announce.at(-1)?.[0]).toBe("Cleared the log.");

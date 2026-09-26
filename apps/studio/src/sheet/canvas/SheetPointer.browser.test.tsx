@@ -19,7 +19,7 @@ function paneMenus(): MouseEvent[] {
   return calls;
 }
 
-const AT = { x: 900, y: 620 };
+const AT = { x: 500, y: 660 }; // Empty sheet; the bottom-right corner belongs to S4d's title block.
 
 function point(offset = { x: 0, y: 0 }) {
   const box = flowElement().getBoundingClientRect();

@@ -1,0 +1,30 @@
+/* Settings (Flow 16): left-hand group tabs beside the picked group's fields. No board yet (PA L72-L84); this
+   follows the design system's dialog and tabs primitives, side by side as the nearest drawn pattern (the left
+   pane's header tabs) suggests. */
+.dialog {
+  /* 18 * --lx-space-8 (32px), the same scale Dialog.module.css sizes its own width from. */
+  block-size: min(calc(var(--lx-space-8) * 18), 80vh);
+}
+
+.layout {
+  display: flex;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.tabList {
+  flex: none;
+  inline-size: calc(var(--lx-space-8) * 5); /* 160px */
+  padding-block: var(--lx-space-2);
+  overflow-y: auto;
+}
+
+.panel {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow-y: auto;
+  padding-inline-start: var(--lx-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-4);
+}

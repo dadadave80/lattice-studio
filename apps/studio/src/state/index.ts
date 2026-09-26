@@ -10,6 +10,9 @@ export { NEEDS_CATALOG, NEEDS_CHAIN, NEEDS_WALLET, predict } from "./prediction"
 export type { Prediction } from "./prediction";
 export { BLANK_DIAMOND } from "./cmd/recipe";
 export { BURST_GAP_MS, HISTORY_LIMIT, isUnpinned, UNPINNED_HASH } from "./document-store";
+/** One undo step with narration and a fallback line, for owners outside state/ (S4c's owner choices). */
+export { edit, summaryLine } from "./cmd/shared";
+export type { EditOutcome } from "./cmd/shared";
 
 function subscribePrediction(listener: () => void): () => void {
   return studioState().prediction.subscribe(listener);
