@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { Catalog, CommandId, CommandRef, Hex4, Project } from "@lattice-studio/core";
-import { blankDiamond, cardSize, contestedSelectors, loadTemplate } from "@lattice-studio/core";
+import type { Catalog, CommandId, CommandRef, ConsoleLine, Hex4, Project } from "@lattice-studio/core";
+import { analyze, blankDiamond, cardSize, contestedSelectors, loadTemplate, tidy } from "@lattice-studio/core";
 import { makeCatalog, makeFacet, makeProject, makeRecipe, sel } from "@lattice-studio/core/testing";
 import {
-  commandState, doc, getAnalysis, getCommand, layoutMetrics, runCommand, session, setCatalogStatus, type CommandSource,
+  command, commandState, defineCommands, doc, getAnalysis, getCommand, layoutMetrics, runCommand, session, setCatalogStatus,
+  type CommandSource,
 } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
 import { S1_COMMANDS } from "./cmd";
+import { resolveField } from "./cmd/init";
 import { fixture, settle, setupKit, type Kit } from "./testing";
 
 let kit: Kit;
@@ -38,6 +40,24 @@ function withFacets(facets: string[], extra: Partial<Project> = {}): Project {
     layout[name] = { x: 96 + (i % 4) * 400, y: 96 + Math.floor(i / 4) * 800, pins: "right" };
   });
   return makeProject({ recipe: makeRecipe({ facets }, catalog), layout, ...extra });
+}
+
+/**
+ * Stands in for S4b's `sheet.zoomFit` or `sheet.locate` (a placeholder under `bun test`) and records each run's
+ * arguments. The kit's `dispose()` puts the placeholder back.
+ */
+function fakeSheetCommand(id: "sheet.zoomFit" | "sheet.locate"): Record<string, unknown>[] {
+  const runs: Record<string, unknown>[] = [];
+  defineCommands([command<Record<string, unknown>>({
+    id, title: () => id, category: "Sheet", enabled: () => ({ ok: true }), run: (_ctx, args) => void runs.push(args),
+  })]);
+  return runs;
+}
+
+/** The layout `tidy` gives the open project's recipe from scratch. */
+function tidiedFromScratch(): Project["layout"] {
+  const project = { ...doc.get(), layout: {} };
+  return tidy(project, kit.catalog, analyze(project.recipe, kit.catalog), layoutMetrics);
 }
 
 const READ_ONLY = "Another tab is editing this project. Take over editing to change it.";
@@ -118,6 +138,40 @@ describe("facet.place", () => {
     expect(await run("facet.place", { facet: "ERC20" })).toEqual(["ERC20 is already on the sheet."]);
     expect(session.get().selection).toEqual(["ERC20"]);
     expect(doc.state().canUndo).toBe(false);
+  });
+
+  test("already placed: runs sheet.locate on the existing card (spec L427)", async () => {
+    start(withFacets(["ERC20", "ERC4626"]));
+    const located = fakeSheetCommand("sheet.locate");
+    expect(await run("facet.place", { facet: "ERC20" }, "palette")).toEqual(["ERC20 is already on the sheet."]);
+    expect(located).toEqual([{ facet: "ERC20" }]);
+    await run("facet.place", { facet: "Receive" }, "palette");
+    expect(located).toHaveLength(1);
+  });
+
+  test("placed again after removal: a selector that needs a choice is a fresh SEL-01, named in the console (spec L429)", async () => {
+    const SEND: Hex4 = "0xcdfe7f5c";
+    start(withFacets(["AxelarGatewayAdapter"]));
+    const naming = (lines: ConsoleLine[]) =>
+      lines.filter((l) => l.tag === "Collision" && l.anchor?.kind === "selector" && l.anchor.selector === SEND);
+    await run("facet.place", { facet: "HyperlaneGatewayAdapter" });
+    const first = naming(kit.lines());
+    expect(first).toHaveLength(1);
+    expect(first[0]?.text).toContain("sendMessage · 0xcdfe7f5c");
+
+    // Routed by hand, then removed: the choice goes with it.
+    await run("selector.route", { selector: SEND, facet: "HyperlaneGatewayAdapter" });
+    expect(doc.get().recipe.owners[SEND]).toBe("HyperlaneGatewayAdapter");
+    await run("facet.remove", { facets: ["HyperlaneGatewayAdapter"] });
+    expect(doc.get().recipe.owners[SEND]).toBeUndefined();
+
+    const lines = await run("facet.place", { facet: "HyperlaneGatewayAdapter" });
+    expect(lines[0]).toMatch(/^Placed HyperlaneGatewayAdapter · /);
+    const fresh = naming(kit.lines());
+    expect(fresh).toHaveLength(1);
+    expect(fresh[0]?.text).toContain("sendMessage · 0xcdfe7f5c");
+    expect(fresh[0]?.text.startsWith("Resolved")).toBe(false);
+    expect(getAnalysis().problems.some((p) => p.id === `SEL-01:${SEND}`)).toBe(true);
   });
 
   test("an unknown facet is disabled with the reason", () => {
@@ -288,6 +342,24 @@ describe("routing", () => {
     expect(await run("selector.include", { selector: T })).toEqual(["`transfer · 0xa9059cbb` is already in the diamond."]);
     expect(reason("selector.exclude", {})).toBe("Name a selector");
   });
+
+  test("leaving a selector out and bringing it back are one labelled undo step each (spec L491)", async () => {
+    start(withFacets(["ERC20"]));
+    const T: Hex4 = "0xa9059cbb";
+    const past = () => kit.state.document.history.getState().pastStates.length;
+    const before = past();
+    await run("selector.exclude", { selector: T });
+    expect(past()).toBe(before + 1);
+    expect(doc.state().undoLabel).toBe("Left `transfer · 0xa9059cbb` out of the diamond");
+    await run("selector.include", { selector: T });
+    expect(past()).toBe(before + 2);
+    expect(doc.state().undoLabel).toBe("Brought `transfer · 0xa9059cbb` back into the diamond");
+    expect((await run("history.undo"))[0]).toBe("Undid: Brought `transfer · 0xa9059cbb` back into the diamond.");
+    expect(doc.get().recipe.exclude).toEqual([T]);
+    expect((await run("history.undo"))[0]).toBe("Undid: Left `transfer · 0xa9059cbb` out of the diamond.");
+    expect(doc.get().recipe.exclude).toEqual([]);
+    expect(past()).toBe(before);
+  });
 });
 
 describe("recipes", () => {
@@ -302,6 +374,26 @@ describe("recipes", () => {
     expect(doc.state().undoLabel).toBe("Loaded GovernedVault");
     await run("history.undo");
     expect(doc.get().recipe.facets).toEqual([]);
+  });
+
+  test("a recipe load brings a tidied layout, and the view fits (spec L409)", async () => {
+    start();
+    const fits = fakeSheetCommand("sheet.zoomFit");
+    await run("recipe.load", { name: "GovernedVault" });
+    expect(Object.keys(doc.get().layout)).toHaveLength(14);
+    expect(doc.get().layout).toEqual(tidiedFromScratch());
+    expect(fits).toHaveLength(1);
+
+    // As a new project too, from a sheet with facets.
+    await run("recipe.load", { name: "ERC20" });
+    expect(doc.get().name).toBe("ERC20");
+    expect(doc.get().layout).toEqual(tidiedFromScratch());
+    expect(fits).toHaveLength(2);
+
+    // Replace this sheet with… does the same.
+    await run("recipe.replace", { name: "SafeDiamondCut" });
+    expect(doc.get().layout).toEqual(tidiedFromScratch());
+    expect(fits).toHaveLength(3);
   });
 
   test("on a sheet with facets it opens as a new project", async () => {
@@ -360,6 +452,26 @@ describe("init", () => {
     expect(lines[0]).toBe("Set Governor quorum to 5%.");
     expect(await run("init.setArg", { path: "bundle.p.quorumNumerator", value: "5" })).toEqual(["GovernedVaultInit.p.quorumNumerator is already 5%."]);
     expect(commandState({ id: "init.setArg", args: { path: "bundle.p.votingPeriod", value: "1" } }).title).toBe("Set Voting period");
+  });
+
+  test("set picks a step by its prefix; a name two steps share asks for the prefix (IR L154)", () => {
+    start();
+    const catalog = kit.catalog;
+    const recipe = {
+      ...makeRecipe({ facets: ["ERC20", "ERC20Permit"] }, catalog),
+      init: { kind: "steps" as const, steps: [{ spec: "ERC20Init", args: {} }, { spec: "ERC20PermitInit", args: {} }] },
+    };
+    expect(resolveField(recipe, catalog, "erc20init.name")).toMatchObject({ ok: true, value: { path: "steps[0].name_" } });
+    expect(resolveField(recipe, catalog, "ERC20PermitInit.name")).toMatchObject({ ok: true, value: { path: "steps[1].name_" } });
+    const bare = resolveField(recipe, catalog, "name");
+    if (bare.ok) throw new Error("a name two steps share should not resolve");
+    expect(bare.error).toStartWith("name matches 2 fields: ");
+    expect(bare.error).toContain("Prefix the step: set erc20init.");
+    // The console verb says the same.
+    doc.load(makeProject({ recipe }));
+    const parse = getCommand("init.setArg").console?.parse;
+    expect(parse?.(["erc20init.name", "Vault"])).toEqual({ ok: true, value: { path: "steps[0].name_", value: "Vault" } });
+    expect(parse?.(["name", "Vault"])).toEqual(bare);
   });
 
   test("durations read in words, and references by name", async () => {
@@ -456,6 +568,15 @@ describe("layout", () => {
     session.set({ selection: ["ERC20", "ERC4626"] });
     expect(await run("layout.tidy", undefined, "keys")).toEqual(["Tidied 2 facets."]);
     expect(await run("layout.tidySelection")).toEqual(["Nothing moved: the sheet already has this layout."]);
+  });
+
+  test("Tidy fits the view only when something moved (spec L476)", async () => {
+    start(withFacets(["ERC20", "ERC4626", "VaultCore"]));
+    const fits = fakeSheetCommand("sheet.zoomFit");
+    expect(await run("layout.tidy", undefined, "keys")).toEqual(["Tidied 3 facets."]);
+    expect(fits).toHaveLength(1);
+    expect(await run("layout.tidy", undefined, "keys")).toEqual(["Nothing moved: the sheet already has this layout."]);
+    expect(fits).toHaveLength(1);
   });
 
   test("Tidy's undo label and console line count the same facets, including one an imported recipe left out of its layout", async () => {
