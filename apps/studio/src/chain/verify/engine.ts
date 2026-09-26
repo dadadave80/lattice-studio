@@ -52,12 +52,16 @@ function wait(deps: VerifyDeps, ms: number, signal?: AbortSignal): Promise<void>
 }
 
 /**
- * Re-reads the record and writes `verification` onto whatever's freshest; null when there's nothing left to write
- * to (discarded, or the record moved off `confirmed` since, e.g. Deploy again started a new one at this key), or
- * when the write itself failed (the caller then knows not to log an outcome that never landed).
+ * Re-reads the record and writes `verification` (and, only while it's "failed", `verificationReason`, spec L606,
+ * FX21's inspector) onto whatever's freshest; null when there's nothing left to write to (discarded, or the record
+ * moved off `confirmed` since, e.g. Deploy again started a new one at this key), or when the write itself failed
+ * (the caller then knows not to log an outcome that never landed).
  */
 async function writeVerification(
-  deps: VerifyDeps, target: Pick<Deployment, "projectId" | "chainId" | "address">, verification: Deployment["verification"],
+  deps: VerifyDeps,
+  target: Pick<Deployment, "projectId" | "chainId" | "address">,
+  verification: Deployment["verification"],
+  reason?: string,
 ): Promise<Deployment | null> {
   let fresh: Deployment | undefined;
   try {
@@ -66,8 +70,10 @@ async function writeVerification(
     fresh = undefined;
   }
   if (!fresh || fresh.status !== "confirmed") return null;
-  if (fresh.verification === verification) return fresh;
-  const next: Deployment = { ...fresh, verification };
+  const nextReason = verification === "failed" ? reason : undefined;
+  if (fresh.verification === verification && fresh.verificationReason === nextReason) return fresh;
+  const { verificationReason: _staleReason, ...rest } = fresh;
+  const next: Deployment = { ...rest, verification, ...(nextReason !== undefined ? { verificationReason: nextReason } : {}) };
   try {
     await deps.records.put(next);
   } catch (error) {
@@ -82,10 +88,21 @@ async function writeVerification(
   return next;
 }
 
-/** Writes `verification` and, only when the write actually landed (the record hadn't moved on), logs `line`. */
-async function settle(deps: VerifyDeps, record: Deployment, verification: Deployment["verification"], line: LineDraft): Promise<void> {
-  const written = await writeVerification(deps, record, verification);
+/**
+ * Writes `verification` and, only when the write actually landed (the record hadn't moved on), logs `line`.
+ * `reason` is the same text `line` was built from (`couldntVerifyLine`'s argument); it's stored as
+ * `verificationReason` while `verification` is "failed", and dropped otherwise.
+ */
+async function settle(
+  deps: VerifyDeps, record: Deployment, verification: Deployment["verification"], line: LineDraft, reason?: string,
+): Promise<void> {
+  const written = await writeVerification(deps, record, verification, reason);
   if (written) log(line);
+}
+
+/** `settle`'s "failed" case: writes `verification: "failed"` and `verificationReason: reason`, logs Sourcify's line. */
+function fail(deps: VerifyDeps, record: Deployment, reason: string): Promise<void> {
+  return settle(deps, record, "failed", couldntVerifyLine(reason), reason);
 }
 
 /**
@@ -97,13 +114,13 @@ async function settle(deps: VerifyDeps, record: Deployment, verification: Deploy
  */
 export async function verifyRecord(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
   if (!sourcifyServes(record.chainId)) {
-    return settle(deps, record, "failed", couldntVerifyLine(`Sourcify doesn't verify contracts on ${unverifiableChainName(record.chainId)}.`));
+    return fail(deps, record, `Sourcify doesn't verify contracts on ${unverifiableChainName(record.chainId)}.`);
   }
   if (signal?.aborted) return;
   const base = deps.baseUrl ?? SOURCIFY_BASE;
   const build = await deps.proxyBuild(record.chainId, record.path);
   if (signal?.aborted) return;
-  if (!build.ok) return settle(deps, record, "failed", couldntVerifyLine(build.error));
+  if (!build.ok) return fail(deps, record, build.error);
   const submitted = await submitToSourcify(deps.fetchImpl, base, record.chainId, record.address, {
     stdJsonInput: build.value.stdJsonInput,
     compilerVersion: build.value.compilerVersion,
@@ -111,17 +128,17 @@ export async function verifyRecord(deps: VerifyDeps, record: Deployment, signal?
     ...(record.tx ? { creationTransactionHash: record.tx } : {}),
   });
   if (signal?.aborted) return;
-  if (!submitted.ok) return settle(deps, record, "failed", couldntVerifyLine(submitted.error));
+  if (!submitted.ok) return fail(deps, record, submitted.error);
   const startedAt = deps.clock.now();
   for (let attempt = 0; ; attempt += 1) {
     if (signal?.aborted) return;
     const verdict = await pollSourcify(deps.fetchImpl, base, submitted.value);
     if (signal?.aborted) return;
-    if (!verdict.ok) return settle(deps, record, "failed", couldntVerifyLine(verdict.error));
+    if (!verdict.ok) return fail(deps, record, verdict.error);
     if (verdict.value.kind === "verified") return settle(deps, record, verdict.value.match, verifiedLine(verdict.value.match));
-    if (verdict.value.kind === "failed") return settle(deps, record, "failed", couldntVerifyLine(verdict.value.reason));
+    if (verdict.value.kind === "failed") return fail(deps, record, verdict.value.reason);
     if (deps.clock.now() - startedAt >= POLL_TIMEOUT_MS) {
-      return settle(deps, record, "failed", couldntVerifyLine("Sourcify didn't finish in time."));
+      return fail(deps, record, "Sourcify didn't finish in time.");
     }
     const delay = POLL_INTERVALS_MS[Math.min(attempt, POLL_INTERVALS_MS.length - 1)] ?? 21_000;
     await wait(deps, delay, signal);
@@ -168,7 +185,8 @@ export async function retryVerification(target: { chainId: number; address: Addr
     });
     return;
   }
-  const pending: Deployment = { ...found, verification: "pending" };
+  const { verificationReason: _staleReason, ...rest } = found;
+  const pending: Deployment = { ...rest, verification: "pending" };
   try {
     await deps.records.put(pending);
   } catch (error) {
