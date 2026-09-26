@@ -106,9 +106,18 @@ function specAt(recipe: Recipe, path: string): string | undefined {
   return index === null || recipe.init.kind !== "steps" ? undefined : recipe.init.steps[index]?.spec;
 }
 
+/** `{ $ref: "self" }`: "This diamond" (spec L333). */
+function isSelfRef(value: Arg | undefined): boolean {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && Object.hasOwn(value, "$ref") && (value as { $ref: string }).$ref === "self";
+}
+
 export const setArgCommand = command<SetArgArgs>({
   id: "init.setArg",
-  title: ({ path }) => {
+  // `verb: "oneAdmin"` reads "Use one admin" (INIT-03, spec L329); a `{ $ref: "self" }` value reads
+  // Use "This diamond" (AUTH-02, spec L333) whether or not a verb is given. Otherwise, Set {field label}.
+  title: ({ path, value, verb }) => {
+    if (verb === "oneAdmin") return "Use one admin";
+    if (isSelfRef(value)) return 'Use "This diamond"';
     const catalog = getCatalog();
     const field = catalog ? fieldAt(doc.get().recipe, catalog, path) : undefined;
     return `Set ${field?.label ?? path}`;
