@@ -4,8 +4,8 @@
  */
 import type { Facet } from "@lattice-studio/core";
 import { plural } from "@lattice-studio/core";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { retryCatalog } from "@/catalog";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { hasCachedIndex, retryCatalog } from "@/catalog";
 import {
   announce, chainService, isPlaceholder, runCommand, session, startCatalogDrag, useCatalogStatus, useDocument, useOnline,
   useSession, type ChainInfo, type ChainReadiness,
@@ -95,11 +95,6 @@ function useKnownChains(chainId: number | null): readonly ChainInfo[] {
   return chains;
 }
 
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
-}
-
 export function CatalogPanel() {
   const status = useCatalogStatus();
   const placedFacets = useDocument((s) => s.project.recipe.facets);
@@ -107,11 +102,19 @@ export function CatalogPanel() {
   const chainId = useSession((s) => s.chainId);
   const readiness = useChainReadiness(chainId);
   const knownChains = useKnownChains(chainId);
+  const selection = useSession((s) => s.selection);
 
   const [query, setQuery] = useState("");
   const [manualExpanded, setManualExpanded] = useState<string[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
+  /**
+   * A row selected here that the sheet's selection can't hold (an unplaced facet being previewed, or an
+   * area), and the sheet selection it was made over: it stands only until the sheet's selection changes.
+   */
+  const [local, setLocal] = useState<{ id: string; over: readonly string[] } | null>(null);
   const [availableOnly, setAvailableOnly] = useState(false);
+  // Static placeholder rows on a first visit only (spec L695); later visits read the index from the service
+  // worker's cache (spec L399), where placeholders would only flash.
+  const [firstVisit] = useState(() => !hasCachedIndex());
   const searchInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -124,6 +127,9 @@ export function CatalogPanel() {
 
   const catalog = status.status === "ready" ? status.catalog : null;
   const placedSet = useMemo(() => new Set(placedFacets), [placedFacets]);
+  // One facet selected on the sheet highlights its catalog row (spec L380); the catalog follows the sheet.
+  const sheetSelected = useMemo(() => selection.filter((name) => placedSet.has(name)), [selection, placedSet]);
+  const selected = local && local.over === selection ? [local.id] : sheetSelected;
   const facetByName = useMemo(() => new Map(catalog?.facets.map((f) => [f.name, f]) ?? []), [catalog]);
   const placedCounts = useMemo(
     () => (catalog ? placedCountByArea(catalog, placedSet) : new Map<string, number>()),
@@ -166,6 +172,18 @@ export function CatalogPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, matchCount]);
 
+  /** A placed facet selected here selects its card, as the Structure tree does; anything else stays local. */
+  const onSelectedChange = (next: string[]) => {
+    const id = next.at(-1);
+    if (id !== undefined && placedSet.has(id)) {
+      setLocal(null);
+      const current = session.get().selection;
+      if (!(current.length === 1 && current[0] === id)) session.set({ selection: [id] });
+      return;
+    }
+    setLocal(id === undefined ? null : { id, over: selection });
+  };
+
   const onItemClick = (node: TreeNode) => {
     if (isAreaNodeId(node.id)) return;
     if (placedSet.has(node.id)) {
@@ -184,6 +202,8 @@ export function CatalogPanel() {
   const itemProps = (node: TreeNode): TreeItemProps => {
     if (isAreaNodeId(node.id) || placedSet.has(node.id)) return {};
     return {
+      // Vertical swipes still scroll the list; a sideways touch drag reaches the sheet (spec L417).
+      className: styles.draggable,
       onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
         if (event.button !== 0) return;
         startCatalogDrag(node.id, { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY });
@@ -222,17 +242,10 @@ export function CatalogPanel() {
     );
   };
 
-  const onKeyDownCapture = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.target === searchInput.current || isTypingTarget(event.target)) return;
-    event.preventDefault();
-    searchInput.current?.focus();
-    searchInput.current?.select();
-  };
-
   return (
-    <div className={styles.panel} onKeyDownCapture={onKeyDownCapture}>
-      <div className={styles.controls}>
+    <div className={styles.panel}>
+      {/* The tour's first coach mark (spec L400) lands just below the search, beside the catalog's rows. */}
+      <div className={styles.controls} data-tour="catalog">
         <TextField
           label="Search"
           value={query}
@@ -251,11 +264,13 @@ export function CatalogPanel() {
       {status.status === "loading" ? (
         <div className={styles.state}>
           <VisuallyHidden aria-live="polite">Loading the catalog…</VisuallyHidden>
-          <div aria-hidden="true" className={styles.placeholderRows}>
-            {Array.from({ length: PLACEHOLDER_ROWS }, (_, i) => (
-              <div key={i} className={styles.placeholderRow} />
-            ))}
-          </div>
+          {firstVisit ? (
+            <div aria-hidden="true" className={styles.placeholderRows} data-placeholder-rows="">
+              {Array.from({ length: PLACEHOLDER_ROWS }, (_, i) => (
+                <div key={i} className={styles.placeholderRow} />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : status.status === "error" ? (
         <div className={styles.state}>
@@ -277,7 +292,7 @@ export function CatalogPanel() {
           expanded={expanded}
           onExpandedChange={onExpandedChange}
           selected={selected}
-          onSelectedChange={setSelected}
+          onSelectedChange={onSelectedChange}
           onActivate={onActivate}
           onItemClick={onItemClick}
           itemProps={itemProps}

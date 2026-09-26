@@ -29,6 +29,12 @@
   min-block-size: 0;
 }
 
+/* An unplaced row starts a drag on pointerdown: the browser keeps vertical panning, and a sideways touch
+   drag stays a pointer drag toward the sheet (spec L417); a vertical swipe cancels it (pointercancel). */
+.draggable {
+  touch-action: pan-y;
+}
+
 .state {
   display: flex;
   flex-direction: column;
