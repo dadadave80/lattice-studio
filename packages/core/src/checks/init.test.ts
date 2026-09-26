@@ -315,6 +315,34 @@ describe("INIT-03", () => {
     expect(p?.severity).toBe("warning");
     expect(p?.fixes.at(-1)).toEqual({ id: "init.setArg", args: { path: "steps[1].admin", value: { $ref: "self" }, verb: "oneAdmin" } });
   });
+
+  test("several authority keys differ: one Use one admin fix, and every differing argument is highlighted", () => {
+    const authority = (name: string) => ({ name, type: "address", doc: "", authority: true });
+    const both = { module: "AccessControl", with: { admin: "admin", guardian: "guardian" } };
+    const synthetic = makeCatalog({
+      inits: [
+        makeInit({ name: "LeftInit", params: [authority("admin"), authority("guardian")], initializes: [both] }),
+        makeInit({ name: "RightInit", params: [authority("admin"), authority("guardian")], initializes: [both] }),
+      ],
+    });
+    const recipe = makeRecipe({
+      init: {
+        kind: "steps",
+        steps: [
+          { spec: "LeftInit", args: { admin: ADMIN_A, guardian: ADMIN_A } },
+          { spec: "RightInit", args: { admin: ADMIN_B, guardian: ADMIN_B } },
+        ],
+      },
+    });
+    const [p] = only(run(recipe, synthetic), "INIT-03");
+    expect([p?.severity, p?.params["case"], p?.params["admin"]]).toEqual(["warning", "roles", ADMIN_A]);
+    expect(p?.params["argPaths"]).toEqual(["steps[0].admin", "steps[1].admin", "steps[0].guardian", "steps[1].guardian"]);
+    expect(p?.fixes).toEqual([
+      { id: "init.removeStep", args: { path: "steps[0]" } },
+      { id: "init.removeStep", args: { path: "steps[1]" } },
+      { id: "init.setArg", args: { path: "steps[1].admin", value: ADMIN_A, verb: "oneAdmin" } },
+    ]);
+  });
 });
 
 describe("INIT-04", () => {
