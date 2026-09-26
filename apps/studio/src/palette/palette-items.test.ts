@@ -143,4 +143,19 @@ describe("filtering", () => {
     expect(filterGroups(groups, "zzzz")).toEqual([]);
     expect(filterGroups(groups, "")).toEqual(groups);
   });
+
+  test("a title match ranks first, ahead of a row that only matches its category (item 1)", () => {
+    const withCheckWallet: PaletteRow[] = [
+      ...rows,
+      { ref: { id: "deploy.checkWallet" }, title: "Check wallet", category: "Deploy", binding: "deploy.checkWallet" },
+    ];
+    const groups = paletteGroups(sources({ rows: withCheckWallet }));
+    // Without the query, alphabetical order within Deploy puts Check wallet first.
+    expect(groups.find((g) => g.id === "commands")?.items.map((i) => i.title)).toEqual([
+      "Flip pins", "Tidy", "Next problem", "Undo", "Check wallet", "Deploy…",
+    ]);
+    // Typing "deploy" ranks the title match (Deploy…) ahead of the category-only match (Check wallet).
+    const filtered = filterGroups(groups, "deploy").find((g) => g.id === "commands");
+    expect(filtered?.items.map((i) => i.title)).toEqual(["Deploy…", "Check wallet"]);
+  });
 });
