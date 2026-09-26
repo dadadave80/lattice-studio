@@ -14,10 +14,15 @@ import type { EditLockState } from "@/persist/lock";
 import { editLockState, subscribeEditLock } from "@/persist/current";
 import { catalogVersion, ELSEWHERE, HANDED_OVER, READ_ONLY_BANNER, UNBUNDLED } from "./copy";
 
-/** Why the open project can't be edited here, or null. The lock comes first: taking over is the quicker way out. */
-export function readOnlyReason(lock: EditLockState, pin: CatalogPin): string | null {
-  if (lock.state === "elsewhere") return ELSEWHERE;
-  if (lock.state === "handed-over") return HANDED_OVER;
+/**
+ * Why the open project (`projectId`) can't be edited here, or null. The lock counts only for that project, so
+ * switching away from a project another tab edits isn't read-only while the lock catches up. The lock comes
+ * first: taking over is the quicker way out.
+ */
+export function readOnlyReason(lock: EditLockState, pin: CatalogPin, projectId: string): string | null {
+  const ours = lock.state !== "none" && lock.projectId === projectId;
+  if (ours && lock.state === "elsewhere") return ELSEWHERE;
+  if (ours && lock.state === "handed-over") return HANDED_OVER;
   if (pin.status === "unbundled") return UNBUNDLED;
   return null;
 }
@@ -66,7 +71,7 @@ let controller: Controller = { applied: null, shown: null, offered: new Set() };
 
 /** Brings the session and the banner in line with the lock and the pin. Idempotent. */
 export function syncReadOnly(lock: EditLockState = editLockState(), pin: CatalogPin = getCatalogPin()): void {
-  const reason = readOnlyReason(lock, pin);
+  const reason = readOnlyReason(lock, pin, doc.get().id);
   if (reason !== controller.applied) {
     const current = session.get().readOnly;
     if (reason !== null) session.set({ readOnly: reason });
@@ -90,9 +95,19 @@ export function syncReadOnly(lock: EditLockState = editLockState(), pin: Catalog
   }
 }
 
-/** Starts following the lock and the pin. Returns a disposer (tests). */
+/** Starts following the lock, the pin and which project is open, and syncs once now. Returns a disposer (tests). */
 export function startReadOnly(): () => void {
-  const stops = [subscribeEditLock((lock) => syncReadOnly(lock)), subscribeCatalogPin((pin) => syncReadOnly(undefined, pin))];
+  let openId = doc.get().id;
+  const stops = [
+    subscribeEditLock((lock) => syncReadOnly(lock)),
+    subscribeCatalogPin((pin) => syncReadOnly(undefined, pin)),
+    doc.subscribe(() => {
+      if (doc.get().id === openId) return;
+      openId = doc.get().id;
+      syncReadOnly();
+    }),
+  ];
+  syncReadOnly();
   return () => {
     for (const stop of stops) stop();
   };

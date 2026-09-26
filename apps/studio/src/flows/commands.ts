@@ -7,7 +7,7 @@ import {
   type Enablement,
 } from "@/contracts";
 import { editLockState, persistence } from "@/persist/current";
-import { migrateTitle, PLACE_FACETS_FIRST } from "./copy";
+import { migrateTitle, PLACE_FACETS_FIRST, UNBUNDLED } from "./copy";
 import { currentMigrationTag, migrationTarget } from "./read-only";
 
 const OK: Enablement = { ok: true };
@@ -58,7 +58,9 @@ const takeOver = command({
   palette: true,
   enabled() {
     const lock = editLockState().state;
-    return lock === "elsewhere" || lock === "handed-over" ? OK : disabled("This tab is editing this project");
+    if (lock === "elsewhere" || lock === "handed-over") return OK;
+    // "none": no project is claimed in this tab yet (storage hasn't started, or isn't available).
+    return disabled(lock === "held" ? "This tab is editing this project" : "No other tab has this project open");
   },
   async run() {
     const taken = await (await persistence()).takeOverEditing();
@@ -75,6 +77,9 @@ const migrate = command<CommandArgsOf<"catalog.migrate">>({
   category: "Session",
   palette: true,
   enabled(ctx) {
+    // Migrating edits the document: the catalog's own read-only reason is the only one it clears.
+    const { readOnly } = ctx.session;
+    if (readOnly !== null && readOnly !== UNBUNDLED) return disabled(readOnly);
     const target = migrationTarget(ctx.project.recipe.catalog, getCatalogStatus());
     return target.ok ? OK : disabled(target.reason);
   },

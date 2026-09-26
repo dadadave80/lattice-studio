@@ -1,14 +1,31 @@
 import { formatKeys } from "@lattice-studio/core";
 import { useRef } from "react";
-import { closeDialog, commandRef, runCommand, useCommandState, type DialogComponentProps } from "@/contracts";
+import { announce, closeDialog, doc, getCatalog, log, useCatalog, type DialogComponentProps } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { copyText } from "@/ui/copy/copy-text";
 import { Dialog } from "@/ui/overlays/Dialog";
 import { usePlatform } from "@/ui/shared/platform";
 import { linkCopied } from "./copy";
+import { sharedRecipe } from "./share-link";
 import styles from "./flows.module.css";
 
-const SAVE_FILE = commandRef("export.recipeJson");
+/**
+ * Saves the recipe the link would carry (named after the project) as `recipe.json`, through the console's export
+ * path: the download and "Exported recipe.json · recipe 0x3f2a…a1c4" (spec L729). Loaded on use.
+ */
+async function saveRecipeFile(): Promise<void> {
+  const catalog = getCatalog();
+  const { recipeFile, saveExport } = await import("@/panels/console/actions");
+  const project = doc.get();
+  const file = catalog ? await recipeFile({ project: { ...project, recipe: sharedRecipe(project) }, catalog }) : null;
+  if (file?.ok) {
+    saveExport(file.value);
+    return;
+  }
+  const reason = file ? file.error : "The catalog hasn't loaded yet";
+  log({ tag: "Error", text: `Couldn't save the recipe file. ${reason}` });
+  announce(`Couldn't save the recipe file. ${reason}`);
+}
 
 /**
  * Share, over 2,000 characters (spec L503, IR L179): Discord cuts a message there, so Studio offers a recipe file
@@ -18,7 +35,7 @@ const SAVE_FILE = commandRef("export.recipeJson");
 export function ShareDialog({ entry, top }: DialogComponentProps<"share">) {
   const { link } = entry.props;
   const saveRef = useRef<HTMLButtonElement>(null);
-  const save = useCommandState(SAVE_FILE, "button");
+  const catalog = useCatalog();
   const close = () => closeDialog("share");
   const length = link.length.toLocaleString("en-US");
   const openKeys = formatKeys("Mod+O", usePlatform());
@@ -30,7 +47,7 @@ export function ShareDialog({ entry, top }: DialogComponentProps<"share">) {
   };
   const saveFile = () => {
     close();
-    void runCommand(SAVE_FILE, "button");
+    void saveRecipeFile();
   };
 
   return (
@@ -48,7 +65,7 @@ export function ShareDialog({ entry, top }: DialogComponentProps<"share">) {
         <>
           <Button onClick={close}>Cancel</Button>
           <Button onClick={() => void copyAnyway()}>Copy anyway</Button>
-          <Button ref={saveRef} disabledReason={save.ok ? null : save.reason} onClick={saveFile}>
+          <Button ref={saveRef} disabledReason={catalog ? null : "The catalog hasn't loaded yet"} onClick={saveFile}>
             Save a file instead
           </Button>
         </>

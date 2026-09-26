@@ -1,9 +1,11 @@
+import type { ExportFile } from "@lattice-studio/core";
 import { decodeShareLink, recipeHash, SHARE_WARN_LENGTH } from "@lattice-studio/core";
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { commandRef, commandState, doc, runCommand, session } from "@/contracts";
+import { setDownloader } from "@/panels/console/download";
 import { DialogHost } from "@/ui/overlays/DialogHost";
-import { bufferedServices, fixtureCatalog, renderWithStudio } from "../../test/harness";
+import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio } from "../../test/harness";
 import { projectFor, resetFlows, template } from "./test-support";
 
 const SHARE = commandRef("share.copyLink");
@@ -106,7 +108,27 @@ describe("Share (Flow 10 step 6)", () => {
       await expect.element(page.getByRole("dialog", { name: "Share" })).not.toBeInTheDocument();
     });
 
-    test("Save a file instead runs the recipe export; Esc and Cancel copy nothing", async () => {
+    test("Save a file instead downloads recipe.json with the recipe the link carries", async () => {
+      const files: ExportFile[] = [];
+      onCleanup(setDownloader((file) => void files.push(file)));
+      const project = long();
+      await renderWithStudio(<DialogHost />, { project });
+      await runCommand(SHARE, "button");
+      await page.getByRole("button", { name: "Save a file instead" }).click();
+      await expect.element(page.getByRole("dialog", { name: "Share" })).not.toBeInTheDocument();
+      await expect.poll(() => files.length).toBe(1);
+      const file = files[0];
+      expect(file?.filename).toMatch(/\.json$/);
+      const saved = JSON.parse(file?.text ?? "{}") as { name?: string; facets?: string[] };
+      expect(saved.name).toBe(project.name);
+      expect(saved.facets).toEqual(project.recipe.facets);
+      expect(bufferedServices().log.some((l) => l.text.startsWith(`Exported ${file?.filename} · recipe `))).toBe(true);
+      expect(writeText).not.toHaveBeenCalled();
+    });
+
+    test("Esc and Cancel copy nothing and save nothing", async () => {
+      const files: ExportFile[] = [];
+      onCleanup(setDownloader((file) => void files.push(file)));
       await renderWithStudio(<DialogHost />, { project: long() });
       await runCommand(SHARE, "button");
       await userEvent.keyboard("{Escape}");
@@ -115,10 +137,7 @@ describe("Share (Flow 10 step 6)", () => {
       await page.getByRole("button", { name: "Cancel" }).click();
       await expect.element(page.getByRole("dialog", { name: "Share" })).not.toBeInTheDocument();
       expect(writeText).not.toHaveBeenCalled();
-      await runCommand(SHARE, "button");
-      await page.getByRole("button", { name: "Save a file instead" }).click();
-      await expect.element(page.getByRole("dialog", { name: "Share" })).not.toBeInTheDocument();
-      expect(writeText).not.toHaveBeenCalled();
+      expect(files).toEqual([]);
     });
   });
 });

@@ -88,9 +88,13 @@ function watchBanner(projectId: string): void {
   stopWatching = stop;
 }
 
-function refuse(reason: string): Result<Project, string> {
-  toast({ text: `This link couldn't be opened: ${reason}`, kind: "error" });
-  return err(reason);
+/**
+ * Says why the link didn't open: an error toast, which S10 also writes to the console as an Error line (every
+ * toast is a console line, spec L733). Core's messages already name the link ("This link needs…").
+ */
+function refuse(text: string): Result<Project, string> {
+  toast({ text, kind: "error" });
+  return err(text);
 }
 
 /** Opens `link` (a `#s=1.…` fragment or a whole URL) as a new project. Every outcome is said. */
@@ -104,8 +108,10 @@ export async function openShareLink(link: string, deps: OpenLinkDeps = {}): Prom
     // Bundled, but not the catalog on screen: decode again against it, since typed normalization differs.
     const entry = findEntry(manifest, decoded.value.recipe.catalog.hash);
     if (entry) {
+      // This build has the catalog the link names: open against it or not at all, never against none.
       const other = await (deps.loadCatalog ?? loadCatalogById)(entry);
-      if (other.ok) decoded = decodeShareLink(link, [...catalogs, other.value]);
+      if (!other.ok) return refuse(`This link couldn't be opened: catalog ${entry.tag} didn't load. ${other.error}`);
+      decoded = decodeShareLink(link, [...catalogs, other.value]);
     }
   }
   if (!decoded.ok) return refuse(decoded.error.map(formatParseIssue).join(" "));
@@ -114,12 +120,19 @@ export async function openShareLink(link: string, deps: OpenLinkDeps = {}): Prom
   const layout = tidiedLayout(shared.recipe, shared.catalog ?? loaded);
   const provenance = argProvenance(shared.recipe, shared.catalog, "link");
   const created = await createProject(shared.recipe, sharedName(shared.recipe), { layout, provenance });
-  if (!created.ok) return refuse(created.error);
+  if (!created.ok) return refuse(`This link couldn't be opened: ${created.error}`);
 
   const toConfirm = shared.unconfirmed.length;
   const line = lines.linkOpened({ recipeHash: shared.hash, toConfirm });
   log(line);
   announce(line.text);
+  if (shared.catalog === null && toConfirm > 0) {
+    // Without its catalog Studio can't tell which parameters grant authority, so every address counts for now.
+    log({
+      tag: "Note",
+      text: "Studio doesn't have this link's catalog, so it counts every address as receiving authority until the project migrates.",
+    });
+  }
   showBanner(SHARED_LINK_BANNER, {
     text: sharedLinkBanner(shared.hash),
     tone: "info",

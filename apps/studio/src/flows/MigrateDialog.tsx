@@ -1,6 +1,7 @@
 import type { Result } from "@lattice-studio/core";
 import { useEffect, useRef, useState } from "react";
 import { closeDialog, doc, useDocument, useSession, type DialogComponentProps } from "@/contracts";
+import { useCatalogPin } from "@/catalog/pin-store";
 import { Button } from "@/ui/buttons/Button";
 import { Dialog } from "@/ui/overlays/Dialog";
 import { catalogVersion, UNBUNDLED } from "./copy";
@@ -24,9 +25,10 @@ export function MigrateDialog({ entry, top }: DialogComponentProps<"migrate">) {
   const summaryRef = useRef<HTMLParagraphElement>(null);
   const target = entry.props.target;
   const projectId = project.id;
-  const pin = project.recipe.catalog.hash;
+  const pinned = project.recipe.catalog.hash;
+  const pin = useCatalogPin();
   // What was loaded, for which project, pin and target: anything else is still loading.
-  const key = `${projectId}|${pin}|${target ?? ""}`;
+  const key = `${projectId}|${pinned}|${target ?? ""}`;
   const [result, setResult] = useState<{ key: string; loaded: Loaded } | null>(null);
   const loaded: Loaded = result?.key === key ? result.loaded : { status: "loading" };
 
@@ -71,7 +73,7 @@ export function MigrateDialog({ entry, top }: DialogComponentProps<"migrate">) {
       initialFocus={() => summaryRef.current}
       footer={
         <>
-          <Button onClick={close}>{readOnly === UNBUNDLED ? "Keep read-only" : "Cancel"}</Button>
+          <Button onClick={close}>{pin.status === "unbundled" ? "Keep read-only" : "Cancel"}</Button>
           <Button variant="primary" disabledReason={reason} onClick={migrate}>
             {review ? `Migrate to ${catalogVersion(review.toTag)}` : "Migrate"}
           </Button>

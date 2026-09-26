@@ -4,7 +4,7 @@ import { createElement, Suspense } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
 import {
-  commandRef, commandState, doc, getAnalysis, getCatalog, inspectorViewComponent, openShareLink as routeShareLink, runCommand, session,
+  commandRef, commandState, doc, getAnalysis, getCatalog, inspectorViewComponent, isPlaceholder, openShareLink as routeShareLink, runCommand, session,
   useSession,
 } from "@/contracts";
 import { BannerHost } from "@/feedback/BannerHost";
@@ -77,10 +77,17 @@ describe("opening a shared link (Flow 10 step 7)", () => {
 
   test("LINK-01 blocks until each address is confirmed, one at a time and in full", async () => {
     const chain = fakeChainService({ ens: { "ops.eth": SAFE } });
-    await renderWithStudio(<Studio />, { session: { chainId: 11155111 }, chain });
-    await openShareLink(linkOf(linkedRecipe()));
+    // Tagged as a release, so Deploy's only gate here is the problems (a fixture-tagged catalog can't deploy).
+    const catalog = { ...fixtureCatalog(), lattice: { ...fixtureCatalog().lattice, tag: "v0.2.0" } };
+    await renderWithStudio(<Studio />, { session: { chainId: 11155111 }, chain, catalog });
+    await openShareLink(linkOf(linkedRecipe(catalog)));
     const blockers = () => getAnalysis().problems.filter((p) => p.code === "LINK-01" && p.severity === "blocker");
     await expect.poll(() => blockers().length).toBe(2);
+    // Deploy is blocked by them (spec L504); the two LINK-01s are the sheet's only blockers.
+    const allBlockers = () => getAnalysis().problems.filter((p) => p.severity === "blocker").length;
+    const deploy = () => commandState(commandRef("deploy.open"));
+    expect(allBlockers()).toBe(2);
+    if (!isPlaceholder("deploy.open")) expect(deploy()).toMatchObject({ ok: false, reason: expect.stringContaining("2 blockers") });
 
     await page.getByRole("button", { name: "Confirm addresses…" }).click();
     const view = page.getByRole("region", { name: "Confirm addresses" });
@@ -91,6 +98,7 @@ describe("opening a shared link (Flow 10 step 7)", () => {
     await view.getByRole("button", { name: "Confirm address", exact: true }).click();
     await expect.poll(() => doc.get().provenance["steps[0].admin"]).toBe("confirmed");
     await expect.poll(() => blockers().length).toBe(1);
+    if (!isPlaceholder("deploy.open")) expect(deploy()).toMatchObject({ ok: false, reason: expect.stringContaining("1 blocker") });
     expect(bufferedServices().log.some((l) => l.tag === "Init" && l.text.startsWith("Confirmed ") && l.text.endsWith(`: ${ADMIN}.`))).toBe(true);
 
     await expect.element(view.getByText("Address 1 of 1")).toBeVisible();
@@ -98,6 +106,11 @@ describe("opening a shared link (Flow 10 step 7)", () => {
     await expect.element(view.getByText("ENS name: ops.eth")).toBeVisible();
     await view.getByRole("button", { name: "Confirm address", exact: true }).click();
     await expect.poll(() => blockers().length).toBe(0);
+    expect(allBlockers()).toBe(0);
+    if (!isPlaceholder("deploy.open")) {
+      const after = deploy();
+      expect(after.ok ? "" : after.reason).not.toMatch(/blocker/);
+    }
     await expect.element(view.getByText("Every address that came from a link or a file is confirmed.")).toBeVisible();
     expect(commandState(commandRef("link.confirmAddresses"))).toMatchObject({ ok: false, reason: "No address is waiting to be confirmed" });
   });
@@ -188,10 +201,10 @@ describe("links Studio refuses", () => {
     const opened = await openShareLink(rawLink(template("ERC20"), 2));
     expect(opened.ok).toBe(false);
     expect(doc.get()).toBe(before);
-    expect(bufferedServices().toast.at(-1)).toEqual({
-      text: "This link couldn't be opened: This link needs Studio share format v2. This Studio reads v1. Open it in the latest Studio.",
-      kind: "error",
-    });
+    const text = "This link needs Studio share format v2. This Studio reads v1. Open it in the latest Studio.";
+    expect(bufferedServices().toast.at(-1)).toEqual({ text, kind: "error" });
+    // Every toast is a console line too (spec L733).
+    expect(bufferedServices().log.some((l) => l.tag === "Error" && l.text === text)).toBe(true);
   });
 
   test("a newer recipe schema names the version it needs", async () => {
@@ -199,9 +212,25 @@ describe("links Studio refuses", () => {
     const opened = await openShareLink(rawLink({ ...template("ERC20"), schemaVersion: 2 as 1 }));
     expect(opened.ok).toBe(false);
     const text = bufferedServices().toast.at(-1)?.text ?? "";
-    expect(text.startsWith("This link couldn't be opened: ")).toBe(true);
+    expect(text.startsWith("This link")).toBe(true);
     expect(text).toContain("schema v2");
     expect(text).toContain("reads v1");
+    expect(bufferedServices().log.some((l) => l.tag === "Error" && l.text === text)).toBe(true);
+  });
+
+  test("a link whose bundled catalog doesn't load is refused, never opened against none", async () => {
+    await renderWithStudio(<Studio />);
+    loadWithManifest(fixtureCatalog("fixture"));
+    const before = doc.get();
+    const opened = await openShareLink(linkOf(template("ERC20", fixtureCatalog("fixture-next"))), {
+      loadCatalog: async () => ({ ok: false, error: "fixture-next/index.json answered 404." }),
+    });
+    expect(opened.ok).toBe(false);
+    expect(doc.get()).toBe(before);
+    expect(bufferedServices().toast.at(-1)).toEqual({
+      text: "This link couldn't be opened: catalog fixture-next didn't load. fixture-next/index.json answered 404.",
+      kind: "error",
+    });
   });
 
   test("a damaged link says what's wrong and opens nothing", async () => {
@@ -216,6 +245,17 @@ describe("links Studio refuses", () => {
 
 describe("a link naming a catalog this build doesn't bundle (spec L290, L504)", () => {
   const retired = (): Recipe => ({ ...template("ERC20"), catalog: { tag: "v0.3.0", hash: `0x${"ab".repeat(32)}` } });
+
+  test("its count of addresses to confirm says it's provisional until Migrate", async () => {
+    await renderWithStudio(<Studio />);
+    loadWithManifest(fixtureCatalog());
+    const recipe: Recipe = { ...linkedRecipe(), catalog: { tag: "v0.3.0", hash: `0x${"ab".repeat(32)}` } };
+    await openShareLink(linkOf(recipe));
+    expect(logged(`Opened a shared link · recipe ${short(recipeHash(recipe))} · 2 addresses to confirm.`)).toBe(true);
+    expect(
+      logged("Studio doesn't have this link's catalog, so it counts every address as receiving authority until the project migrates."),
+    ).toBe(true);
+  });
 
   test("opens read-only with Migrate, and the review opens once", async () => {
     await renderWithStudio(<Studio />);

@@ -82,11 +82,24 @@ describe("Migrate (spec L290): fixture to fixture-next", () => {
 
   test("while another tab edits, Migrate waits for Take over editing", async () => {
     await oldProject();
-    session.set({ readOnly: ELSEWHERE });
     await runCommand(MIGRATE, "palette");
+    session.set({ readOnly: ELSEWHERE });
+    expect(commandState(MIGRATE)).toMatchObject({ ok: false, reason: ELSEWHERE });
     const migrate = page.getByRole("button", { name: "Migrate to fixture-next", exact: true });
     await expect.element(migrate).toHaveAttribute("aria-disabled", "true");
     await expect.element(migrate).toHaveAccessibleDescription(ELSEWHERE);
+  });
+
+  test("an unbundled project whose lock is elsewhere keeps read-only, and Migrate waits for the lock", async () => {
+    const project = projectFor({ ...recipe(), catalog: { tag: "v0.3.0", hash: `0x${"ab".repeat(32)}` } });
+    await renderWithStudio(<DialogHost />, { project });
+    loadWithManifest(fixtureCatalog("fixture"));
+    const dialog = page.getByRole("dialog", { name: "Migrate" });
+    await expect.element(dialog).toBeVisible();
+    session.set({ readOnly: ELSEWHERE });
+    await expect.element(dialog.getByRole("button", { name: "Keep read-only" })).toBeVisible();
+    await expect.element(dialog.getByRole("button", { name: "Migrate to fixture", exact: true })).toHaveAccessibleDescription(ELSEWHERE);
+    expect(commandState(MIGRATE)).toMatchObject({ ok: false, reason: ELSEWHERE });
   });
 
   test("the review loads the old catalog when it's bundled, and none when it isn't", async () => {

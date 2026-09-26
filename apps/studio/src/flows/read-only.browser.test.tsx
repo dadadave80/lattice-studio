@@ -101,13 +101,32 @@ describe("two tabs (Flow 10 step 8)", () => {
   });
 });
 
+test("before this tab claims a project, Take over editing says so in its own words", async () => {
+  await renderWithStudio(<BannerHost />);
+  expect(editLockState().state).toBe("none");
+  expect(commandState(TAKE_OVER)).toMatchObject({ ok: false, reason: "No other tab has this project open" });
+});
+
 describe("the read-only reason", () => {
   test("the tab lock comes first, then an unbundled catalog", () => {
     const unbundled = { status: "unbundled", migrateTo: null } as const;
-    expect(readOnlyReason({ state: "elsewhere", projectId: "p" }, unbundled)).toBe(ELSEWHERE);
-    expect(readOnlyReason({ state: "handed-over", projectId: "p" }, { status: "matches" })).toBe(HANDED_OVER);
-    expect(readOnlyReason({ state: "held", projectId: "p" }, unbundled)).toBe(UNBUNDLED);
-    expect(readOnlyReason({ state: "none" }, { status: "unknown" })).toBeNull();
+    expect(readOnlyReason({ state: "elsewhere", projectId: "p" }, unbundled, "p")).toBe(ELSEWHERE);
+    expect(readOnlyReason({ state: "handed-over", projectId: "p" }, { status: "matches" }, "p")).toBe(HANDED_OVER);
+    expect(readOnlyReason({ state: "held", projectId: "p" }, unbundled, "p")).toBe(UNBUNDLED);
+    expect(readOnlyReason({ state: "none" }, { status: "unknown" }, "p")).toBeNull();
+  });
+
+  test("another project's lock doesn't make this one read-only", () => {
+    expect(readOnlyReason({ state: "elsewhere", projectId: "other" }, { status: "matches" }, "p")).toBeNull();
+    expect(readOnlyReason({ state: "handed-over", projectId: "other" }, { status: "matches" }, "p")).toBeNull();
+  });
+
+  test("switching to another project clears the lock's reason at once", async () => {
+    await renderWithStudio(<BannerHost />);
+    syncReadOnly({ state: "elsewhere", projectId: doc.get().id }, { status: "matches" });
+    expect(session.get().readOnly).toBe(ELSEWHERE);
+    doc.load({ ...doc.get(), id: "switched-to" });
+    expect(session.get().readOnly).toBeNull();
   });
 
   test("clears only the reason it set", async () => {
