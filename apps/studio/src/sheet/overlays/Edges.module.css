@@ -1,0 +1,88 @@
+/*
+ * Traces and ties (IR L106-L107; boards: trace and cable, edges and the overlap tie). Strokes scale with 1/zoom
+ * below 100% (spec L772), as the cards' do: the card-zoom layer sets --lx-sheet-zoom on the sheet, and every
+ * line that carries meaning stays at least 1.5 px on screen.
+ */
+
+.trace,
+.tie {
+  --edge-zoom: min(var(--lx-sheet-zoom, 1), 1);
+  --edge-mark: calc(max(var(--lx-stroke-hair), 1.5px) / var(--edge-zoom));
+  --edge-heavy: calc(var(--lx-stroke-heavy) / var(--edge-zoom));
+}
+
+.line,
+.tie {
+  fill: none;
+  stroke-linejoin: miter;
+  stroke-linecap: butt;
+}
+
+/* 1.5 px ink; 2 px accent when either end is selected. */
+.line {
+  stroke: var(--lx-text-muted);
+  stroke-width: var(--edge-mark);
+}
+
+.trace[data-live] .line {
+  stroke: var(--lx-accent);
+  stroke-width: var(--edge-heavy);
+}
+
+/* A wider transparent run over the line: hovering it shows the reason below 75% zoom. */
+.hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: calc(var(--lx-space-2) / var(--edge-zoom));
+  pointer-events: stroke;
+}
+
+.tie {
+  stroke: var(--lx-accent);
+  stroke-width: var(--edge-heavy);
+}
+
+.label {
+  position: absolute;
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  background: var(--lx-panel);
+  color: var(--lx-text-muted);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.label[data-live] {
+  border-color: var(--lx-accent);
+  color: var(--lx-accent);
+}
+
+/* More contrast: 2 px strokes (spec L786). */
+@media (prefers-contrast: more) {
+  .line {
+    stroke-width: var(--edge-heavy);
+  }
+}
+
+/* Forced colors: traces in CanvasText, ties keep a dash so they don't read as traces (spec L785). */
+@media (forced-colors: active) {
+  .line,
+  .trace[data-live] .line {
+    stroke: CanvasText;
+  }
+
+  .tie {
+    stroke: CanvasText;
+    stroke-dasharray: calc(var(--lx-space-2) / var(--edge-zoom)) calc(var(--lx-space-1) / var(--edge-zoom));
+  }
+
+  .label,
+  .label[data-live] {
+    border-color: CanvasText;
+    color: CanvasText;
+    forced-color-adjust: none;
+    background: Canvas;
+  }
+}
