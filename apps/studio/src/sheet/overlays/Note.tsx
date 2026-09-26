@@ -110,11 +110,14 @@ export const Note = memo(function Note({ note, rect, frame, fixes, card, leaving
     cardRef.current = card;
   });
 
-  // The layer places notes by their real height (the estimate only holds the first frame).
+  // The layer places notes by their real height (the estimate only holds the first frame). Measured when the
+  // note or the height it was placed with changes, never for a move: reading it forces a layout, and a drag
+  // moves a note on every pointer move.
+  const placedHeight = rect.height;
   useLayoutEffect(() => {
     const height = ref.current?.offsetHeight ?? 0;
-    if (height > 0 && Math.abs(height - rect.height) > layoutMetrics.grid) onHeight(note.id, height);
-  });
+    if (height > 0 && Math.abs(height - placedHeight) > layoutMetrics.grid) onHeight(note.id, height);
+  }, [note, fixes, placedHeight, onHeight]);
 
   // F8, problem.focus and Resolve collision… hand focus here, now or when the note shows.
   useEffect(() => {

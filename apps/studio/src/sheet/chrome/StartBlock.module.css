@@ -1,0 +1,84 @@
+/*
+ * Start a diamond (spec L378, L400, L405; IR L108; the empty sheet board): on an empty sheet, in the card grid's
+ * place. Its own stylesheet, apart from chrome.module.css, because the block ships in the entry (it's the empty
+ * sheet's first paint, spec L815) while the rest of the chrome loads with its lazy layers. Tokens only.
+ */
+
+.startLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: var(--lx-space-8) var(--lx-space-4);
+  overflow: auto;
+  pointer-events: none;
+}
+
+.start {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--lx-space-3);
+  inline-size: min(100%, calc(var(--lx-card-width) * 2.5));
+  padding: var(--lx-space-6);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  background: var(--lx-panel);
+  pointer-events: auto;
+}
+
+.startTitle {
+  margin: 0;
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text);
+}
+
+.recipeCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--lx-card-width) * 0.7), 1fr));
+  gap: var(--lx-space-2);
+}
+
+.recipeCards .recipeCard {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--lx-space-1);
+  min-block-size: var(--lx-space-12);
+  padding: var(--lx-space-3);
+  border-color: var(--lx-border);
+  white-space: normal;
+  text-align: start;
+}
+
+.recipeName {
+  font: var(--lx-font-body-sm);
+  font-weight: 600;
+  color: var(--lx-text);
+}
+
+.recipeBlurb {
+  font: var(--lx-font-body-sm);
+  font-weight: 400;
+  color: var(--lx-text-muted);
+}
+
+.startHint {
+  margin: 0;
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+  text-align: center;
+}
+
+.tourLink {
+  text-decoration: underline;
+}
+
+@media (forced-colors: active) {
+  .start {
+    border-color: CanvasText;
+  }
+}

@@ -2,7 +2,9 @@
  * S4d's registrations (contracts `sheet.ts`, `dialogs.ts`, S4a's `init-mark.ts`): the sheet chrome's layers, in
  * the sheet's Tab order (spec L752: the card grid, the tool strip, the notes, the title block), Browse all
  * recipes, and the init badge every card shows in init order mode. Each layer is a small Suspense wrapper around
- * the chrome's lazy chunk (`layers.tsx`), so the entry grows by the wrappers only.
+ * the chrome's lazy chunk (`layers.tsx`), so the entry grows by the wrappers only. The Start block is the
+ * exception: it's the empty sheet's largest paint (spec L815), so it ships in the entry and draws as soon as the
+ * canvas does, without waiting for the chunk or the catalog.
  *
  * Orders: the Start block (1) takes the card grid's place on an empty sheet; the tool strip and zoom readout (2)
  * come before S4c's notes (10 by the contract's suggestion); init order mode's chip and legend (28) and the title
@@ -12,6 +14,7 @@ import { createElement, lazy, Suspense, type ComponentType } from "react";
 import { registerDialog, registerSheetLayer, type DialogComponentProps } from "@/contracts";
 import { provideInitMark } from "@/sheet/card/init-mark";
 import { useChromeInitMark } from "./init-mark";
+import { StartBlock } from "./StartBlock";
 
 const chunk = () => import("./layers");
 
@@ -27,7 +30,7 @@ export const TOOL_STRIP_LAYER = { id: "tool-strip", order: 2 } as const;
 export const INIT_ORDER_LAYER = { id: "init-order", order: 28 } as const;
 export const TITLE_BLOCK_LAYER = { id: "title-block", order: 30 } as const;
 
-registerSheetLayer({ ...START_LAYER, Component: layer(() => chunk().then((m) => ({ default: m.StartBlock }))) });
+registerSheetLayer({ ...START_LAYER, Component: StartBlock });
 registerSheetLayer({ ...TOOL_STRIP_LAYER, Component: layer(() => chunk().then((m) => ({ default: m.ToolStripLayer }))) });
 registerSheetLayer({ ...INIT_ORDER_LAYER, Component: layer(() => chunk().then((m) => ({ default: m.InitOrderOverlay }))) });
 registerSheetLayer({ ...TITLE_BLOCK_LAYER, Component: layer(() => chunk().then((m) => ({ default: m.TitleBlockLayer }))) });
