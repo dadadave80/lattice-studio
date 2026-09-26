@@ -1,7 +1,7 @@
 import { plural } from "@lattice-studio/core";
 import { useMemo } from "react";
 import { useAnalysis, useOnline } from "@/contracts";
-import { Button } from "@/ui";
+import { Button } from "@/ui/buttons/Button";
 import { Section } from "../../shared/Section";
 import sheet from "../../shared/sheet.module.css";
 import { explorerUrl, useDeployStatus } from "../../shared/use-deploy-status";
@@ -38,6 +38,9 @@ export function DeploymentsList({ autoCheck }: { autoCheck: boolean }) {
       ) : null}
       {groups.map((group) => {
         const name = chainName(group.chainId);
+        // Only a loaded list that truly lacks this chain id says so; loading or unavailable never claims that
+        // (the command needs only the chain id it already has, spec L606, L661: the reason shown must be true).
+        const known = chain.status !== "ready" || chains.some((c) => c.id === group.chainId);
         return (
           <div key={group.chainId} className={styles.group}>
             <h4 className={styles.groupHeading}>{name}</h4>
@@ -49,6 +52,7 @@ export function DeploymentsList({ autoCheck }: { autoCheck: boolean }) {
                   currentHash={currentHash}
                   chainName={name}
                   explorer={explorerUrl(chains, record.chainId, record.address)}
+                  chainKnown={known}
                   check={checks.checkOf(record)}
                   onRetry={() => checks.retry(record)}
                 />

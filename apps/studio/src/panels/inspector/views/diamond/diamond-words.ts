@@ -80,6 +80,11 @@ export function verificationWord(verification: Deployment["verification"]): stri
   }
 }
 
+/** Why a failed verification couldn't finish (spec L579, L606, Flow 14 "Verification failed: The reason"). */
+export function verificationFailureReason(record: Deployment): string | undefined {
+  return record.verification === "failed" ? record.verificationReason : undefined;
+}
+
 export type DeploymentGroup = { chainId: number; records: Deployment[] };
 
 /** Every record grouped by chain, newest first; the chain with the newest record comes first (Flow 13). */
