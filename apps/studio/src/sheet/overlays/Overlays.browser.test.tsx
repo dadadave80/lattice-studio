@@ -276,6 +276,9 @@ describe("traces and ties (IR L106-L107)", () => {
     const label = () => document.querySelector(`[data-trace-label='${id}']`);
     await expect.poll(() => document.querySelector(`g[data-edge='${id}']`), { timeout: 8000 }).not.toBeNull();
     await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.5 } }, "api");
+    // Hover only once the view is drawn at 50%: a hover at the old zoom leaves the trace under the pointer's old spot.
+    const drawnScale = () => new DOMMatrixReadOnly(getComputedStyle(document.querySelector(".react-flow__viewport") as Element).transform).a;
+    await expect.poll(drawnScale).toBe(0.5);
     await expect.poll(label).toBeNull();
     const hit = document.querySelector<SVGPathElement>(`g[data-edge='${id}'] path:first-child`) as SVGPathElement;
     // The real pointer, at the middle of the trace: the hit stroke takes it though its wrapper doesn't.

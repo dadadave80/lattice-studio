@@ -38,6 +38,8 @@ export type Deployment = {
   catalogHash: Hex;
   at: string;
   verification: "pending" | "match" | "exact_match" | "failed";
+  /** Why Sourcify couldn't verify, while `verification` is "failed" (spec L606; contract addition from FX21). */
+  verificationReason?: string;
   /** 1 at deploy, +1 per upgrade (v2). */
   revision: number;
   /** Imported: shown "From file" until re-read on-chain. */
