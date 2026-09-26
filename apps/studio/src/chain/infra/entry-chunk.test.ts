@@ -63,8 +63,10 @@ describe("the entry chunk", () => {
 
   test("WalletConnect's SDK is in neither the entry nor the chain module: it loads only when chosen", () => {
     const runtime = chainRuntime();
+    // Chunk file names ("assets/w3m-modal-….js" in Vite's preload map) name the SDK's chunks without carrying it.
+    const code = (text: string) => text.replace(/assets\/[\w.-]+\.js/g, "");
     for (const marker of WALLETCONNECT_MARKERS) {
-      expect({ marker, entry: firstLoad.includes(marker), runtime: runtime?.text.includes(marker) }).toEqual({ marker, entry: false, runtime: false });
+      expect({ marker, entry: code(firstLoad).includes(marker), runtime: runtime && code(runtime.text).includes(marker) }).toEqual({ marker, entry: false, runtime: false });
     }
   });
 

@@ -39,6 +39,15 @@ describe("chains", () => {
     expect(chainFromText("anvil", true)?.id).toBe(31337);
   });
 
+  test("`chain <id>`: a picker chain by its number, nothing for one Studio doesn't list (IR L155)", () => {
+    expect(chainFromText("11155111", false)?.name).toBe("Sepolia");
+    expect(chainFromText(" 84532 ", false)?.name).toBe("Base Sepolia");
+    expect(chainFromText("31337", false)).toBeUndefined();
+    expect(chainFromText("31337", true)?.name).toBe("Anvil");
+    // Ethereum is read for ENS only; it isn't a chain to deploy to.
+    for (const unknown of ["1", "5", "10", "0", "999999999"]) expect(chainFromText(unknown, true)).toBeUndefined();
+  });
+
   test("a fixture catalog can't deploy (contracts §4)", () => {
     expect(catalogDeployBlock({ lattice: { tag: "fixture", commit: "f4a32c8" } })).toBe("Fixture catalog: build the real catalog first");
     expect(catalogDeployBlock({ lattice: { tag: "v0.4.0", commit: "abc" } })).toBeNull();
