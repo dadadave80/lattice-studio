@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { SizeReport } from "../ci/size-logic.ts";
 import type { Composition } from "./composition.ts";
 import type { Attribution } from "./profile.ts";
-import { evaluate, PERF_BUDGETS, renderEvaluation, type PerfInputs } from "./report.ts";
+import { evaluate, PERF_BUDGETS, renderEvaluation, REPORT_ONLY, type PerfInputs } from "./report.ts";
 import type { AnalysisResult, DragResult, LighthouseResult, Stats } from "./types.ts";
 
 const stats = (median: number, mean = median): Stats => ({ n: 10, mean, median, p95: median + 1, min: median - 1, max: median + 2 });
@@ -107,14 +107,29 @@ describe("evaluate", () => {
     expect(fix).toContain("All three: 211.0 KB");
   });
 
-  test("LCP, INP and analysis over their budgets fail the full run, each with a fix request", () => {
-    const e = evaluate(inputs({ lighthouse: lighthouse(7900), drag: drag(232), analysis: analysis(6.7) }));
+  test("with no row report-only, LCP, INP and analysis over their budgets fail the full run, each with a fix request", () => {
+    const e = evaluate(inputs({ lighthouse: lighthouse(7900), drag: drag(232), analysis: analysis(6.7) }), {});
     expect(e.ok).toBe(false);
     const over = e.rows.filter((r) => r.enforced && r.status === "over").map((r) => r.item);
     expect(over).toHaveLength(3);
     expect(e.fixes.some((f) => f.startsWith("LCP is 7.90 s") && f.includes("/catalog/dev/index.json 429.3 KB"))).toBe(true);
     expect(e.fixes.some((f) => f.startsWith('INP is 232 ms at 4× CPU, over 200 ms: "Undo" (keydown on div group)'))).toBe(true);
     expect(e.fixes.some((f) => f.includes("analysis/analyze.ts 34%") && f.includes("analyze.ts:105 20%"))).toBe(true);
+  });
+
+  test("the ruling: LCP and analysis report-only until FX30 and FX29, the drag row names FX30, the rest stay enforced", () => {
+    expect(REPORT_ONLY).toEqual({ lcp: "FX30", drag: "FX30", analysis: "FX29" });
+    const e = evaluate(inputs({ lighthouse: lighthouse(7900), analysis: analysis(6.7) }));
+    expect(e.ok).toBe(true);
+    expect(e.rows.find((r) => r.item.startsWith("Largest Contentful Paint"))).toMatchObject({ status: "over", enforced: false, until: "FX30" });
+    expect(e.rows.find((r) => r.item.startsWith("Analysis, 30 colliding"))).toMatchObject({ status: "over", enforced: false, until: "FX29" });
+    expect(e.rows.find((r) => r.item.startsWith("Drag, added per move"))).toMatchObject({ enforced: false, until: "FX30" });
+    expect(e.fixes.some((f) => f.startsWith("LCP is 7.90 s"))).toBe(true);
+    // INP and the first-load gate still fail the run.
+    expect(evaluate(inputs({ drag: drag(232) })).ok).toBe(false);
+    expect(evaluate(inputs({ size: size(380_000) })).ok).toBe(false);
+    const text = renderEvaluation(e, [], false);
+    expect(text).toMatch(/Largest Contentful Paint \(mobile, median of 3\)\s+7\.90 s\s+2\.5 s\s+over \(report-only until FX30\)/);
   });
 
   test("smoke never fails on a budget, only on a missing measurement", () => {
@@ -132,7 +147,7 @@ describe("evaluate", () => {
 
 describe("renderEvaluation", () => {
   test("a table with a header, enforced misses marked, fix requests numbered, and each profile's groups", () => {
-    const e = evaluate(inputs({ lighthouse: lighthouse(7900) }));
+    const e = evaluate(inputs({ lighthouse: lighthouse(7900) }), {});
     const text = renderEvaluation(e, profiles, false);
     expect(text.split("\n")[0]).toMatch(/^Item\s+Measured\s+Budget\s+Status$/);
     expect(text).toMatch(/Largest Contentful Paint \(mobile, median of 3\)\s+7\.90 s\s+2\.5 s\s+over \(enforced\)/);

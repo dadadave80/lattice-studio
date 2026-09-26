@@ -231,6 +231,10 @@ async function main(): Promise<number> {
     return 0;
   }
   const missed = evaluation.rows.filter((r) => r.enforced && r.status !== "ok");
+  const waiting = evaluation.rows.filter((r) => r.until !== undefined && r.status !== "ok");
+  if (waiting.length > 0) {
+    log(`report-only until their fix packages land: ${waiting.map((r) => `${r.item.trim()} (${r.until})`).join("; ")}.`);
+  }
   log(
     missed.length === 0
       ? `every enforced budget met in ${seconds} s. Results: ${relative(root, join(out, "results.json"))}.`

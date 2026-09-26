@@ -25,6 +25,25 @@ export const PERF_BUDGETS = {
   analysisMs: 5,
 } as const;
 
+/** The budget rows a ruling can make report-only. */
+export type BudgetKey = "firstLoadGate" | "lcp" | "inp" | "drag" | "analysis";
+
+/**
+ * Rows reported but not enforced until the fix package named here lands (orchestrator ruling, 2026-09-26, on
+ * Q4's misses). Every other budget row stays enforced. When a package merges, delete its entry and the row
+ * enforces again.
+ */
+export const REPORT_ONLY: Readonly<Partial<Record<BudgetKey, string>>> = {
+  // FX30: the LCP element (StartBlock's recipe cards, lazy `layers` chunk) paints after the entry, the catalog
+  // index and ~45 more chunks.
+  lcp: "FX30",
+  // FX30: every drag move re-places every note (OverlayLayer → C9 placeNotes → nearestFree). A reference row
+  // (spec L816 gives no budget), so it isn't enforced either way.
+  drag: "FX30",
+  // FX29: analyze's frozenCopy (structuredClone + deepFreeze of the result), sel.ts and recipeView rebuilt per call.
+  analysis: "FX29",
+};
+
 export type Status = "ok" | "over" | "above reference" | "warn" | "info" | "missing";
 
 export type Row = {
@@ -34,6 +53,8 @@ export type Row = {
   readonly status: Status;
   /** A miss fails the full run. */
   readonly enforced: boolean;
+  /** The fix package this row waits for, while it's report-only (`REPORT_ONLY`). */
+  readonly until?: string;
 };
 
 export type PerfInputs = {
@@ -59,8 +80,14 @@ function top(attribution: Attribution | undefined, count: number): string {
   return lines ? `${files}; the hottest functions start at ${lines}` : files;
 }
 
+/** Whether `key`'s row fails the full run: `enforced` unless a ruling made it report-only until a fix package. */
+function rule(key: BudgetKey, reportOnly: Readonly<Partial<Record<BudgetKey, string>>>, enforced = true): { enforced: boolean; until?: string } {
+  const until = reportOnly[key];
+  return until === undefined ? { enforced } : { enforced: false, until };
+}
+
 /** Rows and fix requests for every budget the inputs cover. `ok` is false when an enforced budget is over. */
-export function evaluate(inputs: PerfInputs): Evaluation {
+export function evaluate(inputs: PerfInputs, reportOnly: Readonly<Partial<Record<BudgetKey, string>>> = REPORT_ONLY): Evaluation {
   const rows: Row[] = [];
   const fixes: string[] = [];
   const profile = (label: string): Attribution | undefined => inputs.profiles.find((p) => p.label === label);
@@ -75,7 +102,7 @@ export function evaluate(inputs: PerfInputs): Evaluation {
       measured: `${kb(firstLoad)} gz`,
       budget: `${kb(PERF_BUDGETS.firstLoadGate)} gz`,
       status: firstLoad <= PERF_BUDGETS.firstLoadGate ? "ok" : "over",
-      enforced: true,
+      ...rule("firstLoadGate", reportOnly),
     });
     for (const chunk of inputs.composition?.chunks ?? []) {
       rows.push({ item: `  ${chunk.name}`, measured: `${kb(chunk.gz)} gz`, budget: "", status: "info", enforced: false });
@@ -134,7 +161,7 @@ export function evaluate(inputs: PerfInputs): Evaluation {
       measured: `${(lcp / 1000).toFixed(2)} s`,
       budget: `${(PERF_BUDGETS.lcpMs / 1000).toFixed(1)} s`,
       status: lcp <= PERF_BUDGETS.lcpMs ? "ok" : "over",
-      enforced: true,
+      ...rule("lcp", reportOnly),
     });
     rows.push({ item: "  First Contentful Paint (median)", measured: `${(median(lh.fcp) / 1000).toFixed(2)} s`, budget: "", status: "info", enforced: false });
     rows.push({ item: "  Total Blocking Time (median)", measured: ms(median(lh.tbt)), budget: "", status: "info", enforced: false });
@@ -161,7 +188,7 @@ export function evaluate(inputs: PerfInputs): Evaluation {
       measured: worst ? `${ms(inp)} (${worst.step})` : "under 16 ms",
       budget: `${PERF_BUDGETS.inpMs} ms`,
       status: inp <= PERF_BUDGETS.inpMs ? "ok" : "over",
-      enforced: true,
+      ...rule("inp", reportOnly),
     });
     if (worst && inp > PERF_BUDGETS.inpMs) {
       fixes.push(
@@ -175,7 +202,7 @@ export function evaluate(inputs: PerfInputs): Evaluation {
       measured: ms(added),
       budget: `~${PERF_BUDGETS.dragReferenceMs} ms (reference)`,
       status: added <= PERF_BUDGETS.dragReferenceMs ? "ok" : "above reference",
-      enforced: false,
+      ...rule("drag", reportOnly, false),
     });
     rows.push({
       item: "  Drag, per move (mean · p95)",
@@ -215,7 +242,7 @@ export function evaluate(inputs: PerfInputs): Evaluation {
         measured: `${ms(c.stats.median)} · ${ms(c.stats.p95)}`,
         budget: `${PERF_BUDGETS.analysisMs} ms`,
         status: over ? "over" : "ok",
-        enforced: true,
+        ...rule("analysis", reportOnly),
       });
       if (over) {
         fixes.push(
@@ -238,7 +265,8 @@ export function renderEvaluation(evaluation: Evaluation, profiles: readonly Attr
   const bw = Math.max(...evaluation.rows.map((r) => r.budget.length), 6);
   lines.push(`${"Item".padEnd(w)}  ${"Measured".padEnd(mw)}  ${"Budget".padEnd(bw)}  Status`);
   for (const r of evaluation.rows) {
-    const status = r.status === "info" ? "" : `${r.status}${r.enforced && r.status !== "ok" && !smoke ? " (enforced)" : ""}`;
+    const note = r.status === "ok" ? "" : r.until ? ` (report-only until ${r.until})` : r.enforced && !smoke ? " (enforced)" : "";
+    const status = r.status === "info" ? "" : `${r.status}${note}`;
     lines.push(`${r.item.padEnd(w)}  ${r.measured.padEnd(mw)}  ${r.budget.padEnd(bw)}  ${status}`.trimEnd());
   }
   if (evaluation.fixes.length > 0) {
