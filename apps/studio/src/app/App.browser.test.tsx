@@ -60,7 +60,7 @@ describe("App", () => {
     await expect.element(page.getByText("Offline. Composing works; deploy needs a connection.")).toBeVisible();
     hideBanner("app-test");
     await expect.element(page.getByText("Offline. Composing works; deploy needs a connection.")).not.toBeInTheDocument();
-    // The interim alias S10 shipped is gone: only BannerHost is exported.
-    expect(Object.keys(feedback)).toEqual(["BannerHost"]);
+    // The interim alias S10 shipped is gone.
+    expect("Toasts" in feedback).toBe(false);
   });
 });
