@@ -97,7 +97,7 @@ describe("evaluate", () => {
     expect(target).toMatchObject({ status: "over", enforced: false, budget: "240.0 KB gz" });
     expect(e.rows.find((r) => r.item.startsWith("Drag, added per move"))).toMatchObject({ measured: "51.6 ms", status: "above reference", enforced: false });
     expect(e.rows.find((r) => r.item.startsWith("Largest lazy chunk"))?.item).toBe("Largest lazy chunk (shiki-x.js)");
-    expect(e.rows.find((r) => r.item === "Catalog index")?.status).toBe("above reference");
+    expect(e.rows.find((r) => r.item === "Catalog index")?.status).toBe("warn");
   });
 
   test("the first-load fix request names each Q19 option with its measured size and what all three leave", () => {

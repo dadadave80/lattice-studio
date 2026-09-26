@@ -25,7 +25,7 @@ export const PERF_BUDGETS = {
   analysisMs: 5,
 } as const;
 
-export type Status = "ok" | "over" | "above reference" | "info" | "missing";
+export type Status = "ok" | "over" | "above reference" | "warn" | "info" | "missing";
 
 export type Row = {
   readonly item: string;
@@ -107,7 +107,7 @@ export function evaluate(inputs: PerfInputs): Evaluation {
       item: r.item,
       measured: r.unit === "gz" ? `${kb(r.gz ?? 0)} gz` : kb(r.raw),
       budget: r.unit === "gz" ? `${kb(r.budget)} gz` : kb(r.budget),
-      status: r.ok ? "ok" : r.warnOnly ? "above reference" : "over",
+      status: r.ok ? "ok" : r.warnOnly ? "warn" : "over",
       enforced: false,
     });
   }

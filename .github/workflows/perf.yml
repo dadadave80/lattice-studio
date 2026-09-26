@@ -55,4 +55,6 @@ jobs:
             apps/studio/test-results/perf-*/results.json
             apps/studio/test-results/perf-*/*.json
             apps/studio/test-results/perf-*/lighthouse/.lighthouseci
+          # Lighthouse CI keeps its reports in `.lighthouseci`, which upload-artifact skips unless told otherwise.
+          include-hidden-files: true
           retention-days: 14
