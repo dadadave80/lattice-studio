@@ -57,6 +57,66 @@ export async function routeMockSends(page: Page, anvilUrl: string): Promise<() =
   return () => forwarded;
 }
 
+/**
+ * Makes the wallet answer every Anvil transaction with EIP-1193's 4001, as a person rejecting it in their wallet
+ * would. Same predicate as `routeMockSends` (a JSON-RPC `eth_sendTransaction` for chain 31337, nothing else), on
+ * any host: today the mock connector misroutes the send to a public RPC, and once it sends to Anvil directly the
+ * same route still catches exactly that request, while every read the app makes passes through. Register it after
+ * `routeMockSends` (Playwright tries the newest route first).
+ */
+export async function rejectMockSends(page: Page): Promise<() => number> {
+  let rejected = 0;
+  await page.route(
+    () => true,
+    async (route: Route) => {
+      const request = route.request();
+      const body = request.postData();
+      if (request.method() !== "POST" || !isAnvilSend(body)) {
+        await route.fallback();
+        return;
+      }
+      rejected += 1;
+      const parsed = JSON.parse(body ?? "{}") as { id?: number } | { id?: number }[];
+      const answer = (id: number | undefined) => ({ jsonrpc: "2.0", id: id ?? 1, error: { code: 4001, message: "User rejected the request." } });
+      const json = Array.isArray(parsed) ? parsed.map((call) => answer(call.id)) : answer(parsed.id);
+      await route.fulfill({ json, headers: { "access-control-allow-origin": "*" } });
+    },
+  );
+  return () => rejected;
+}
+
+type SimulateResult = { gasUsed?: string; calls?: { gasUsed?: string }[] }[];
+
+/**
+ * Makes the node's `eth_simulateV1` answers report `gas` for every call, as a recipe too large for the chain's
+ * per-transaction cap would. Anvil's cap is fixed in Studio's chain table (30M) and a v1 recipe needs about 7M, so
+ * this stub is the only local way to reach NET-06 (spec L339). Everything else the node answers is untouched.
+ */
+export async function inflateSimulatedGas(page: Page, anvilUrl: string, gas: bigint): Promise<void> {
+  const hex = `0x${gas.toString(16)}`;
+  await page.route(
+    (url) => url.href.startsWith(anvilUrl),
+    async (route: Route) => {
+      const body = route.request().postData() ?? "";
+      if (!body.includes("eth_simulateV1")) {
+        await route.fallback();
+        return;
+      }
+      const response = await route.fetch();
+      const payload = (await response.json()) as unknown;
+      const answers = (Array.isArray(payload) ? payload : [payload]) as { result?: SimulateResult }[];
+      for (const answer of answers) {
+        if (!Array.isArray(answer.result)) continue;
+        for (const block of answer.result) {
+          if (block.gasUsed !== undefined) block.gasUsed = hex;
+          for (const call of block.calls ?? []) call.gasUsed = hex;
+        }
+      }
+      await route.fulfill({ response, json: payload });
+    },
+  );
+}
+
 /** Console `chain anvil`, then the palette's Connect wallet and Switch network, waiting for each result. */
 export async function connectOnAnvil(page: Page): Promise<void> {
   const log = page.getByRole("log");

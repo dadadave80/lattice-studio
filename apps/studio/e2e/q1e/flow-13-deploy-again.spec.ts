@@ -2,7 +2,7 @@
  * Flow 13. Deploy again after changes (spec L582-L584), from a diamond that's really live on the test's Anvil node:
  * the stamp and button once the sheet differs from what's live, Deploy again's new salt, the status chip that follows
  * the chain selected in the title block, and the Deployments list grouped by chain, newest first. The review's note
- * about the live diamond needs the review, which crashes as it opens on this build (`REVIEW_CRASHES`).
+ * about the live diamond, in the review Deploy again… opens.
  */
 import type { Deployment } from "@lattice-studio/core";
 import { recipeHash } from "@lattice-studio/core";
@@ -79,12 +79,18 @@ test.describe("Flow 13. Deploy again after changes", () => {
 
       // The review opens on the new diamond and says what stays live (spec L584).
       const review = new DeployReview(page, "GovernedVault");
-      await review.expectOpenOrSkip(crashed);
+      await review.expectOpen(crashed);
       await expect(review.root).toContainText(
         `This deploys a new diamond at a new address. The live one at ${live.address} stays as it is. Upgrading it in place arrives in v2.`,
       );
+      // With the deployer connected, the new salt predicts a new, free address.
+      await page.keyboard.press("Escape");
+      await expect(review.root).toBeHidden();
       await connectOnAnvil(page);
-      await expect.poll(async () => (await block.addressLine())?.address).not.toBe(live.address);
+      await expect.poll(async () => (await block.addressLine())?.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+      const fresh = (await block.addressLine())?.address as `0x${string}`;
+      expect(fresh).not.toBe(live.address);
+      expect(await anvil.rpc<string>("eth_getCode", [fresh, "latest"])).toBe("0x");
     });
   }
 

@@ -6,9 +6,10 @@
  * - shared contracts taken off the chain, so NET-03's missing contracts are really missing;
  * - a Safe's Transaction Builder batch executed as the Safe (Anvil impersonation).
  */
-import type { Address, Hex } from "viem";
+import { encodeAbiParameters, keccak256, toHex, type Address, type Hex } from "viem";
 import {
-  analyze, buildDiamondDeploy, buildSalt, encodeInit, factoryPredict, planInit, recipeHash, type Deployment, type Project,
+  analyze, buildDiamondDeploy, buildSalt, encodeInit, factoryPredict, packVersion, planInit, recipeHash, registryNameHash,
+  type Deployment, type Project,
 } from "@lattice-studio/core";
 import { ALICE, ANVIL_CHAIN_ID, type AnvilNode } from "../../_support/anvil.ts";
 import { catalog, sharedContracts } from "../../_support/catalog.ts";
@@ -129,6 +130,41 @@ export async function removeShared(node: AnvilNode, names: readonly string[], st
 /** Lets `name` be created again (nonce 0), as fixing whatever made it fail would. */
 export async function unstick(node: AnvilNode, name: string): Promise<void> {
   await node.rpc<null>("anvil_setNonce", [releaseAddress(name), "0x0"]);
+}
+
+/**
+ * LatticeRegistry's `_records[keccak256(abi.encode(nameHash, version))]` (storage slot 3; LatticeRegistry.sol L36-L46)
+ * and its `Record` fields: facet and version share the first word, then registeredAt, codehash, selectorsHash.
+ */
+const RECORDS_SLOT = 3n;
+
+function recordBase(name: string): bigint {
+  const facet = catalog().facets.find((item) => item.name === name);
+  const version = facet ? packVersion(facet.release.version) : null;
+  if (!facet || version === null) throw new Error(`${name} has no registry version in the catalog.`);
+  const key = keccak256(encodeAbiParameters([{ type: "bytes32" }, { type: "uint64" }], [registryNameHash(name), version]));
+  return BigInt(keccak256(encodeAbiParameters([{ type: "bytes32" }, { type: "uint256" }], [key, RECORDS_SLOT])));
+}
+
+/** The facets among `names` that the node's LatticeRegistry lists at their pinned version. */
+export async function registeredFacets(node: AnvilNode, names: readonly string[]): Promise<string[]> {
+  const registry = catalog().registry.address;
+  const listed: string[] = [];
+  for (const name of names) {
+    const word = await node.client.getStorageAt({ address: registry, slot: toHex(recordBase(name), { size: 32 }) });
+    if (word !== undefined && BigInt(word) !== 0n) listed.push(name);
+  }
+  return listed;
+}
+
+/**
+ * Changes the selectors hash LatticeRegistry keeps for `name`'s record. The record still lists the facet at its
+ * address and codehash, so the chain probe (and NET-08) see nothing wrong, but LatticeFactory's check of that
+ * RecipeEntry reverts with `LatticeRegistry__SelectorDrift(facet)`: a revert only the simulation can find.
+ */
+export async function driftRegistrySelectors(node: AnvilNode, name: string): Promise<void> {
+  const slot = toHex(recordBase(name) + 3n, { size: 32 });
+  await node.rpc<boolean>("anvil_setStorageAt", [catalog().registry.address, slot, keccak256(toHex("drifted"))]);
 }
 
 /** Executes a Transaction Builder batch as `safe`: Anvil impersonates it and sends each transaction. */

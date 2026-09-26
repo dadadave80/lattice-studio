@@ -1,11 +1,10 @@
 /**
  * Flow 12. Deploy (spec L530-L580), against the test's Anvil node with wagmi's mock connector.
  *
- * What runs today: opening (step 1) and its disabled reasons, the missing contracts sub-step through Arachnid's
- * proxy (step 3), tracking that resumes from the deployment record after a reload through Pending, Confirmed, Verify
- * and Live (steps 6-9), and a Safe as deployer: the Transaction Builder batch records Proposed and the record
- * confirms once the diamond appears. The review itself (steps 2, 4 and 5) crashes as it opens on this build; those
- * tests skip with `REVIEW_CRASHES` and run as soon as the fix lands.
+ * Opening (step 1) and its disabled reasons, the review's nine sections (step 2), the missing contracts sub-step
+ * through Arachnid's proxy (step 3), Sign & deploy through LatticeFactory and through CreateX to Live (steps 4-9),
+ * tracking that resumes from the deployment record after a reload through Pending, Confirmed, Verify and Live, and a
+ * Safe as deployer: the Transaction Builder batch records Proposed and the record confirms once the diamond appears.
  *
  * Each flow runs as written (pointer where the spec clicks) and again keyboard-only: after the page loads, the
  * keyboard variant never clicks.
@@ -13,7 +12,6 @@
 import type { Address, Hex } from "viem";
 import { MULTICALL3, buildSalt } from "@lattice-studio/core";
 import { ANVIL_CHAIN_ID, SAFE } from "../_support/anvil.ts";
-import { showsNotBuilt, notBuiltText } from "../_support/built.ts";
 import { catalog } from "../_support/catalog.ts";
 import { focusRegion, focusedRegion, region } from "../_support/keys.ts";
 import { recipeProject } from "../_support/projects.ts";
@@ -66,16 +64,18 @@ test.describe("Flow 12. Deploy", () => {
       await expect(page.getByRole("dialog")).toHaveCount(0);
     });
 
-    test("⌘/Ctrl+Enter with blockers jumps to the first blocker's note, keyboard only", async ({ page }) => {
+    test("⌘/Ctrl+Enter with blockers jumps to the first blocker, keyboard only", async ({ page }) => {
       await seedProject(page, { project: recipeProject("GovernedVault") });
       await expectDisabledWith(new TitleBlock(page).deploy(), "Resolve 1 blocker · F8");
       await focusRegion(page, "Sheet");
       await pressMod(page, "Enter");
       await expectAnnounced(page, "Asset is required. Fill it in before deploying.");
-      // Moving focus to the note is `problem.focus`, S4c's (the notes on the sheet).
-      test.skip(await showsNotBuilt(page, "S4c"), notBuiltText("S4c"));
-      expect(await focusedRegion(page)).toBe("Sheet");
-      await expect(page.locator(":focus")).toContainText("Asset is required");
+      // `problem.focus` (S4c) takes the person to the blocker: for a missing init argument (INIT-01), the argument's
+      // own field in the inspector, marked invalid, where typing fixes it.
+      await expect.poll(() => focusedRegion(page)).toBe("Inspector");
+      const field = region(page, "Inspector").getByRole("textbox", { name: /asset/i });
+      await expect(field).toBeFocused();
+      await expect(field).toHaveAttribute("aria-invalid", "true");
     });
 
     const openings = [
@@ -99,9 +99,20 @@ test.describe("Flow 12. Deploy", () => {
         if (how === "the palette") await runPalette(page, "Deploy…");
         if (how === "console `deploy anvil`") await runConsoleLine(page, "deploy anvil");
         const review = new DeployReview(page, "GovernedVault");
-        await review.expectOpenOrSkip(crashed);
+        await review.expectOpen(crashed);
         for (const title of REVIEW_SECTIONS) await expect(review.section(title)).toBeVisible();
-        await expect(review.sign()).toBeVisible();
+        // Spec L563's readiness line, for Anvil.
+        await expect(review.section("Network")).toContainText("Anvil · LatticeFactory ✓ · 15 of 15 facets and init contracts ✓");
+        await expect(review.section("What gets cut")).toContainText("14 facets · 120 selectors");
+        const address = shortAddress(predictedAddress(recipeProject("GovernedVault", { filled: true })));
+        await expect(review.section("Simulation")).toContainText(
+          new RegExp(`Simulated at block [\\d,]+: diamond at ${address} with 14 facets, 120 selectors, \\d+ events\\.`),
+        );
+        const log = new ConsoleLog(page);
+        await expect(log.line("Deploy", "Review: Anvil · LatticeFactory · 14 facets.")).toBeVisible();
+        await expect(log.lineMatching("Deploy", /Simulated at block [\d,]+: succeeded, \d+ events\./)).toBeVisible();
+        // Two acknowledgements wait: Cut without the registry check (NET-08) and Keep example values (INIT-05).
+        await expectDisabledWith(review.sign(), "Tick the 2 acknowledgements first");
       });
     }
   });
@@ -184,12 +195,30 @@ test.describe("Flow 12. Deploy", () => {
         await connectOnAnvil(page);
         await runPalette(page, "Deploy…");
         const review = new DeployReview(page, "GovernedVault");
-        await review.expectOpenOrSkip(crashed);
-        await expect(review.section("Simulation")).toContainText(/Simulated at block [\d,]+: diamond at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} with 14 facets, 120 selectors/);
+        await review.expectOpen(crashed);
+        const address = (await review.section("Address").getByRole("definition").allTextContents()).find((text) => /^0x[0-9a-fA-F]{40}$/.test(text)) as Address;
+        expect(address).toBeDefined();
+        await expect(review.section("Address")).toContainText(`Free: no code at this address on Anvil.`);
+        await expect(review.section("Simulation")).toContainText(
+          new RegExp(`Simulated at block [\\d,]+: diamond at ${shortAddress(address)} with 14 facets, 120 selectors`),
+        );
+        // Sign & deploy enables once every acknowledgement is ticked (spec L573).
+        await expect(review.sign()).toHaveAttribute("aria-disabled", "true");
+        await review.tickAll(mode);
+        await expect(review.sign()).not.toHaveAttribute("aria-disabled", "true");
         await activate(page, mode, review.sign());
+
         const log = new ConsoleLog(page);
-        await expect(log.lineMatching("Deploy", /Deployed at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} in block [\d,]+\. Matches the sheet\./)).toBeVisible();
+        await expect(log.lineMatching("Deploy", /Submitted 0x[0-9a-f]{4}…[0-9a-f]{4} on Anvil\./)).toBeVisible();
+        await expect(log.lineMatching("Deploy", new RegExp(`Deployed at ${shortAddress(address)} in block [\\d,]+\\. Matches the sheet\\.`))).toBeVisible();
+        await expect(log.line("Verify", "Couldn't verify: Sourcify doesn't verify contracts on Anvil.")).toBeVisible();
+        // The review follows the deploy to its end (spec L558) and the stamp goes Live (spec L580).
+        await expect(review.root.getByRole("status")).toHaveText("Live · Anvil");
+        await activate(page, mode, review.root.getByRole("button", { name: "Close", exact: true }));
+        await expect(review.root).toBeHidden();
         await expect(new TitleBlock(page).stamp("Live · Anvil · r1")).toBeVisible();
+        expect(await anvil.rpc<Hex>("eth_getCode", [address, "latest"])).not.toBe("0x");
+        expect(await new TitleBlock(page).addressLine()).toEqual({ label: "Deployed", address });
       });
     }
   });
@@ -239,6 +268,16 @@ test.describe("Flow 12. Deploy", () => {
         await seedProject(page, { project });
         await runConsoleLine(page, "chain anvil");
         await expect(new ConsoleLog(page).line("Note", "Selected Anvil.")).toBeVisible();
+
+        // The review's ticks are the person's consent however the deploy goes out, a Safe batch included (spec L573).
+        const crashed = watchReactErrors(page);
+        await runPalette(page, "Deploy…");
+        const review = new DeployReview(page, "GovernedVault");
+        await review.expectOpen(crashed);
+        await review.tickAll(mode);
+        if (mode === "pointer") await review.root.getByRole("button", { name: "Cancel", exact: true }).click();
+        else await page.keyboard.press("Escape");
+        await expect(review.root).toBeHidden();
 
         if (mode === "pointer") {
           await region(page, "Console").getByRole("button", { name: "Export", exact: true }).click();
@@ -294,16 +333,15 @@ test.describe("Flow 12. Deploy", () => {
       });
     }
 
-    test("Discard proposal drops the record (spec L580)", async ({ page, anvil }) => {
+    test("Discard proposal drops the record (spec L580), keyboard only", async ({ page, anvil }) => {
       void anvil;
-      test.fail(true, "S8c keeps a discarded proposal as a Failed record and stamps \"Failed · Anvil\"; spec L580 says Discard proposal drops it · follow-up for S8c from Q1e");
       const project = recipeProject("GovernedVault", { filled: true });
       await seedProject(page, { project, deployments: [proposalFor(project)] });
       await runConsoleLine(page, "chain anvil");
       await runPalette(page, "Discard proposal");
       await expect(new ConsoleLog(page).line("Deploy", `Discarded the proposal to Safe ${shortAddress(SAFE)} on Anvil.`)).toBeVisible();
-      await expect(new TitleBlock(page).stamp("Not deployed")).toBeVisible({ timeout: 3_000 });
-      await expect(new Inspector(page).deployments()).toContainText("Not deployed yet.", { timeout: 3_000 });
+      await expect(new TitleBlock(page).stamp("Not deployed")).toBeVisible();
+      await expect(new Inspector(page).deployments()).toContainText("Not deployed yet.");
     });
   });
 

@@ -3,7 +3,7 @@
  * (Flow 12, "Safe or smart account as deployer"), Settings → Networks (Flow 14's Use another RPC…) and the deploy
  * review itself.
  */
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /** Deploy missing contracts (spec L572, IR L232). */
 export class MissingContractsDialog {
@@ -55,15 +55,9 @@ export class SettingsDialog {
 }
 
 /**
- * Why the review-dependent steps can't run on this build: the deploy review crashes as it opens (React #185, "The
- * result of getSnapshot should be cached"): `useConnectors` in `chain/review/use-review.ts` reads
- * `service.connectors()`, which builds a new array on every call, so the dialog re-renders until React gives up and
- * the chunk boundary unmounts it. Reported by Q1e as a CCR to S8a/S8b.
+ * Collects the page's React render-loop errors from now on (React #185, "getSnapshot should be cached"), so a review
+ * that crashes as it opens fails with that reason instead of a bare timeout.
  */
-export const REVIEW_CRASHES =
-  "Blocked: the deploy review crashes as it opens (React #185 from useConnectors' uncached snapshot in chain/review/use-review.ts) · CCR from Q1e";
-
-/** Collects the page's React errors from now on, so a test can tell the review's crash from a slow open. */
 export function watchReactErrors(page: Page): () => boolean {
   let crashed = false;
   page.on("console", (message) => {
@@ -89,13 +83,30 @@ export class DeployReview {
   sign(): Locator {
     return this.root.getByRole("button", { name: "Sign & deploy", exact: true });
   }
-  /**
-   * Waits for the review to show. When the page logged the review's crash instead, skips the rest of the test with
-   * `REVIEW_CRASHES`, so it runs again as soon as the fix lands.
-   */
-  async expectOpenOrSkip(crashed: () => boolean): Promise<void> {
+  /** The acknowledgement ticks (Checks, Authority): Keep example values, Cut without the registry check, … */
+  acks(): Locator {
+    return this.root.getByRole("checkbox");
+  }
+  /** Ticks every acknowledgement: a click each, or Tab to each and Space. */
+  async tickAll(mode: "pointer" | "keyboard"): Promise<void> {
+    await expect(this.acks().first()).toBeVisible();
+    for (const box of await this.acks().all()) {
+      if (mode === "pointer") {
+        await box.check();
+        continue;
+      }
+      for (let presses = 0; presses < 80 && !(await box.evaluate((el) => el === document.activeElement)); presses += 1) {
+        await this.page.keyboard.press("Tab");
+      }
+      await expect(box).toBeFocused();
+      await this.page.keyboard.press("Space");
+      await expect(box).toBeChecked();
+    }
+  }
+  /** Waits for the review to show; fails at once, saying so, if it crashed as it opened. */
+  async expectOpen(crashed: () => boolean): Promise<void> {
     await expect.poll(async () => crashed() || (await this.root.isVisible()), { timeout: 15_000 }).toBe(true);
-    test.skip(crashed() && !(await this.root.isVisible()), REVIEW_CRASHES);
+    expect(crashed(), "the deploy review crashed as it opened (React render loop)").toBe(false);
     await expect(this.root).toBeVisible();
   }
 }

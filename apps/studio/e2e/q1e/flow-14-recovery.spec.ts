@@ -5,16 +5,16 @@
  * Forced here: the RPC down (Settings points Anvil at a port nothing listens on), offline before and during a
  * deploy, an address already used, Arachnid's proxy missing, CreateX's code wrong, a shared contract's code that
  * isn't Lattice's, a registry that doesn't list the pinned versions, a receipt that doesn't arrive in time and then
- * does, a diamond that doesn't match the sheet, Studio updated under the tab, and a failed verification.
+ * does, a diamond that doesn't match the sheet, Studio updated under the tab, a failed verification, and in the
+ * review: a wallet on another chain, not enough funds, the gas cap (the node's simulation stubbed to report more
+ * gas), a rejection in the wallet, a simulation that reverts, and the chain changing while the review is open.
  *
- * The rows the review shows (a wallet on another chain, not enough funds, the gas cap, a rejection in the wallet)
- * need the review, which crashes as it opens on this build: they skip with `REVIEW_CRASHES`. "No wallet in the
- * browser" can't be forced: the e2e build always carries the mock connector.
+ * "No wallet in the browser" can't be forced: the e2e build always carries the mock connector.
  */
-import type { Hex } from "viem";
+import type { Address, Hex } from "viem";
 import { ARACHNID_PROXY, CREATEX } from "@lattice-studio/core";
 import { localPort } from "../../local-env.ts";
-import { ALICE } from "../_support/anvil.ts";
+import { ALICE, safeMockCode } from "../_support/anvil.ts";
 import { focusRegion, region } from "../_support/keys.ts";
 import { recipeProject } from "../_support/projects.ts";
 import { seedProject, seedSettings } from "../_support/seed.ts";
@@ -24,7 +24,7 @@ import { DeployReview, SettingsDialog, watchReactErrors } from "./pages/dialogs.
 import { expect, test } from "./pages/fixtures.ts";
 import { activate, pressMod, runConsoleLine, runPalette, runPaletteWith, tabTo, type InputMode } from "./pages/keys.ts";
 import { ConsoleLog, Inspector, TitleBar, TitleBlock, expectAnnounced, expectDisabledWith } from "./pages/regions.ts";
-import { connectOnAnvil } from "./pages/wallet.ts";
+import { connectOnAnvil, inflateSimulatedGas, rejectMockSends, routeMockSends } from "./pages/wallet.ts";
 
 const MODES: readonly InputMode[] = ["pointer", "keyboard"];
 
@@ -157,7 +157,7 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
       // Way out: Choose another chain moves focus to the review's chain picker (IR L235).
       await runPalette(page, "Choose another chain");
       const review = new DeployReview(page, "GovernedVault");
-      await review.expectOpenOrSkip(crashed);
+      await review.expectOpen(crashed);
       await expect(review.section("Network").getByRole("combobox")).toBeFocused();
     });
 
@@ -312,64 +312,160 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
   }
 
   test.describe("rows the review shows", () => {
-    test("wallet on another chain: \"Your wallet is on Sepolia.\" with Switch network", async ({ page, anvil }) => {
+    test("wallet on another chain: \"Your wallet is on Sepolia.\" with Switch network, which clears it, keyboard only", async ({ page, anvil }) => {
       void anvil;
       const crashed = watchReactErrors(page);
       await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
       await runConsoleLine(page, "chain anvil");
       // The mock connector starts on Sepolia, the picker's first chain.
       await runPalette(page, "Connect wallet");
+      await expect(new ConsoleLog(page).lineMatching("Note", /Connected 0xf39F…2266 through Mock Connector\./)).toBeVisible();
       await runPalette(page, "Deploy…");
       const review = new DeployReview(page, "GovernedVault");
-      await review.expectOpenOrSkip(crashed);
-      await expect(review.section("Deployer")).toContainText("Your wallet is on Sepolia.");
-      await expect(review.section("Deployer").getByRole("button", { name: "Switch network", exact: true })).toBeVisible();
+      await review.expectOpen(crashed);
+      const deployer = review.section("Deployer");
+      await expect(deployer).toContainText("Your wallet is on Sepolia.");
+      await expect(deployer).toHaveAccessibleDescription("Blocks deploy");
+      const switchNetwork = deployer.getByRole("button", { name: "Switch network", exact: true });
+      await activate(page, "keyboard", switchNetwork);
+      await expect(deployer).not.toContainText("Your wallet is on Sepolia.");
+      await expect(deployer).toHaveAccessibleDescription("Ready");
     });
 
-    test("not enough funds: \"Needs about … ETH; this account has ….\"", async ({ page, anvil }) => {
+    test("not enough funds: \"Needs about … ETH; this account has ….\", keyboard only", async ({ page, anvil }) => {
       const crashed = watchReactErrors(page);
-      await anvil.client.setBalance({ address: ALICE, value: 1_000n });
+      await anvil.client.setBalance({ address: ALICE, value: 1_000_000_000_000n });
       await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
       await connectOnAnvil(page);
       await runPalette(page, "Deploy…");
       const review = new DeployReview(page, "GovernedVault");
-      await review.expectOpenOrSkip(crashed);
-      await expect(review.root).toContainText(/Needs about [\d.,]+ ETH; this account has [\d.,<]+\./);
+      await review.expectOpen(crashed);
+      const needs = /^Needs about [\d.]+ ETH; this account has 0\.000001\.$/;
+      await expect(review.section("Deployer").getByText(needs)).toBeVisible();
+      await expect(review.section("Deployer")).toHaveAccessibleDescription("Blocks deploy");
+      await review.tickAll("keyboard");
+      await expect(review.sign()).toHaveAttribute("aria-disabled", "true");
+      await expect(review.sign()).toHaveAccessibleDescription(needs);
     });
 
-    test("over the gas cap (NET-06) with the estimate, and Remove facets…", async ({ page, anvil }) => {
+    for (const { gas, severity, words } of [
+      { gas: 26_000_000n, severity: "warning", words: "Warning" },
+      { gas: 31_000_000n, severity: "blocker", words: "Blocker" },
+    ]) {
+      test(`over the gas cap (NET-06, a ${severity}) with the estimate; Remove facets… opens the checklist, keyboard only`, async ({ page, anvil }) => {
+        const crashed = watchReactErrors(page);
+        // Anvil's per-transaction cap is 30M in Studio's chain table; the node's simulation reports `gas` used.
+        await inflateSimulatedGas(page, anvil.url, gas);
+        await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
+        await connectOnAnvil(page);
+        await runPalette(page, "Deploy…");
+        const review = new DeployReview(page, "GovernedVault");
+        await review.expectOpen(crashed);
+        const cost = review.section("Cost");
+        const millions = Number(gas / 1_000_000n);
+        await expect(cost).toContainText(`This deploy needs about ${millions}M gas; Anvil allows 30M per transaction.`);
+        await expect(cost.getByRole("img", { name: words, exact: true })).toBeVisible();
+        await expect(cost).toContainText(`${Math.round((millions / 30) * 100)}% of Anvil's 30M per-transaction cap`);
+        if (severity === "blocker") {
+          await expect(cost).toHaveAccessibleDescription("Blocks deploy");
+          await expectDisabledWith(review.sign(), "Resolve 1 blocker · F8");
+        }
+        await activate(page, "keyboard", cost.getByRole("button", { name: "Remove facets…", exact: true }));
+        await expect(page.getByRole("dialog", { name: "Remove facets", exact: true })).toBeVisible();
+      });
+    }
+
+    test("rejected in the wallet: \"You canceled in your wallet.\" and Sign again, keyboard only", async ({ page, anvil }) => {
       const crashed = watchReactErrors(page);
-      await anvil.rpc<null>("evm_setBlockGasLimit", [`0x${(3_000_000).toString(16)}`]);
+      await routeMockSends(page, anvil.url);
+      const rejected = await rejectMockSends(page);
       await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
       await connectOnAnvil(page);
       await runPalette(page, "Deploy…");
       const review = new DeployReview(page, "GovernedVault");
-      await review.expectOpenOrSkip(crashed);
-      await expect(review.root).toContainText(/This deploy needs about [\d.]+M gas; Anvil allows [\d.]+M per transaction\./);
-      await expect(review.root.getByRole("button", { name: "Remove facets…", exact: true })).toBeVisible();
-    });
-
-    test("rejected in the wallet: \"You canceled in your wallet.\" and Sign again", async ({ page, anvil }) => {
-      const crashed = watchReactErrors(page);
-      // The wallet answers the send with EIP-1193's 4001, as a person rejecting it would.
-      await page.route(
-        (url) => !["localhost", "127.0.0.1"].includes(url.hostname),
-        async (route) => {
-          const body = route.request().postData() ?? "";
-          if (!body.includes("eth_sendTransaction")) return route.fallback();
-          const id = (JSON.parse(body) as { id?: number }).id ?? 1;
-          return route.fulfill({ json: { jsonrpc: "2.0", id, error: { code: 4001, message: "User rejected the request." } } });
-        },
-      );
-      void anvil;
-      await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
-      await connectOnAnvil(page);
-      await runPalette(page, "Deploy…");
-      const review = new DeployReview(page, "GovernedVault");
-      await review.expectOpenOrSkip(crashed);
-      await review.sign().click();
-      await expect(review.root).toContainText("You canceled in your wallet.");
+      await review.expectOpen(crashed);
+      await review.tickAll("keyboard");
+      await activate(page, "keyboard", review.sign());
+      await expect(new ConsoleLog(page).line("Deploy", "You canceled in your wallet.")).toBeVisible();
       await expect(review.root.getByRole("button", { name: "Sign again", exact: true })).toBeVisible();
+      expect(rejected()).toBe(1);
+      expect(await anvil.rpc<Hex>("eth_getCode", [predictedAddress(recipeProject("GovernedVault", { filled: true })), "latest"])).toBe("0x");
     });
+
+    test("after a rejection the review says so and Sign again asks the wallet again (spec L574)", async ({ page, anvil }) => {
+      test.fail(
+        true,
+        "After the wallet rejects, the review re-simulates and stays at \"Simulating…\" with Sign again disabled, and \"You canceled in your wallet.\" shows only in the log, not in the review (spec L574) · follow-up for S8b/S8c from Q1e",
+      );
+      const crashed = watchReactErrors(page);
+      await routeMockSends(page, anvil.url);
+      await rejectMockSends(page);
+      await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
+      await connectOnAnvil(page);
+      await runPalette(page, "Deploy…");
+      const review = new DeployReview(page, "GovernedVault");
+      await review.expectOpen(crashed);
+      await review.tickAll("pointer");
+      await review.sign().click();
+      await expect(review.root).toContainText("You canceled in your wallet.", { timeout: 10_000 });
+      await expect(review.root.getByRole("button", { name: "Sign again", exact: true })).not.toHaveAttribute("aria-disabled", "true", { timeout: 10_000 });
+    });
+
+    test("simulation reverts: the decoded error and the module it came from, with Copy details, keyboard only", async ({ page, context, anvil }) => {
+      const crashed = watchReactErrors(page);
+      // SafeDiamondCut's init checks the Safe's threshold on-chain: a Safe with threshold 1 against the recipe's
+      // minimum of 2 passes every check Studio runs before the simulation, then reverts.
+      const project = recipeProject("SafeDiamondCut", { filled: true });
+      const init = project.recipe.init;
+      const safe = (init.kind === "steps" ? init.steps[0]?.args["safe"] : undefined) as Address;
+      await anvil.client.setCode({ address: safe, bytecode: safeMockCode(1) });
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+      await seedProject(page, { project });
+      await connectOnAnvil(page);
+      await runPalette(page, "Deploy…");
+      const review = new DeployReview(page, project.name);
+      await review.expectOpen(crashed);
+      const simulation = review.section("Simulation");
+      // Spec L572, L727: "Deploy reverted in {module}: {error}({decoded args})."
+      await expect(simulation).toContainText("Deploy reverted in SafeDiamondCut: `SafeDiamondCutThresholdTooLow(1, 2)`.");
+      await expect(simulation).toHaveAccessibleDescription("Blocks deploy");
+      await expect(new ConsoleLog(page).line("Error", "Deploy reverted in SafeDiamondCut: SafeDiamondCutThresholdTooLow(1, 2).")).toBeVisible();
+      await expect(review.sign()).toHaveAttribute("aria-disabled", "true");
+      await activate(page, "keyboard", simulation.getByRole("button", { name: "Copy details", exact: true }));
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("SafeDiamondCutThresholdTooLow");
+    });
+
+    for (const mode of MODES) {
+      test(`the chain changes during review: "Changed since review. Simulating again." (${mode})`, async ({ page, anvil }) => {
+        void anvil;
+        const crashed = watchReactErrors(page);
+        await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
+        await connectOnAnvil(page);
+        await runPalette(page, "Deploy…");
+        const review = new DeployReview(page, "GovernedVault");
+        await review.expectOpen(crashed);
+        await expect(review.section("Simulation")).toContainText(/Simulated at block/);
+        await expect(review.root.getByText("Changed since review. Simulating again.", { exact: true })).toHaveCount(0);
+
+        const chain = review.section("Network").getByRole("combobox", { name: "Chain", exact: true });
+        const sepolia = page.getByRole("option", { name: "Sepolia", exact: true });
+        if (mode === "pointer") {
+          await chain.click();
+          await sepolia.click();
+        } else {
+          await activate(page, "keyboard", chain);
+          await expect(sepolia).toBeVisible();
+          for (let i = 0; i < 5 && !(await sepolia.evaluate((el) => el === document.activeElement || el.getAttribute("data-highlighted") !== null)); i += 1) {
+            await page.keyboard.press("ArrowUp");
+          }
+          await page.keyboard.press("Enter");
+        }
+        await expect(chain).toHaveText("Sepolia");
+        await expect(review.root.getByRole("status").filter({ hasText: "Changed since review. Simulating again." })).toBeVisible();
+        // The wallet stayed on Anvil: the review says so where it offers the way back (Flow 14).
+        await expect(review.root).toContainText("Your wallet is on Anvil.");
+        await expect(review.root.getByRole("button", { name: "Switch network", exact: true })).toBeVisible();
+      });
+    }
   });
 });
