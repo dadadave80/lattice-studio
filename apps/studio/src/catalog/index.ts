@@ -9,6 +9,7 @@ export { resolveCatalogPin, UNPINNED_HASH } from "./pin";
 export { getCatalogPin, subscribeCatalogPin, useCatalogPin } from "./pin-store";
 export { catalogDirFor, defaultEntry, entryDir, fetchManifest, findEntry, loadCatalogById, type ManifestEntry } from "./lookup";
 export { resolveRelease, shardRef, type ResolvedRelease } from "./resolve";
+export { hasCachedIndex, overrideCachedIndex } from "./cached-index";
 
 import { getCatalogStatus, startCatalog } from "@/contracts";
 import { fetchManifest as fetchManifestJson } from "./lookup";
