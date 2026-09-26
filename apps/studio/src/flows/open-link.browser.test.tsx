@@ -4,7 +4,7 @@ import { createElement, Suspense } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
 import {
-  commandRef, commandState, doc, getAnalysis, inspectorViewComponent, openShareLink as routeShareLink, runCommand, session,
+  commandRef, commandState, doc, getAnalysis, getCatalog, inspectorViewComponent, openShareLink as routeShareLink, runCommand, session,
   useSession,
 } from "@/contracts";
 import { BannerHost } from "@/feedback/BannerHost";
@@ -166,6 +166,8 @@ describe("opening a shared link (Flow 10 step 7)", () => {
     expect(loads).toEqual(["fixture-next"]);
     expect(doc.get().recipe.catalog.hash).toBe(next.hash);
     expect(session.get().readOnly).toBeNull();
+    // S14 then puts the project's own catalog on screen (spec L290).
+    await expect.poll(() => getCatalog()?.hash, { timeout: 5000 }).toBe(next.hash);
   });
 
   test("a link opened while the catalog loads waits for it", async () => {
