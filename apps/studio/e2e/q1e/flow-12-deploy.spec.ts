@@ -19,7 +19,7 @@ import { seedProject } from "../_support/seed.ts";
 import { NARROW_WIDTHS, expectTier, tierAt, viewportAt } from "../_support/viewports.ts";
 import { MOCK_ACCOUNT, shortAddress } from "../_support/wallet.ts";
 import { executeAsSafe, mine, pendingDeploy, predictedAddress, recordFor, releaseAddress, removeShared, unstick } from "./pages/chain.ts";
-import { expect, test } from "./pages/fixtures.ts";
+import { expect, test } from "../_support/fixtures.ts";
 import { DeployReview, MissingContractsDialog, REVIEW_SECTIONS, SafeBatchDialog, watchReactErrors } from "./pages/dialogs.ts";
 import { activate, pressMod, runConsoleLine, runPalette, type InputMode } from "./pages/keys.ts";
 import { ConsoleLog, Inspector, TitleBar, TitleBlock, expectAnnounced, expectDisabledWith } from "./pages/regions.ts";

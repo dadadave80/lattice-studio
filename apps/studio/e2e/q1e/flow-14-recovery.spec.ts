@@ -21,7 +21,7 @@ import { seedProject, seedSettings } from "../_support/seed.ts";
 import { shortAddress } from "../_support/wallet.ts";
 import { deployOnAnvil, mine, pendingDeploy, predictedAddress, releaseAddress, removeShared } from "./pages/chain.ts";
 import { DeployReview, SettingsDialog, watchReactErrors } from "./pages/dialogs.ts";
-import { expect, test } from "./pages/fixtures.ts";
+import { expect, test } from "../_support/fixtures.ts";
 import { activate, pressMod, runConsoleLine, runPalette, runPaletteWith, tabTo, type InputMode } from "./pages/keys.ts";
 import { ConsoleLog, Inspector, TitleBar, TitleBlock, expectAnnounced, expectDisabledWith } from "./pages/regions.ts";
 import { connectOnAnvil, inflateSimulatedGas, rejectMockSends } from "./pages/wallet.ts";

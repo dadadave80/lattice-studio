@@ -14,7 +14,7 @@ import { NARROW_WIDTHS, expectTier, tierAt, viewportAt } from "../_support/viewp
 import { shortAddress } from "../_support/wallet.ts";
 import { deployOnAnvil, recordFor } from "./pages/chain.ts";
 import { DeployReview, watchReactErrors } from "./pages/dialogs.ts";
-import { expect, test } from "./pages/fixtures.ts";
+import { expect, test } from "../_support/fixtures.ts";
 import { pressMod, runConsoleLine, runPaletteWith, type InputMode } from "./pages/keys.ts";
 import { ConsoleLog, Inspector, TitleBar, TitleBlock } from "./pages/regions.ts";
 import { connectOnAnvil } from "./pages/wallet.ts";
