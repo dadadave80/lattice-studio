@@ -158,4 +158,40 @@ describe("filtering", () => {
     const filtered = filterGroups(groups, "deploy").find((g) => g.id === "commands");
     expect(filtered?.items.map((i) => i.title)).toEqual(["Deploy…", "Check wallet"]);
   });
+
+  test("a whole-word facet name ranks first, so ⌘K, the name, Enter places that facet (spec L420)", () => {
+    const groups = paletteGroups(sources());
+    const first = (query: string) => filterGroups(groups, query)[0]?.items[0]?.title;
+    const facetTitles = (query: string) =>
+      filterGroups(groups, query).find((g) => g.id === "facets")?.items.map((i) => i.title) ?? [];
+    // BridgeERC20 comes first in catalog order (crosschain before tokens); the whole word wins anyway.
+    expect(groups.find((g) => g.id === "facets")?.items.map((i) => i.title).indexOf("Place BridgeERC20")).toBeLessThan(
+      groups.find((g) => g.id === "facets")?.items.map((i) => i.title).indexOf("Place ERC20") ?? -1,
+    );
+    expect(first("erc20")).toBe("Place ERC20");
+    expect(first("ERC20 ")).toBe("Place ERC20");
+    expect(first("pausable")).toBe("Place Pausable");
+    expect(first("place erc20")).toBe("Place ERC20");
+    // The rest keep catalog order behind it.
+    expect(facetTitles("pausable")).toEqual(["Place Pausable", "Place ERC20Pausable"]);
+    const erc20 = facetTitles("erc20");
+    expect(erc20[0]).toBe("Place ERC20");
+    expect(erc20.indexOf("Place BridgeERC20")).toBeGreaterThan(0);
+    // A part of a word ranks no higher than before: "paus" keeps catalog order.
+    expect(facetTitles("paus")).toEqual(["Place ERC20Pausable", "Place Pausable"]);
+  });
+
+  test("the title's opening whole words lead, then a whole word later on, then a mid-word prefix", () => {
+    const withMore: PaletteRow[] = [
+      ...rows,
+      { ref: { id: "deploy.again" }, title: "Deploy again…", category: "Deploy", binding: "deploy.again" },
+      { ref: { id: "deploy.reviewAgain" }, title: "Review deploy again", category: "Deploy", binding: "deploy.reviewAgain" },
+      { ref: { id: "deploy.showProgress" }, title: "Deployment progress", category: "Deploy", binding: "deploy.showProgress" },
+    ];
+    const groups = paletteGroups(sources({ rows: withMore }));
+    const titles = (query: string) => filterGroups(groups, query).find((g) => g.id === "commands")?.items.map((i) => i.title);
+    expect(titles("deploy")).toEqual(["Deploy…", "Deploy again…", "Review deploy again", "Deployment progress"]);
+    expect(titles("deploy again")).toEqual(["Deploy again…", "Review deploy again"]);
+    expect(titles("dep")).toEqual(["Deploy…", "Deploy again…", "Deployment progress", "Review deploy again"]);
+  });
 });
