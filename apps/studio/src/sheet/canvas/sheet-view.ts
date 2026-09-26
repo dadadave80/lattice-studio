@@ -199,13 +199,94 @@ export function floatingRects(sheet: HTMLElement): Rect[] {
   return rects;
 }
 
+function shiftRect(rect: Rect, dx: number, dy: number): Rect {
+  return { ...rect, x: rect.x + dx, y: rect.y + dy };
+}
+
+/** Whether `rect` lies inside `area` (within a rounding error). */
+function withinArea(rect: Rect, area: Rect): boolean {
+  const epsilon = 1e-3;
+  return (
+    rect.x >= area.x - epsilon &&
+    rect.y >= area.y - epsilon &&
+    rect.x + rect.width <= area.x + area.width + epsilon &&
+    rect.y + rect.height <= area.y + area.height + epsilon
+  );
+}
+
+/** `floats` grown by `margin`, so a rect that avoids all of them sits `margin` clear of the real ones. */
+function grownFloats(floats: readonly Rect[], margin: number): Rect[] {
+  return floats.map((f) => ({ x: f.x - margin, y: f.y - margin, width: f.width + 2 * margin, height: f.height + 2 * margin }));
+}
+
+/** Every grown float `rect` still overlaps. */
+function blocking(rect: Rect, grown: readonly Rect[]): Rect[] {
+  return grown.filter((f) => intersects(rect, f));
+}
+
+const DIRECTIONS = ["left", "right", "up", "down"] as const;
+type Direction = (typeof DIRECTIONS)[number];
+
+/** How far `rect` has to move `dir` to clear every float in `blockers` at once. */
+function pushNeeded(rect: Rect, blockers: readonly Rect[], dir: Direction): number {
+  let need = 0;
+  for (const f of blockers) {
+    if (dir === "left") need = Math.max(need, rect.x + rect.width - f.x);
+    else if (dir === "right") need = Math.max(need, f.x + f.width - rect.x);
+    else if (dir === "up") need = Math.max(need, rect.y + rect.height - f.y);
+    else need = Math.max(need, f.y + f.height - rect.y);
+  }
+  return need;
+}
+
+function pushed(rect: Rect, dir: Direction, need: number): Rect {
+  if (dir === "left") return shiftRect(rect, -need, 0);
+  if (dir === "right") return shiftRect(rect, need, 0);
+  if (dir === "up") return shiftRect(rect, 0, -need);
+  return shiftRect(rect, 0, need);
+}
+
+/**
+ * `clearOf` clears one float at a time by whichever direction moves it least (spec L771, 2.4.11), which can
+ * walk a card into a *second* float its first move never crossed, then back again: each fix is locally
+ * shortest but neither considers the other, and after its four passes the card can still be covered (the
+ * Panel `floatingRects` lists, not cleared, spec L771). This starts from `clearOf`'s move and, while any float
+ * still covers the card, finds whichever single direction clears every float still covering it at once — never
+ * only the one that was checked last — and takes the shortest one that lands inside the sheet. Unrounded: a
+ * fraction of a px left over from `clearOf`'s own rounding is exactly the kind of sliver this is for.
+ */
+function clearResidual(target: Rect, size: Size, floats: readonly Rect[], from: { dx: number; dy: number }): { dx: number; dy: number } {
+  const sheet = { x: 0, y: 0, ...size };
+  const grown = grownFloats(floats, CLEAR_MARGIN);
+  let dx = from.dx;
+  let dy = from.dy;
+  for (let pass = 0; pass < 4; pass++) {
+    const current = shiftRect(target, dx, dy);
+    const blockers = blocking(current, grown);
+    if (blockers.length === 0) break;
+    const best = DIRECTIONS.map((dir) => {
+      const need = pushNeeded(current, blockers, dir);
+      const moved = pushed(current, dir, need);
+      return { dir, need, ok: withinArea(moved, sheet) && blocking(moved, grown).length === 0 };
+    })
+      .filter((c) => c.ok)
+      .sort((a, b) => a.need - b.need)[0];
+    if (!best) break;
+    const moved = pushed(current, best.dir, best.need);
+    dx += moved.x - current.x;
+    dy += moved.y - current.y;
+  }
+  return { dx, dy };
+}
+
 /** Pans so a rect on screen (relative to the sheet) lies inside it and clear of every floating element. */
 function clearOnScreen(target: Rect, options: MoveOptions): boolean {
   const viewport = sheetViewport();
   const size = sheetSize();
   const sheet = mounted()?.element() ?? null;
   const floats = sheet ? floatingRects(sheet) : [];
-  const { dx, dy } = clearOf(target, { x: 0, y: 0, ...size }, floats, CLEAR_MARGIN);
+  const first = clearOf(target, { x: 0, y: 0, ...size }, floats, CLEAR_MARGIN);
+  const { dx, dy } = clearResidual(target, size, floats, first);
   if (dx === 0 && dy === 0) return false;
   moveViewport({ x: viewport.x + dx, y: viewport.y + dy, zoom: viewport.zoom }, options);
   return true;

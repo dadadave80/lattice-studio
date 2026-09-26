@@ -52,6 +52,11 @@
 }
 
 .note {
+  /* Counter-scales the buttons' minimum hit area below 100% zoom, as FacetCard's strokes and S4e's ghosts do:
+     the card-zoom layer sets --lx-sheet-zoom on the sheet, and a note fit to 30 cards can draw at well under
+     half that, which would otherwise shrink Keep, Route to…, Choose per selector… and the owner menu under
+     24 px (spec L770, WCAG 2.5.8). */
+  --note-zoom: min(var(--lx-sheet-zoom, 1), 1);
   position: absolute;
   box-sizing: border-box;
   padding: var(--lx-space-2) var(--lx-space-2) var(--lx-space-2) var(--lx-space-3);
@@ -125,6 +130,9 @@
   max-inline-size: 100%;
   white-space: normal;
   text-align: start;
+  /* A real 24 x 24 px on screen at any zoom (spec L770, WCAG 2.5.8), not just at 100%. */
+  min-inline-size: calc(var(--lx-space-6) / var(--note-zoom));
+  min-block-size: calc(var(--lx-space-6) / var(--note-zoom));
 }
 
 /* Resolved: fades out (spec L438). With reduced motion the layer drops it at once instead (spec L784). */

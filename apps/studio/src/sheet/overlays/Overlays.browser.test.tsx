@@ -14,7 +14,7 @@ import { DialogHost } from "@/ui/overlays/DialogHost";
 import { fixtureCatalog, onCleanup, overrideCommands } from "../../../test/harness";
 import { cardProject } from "../card/testing/projects";
 import { ensureElementVisible, panSheet } from "../canvas";
-import { renderSheet } from "../canvas/testing/sheet-harness";
+import { drawn, renderSheet } from "../canvas/testing/sheet-harness";
 import { problemCursor, resetProblemCursor } from "./navigate";
 import { clearNoteFocus } from "./note-focus";
 
@@ -496,5 +496,40 @@ describe("layer order (spec L744)", () => {
     const layer = el.closest("[data-sheet-layer='notes']");
     const renderer = document.querySelector(".react-flow__renderer");
     expect(layer && renderer ? renderer.compareDocumentPosition(layer) & Node.DOCUMENT_POSITION_FOLLOWING : 0).toBeTruthy();
+  });
+});
+
+describe("note button targets hold 24 x 24 px below 100% zoom (spec L770, WCAG 2.5.8)", () => {
+  test("Keep and Route to… (2 contenders) at the 30% a fit of 30 cards gives", async () => {
+    await sheet(project([AXELAR, HYPERLANE], { columns: 6 }));
+    await waitForNote("collision");
+    await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.3 } }, "api");
+    await drawn();
+    const keep = page.getByRole("button", { name: "Keep AxelarGatewayAdapter" });
+    const route = page.getByRole("button", { name: "Route to HyperlaneGatewayAdapter" });
+    for (const button of [keep, route]) {
+      const box = await button.element().getBoundingClientRect();
+      expect(box.width, `${button}'s width`).toBeGreaterThanOrEqual(24);
+      expect(box.height, `${button}'s height`).toBeGreaterThanOrEqual(24);
+    }
+  });
+
+  test("the owner menu and Choose per selector… (3+ contenders) at 30%", async () => {
+    await sheet(project([AXELAR, CCIP, HYPERLANE], { columns: 6 }));
+    const three = `collision:${AXELAR}+${CCIP}+${HYPERLANE}`;
+    await expect.poll(() => noteById(three), { timeout: 8000 }).not.toBeNull();
+    ensureElementVisible(noteById(three) as HTMLElement);
+    await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.3 } }, "api");
+    await drawn();
+    const el = noteById(three) as HTMLElement;
+    const owner = el.querySelector("button");
+    const choose = page.getByRole("button", { name: "Choose per selector…" }).first();
+    if (!owner) throw new Error("no owner menu button");
+    const ownerBox = owner.getBoundingClientRect();
+    expect(ownerBox.width, "the owner menu's width").toBeGreaterThanOrEqual(24);
+    expect(ownerBox.height, "the owner menu's height").toBeGreaterThanOrEqual(24);
+    const chooseBox = await choose.element().getBoundingClientRect();
+    expect(chooseBox.width, "Choose per selector…'s width").toBeGreaterThanOrEqual(24);
+    expect(chooseBox.height, "Choose per selector…'s height").toBeGreaterThanOrEqual(24);
   });
 });
