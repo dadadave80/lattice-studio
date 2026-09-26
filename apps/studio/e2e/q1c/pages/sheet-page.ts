@@ -83,4 +83,22 @@ export class SheetPage {
   get backToContent(): Locator {
     return this.root.getByRole("button", { name: "Back to content" });
   }
+
+  /**
+   * Drags `name`'s card by `dx, dy` screen px (Flow 8: 4 px threshold, 8 px snap): gripped at the middle of its
+   * header, matching where the app's own drag and Move to… ghost grip a card (`interact-harness.tsx`'s
+   * `cardPoint`, `MoveToLayer.tsx`'s `grip`), moved in `steps` increments past the threshold before releasing.
+   */
+  async dragCard(name: string, dx: number, dy: number, steps = 8): Promise<void> {
+    const box = await this.cardBox(name);
+    if (!box) throw new Error(`${name} isn't on the sheet`);
+    const startX = box.x + 40;
+    const startY = box.y + 16;
+    await this.page.mouse.move(startX, startY);
+    await this.page.mouse.down();
+    for (let i = 1; i <= steps; i += 1) {
+      await this.page.mouse.move(startX + (dx * i) / steps, startY + (dy * i) / steps);
+    }
+    await this.page.mouse.up();
+  }
 }
