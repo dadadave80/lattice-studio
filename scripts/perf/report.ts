@@ -40,8 +40,6 @@ export const REPORT_ONLY: Readonly<Partial<Record<BudgetKey, string>>> = {
   // FX30: every drag move re-places every note (OverlayLayer → C9 placeNotes → nearestFree). A reference row
   // (spec L816 gives no budget), so it isn't enforced either way.
   drag: "FX30",
-  // FX29: analyze's frozenCopy (structuredClone + deepFreeze of the result), sel.ts and recipeView rebuilt per call.
-  analysis: "FX29",
 };
 
 export type Status = "ok" | "over" | "above reference" | "warn" | "info" | "missing";

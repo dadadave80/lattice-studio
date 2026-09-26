@@ -7,13 +7,13 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test
 import type { Address } from "@lattice-studio/core";
 import type { Chain } from "viem";
 import { custom, numberToHex } from "viem";
-import { BASE_SEPOLIA, SEPOLIA } from "./chains";
+import { ANVIL, BASE_SEPOLIA, SEPOLIA } from "./chains";
 import { extractRpcUrls } from "@wagmi/core";
 import { createClients, viemChain } from "./clients";
 import { settings } from "@/contracts";
 import { isolateContracts } from "@/contracts/test-support";
 import { delegate, loadWalletConnect, walletChains } from "./runtime";
-import { ANVIL_ACCOUNT, e2eConnectors } from "./e2e";
+import { ANVIL_ACCOUNT, e2eConnectors, notAnvil } from "./e2e";
 import { createWallet, LEGACY_INJECTED_ID, WALLETCONNECT_ID, type Wallet } from "./wallet";
 
 const ME = "0x3333333333333333333333333333333333333333" as Address;
@@ -221,5 +221,92 @@ describe("end-to-end builds", () => {
     expect(w.connectors().map((c) => c.kind)).toEqual(["mock", "walletconnect"]);
     const result = await w.connect();
     expect(result.ok && result.value.address).toBe(ANVIL_ACCOUNT);
+  });
+
+  describe("the mock sends on the chain it's on, and only ever to local Anvil", () => {
+    // A fake Anvil URL: fetch is stubbed below, so nothing leaves the test (nor would a request to Sepolia).
+    const ANVIL_URL = "http://127.0.0.1:1/anvil";
+    const E2E_CHAINS = [
+      viemChain(SEPOLIA, [SEPOLIA.rpc.default]),
+      viemChain(BASE_SEPOLIA, [BASE_SEPOLIA.rpc.default]),
+      viemChain(ANVIL, [ANVIL_URL]),
+    ] as [Chain, ...Chain[]];
+    const TX_HASH = `0x${"ab".repeat(32)}`;
+    const realFetch = globalThis.fetch;
+    let sent: { url: string; body: { method?: string; params?: [{ chainId?: string }] } }[] = [];
+
+    beforeAll(() => {
+      globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        const body = JSON.parse(String(init?.body ?? "{}")) as { id?: number; method?: string; params?: [{ chainId?: string }] };
+        sent.push({ url, body });
+        return new Response(JSON.stringify({ jsonrpc: "2.0", id: body.id ?? 0, result: TX_HASH }), { headers: { "content-type": "application/json" } });
+      }) as typeof fetch;
+    });
+    afterAll(() => {
+      globalThis.fetch = realFetch;
+    });
+    afterEach(() => {
+      sent = [];
+    });
+
+    /** The connected connector's provider, fetched the way the deploy engine does (app-port: no chain id). */
+    async function provider(w: Wallet): Promise<{ request(args: { method: string; params?: unknown }): Promise<unknown> }> {
+      const { current, connections } = w.config.state;
+      const connector = current === null ? undefined : connections.get(current)?.connector;
+      if (!connector) throw new Error("not connected");
+      return (await connector.getProvider()) as { request(args: { method: string; params?: unknown }): Promise<unknown> };
+    }
+
+    const send = (chainId: number) => ({
+      method: "eth_sendTransaction",
+      params: [{ from: ANVIL_ACCOUNT, chainId: numberToHex(chainId), to: ME, data: "0x", value: "0x0" }],
+    });
+
+    test("on Anvil, eth_sendTransaction goes to Anvil's RPC with Anvil's chain id", async () => {
+      const w = wallet({ chains: E2E_CHAINS, connectors: e2eConnectors(), discovery: false });
+      await w.connect();
+      expect(await w.switchChain(ANVIL.id, ANVIL_URL)).toEqual({ ok: true, value: undefined });
+      expect(w.state()?.chainId).toBe(ANVIL.id);
+      const wallet1193 = await provider(w);
+      expect(await wallet1193.request(send(ANVIL.id))).toBe(TX_HASH);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]?.url).toBe(ANVIL_URL);
+      expect(sent[0]?.body.method).toBe("eth_sendTransaction");
+      expect(sent[0]?.body.params?.[0].chainId).toBe(numberToHex(31337));
+    });
+
+    test("a provider kept from before the switch follows the wallet to Anvil", async () => {
+      const w = wallet({ chains: E2E_CHAINS, connectors: e2eConnectors(), discovery: false });
+      await w.connect();
+      const kept = await provider(w);
+      await w.switchChain(ANVIL.id, ANVIL_URL);
+      await kept.request(send(ANVIL.id));
+      expect(sent.map((s) => s.url)).toEqual([ANVIL_URL]);
+    });
+
+    test("on any other chain it refuses to send, and nothing is fetched", async () => {
+      const w = wallet({ chains: E2E_CHAINS, connectors: e2eConnectors(), discovery: false });
+      await w.connect();
+      // The mock starts on the config's first chain, Sepolia.
+      expect(w.state()?.chainId).toBe(SEPOLIA.id);
+      const wallet1193 = await provider(w);
+      await expect(wallet1193.request(send(SEPOLIA.id))).rejects.toThrow(notAnvil(SEPOLIA.id));
+      await expect(wallet1193.request({ method: "wallet_sendCalls", params: [{ calls: [] }] })).rejects.toThrow(notAnvil(SEPOLIA.id));
+      await expect(wallet1193.request({ method: "eth_call", params: [] })).rejects.toThrow(notAnvil(SEPOLIA.id));
+      const connector = w.config.state.connections.get(w.config.state.current ?? "")?.connector;
+      const onSepolia = (await connector?.getProvider({ chainId: SEPOLIA.id })) as { request(args: { method: string; params?: unknown }): Promise<unknown> };
+      await expect(onSepolia.request(send(SEPOLIA.id))).rejects.toThrow(notAnvil(SEPOLIA.id));
+      expect(sent).toEqual([]);
+    });
+
+    test("what the mock answers itself still works on any chain", async () => {
+      const w = wallet({ chains: E2E_CHAINS, connectors: e2eConnectors(), discovery: false });
+      await w.connect();
+      const wallet1193 = await provider(w);
+      expect(await wallet1193.request({ method: "eth_chainId" })).toBe(numberToHex(SEPOLIA.id));
+      expect(await wallet1193.request({ method: "eth_accounts" })).toEqual([ANVIL_ACCOUNT]);
+      expect(sent).toEqual([]);
+    });
   });
 });

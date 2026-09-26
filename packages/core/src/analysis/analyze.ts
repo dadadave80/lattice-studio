@@ -2,7 +2,7 @@ import { canonicalJson, normalizeRecipe, recipeHash } from "../canonical";
 import { runChecks } from "../checks";
 import { collectRefs, encodeInit } from "../init/encode";
 import { planInit } from "../init/plan";
-import type { Analysis, AnalysisContext, Routing } from "../model/analysis";
+import type { Analysis, AnalysisContext, PlanEntry, Routing } from "../model/analysis";
 import type { AnalyzeFn } from "../model/api";
 import type { Address } from "../model/hex";
 import type { Catalog } from "../model/catalog";
@@ -31,7 +31,7 @@ const memo = new WeakMap<Catalog, Map<string, Analysis>>();
  */
 export const analyze: AnalyzeFn = (recipe, catalog, ctx, options) => {
   const context = ctx ?? EMPTY_CONTEXT;
-  const normalized = normalizeRecipe(recipe, catalog);
+  const normalized = settle(normalizeRecipe(recipe, catalog));
   const hash = recipeHash(normalized);
   const key = options?.checks === undefined ? memoKey(hash, normalized, catalog, context) : null;
   const cached = key === null ? undefined : recall(catalog, key);
@@ -39,13 +39,13 @@ export const analyze: AnalyzeFn = (recipe, catalog, ctx, options) => {
 
   const routing = computeRouting(normalized, catalog);
   const problems = sortProblems(runChecks({ recipe: normalized, catalog, routing, ctx: context }, options?.checks), catalog);
-  const analysis: Analysis = frozenCopy({
+  const analysis: Analysis = Object.freeze({
     recipeHash: hash,
-    routing,
-    problems,
-    plan: buildPlan(normalized, catalog, routing).entries,
-    init: initSummary(normalized, catalog, context),
-    stats: statsOf(normalized, catalog, routing),
+    routing: freezeRouting(routing),
+    problems: frozenCopy(problems),
+    plan: freezePlan(buildPlan(normalized, catalog, routing).entries),
+    init: freezeInit(initSummary(normalized, catalog, context)),
+    stats: Object.freeze(statsOf(normalized, catalog, routing)),
   });
   if (key !== null) remember(catalog, key, analysis);
   return analysis;
@@ -101,17 +101,55 @@ function statsOf(recipe: Recipe, catalog: Catalog, routing: Routing): Analysis["
   };
 }
 
-/** A frozen copy: checks may put catalog arrays in params by reference, and those must stay unfrozen. */
-function frozenCopy<T>(value: T): T {
-  return deepFreeze(structuredClone(value));
+/**
+ * The normalized recipe with the fields `recipeView` reads frozen, so routing, the checks and the stats share
+ * one view of it (view.ts). `normalizeRecipe` builds `facets`, `owners` and `exclude` afresh, so the caller's
+ * recipe is never touched; the rest (init arguments, unknown fields) may be the caller's and stays as it is.
+ */
+function settle(recipe: Recipe): Recipe {
+  Object.freeze(recipe.facets);
+  Object.freeze(recipe.owners);
+  Object.freeze(recipe.exclude);
+  return recipe;
 }
 
-function deepFreeze<T>(value: T): T {
-  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const member of Object.values(value)) deepFreeze(member);
+/*
+ * Immutability without a whole-result copy. Routing (`computeRouting`), the plan (`buildPlan`), the init
+ * summary and the stats are built afresh for this call and hold only strings and numbers, so they're frozen
+ * where they stand. Problems come from the checks, which may hold catalog, recipe or context arrays in their
+ * params by reference: each is copied as it's frozen, and what it pointed at stays unfrozen.
+ */
+
+function freezeRouting(routing: Routing): Routing {
+  for (const route of Object.values(routing)) {
+    Object.freeze(route.contenders);
+    Object.freeze(route);
   }
-  return value;
+  return Object.freeze(routing);
+}
+
+function freezePlan(entries: PlanEntry[]): PlanEntry[] {
+  for (const entry of entries) {
+    Object.freeze(entry.selectors);
+    Object.freeze(entry);
+  }
+  Object.freeze(entries);
+  return entries;
+}
+
+function freezeInit(init: Analysis["init"]): Analysis["init"] {
+  if (init === null) return null;
+  Object.freeze(init.refs);
+  return Object.freeze(init);
+}
+
+/** A frozen copy of plain data (arrays, objects, primitives), keys in the same order, `undefined` members kept. */
+function frozenCopy<T>(value: T): T {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return Object.freeze(value.map(frozenCopy)) as T;
+  // Built from entries, not by assignment, so an own "__proto__" key stays a field (as canonical's mapFields does).
+  const out = Object.fromEntries(Object.keys(value).map((key) => [key, frozenCopy((value as Record<string, unknown>)[key])]));
+  return Object.freeze(out) as T;
 }
 
 function memoKey(hash: string, recipe: Recipe, catalog: Catalog, ctx: AnalysisContext): string | null {
