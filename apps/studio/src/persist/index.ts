@@ -8,14 +8,17 @@
  *   await store.deleteProject(id);             // to Recently deleted, with its records
  *   const counts = await store.trashCounts(id); // "This deletes the only record of 2 deployed addresses."
  *   subscribeEditLock((lock) => …);            // S13: read-only banners
+ *   showOpenFailure(reason, [detail]);         // the sheet's "This project couldn't be opened: {reason}"
  *
  * Importing this file loads no IndexedDB code; `persistence()` does, on first call.
  */
 import { persistence } from "./current";
 
 export {
-  bootPersistence, editLockState, persistence, providePersistence, subscribeEditLock, subscribeProjects, useEditLock,
+  bootPersistence, clearOpenFailure, editLockState, openFailure, openFailureText, persistence, providePersistence,
+  showOpenFailure, subscribeEditLock, subscribeOpenFailure, subscribeProjects, useEditLock, useOpenFailure,
 } from "./current";
+export type { OpenFailure } from "./current";
 export type { EditLockState } from "./lock";
 export type {
   DocPort, ExplicitSave, ImportResult, PersistedDeployments, Persistence, PersistenceOptions, StorageInfo, StoragePort,

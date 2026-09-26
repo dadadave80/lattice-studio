@@ -7,7 +7,7 @@
  */
 import type { Project, Result } from "@lattice-studio/core";
 import { useSyncExternalStore } from "react";
-import { log, type DeploymentsService, type ProjectsService, type SaveStatus } from "@/contracts";
+import { announce, doc, log, type DeploymentsService, type ProjectsService, type SaveStatus } from "@/contracts";
 import type { EditLockState } from "./lock";
 import type { Persistence } from "./persistence";
 import { untouched } from "./untouched";
@@ -101,6 +101,67 @@ export function subscribeProjects(listener: () => void): () => void {
   return () => void projectListeners.delete(listener);
 }
 
+/**
+ * A project that couldn't be opened (spec L696): the sheet's error state, "This project couldn't be opened:
+ * {reason}" with Open another project and Copy details (`sheet/chrome/OpenError.tsx`). `details` is what Copy
+ * details puts on the clipboard, the message first.
+ */
+export type OpenFailure = { text: string; reason: string; details: string };
+
+let failure: OpenFailure | null = null;
+/** The document the failure was shown over: any other document (a load, an edit) ends the error state. */
+let failedOver: Project | null = null;
+let stopWatchingDoc: (() => void) | null = null;
+const failureListeners = new Set<() => void>();
+
+/** "This project couldn't be opened: {reason}" (spec L696). */
+export function openFailureText(reason: string): string {
+  return `This project couldn't be opened: ${reason}`;
+}
+
+/**
+ * Shows the sheet's error state for a project that couldn't be opened, and says so once: an Error line in the
+ * console (the record) and a polite announcement. Callers (the boot below, importing a file) don't log it
+ * themselves. `details` are extra lines for Copy details (which file, every parse issue). The state lasts until
+ * the document changes, Esc, or the next failure replaces it.
+ */
+export function showOpenFailure(reason: string, details: readonly string[] = []): void {
+  const text = openFailureText(reason);
+  failure = { text, reason, details: [text, ...details].join("\n") };
+  failedOver = doc.get();
+  stopWatchingDoc ??= doc.subscribe((state) => {
+    if (state.project !== failedOver) clearOpenFailure();
+  });
+  log({ tag: "Error", text });
+  announce(text);
+  for (const listener of Array.from(failureListeners)) listener();
+}
+
+/** Ends the error state (Esc, or the document changed). Does nothing when none is showing. */
+export function clearOpenFailure(): void {
+  stopWatchingDoc?.();
+  stopWatchingDoc = null;
+  failedOver = null;
+  if (failure === null) return;
+  failure = null;
+  for (const listener of Array.from(failureListeners)) listener();
+}
+
+/** The open failure showing on the sheet, or null. Non-reactive. */
+export function openFailure(): OpenFailure | null {
+  return failure;
+}
+
+export function subscribeOpenFailure(listener: () => void): () => void {
+  failureListeners.add(listener);
+  return () => void failureListeners.delete(listener);
+}
+
+/** The open failure showing on the sheet, re-rendering when it changes. */
+export function useOpenFailure(): OpenFailure | null {
+  return useSyncExternalStore(subscribeOpenFailure, openFailure);
+}
+
 /** The projects service registered with the contracts (§5.2). */
 export const projectsService: ProjectsService = {
   createProject: async (recipe, name, options) => (await persistence()).projects.createProject(recipe, name, options),
@@ -128,6 +189,9 @@ export const deploymentsService: DeploymentsService = {
   },
 };
 
+/** Copy details' context line for the boot's failure. */
+export const LAST_PROJECT_DETAIL = "While reopening your last project on load.";
+
 /**
  * Whether the page was opened on a route that picks its own project: a share link (`#s=`) or `#open=`. Other
  * hash routes (`#/settings`, and every route of the IPFS build, `env.hashRouting`) still land in the last one.
@@ -149,7 +213,7 @@ export function bootPersistence(): Promise<Result<Project, string> | null> {
       const booted = p.document();
       if (typeof location !== "undefined" && routeOpensProject(location.hash)) return null;
       const opened = await p.openLastProject(() => untouched(booted, p.document()));
-      if (opened && !opened.ok) log({ tag: "Error", text: `Couldn't open your last project. ${opened.error}` });
+      if (opened && !opened.ok) showOpenFailure(opened.error, [LAST_PROJECT_DETAIL]);
       return opened;
     })
     .catch((error: unknown) => {
