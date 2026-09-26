@@ -1,0 +1,58 @@
+# Performance budgets on every pull request (brief Q4; spec L940 "Performance: size checks, Lighthouse CI on the
+# preview, drag benchmark, every PR"). `bun scripts/perf/run.ts` builds the app (scripts/ci/size.ts --build),
+# serves it with `vite preview`, runs Lighthouse CI on the mobile profile and the Playwright benchmarks (first-load
+# composition, analysis on 30 facets, the 30-card drag with scripted INP) at 4× CPU throttling, and fails when an
+# enforced budget is missed; its table and fix requests are in the log and in the uploaded results.
+#
+# Not run until David pushes the repo and creates it on GitHub (HANDOFF.md D4). Nothing here reaches a network
+# beyond installing what bun.lock pins and Playwright's Chromium: the benchmarks block every non-local request.
+name: Performance
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: "1.4.2"
+  NODE_VERSION: "22"
+
+jobs:
+  perf:
+    name: Performance budgets (build, Lighthouse CI, benchmarks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      # vite build and preview, Playwright and Lighthouse CI run under Node.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      # The full Chromium: the benchmarks use Playwright's `chromium` channel, and Lighthouse CI drives the same binary.
+      - run: bun x playwright install --with-deps chromium
+      - run: bun scripts/perf/run.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-results
+          path: |
+            apps/studio/test-results/perf-*/results.json
+            apps/studio/test-results/perf-*/*.json
+            apps/studio/test-results/perf-*/lighthouse/.lighthouseci
+          retention-days: 14
