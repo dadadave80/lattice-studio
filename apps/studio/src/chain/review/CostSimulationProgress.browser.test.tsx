@@ -110,8 +110,14 @@ describe("Simulation", () => {
     const simulation = section("Simulation");
     await expect.element(simulation.getByText("Simulating…")).toBeVisible();
     await expect.element(simulation).toHaveAttribute("data-status", "waiting");
-    controller.set({ phase: "ready", changedSinceReview: true, simulation: { ok: true, block: 1 } });
+    controller.set({ phase: "ready", simulation: { ok: true, block: 1 } });
+    await expect.element(simulation.getByText("Simulated at block 1.")).toBeVisible();
+    controller.set({ phase: "simulating", changedSinceReview: true });
     await expect.element(simulation.getByText("Simulating…")).toBeVisible();
+    // The new result shows once it's in; the review stays marked changed (spec L562), not simulating.
+    controller.set({ phase: "ready", simulation: { ok: true, block: 2 } });
+    await expect.element(simulation.getByText("Simulated at block 2.")).toBeVisible();
+    await expect.element(simulation).toHaveAttribute("data-status", "ok");
   });
 
   test("a revert blocks, shows the decoded error, and Copy details copies a report", async () => {
