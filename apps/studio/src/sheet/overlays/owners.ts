@@ -3,14 +3,15 @@
  * Route to {B} for its whole set, its owner menu, and Choose per selector's Apply owners (spec L435-L439).
  * `facet.routeContested` isn't this: it takes every contested selector of a facet, across sets.
  *
- * The edit goes through `doc.apply` like S1's commands; the analysis engine narrates what it resolved
- * ("Resolved: `sendMessage · 0xcdfe7f5c` and `supportsAttribute · 0xdc680a0f` route to
- * HyperlaneGatewayAdapter.", spec L438) and the status region says the summary. While the session is
- * read-only nothing changes and the reason is said.
+ * The edit goes through S1's `edit`: the analysis engine narrates what it resolved ("Resolved:
+ * `sendMessage · 0xcdfe7f5c` and `supportsAttribute · 0xdc680a0f` route to HyperlaneGatewayAdapter.", spec
+ * L438), else the summary is logged, and the status region says it. While the session is read-only nothing
+ * changes and the reason is said.
  */
 import type { Catalog, EditResult, Hex4, Project } from "@lattice-studio/core";
 import { plural, routeSelector } from "@lattice-studio/core";
-import { announce, doc, getCatalog, log, session } from "@/contracts";
+import { announce, getCatalog, log, session } from "@/contracts";
+import { edit, summaryLine } from "@/state";
 
 export type OwnerChoice = { selector: Hex4; facet: string };
 
@@ -61,12 +62,7 @@ export function applyOwners(choices: readonly OwnerChoice[]): boolean {
     say("The catalog hasn't loaded yet.");
     return false;
   }
-  const preview = routeAll(doc.get(), catalog, choices);
-  if (!preview.changed) {
-    say(preview.summary);
-    return false;
-  }
-  const result = doc.apply(preview.summary, (p) => routeAll(p, catalog, choices));
-  if (result.changed) announce(`${result.summary}.`);
-  return result.changed;
+  // S1's edit: one undo step, narration of what resolved, and the summary as a console line when nothing
+  // resolved (an owner moved off a default), so no choice is ever silent; a no-op says why.
+  return edit((p) => routeAll(p, catalog, choices), { fallback: summaryLine }).changed;
 }

@@ -13,7 +13,7 @@ import { installShortcuts } from "@/commands/keys/dispatcher";
 import { DialogHost } from "@/ui/overlays/DialogHost";
 import { fixtureCatalog, onCleanup, overrideCommands } from "../../../test/harness";
 import { cardProject } from "../card/testing/projects";
-import { panSheet } from "../canvas";
+import { ensureElementVisible, panSheet } from "../canvas";
 import { renderSheet } from "../canvas/testing/sheet-harness";
 import { problemCursor, resetProblemCursor } from "./navigate";
 import { clearNoteFocus } from "./note-focus";
@@ -46,10 +46,21 @@ function noteById(id: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(`[data-note-id="${CSS.escape(id)}"]`);
 }
 
+function inSheet(el: Element): boolean {
+  const s = (document.querySelector(".react-flow") as HTMLElement).getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return r.left >= s.left && r.right <= s.right && r.top >= s.top && r.bottom <= s.bottom;
+}
+
 async function waitForNote(kind: string): Promise<HTMLElement> {
   // The layer is its own chunk: on a cold, busy run it can take a moment to land.
   await expect.poll(() => note(kind), { timeout: 8000 }).not.toBeNull();
-  return note(kind) as HTMLElement;
+  const el = note(kind) as HTMLElement;
+  // The 1000 × 700 test sheet can leave a note partly below its edge; the layer is clipped and never scrolls,
+  // so pan it into view the way the sheet does, before a test clicks its buttons.
+  ensureElementVisible(el);
+  await expect.poll(() => inSheet(el)).toBe(true);
+  return el;
 }
 
 function owners(): Recipe["owners"] {
@@ -176,6 +187,27 @@ describe("Choose per selector (IR L176)", () => {
     expect(owners()).toEqual({});
   });
 
+  test("Choose owner… on a default-owned selector: Apply owners says what it did in the console", async () => {
+    const NAME: Hex4 = "0x06fdde03";
+    await sheet(project(["ERC20", "GovernedVault", "Governor"]));
+    await render(<DialogHost />);
+    expect(getAnalysis().routing[NAME]).toMatchObject({ owner: "GovernedVault", via: "default" });
+    await runCommand({ id: "collision.choosePerSelector", args: { selectors: [NAME] } }, "api");
+    const dialog = page.getByRole("dialog", { name: "Choose per selector" });
+    await expect.element(dialog).toBeVisible();
+    (document.querySelector(`[data-owner-menu="${NAME}"]`) as HTMLElement).click();
+    const item = page.getByRole("menu", { name: "Owner of name()" }).getByRole("menuitemradio", { name: "ERC20" });
+    await expect.element(item).toBeVisible();
+    await item.click();
+    await userEvent.keyboard("{Escape}");
+    const before = bufferedServices().log.length;
+    await dialog.getByRole("button", { name: "Apply owners" }).click();
+    expect(owners()).toEqual({ [NAME]: "ERC20" });
+    // No problem resolves; narration says what the change raised (SEL-02), and S1's fallback would say the
+    // summary if it raised nothing. Either way the console has a line naming the new owner.
+    await expect.poll(() => bufferedServices().log.slice(before).map((l) => l.text).join("\n")).toMatch(/ERC20/);
+  });
+
   test("read-only: Choose per selector… is disabled with the reason", async () => {
     await sheet(project([AXELAR, HYPERLANE]), {});
     session.set({ readOnly: "Read-only: opened from a link" });
@@ -247,7 +279,9 @@ describe("traces and ties (IR L106-L107)", () => {
     await expect.poll(label).toBeNull();
     const hit = document.querySelector<SVGPathElement>(`g[data-edge='${id}'] path:first-child`) as SVGPathElement;
     // The real pointer, at the middle of the trace: the hit stroke takes it though its wrapper doesn't.
-    await userEvent.hover(hit);
+    // A transparent, zero-height path fails Playwright's visibility check, so force it: the pointer still
+    // goes to the middle of its box, on the line.
+    await userEvent.hover(hit, { force: true });
     await expect.poll(() => label()?.textContent).toBe("needs ERC4626");
     await userEvent.unhover(hit);
     await expect.poll(label).toBeNull();
@@ -433,16 +467,21 @@ describe("a note out of view (2.4.11)", () => {
     // Pan the note well past the sheet's left edge.
     panSheet(-(el.getBoundingClientRect().right - sheetBox().left) - 400, 0);
     await expect.poll(() => el.getBoundingClientRect().right < sheetBox().left).toBe(true);
-    // Tab from the card grid's stop onto the note, as a person would.
-    const start = [...document.querySelectorAll<HTMLElement>(".react-flow__node[data-id]")].find((c) => c.tabIndex === 0) as HTMLElement;
-    start.focus({ preventScroll: true });
-    for (let i = 0; i < 10 && document.activeElement !== el; i++) await userEvent.tab();
+    // Tab onto the note from the stop before it: the last control in S4d's panels (spec L744: card grid, tool
+    // strip, notes). Starting on a card would pan the card, and the note with it, before the note had to.
+    const panels = [...document.querySelectorAll<HTMLElement>(".react-flow__panel button")];
+    const before = panels.filter((b) => b.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).at(-1) as HTMLElement;
+    before.focus({ preventScroll: true });
+    expect(el.getBoundingClientRect().right < sheetBox().left).toBe(true);
+    for (let i = 0; i < 5 && document.activeElement !== el; i++) await userEvent.tab();
     expect(document.activeElement).toBe(el);
-    await expect.poll(() => {
+    const where = () => {
       const r = el.getBoundingClientRect();
       const s = sheetBox();
-      return r.left >= s.left && r.right <= s.right && r.top >= s.top && r.bottom <= s.bottom;
-    }).toBe(true);
+      const inside = r.left >= s.left && r.right <= s.right && r.top >= s.top && r.bottom <= s.bottom;
+      return inside ? "inside" : `note ${[r.left, r.top, r.right, r.bottom].map(Math.round).join(",")} sheet ${[s.left, s.top, s.right, s.bottom].map(Math.round).join(",")} zoom ${session.get().viewports[doc.get().id]?.zoom}`;
+    };
+    await expect.poll(where).toBe("inside");
   });
 });
 

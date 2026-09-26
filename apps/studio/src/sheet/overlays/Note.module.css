@@ -9,7 +9,9 @@
   position: absolute;
   inset: 0;
   z-index: 4;
-  overflow: hidden;
+  /* Clipped, never a scroll container: it follows the viewport, so the browser mustn't scroll it to show a
+     focused note (the note pans into view instead, Note.tsx). */
+  overflow: clip;
   pointer-events: none;
 }
 
