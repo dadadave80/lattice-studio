@@ -6,13 +6,6 @@
  */
 import type { CommandRef, ProblemCode } from "@lattice-studio/core";
 
-/** Where one command is offered by several codes under different words, keyed `<code> <command id>`. */
-const BY_CODE: Record<string, string> = {
-  "SEL-02 inspector.focusSelectors": "Show selectors",
-  "SEL-03 inspector.focusSelectors": "Route a selector…",
-  "NET-01 deploy.usePath": "Use LatticeFactory",
-};
-
 const BY_ID: Record<string, string> = {
   "inspector.focusSelectors": "Show selectors",
   "collision.choosePerSelector": "Choose per selector…",
@@ -25,5 +18,5 @@ const BY_ID: Record<string, string> = {
 
 /** The words for a fix whose command is still a placeholder; undefined leaves the registry's title. */
 export function placeholderFixLabel(code: ProblemCode, ref: CommandRef): string | undefined {
-  return BY_CODE[`${code} ${ref.id}`] ?? BY_ID[ref.id];
+  return BY_ID[ref.id];
 }

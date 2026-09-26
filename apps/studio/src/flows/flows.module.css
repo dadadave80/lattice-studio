@@ -1,0 +1,128 @@
+/*
+ * Share, Migrate and Confirm addresses… (Flow 10). No boards yet (PA L72-L84): built from the dialog primitive,
+ * the inspector's ruled spec sheet and the Choose an upgrade mechanism dialog's sunken change list. Tokens only
+ * (contracts §5.4).
+ */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  min-inline-size: 0;
+}
+
+.summary {
+  margin: 0;
+  font: var(--lx-font-body);
+  letter-spacing: var(--lx-tracking-body);
+  color: var(--lx-text);
+}
+
+.note {
+  margin: 0;
+  color: var(--lx-text-muted);
+}
+
+.changes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.change {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  padding-block-end: var(--lx-space-2);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.changeName {
+  margin: 0;
+  font: var(--lx-font-subheading);
+  letter-spacing: var(--lx-tracking-subheading);
+}
+
+.kind {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-1);
+  margin: 0;
+  padding: var(--lx-space-2) var(--lx-space-3);
+  list-style: none;
+  background: var(--lx-sunken);
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  overflow-wrap: anywhere;
+}
+
+.lines li::before {
+  content: "· ";
+  color: var(--lx-text-muted);
+}
+
+.lines li[data-kind="add"]::before {
+  content: "+ ";
+}
+
+.lines li[data-kind="remove"]::before {
+  content: "− ";
+}
+
+/* Confirm addresses… in the inspector. */
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  padding: var(--lx-space-3);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  min-inline-size: 0;
+}
+
+.title {
+  margin: 0;
+  font: var(--lx-font-subheading);
+  letter-spacing: var(--lx-tracking-subheading);
+}
+
+.eyebrow {
+  margin: 0;
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  padding: var(--lx-space-3);
+  border: var(--lx-stroke-heavy) solid var(--lx-accent);
+  background: var(--lx-raised);
+}
+
+.address {
+  margin: 0;
+  font: var(--lx-font-code);
+  letter-spacing: var(--lx-tracking-code);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-2);
+}
