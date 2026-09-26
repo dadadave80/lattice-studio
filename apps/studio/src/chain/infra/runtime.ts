@@ -33,21 +33,21 @@ export function delegate(clients: Clients, chainId: number): ReturnType<typeof c
   });
 }
 
+type WalletConnectImporter = () => Promise<Pick<typeof import("./walletconnect"), "walletConnectConnector">>;
+
 /**
  * WalletConnect's connector, loaded when chosen. "Off until chosen" (spec L635): the setting turns on only once its
  * code has actually loaded; a failed load leaves it off (and S11a's banner speaks for the failed chunk).
  */
 export async function loadWalletConnect(
   projectId: string | undefined,
-  importer: () => Promise<Pick<typeof import("./walletconnect"), "walletConnectConnector">>,
+  importer: WalletConnectImporter,
 ): Promise<Result<CreateConnectorFn, string>> {
   if (!projectId) return { ok: false, error: WALLETCONNECT_NOT_SET_UP };
   const { walletConnectConnector } = await importer();
   settings.set({ walletConnect: true });
   return { ok: true, value: walletConnectConnector(projectId) };
 }
-
-type WalletConnectImporter = () => Promise<Pick<typeof import("./walletconnect"), "walletConnectConnector">>;
 
 /**
  * WalletConnect's own chunk, or null in a build without a project id. The id itself is `env.walletConnectProjectId`;
