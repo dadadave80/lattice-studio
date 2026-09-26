@@ -1,7 +1,8 @@
 /**
  * Focus after dialogs and on the sheet (spec L751-L761, L771; WCAG 2.4.3, 2.4.11): every dialog and menu opened
  * from the keyboard takes focus and gives it back to what opened it when it closes with Esc, and a card that
- * takes keyboard focus is never hidden by what floats over the sheet. Keyboard only once the page has loaded.
+ * takes keyboard focus is never hidden by what floats over the sheet. Keyboard only once the page has loaded. The
+ * dialogs around deploying need Anvil and are in `deploy.spec.ts`.
  */
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../_support/fixtures.ts";
@@ -9,44 +10,10 @@ import { focusRegion, focusedRegion, region } from "../_support/keys.ts";
 import { collisionsProject, recipeProject } from "../_support/projects.ts";
 import { openEmpty, seedProject } from "../_support/seed.ts";
 import { boxes, overlap, sheetFloats } from "./support/focus.ts";
-import { DEPLOY_REVIEW_CRASH, withoutKnownGaps } from "./support/known-gaps.ts";
+import { roundTrip } from "./support/dialogs.ts";
+import { withoutKnownGaps } from "./support/known-gaps.ts";
 import { openPalette, pressMod, runInPalette, tabTo, waitForSheet } from "./support/keyboard.ts";
 import { focusFirstCard } from "./support/states.ts";
-
-const ORIGIN = "data-a11y-origin";
-
-/** Marks the focused element, so the check after closing is about that very element, not one like it. */
-async function markOrigin(page: Page): Promise<void> {
-  await page.evaluate((attr) => {
-    document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr));
-    const el = document.activeElement;
-    if (!el || el === document.body) throw new Error("Nothing has focus to return to.");
-    el.setAttribute(attr, "");
-  }, ORIGIN);
-}
-
-async function originFocused(page: Page): Promise<string> {
-  return page.evaluate((attr) => {
-    const el = document.activeElement;
-    if (el?.hasAttribute(attr)) return "origin";
-    const name = el ? (el.getAttribute("aria-label") ?? el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 60) : "";
-    return `${el?.tagName.toLowerCase() ?? "nothing"} "${name}"`;
-  }, ORIGIN);
-}
-
-/** Whether focus is inside `popup`. */
-async function focusInside(popup: Locator): Promise<boolean> {
-  return popup.evaluate((el) => el.contains(document.activeElement));
-}
-
-/** Presses Esc until `popup` is gone (a first Esc may only clear a query), at most three times. */
-async function closeWithEscape(page: Page, popup: Locator): Promise<void> {
-  for (let presses = 0; presses < 3 && (await popup.count()) > 0; presses += 1) {
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(50);
-  }
-  await expect(popup).toHaveCount(0);
-}
 
 type DialogCase = {
   name: string;
@@ -56,8 +23,6 @@ type DialogCase = {
   open(page: Page): Promise<void>;
   /** The dialog or menu, once open. */
   popup(page: Page): Locator;
-  /** A filed gap that stops this case from running. */
-  blockedBy?: string;
 };
 
 async function titleBarButton(page: Page, name: string | RegExp): Promise<void> {
@@ -180,18 +145,6 @@ const CASES: readonly DialogCase[] = [
     popup: (page) => page.getByRole("menu", { name: "Export" }),
   },
   {
-    name: "Safe batch, through the palette",
-    async from(page) {
-      await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
-      await waitForSheet(page);
-      await titleBarButton(page, "Share");
-    },
-    open: (page) => runInPalette(page, "Export Safe batch…"),
-    popup: dialog(/Safe batch/),
-    // Safe batch waits for every acknowledgement (export-enablement.ts), and they're ticked in Deploy review.
-    blockedBy: `Export Safe batch… needs its acknowledgements ticked in Deploy review. ${DEPLOY_REVIEW_CRASH}`,
-  },
-  {
     name: "Browse all recipes, from the empty sheet",
     async from(page) {
       await openEmpty(page);
@@ -217,30 +170,10 @@ const CASES: readonly DialogCase[] = [
 test.describe("focus returns after every dialog (spec L751-L761, WCAG 2.4.3)", () => {
   for (const c of CASES) {
     test(c.name, async ({ page }) => {
-      test.fixme(c.blockedBy !== undefined, c.blockedBy ?? "");
       await c.from(page);
-      await markOrigin(page);
-      await c.open(page);
-      const popup = c.popup(page);
-      await expect(popup.first()).toBeVisible();
-      await expect.poll(() => focusInside(popup.first()), { message: "the dialog takes focus" }).toBe(true);
-      await closeWithEscape(page, popup);
-      await expect.poll(() => originFocused(page), { message: "focus goes back to what opened it" }).toBe("origin");
+      await roundTrip(page, () => c.open(page), c.popup(page));
     });
   }
-
-  test("Deploy review, from the title block's Deploy…", async ({ page }) => {
-    test.fixme(true, DEPLOY_REVIEW_CRASH);
-    await erc20(page);
-    await focusRegion(page, "Sheet");
-    await tabTo(page, region(page, "Sheet").getByRole("button", { name: "Deploy…" }));
-    await markOrigin(page);
-    await page.keyboard.press("Enter");
-    const review = dialog("Deploy review")(page);
-    await expect(review).toBeVisible();
-    await closeWithEscape(page, review);
-    await expect.poll(() => originFocused(page)).toBe("origin");
-  });
 });
 
 /** The element's box once a pan has settled: two reads 100 ms apart that agree (at most 3 s). */

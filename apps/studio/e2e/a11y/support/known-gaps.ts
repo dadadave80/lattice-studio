@@ -15,20 +15,10 @@ export type KnownGap = {
   matches(finding: string): boolean;
 };
 
-/**
- * Deploy review never renders, so the states and dialogs behind it can't be reached: the tests that need it are
- * `fixme` with this reason. Owners S8b · apps/studio/src/chain/review and S8a · apps/studio/src/chain/infra.
- */
-export const DEPLOY_REVIEW_CRASH =
-  "Deploy review throws React #185 on open (\"The result of getSnapshot should be cached\" in <ReviewDialog>), with " +
-  "no chain, with Anvil selected and with the mock wallet connected, so the dialog never renders. One fresh snapshot " +
-  "source: ChainService.connectors() builds a new array per call while no wallet is loaded " +
-  "(src/chain/infra/service.ts L472); every getSnapshot in src/chain/review/use-review.ts and review-state.ts needs auditing";
-
 export const KNOWN_GAPS: readonly KnownGap[] = [
   {
     id: "note-targets-scale-with-zoom",
-    owner: "S4c · apps/studio/src/sheet/overlays",
+    owner: "FX28 · S4c · apps/studio/src/sheet/overlays",
     rule: "spec L770 · WCAG 2.5.8 target size: a note's buttons (Keep …, Route to …, Choose per selector…, the owner menu) shrink with the sheet's zoom, to 7-18 px tall at the 30% a fit of 30 cards gives",
     matches: (finding) =>
       finding.includes("target-size ") &&
@@ -38,9 +28,21 @@ export const KNOWN_GAPS: readonly KnownGap[] = [
   },
   {
     id: "zoom-readout-covers-focused-card",
-    owner: "S4b · apps/studio/src/sheet/canvas/sheet-view.ts (ensureVisible, clearOf, cardRect)",
+    owner: "FX28 · S4b · apps/studio/src/sheet/canvas/sheet-view.ts (ensureVisible, clearOf, cardRect)",
     rule: "spec L771 · WCAG 2.4.11 (partly obscured, so the spec's stricter reading): at 200% on the 30-card sheet, ⌘/Ctrl+↓ to DIAAdapter leaves the card's bottom-left corner 9 x 24 px under the \"Zoom 200%\" readout, though the readout is a Panel that floatingRects lists",
     matches: (finding) => /under floating UI at \{"x":\d+(\.\d+)?,"y":\d+(\.\d+)?,"width":56,"height":24\}/.test(finding),
+  },
+  {
+    id: "refused-send-drops-focus",
+    owner: "S8b · apps/studio/src/chain/review (DeployReview.tsx, ReviewFooter.tsx)",
+    rule: "spec L751-L761 · WCAG 2.4.3: Sign & deploy moves the review to its progress view (awaitingSignature is a PROGRESS_PHASES phase), which unmounts the focused button; when the wallet or node refuses the send, the machine goes back to review and focus is left on <body>",
+    matches: (finding) => finding.startsWith("refused send: focus is on body "),
+  },
+  {
+    id: "refused-send-not-announced",
+    owner: "S8c · apps/studio/src/chain/deploy/machine.ts with S5e · apps/studio/src/panels/console/deploy-announce.ts",
+    rule: "spec L777-L778 · WCAG 4.1.3: a refused send is logged as a Deploy line (note(sent.message, \"warn\")), and the default \"errors\" setting only announces Error lines, so nothing is said; the review itself shows no error and sits at \"Simulating…\"",
+    matches: (finding) => /^refused send: ".*" is logged but not announced/.test(finding),
   },
 ];
 
