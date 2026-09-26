@@ -14,6 +14,7 @@ import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio } from ".
 import { scriptChainIds } from "./chains";
 import { ConsolePanel } from "./ConsolePanel";
 import { downloadFile } from "./download";
+import { S5E_COMMANDS } from "./definitions";
 import { safeExportable } from "./export-enablement";
 import { logEntries } from "./log-store";
 import { DOWNLOAD_BATCH, NOT_AN_ADDRESS, SAFE_ADDRESS_LABEL } from "./SafeBatchDialog";
@@ -54,6 +55,13 @@ function catalog() {
 async function waitForFile(files: ExportFile[], n = 1): Promise<ExportFile> {
   await vi.waitFor(() => expect(files.length).toBeGreaterThanOrEqual(n));
   return files[n - 1] as ExportFile;
+}
+
+/** The Safe batch waits for the review's acknowledgements (spec L573): tick every one the analysis raises. */
+function tickAcknowledgements(): void {
+  const analysis = getAnalysis();
+  const ids = analysis.problems.filter((p) => p.ack === true).map((p) => p.id);
+  session.set({ acks: { ...session.get().acks, [analysis.recipeHash]: ids } });
 }
 
 describe("Export menu (spec L509-L518, IR L132)", () => {
@@ -144,6 +152,7 @@ describe("Export menu (spec L509-L518, IR L132)", () => {
     onCleanup(provideServices({ now: () => Date.parse("2026-09-23T12:00:00Z") }));
     const files = captureDownloads();
     await renderConsole(erc20Project(), "shop", 84532);
+    tickAcknowledgements();
     await userEvent.click(exportMenu());
     await userEvent.click(item("Safe batch…"));
     const address = page.getByRole("textbox", { name: SAFE_ADDRESS_LABEL });
@@ -201,6 +210,7 @@ describe("Export menu (spec L509-L518, IR L132)", () => {
   test("the Safe batch dialog closes with Cancel and changes nothing", async () => {
     const files = captureDownloads();
     await renderConsole();
+    tickAcknowledgements();
     void runCommand({ id: "export.safe" }, "palette");
     await expect.element(page.getByRole("dialog", { name: "Safe batch" })).toBeVisible();
     await userEvent.click(page.getByRole("button", { name: "Cancel" }));
@@ -284,6 +294,12 @@ describe("safeExportable: the Safe batch waits for the review's acknowledgements
       catalog: fixture, project, analysis: { ...analysis, problems: [acknowledgement, second] }, session: initialSession(),
     });
     expect(result).toEqual({ ok: false, reason: "Tick the 2 acknowledgements first" });
+  });
+
+  test("the export.safe command itself gates on them (the console verb and Export ▸ Safe batch)", () => {
+    const safe = S5E_COMMANDS.find((c) => c.id === "export.safe");
+    const ctx = { catalog: fixture, project, analysis, session: initialSession() } as unknown as Parameters<NonNullable<typeof safe>["enabled"]>[0];
+    expect(safe?.enabled(ctx, {})).toEqual({ ok: false, reason: "Tick the acknowledgement first" });
   });
 
   test("once ticked for this recipe hash, it exports as before", () => {
