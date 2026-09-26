@@ -9,7 +9,7 @@ import { addInitStep } from "../edit/recipe-ops";
 import { lintCopy } from "../format/copy-lint";
 import { renderProblem } from "../narrate/problem";
 import { makeCatalog, makeFacet, makeInit, makeProject, makeRecipe } from "../testing/builders";
-import { loadFixtureCatalog } from "../testing/fixtures";
+import { loadBuiltCatalog, loadFixtureCatalog } from "../testing/fixtures";
 import { checkInit } from "./init";
 
 const fixture = loadFixtureCatalog();
@@ -42,6 +42,19 @@ function only(problems: Problem[], code: ProblemCode): Problem[] {
 
 function steps(facets: string[], list: { spec: string; args: Record<string, Arg> }[]): Recipe {
   return makeRecipe({ facets, init: { kind: "steps", steps: list } }, catalog);
+}
+
+/** Applies every `init.addStep` fix a problem offers, and checks `addInitStep` doesn't refuse it. */
+function applyAddStepFixes(recipe: Recipe, cat: Catalog, problems: Problem[]): void {
+  const project = makeProject({ recipe });
+  for (const problem of problems) {
+    for (const fix of problem.fixes) {
+      if (fix.id !== "init.addStep") continue;
+      const spec = fix.args?.["spec"];
+      const result = addInitStep(project, cat, spec as string);
+      expect([problem.id, result.changed, result.summary]).toEqual([problem.id, true, `Added ${spec as string} to the init plan`]);
+    }
+  }
 }
 
 function vault(p: Record<string, Arg>): Recipe {
@@ -343,19 +356,6 @@ describe("INIT-04", () => {
     expect(both.map((p) => p.id)).toEqual(["INIT-04:Nonces"]);
   });
 
-  /** Applies every `init.addStep` fix a problem offers, and checks `addInitStep` doesn't refuse it. */
-  function applyAddStepFixes(recipe: Recipe, cat: Catalog, problems: Problem[]): void {
-    const project = makeProject({ recipe });
-    for (const problem of problems) {
-      for (const fix of problem.fixes) {
-        if (fix.id !== "init.addStep") continue;
-        const spec = fix.args?.["spec"];
-        const result = addInitStep(project, cat, spec as string);
-        expect([problem.id, result.changed, result.summary]).toEqual([problem.id, true, `Added ${spec as string} to the init plan`]);
-      }
-    }
-  }
-
   test("a facet's own module can come before the init's last module (ERC20VotesInit ends with AccessControl, K3's real shape)", () => {
     const synthetic = makeCatalog({
       facets: [makeFacet({ name: "AccessControl", init: "AccessControlInit" }), makeFacet({ name: "ERC20Votes", init: "ERC20VotesInit" })],
@@ -427,6 +427,34 @@ describe("INIT-04", () => {
       ["INIT-04:Governor", "GovernedVaultInit", [{ id: "init.addStep", args: { spec: "GovernedVaultInit" } }]],
     ]);
     applyAddStepFixes(recipe, synthetic, problems);
+  });
+});
+
+const built = loadBuiltCatalog();
+
+describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20VotesInit and GovernedVaultInit)", () => {
+  const realCatalog = built.ok ? built.value : catalog;
+
+  test("Blank diamond + ERC20Votes raises INIT-04 for ERC20Votes, not for AccessControl (ERC20VotesInit's last module, spec L330)", () => {
+    const recipe = makeRecipe(
+      { facets: [...BLANK_FACETS, "ERC20Votes"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } },
+      realCatalog,
+    );
+    const problems = only(run(recipe, realCatalog), "INIT-04");
+    expect(problems.map((p) => p.id)).toEqual(["INIT-04:ERC20Votes"]);
+    expect(problems[0]?.fixes).toEqual([{ id: "init.addStep", args: { spec: "ERC20VotesInit" } }]);
+    applyAddStepFixes(recipe, realCatalog, problems);
+  });
+
+  test("Blank diamond + GovernedVault: its init is a bundle and the plan already has a step, so no fix `addInitStep` would refuse", () => {
+    const recipe = makeRecipe(
+      { facets: [...BLANK_FACETS, "GovernedVault"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } },
+      realCatalog,
+    );
+    const problems = only(run(recipe, realCatalog), "INIT-04").filter((p) => p.where.some((w) => w.kind === "facet" && w.facet === "GovernedVault"));
+    expect(problems.length).toBeGreaterThan(0);
+    for (const p of problems) expect(p.fixes.some((f) => f.args?.["spec"] === "GovernedVaultInit")).toBe(false);
+    applyAddStepFixes(recipe, realCatalog, problems);
   });
 });
 
