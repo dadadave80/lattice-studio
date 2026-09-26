@@ -17,13 +17,13 @@ import { focusRegion, focusedRegion, region } from "../_support/keys.ts";
 import { recipeProject } from "../_support/projects.ts";
 import { seedProject } from "../_support/seed.ts";
 import { NARROW_WIDTHS, expectTier, tierAt, viewportAt } from "../_support/viewports.ts";
-import { shortAddress } from "../_support/wallet.ts";
+import { MOCK_ACCOUNT, shortAddress } from "../_support/wallet.ts";
 import { executeAsSafe, mine, pendingDeploy, predictedAddress, recordFor, releaseAddress, removeShared, unstick } from "./pages/chain.ts";
-import { expect, test } from "./pages/fixtures.ts";
+import { expect, test } from "../_support/fixtures.ts";
 import { DeployReview, MissingContractsDialog, REVIEW_SECTIONS, SafeBatchDialog, watchReactErrors } from "./pages/dialogs.ts";
 import { activate, pressMod, runConsoleLine, runPalette, type InputMode } from "./pages/keys.ts";
 import { ConsoleLog, Inspector, TitleBar, TitleBlock, expectAnnounced, expectDisabledWith } from "./pages/regions.ts";
-import { connectOnAnvil, routeMockSends } from "./pages/wallet.ts";
+import { connectOnAnvil } from "./pages/wallet.ts";
 
 const MODES: readonly InputMode[] = ["pointer", "keyboard"];
 
@@ -121,9 +121,9 @@ test.describe("Flow 12. Deploy", () => {
     for (const mode of MODES) {
       test(`deploys what the chain lacks in one Multicall3 batch (${mode})`, async ({ page, anvil }) => {
         await removeShared(anvil, ["Receive", "EmergencyStop"]);
-        const forwarded = await routeMockSends(page, anvil.url);
         await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
         await connectOnAnvil(page);
+        const sentBefore = await anvil.client.getTransactionCount({ address: MOCK_ACCOUNT });
         const log = new ConsoleLog(page);
         const netLine = "2 of 15 facets and init contracts aren't on Anvil yet. Anyone can deploy them at their release addresses.";
         await expect(log.line("Note", netLine)).toBeVisible();
@@ -141,8 +141,9 @@ test.describe("Flow 12. Deploy", () => {
         for (const name of ["EmergencyStop", "Receive"]) await expect(dialog.row(name)).toContainText("Deployed");
         await expect(log.line("Deploy", "Deployed 2 missing contracts on Anvil.")).toBeVisible();
 
-        // One transaction, to Multicall3's aggregate3, and both contracts at their release codehashes.
-        expect(forwarded()).toBe(1);
+        // One transaction from the wallet, straight to Anvil, to Multicall3's aggregate3, and both contracts at their
+        // release codehashes.
+        expect(await anvil.client.getTransactionCount({ address: MOCK_ACCOUNT })).toBe(sentBefore + 1);
         const block = await anvil.client.getBlock({ includeTransactions: true });
         expect(block.transactions.map((tx) => tx.to?.toLowerCase())).toEqual([MULTICALL3.toLowerCase()]);
         for (const name of ["EmergencyStop", "Receive"]) {
@@ -157,7 +158,6 @@ test.describe("Flow 12. Deploy", () => {
 
     test("a failed contract doesn't undo the others; Studio diagnoses it and Retry deploys it, keyboard only", async ({ page, anvil }) => {
       await removeShared(anvil, ["Receive", "EmergencyStop"], ["EmergencyStop"]);
-      await routeMockSends(page, anvil.url);
       await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
       await connectOnAnvil(page);
       await runPalette(page, "Deploy missing contracts…");
@@ -189,7 +189,6 @@ test.describe("Flow 12. Deploy", () => {
     for (const { path, name, mode } of paths) {
       test(`Sign & deploy through ${name} sends the reviewed transaction and the diamond goes Live (${mode})`, async ({ page, anvil }) => {
         const crashed = watchReactErrors(page);
-        await routeMockSends(page, anvil.url);
         const project = recipeProject("GovernedVault", { filled: true });
         await seedProject(page, { project: { ...project, deploy: { ...project.deploy, path } } });
         await connectOnAnvil(page);

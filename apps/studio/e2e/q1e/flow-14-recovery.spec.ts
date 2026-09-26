@@ -21,10 +21,10 @@ import { seedProject, seedSettings } from "../_support/seed.ts";
 import { shortAddress } from "../_support/wallet.ts";
 import { deployOnAnvil, mine, pendingDeploy, predictedAddress, releaseAddress, removeShared } from "./pages/chain.ts";
 import { DeployReview, SettingsDialog, watchReactErrors } from "./pages/dialogs.ts";
-import { expect, test } from "./pages/fixtures.ts";
+import { expect, test } from "../_support/fixtures.ts";
 import { activate, pressMod, runConsoleLine, runPalette, runPaletteWith, tabTo, type InputMode } from "./pages/keys.ts";
 import { ConsoleLog, Inspector, TitleBar, TitleBlock, expectAnnounced, expectDisabledWith } from "./pages/regions.ts";
-import { connectOnAnvil, inflateSimulatedGas, rejectMockSends, routeMockSends } from "./pages/wallet.ts";
+import { connectOnAnvil, inflateSimulatedGas, rejectMockSends } from "./pages/wallet.ts";
 
 const MODES: readonly InputMode[] = ["pointer", "keyboard"];
 
@@ -377,7 +377,6 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
 
     test("rejected in the wallet: \"You canceled in your wallet.\" and Sign again, keyboard only", async ({ page, anvil }) => {
       const crashed = watchReactErrors(page);
-      await routeMockSends(page, anvil.url);
       const rejected = await rejectMockSends(page);
       await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
       await connectOnAnvil(page);
@@ -392,13 +391,12 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
       expect(await anvil.rpc<Hex>("eth_getCode", [predictedAddress(recipeProject("GovernedVault", { filled: true })), "latest"])).toBe("0x");
     });
 
-    test("after a rejection the review says so and Sign again asks the wallet again (spec L574)", async ({ page, anvil }) => {
+    test("after a rejection the review says so and Sign again asks the wallet again (spec L574)", async ({ page, anvil: _node }) => {
       test.fail(
         true,
         "After the wallet rejects, the review re-simulates and stays at \"Simulating…\" with Sign again disabled, and \"You canceled in your wallet.\" shows only in the log, not in the review (spec L574) · follow-up for S8b/S8c from Q1e",
       );
       const crashed = watchReactErrors(page);
-      await routeMockSends(page, anvil.url);
       await rejectMockSends(page);
       await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
       await connectOnAnvil(page);

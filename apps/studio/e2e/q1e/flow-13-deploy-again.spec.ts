@@ -14,7 +14,7 @@ import { NARROW_WIDTHS, expectTier, tierAt, viewportAt } from "../_support/viewp
 import { shortAddress } from "../_support/wallet.ts";
 import { deployOnAnvil, recordFor } from "./pages/chain.ts";
 import { DeployReview, watchReactErrors } from "./pages/dialogs.ts";
-import { expect, test } from "./pages/fixtures.ts";
+import { expect, test } from "../_support/fixtures.ts";
 import { pressMod, runConsoleLine, runPaletteWith, type InputMode } from "./pages/keys.ts";
 import { ConsoleLog, Inspector, TitleBar, TitleBlock } from "./pages/regions.ts";
 import { connectOnAnvil } from "./pages/wallet.ts";
@@ -95,9 +95,11 @@ test.describe("Flow 13. Deploy again after changes", () => {
   }
 
   test("with the deployer's wallet connected, Deploy again… stays enabled once modified", async ({ page, anvil }) => {
+    // NET-05 is right to block Deploy… here (it keeps the colliding salt); Deploy again… redraws the salt before the
+    // review (spec L584), so its enablement should ignore NET-05 for the current prediction · FX27.
     test.fail(
       true,
-      "NET-05 fires on the recorded live diamond itself once the deployer connects (\"This account already deployed a diamond with this salt…\"), so Live shows 1 blocker and Deploy again… is disabled with \"Resolve 1 blocker · F8\"; spec L584 has Deploy again draw the new salt · follow-up for C6/S8b from Q1e",
+      "NET-05 fires on the recorded live diamond itself once the deployer connects, so Deploy again… is disabled with \"Resolve 1 blocker · F8\"; spec L584 has Deploy again draw the new salt · FX27 (deploy.again's enablement)",
     );
     const project = recipeProject("GovernedVault", { filled: true });
     const live = await deployOnAnvil(anvil, project);
