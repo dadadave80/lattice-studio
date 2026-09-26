@@ -31,13 +31,15 @@ export function projectFor(recipe: Recipe, extra: Partial<Project> = {}): Projec
 const KITCHEN: InitSpec = {
   name: "KitchenInit",
   contract: "KitchenInit",
-  fn: "init(bool,string,string,uint16)",
+  fn: "init(bool,string,string,uint16,address)",
   kind: "step",
   params: [
     { name: "paused", type: "bool", doc: "Start paused." },
     { name: "tier", type: "string", doc: "Which tier the vault starts in.", rule: "enum(bronze|silver|gold)" },
     { name: "label", type: "string", doc: "A short label.", rule: "maxlen(8)" },
     { name: "slots", type: "uint16", doc: "How many slots." },
+    // No nonzero rule: the zero address is allowed (spec L462's "Zero address" pick).
+    { name: "treasury", type: "address", doc: "Where fees go; the zero address keeps them in the vault." },
   ],
   initializes: [],
   after: [],
@@ -57,7 +59,7 @@ const PAYOUT: InitSpec = {
 };
 
 /**
- * The fixture catalog plus KitchenInit, whose four params cover the field kinds the real inits don't, and
+ * The fixture catalog plus KitchenInit, whose five params cover the field kinds the real inits don't, and
  * PayoutInit, which must follow ERC20Init.
  */
 export function kitchenCatalog(): Catalog {
