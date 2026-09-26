@@ -8,7 +8,8 @@ import { OK } from "./shared";
 
 export const exportFileCommand = command({
   id: "project.exportFile",
-  title: () => "Project file",
+  // Contracts §6: a verb and its object; the menu keeps its shorter "Project file" through its own `label`.
+  title: () => "Export project file",
   category: "Export",
   console: { verb: "export", sub: "project", syntax: "export project", parse: (argv) => (argv.length === 0 ? { ok: true, value: {} } : { ok: false, error: "export project takes no arguments." }) },
   palette: true,
