@@ -24,14 +24,16 @@ export type DeploymentRecordProps = {
    */
   chainKnown: boolean;
   check: RecordCheck | undefined;
+  /** Offline, the stored verification can't be confirmed, so it reads Unknown (ruling R7, spec L832). */
+  online: boolean;
   onRetry(): void;
 };
 
 /** One deployment record in the Deployments list (IR L119): status, address, recipe hash, verification, time. */
-export function DeploymentRecord({ record, currentHash, chainName, explorer, chainKnown, check, onRetry }: DeploymentRecordProps) {
+export function DeploymentRecord({ record, currentHash, chainName, explorer, chainKnown, check, online, onRetry }: DeploymentRecordProps) {
   const { chainId, address } = record;
   const time = formatTime(record.at, new Date(now()).toISOString());
-  const failureReason = verificationFailureReason(record);
+  const failureReason = verificationFailureReason(record, online);
   return (
     <li className={sheet.item} data-record={`${chainId}:${address}`}>
       <div className={sheet.itemLine}>
@@ -48,13 +50,13 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, cha
           {`recipe ${shortHash(record.recipeHash)}`}
         </span>
       </div>
-      <span className={styles.quiet}>{verificationWord(record.verification)}</span>
+      <span className={styles.quiet}>{verificationWord(record.verification, online)}</span>
       {failureReason ? <span className={sheet.text}>{failureReason}</span> : null}
       {check === "found" ? <span className={styles.quiet}>{`Code found on ${chainName}.`}</span> : null}
       {check === "empty" ? <span className={sheet.text}>{`No code at this address on ${chainName}.`}</span> : null}
       {check === "failed" ? (
         <div className={styles.recordError}>
-          <p className={sheet.text} role="alert">{`Couldn't read ${chainName} for this record.`}</p>
+          <p className={sheet.text}>{`Couldn't read ${chainName} for this record.`}</p>
           <Button size="small" onClick={onRetry}>
             Retry
           </Button>

@@ -46,7 +46,7 @@ export function ChainReadiness() {
   } else if (readiness.status === "error") {
     body = (
       <>
-        <p className={sheet.text} role="alert">{`Couldn't read ${name}: the RPC didn't answer.`}</p>
+        <p className={sheet.text}>{`Couldn't read ${name}: the RPC didn't answer.`}</p>
         <div className={sheet.actions}>
           <CommandButton command={commandRef("chain.retryRead")} size="small">
             {`Retry reading ${name}`}
