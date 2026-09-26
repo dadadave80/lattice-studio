@@ -1,0 +1,55 @@
+/**
+ * The Console region's Log tab (IR "Console drawer"): `role="log"` named "Log", lines as buttons whose text is
+ * the tag plus the message (`InlineCode` strips the backticks C10 renders around code, so assertions never
+ * include a literal backtick). The Recipe JSON tab is a `role="tabpanel"` once selected.
+ */
+import { expect, type Locator, type Page } from "@playwright/test";
+import { region } from "../../_support/keys.ts";
+
+export class ConsolePage {
+  readonly root: Locator;
+  readonly log: Locator;
+
+  constructor(private readonly page: Page) {
+    this.root = region(page, "Console");
+    this.log = this.root.getByRole("log", { name: "Log" });
+  }
+
+  /** A log line by its full text (tag + message), as `LogLine` renders it: "Collision A and B both export …". */
+  line(text: string | RegExp): Locator {
+    return this.log.getByRole("button", { name: text });
+  }
+
+  /** The "›" command line (IR "Console drawer"). */
+  commandLine(): Locator {
+    return this.root.getByRole("textbox", { name: /command/i });
+  }
+
+  /**
+   * Types one console line and presses Enter. Focuses the command line directly, not by Tab-cycling from the
+   * region (`_support/keys.ts`'s `runConsole`, frozen, ⇐ Q0): the Log toolbar's nine tag-filter chips (Note,
+   * Placed, Resolved, Collision, Missing, Init, Deploy, Verify, Error) push the command line to the 21st Tab
+   * stop, past that helper's hard-coded 20-press cap (reproduces on the unmodified `_support/smoke/keys.spec.ts`
+   * too — a Q0 fix-package candidate, not something owned here). `focus()` reaches the same element a real Tab
+   * sequence would, without a pointer event, so it stays valid for a keyboard-only spec.
+   */
+  async run(line: string): Promise<void> {
+    await this.commandLine().focus();
+    await this.page.keyboard.type(line);
+    await this.page.keyboard.press("Enter");
+  }
+
+  /** Opens the Recipe JSON tab and returns its panel, read-only (IR "Console drawer"). */
+  async recipeJson(): Promise<Locator> {
+    await this.root.getByRole("tab", { name: "Recipe JSON" }).click();
+    // Base UI's Tabs keep every panel mounted (Catalog's included), so `tabpanel` alone is ambiguous.
+    const panel = this.page.getByRole("tabpanel", { name: "Recipe JSON" });
+    await expect(panel).toBeVisible();
+    return panel;
+  }
+
+  /** Back to the Log tab (the default; specs that opened Recipe JSON return here before more assertions). */
+  async showLog(): Promise<void> {
+    await this.root.getByRole("tab", { name: "Log", exact: true }).click();
+  }
+}
