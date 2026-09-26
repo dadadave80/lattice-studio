@@ -51,7 +51,8 @@ export const routeCommand = command<RouteArgs>({
 
 export const clearOwnerCommand = command<ClearOwnerArgs>({
   id: "selector.clearOwner",
-  title: () => "Clear owner",
+  // SEL-04's fix reads "Remove it" (spec L314); SEL-05's stays "Clear owner".
+  title: ({ verb }) => (verb === "remove" ? "Remove it" : "Clear owner"),
   category: "Build",
   enabled(ctx, args) {
     const blocked = guard(ctx);

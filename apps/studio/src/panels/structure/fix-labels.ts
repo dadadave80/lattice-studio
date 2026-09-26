@@ -6,11 +6,14 @@
  */
 import type { CommandRef, ProblemCode } from "@lattice-studio/core";
 
-/** Where one command is offered by several codes under different words, keyed `<code> <command id>`. */
+/**
+ * Where one command is offered by several codes under different words, keyed `<code> <command id>`.
+ * `deploy.usePath` is registered with this exact wording, so its row was dead (FX24). SEL-02 and SEL-03's rows
+ * stay until `inspector.focusSelectors` reads its verb (CCR, FX24) and `structure-model.test.ts` L196 goes with them.
+ */
 const BY_CODE: Record<string, string> = {
   "SEL-02 inspector.focusSelectors": "Show selectors",
   "SEL-03 inspector.focusSelectors": "Route a selector…",
-  "NET-01 deploy.usePath": "Use LatticeFactory",
 };
 
 const BY_ID: Record<string, string> = {

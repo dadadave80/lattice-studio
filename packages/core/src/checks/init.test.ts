@@ -282,7 +282,7 @@ describe("INIT-03", () => {
     expect(p?.fixes).toEqual([
       { id: "init.removeStep", args: { path: "steps[0]" } },
       { id: "init.removeStep", args: { path: "steps[1]" } },
-      { id: "init.setArg", args: { path: "steps[1].admin", value: ADMIN_A } },
+      { id: "init.setArg", args: { path: "steps[1].admin", value: ADMIN_A, verb: "oneAdmin" } },
     ]);
     expect(p?.message).toBe("AccessControlInit and SafeDiamondCutInit both set up AccessControl, granting its roles to different admins.");
   });
@@ -313,7 +313,7 @@ describe("INIT-03", () => {
     expect(only(run(recipe({ $ref: "self" }), synthetic), "INIT-03").map((p) => p.severity)).toEqual(["info"]);
     const [p] = only(run(recipe(ADMIN_B), synthetic), "INIT-03");
     expect(p?.severity).toBe("warning");
-    expect(p?.fixes.at(-1)).toEqual({ id: "init.setArg", args: { path: "steps[1].admin", value: { $ref: "self" } } });
+    expect(p?.fixes.at(-1)).toEqual({ id: "init.setArg", args: { path: "steps[1].admin", value: { $ref: "self" }, verb: "oneAdmin" } });
   });
 });
 
