@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { closeDialog, openDialog, overrideDialog, registerDialog, session, type DialogComponentProps } from "@/contracts";
+import { closeDialog, openDialog, overrideDialog, session, type DialogComponentProps } from "@/contracts";
 import { onCleanup, renderWithStudio } from "../../../test/harness";
 import { Button } from "../buttons/Button";
 import { Dialog } from "./Dialog";
@@ -75,7 +75,7 @@ describe("DialogHost", () => {
   });
 
   test("renders the registered component and returns focus to the opener after closing", async () => {
-    onCleanup(registerDialog("settings", TestSettings));
+    onCleanup(overrideDialog("settings", TestSettings)); // S10 registers the real one
     await renderWithStudio(<App />);
     await userEvent.tab();
     await userEvent.keyboard("{Enter}");
@@ -155,7 +155,7 @@ describe("DialogHost", () => {
         </Dialog>
       );
     }
-    onCleanup(registerDialog("about", RealAbout)); // stands in for a WP's own services.ts registration
+    onCleanup(overrideDialog("about", RealAbout)); // stands in for the owner's registration, whether or not S10 has landed
     onCleanup(overrideDialog("about", TestAbout));
     await renderWithStudio(<DialogHost />);
     openDialog("about");
