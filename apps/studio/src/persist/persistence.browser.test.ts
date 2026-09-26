@@ -8,7 +8,7 @@ import { openDB } from "idb";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   createProject, deleteDeployment, doc, getCatalogStatus, listDeployments, loadViewport, openProject, putDeployment, saveStatus,
-  saveViewport, setCatalogStatus, subscribeDeployments, type SaveStatus,
+  saveViewport, setCatalogStatus, settings, subscribeDeployments, type SaveStatus,
 } from "@/contracts";
 import { isUnpinned, UNPINNED_HASH } from "@/state/document-store";
 import { bufferedServices, fakeClock, fixtureCatalog, onCleanup } from "../../test/harness";
@@ -793,6 +793,30 @@ describe("data that must never be lost", () => {
     expect(await tab.projects.openProject("untitled")).toMatchObject({ ok: true, value: { name: "Old work" } });
     expect(tabDoc.get().name).toBe("Old work");
     expect(await storedName(tab, "untitled")).toBe("Old work");
+  });
+
+  test("every fresh boot draws its own salt entropy and takes the deploy path from Settings", async () => {
+    const zeros: `0x${string}` = `0x${"00".repeat(11)}`;
+    const previousPath = settings.get().defaultPath;
+    onCleanup(() => settings.set({ defaultPath: previousPath }));
+    settings.set({ defaultPath: "createx" });
+    const boot = () => makeProject({
+      id: "untitled", name: "Untitled", recipe, deploy: { path: "factory", entropy: zeros, scope: "every-chain" },
+    });
+    const firstDoc = fakeDoc(boot());
+    const secondDoc = fakeDoc(boot());
+    testPersistence({ doc: firstDoc, provide: false, page: null });
+    testPersistence({ doc: secondDoc, provide: false, page: null });
+
+    const first = firstDoc.get().deploy;
+    const second = secondDoc.get().deploy;
+    expect(first.entropy).toMatch(/^0x[0-9a-f]{22}$/);
+    expect(first.entropy).not.toBe(zeros);
+    expect(second.entropy).not.toBe(zeros);
+    expect(second.entropy).not.toBe(first.entropy);
+    expect(first.path).toBe("createx");
+    expect(second.path).toBe("createx");
+    expect(first.scope).toBe("every-chain");
   });
 
   test("a second fresh tab lands read-only in the first tab's work, not in an empty document", async () => {

@@ -8,7 +8,7 @@
  * per test and two to play two tabs. Nothing opens until first used.
  */
 import {
-  exportProjectFile, type Address, type Deployment, type ExportFile, type Project, type Recipe, type Result,
+  exportProjectFile, newEntropy, type Address, type Deployment, type ExportFile, type Project, type Recipe, type Result,
 } from "@lattice-studio/core";
 import { openDB } from "idb";
 import {
@@ -753,7 +753,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       name,
       recipe,
       layout: opts?.layout ?? {},
-      deploy: { path: settings.get().defaultPath, entropy: hex(randomBytes(11)), scope: "every-chain" },
+      deploy: { path: settings.get().defaultPath, entropy: newEntropy(randomBytes), scope: "every-chain" },
       provenance: opts?.provenance ?? {},
       predicted: [],
     };
@@ -846,7 +846,14 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
         });
       }
       if (openId !== null) return doc.get().id;
-      const fresh: Project = { ...doc.get(), id: newId() };
+      // Its own salt entropy (spec L286) and the default path from Settings, as a new project gets: a first
+      // visit's diamond must not be salted with the placeholder zeros every fresh boot shares.
+      const booting = doc.get();
+      const fresh: Project = {
+        ...booting,
+        id: newId(),
+        deploy: { ...booting.deploy, path: settings.get().defaultPath, entropy: newEntropy(randomBytes) },
+      };
       openId = fresh.id;
       boot = fresh;
       persisted = fresh;
@@ -925,7 +932,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
           ...source,
           id: newId(),
           name: `${source.name} copy`,
-          deploy: { ...source.deploy, entropy: hex(randomBytes(11)) },
+          deploy: { ...source.deploy, entropy: newEntropy(randomBytes) },
           predicted: [],
         };
         await connection.put("projects", { id: copy.id, savedAt: now(), project: copy });
