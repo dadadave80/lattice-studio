@@ -139,6 +139,35 @@ describe("opening a shared link (Flow 10 step 7)", () => {
     expect(logged("Opening a shared link: Not built yet · WP-S13")).toBe(false);
   });
 
+  test("the fragment leaves the address once the project exists, so a reload opens that project", async () => {
+    await renderWithStudio(<Studio />);
+    const link = linkOf(template("ERC20"));
+    history.replaceState(null, "", `${location.pathname}${location.search}${link}`);
+    try {
+      await openShareLink(location.href);
+      expect(location.hash).toBe("");
+    } finally {
+      history.replaceState(null, "", `${location.pathname}${location.search}`);
+    }
+  });
+
+  test("a link on another bundled catalog opens against that catalog, editable", async () => {
+    await renderWithStudio(<Studio />);
+    loadWithManifest(fixtureCatalog("fixture"));
+    const next = fixtureCatalog("fixture-next");
+    const loads: string[] = [];
+    const opened = await openShareLink(linkOf(template("ERC20", next)), {
+      loadCatalog: async (entry) => {
+        loads.push(entry.id);
+        return { ok: true, value: next };
+      },
+    });
+    expect(opened.ok).toBe(true);
+    expect(loads).toEqual(["fixture-next"]);
+    expect(doc.get().recipe.catalog.hash).toBe(next.hash);
+    expect(session.get().readOnly).toBeNull();
+  });
+
   test("a link opened while the catalog loads waits for it", async () => {
     await renderWithStudio(<Studio />, { catalog: null });
     const opening = openShareLink(linkOf(template("ERC20")));
