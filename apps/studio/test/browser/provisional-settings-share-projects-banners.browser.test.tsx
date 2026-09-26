@@ -68,9 +68,14 @@ describe("provisional: share, over 2,000 characters", () => {
     const dialog = page.getByRole("dialog", { name: "Share" });
     await expect.element(dialog.getByRole("button", { name: "Save a file instead" })).toHaveFocus();
     await document.fonts.ready;
+    // The character count moves with anything that changes what the link encodes (the project's name in the
+    // recipe, the catalog hash, ...), which isn't this baseline's concern; mask it so the count's own width
+    // can't shift the rest of the dialog's layout in the comparison.
+    const count = dialog.getByText(/^This link is [\d,]+ characters,/, { exact: false });
+    await expect.element(count).toBeVisible();
     await expect
       .element(page.elementLocator(dialog.element() as HTMLElement))
-      .toMatchScreenshot("provisional-share-over-length-shop");
+      .toMatchScreenshot("provisional-share-over-length-shop", { screenshotOptions: { mask: [count] } });
   });
 });
 
