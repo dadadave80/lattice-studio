@@ -12,7 +12,7 @@ import type { Arg } from "../model/recipe";
 import { canonicalJson } from "../canonical/json";
 import { judgeArg } from "../init/plan/fields";
 import { AUTO_STEP_PATH, planInit, predecessors } from "../init/plan/plan";
-import { argAt, findSpec, leaves, mainModule, modulesOf } from "../init/plan/specs";
+import { argAt, facetModule, findSpec, leaves, mainModule, modulesOf } from "../init/plan/specs";
 
 /** Known consequences of a module left uninitialized, for INIT-04's message (spec L330). */
 const CONSEQUENCES: Readonly<Record<string, string>> = { ERC20: "`name()` and `symbol()` would be empty" };
@@ -231,14 +231,24 @@ function init04(input: CheckInput, steps: readonly PlannedStep[]): Problem[] {
     if (!placed.has(facet.name) || facet.init === undefined) continue;
     const spec = findSpec(catalog, facet.init);
     if (!spec || planned.has(spec.name)) continue;
-    const module = mainModule(spec);
+    // The facet's own module, not the init's last one: ERC20VotesInit ends with AccessControl even though
+    // ERC20Votes is its own module (FX23).
+    const module = facetModule(facet.name, spec);
     if (initialized.has(module) || reported.has(module)) continue;
     reported.add(module);
     const params: ProblemParams["INIT-04"] = { module, spec: spec.name, facet: facet.name };
     const consequence = CONSEQUENCES[module];
     if (consequence) params.consequence = consequence;
+    // A bundle can't join an init plan that already has steps, or replace another bundle (`addInitStep`
+    // refuses both): offer a step init for the module instead when the catalog has one, or no fix at all,
+    // the way the sameCall case with no step init does (FX23; ruling 2026-09-23).
+    const hasExistingPlan = recipe.init.kind === "bundle" || (recipe.init.kind === "steps" && recipe.init.steps.length > 0);
+    const blocked = spec.kind === "bundle" && hasExistingPlan;
+    const add = blocked ? specFor(module, catalog) : spec;
+    if (blocked) params.spec = add?.name ?? "";
+    const fixes: CommandRef[] = add ? [{ id: "init.addStep", args: { spec: add.name } }] : [];
     const where: Anchor[] = [{ kind: "facet", facet: facet.name }];
-    out.push(problem("INIT-04", where, params, [{ id: "init.addStep", args: { spec: spec.name } }], { id: problemId("INIT-04", module) }));
+    out.push(problem("INIT-04", where, params, fixes, { id: problemId("INIT-04", module) }));
   }
   for (const { view, spec } of steps) {
     for (const module of spec.sameCall) {
