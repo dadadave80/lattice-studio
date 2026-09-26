@@ -34,8 +34,8 @@ export async function renderInteractSheet(options: StudioOptions = {}) {
   onCleanup(installShortcuts());
   const screen = await renderWithStudio(<SheetRegion />, { ...options, settings: { reduceMotion: "on", ...options.settings } });
   await settled();
-  // The interactions layer arrives in its own chunk.
-  await expect.poll(() => document.querySelector('[data-tour="place-facet"]')).not.toBeNull();
+  // The interactions layer arrives in its own chunk: a cold one takes longer under a full parallel run.
+  await expect.poll(() => document.querySelector('[data-tour="place-facet"]'), { timeout: 10_000 }).not.toBeNull();
   // Its listeners attach in effects, after the first paint.
   await frame();
   await frame();
