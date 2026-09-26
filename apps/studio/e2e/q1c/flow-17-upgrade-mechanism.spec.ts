@@ -15,12 +15,9 @@
  * - `recipeProject("Blank diamond")` as it actually loads (current: Admin role) for the Governance-disabled and
  *   Safe-path tests, where the starting mechanism doesn't matter.
  *
- * Environment workarounds this file relies on (see `flow-09-undo-redo.spec.ts`'s header and the WP-Q1c report's
- * Follow-ups): `pages/palette-page.ts`'s `runInPalette` (the working ⌘/Ctrl+K chord) and `pages/mod-key.ts`. This
- * file also can't use `_support/wallet.ts`'s `connectMockWallet` as it stands: it calls `_support/keys.ts`'s
- * `runConsole` and `runInPalette`, the same broken ⌘/Ctrl+K helpers flow-09 works around, so `connectWallet`
- * below reimplements its three steps (chain, connect, switch) with this file's fixed page objects instead. See
- * the WP-Q1c report's Follow-ups.
+ * `pages/palette-page.ts`'s `runInPalette` is used throughout to open the dialog and drive the palette (FX26
+ * fixed the kit's own `openPalette`'s modifier chord; this file's version additionally waits for the palette to
+ * actually finish closing between two commands run back to back, still needed for chained calls).
  */
 import type { Page } from "@playwright/test";
 import { blankDiamond, formatAddress, planMechanismChange } from "@lattice-studio/core";
@@ -30,8 +27,8 @@ import { catalog as builtCatalog } from "../_support/catalog.ts";
 import { projectFor, recipeProject } from "../_support/projects.ts";
 import { seedProject } from "../_support/seed.ts";
 import { NARROW_WIDTHS, viewportAt } from "../_support/viewports.ts";
-import { MOCK_ACCOUNT, shortAddress } from "../_support/wallet.ts";
-import { consoleLog, runConsoleCommand } from "./pages/console-page.ts";
+import { connectMockWallet } from "../_support/wallet.ts";
+import { consoleLog } from "./pages/console-page.ts";
 import { MechanismDialogPage } from "./pages/mechanism-dialog-page.ts";
 import { runInPalette } from "./pages/palette-page.ts";
 import { SheetPage } from "./pages/sheet-page.ts";
@@ -57,19 +54,6 @@ async function expectDialogClosed(page: Page): Promise<void> {
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * `_support/wallet.ts`'s `connectMockWallet`, reimplemented with this file's fixed console and palette helpers
- * (see the file header): selects Anvil, connects the mock wallet and switches it there, keyboard only.
- */
-async function connectWallet(page: Page): Promise<void> {
-  const log = page.getByRole("log");
-  await runConsoleCommand(page, "chain anvil");
-  await runInPalette(page, "Connect wallet");
-  await expect(log.getByText(`Connected ${shortAddress(MOCK_ACCOUNT)}`, { exact: false })).toBeVisible();
-  await runInPalette(page, "Switch network");
-  await expect(log.getByText("Switched your wallet to Anvil.", { exact: false })).toBeVisible();
 }
 
 test("opens from the palette with the current option focused, and previews a choice before applying it", async ({ page }) => {
@@ -177,7 +161,7 @@ test("the Safe path: INIT-01's chain check flags a non-Safe address and clears f
 }) => {
   expect(await anvil.client.getChainId()).toBe(31337);
   await seedProject(page, { project: recipeProject("Blank diamond") });
-  await connectWallet(page);
+  await connectMockWallet(page);
 
   // Opening plainly and choosing Safe, rather than through AUTH-01's "Use a Safe…" preset: that preset is a
   // problem fix (`checks/auth.ts`), surfaced only while AUTH-01 is active, which this project doesn't need.

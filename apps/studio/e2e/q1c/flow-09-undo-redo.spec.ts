@@ -17,20 +17,19 @@
  * so the "Placed ERC4626" step is undone back onto a snapshot whose selection is "ERC20" (S1's
  * `document-store.ts`, confirmed against `state/commands.test.ts`'s `undoLabel` assertions).
  *
- * Two environment issues this file works around locally rather than depending on (see the WP-Q1c report's
- * Follow-ups):
- * - `_support/keys.ts`'s `MOD` ("ControlOrMeta") doesn't fire as a `page.keyboard.press` chord on this
- *   Playwright build; `pages/mod-key.ts` presses the platform's real modifier instead.
- * - Its `runConsole` and `openPalette` inherit that (and `runConsole`'s Tab-hunt undercounts once the Log
- *   holds more than a couple of lines); `pages/console-page.ts` and `pages/palette-page.ts` are this file's
- *   fixed equivalents.
+ * `⌘/Ctrl+Z` uses `_support/keys.ts`'s `modifierKey(page)` (FX26), which reads the chord from the page's own
+ * platform rather than the test host's (`MOD`'s old "ControlOrMeta" pressed ⌘ on a macOS host even against a
+ * Desktop Chrome project reporting Windows, where Studio binds Ctrl). `pages/console-page.ts` and
+ * `pages/palette-page.ts` build on FX26's fixed `runConsole`/`openPalette` too, adding only what's still
+ * genuinely this WP's: reaching the console at narrow layout tiers, and waiting for the palette to actually
+ * finish closing between two commands run back to back.
  */
 import type { Page } from "@playwright/test";
 import { expect, test } from "../_support/fixtures.ts";
+import { modifierKey } from "../_support/keys.ts";
 import { openEmpty } from "../_support/seed.ts";
 import { NARROW_WIDTHS, tierAt, viewportAt } from "../_support/viewports.ts";
 import { consoleLog, runConsoleCommand } from "./pages/console-page.ts";
-import { pressMod } from "./pages/mod-key.ts";
 import { openPalette, runInPalette } from "./pages/palette-page.ts";
 import { SheetPage } from "./pages/sheet-page.ts";
 import { TitleBarPage } from "./pages/title-bar-page.ts";
@@ -101,10 +100,11 @@ test("the same flow, keyboard only (no pointer events after the page loads)", as
   await placeTwoFacetsViaPalette(page);
   await expect(sheet.card("ERC4626")).toBeVisible();
 
-  await pressMod(page, "z");
+  const mod = await modifierKey(page);
+  await page.keyboard.press(`${mod}+z`);
   await expectUndone(sheet, page);
 
-  await pressMod(page, "Shift+z");
+  await page.keyboard.press(`${mod}+Shift+z`);
   await expectRedone(sheet, page);
 });
 
