@@ -547,4 +547,83 @@ describe("locate, Back to content, minimap, auto-pan", () => {
     const row = pin.getBoundingClientRect();
     expect(Math.abs(row.top + row.height / 2 - sheet.top - SHEET_HEIGHT / 2)).toBeLessThan(4);
   });
+
+  test("a card squeezed between two floats on the same side doesn't get walked back and forth between them (2.4.11)", async () => {
+    // clearOf clears one float at a time by whichever direction is shortest for that float alone: pushing down
+    // clear of a tall one above can walk the card into a short one below it, and pushing back up to clear that
+    // undoes most of the first fix, leaving it still covered by the tall one (the gap between the two is
+    // shorter than the card, but there's room to the right of both). ensureVisible has to find that instead.
+    const catalog = fixtureCatalog();
+    const name = "ERC4626";
+    const project = cardProject(catalog, [name], { expanded: [name] });
+    await renderSheet({ project });
+    // A zoom the tool strip and zoom readout never take on their own, so the card's expanded height (spec
+    // L824's token-computed size) lands in the narrow band that only clears one of the two floats at a time.
+    await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.75 } }, "palette");
+    expect(await focusCard(name)).toBe(true);
+    await drawn();
+    const entry = project.layout[name];
+    if (!entry) throw new Error("no entry");
+
+    const top = document.createElement("div");
+    top.dataset.sheetFloat = "";
+    Object.assign(top.style, { position: "absolute", left: "16px", top: "16px", width: "38px", height: "297px" });
+    const bottom = document.createElement("div");
+    bottom.dataset.sheetFloat = "";
+    Object.assign(bottom.style, { position: "absolute", left: "16px", top: "660px", width: "50px", height: "24px" });
+    flowElement().append(top, bottom);
+    onCleanup(() => {
+      top.remove();
+      bottom.remove();
+    });
+
+    // The card starts overlapping only the top float, off to the left.
+    session.set((s) => ({ viewports: { ...s.viewports, [project.id]: { x: -50 - entry.x * 0.75, y: 278 - entry.y * 0.75, zoom: 0.75 } } }));
+    await expect.poll(() => cardScreenRect(name).x).toBeCloseTo(-50, 0);
+
+    function overlapArea(a: DOMRect, b: DOMRect): number {
+      const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      return w > 0 && h > 0 ? w * h : 0;
+    }
+
+    expect(ensureVisible(name)).toBe(true);
+    await expect.poll(() => {
+      const r = cardScreenRect(name);
+      const sheet = flowElement().getBoundingClientRect();
+      const rel = (b: DOMRect) => new DOMRect(b.left - sheet.left, b.top - sheet.top, b.width, b.height);
+      const floats = [rel(top.getBoundingClientRect()), rel(bottom.getBoundingClientRect())];
+      return floats.reduce((sum, f) => sum + overlapArea(r, f), 0);
+    }).toBe(0);
+  });
+
+  test("at 200%, every card auto-pan lands clear of the real tool strip, zoom readout and title block (2.4.11)", async () => {
+    const catalog = fixtureCatalog();
+    const facets = catalog.facets.map((f) => f.name);
+    const project = cardProject(catalog, facets, { columns: 5, rowPitch: 500, expanded: facets });
+    await renderSheet({ project });
+    await expect.poll(() => document.querySelector('[data-chrome="zoom-readout"]'), { timeout: 5000 }).not.toBeNull();
+    await runCommand({ id: "sheet.zoomTo", args: { zoom: 2 } }, "palette");
+    await drawn();
+
+    function overlapArea(a: DOMRect, b: DOMRect): number {
+      const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      return w > 0 && h > 0 ? w * h : 0;
+    }
+
+    const sheetBox = flowElement().getBoundingClientRect();
+    for (const name of facets) {
+      expect(await focusCard(name)).toBe(true);
+      await drawn();
+      const card = cardNode(name).getBoundingClientRect();
+      // A card taller or wider than the sheet can't be panned clear of everything (spec L771's own exception);
+      // only a card that fits is held to full clearance.
+      const fits = card.height <= sheetBox.height - 48 && card.width <= sheetBox.width - 48;
+      if (!fits) continue;
+      const floats = [...document.querySelectorAll(".react-flow__panel")].map((el) => el.getBoundingClientRect());
+      const covered = floats.reduce((sum, f) => sum + overlapArea(card, f), 0);
+      expect(covered, `${name}'s focused card lands under floating UI: ${JSON.stringify(card)}`).toBe(0);
+    }
+  });
 });
