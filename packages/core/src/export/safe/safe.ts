@@ -5,6 +5,7 @@ import { buildDiamondDeploy } from "../../deploy";
 import { plural } from "../../format";
 import { encodeInit } from "../../init/encode";
 import { planInit } from "../../init/plan";
+import { buildPlan } from "../../plan";
 import type { ExportSafeBatchFn } from "../../model/api";
 import type { Catalog } from "../../model/catalog";
 import type { DeployPath, Refs, Scope } from "../../model/chain";
@@ -135,6 +136,7 @@ export const exportSafeBatch: ExportSafeBatchFn = (args) => {
     to: toChecksum(tx.to),
     chainFactory: path === "factory" && own !== undefined && !sameAddress(own.address, catalog.factory.address),
     self,
+    omitted: buildPlan(recipe, catalog, analysis.routing).omitted,
     recipeHash: analysis.recipeHash,
     tag: plainText(catalog.lattice.tag, "unknown"),
     studioVersion: plainText(args.studioVersion, "unknown"),
@@ -172,6 +174,8 @@ type Described = {
   /** The call goes to a chain-specific LatticeFactory rather than the release one. */
   chainFactory: boolean;
   self: Address;
+  /** Placed facets that route no selector, so the call cuts no Add for them (spec L509, PA bug 2). */
+  omitted: readonly string[];
   recipeHash: Hex;
   tag: string;
   studioVersion: string;
@@ -199,6 +203,8 @@ function describe(d: Described): { name: string; description: string } {
   if (d.chainFactory && d.scope === "every-chain") {
     lines.push(`${d.to} is ${chainShort}'s own LatticeFactory: on another chain that address may have no code, and the call would do nothing.`);
   }
+  // The agent brief's words for the same facets (export/docs/brief.ts).
+  if (d.omitted.length > 0) lines.push(`Placed but routes nothing, so no Add is cut for it: ${d.omitted.join(", ")}.`);
   lines.push(`Leaves out deploying missing shared contracts: use Deploy missing contracts… in Studio, or Lattice's DeployRelease at ${d.tag}, which any account may run.`);
   return { name, description: lines.join("\n") };
 }
