@@ -140,7 +140,7 @@ describe("an address and its ENS label (spec L462)", () => {
   test("a resolved name lands with its address in one edit", () => {
     const result = setAddressOp(catalog, "steps[0].safe", SAFE, "safe.eth", "Safe")(safeCut({}));
     expect(result.changed).toBe(true);
-    expect(result.summary).toBe("Set Safe to safe.eth (0x71C7…976F)");
+    expect(result.summary).toBe("Set Safe to safe.eth");
     expect(safeOf(result.project)).toBe(SAFE);
     expect(result.project.labels).toEqual({ "steps[0].safe": "safe.eth" });
   });
@@ -159,7 +159,7 @@ describe("an address and its ENS label (spec L462)", () => {
   test("a name for the address already stored adds only the label; the same name again is a no-op that says why", () => {
     const project = safeCut({ safe: SAFE });
     const labeled = setAddressOp(catalog, "steps[0].safe", SAFE, "safe.eth", "Safe")(project);
-    expect(labeled).toMatchObject({ changed: true, summary: "Set Safe to safe.eth (0x71C7…976F)" });
+    expect(labeled).toMatchObject({ changed: true, summary: "Set Safe to safe.eth" });
     expect(labeled.project.recipe).toBe(project.recipe);
     expect(labeled.project.labels).toEqual({ "steps[0].safe": "safe.eth" });
     const again = setAddressOp(catalog, "steps[0].safe", SAFE, "safe.eth", "Safe")(labeled.project);

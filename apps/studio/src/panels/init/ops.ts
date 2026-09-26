@@ -45,9 +45,9 @@ function withLabels(project: Project, labels: Readonly<Record<string, string>>):
   return Object.keys(labels).length > 0 ? { ...rest, labels: { ...labels } } : rest;
 }
 
-/** An address with the ENS name it came from, as the console writes it: "safe.eth (0x71C7…976F)". */
+/** An address with the ENS name it came from, as the console writes it (spec L683: the ENS name first when known). */
 export function labeledAddress(name: string, address: Address): string {
-  return `${name} (${formatAddress(address)})`;
+  return formatAddress(address, { ens: name });
 }
 
 /**

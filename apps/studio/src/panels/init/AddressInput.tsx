@@ -30,7 +30,7 @@ function spokenValue(value: Arg): string {
   return isAddress(value) ? formatAddress(value) : displayText(value);
 }
 
-/** Commits `value` and its label (or none) as one undo step, saying "Set Safe to safe.eth (0x71C7…976F)." */
+/** Commits `value` and its label (or none) as one undo step, saying "Set Safe to safe.eth." (spec L683). */
 function commitLabeled(catalog: Catalog, field: FieldModel, value: Arg, name: string | null): void {
   const said = name !== null && isAddress(value) ? labeledAddress(name, toChecksum(value)) : spokenValue(value);
   edit(setAddressOp(catalog, field.path, value, name, field.label), {

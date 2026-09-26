@@ -302,7 +302,7 @@ describe("field types (spec L461-L466)", () => {
     await page.getByRole("textbox", { name: "Safe", exact: true }).fill("safe.eth");
     await userEvent.keyboard("{Enter}");
     await expect.element(page.getByText(`safe.eth (${SAFE})`)).toBeVisible();
-    expect(logged("Set Safe to safe.eth (0x71C7…976F).")).toBe(true);
+    expect(logged("Set Safe to safe.eth.")).toBe(true);
     session.set({ chainId: 84532 });
     await expect.poll(() => page.getByText(`safe.eth (${SAFE})`).elements().length).toBe(0);
     // Choosing a chain is never an undo step (spec L492), so it doesn't edit the project: the name stays stored.
@@ -374,8 +374,8 @@ describe("field types (spec L461-L466)", () => {
     await page.getByRole("textbox", { name: "Safe", exact: true }).fill("safe.eth");
     await userEvent.keyboard("{Enter}");
     await expect.element(page.getByText(`safe.eth (${SAFE})`)).toBeVisible();
-    expect(doc.state().undoLabel).toBe("Set Safe to safe.eth (0x71C7…976F)");
-    expect(history.undo()).toBe("Set Safe to safe.eth (0x71C7…976F)");
+    expect(doc.state().undoLabel).toBe("Set Safe to safe.eth");
+    expect(history.undo()).toBe("Set Safe to safe.eth");
     expect(history.canUndo).toBe(false);
     expect(argAt(doc.get(), "steps[0].safe")).toBeUndefined();
     await expect.poll(() => page.getByText(`safe.eth (${SAFE})`).elements().length).toBe(0);
