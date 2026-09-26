@@ -10,13 +10,16 @@ import {
 
 const OK: Enablement = { ok: true };
 
+/** Spec L362's state; `navigate.ts` says the same when the problems go while F8 runs. */
+export const NO_PROBLEMS = "No problems";
+
 /** F8 and ⇧F8 work everywhere (IR L17) but inside a dialog or the palette, which keep their own focus. */
 const EVERYWHERE_BUT_MODALS: KeyContext[] = KEY_CONTEXTS.filter((c) => c !== "dialog" && c !== "palette");
 
 const navigate = () => import("./lazy");
 
 function anyProblem(ctx: CommandContext): Enablement {
-  return ctx.analysis.problems.length > 0 ? OK : { ok: false, reason: "No problems" };
+  return ctx.analysis.problems.length > 0 ? OK : { ok: false, reason: NO_PROBLEMS };
 }
 
 function isHex4(value: unknown): value is Hex4 {

@@ -38,6 +38,13 @@ function cardElement(card: string | undefined): HTMLElement | null {
   return document.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(card)}"]`);
 }
 
+/** Whether all of `el` shows inside the sheet. */
+function inView(el: HTMLElement): boolean {
+  const sheet = el.closest(".react-flow")?.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return !!sheet && r.left >= sheet.left && r.top >= sheet.top && r.right <= sheet.right && r.bottom <= sheet.bottom;
+}
+
 /** Pans the note, with its card when both fit, clear of everything floating over the sheet. */
 function reveal(note: HTMLElement, frame: HTMLElement | null): void {
   const size = sheetSize();
@@ -160,7 +167,9 @@ export const Note = memo(function Note({ note, rect, frame, fixes, card, leaving
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
-    const focused = () => {
+    const focused = (event: FocusEvent) => {
+      // Tabbed onto from outside while panned out of view: bring it in, so focus is never on a clipped note.
+      if (!(event.relatedTarget instanceof Node && el.contains(event.relatedTarget)) && !inView(el)) ensureElementVisible(el);
       const cursor = problemCursor();
       const [first] = problemIds;
       if (first !== undefined && (cursor === null || !problemIds.includes(cursor.id))) setProblemCursor(first);

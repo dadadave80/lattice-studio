@@ -13,6 +13,7 @@ import { installShortcuts } from "@/commands/keys/dispatcher";
 import { DialogHost } from "@/ui/overlays/DialogHost";
 import { fixtureCatalog, onCleanup, overrideCommands } from "../../../test/harness";
 import { cardProject } from "../card/testing/projects";
+import { panSheet } from "../canvas";
 import { renderSheet } from "../canvas/testing/sheet-harness";
 import { problemCursor, resetProblemCursor } from "./navigate";
 import { clearNoteFocus } from "./note-focus";
@@ -228,6 +229,28 @@ describe("traces and ties (IR L106-L107)", () => {
     expect(trace()?.hasAttribute("data-live")).toBe(true);
     session.set({ selection: [] });
     await expect.poll(label).toBeNull();
+    // Keyboard focus on an end, with nothing selected, shows it too (IR L106: "on hover or focus").
+    const node = document.querySelector<HTMLElement>(".react-flow__node[data-id='ERC4626']") as HTMLElement;
+    node.focus();
+    await expect.poll(() => label()?.textContent).toBe("needs ERC4626");
+    expect(session.get().selection).toEqual([]);
+    node.blur();
+    await expect.poll(label).toBeNull();
+  });
+
+  test("below 75% zoom, pointing at a trace shows its reason", async () => {
+    await sheet(project(["VaultCore", "ERC4626"], { columns: 2 }));
+    const id = "needs:VaultCore:ERC4626";
+    const label = () => document.querySelector(`[data-trace-label='${id}']`);
+    await expect.poll(() => document.querySelector(`g[data-edge='${id}']`), { timeout: 8000 }).not.toBeNull();
+    await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.5 } }, "api");
+    await expect.poll(label).toBeNull();
+    const hit = document.querySelector<SVGPathElement>(`g[data-edge='${id}'] path:first-child`) as SVGPathElement;
+    // The real pointer, at the middle of the trace: the hit stroke takes it though its wrapper doesn't.
+    await userEvent.hover(hit);
+    await expect.poll(() => label()?.textContent).toBe("needs ERC4626");
+    await userEvent.unhover(hit);
+    await expect.poll(label).toBeNull();
   });
 
   test("ties are 2 px accent, dashed in forced colors", async () => {
@@ -399,6 +422,27 @@ describe("resolve fades the note (spec L438, L784)", () => {
     expect(document.querySelector("[data-note-kind='collision'][data-leaving]")?.hasAttribute("inert")).toBe(true);
     expect(document.activeElement?.closest(".react-flow__node")?.getAttribute("data-id")).toBe(AXELAR);
     await expect.poll(() => document.querySelector("[data-note-kind='collision']")).toBeNull();
+  });
+});
+
+describe("a note out of view (2.4.11)", () => {
+  test("Tab onto a note panned off-screen brings it into the sheet", async () => {
+    await sheet(project([AXELAR, HYPERLANE]));
+    const el = await waitForNote("collision");
+    const sheetBox = () => (document.querySelector(".react-flow") as HTMLElement).getBoundingClientRect();
+    // Pan the note well past the sheet's left edge.
+    panSheet(-(el.getBoundingClientRect().right - sheetBox().left) - 400, 0);
+    await expect.poll(() => el.getBoundingClientRect().right < sheetBox().left).toBe(true);
+    // Tab from the card grid's stop onto the note, as a person would.
+    const start = [...document.querySelectorAll<HTMLElement>(".react-flow__node[data-id]")].find((c) => c.tabIndex === 0) as HTMLElement;
+    start.focus({ preventScroll: true });
+    for (let i = 0; i < 10 && document.activeElement !== el; i++) await userEvent.tab();
+    expect(document.activeElement).toBe(el);
+    await expect.poll(() => {
+      const r = el.getBoundingClientRect();
+      const s = sheetBox();
+      return r.left >= s.left && r.right <= s.right && r.top >= s.top && r.bottom <= s.bottom;
+    }).toBe(true);
   });
 });
 

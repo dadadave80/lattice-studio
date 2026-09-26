@@ -1,10 +1,11 @@
 import type { NotePlacement } from "@lattice-studio/core";
-import { useStore, useStoreApi } from "@xyflow/react";
+import { useReactFlow, useStore, useStoreApi } from "@xyflow/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { doc, getAnalysis, getCatalog, layoutMetrics, subscribeAnalysis, subscribeCatalog } from "@/contracts";
 import { reducedMotion, useReducedMotion } from "@/a11y/preferences";
 import type { SheetEdge } from "./edge-data";
 import { Note } from "./Note";
+import { trackFocusedCard } from "./focused-card";
 import { computeOverlay, type NoteEntry } from "./overlay-model";
 import { reuse } from "./stable";
 import styles from "./Note.module.css";
@@ -42,6 +43,8 @@ const NOTHING: Drawn = { edges: [], entries: [], leaving: [] };
  */
 export function OverlayLayer() {
   const store = useStoreApi();
+  const { setEdges } = useReactFlow();
+  const root = useStore((s) => s.domNode);
   const reduced = useReducedMotion();
   const [drawn, setDrawn] = useState<Drawn>(NOTHING);
   const heights = useRef<Readonly<Record<string, number>>>({});
@@ -57,6 +60,11 @@ export function OverlayLayer() {
         layout: project.layout, recipe: project.recipe, catalog: getCatalog(), analysis: getAnalysis(), compact,
         heights: heights.current,
       });
+      // Resolved notes' heights go with them.
+      const live = new Set(next.entries.map((e) => e.note.id));
+      if (Object.keys(heights.current).some((id) => !live.has(id))) {
+        heights.current = Object.fromEntries(Object.entries(heights.current).filter(([id]) => live.has(id)));
+      }
       setDrawn((d) => {
         const edges = reuse(d.edges, next.edges);
         const entries = reuse(d.entries, next.entries);
@@ -92,11 +100,12 @@ export function OverlayLayer() {
     };
   }, [store]);
 
-  // The sheet passes neither `edges` nor `defaultEdges`, and without either React Flow's `setEdges` drops the
-  // update. Setting them as default edges (what the `defaultEdges` prop does) makes them React Flow's own.
   useEffect(() => {
-    store.getState().setDefaultNodesAndEdges(undefined, drawn.edges);
-  }, [drawn.edges, store]);
+    setEdges(drawn.edges);
+  }, [drawn.edges, setEdges]);
+
+  // Which card has keyboard focus, for the traces' reasons below 75% zoom.
+  useEffect(() => (root ? trackFocusedCard(root) : undefined), [root]);
 
   // A note whose measured height is off by more than a grid step asks to be placed again.
   const onHeight = useMemo(

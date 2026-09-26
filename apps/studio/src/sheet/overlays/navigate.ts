@@ -13,14 +13,13 @@ import {
   announce, doc, getAnalysis, getCatalog, log, runCommand, session, type CommandSource,
 } from "@/contracts";
 import { ensureVisible } from "@/sheet/canvas";
+import { NO_PROBLEMS } from "./commands";
 import { anchorFacets, buildNotes, noteOf } from "./note-model";
 import { requestNoteFocus } from "./note-focus";
 import { stepProblem, type ProblemCursor } from "./problem-order";
 
 const SEVERITY_WORD = { blocker: "Blocker", warning: "Warning", info: "Info" } as const;
 
-/** "No problems." (spec L362's state, as a sentence). */
-export const NO_PROBLEMS = "No problems.";
 export const NO_COLLISIONS = "No selector collisions to resolve.";
 export const PROBLEM_GONE = "This problem no longer applies.";
 
@@ -47,6 +46,11 @@ function say(text: string): void {
   announce(text);
 }
 
+/** "Blocker: …": the problem as the status region reads it. */
+function spoken(problem: Problem): string {
+  return `${SEVERITY_WORD[problem.severity]}: ${problem.message}`;
+}
+
 function initAnchor(problem: Problem): Extract<Anchor, { kind: "init" }> | undefined {
   return problem.where.find((a): a is Extract<Anchor, { kind: "init" }> => a.kind === "init");
 }
@@ -67,7 +71,7 @@ export function focusProblem(problemId: string, options: { open?: boolean; sourc
   }
   setProblemCursor(problem.id);
   // Typed in the console (`next`), the answer is a line there too (IR L153).
-  if (options.source === "console") log({ tag: "Note", text: `${SEVERITY_WORD[problem.severity]}: ${problem.message}` });
+  if (options.source === "console") log({ tag: "Note", text: spoken(problem) });
   const placed = doc.get().recipe.facets;
   const note = noteOf(buildNotes(getAnalysis(), getCatalog()), problem.id);
   const card = [...(note?.facets ?? []), ...anchorFacets(problem)].find((facet) => placed.includes(facet));
@@ -91,11 +95,12 @@ export function focusProblem(problemId: string, options: { open?: boolean; sourc
     const element = nodeElement(card);
     if (element) {
       element.focus({ preventScroll: true });
+      announce(spoken(problem));
       return true;
     }
   }
   // Nothing on the sheet to focus: the inspector shows it, and the status region reads it; focus stays put.
-  announce(`${SEVERITY_WORD[problem.severity]}: ${problem.message}`);
+  announce(spoken(problem));
   return true;
 }
 
