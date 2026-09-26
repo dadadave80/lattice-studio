@@ -17,12 +17,13 @@ export type KnownGap = {
 
 /**
  * Deploy review never renders, so the states and dialogs behind it can't be reached: the tests that need it are
- * `fixme` with this reason. Owner S8a · apps/studio/src/chain/infra/service.ts L472 (or S8b's `useConnectors`).
+ * `fixme` with this reason. Owners S8b · apps/studio/src/chain/review and S8a · apps/studio/src/chain/infra.
  */
 export const DEPLOY_REVIEW_CRASH =
-  "Deploy review throws React #185 on open (\"The result of getSnapshot should be cached\" in ReviewDialog): " +
-  "ChainService.connectors() returns a new array per call before the wallet loads (src/chain/infra/service.ts L472), " +
-  "which useConnectors (src/chain/review/use-review.ts) passes to useSyncExternalStore; the dialog never renders";
+  "Deploy review throws React #185 on open (\"The result of getSnapshot should be cached\" in <ReviewDialog>), with " +
+  "no chain, with Anvil selected and with the mock wallet connected, so the dialog never renders. One fresh snapshot " +
+  "source: ChainService.connectors() builds a new array per call while no wallet is loaded " +
+  "(src/chain/infra/service.ts L472); every getSnapshot in src/chain/review/use-review.ts and review-state.ts needs auditing";
 
 export const KNOWN_GAPS: readonly KnownGap[] = [
   {
@@ -31,7 +32,9 @@ export const KNOWN_GAPS: readonly KnownGap[] = [
     rule: "spec L770 · WCAG 2.5.8 target size: a note's buttons (Keep …, Route to …, Choose per selector…, the owner menu) shrink with the sheet's zoom, to 7-18 px tall at the 30% a fit of 30 cards gives",
     matches: (finding) =>
       finding.includes("target-size ") &&
-      /data-variant="secondary" data-trigger-disabled="">(Keep |Route to |Choose per selector…| — )/.test(finding),
+      (/data-variant="secondary" data-trigger-disabled="">(Keep |Route to |Choose per selector…)/.test(finding) ||
+        // The owner menu's trigger ("Owner: …"), whose text the snippet cuts off.
+        finding.includes('<button type="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" data-variant="secondary" data-trigger-disabled="">')),
   },
   {
     id: "zoom-readout-covers-focused-card",
