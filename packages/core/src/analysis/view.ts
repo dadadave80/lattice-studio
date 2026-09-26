@@ -2,6 +2,14 @@
  * What routing and the selector checks read from a recipe, computed the same way for both: the placed facets
  * in catalog order, each exported selector's contenders, owners and exclusions keyed lowercase, and the seam
  * that applies to a selector. Internal to C2 (not exported from the analysis barrel).
+ *
+ * One analysis builds the view once, however many of routing, the checks and the stats ask for it (spec L301:
+ * under 5 ms for 30 facets). Two memos make that so, both keyed by object identity, so nothing here reads a
+ * clock or hashes anything:
+ * - per catalog, the lookups every view needs (positions, signatures, seams by selector);
+ * - per recipe, the view itself, but only for a recipe whose `facets`, `owners` and `exclude` are frozen (as
+ *   `analyze` freezes its normalized copy's). A recipe someone can still edit in place always gets a new view.
+ * Catalogs are values: nothing in core edits one after loading it.
  */
 import type { Catalog, Facet, Seam } from "../model/catalog";
 import type { Hex4 } from "../model/hex";
@@ -26,36 +34,105 @@ export type RecipeView = {
   exclude: ReadonlySet<Hex4>;
   /** Catalog position of each facet, for ordering. */
   index: ReadonlyMap<string, number>;
+  /** The active seam for each selector that has one (see `activeSeam`), keys sorted. */
+  seams: ReadonlyMap<Hex4, Seam>;
+  /** `placed` by name (the first, should a name repeat). */
+  byName: ReadonlyMap<string, Facet>;
   catalog: Catalog;
 };
 
-/** The view of `recipe` against `catalog`. Cheap (one pass over the placed facets), so never cached. */
+/** What every view of one catalog shares, built in one pass over it. */
+type CatalogIndex = {
+  index: ReadonlyMap<string, number>;
+  /** Selector (lowercase) → its signature on the first facet in catalog order that exports it. */
+  signatures: ReadonlyMap<Hex4, string>;
+  /** Selector (lowercase) → its seams, in catalog order. */
+  seams: ReadonlyMap<Hex4, readonly Seam[]>;
+};
+
+const catalogIndexes = new WeakMap<Catalog, CatalogIndex>();
+const views = new WeakMap<Recipe, { catalog: Catalog; view: RecipeView }>();
+
+function catalogIndex(catalog: Catalog): CatalogIndex {
+  const known = catalogIndexes.get(catalog);
+  if (known !== undefined) return known;
+  const index = new Map<string, number>();
+  const signatures = new Map<Hex4, string>();
+  catalog.facets.forEach((facet, at) => {
+    index.set(facet.name, at);
+    for (const { hex, signature } of facet.selectors) {
+      const selector = hex.toLowerCase() as Hex4;
+      if (!signatures.has(selector)) signatures.set(selector, signature);
+    }
+  });
+  const seams = new Map<Hex4, Seam[]>();
+  for (const seam of catalog.seams) {
+    const selector = seam.selector.toLowerCase() as Hex4;
+    const list = seams.get(selector);
+    if (list === undefined) seams.set(selector, [seam]);
+    else list.push(seam);
+  }
+  const built: CatalogIndex = { index, signatures, seams };
+  catalogIndexes.set(catalog, built);
+  return built;
+}
+
+/** Whether `recipe`'s view can be kept: nothing it reads can change in place. */
+function settled(recipe: Recipe): boolean {
+  return Object.isFrozen(recipe.facets) && Object.isFrozen(recipe.owners) && Object.isFrozen(recipe.exclude);
+}
+
+/** The view of `recipe` against `catalog`: kept for a settled recipe (see the module doc), built otherwise. */
 export function recipeView(recipe: Recipe, catalog: Catalog): RecipeView {
+  const keep = settled(recipe);
+  if (keep) {
+    const known = views.get(recipe);
+    if (known !== undefined && known.catalog === catalog) return known.view;
+  }
+  const view = buildView(recipe, catalog);
+  if (keep) views.set(recipe, { catalog, view });
+  return view;
+}
+
+function buildView(recipe: Recipe, catalog: Catalog): RecipeView {
+  const shared = catalogIndex(catalog);
   const wanted = new Set(recipe.facets);
   const placed = catalog.facets.filter((facet) => wanted.has(facet.name));
+  const placedNames = new Set(placed.map((facet) => facet.name));
+  const byName = new Map<string, Facet>();
+  for (const facet of placed) if (!byName.has(facet.name)) byName.set(facet.name, facet);
   const found = new Map<Hex4, string[]>();
   for (const facet of placed) {
     for (const { hex } of facet.selectors) {
       const selector = hex.toLowerCase() as Hex4;
       if (selector === EXPORT_SELECTORS) continue;
-      const list = found.get(selector) ?? [];
-      if (!list.includes(facet.name)) list.push(facet.name);
-      found.set(selector, list);
+      const list = found.get(selector);
+      if (list === undefined) found.set(selector, [facet.name]);
+      else if (!list.includes(facet.name)) list.push(facet.name);
     }
   }
-  const contenders = new Map([...found.keys()].sort().map((selector) => [selector, found.get(selector) ?? []] as const));
+  const contenders = new Map<Hex4, string[]>();
+  for (const selector of [...found.keys()].sort()) contenders.set(selector, found.get(selector) ?? []);
   const owners = new Map<Hex4, string>();
   for (const key of Object.keys(recipe.owners).sort()) {
     const owner = recipe.owners[key as Hex4];
     if (owner !== undefined) owners.set(key.toLowerCase() as Hex4, owner);
   }
+  // The first seam in catalog order whose `when` facets are all placed, per selector (spec L302).
+  const seams = new Map<Hex4, Seam>();
+  for (const selector of [...shared.seams.keys()].sort()) {
+    const active = shared.seams.get(selector)?.find((seam) => seam.when.every((name) => placedNames.has(name)));
+    if (active !== undefined) seams.set(selector, active);
+  }
   return {
     placed,
-    placedNames: new Set(placed.map((facet) => facet.name)),
+    placedNames,
     contenders,
     owners,
     exclude: new Set(recipe.exclude.map((selector) => selector.toLowerCase() as Hex4)),
-    index: new Map(catalog.facets.map((facet, at) => [facet.name, at])),
+    index: shared.index,
+    seams,
+    byName,
     catalog,
   };
 }
@@ -65,22 +142,12 @@ export function recipeView(recipe: Recipe, catalog: Catalog): RecipeView {
  * are all placed (spec L302). Undefined when none is active.
  */
 export function activeSeam(view: RecipeView, selector: Hex4): Seam | undefined {
-  return view.catalog.seams.find(
-    (seam) => seam.selector.toLowerCase() === selector && seam.when.every((name) => view.placedNames.has(name)),
-  );
+  return view.seams.get(selector);
 }
 
 /** The seams active on this sheet, one per selector (the first in catalog order), sorted by selector. */
 export function activeSeams(view: RecipeView): Seam[] {
-  const seen = new Set<string>();
-  const out: Seam[] = [];
-  for (const seam of view.catalog.seams) {
-    const selector = seam.selector.toLowerCase();
-    if (seen.has(selector) || !seam.when.every((name) => view.placedNames.has(name))) continue;
-    seen.add(selector);
-    out.push(seam);
-  }
-  return out.sort((a, b) => (a.selector.toLowerCase() < b.selector.toLowerCase() ? -1 : 1));
+  return [...view.seams.values()];
 }
 
 /** The facets of an active seam that can serve `selector` here: allowed, placed and exporting it, in `anyOf` order. */
@@ -92,11 +159,12 @@ export function allowedServers(view: RecipeView, seam: Seam, selector: Hex4): st
 /** A selector's signature from the first catalog facet that exports it; undefined when none does. */
 export function signatureOf(catalog: Catalog, selector: Hex4): string | undefined {
   if (selector === EXPORT_SELECTORS) return EXPORT_SELECTORS_SIGNATURE;
-  for (const facet of catalog.facets) {
-    const found = facet.selectors.find((s) => s.hex.toLowerCase() === selector);
-    if (found !== undefined) return found.signature;
-  }
-  return undefined;
+  return catalogIndex(catalog).signatures.get(selector);
+}
+
+/** Catalog position of each facet: the same map every view of `catalog` holds. */
+export function facetIndex(catalog: Catalog): ReadonlyMap<string, number> {
+  return catalogIndex(catalog).index;
 }
 
 /** Names sorted by catalog position; names the catalog lacks go last, by name. Duplicates dropped. */

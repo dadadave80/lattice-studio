@@ -1,5 +1,6 @@
 import type { SortProblemsFn } from "../model/api";
 import { type Anchor, PROBLEM_CODES, type Problem, type Severity } from "../model/problems";
+import { facetIndex } from "./view";
 
 const SEVERITY: Record<Severity, number> = { blocker: 0, warning: 1, info: 2 };
 const CODE = new Map(PROBLEM_CODES.map((code, at) => [code, at]));
@@ -11,7 +12,7 @@ const CODE = new Map(PROBLEM_CODES.map((code, at) => [code, at]));
  * the id, so no two problems ever tie and the order is the same everywhere.
  */
 export const sortProblems: SortProblemsFn = (problems, catalog) => {
-  const index = new Map(catalog.facets.map((facet, at) => [facet.name, at]));
+  const index = facetIndex(catalog);
   const facetRank = (p: Problem): number => {
     const name = p.where.map(facetOf).find((facet) => facet !== undefined);
     return name === undefined ? Number.POSITIVE_INFINITY : (index.get(name) ?? Number.MAX_SAFE_INTEGER);

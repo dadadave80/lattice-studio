@@ -76,7 +76,7 @@ function routeFixes(selector: Hex4, contenders: readonly string[]): CommandRef[]
 }
 
 function oneFamily(view: RecipeView, names: readonly string[]): boolean {
-  const families = names.map((name) => view.placed.find((facet) => facet.name === name)?.family);
+  const families = names.map((name) => view.byName.get(name)?.family);
   const first = families[0];
   return first !== undefined && families.every((family) => family === first);
 }

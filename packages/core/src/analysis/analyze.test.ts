@@ -5,7 +5,7 @@ import { planInit } from "../init/plan";
 import type { AnalysisContext, Check } from "../model/analysis";
 import type { Catalog } from "../model/catalog";
 import type { Hex4 } from "../model/hex";
-import { problem } from "../model/problems";
+import { type Problem, problem } from "../model/problems";
 import type { Recipe } from "../model/recipe";
 import { isNotImplemented, NotImplemented, notImplemented } from "../model/wp";
 import { blankDiamond } from "../plan";
@@ -37,6 +37,16 @@ function initBuilt(): boolean {
   }
 }
 const noInit = !initBuilt();
+
+/** Paths of every object reachable from `value` for which `pick(frozen)` holds. */
+function objectsWhere(value: unknown, pick: (isFrozen: boolean) => boolean, path = "$", seen = new Set<object>()): string[] {
+  if (value === null || typeof value !== "object" || seen.has(value)) return [];
+  seen.add(value);
+  const here = pick(Object.isFrozen(value)) ? [path] : [];
+  return here.concat(Object.entries(value).flatMap(([key, member]) => objectsWhere(member, pick, `${path}.${key}`, seen)));
+}
+const unfrozen = (value: unknown): string[] => objectsWhere(value, (isFrozen) => !isFrozen);
+const frozen = (value: unknown): string[] => objectsWhere(value, (isFrozen) => isFrozen);
 
 describe("analyze", () => {
   test.skipIf(fixture === null)("Axelar + Hyperlane: SEL-01 on 0xcdfe7f5c and 0xdc680a0f; owners resolve both via chosen", () => {
@@ -182,6 +192,41 @@ describe("memo and injected checks", () => {
     expect(analyze(recipe(), on).problems.map((p) => p.id)).toEqual(ids);
     expect(Object.isFrozen(on.facets)).toBe(false);
     expect(Object.isFrozen(on.seams)).toBe(false);
+  });
+
+  test.skipIf(fixture === null)("every object in the result is frozen, and nothing it was built from is", () => {
+    const on = fresh();
+    const input = noInit ? withoutInit("GovernedVault") : template("GovernedVault");
+    input.facets.push("ERC20Pausable");
+    const ctx: AnalysisContext = { known: [addr(1)], unconfirmed: [] };
+    const result = analyze(input, on, ctx);
+    expect(result.problems.length).toBeGreaterThan(0);
+    expect(result.plan.length).toBeGreaterThan(0);
+    expect(unfrozen(result)).toEqual([]);
+    expect(frozen(on)).toEqual([]);
+    expect(frozen(input)).toEqual([]);
+    expect(frozen(ctx)).toEqual([]);
+  });
+
+  test.skipIf(fixture === null)("a check's params that hold catalog, recipe or context arrays are copied as they're frozen", () => {
+    const on = fresh();
+    const ctx: AnalysisContext = { known: [addr(1)], unconfirmed: [] };
+    const borrowing: Check = (input) => [
+      problem("CORE-02", [{ kind: "diamond" }], {}, []),
+      {
+        ...problem("DEP-01", [{ kind: "facet", facet: "AxelarGatewayAdapter" }], { facet: "AxelarGatewayAdapter", anyOf: ["X"], reason: "r" }, []),
+        params: { facet: "AxelarGatewayAdapter", anyOf: input.catalog.facets[0]?.selectors ?? [], placed: input.recipe.facets, known: input.ctx.known, reason: "r" },
+      } as Problem,
+    ];
+    const result = analyze(recipe(), on, ctx, { checks: [borrowing] });
+    const params = result.problems.find((p) => p.code === "DEP-01")?.params as Record<string, unknown> | undefined;
+    expect(params?.["anyOf"]).toEqual(on.facets[0]?.selectors);
+    expect(params?.["anyOf"]).not.toBe(on.facets[0]?.selectors);
+    expect(params?.["placed"]).toEqual(ADAPTERS);
+    expect(params?.["known"]).toEqual(ctx.known);
+    expect(unfrozen(result)).toEqual([]);
+    expect(frozen(on)).toEqual([]);
+    expect(frozen(ctx)).toEqual([]);
   });
 
   test.skipIf(fixture === null)("injected checks replace the registry's, bypass the memo, and their problems come back sorted", () => {
