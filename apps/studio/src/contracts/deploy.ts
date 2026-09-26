@@ -21,6 +21,7 @@ export type DeployState = {
   phase: DeployPhase;
   /** The recipe hash the review opened with. */
   snapshot?: Hex;
+  /** The recipe differs from what was first reviewed (spec L562): stays until Sign or a fresh review (FX27). */
   changedSinceReview?: boolean;
   chainId?: number;
   address?: Address;
