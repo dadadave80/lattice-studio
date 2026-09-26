@@ -124,6 +124,8 @@ export function goOffline(): void {
 export type ReviewOptions = Omit<StudioOptions, "chain"> & {
   chain?: FakeChain;
   controller?: FakeController;
+  /** Serves this controller instead of a fake, built on first use (after the stores are seeded): S8c's real machine. */
+  loadController?: () => Promise<DeployController>;
   at?: "review" | "progress";
   /** The fee reader; default a fixed quote, `false` leaves the real one. */
   fees?: FeeReader | false;
@@ -137,13 +139,14 @@ export async function renderReview(options: ReviewOptions = {}) {
   const catalog = options.catalog === undefined ? deployableCatalog() : options.catalog;
   const chain = options.chain ?? fakeChainService({ account: account(), ...(catalog ? { catalog } : {}) });
   const controller = options.controller ?? fakeDeployController();
-  installController(controller);
+  if (options.loadController) onCleanup(provideDeployController(options.loadController));
+  else installController(controller);
   if (options.fees !== false) installFees(options.fees);
   resetReviewState();
   onCleanup(resetReviewState);
   // Served before the session selects the chain, so S1's chain mirror (the prediction's account) finds it.
   chain.install();
-  const { chain: _chain, controller: _controller, at: _at, fees: _fees, ...studio } = options;
+  const { chain: _chain, controller: _controller, loadController: _load, at: _at, fees: _fees, ...studio } = options;
   const screen = await renderWithStudio(<DialogHost />, {
     ...studio,
     catalog,

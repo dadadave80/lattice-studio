@@ -158,6 +158,36 @@ export function cantSimulate(simulation: DeployState["simulation"]): boolean {
   return simulation.revert === undefined || simulation.revert === "";
 }
 
+/**
+ * "Changed since review" (spec L562): something the person reviewed changed while the review was open. The mark
+ * stays until they sign or the review starts over, so it can be seen whatever the chain's speed.
+ */
+export function changedSinceReview(deploy: Pick<DeployState, "phase" | "snapshot" | "changedSinceReview">, recipeHash: Hex): boolean {
+  return PRE_SIGN_PHASES.has(deploy.phase)
+    && (deploy.changedSinceReview === true || (deploy.snapshot !== undefined && deploy.snapshot !== recipeHash));
+}
+
+/**
+ * Changed and not simulated again yet: the controller is simulating the new inputs, or hasn't taken the edit up
+ * yet (the snapshot is an older recipe). "Changed since review. Simulating again." (spec L601) reads only then.
+ */
+export function resimulating(deploy: Pick<DeployState, "phase" | "snapshot" | "changedSinceReview">, recipeHash: Hex): boolean {
+  if (!changedSinceReview(deploy, recipeHash)) return false;
+  return deploy.phase === "simulating" || (deploy.snapshot !== undefined && deploy.snapshot !== recipeHash);
+}
+
+/**
+ * Why Sign & deploy came back to Review while the simulation still stands, for the review to say (spec L574): "You
+ * canceled in your wallet.", or another step before the send (an earlier transaction still waiting, the wallet on
+ * another chain). Null when there's none, or when the Simulation section already says it (an RPC that can't simulate).
+ */
+export function signStepNote(deploy: Pick<DeployState, "phase" | "error" | "simulation">): string | null {
+  const { phase, error, simulation } = deploy;
+  if ((phase !== "review" && phase !== "ready") || !error || simulation === undefined) return null;
+  if (cantSimulate(simulation) && error.includes("can't simulate")) return null;
+  return error;
+}
+
 /** Phases after Sign & deploy (or a Safe batch): the review shows the deploy's progress instead of its sections. */
 export const PROGRESS_PHASES: ReadonlySet<DeployPhase> = new Set<DeployPhase>([
   "awaitingSignature", "pending", "stale", "proposed", "confirmed", "verifying", "live", "mismatch",
@@ -231,7 +261,7 @@ export function signEnablement(input: SignInput): Enablement {
   if (ticks > 0) return no(tickFirst(ticks));
 
   if (deploy.phase === "idle") return no(CONTROLLER_NOT_BUILT);
-  if (deploy.changedSinceReview || (deploy.snapshot !== undefined && deploy.snapshot !== input.recipeHash)) return no(CHANGED_SINCE_REVIEW);
+  if (resimulating(deploy, input.recipeHash)) return no(CHANGED_SINCE_REVIEW);
   if (deploy.phase === "simulating") return no(SIMULATING);
   if (deploy.phase === "awaitingSignature") return no("Waiting for your wallet");
   if (PROGRESS_PHASES.has(deploy.phase)) return no(ON_ITS_WAY);
@@ -240,7 +270,8 @@ export function signEnablement(input: SignInput): Enablement {
     if (deploy.simulation?.revert) return no(`The simulation reverted: ${deploy.simulation.revert}`);
     return no(SIMULATING);
   }
-  if (deploy.phase !== "ready" && !(noSimulation && (deploy.phase === "review"))) return no(SIMULATING);
+  // Review with a result standing is signable too: a rejection in the wallet keeps the simulation (spec L574).
+  if (deploy.phase !== "ready" && deploy.phase !== "review") return no(SIMULATING);
   if (input.mainnet && input.typedName.trim() !== input.projectName) return no(TYPE_THE_NAME);
   return { ok: true };
 }

@@ -32,6 +32,8 @@ export { DEPLOY_NEEDS_CONNECTION, WAITING_FOR_SAFE, resolveBlockers } from "./en
 
 /** Spec L562, L601: any edit, account switch or chain switch while the review is open. */
 export const CHANGED_SINCE_REVIEW = "Changed since review. Simulating again.";
+/** Spec L562's mark once the new simulation is in: the review still differs from what was first reviewed. */
+export const CHANGED_SINCE_REVIEW_MARK = "Changed since review.";
 
 /** Flow 13 (spec L584): the review of a deploy after a live one. */
 export function deployAgainNote(live: string): string {

@@ -1,6 +1,6 @@
 import { Button, copyText } from "@/ui";
 import { NO_SIMULATION_NOTE, SIMULATING, type SectionStatus } from "./copy";
-import { CONTROLLER_NOT_BUILT, cantSimulate, grouped, pathName } from "./model";
+import { CONTROLLER_NOT_BUILT, cantSimulate, grouped, pathName, resimulating } from "./model";
 import { simulationReport } from "./progress-view";
 import { useReview, type Review } from "./review-data";
 import { useReviewState } from "./review-state";
@@ -13,13 +13,13 @@ type Shown = { status: SectionStatus; text: string; revert?: string };
 
 /**
  * What the section says, in the order Sign & deploy reads the same state (model `signEnablement`), so the mark and
- * the footer never disagree: not built, changed or simulating, passed, reverted, couldn't simulate, not yet.
+ * the footer never disagree: not built, simulating (again), passed, reverted, couldn't simulate, not yet.
  */
 function shown(review: Review, ticked: boolean): Shown {
   const { deploy, analysis } = review;
   if (deploy.phase === "idle") return { status: "waiting", text: CONTROLLER_NOT_BUILT };
-  const changed = deploy.changedSinceReview === true || (deploy.snapshot !== undefined && deploy.snapshot !== analysis.recipeHash);
-  if (changed || deploy.phase === "simulating") return { status: "waiting", text: SIMULATING };
+  // A change marks the review until it's signed (spec L562); the section waits only while it simulates again.
+  if (resimulating(deploy, analysis.recipeHash) || deploy.phase === "simulating") return { status: "waiting", text: SIMULATING };
   const { simulation } = deploy;
   if (simulation?.ok) {
     const text = simulation.summary ?? (simulation.block === undefined ? "Simulated." : `Simulated at block ${grouped(simulation.block)}.`);

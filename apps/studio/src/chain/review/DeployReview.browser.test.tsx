@@ -1,15 +1,32 @@
-import type { Hex } from "@lattice-studio/core";
+import type { Address, Hex } from "@lattice-studio/core";
+import { formatAddress } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
-import { doc, getAnalysis, putDeployment, runCommand, session } from "@/contracts";
+import { doc, getAnalysis, getCatalog, putDeployment, runCommand, session } from "@/contracts";
+import { prediction } from "@/state";
 import { axeViolations } from "@/ui/testing/axe";
-import { FAKE_CHAINS, FAKE_CONNECTORS, fakeChainService, healthyChainState } from "../../../test/harness";
+import { FAKE_CHAINS, FAKE_CONNECTORS, fakeChainService, healthyChainState, onCleanup } from "../../../test/harness";
+import { appDeployDeps } from "../deploy/app-deps";
+import { createDeployMachine, type DeployMachine } from "../deploy/machine";
+import { fakePort } from "../deploy/testing";
+import { CANCELED_IN_WALLET, CHANGED_SINCE_REVIEW } from "./copy";
 import {
   ALICE, BASE_SEPOLIA, SEPOLIA, account, deployableCatalog, fakeDeployController, goOffline, renderReview, section,
   templateProject,
 } from "./test-support";
 
 const SAFE = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+
+/** S1's predicted address now, or null. */
+function predictedAddress(): Address | null {
+  const p = prediction();
+  return p.status === "ready" ? p.address : null;
+}
+
+/** "0x5d7B…4C68", as the simulation summary writes an address. */
+function short(address: Address | null): string {
+  return address === null ? "" : formatAddress(address);
+}
 
 function signButton() {
   return page.getByRole("dialog").getByRole("button", { name: /^(Sign & deploy|Sign again)$/ });
@@ -334,6 +351,34 @@ describe("Checks, acknowledgements and Sign & deploy (spec L569, L573)", () => {
     await expect.element(page.getByRole("button", { name: "Sign again" })).toBeVisible();
   });
 
+  test("after a rejection the review says so, the simulation stands and Sign again enables (spec L574)", async () => {
+    const { controller } = await readyReview();
+    await tickExamples();
+    // S8c goes back to Review (spec L532-L557's diagram) and keeps the simulation: nothing changed.
+    controller.set({ phase: "review", error: CANCELED_IN_WALLET });
+    // Shown, not announced again: S8c logs it as an Error line, which the console's setting reads (spec L778).
+    const note = page.getByRole("dialog").getByText(CANCELED_IN_WALLET);
+    await expect.element(note).toBeVisible();
+    await expect.element(page.getByRole("status").filter({ hasText: CANCELED_IN_WALLET })).not.toBeInTheDocument();
+    await expect.element(section("Simulation").getByText("Simulated at block 9,123,456.")).toBeVisible();
+    const again = page.getByRole("button", { name: "Sign again" });
+    await expect.element(again).not.toHaveAttribute("aria-disabled", "true");
+    await again.click();
+    expect(controller.calls).toContainEqual({ method: "sign", args: [] });
+  });
+
+  test("back from the wallet after a refusal, focus lands on Sign again, not the page (WCAG 2.4.3)", async () => {
+    const { controller } = await readyReview();
+    await tickExamples();
+    await signButton().click();
+    // The wallet asks: the review shows its progress, and Sign & deploy (which had focus) unmounts.
+    controller.set({ phase: "awaitingSignature", since: "2026-09-23T12:00:00.000Z" });
+    await expect.element(page.getByRole("button", { name: "Close" })).toBeVisible();
+    await expect.element(signButton()).not.toBeInTheDocument();
+    controller.set({ phase: "review", error: CANCELED_IN_WALLET });
+    await expect.element(page.getByRole("button", { name: "Sign again" })).toHaveFocus();
+  });
+
   test("a failed deploy shows its error with Try again", async () => {
     const { controller } = await readyReview();
     controller.set({ phase: "failed", error: "Deploy reverted in LatticeRegistry: `LatticeRegistry__RecordNotFound(lattice.ERC20, 0.4.0)`." });
@@ -361,6 +406,49 @@ describe("Changed since review (spec L562, L601)", () => {
     controller.set({ phase: "ready", changedSinceReview: false });
     session.set({ chainId: BASE_SEPOLIA });
     await expect.poll(() => controller.methods().filter((m) => m === "changed").length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("the mark stays once the new simulation passes, and Sign enables on the new result", async () => {
+    const { controller } = await readyReview();
+    await tickExamples();
+    controller.set({ phase: "simulating", changedSinceReview: true });
+    await expect.element(page.getByRole("status").filter({ hasText: CHANGED_SINCE_REVIEW })).toBeVisible();
+    await expect.element(signButton()).toHaveAccessibleDescription(CHANGED_SINCE_REVIEW);
+    controller.set({ phase: "ready", simulation: { ok: true, block: 9123457 } });
+    await expect.element(page.getByRole("status").filter({ hasText: /^Changed since review\.$/ })).toBeVisible();
+    await expect.element(page.getByText(CHANGED_SINCE_REVIEW)).not.toBeInTheDocument();
+    await expect.element(section("Simulation").getByText("Simulated at block 9,123,457.")).toBeVisible();
+    await expect.element(signButton()).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("Use a new salt in the review, with S8c's machine: marked, simulated at the new address, and the mark stays", async () => {
+    let machine: DeployMachine | null = null;
+    const load = async (): Promise<DeployMachine> => {
+      if (machine) return machine;
+      const catalog = getCatalog();
+      if (!catalog) throw new Error("no catalog");
+      const port = fakePort({ catalog: () => catalog, predicted: predictedAddress });
+      const built = createDeployMachine({ ...appDeployDeps(), chain: async () => port });
+      onCleanup(() => built.dispose());
+      machine = built;
+      return built;
+    };
+    await renderReview({ project: templateProject("ERC20"), loadController: load });
+    const simulation = section("Simulation");
+    const first = predictedAddress();
+    expect(first).not.toBeNull();
+    await expect.element(simulation.getByText(`Simulated at block 9,123,456: diamond at ${short(first)} with`, { exact: false })).toBeVisible();
+    await expect.element(page.getByText(/^Changed since review/)).not.toBeInTheDocument();
+
+    await section("Address").getByRole("button", { name: "Use a new salt" }).click();
+    await expect.poll(predictedAddress).not.toBe(first);
+    const next = predictedAddress();
+    await expect.element(simulation.getByText(`diamond at ${short(next)} with`, { exact: false })).toBeVisible();
+    const mark = page.getByRole("status").filter({ hasText: /^Changed since review\.$/ });
+    await expect.element(mark).toBeVisible();
+    // A fast chain simulates again in milliseconds: the mark is still there well after (spec L562).
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await expect.element(mark).toBeVisible();
   });
 
   test("once signed, edits no longer resend it to simulating", async () => {

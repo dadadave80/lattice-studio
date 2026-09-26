@@ -4,8 +4,8 @@ import { loadFixtureCatalog } from "@lattice-studio/core/testing";
 import { CHOOSE_A_CHAIN, CONNECT_A_WALLET } from "@/chain/infra/copy";
 import { CHANGED_SINCE_REVIEW, DEPLOY_NEEDS_CONNECTION, SAFE_SIGNS_BY_BATCH, SIMULATING, TYPE_THE_NAME } from "./copy";
 import {
-  CONTROLLER_NOT_BUILT, ackProblems, cantSimulate, cutRows, fundsShort, gasByFacet, grouped, magnitude, pendingAcks,
-  problemStatus, readinessLine, sectionOf, shortHash, signEnablement, worse, type SignInput,
+  CONTROLLER_NOT_BUILT, ackProblems, cantSimulate, changedSinceReview, cutRows, fundsShort, gasByFacet, grouped, magnitude,
+  pendingAcks, problemStatus, readinessLine, resimulating, sectionOf, shortHash, signEnablement, signStepNote, worse, type SignInput,
 } from "./model";
 
 const loaded = loadFixtureCatalog();
@@ -80,12 +80,22 @@ describe("Sign & deploy enablement (spec L573, IR L238)", () => {
     expect(reason({ deploy: { phase: "idle" } })).toBe(CONTROLLER_NOT_BUILT);
     expect(reason({ deploy: { phase: "simulating", snapshot: HASH } })).toBe(SIMULATING);
     expect(reason({ deploy: { phase: "review", snapshot: HASH } })).toBe(SIMULATING);
-    expect(reason({ deploy: { phase: "ready", snapshot: HASH, changedSinceReview: true, simulation: { ok: true } } })).toBe(CHANGED_SINCE_REVIEW);
+    expect(reason({ deploy: { phase: "simulating", snapshot: HASH, changedSinceReview: true } })).toBe(CHANGED_SINCE_REVIEW);
     expect(reason({ deploy: { phase: "ready", snapshot: `0x${"cd".repeat(32)}`, simulation: { ok: true } } })).toBe(CHANGED_SINCE_REVIEW);
     expect(reason({ deploy: { phase: "review", snapshot: HASH, simulation: { ok: false, revert: "VaultCore: InvalidAsset()" } } }))
       .toBe("The simulation reverted: VaultCore: InvalidAsset()");
     expect(reason({ deploy: { phase: "awaitingSignature", snapshot: HASH } })).toBe("Waiting for your wallet");
     expect(reason({ deploy: { phase: "pending", snapshot: HASH } })).toBe("This deploy is already on its way");
+  });
+
+  test("a rejection in the wallet goes back to Review with the simulation standing: Sign again enables (spec L574)", () => {
+    const deploy: SignInput["deploy"] = { phase: "review", snapshot: HASH, simulation: { ok: true, block: 1 } };
+    expect(signEnablement(ready({ deploy }))).toEqual({ ok: true });
+  });
+
+  test("Changed since review stays marked once the new simulation passes, and no longer holds Sign back (spec L562, L573)", () => {
+    const deploy: SignInput["deploy"] = { phase: "ready", snapshot: HASH, changedSinceReview: true, simulation: { ok: true, block: 2 } };
+    expect(signEnablement(ready({ deploy }))).toEqual({ ok: true });
   });
 
   test("an RPC that can't simulate asks for one extra tick instead", () => {
@@ -211,5 +221,34 @@ describe("cost helpers", () => {
     expect(cantSimulate({ ok: false, revert: "Reverted" })).toBe(false);
     expect(cantSimulate({ ok: true })).toBe(false);
     expect(cantSimulate(undefined)).toBe(false);
+  });
+});
+
+describe("the review's marks after a change or a sign (spec L562, L574, L601)", () => {
+  const OTHER = `0x${"cd".repeat(32)}` as Hex;
+
+  test("Changed since review is marked while it simulates again and stays once the new result is in", () => {
+    const simulating = { phase: "simulating" as const, snapshot: HASH, changedSinceReview: true };
+    expect(changedSinceReview(simulating, HASH)).toBe(true);
+    expect(resimulating(simulating, HASH)).toBe(true);
+    const settled = { phase: "ready" as const, snapshot: HASH, changedSinceReview: true };
+    expect(changedSinceReview(settled, HASH)).toBe(true);
+    expect(resimulating(settled, HASH)).toBe(false);
+    // An edit the controller hasn't taken up yet: the snapshot is an older recipe.
+    expect(resimulating({ phase: "ready", snapshot: OTHER }, HASH)).toBe(true);
+    expect(changedSinceReview({ phase: "ready", snapshot: HASH }, HASH)).toBe(false);
+    expect(changedSinceReview({ phase: "pending", snapshot: OTHER, changedSinceReview: true }, HASH)).toBe(false);
+  });
+
+  test("the sign step's reason shows while the simulation stands, unless the Simulation section says it", () => {
+    const canceled = "You canceled in your wallet.";
+    expect(signStepNote({ phase: "review", error: canceled, simulation: { ok: true, block: 1 } })).toBe(canceled);
+    expect(signStepNote({ phase: "review", error: canceled, simulation: { ok: false, unavailable: true } })).toBe(canceled);
+    const cant = "Sepolia's RPC can't simulate this deploy. Signing without a simulation needs one more tick.";
+    expect(signStepNote({ phase: "review", error: cant, simulation: { ok: false, unavailable: true } })).toBeNull();
+    // An error with no simulation standing is the simulation's own (or the chain's): its section says it.
+    expect(signStepNote({ phase: "review", error: "Sepolia's public RPC isn't answering." })).toBeNull();
+    expect(signStepNote({ phase: "failed", error: canceled, simulation: { ok: true } })).toBeNull();
+    expect(signStepNote({ phase: "ready", simulation: { ok: true } })).toBeNull();
   });
 });

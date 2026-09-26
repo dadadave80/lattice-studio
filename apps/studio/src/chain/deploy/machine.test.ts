@@ -137,11 +137,11 @@ describe("review and simulation", () => {
     h.inputs.setProject({ ...p, deploy: { ...p.deploy, entropy: "0x0b0a090807060504030201" as Hex } });
     m.changed();
     m.changed();
-    // "Changed since review. Simulating again." while it simulates; cleared once the new result is in (spec L562).
+    // "Changed since review. Simulating again." while it simulates; the mark stays once the new result is in (spec
+    // L562), so a fast chain doesn't hide it, and the new simulation is what Sign needs.
     expect(m.state()).toMatchObject({ phase: "simulating", changedSinceReview: true });
     await flush();
-    expect(m.state().changedSinceReview).toBeUndefined();
-    expect(m.state().phase).toBe("ready");
+    expect(m.state()).toMatchObject({ phase: "ready", changedSinceReview: true, simulation: { ok: true } });
     expect(h.port.methods().filter((x) => x === "simulate").length).toBe(before + 1);
   });
 
@@ -153,11 +153,28 @@ describe("review and simulation", () => {
     h.inputs.touch();
     expect(m.state()).toMatchObject({ phase: "simulating", changedSinceReview: true, from: BOB });
     await flush();
-    expect(m.state()).toMatchObject({ phase: "ready", from: BOB });
+    expect(m.state()).toMatchObject({ phase: "ready", from: BOB, changedSinceReview: true });
+  });
+
+  test("a new salt during review marks it changed and simulates the new address; Sign clears the mark", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    const first = predicted(h);
+    const p = h.inputs.project();
+    // Use a new salt writes the document; the machine sees it through its inputs, with no changed() call.
+    h.inputs.setProject({ ...p, deploy: { ...p.deploy, entropy: "0x0b0a090807060504030201" as Hex } });
+    expect(m.state()).toMatchObject({ phase: "simulating", changedSinceReview: true });
+    await flush();
+    expect(predicted(h)).not.toBe(first);
+    expect(m.state()).toMatchObject({ phase: "ready", changedSinceReview: true, address: predicted(h) });
+    await m.sign();
+    await flush();
+    expect(m.state().phase).toBe("pending");
     expect(m.state().changedSinceReview).toBeUndefined();
   });
 
-  test("a failed simulation also clears Changed since review", async () => {
+  test("a failed simulation keeps Changed since review marked", async () => {
     const { h, m } = rig();
     m.open();
     await flush();
@@ -165,7 +182,34 @@ describe("review and simulation", () => {
     h.port.setAccount({ address: BOB, chainId: SEPOLIA_ID });
     h.inputs.touch();
     await flush();
-    expect(m.state()).toMatchObject({ phase: "review", error: "Sepolia's public RPC isn't answering." });
+    expect(m.state()).toMatchObject({ phase: "review", error: "Sepolia's public RPC isn't answering.", changedSinceReview: true });
+  });
+
+  test("an edit that brings a blocker keeps the mark and doesn't simulate", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    const simulations = h.port.methods().filter((x) => x === "simulate").length;
+    const p = h.inputs.project();
+    h.inputs.setProject({ ...p, recipe: { ...p.recipe, facets: [] } });
+    await flush();
+    expect(h.inputs.analysis().problems.some((q) => q.severity === "blocker")).toBe(true);
+    expect(m.state()).toMatchObject({ phase: "review", changedSinceReview: true });
+    expect(h.port.methods().filter((x) => x === "simulate").length).toBe(simulations);
+  });
+
+  test("a fresh review starts unmarked", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    h.port.setAccount({ address: BOB, chainId: SEPOLIA_ID });
+    h.inputs.touch();
+    await flush();
+    expect(m.state().changedSinceReview).toBe(true);
+    m.close();
+    m.open();
+    await flush();
+    expect(m.state().phase).toBe("ready");
     expect(m.state().changedSinceReview).toBeUndefined();
   });
 
@@ -210,11 +254,41 @@ describe("signing", () => {
     await flush();
     h.port.sendQueue.push({ kind: "rejected" });
     await m.sign();
-    expect(m.state()).toMatchObject({ phase: "review", error: CANCELED_IN_WALLET });
+    await flush();
+    // The simulation from before the send stands: nothing changed, so nothing simulates again (spec L574).
+    expect(m.state()).toMatchObject({ phase: "review", error: CANCELED_IN_WALLET, simulation: { ok: true } });
+    expect(m.state().changedSinceReview).toBeUndefined();
     expect(h.said.banners.has(DEPLOY_BANNER_ID)).toBe(false);
+    // An Error line, so the default "errors" announcements read it; politely, since the person chose it.
+    expect(h.said.lines.filter((l) => l.text === CANCELED_IN_WALLET)).toEqual([{ tag: "Error", text: CANCELED_IN_WALLET }]);
+    expect(h.said.announced).toContainEqual([CANCELED_IN_WALLET, { politeness: "polite" }]);
+    expect(h.port.methods().filter((x) => x === "simulate")).toHaveLength(1);
     await m.sign();
     await flush();
     expect(m.state().phase).toBe("pending");
+    expect(h.port.methods().filter((x) => x === "simulate")).toHaveLength(1);
+  });
+
+  test("any other stop before the send says why in the console, not silently", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    h.port.setCode(predicted(h), "0x6000");
+    await m.sign();
+    const error = m.state().error ?? "";
+    expect(error).toMatch(/already has code on Sepolia\. Use a new salt\.$/);
+    expect(h.said.lines.at(-1)).toEqual({ tag: "Error", text: error });
+  });
+
+  test("with announcements off, a refusal is logged but not read", async () => {
+    const { h, m } = rig();
+    h.settings.deployAnnouncements = "none";
+    m.open();
+    await flush();
+    h.port.sendQueue.push({ kind: "rejected" });
+    await m.sign();
+    expect(h.said.lines.at(-1)).toEqual({ tag: "Error", text: CANCELED_IN_WALLET });
+    expect(h.said.announced.map(([text]) => text)).not.toContain(CANCELED_IN_WALLET);
   });
 
   test("submitted: record written pending, Submitted line, banner, and the tx asserted from the sender's salt", async () => {
