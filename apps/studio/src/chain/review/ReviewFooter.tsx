@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { log } from "@/contracts";
 import { Button } from "@/ui";
 import { cantSimulate, pendingAcks, signEnablement, type Enablement } from "./model";
@@ -43,6 +43,18 @@ export function ReviewFooter({ progress, onClose }: { progress: boolean; onClose
   const enablement = useSignEnablement(review);
   const noSimulationTick = useReviewState((s) => s.noSimulationTick);
   const reasonId = useId();
+  const signButton = useRef<HTMLButtonElement>(null);
+  const phase = review.deploy.phase;
+  const previous = useRef(phase);
+  useEffect(() => {
+    const was = previous.current;
+    previous.current = phase;
+    if (was !== "awaitingSignature" || phase !== "review") return;
+    // Sign & deploy unmounted while the wallet asked; back in Review (a refusal, or a stop before the send), focus
+    // returns to it, now Sign again, rather than falling to the page (WCAG 2.4.3). Unless the person moved it.
+    const active = document.activeElement;
+    if (active === null || active === document.body || active.getAttribute("role") === "dialog") signButton.current?.focus();
+  }, [phase]);
   if (progress) {
     return (
       <div className={styles.footer}>
@@ -68,7 +80,14 @@ export function ReviewFooter({ progress, onClose }: { progress: boolean; onClose
         </p>
       )}
       <Button onClick={onClose}>Cancel</Button>
-      <Button variant="primary" icon="deploy" data-tour="deploy" disabledReason={enablement.ok ? null : enablement.reason} onClick={sign}>
+      <Button
+        ref={signButton}
+        variant="primary"
+        icon="deploy"
+        data-tour="deploy"
+        disabledReason={enablement.ok ? null : enablement.reason}
+        onClick={sign}
+      >
         {again ? "Sign again" : "Sign & deploy"}
       </Button>
     </div>

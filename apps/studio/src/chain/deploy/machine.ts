@@ -4,8 +4,9 @@
  * through `DeployDeps` (`ports.ts`), so unit tests drive it with fakes and the Anvil tests with a local node.
  *
  * - **Review → Simulating → Ready.** `open()` snapshots the recipe hash and simulates by itself once the chain, the
- *   account and the inputs are known and nothing blocks. Any edit, account or chain change while the review is open
- *   marks it "Changed since review" and simulates again (the machine watches its inputs; `changed()` does the same).
+ *   account and the inputs are known and nothing blocks. Any edit, account, chain or salt change while the review is
+ *   open marks it "Changed since review" and simulates again (the machine watches its inputs; `changed()` does the
+ *   same). The mark stays after the new result is in, until Sign or a fresh review, so it's seen on a fast chain too.
  *   An RPC that can't simulate at all says so; `sign({ withoutSimulation })` then goes on after the review's extra tick.
  * - **Sign.** Refused while the tab is read-only. Re-probes the chain first (the predicted address must still be
  *   empty), rebuilds the transaction, asserts that the salt's first 20 bytes are the sending account, re-reads the
@@ -243,15 +244,15 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
   /**
    * A console line. Deploy output (Deploy and Verify lines, and Error lines that start "Deploy") is announced by the
    * console as the deploy-announcements setting says (spec L778, S5e's `deploy-announce.ts`), so each line is read
-   * once. The machine announces only what the console doesn't: an Error of its own, such as a record the browser
-   * refused to save, which interrupts (spec L785) unless announcements are off. `_level` says how serious the line
-   * is, for the console's own rules.
+   * once. The machine announces only what the console doesn't: an Error of its own, unless announcements are off.
+   * An alert (a record the browser refused to save) interrupts (spec L785); anything less, such as why Sign came
+   * back to Review ("You canceled in your wallet."), waits its turn.
    */
-  const emit = (line: LineDraft, _level: Level = line.tag === "Error" ? "alert" : "info"): void => {
+  const emit = (line: LineDraft, level: Level = line.tag === "Error" ? "alert" : "info"): void => {
     deps.say.log(line);
     const consoleSays = line.tag === "Deploy" || line.tag === "Verify" || (line.tag === "Error" && line.text.startsWith("Deploy"));
     if (consoleSays || deps.settings().deployAnnouncements === "none") return;
-    deps.say.announce(line.text.replaceAll("`", ""), { politeness: line.tag === "Error" ? "assertive" : "polite" });
+    deps.say.announce(line.text.replaceAll("`", ""), { politeness: level === "alert" ? "assertive" : "polite" });
   };
 
   const note = (text: string, level: Level = "info"): void => emit({ tag: "Deploy", text }, level);
@@ -424,23 +425,24 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     seenKey = inputKey();
     simulatedKey = null;
     unavailableKey = null;
+    // "Changed since review" stays through all of this: it marks the review until it's signed or starts over.
     const snap = snapshotOf();
     if (!snap.ok) {
-      patch({ phase: "review", error: snap.error, simulation: undefined, changedSinceReview: undefined });
+      patch({ phase: "review", error: snap.error, simulation: undefined });
       return;
     }
     if (!inputs.online()) {
-      patch({ phase: "review", error: DEPLOY_NEEDS_CONNECTION, simulation: undefined, changedSinceReview: undefined });
+      patch({ phase: "review", error: DEPLOY_NEEDS_CONNECTION, simulation: undefined });
       return;
     }
     // Blockers first: a simulation of a recipe that can't deploy would only repeat them as a revert.
     if (blockers(inputs.analysis()) > 0) {
-      patch({ phase: "review", error: undefined, simulation: undefined, snapshot: snap.value.recipeHash, changedSinceReview: undefined });
+      patch({ phase: "review", error: undefined, simulation: undefined, snapshot: snap.value.recipeHash });
       return;
     }
     const s = snap.value;
     patch({ phase: "simulating", snapshot: s.recipeHash, chainId: s.chainId, address: s.address, from: s.from, error: undefined, simulation: undefined });
-    const done = (changes: StateChanges): void => patch({ ...changes, changedSinceReview: undefined });
+    const done = patch;
     const port = await loadPort();
     if (!alive()) return;
     if (!port.ok) return done({ phase: "review", error: port.error });
@@ -711,6 +713,27 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     return null;
   };
 
+  /**
+   * Sign stopped before anything went out: back to Review, never silently. The review shows why (while the simulation
+   * stands) and the console logs it as an Error, the deploy not having gone out, so the default "errors"
+   * announcements read it (spec L778). Politely: a refusal in the wallet is the person's own choice. The phase moves
+   * first, so the console doesn't read it too. An edit, account or chain change during the wallet round-trip wasn't
+   * watched (a new simulation then would have cut the send short), so it marks the review and simulates now (L562).
+   */
+  const stopSign = (error: string, keepSimulation = false): void => {
+    banner(false);
+    if (!keepSimulation) {
+      simulatedKey = null;
+      unavailableKey = null;
+    }
+    patch({ phase: "review", error, since: undefined, ...(keepSimulation ? {} : { simulation: undefined }) });
+    emit({ tag: "Error", text: error }, "warn");
+    const key = inputKey();
+    if (seenKey === null || key === seenKey) return;
+    if (!seenKey.startsWith(`${reviewKey()}|`)) patch({ changedSinceReview: true });
+    void track(simulate());
+  };
+
   const sign = async (options?: { withoutSimulation?: true }): Promise<void> => {
     if (disposed) return;
     const withoutSimulation = options?.withoutSimulation === true;
@@ -720,10 +743,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       return;
     }
     const snap = snapshotOf();
-    if (!snap.ok) {
-      patch({ phase: "review", error: snap.error });
-      return;
-    }
+    if (!snap.ok) return stopSign(snap.error);
     const s = snap.value;
     if (s.key !== (withoutSimulation ? unavailableKey : simulatedKey)) {
       note(SIMULATE_FIRST);
@@ -734,34 +754,18 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const alive = (): boolean => mine === epoch && !disposed;
     const port = await loadPort();
     if (!alive()) return;
-    if (!port.ok) {
-      patch({ error: port.error });
-      return;
-    }
+    if (!port.ok) return stopSign(port.error, true);
     const account = port.value.account();
-    if (!account) {
-      patch({ error: CONNECT_A_WALLET });
-      return;
-    }
+    if (!account) return stopSign(CONNECT_A_WALLET, true);
     if (!sameAddress(account.address, s.from)) {
       note(SIMULATE_FIRST);
       await track(simulate());
       return;
     }
-    if (account.chainId !== s.chainId) {
-      patch({ error: walletOn(chainName(account.chainId)) });
-      return;
-    }
+    if (account.chainId !== s.chainId) return stopSign(walletOn(chainName(account.chainId)), true);
     patch({ phase: "awaitingSignature", since: iso(), error: undefined, changedSinceReview: undefined });
     banner(true);
-    const back = (error: string, keepSimulation = false): void => {
-      banner(false);
-      if (!keepSimulation) {
-        simulatedKey = null;
-        unavailableKey = null;
-      }
-      patch({ phase: "review", error, since: undefined, ...(keepSimulation ? {} : { simulation: undefined }) });
-    };
+    const back = stopSign;
     // The predicted address itself, read now: the session's prediction may already be for another account.
     const probed = await port.value.probe(s.chainId, { refresh: true, path: s.path, codeAt: [s.address] });
     if (!alive()) return;
@@ -792,16 +796,11 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     if (!now || !sameAddress(now.address, s.from)) return back(SIMULATE_FIRST);
     if (now.chainId !== s.chainId) return back(walletOn(chainName(now.chainId)), true);
     const sent = await port.value.send(s.chainId, { from: now.address, tx: built.value.tx });
-    if (sent.kind === "rejected") {
+    if (sent.kind !== "sent") {
       if (!alive()) return;
-      back(CANCELED_IN_WALLET, true);
-      note(CANCELED_IN_WALLET);
-      return;
-    }
-    if (sent.kind === "error") {
-      if (!alive()) return;
-      back(sent.message);
-      note(sent.message, "warn");
+      // A rejection keeps the simulation: nothing changed, so Sign again asks the wallet without simulating again.
+      if (sent.kind === "rejected") back(CANCELED_IN_WALLET, true);
+      else back(sent.message);
       return;
     }
     // A sent transaction is recorded whatever happened meanwhile: it's on its way.

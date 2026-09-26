@@ -12,12 +12,15 @@ import { AddressSection } from "./AddressSection";
 import { AuthoritySection } from "./AuthoritySection";
 import { ChecksSection } from "./ChecksSection";
 import { ConfirmBlock } from "./ConfirmBlock";
-import { CHANGED_SINCE_REVIEW, deployAgainNote } from "./copy";
+import { CHANGED_SINCE_REVIEW, CHANGED_SINCE_REVIEW_MARK, deployAgainNote } from "./copy";
 import { CostSection } from "./CostSection";
 import { CutSection } from "./CutSection";
 import { DeployerSection } from "./DeployerSection";
 import { InitSection } from "./InitSection";
-import { IN_FLIGHT_PHASES, PRE_SIGN_PHASES, PROGRESS_PHASES, shortHash } from "./model";
+import {
+  IN_FLIGHT_PHASES, PRE_SIGN_PHASES, PROGRESS_PHASES, changedSinceReview, controllerChainName, resimulating, shortHash,
+  signStepNote,
+} from "./model";
 import { NetworkSection } from "./NetworkSection";
 import { ProgressView } from "./ProgressView";
 import { ReviewContext, type Review } from "./review-data";
@@ -133,8 +136,8 @@ function ReviewDialog({ catalog, entry, top }: DialogComponentProps<"deploy-revi
   }, [service, chainId, path, holdersKey, online]);
 
   const progress = PROGRESS_PHASES.has(deploy.phase);
-  const changed = PRE_SIGN_PHASES.has(deploy.phase)
-    && (deploy.changedSinceReview === true || (deploy.snapshot !== undefined && deploy.snapshot !== analysis.recipeHash));
+  const changed = changedSinceReview(deploy, analysis.recipeHash);
+  const signNote = signStepNote(deploy, controllerChainName);
   // Flow 13: the live diamond this deploy leaves as it is.
   const live = status.deployAgain && status.deployment ? status.deployment.address : null;
 
@@ -165,7 +168,15 @@ function ReviewDialog({ catalog, entry, top }: DialogComponentProps<"deploy-revi
           {live ? <p className={styles.notice}>{deployAgainNote(live)}</p> : null}
           {deploy.phase === "failed" && deploy.error ? <FailedNotice error={deploy.error} /> : null}
           {changed ? (
-            <output className={styles.notice}>{CHANGED_SINCE_REVIEW}</output>
+            <output className={styles.notice}>
+              {resimulating(deploy, analysis.recipeHash) ? CHANGED_SINCE_REVIEW : CHANGED_SINCE_REVIEW_MARK}
+            </output>
+          ) : null}
+          {/* Not a live region: S8c logs the same words as an Error, announced as the setting says (spec L778). */}
+          {signNote !== null && !progress ? (
+            <p className={styles.notice} data-sign-note="">
+              {signNote}
+            </p>
           ) : null}
           {progress ? (
             <ProgressView />

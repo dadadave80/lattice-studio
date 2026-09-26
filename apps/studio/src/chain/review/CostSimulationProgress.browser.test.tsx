@@ -110,8 +110,14 @@ describe("Simulation", () => {
     const simulation = section("Simulation");
     await expect.element(simulation.getByText("Simulating…")).toBeVisible();
     await expect.element(simulation).toHaveAttribute("data-status", "waiting");
-    controller.set({ phase: "ready", changedSinceReview: true, simulation: { ok: true, block: 1 } });
+    controller.set({ phase: "ready", simulation: { ok: true, block: 1 } });
+    await expect.element(simulation.getByText("Simulated at block 1.")).toBeVisible();
+    controller.set({ phase: "simulating", changedSinceReview: true });
     await expect.element(simulation.getByText("Simulating…")).toBeVisible();
+    // The new result shows once it's in; the review stays marked changed (spec L562), not simulating.
+    controller.set({ phase: "ready", simulation: { ok: true, block: 2 } });
+    await expect.element(simulation.getByText("Simulated at block 2.")).toBeVisible();
+    await expect.element(simulation).toHaveAttribute("data-status", "ok");
   });
 
   test("a revert blocks, shows the decoded error, and Copy details copies a report", async () => {
@@ -144,7 +150,8 @@ describe("Simulation", () => {
   test("`unavailable` wins over a revert text: the controller's reason shows, no Copy details, and Sign goes without a simulation", async () => {
     const { controller, dialog } = await openReview();
     const reason = "Sepolia's RPC can't simulate this deploy. Signing without a simulation needs one more tick.";
-    controller.set({ phase: "review", simulation: { ok: false, unavailable: true, revert: "eth_call failed" }, error: reason });
+    // As S8c writes it: the chain it simulated on, the flag, and its sentence for that chain.
+    controller.set({ phase: "review", chainId: SEPOLIA, simulation: { ok: false, unavailable: true, revert: "eth_call failed" }, error: reason });
     const simulation = section("Simulation");
     await expect.element(simulation.getByText(reason)).toBeVisible();
     await expect.element(simulation.getByText("Needs a tick")).toBeVisible();
