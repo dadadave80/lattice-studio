@@ -45,7 +45,10 @@ export async function openExportMenuByKeyboard(page: Page): Promise<Locator> {
   return menu;
 }
 
-/** An Export menu item by its short label ("Foundry script", "Agent brief", "Recipe JSON", "Project file", "Safe batch…", "Image"). */
+/**
+ * An Export menu item by its short label ("Foundry script", "Agent brief", "Recipe JSON", "Project file",
+ * "Safe batch…", "Image"). Exact: "Agent brief" is a substring of "Copy agent brief", both in the same menu.
+ */
 export function exportItem(menu: Locator, label: string): Locator {
-  return menu.getByRole("menuitem", { name: label });
+  return menu.getByRole("menuitem", { name: label, exact: true });
 }
