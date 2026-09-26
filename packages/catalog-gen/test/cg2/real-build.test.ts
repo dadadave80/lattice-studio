@@ -5,7 +5,10 @@
  * the proxy, the test fails with proxyRelease's "build clean" message, unless CG2_CLEAN_BUILD=1 lets it run
  * `forge clean` and rebuild (about 2 minutes).
  */
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test, setDefaultTimeout } from "bun:test";
+
+// Real catalogs and real Foundry builds take seconds each, and more under a loaded machine (the merge gate).
+setDefaultTimeout(60_000);
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";

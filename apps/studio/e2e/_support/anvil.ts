@@ -93,6 +93,22 @@ export type AnvilNode = {
   stop: () => Promise<void>;
 };
 
+/**
+ * Whether a failed `instance.start()` means another process holds the port: either a real "address already in
+ * use", or any of prool's own `Failed to start process "anvil"` wrappers, reasonless or not. Racing two starts on
+ * the same port live (`smoke/anvil.spec.ts`) turns up more shapes than the literal "exited" the loser's stderr
+ * goes missing gives: a bare truncated line ("Error", cut off before the process finished writing it), the
+ * genuine OS reason with no "address already in use" wording at all ("Address already in use (os error 48)" on
+ * macOS reads as an already-matched substring, but a Linux or Windows phrasing might not). Both of prool's own
+ * reject paths (`processes/execa.ts`) always carry this exact prefix for an anvil that failed to start, so a
+ * message this loose still can't be confused with an error that has nothing to do with starting the process (a
+ * bug in this file's own code, say): only a genuinely broken `anvil` invocation (a bad flag, a missing binary)
+ * would keep failing this way on every retry, which surfaces anyway once `acquireAnvil`'s wait runs out.
+ */
+export function isPortBusyReason(reason: string): boolean {
+  return /^Failed to start process "anvil":/i.test(reason) || /address already in use/i.test(reason);
+}
+
 /** Starts a fresh local node on `port` (chain 31337, never a fork). Stop it with `stop()`. */
 export async function startAnvil(port: number): Promise<AnvilNode> {
   const instance = Instance.anvil({ port, host: LOOPBACK, chainId: ANVIL_CHAIN_ID });
@@ -100,8 +116,8 @@ export async function startAnvil(port: number): Promise<AnvilNode> {
     await instance.start();
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    if (!/address already in use/i.test(reason)) throw error;
-    throw new PortBusyError(port);
+    if (!isPortBusyReason(reason)) throw error;
+    throw new PortBusyError(port, { cause: error });
   }
   const pid = (instance._internal as { process?: { pid?: number } } | undefined)?.process?.pid;
   if (pid !== undefined) rememberPid(port, pid);
@@ -149,8 +165,8 @@ export async function startAnvil(port: number): Promise<AnvilNode> {
 
 /** Another process holds the port (another worker's node, or an orphan `sweepAnvils` will clear). */
 export class PortBusyError extends Error {
-  constructor(readonly port: number) {
-    super(`Anvil couldn't bind ${LOOPBACK}:${port}: another process holds it (lsof -nP -iTCP:${port}).`);
+  constructor(readonly port: number, options?: ErrorOptions) {
+    super(`Anvil couldn't bind ${LOOPBACK}:${port}: another process holds it (lsof -nP -iTCP:${port}).`, options);
     this.name = "PortBusyError";
   }
 }

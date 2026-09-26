@@ -265,11 +265,13 @@ describe("probes and readiness", () => {
     sepolia.intercept = () => held;
     const retry = service.probe(SEPOLIA.id, { refresh: true });
     await settle();
-    expect(service.readiness(SEPOLIA.id).status).toBe("checking");
+    // Re-reading the same chain keeps the last ready state published until the fresh one arrives.
+    const stale = service.readiness(SEPOLIA.id);
+    expect(stale.status === "ready" && stale.state.shared.ERC20?.present).toBe(true);
     // A path edit or S8b's read while the Retry runs: it joins the fresh read, not the old cache.
     const during = service.probe(SEPOLIA.id);
     await settle();
-    expect(service.readiness(SEPOLIA.id).status).toBe("checking");
+    expect(service.readiness(SEPOLIA.id)).toBe(stale);
     sepolia.intercept = undefined;
     release();
     const [fresh, joined] = await Promise.all([retry, during]);
@@ -277,6 +279,44 @@ describe("probes and readiness", () => {
     expect(joined.ok && joined.value.shared.ERC20?.present).toBe(false);
     const readiness = service.readiness(SEPOLIA.id);
     expect(readiness.status === "ready" && readiness.state.shared.ERC20?.present).toBe(false);
+  });
+
+  test("re-reading the chain around each send (missing contracts) stays ready, so NET-03 never drops out and comes back", async () => {
+    start();
+    session.set({ chainId: SEPOLIA.id });
+    await settle();
+    const sepolia = chains[SEPOLIA.id];
+    const accounts = sepolia?.options.accounts;
+    const erc20 = catalog.facets.find((f) => f.name === "ERC20");
+    if (!sepolia || !accounts || !erc20) throw new Error("mock and fixture");
+    const key = erc20.release.address.toLowerCase();
+    const deployed = accounts[key];
+    delete accounts[key];
+    await service.probe(SEPOLIA.id, { refresh: true });
+    const seen: string[] = [];
+    service.subscribeReadiness((chainId) => {
+      const r = service.readiness(chainId);
+      seen.push(r.status === "ready" ? `ready:${r.state.shared.ERC20?.present}` : r.status);
+    });
+    // The deploy engine reads the chain before the send, then again after it lands.
+    await service.probe(SEPOLIA.id, { refresh: true });
+    if (deployed) accounts[key] = deployed;
+    const after = service.probe(SEPOLIA.id, { refresh: true });
+    // A probe of its own while the re-read runs (the review, a path edit) doesn't drop the ready state either.
+    await service.probe(SEPOLIA.id);
+    await after;
+    await settle();
+    expect(seen).toEqual(["ready:true"]);
+    expect(seen).not.toContain("checking");
+    // Reading through another RPC is a different chain state: that one still goes "checking" first.
+    settings.set({ rpc: { [SEPOLIA.id]: "https://mine.example/11155111" } });
+    await Bun.sleep(OVERRIDE_WAIT + 10);
+    await settle();
+    expect(seen.slice(1)).toEqual(["checking", "ready:true"]);
+    // And a re-read that fails says so.
+    sepolia.down = true;
+    await service.probe(SEPOLIA.id, { refresh: true });
+    expect(service.readiness(SEPOLIA.id)).toEqual({ status: "error", reason: "Couldn't read Sepolia: the RPC didn't answer." });
   });
 
   test("a failed read of new addresses from the cache shows an error rather than leaving 'checking'", async () => {
