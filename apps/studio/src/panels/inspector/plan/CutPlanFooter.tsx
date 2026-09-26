@@ -1,22 +1,25 @@
 import { formatAddress } from "@lattice-studio/core";
 import { useId, useMemo } from "react";
-import { commandRef, useAnalysis, useCatalog } from "@/contracts";
+import { commandRef, useAnalysis, useCatalog, useDocument } from "@/contracts";
 import { CommandButton, VisuallyHidden } from "@/ui";
 import { DiamondAddress } from "./DiamondAddress";
-import { planRows } from "./plan-rows";
+import { omittedFacets, planRows } from "./plan-rows";
 import styles from "./CutPlanFooter.module.css";
 
 /**
  * The cut plan pinned at the inspector's foot (IR L126, board 06): `[00] ADD name`, address, routed/total
  * selectors and ⟂ while contested, with Copy plan as JSON; under it the diamond's address, predicted or live
- * (spec L384: Live badge, explorer and Louper links).
+ * (spec L384: Live badge, explorer and Louper links). Facets that route nothing show below the rows too (PA L9,
+ * §18 #3c), the way the plan JSON and every export already say what was left out.
  */
 export function CutPlanFooter() {
   const headingId = useId();
   const plan = useAnalysis((a) => a.plan);
   const routing = useAnalysis((a) => a.routing);
+  const placed = useDocument((s) => s.project.recipe.facets);
   const catalog = useCatalog();
   const rows = useMemo(() => planRows({ plan, routing }, catalog), [plan, routing, catalog]);
+  const omitted = useMemo(() => omittedFacets(plan, placed), [plan, placed]);
 
   return (
     <section className={styles.footer} aria-labelledby={headingId} data-inspector-plan="">
@@ -49,6 +52,11 @@ export function CutPlanFooter() {
           ))}
         </ol>
       )}
+      {omitted.length > 0 ? (
+        <p className={styles.omitted} data-omitted="">
+          {`Placed but routes nothing, so no Add is cut for it: ${omitted.join(", ")}.`}
+        </p>
+      ) : null}
       <div className={styles.copy}>
         <CommandButton command={commandRef("plan.copyJson")} size="small" variant="quiet" />
       </div>

@@ -1,5 +1,5 @@
-import type { Deployment, Project } from "@lattice-studio/core";
-import { analyze, formatAddress } from "@lattice-studio/core";
+import type { Deployment, Project, Recipe } from "@lattice-studio/core";
+import { analyze, formatAddress, loadTemplate } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
@@ -18,6 +18,14 @@ afterEach(() => {
 
 function project(facets: string[], id = "inspector-frame"): Project {
   return makeProject({ id, name: "Frame test", recipe: makeRecipe({ facets }, fixtureCatalog()) });
+}
+
+/** GovernedVault plus ERC20Pausable, whose two selectors are seams GovernedVault already serves: it cuts nothing. */
+function governedVaultWithPausable(id: string): Project {
+  const loaded = loadTemplate(fixtureCatalog(), "GovernedVault");
+  if (!loaded.ok) throw new Error(loaded.error);
+  const recipe: Recipe = { ...loaded.value, facets: [...loaded.value.facets, "ERC20Pausable"] };
+  return makeProject({ id, recipe });
 }
 
 function shownKind(): string | undefined {
@@ -180,13 +188,21 @@ describe("commands", () => {
     await expect.element(page.getByRole("heading", { level: 2, name: "Compare options" })).toHaveFocus();
     expect(commandState(commandRef("dependency.compare", { options: ["ERC20"] }))).toMatchObject({
       ok: false,
-      reason: "Compare needs two or more options.",
+      reason: "Compare needs two or more options. Select another option to compare.",
     });
     expect(commandState(commandRef("dependency.compare", { options: ["ERC20", "Nope"] }))).toMatchObject({
       ok: false,
       reason: "Nope isn't in the catalog.",
     });
     expect(commandState(commandRef("dependency.compare", { options: ["ERC20", "ERC4626"] })).title).toBe("Compare options…");
+  });
+
+  test("dependency.compare while the catalog hasn't loaded says so and what to do (R9)", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["VaultCore"]), catalog: null });
+    expect(commandState(commandRef("dependency.compare", { options: ["ERC20", "ERC4626"] }))).toMatchObject({
+      ok: false,
+      reason: "The catalog hasn't loaded. Wait for it to finish.",
+    });
   });
 
   test("deploy.compare opens the comparison for the record", async () => {
@@ -302,6 +318,18 @@ describe("cut plan footer", () => {
     expect(json.recipeHash).toBe(analyze(p.recipe, catalog).recipeHash);
     expect(json.facetCuts.map((cut) => cut.facet)).toEqual(["ERC20"]);
     expect(bufferedServices().toast.at(-1)?.text).toBe("Copied plan");
+  });
+
+  test("a facet that routes nothing shows in the footer and in Copy plan as JSON (PA L9, §18 #3c)", async () => {
+    const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    await renderWithStudio(<InspectorPanel />, { project: governedVaultWithPausable("inspector-omitted") });
+    await expect
+      .element(page.getByText("Placed but routes nothing, so no Add is cut for it: ERC20Pausable."))
+      .toBeVisible();
+    await page.getByRole("button", { name: "Copy plan as JSON" }).click();
+    await vi.waitFor(() => expect(writes).toHaveBeenCalledTimes(1));
+    const json = JSON.parse(String(writes.mock.calls[0]?.[0])) as { omitted: string[] };
+    expect(json.omitted).toEqual(["ERC20Pausable"]);
   });
 
   test("an empty sheet has no plan to copy, and says why", async () => {
