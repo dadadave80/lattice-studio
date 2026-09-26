@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
+import { hideBanner, showBanner } from "@/contracts";
+import * as feedback from "@/feedback";
 import { renderWithStudio } from "../../test/harness";
 import { App } from "./App";
 
 const REGIONS = ["Title bar", "Left pane", "Sheet", "Inspector", "Console"];
 
 afterEach(async () => {
+  hideBanner("app-test");
   await page.viewport(1440, 900);
 });
 
@@ -49,5 +52,15 @@ describe("App", () => {
     for (const text of ["Not built yet · WP-S6", "Not built yet · WP-S10"]) {
       expect(page.getByText(text).elements().every((el) => !(el as HTMLElement).checkVisibility())).toBe(true);
     }
+  });
+
+  test("mounts the banner host by its name: a banner an owner posts shows over the shell", async () => {
+    await renderWithStudio(<App />);
+    showBanner("app-test", { text: "Offline. Composing works; deploy needs a connection.", tone: "warning" });
+    await expect.element(page.getByText("Offline. Composing works; deploy needs a connection.")).toBeVisible();
+    hideBanner("app-test");
+    await expect.element(page.getByText("Offline. Composing works; deploy needs a connection.")).not.toBeInTheDocument();
+    // The interim alias S10 shipped is gone: only BannerHost is exported.
+    expect(Object.keys(feedback)).toEqual(["BannerHost"]);
   });
 });
