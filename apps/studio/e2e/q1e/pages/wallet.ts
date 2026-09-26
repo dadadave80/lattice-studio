@@ -1,16 +1,12 @@
 /**
  * The mock wallet on Anvil, keyboard only.
  *
- * wagmi's `mock` connector answers `eth_sendTransaction` through the RPC of the first chain in the wagmi config
- * (its `getProvider()` is called without a chain id), and the e2e build lists Sepolia first. So a transaction meant
- * for Anvil (`chainId: 0x7a69`) leaves for Sepolia's public RPC, where the network guard aborts it and the app says
- * "HTTP request failed.". Until the build points the connector at the chain it's on (a CCR to S8a from Q1e), this
- * suite hands exactly those requests (JSON-RPC `eth_sendTransaction` for chain 31337) to the test's own Anvil node.
- * Every other non-local request still falls through to the guard, so nothing reaches a public network.
+ * The e2e build's mock connector sends on the chain the wallet is on, straight to the test's own Anvil node (the
+ * RPC the fixture seeds for chain 31337), and refuses to reach any other chain (FX25). No route is needed to get a
+ * transaction to Anvil; a test proves a send from the node itself (its blocks, the account's nonce).
  */
 import { expect, type Page, type Route } from "@playwright/test";
 import { ANVIL_CHAIN_ID } from "../../_support/anvil.ts";
-import { isLocalUrl } from "../../_support/network.ts";
 import { MOCK_ACCOUNT, shortAddress } from "../../_support/wallet.ts";
 import { runConsoleLine, runPalette } from "./keys.ts";
 
@@ -18,7 +14,7 @@ type RpcCall = { method?: string; params?: unknown[] };
 
 const ANVIL_HEX = `0x${ANVIL_CHAIN_ID.toString(16)}`;
 
-/** Whether a JSON-RPC body is a transaction for Anvil that the mock connector misrouted. */
+/** Whether a JSON-RPC body is the mock connector's transaction for Anvil. */
 export function isAnvilSend(body: string | null): boolean {
   if (!body) return false;
   let parsed: unknown;
@@ -36,33 +32,9 @@ export function isAnvilSend(body: string | null): boolean {
 }
 
 /**
- * Forwards the mock connector's Anvil transactions to `anvilUrl` (see the file comment). Returns the number of
- * transactions forwarded so far, so a test can assert the wallet really sent.
- */
-export async function routeMockSends(page: Page, anvilUrl: string): Promise<() => number> {
-  let forwarded = 0;
-  await page.route(
-    (url) => !isLocalUrl(url),
-    async (route: Route) => {
-      const request = route.request();
-      if (request.method() !== "POST" || !isAnvilSend(request.postData())) {
-        await route.fallback();
-        return;
-      }
-      forwarded += 1;
-      const response = await route.fetch({ url: anvilUrl });
-      await route.fulfill({ response, headers: { ...response.headers(), "access-control-allow-origin": "*" } });
-    },
-  );
-  return () => forwarded;
-}
-
-/**
  * Makes the wallet answer every Anvil transaction with EIP-1193's 4001, as a person rejecting it in their wallet
- * would. Same predicate as `routeMockSends` (a JSON-RPC `eth_sendTransaction` for chain 31337, nothing else), on
- * any host: today the mock connector misroutes the send to a public RPC, and once it sends to Anvil directly the
- * same route still catches exactly that request, while every read the app makes passes through. Register it after
- * `routeMockSends` (Playwright tries the newest route first).
+ * would: a JSON-RPC `eth_sendTransaction` for chain 31337 and nothing else, so every read the app makes passes
+ * through to the node.
  */
 export async function rejectMockSends(page: Page): Promise<() => number> {
   let rejected = 0;
