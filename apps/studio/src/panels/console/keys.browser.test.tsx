@@ -13,7 +13,7 @@ import { overridePlatform } from "@/ui/shared/platform";
 import { onCleanup, renderWithStudio } from "../../../test/harness";
 import { clearsTheLog, COMMAND_LABEL } from "./CommandLine";
 import { ConsolePanel } from "./ConsolePanel";
-import { resolveToExport } from "./export-enablement";
+import { NEXT_PROBLEM_DEFAULT_KEY, resolveToExport } from "./export-enablement";
 import { nextProblemKey, type KeyView } from "./export-gates";
 import { logEntries } from "./log-store";
 import { awaitConsoleBody, collisionProject, erc20Project, resetConsole } from "./test-support";
@@ -148,6 +148,8 @@ describe("Resolve N blockers to export · <key> takes problem.next's key (spec L
   test("default F8, a remap and no key, as the reason reads it", () => {
     const view: KeyView = { keymap: {}, singleKeys: true, platform: "other" };
     const reason = (blockers: number, v: KeyView) => resolveToExport(blockers, nextProblemKey(v));
+    // The default `resolveToExport` falls back to is the registry's own default binding.
+    expect(nextProblemKey(view)).toBe(NEXT_PROBLEM_DEFAULT_KEY);
     expect(reason(2, view)).toBe("Resolve 2 blockers to export · F8");
     expect(reason(1, { ...view, keymap: { "problem.next": ["F9"] } })).toBe("Resolve 1 blocker to export · F9");
     expect(reason(2, { ...view, keymap: { "problem.next": ["Mod+Shift+j"] } })).toBe("Resolve 2 blockers to export · Ctrl+Shift+J");
