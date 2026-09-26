@@ -17,6 +17,7 @@ import { ensureElementVisible, panSheet } from "../canvas";
 import { drawn, renderSheet } from "../canvas/testing/sheet-harness";
 import { problemCursor, resetProblemCursor } from "./navigate";
 import { clearNoteFocus } from "./note-focus";
+import { computeOverlay } from "./overlay-model";
 
 const catalog = fixtureCatalog();
 const SEND: Hex4 = "0xcdfe7f5c";
@@ -531,5 +532,68 @@ describe("note button targets hold 24 x 24 px below 100% zoom (spec L770, WCAG 2
     const chooseBox = await choose.element().getBoundingClientRect();
     expect(chooseBox.width, "Choose per selector…'s width").toBeGreaterThanOrEqual(24);
     expect(chooseBox.height, "Choose per selector…'s height").toBeGreaterThanOrEqual(24);
+  });
+});
+
+describe("dragging cards (spec L816, L825)", () => {
+  function box(el: HTMLElement): { left: number; top: number } {
+    return { left: Number.parseFloat(el.style.left), top: Number.parseFloat(el.style.top) };
+  }
+
+  /** A drag's live move: `name` at `dx`, `dy` from where it was when the drag began. */
+  function moveTo(name: string, from: { x: number; y: number }, dx: number, dy: number): void {
+    doc.update((p) => {
+      const entry = p.layout[name];
+      if (!entry) return { project: p, changed: false, summary: `${name} isn't on the sheet.` };
+      return { project: { ...p, layout: { ...p.layout, [name]: { ...entry, x: from.x + dx, y: from.y + dy } } }, changed: true, summary: "Moved" };
+    });
+  }
+
+  /** Where a full layout of the document as it is puts every note, with the heights they measured. */
+  function placedFromScratch(): Map<string, { left: number; top: number }> {
+    const heights: Record<string, number> = {};
+    for (const el of document.querySelectorAll<HTMLElement>("[data-note-id]")) heights[el.dataset.noteId ?? ""] = el.offsetHeight;
+    const project = doc.get();
+    const overlay = computeOverlay({ layout: project.layout, recipe: project.recipe, catalog, analysis: getAnalysis(), compact: false, heights });
+    return new Map(overlay.entries.map((e) => [e.note.id, { left: e.placement.rect.x, top: e.placement.rect.y }]));
+  }
+
+  test("a move carries a dragged card's note with it and leaves the other notes alone; the release places them again", async () => {
+    await sheet(project([AXELAR, HYPERLANE, "VaultCore"]));
+    const missing = await waitForNote("missing");
+    const collision = await waitForNote("collision");
+    const before = { missing: box(missing), collision: box(collision) };
+    const start = doc.get().layout["VaultCore"];
+    if (!start) throw new Error("VaultCore isn't on the sheet.");
+
+    doc.begin("Moved VaultCore");
+    moveTo("VaultCore", start, 96, 48);
+    await drawn();
+    await expect.poll(() => box(missing)).toEqual({ left: before.missing.left + 96, top: before.missing.top + 48 });
+    // The collision note isn't anchored to VaultCore: the same element, in the same place.
+    expect(noteById(collision.dataset.noteId ?? "")).toBe(collision);
+    expect(box(collision)).toEqual(before.collision);
+
+    // Back where it began: every note is where it was.
+    moveTo("VaultCore", start, 0, 0);
+    await drawn();
+    await expect.poll(() => box(missing)).toEqual(before.missing);
+
+    // Moved onto the collision's cards and released: the commit lays every note out again.
+    const axelar = doc.get().layout[AXELAR];
+    if (!axelar) throw new Error("Axelar isn't on the sheet.");
+    moveTo("VaultCore", start, axelar.x - start.x, axelar.y - start.y + 160);
+    await drawn();
+    doc.commit();
+    await drawn();
+    await expect.poll(() => {
+      const expected = placedFromScratch();
+      return [...document.querySelectorAll<HTMLElement>("[data-note-id]")].every((el) => {
+        const want = expected.get(el.dataset.noteId ?? "");
+        const got = box(el);
+        return want !== undefined && want.left === got.left && want.top === got.top;
+      });
+    }).toBe(true);
+    expect(history.canUndo).toBe(true);
   });
 });

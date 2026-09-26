@@ -5,6 +5,7 @@ import { closeDialog, commandRef, runCommand, useCatalog, useCommandState, type 
 import { Button } from "@/ui/buttons/Button";
 import { Dialog } from "@/ui/overlays/Dialog";
 import { ARRIVES_V11, BROWSE_ALL_RECIPES, CATALOG_LOADING } from "./copy";
+import start from "./StartBlock.module.css";
 import styles from "./chrome.module.css";
 
 const CLOSE = () => closeDialog("browse-recipes");
@@ -17,9 +18,9 @@ function RecipeRow({ item }: { item: TemplateItem }) {
   return (
     <li className={styles.browseRow} data-recipe={item.name}>
       <div className={styles.browseText}>
-        <span className={styles.recipeName}>{item.name}</span>
+        <span className={start.recipeName}>{item.name}</span>
         <span className={styles.browseScript}>{item.script}</span>
-        <span className={styles.recipeBlurb}>
+        <span className={start.recipeBlurb}>
           {plural(item.facets, "facet")}
           {item.note ? ` · ${item.note}` : ""}
         </span>

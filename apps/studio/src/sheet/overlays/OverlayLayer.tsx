@@ -6,7 +6,7 @@ import { reducedMotion, useReducedMotion } from "@/a11y/preferences";
 import type { SheetEdge } from "./edge-data";
 import { Note } from "./Note";
 import { trackFocusedCard } from "./focused-card";
-import { computeOverlay, type NoteEntry } from "./overlay-model";
+import { overlayModel, type NoteEntry, type Overlay } from "./overlay-model";
 import { reuse } from "./stable";
 import styles from "./Note.module.css";
 
@@ -28,6 +28,9 @@ type Drawn = { edges: SheetEdge[]; entries: NoteEntry[]; leaving: NoteEntry[] };
 
 const NOTHING: Drawn = { edges: [], entries: [], leaving: [] };
 
+const edgeKey = (edge: SheetEdge): string => edge.id;
+const entryKey = (entry: NoteEntry): string => entry.note.id;
+
 /**
  * The analysis drawn on the sheet (WP-S4c): dependency traces and collision ties as React Flow edges (the
  * sheet passes none of its own, so this layer sets them), and the margin notes with their leaders, placed
@@ -35,7 +38,8 @@ const NOTHING: Drawn = { edges: [], entries: [], leaving: [] };
  *
  * The geometry is worked out once per frame after the document, the analysis, the catalog or the compact
  * threshold changes, outside React's render, and whatever came out the same keeps its object: an edit
- * re-renders only the notes and edges it changed (spec L825).
+ * re-renders only the notes and edges it changed (spec L825). While cards are dragged, each move re-routes the
+ * traces and moves only the notes anchored to what moved; the notes are placed again when the drag commits.
  *
  * The notes are a plain layer, not React Flow's `ViewportPortal`: the portal sits inside the viewport, before
  * every panel in the DOM, and the sheet's Tab order is the card grid, the tool strip, the notes, then the title
@@ -53,21 +57,25 @@ export function OverlayLayer() {
   useEffect(() => {
     let frame = 0;
     let compact = store.getState().transform[2] < layoutMetrics.compactZoom;
+    const model = overlayModel();
+    /** The last full layout, which a drag's moves follow; null until the first, and when anything but a drag changes. */
+    let placed: Overlay | null = null;
     const compute = () => {
       frame = 0;
       const project = doc.get();
-      const next = computeOverlay({
+      const inputs = {
         layout: project.layout, recipe: project.recipe, catalog: getCatalog(), analysis: getAnalysis(), compact,
         heights: heights.current,
-      });
+      };
+      const next = placed ? model.follow(placed, inputs) : (placed = model.place(inputs));
       // Resolved notes' heights go with them.
       const live = new Set(next.entries.map((e) => e.note.id));
       if (Object.keys(heights.current).some((id) => !live.has(id))) {
         heights.current = Object.fromEntries(Object.entries(heights.current).filter(([id]) => live.has(id)));
       }
       setDrawn((d) => {
-        const edges = reuse(d.edges, next.edges);
-        const entries = reuse(d.entries, next.entries);
+        const edges = reuse(d.edges, next.edges, edgeKey);
+        const entries = reuse(d.entries, next.entries, entryKey);
         if (edges === d.edges && entries === d.entries) return d;
         // A resolved note stays a moment to fade (spec L438), unless motion is reduced (spec L784).
         const ids = new Set(entries.map((e) => e.note.id));
@@ -80,19 +88,27 @@ export function OverlayLayer() {
     const schedule = () => {
       if (frame === 0) frame = requestAnimationFrame(compute);
     };
-    scheduled.current = schedule;
+    /** Lay everything out again at the next frame. */
+    const replace = () => {
+      placed = null;
+      schedule();
+    };
+    scheduled.current = replace;
     const stops = [
-      doc.subscribe(schedule),
-      subscribeAnalysis(schedule),
-      subscribeCatalog(schedule),
+      // A drag's live moves only move the notes with their anchors; any other change (the drag's commit
+      // included) places them again. A drag that ends where it began, or is cancelled, leaves the layout the
+      // notes were placed for, so following it lands them where they were.
+      doc.subscribe((state) => (state.lastChange?.kind === "drag" ? schedule() : replace())),
+      subscribeAnalysis(replace),
+      subscribeCatalog(replace),
       store.subscribe((s) => {
         const now = s.transform[2] < layoutMetrics.compactZoom;
         if (now === compact) return;
         compact = now;
-        schedule();
+        replace();
       }),
     ];
-    schedule();
+    replace();
     return () => {
       cancelAnimationFrame(frame);
       scheduled.current = () => undefined;

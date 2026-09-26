@@ -12,7 +12,7 @@ import {
   BLANK_DIAMOND_LABEL, BROWSE_ALL_RECIPES, RECIPE_BLURBS, START_A_DIAMOND, START_RECIPES, startHint, TOUR_LINK, TOUR_PROMPT,
 } from "./copy";
 import { cx } from "@/ui/shared/cx";
-import styles from "./chrome.module.css";
+import styles from "./StartBlock.module.css";
 
 const TOUR = commandRef("tour.start");
 const FLOAT = { [SHEET_FLOAT_ATTRIBUTE]: "" };
@@ -65,13 +65,16 @@ function useKeepFocusOnSheet(empty: boolean): void {
  * (core only), v1's three recipe cards, Browse all recipes, the hint and the tour line. Every choice runs a
  * command: `recipe.load` loads in place on an empty sheet and as a new project otherwise (spec L408), so the
  * block never decides that itself. A recipe this catalog can't load isn't offered.
+ *
+ * The block is the empty sheet's largest paint (spec L815), so it ships in the entry and draws without waiting
+ * for the catalog: until the catalog loads it offers v1's three recipes, each saying why it can't load yet.
  */
 export function StartBlock() {
   const empty = useDocument((s) => s.project.recipe.facets.length === 0);
   const catalog = useCatalog();
   const platform = usePlatform();
-  const recipes = useMemo(() => {
-    if (!catalog) return [];
+  const recipes = useMemo((): readonly string[] => {
+    if (!catalog) return START_RECIPES;
     const loadable = new Set(templateList(catalog).filter((t) => t.loadable).map((t) => t.name));
     return START_RECIPES.filter((name) => loadable.has(name));
   }, [catalog]);

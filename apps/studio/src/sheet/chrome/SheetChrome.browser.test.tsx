@@ -93,6 +93,34 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
     await expect.element(start.getByRole("button", { name: "Take the 60-second tour" })).toBeVisible();
   });
 
+  test("before the catalog loads, the block draws with v1's three recipes, each saying why it can't load yet (spec L815)", async () => {
+    await renderChrome({ project: emptyProject("empty"), catalog: null });
+    const start = page.getByRole("region", { name: "Start a diamond" });
+    await expect.element(start).toBeVisible();
+    for (const name of ["GovernedVault", "ERC20", "SafeDiamondCut"]) {
+      const card = start.getByRole("button", { name: new RegExp(`^${name} `) });
+      await expect.element(card).toHaveAttribute("aria-disabled", "true");
+      await expect.element(card).toHaveAccessibleDescription("The catalog hasn't loaded yet");
+    }
+    await expect.element(start.getByRole("button", { name: "Blank diamond (core only)" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("once the catalog loads, a recipe it can't load isn't offered", async () => {
+    const catalog = fixtureCatalog();
+    const without = { ...catalog, recipes: catalog.recipes.filter((r) => r.name !== "SafeDiamondCut") };
+    await renderChrome({ project: emptyProject("empty"), catalog: without });
+    const start = page.getByRole("region", { name: "Start a diamond" });
+    await expect.element(start.getByRole("button", { name: /^GovernedVault / })).not.toHaveAttribute("aria-disabled");
+    await expect.element(start.getByRole("button", { name: /^ERC20 / })).toBeVisible();
+    expect(start.getByRole("button", { name: /^SafeDiamondCut / }).elements()).toHaveLength(0);
+  });
+
+  test("the block is in the entry: it draws without waiting for the chrome's lazy layers", async () => {
+    const { sheetLayers } = await import("@/contracts");
+    const { StartBlock } = await import("./StartBlock");
+    expect(sheetLayers().find((l) => l.id === "start")?.Component).toBe(StartBlock);
+  });
+
   test("a recipe card loads the recipe in place on the empty sheet, and the block gives way to the cards", async () => {
     const project = emptyProject("empty");
     await renderChrome({ project });
