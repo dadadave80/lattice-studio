@@ -32,18 +32,6 @@ export const KNOWN_GAPS: readonly KnownGap[] = [
     rule: "spec L771 · WCAG 2.4.11 (partly obscured, so the spec's stricter reading): at 200% on the 30-card sheet, ⌘/Ctrl+↓ to DIAAdapter leaves the card's bottom-left corner 9 x 24 px under the \"Zoom 200%\" readout, though the readout is a Panel that floatingRects lists",
     matches: (finding) => /under floating UI at \{"x":\d+(\.\d+)?,"y":\d+(\.\d+)?,"width":56,"height":24\}/.test(finding),
   },
-  {
-    id: "refused-send-drops-focus",
-    owner: "S8b · apps/studio/src/chain/review (DeployReview.tsx, ReviewFooter.tsx)",
-    rule: "spec L751-L761 · WCAG 2.4.3: Sign & deploy moves the review to its progress view (awaitingSignature is a PROGRESS_PHASES phase), which unmounts the focused button; when the wallet or node refuses the send, the machine goes back to review and focus is left on <body>",
-    matches: (finding) => finding.startsWith("refused send: focus is on body "),
-  },
-  {
-    id: "refused-send-not-announced",
-    owner: "S8c · apps/studio/src/chain/deploy/machine.ts with S5e · apps/studio/src/panels/console/deploy-announce.ts",
-    rule: "spec L777-L778 · WCAG 4.1.3: a refused send is logged as a Deploy line (note(sent.message, \"warn\")), and the default \"errors\" setting only announces Error lines, so nothing is said; the review itself shows no error and sits at \"Simulating…\"",
-    matches: (finding) => /^refused send: ".*" is logged but not announced/.test(finding),
-  },
 ];
 
 /** Splits findings into known gaps (annotated on `info`) and the rest, which fail the test. */

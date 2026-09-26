@@ -96,11 +96,7 @@ test.describe("Flow 13. Deploy again after changes", () => {
 
   test("with the deployer's wallet connected, Deploy again… stays enabled once modified", async ({ page, anvil }) => {
     // NET-05 is right to block Deploy… here (it keeps the colliding salt); Deploy again… redraws the salt before the
-    // review (spec L584), so its enablement should ignore NET-05 for the current prediction · FX27.
-    test.fail(
-      true,
-      "NET-05 fires on the recorded live diamond itself once the deployer connects, so Deploy again… is disabled with \"Resolve 1 blocker · F8\"; spec L584 has Deploy again draw the new salt · FX27 (deploy.again's enablement)",
-    );
+    // review (spec L584), so its enablement ignores NET-05 for the current prediction.
     const project = recipeProject("GovernedVault", { filled: true });
     const live = await deployOnAnvil(anvil, project);
     await seedProject(page, { project, deployments: [live] });

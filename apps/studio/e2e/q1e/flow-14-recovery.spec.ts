@@ -385,17 +385,14 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
       await review.expectOpen(crashed);
       await review.tickAll("keyboard");
       await activate(page, "keyboard", review.sign());
-      await expect(new ConsoleLog(page).line("Deploy", "You canceled in your wallet.")).toBeVisible();
+      // An Error line: the deploy didn't go out, and the default "errors" announcements read it (spec L778).
+      await expect(new ConsoleLog(page).line("Error", "You canceled in your wallet.")).toBeVisible();
       await expect(review.root.getByRole("button", { name: "Sign again", exact: true })).toBeVisible();
       expect(rejected()).toBe(1);
       expect(await anvil.rpc<Hex>("eth_getCode", [predictedAddress(recipeProject("GovernedVault", { filled: true })), "latest"])).toBe("0x");
     });
 
     test("after a rejection the review says so and Sign again asks the wallet again (spec L574)", async ({ page, anvil: _node }) => {
-      test.fail(
-        true,
-        "After the wallet rejects, the review re-simulates and stays at \"Simulating…\" with Sign again disabled, and \"You canceled in your wallet.\" shows only in the log, not in the review (spec L574) · follow-up for S8b/S8c from Q1e",
-      );
       const crashed = watchReactErrors(page);
       await rejectMockSends(page);
       await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
