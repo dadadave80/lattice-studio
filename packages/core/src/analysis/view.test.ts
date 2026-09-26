@@ -61,6 +61,10 @@ describe("catalog lookups", () => {
     }
     expect(signatureOf(on, S.exportSelectors)).toBe("exportSelectors()");
     expect(signatureOf(on, "0xffffffff")).toBeUndefined();
+    // Asked in reverse on a catalog it hasn't seen: the lazy scan gives the same first-in-catalog answers.
+    const other = fresh();
+    const all = other.facets.flatMap((f) => f.selectors.map((s) => s.hex.toLowerCase() as typeof s.hex)).reverse();
+    for (const selector of ["0xffffffff" as const, ...all]) expect(signatureOf(other, selector)).toBe(signatureOf(on, selector));
   });
 
   test.skipIf(fixture === null)("the active seam per selector is the first in catalog order whose `when` facets are all placed", () => {

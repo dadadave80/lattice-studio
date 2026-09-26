@@ -41,11 +41,16 @@ export type RecipeView = {
   catalog: Catalog;
 };
 
-/** What every view of one catalog shares, built in one pass over it. */
+/** What every view of one catalog shares. */
 type CatalogIndex = {
   index: ReadonlyMap<string, number>;
-  /** Selector (lowercase) → its signature on the first facet in catalog order that exports it. */
-  signatures: ReadonlyMap<Hex4, string>;
+  /**
+   * Selector (lowercase) → its signature on the first facet in catalog order that exports it, filled only as
+   * far as `signatureOf` has needed: it holds every selector of the facets before `scanned`. An analysis names
+   * few signatures, so it rarely reads the whole catalog.
+   */
+  signatures: Map<Hex4, string>;
+  scanned: number;
   /** Selector (lowercase) → its seams, in catalog order. */
   seams: ReadonlyMap<Hex4, readonly Seam[]>;
 };
@@ -57,14 +62,7 @@ function catalogIndex(catalog: Catalog): CatalogIndex {
   const known = catalogIndexes.get(catalog);
   if (known !== undefined) return known;
   const index = new Map<string, number>();
-  const signatures = new Map<Hex4, string>();
-  catalog.facets.forEach((facet, at) => {
-    index.set(facet.name, at);
-    for (const { hex, signature } of facet.selectors) {
-      const selector = hex.toLowerCase() as Hex4;
-      if (!signatures.has(selector)) signatures.set(selector, signature);
-    }
-  });
+  catalog.facets.forEach((facet, at) => index.set(facet.name, at));
   const seams = new Map<Hex4, Seam[]>();
   for (const seam of catalog.seams) {
     const selector = seam.selector.toLowerCase() as Hex4;
@@ -72,7 +70,7 @@ function catalogIndex(catalog: Catalog): CatalogIndex {
     if (list === undefined) seams.set(selector, [seam]);
     else list.push(seam);
   }
-  const built: CatalogIndex = { index, signatures, seams };
+  const built: CatalogIndex = { index, signatures: new Map(), scanned: 0, seams };
   catalogIndexes.set(catalog, built);
   return built;
 }
@@ -159,7 +157,18 @@ export function allowedServers(view: RecipeView, seam: Seam, selector: Hex4): st
 /** A selector's signature from the first catalog facet that exports it; undefined when none does. */
 export function signatureOf(catalog: Catalog, selector: Hex4): string | undefined {
   if (selector === EXPORT_SELECTORS) return EXPORT_SELECTORS_SIGNATURE;
-  return catalogIndex(catalog).signatures.get(selector);
+  const shared = catalogIndex(catalog);
+  const { signatures } = shared;
+  let found = signatures.get(selector);
+  while (found === undefined && shared.scanned < catalog.facets.length) {
+    for (const { hex, signature } of catalog.facets[shared.scanned]?.selectors ?? []) {
+      const key = hex.toLowerCase() as Hex4;
+      if (!signatures.has(key)) signatures.set(key, signature);
+    }
+    shared.scanned += 1;
+    found = signatures.get(selector);
+  }
+  return found;
 }
 
 /** Catalog position of each facet: the same map every view of `catalog` holds. */
