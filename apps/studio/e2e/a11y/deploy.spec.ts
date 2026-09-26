@@ -11,7 +11,8 @@ import { expect, test } from "../_support/fixtures.ts";
 import { focusRegion, region } from "../_support/keys.ts";
 import { checkEveryEmulation } from "./support/axe-check.ts";
 import {
-  DEPLOY_FAILURE_LINE, deployReview, failDeploy, openDeployReview, readyToDeploy, refuseTransactions, tickAcknowledgements,
+  DEPLOY_FAILURE_LINE, deployReview, failDeploy, openDeployReview, readyToDeploy, refuseTransactions, stayOnline,
+  tickAcknowledgements,
 } from "./support/deploy.ts";
 import { closeWithEscape, focusInside, originFocused, roundTrip } from "./support/dialogs.ts";
 import { runInPalette, tabTo } from "./support/keyboard.ts";
@@ -19,6 +20,12 @@ import { withoutKnownGaps } from "./support/known-gaps.ts";
 import { THEMES, expectTheme, seedTheme, type AppState } from "./support/states.ts";
 
 test.describe.configure({ mode: "default", timeout: 180_000 });
+
+// Every request here stays on the loopback, so the machine's own connection mustn't decide the result (it did once:
+// a Wi-Fi drop mid-run made Studio say "Deploy needs a connection" and the review never opened).
+test.beforeEach(async ({ context }) => {
+  await stayOnline(context);
+});
 
 /** The review and a refused deploy, scoped to the review (the page behind it is inert). */
 const DEPLOY_STATES: readonly AppState[] = [
