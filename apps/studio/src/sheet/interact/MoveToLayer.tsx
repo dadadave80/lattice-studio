@@ -1,7 +1,8 @@
 import type { Point, Rect } from "@lattice-studio/core";
 import { useStore, ViewportPortal, type ReactFlowState } from "@xyflow/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { announce, doc, layoutMetrics, pushEscape, settings, useDocument, useSession } from "@/contracts";
+import { announce, doc, layoutMetrics, pushEscape, session, settings, useDocument, useSession } from "@/contracts";
+import { isTypingTarget } from "@/commands/keys/key-context";
 import { positionInWords } from "@/a11y/positions";
 import { panSheet, sheetSize, sheetViewport } from "@/sheet/canvas/sheet-view";
 import { directionVector, groupBounds, rectOf, snapPoint, without } from "./geometry";
@@ -20,10 +21,15 @@ const ARROWS: Readonly<Record<string, "left" | "right" | "up" | "down">> = {
 /** Screen px kept between the crosshair's ghost and the sheet's edge when the arrows move it. */
 const EDGE_MARGIN = 24;
 
-/** Keys go to the crosshair while focus is on the sheet (or nowhere), not while it's in a field or a pane. */
-function sheetHasFocus(): boolean {
-  const active = document.activeElement;
-  return !active || active === document.body || active.closest('[data-region="sheet"], .react-flow') !== null;
+/**
+ * While Move to… is on, the arrows and Enter belong to the crosshair wherever focus is (it starts from the
+ * Structure tree and the inspector too), except in a text field, an open menu or a dialog.
+ */
+function crosshairTakes(target: EventTarget | null): boolean {
+  if (session.get().dialogs.length > 0) return false;
+  if (!(target instanceof Element)) return true;
+  if (isTypingTarget(target)) return false;
+  return target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]') === null;
 }
 
 /** Pans so `rect` (sheet units) shows inside the sheet, `EDGE_MARGIN` from its edges. */
@@ -88,7 +94,7 @@ function MoveToGhost() {
       drop(at(event));
     };
     const key = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey || !sheetHasFocus()) return;
+      if (event.altKey || event.ctrlKey || event.metaKey || !crosshairTakes(event.target)) return;
       const dir = ARROWS[event.key];
       const now = targetRef.current;
       if (dir && now) {

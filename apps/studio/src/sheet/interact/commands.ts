@@ -96,7 +96,8 @@ const clearSelection = command({
 
 const moveTo = command({
   id: "sheet.moveTo",
-  title: () => "Move to…",
+  // A verb and its object (contracts §6); menus show "Move to…" through their label.
+  title: () => "Move the selection to…",
   category: "Sheet",
   keys: ["m"],
   keyContext: SHEET,
@@ -109,16 +110,21 @@ const moveTo = command({
   run: run("sheet.moveTo"),
 });
 
+/** "Nudge the selection left", "Nudge the selection left, large step". */
+function nudgeTitle(dir: Direction, step: unknown): string {
+  return `Nudge the selection ${dir}${step === "large" ? ", large step" : ""}`;
+}
+
 function nudgeBindings(): KeyBinding[] {
   return DIRECTIONS.flatMap((dir) => [
-    { name: dir, keys: [ARROW_KEYS[dir]], args: { dir, step: "small" }, label: `Nudge ${dir}` },
-    { name: `${dir}-large`, keys: [`Shift+${ARROW_KEYS[dir]}`], args: { dir, step: "large" }, label: `Nudge ${dir}, large step` },
+    { name: dir, keys: [ARROW_KEYS[dir]], args: { dir, step: "small" }, label: nudgeTitle(dir, "small") },
+    { name: `${dir}-large`, keys: [`Shift+${ARROW_KEYS[dir]}`], args: { dir, step: "large" }, label: nudgeTitle(dir, "large") },
   ]);
 }
 
 const nudge = command({
   id: "sheet.nudge",
-  title: ({ dir, step }) => (isDirection(dir) ? `Nudge ${dir}${step === "large" ? ", large step" : ""}` : "Nudge"),
+  title: ({ dir, step }) => (isDirection(dir) ? nudgeTitle(dir, step) : "Nudge the selection"),
   category: "Sheet",
   bindings: nudgeBindings(),
   keyContext: SHEET,

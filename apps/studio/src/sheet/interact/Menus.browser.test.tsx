@@ -7,6 +7,8 @@ import { page, userEvent } from "vitest/browser";
 import { doc, session } from "@/contracts";
 import { paletteState, closePalette } from "@/palette/palette-state";
 import { bufferedServices, onCleanup } from "../../../test/harness";
+import { cardProject } from "../card/testing/projects";
+import { fixtureCatalog } from "../../../test/harness";
 import { cardNode, client, focusedCard, paneElement, press, renderInteractSheet, sheetProject } from "./testing/interact-harness";
 
 const ID = "menus";
@@ -102,16 +104,36 @@ describe("the card menu", () => {
 });
 
 describe("the pin menu", () => {
-  test("Route here, Leave out of the diamond, Copy selector, Copy signature, Show owner", async () => {
+  test("a pin that routes here: Leave out of the diamond, no Route here; then Bring back", async () => {
     const [a] = await sheet();
     const row = pinRow(a);
+    expect(row.dataset.state).toBe("routed");
     await userEvent.click(row, { button: "right" });
-    expect(await items()).toEqual(["Route here", "Leave out of the diamond", "Copy selector", "Copy signature", "Show owner"]);
+    expect(await items()).toEqual(["Leave out of the diamond", "Copy selector", "Copy signature", "Show owner"]);
     expect(menu()?.getAttribute("aria-label")).toMatch(new RegExp(`^\\w+ · ${row.dataset.selector ?? ""} actions$`));
     await choose("Leave out of the diamond");
     await expect.poll(() => doc.get().recipe.exclude).toContain(row.dataset.selector);
     await userEvent.click(pinRow(a), { button: "right" });
-    expect(await items()).toContain("Bring back");
+    expect(await items()).toEqual(["Bring back", "Copy selector", "Copy signature", "Show owner"]);
+  });
+
+  test("a seam offers no route (spec L441); a pin served elsewhere offers Route here", async () => {
+    await renderInteractSheet({ project: { ...cardProject(fixtureCatalog(), ["ERC20", "GovernedVault", "ERC20Pausable"]), id: ID }, ...VIEW });
+    const seam = document.querySelector<HTMLElement>('[data-card-row][data-state="seam"]');
+    if (!seam) throw new Error("No seam pin on the sheet.");
+    // A seam row is disabled for clicks (it offers no route), so its menu comes from the contextmenu itself.
+    const menuOn = (el: HTMLElement) => {
+      const r = el.getBoundingClientRect();
+      el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 2, clientX: r.left + 10, clientY: r.top + 5 }));
+    };
+    menuOn(seam);
+    expect(await items()).toEqual(["Copy selector", "Copy signature", "Show owner"]);
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(() => menu()).toBeNull();
+    const elsewhere = document.querySelector<HTMLElement>('[data-card-row][data-state="elsewhere"]');
+    if (!elsewhere) throw new Error("No pin served by another facet on the sheet.");
+    menuOn(elsewhere);
+    expect(await items()).toEqual(["Route here", "Copy selector", "Copy signature", "Show owner"]);
   });
 
   test("Copy selector copies the hex and says so", async () => {
@@ -148,27 +170,58 @@ describe("the pin menu", () => {
 });
 
 describe("the sheet menu", () => {
+  test("Shift+F10 on the sheet itself opens it in the middle of the view; the key's own contextmenu doesn't reopen another", async () => {
+    const [a] = await sheet();
+    const region = document.querySelector<HTMLElement>('[data-region="sheet"]');
+    if (!region) throw new Error("No sheet region.");
+    region.focus();
+    press("F10", { shiftKey: true }, region);
+    expect(await items()).toContain("Add facet here…");
+    // Windows follows the key with a contextmenu on whatever it targets.
+    cardNode(a).dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 0 }));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(menu()?.getAttribute("aria-label")).toBe("Sheet actions");
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(() => menu()).toBeNull();
+    await expect.poll(() => document.activeElement).toBe(region);
+  });
+
+  test("with focus on nothing, a right click's menu gives focus back to the card grid", async () => {
+    const [a] = await sheet();
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.activeElement).toBe(document.body);
+    // The menu key with nothing focused reaches the pane as a bare contextmenu (S4b forwards it).
+    paneElement().dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 0, ...client({ x: 500, y: 450 }) }));
+    await items();
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(() => focusedCard()).toBe(a);
+  });
+
+
   test("a right click on empty sheet: Add facet here…, Tidy, Fit, Select all", async () => {
     await sheet();
-    await userEvent.click(paneElement(), { button: "right", position: { x: 700, y: 600 } });
-    expect(await items()).toEqual(["Add facet here…", "Tidy", "Fit", "Select all"]);
+    await userEvent.click(paneElement(), { button: "right", position: { x: 500, y: 450 } });
+    expect(await items()).toEqual(["Add facet here…", "Tidy", "Fit", "Select all", "Paste"]);
     expect(menu()?.getAttribute("aria-label")).toBe("Sheet actions");
+    const paste = page.getByRole("menuitem", { name: "Paste" }).element();
+    expect(paste.getAttribute("aria-disabled")).toBe("true");
+    expect(paste.textContent).toContain("Arrives in v1.1");
   });
 
   test("Add facet here… opens the palette for facets, placing at the pointer", async () => {
     await sheet();
     onCleanup(closePalette);
-    await userEvent.click(paneElement(), { button: "right", position: { x: 700, y: 600 } });
+    await userEvent.click(paneElement(), { button: "right", position: { x: 500, y: 450 } });
     await choose("Add facet here…");
     await expect.poll(() => paletteState().open).toBe(true);
     expect(paletteState().mode).toBe("facets");
-    // (700, 600) on screen is (640, 520) on the sheet at this view.
-    expect(paletteState().at).toEqual({ x: 640, y: 520 });
+    // (500, 450) on screen is (440, 370) on the sheet at this view.
+    expect(paletteState().at).toEqual({ x: 440, y: 370 });
   });
 
   test("Select all selects every card", async () => {
     const facets = await sheet();
-    await userEvent.click(paneElement(), { button: "right", position: { x: 700, y: 600 } });
+    await userEvent.click(paneElement(), { button: "right", position: { x: 500, y: 450 } });
     await choose("Select all");
     expect(session.get().selection).toEqual(facets);
   });

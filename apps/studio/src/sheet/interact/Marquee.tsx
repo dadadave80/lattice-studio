@@ -1,3 +1,4 @@
+import type { Layout, Sizes } from "@lattice-studio/core";
 import { useStore, type ReactFlowState } from "@xyflow/react";
 import { useEffect, useState } from "react";
 import { doc, layoutMetrics, session } from "@/contracts";
@@ -37,6 +38,9 @@ export function Marquee() {
       start: { x: number; y: number };
       startSheet: { x: number; y: number };
       before: string[];
+      /** The cards and their sizes when the marquee started: nothing moves while it's drawn. */
+      layout: Layout;
+      sizes: Sizes;
       base: string[];
       moved: boolean;
       shift: boolean;
@@ -59,6 +63,8 @@ export function Marquee() {
         start: toLocal(client, root),
         startSheet: toSheet(client, root),
         before,
+        layout: doc.get().layout,
+        sizes: currentSizes(),
         base: event.shiftKey ? before : [],
         moved: false,
         shift: event.shiftKey,
@@ -78,7 +84,7 @@ export function Marquee() {
       drag.moved = true;
       const rect = spanRect(drag.start, local);
       setBox({ left: rect.x, top: rect.y, width: rect.width, height: rect.height });
-      const hits = marqueeHits(doc.get().layout, currentSizes(), spanRect(drag.startSheet, toSheet(client, root)), layoutMetrics);
+      const hits = marqueeHits(drag.layout, drag.sizes, spanRect(drag.startSheet, toSheet(client, root)), layoutMetrics);
       select(union(drag.base, hits));
     };
     const up = (event: PointerEvent) => {
@@ -105,7 +111,11 @@ export function Marquee() {
       setBox(null);
       select(before);
     };
-    /** One finger on empty sheet draws the marquee, so React Flow's touch panning mustn't take it. */
+    /**
+     * One finger on empty sheet draws the marquee, so React Flow's touch panning mustn't see it land. When a second
+     * finger follows, its touchstart goes through: d3-zoom starts from every finger down (`event.touches`), so it
+     * pinches and pans with both even though it never saw the first land.
+     */
     const touch = (event: TouchEvent) => {
       if (event.touches.length === 1 && onPane(event.target) && !busy(root)) event.stopPropagation();
     };

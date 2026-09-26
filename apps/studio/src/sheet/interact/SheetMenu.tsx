@@ -1,9 +1,11 @@
 import type { Hex4 } from "@lattice-studio/core";
 import { formatSelector } from "@lattice-studio/core";
 import { useEffect, useState } from "react";
-import { commandRef, useCatalog, useDocument, useSession } from "@/contracts";
+import { commandRef, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
+import { pinView } from "@/sheet/card/card-model";
 import { ContextMenu } from "@/ui/overlays/ContextMenu";
 import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
+import { MenuItem } from "@/ui/overlays/MenuItem";
 import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
 import { closeSheetMenu, useSheetMenu, type MenuRequest } from "./menu-state";
 import styles from "./interact.module.css";
@@ -22,10 +24,17 @@ export function SheetMenu() {
   return <OpenMenu key={request.key} request={request} />;
 }
 
+/**
+ * After the menu has let go of focus, focus goes back to what had it, unless the item moved it to another region
+ * (the inspector, the palette). A card the menu removed is gone, and the delete rule places focus instead.
+ */
 function restoreFocus(invoker: HTMLElement | null): void {
-  // After the menu has let go of focus; a card the menu removed is gone, and the delete rule places focus.
   requestAnimationFrame(() => {
-    if (invoker?.isConnected && !invoker.contains(document.activeElement)) invoker.focus({ preventScroll: true });
+    if (!invoker?.isConnected) return;
+    const active = document.activeElement;
+    if (active === invoker) return;
+    const region = invoker.closest("[data-region]");
+    if (!active || active === document.body || (region !== null && region.contains(active))) invoker.focus({ preventScroll: true });
   });
 }
 
@@ -66,7 +75,10 @@ function OpenMenu({ request }: { request: MenuRequest }) {
 /** Card: Open in inspector, Locate, Move to…, Flip pins, Expand or Collapse, Route contested selectors here, Remove; with several selected: Tidy selection, Remove {n} (IR L194). */
 function CardItems({ facet }: { facet: string }) {
   const expanded = useDocument((s) => s.project.layout[facet]?.expanded === true);
-  const count = useSession((s) => s.selection.length);
+  // Cards on the sheet only: a selection can name a facet that has just gone.
+  const layout = useDocument((s) => s.project.layout);
+  const selection = useSession((s) => s.selection);
+  const count = selection.filter((name) => Object.hasOwn(layout, name)).length;
   const several = count >= 2;
   return (
     <>
@@ -83,18 +95,29 @@ function CardItems({ facet }: { facet: string }) {
   );
 }
 
-/** Pin: Route here, Leave out of the diamond or Bring back, Copy selector, Copy signature, Show owner (IR L195). */
+/**
+ * Pin: Route here, Leave out of the diamond or Bring back, Copy selector, Copy signature, Show owner (IR L195),
+ * each only where the pin's state allows it (S4a's card model, as the Structure tree's selector menu reads it):
+ * Route here where another facet serves it or it's contested, Leave out where it routes here, Bring back where
+ * it's out. A seam offers no route (spec L441), and a selector the analysis hasn't checked yet none of these.
+ */
 function PinItems({ facet, selector }: { facet: string; selector: Hex4 }) {
+  const catalog = useCatalog();
   const excluded = useDocument((s) => s.project.recipe.exclude.some((x) => x.toLowerCase() === selector));
+  const route = useAnalysis((a) => a.routing[selector]);
+  const entry = catalog?.facets.find((f) => f.name === facet)?.selectors.find((s) => s.hex === selector);
+  const state = catalog && entry ? pinView({ facet, selector: entry, route, excluded, catalog }).state : "unchecked";
+  const routeHere = state === "elsewhere" || state === "contested";
+  const leaveOut = state === "routed" || state === "default";
+  const change = routeHere || leaveOut || state === "excluded";
   return (
     <>
-      <MenuCommandItem command={commandRef("selector.route", { selector, facet })} label="Route here" />
-      {excluded ? (
+      {routeHere ? <MenuCommandItem command={commandRef("selector.route", { selector, facet })} label="Route here" /> : null}
+      {leaveOut ? <MenuCommandItem command={commandRef("selector.exclude", { selector })} label="Leave out of the diamond" /> : null}
+      {state === "excluded" ? (
         <MenuCommandItem command={commandRef("selector.include", { selector, facet })} label="Bring back" />
-      ) : (
-        <MenuCommandItem command={commandRef("selector.exclude", { selector })} label="Leave out of the diamond" />
-      )}
-      <MenuSeparator />
+      ) : null}
+      {change ? <MenuSeparator /> : null}
       <MenuCommandItem command={commandRef("selector.copy", { selector, facet })} label="Copy selector" />
       <MenuCommandItem command={commandRef("selector.copySignature", { selector, facet })} label="Copy signature" />
       <MenuCommandItem command={commandRef("selector.showOwner", { selector })} label="Show owner" />
@@ -102,7 +125,10 @@ function PinItems({ facet, selector }: { facet: string; selector: Hex4 }) {
   );
 }
 
-/** Sheet: Add facet here… (the palette, placing at the pointer), Tidy, Fit, Select all (IR L197). Paste arrives in v1.1. */
+/** Paste is v1.1 (IR L197): shown, disabled with why. */
+export const PASTE_LATER = "Arrives in v1.1";
+
+/** Sheet: Add facet here… (the palette, placing at the pointer), Tidy, Fit, Select all, and Paste (v1.1) (IR L197). */
 function SheetItems({ at }: { at: { x: number; y: number } }) {
   return (
     <>
@@ -110,6 +136,7 @@ function SheetItems({ at }: { at: { x: number; y: number } }) {
       <MenuCommandItem command={commandRef("layout.tidy")} label="Tidy" />
       <MenuCommandItem command={commandRef("sheet.zoomFit")} label="Fit" />
       <MenuCommandItem command={commandRef("sheet.selectAll")} label="Select all" />
+      <MenuItem label="Paste" onSelect={() => undefined} disabledReason={PASTE_LATER} />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Layout, LayoutMetrics, Sizes } from "@lattice-studio/core";
 import {
-  edgeScroll, groupBounds, marqueeHits, nearestInDirection, settledOffset, snap, spanRect, toggled, union,
+  clearStep, edgeScroll, groupBounds, marqueeHits, nearestInDirection, settledOffset, snap, spanRect, toggled, union,
 } from "./geometry";
 
 const metrics: LayoutMetrics = {
@@ -119,5 +119,25 @@ describe("edgeScroll", () => {
     const at = edgeScroll({ x: 990, y: 695 }, sheet);
     expect(at.x).toBeLessThan(0);
     expect(at.y).toBeLessThan(0);
+  });
+});
+
+describe("clearStep", () => {
+  // A at 0; B right beside it, 8 px to its right.
+  const layout: Layout = { A: card(0, 0), B: card(208, 0) };
+  const sizes: Sizes = { A: size, B: size };
+
+  test("a nudge that lands on nothing is the nudge", () => {
+    expect(clearStep(layout, sizes, ["A"], { x: 0, y: 8 }, metrics)).toEqual({ x: 0, y: 8 });
+    expect(clearStep(layout, sizes, ["A"], { x: 8, y: 0 }, metrics)).toEqual({ x: 8, y: 0 });
+  });
+
+  test("a nudge onto a card goes on past it, in whole steps", () => {
+    // A (200 wide) at 16 would overlap B at 208; the first clear multiple of 8 is past B's right edge (408).
+    expect(clearStep(layout, sizes, ["A"], { x: 16, y: 0 }, metrics)).toEqual({ x: 416, y: 0 });
+  });
+
+  test("a group moves as one", () => {
+    expect(clearStep(layout, sizes, ["A", "B"], { x: 8, y: 0 }, metrics)).toEqual({ x: 8, y: 0 });
   });
 });

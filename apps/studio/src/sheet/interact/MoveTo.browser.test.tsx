@@ -4,7 +4,9 @@
  * Esc cancels. One undo step, and the selection moves together.
  */
 import { describe, expect, test } from "vitest";
-import { commandState, doc, session, settings } from "@/contracts";
+import { userEvent } from "vitest/browser";
+import { commandState, doc, runCommand, session, settings } from "@/contracts";
+import { onCleanup } from "../../../test/harness";
 import {
   announced, cardNode, client, focusedCard, paneElement, position, press, renderInteractSheet, sheetProject,
 } from "./testing/interact-harness";
@@ -128,6 +130,38 @@ describe("Move to…", () => {
     }).toBe(false);
     expect(position(a)).not.toEqual({ x: 312, y: 24 });
     expect(doc.state().undoLabel).toBe(`Moved ${a}`);
+  });
+
+  test("started from a button outside the sheet (the inspector, the Structure tree), the arrows and Enter still move it", async () => {
+    const [a] = await sheet();
+    session.set({ selection: [a], focus: { kind: "facet", facet: a } });
+    const button = document.createElement("button");
+    button.textContent = "Move to…";
+    button.addEventListener("click", () => void runCommand({ id: "sheet.moveTo" }, "button"));
+    document.body.append(button);
+    onCleanup(() => button.remove());
+    await userEvent.click(button);
+    await expect.poll(() => document.querySelector("[data-move-to]")).not.toBeNull();
+    expect(document.activeElement).toBe(button);
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}{Enter}");
+    expect(position(a)).toEqual({ x: 40, y: 24 });
+    expect(session.get().modes.moveTo).toBe(false);
+    await expect.poll(() => focusedCard()).toBe(a);
+  });
+
+  test("below 100% zoom the ghost keeps its stroke width on screen and its x · y label its size", async () => {
+    const project = sheetProject(4, { id: ID });
+    await renderInteractSheet({ project, session: { viewports: { [ID]: { x: 60, y: 80, zoom: 0.5 } } } });
+    const [a] = project.recipe.facets as [string];
+    await focusOn(a);
+    press("m");
+    await expect.poll(() => document.querySelector("[data-move-to] [class*=ghost]")).not.toBeNull();
+    const ghost = document.querySelector<HTMLElement>("[data-move-to] [class*=ghost]");
+    // 1.5 px on screen at 50%: 3 px in sheet units.
+    await expect.poll(() => (ghost ? getComputedStyle(ghost).borderTopWidth : "")).toBe("3px");
+    const label = document.querySelector<HTMLElement>("[data-move-to] [class*=coordinates]");
+    const shown = label?.getBoundingClientRect().height ?? 0;
+    expect(shown).toBeGreaterThan(12);
   });
 
   test("Move to… needs a selection, and says why it can't read-only", async () => {

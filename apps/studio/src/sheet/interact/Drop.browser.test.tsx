@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "vitest";
 import { doc, startCatalogDrag } from "@/contracts";
-import { fixtureCatalog } from "../../../test/harness";
+import { fixtureCatalog, onCleanup } from "../../../test/harness";
 import { cardNode, client, drawnViewport, paneElement, renderInteractSheet, selection, sheetProject } from "./testing/interact-harness";
 
 const ID = "drop";
@@ -74,8 +74,20 @@ describe("dropping a catalog row", () => {
   });
 });
 
+/**
+ * d3-zoom (React Flow's panning) listens for touches only where the browser has them; this desktop test browser
+ * says it does, so one-finger panning would really happen if the marquee didn't take the touch.
+ */
+function touchScreen(): void {
+  Object.defineProperty(HTMLElement.prototype, "ontouchstart", { configurable: true, writable: true, value: null });
+  onCleanup(() => {
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).ontouchstart;
+  });
+}
+
 describe("touch", () => {
   test("one finger on empty sheet draws the marquee and doesn't pan", async () => {
+    touchScreen();
     const { placed } = await sheet(2);
     const [a] = placed;
     const before = drawnViewport();
@@ -99,5 +111,42 @@ describe("touch", () => {
     touch("touchend", 120, 150);
     expect(selection()).toEqual([a]);
     expect(drawnViewport()).toEqual(before);
+  });
+});
+
+describe("pinch", () => {
+  test("two fingers from empty sheet zoom, even though one finger there draws the marquee", async () => {
+    touchScreen();
+    await sheet(2);
+    const pane = paneElement();
+    const before = drawnViewport();
+    const at = (x: number, y: number) => client({ x, y });
+    const touch = (id: number, x: number, y: number) => new Touch({ identifier: id, target: pane, ...at(x, y) });
+    const send = (type: string, changed: Touch[], touches: Touch[]) =>
+      pane.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches, targetTouches: touches, changedTouches: changed }));
+    const pointer = (type: string, id: number, x: number, y: number, primary: boolean) =>
+      pane.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, view: window, pointerId: id, pointerType: "touch", isPrimary: primary, button: 0,
+        buttons: type === "pointerup" ? 0 : 1, ...at(x, y),
+      }));
+    // First finger lands, then the second, as fingers do: each touchstart carries only its own new touch.
+    const a0 = touch(1, 500, 350);
+    pointer("pointerdown", 1, 500, 350, true);
+    send("touchstart", [a0], [a0]);
+    const b0 = touch(2, 540, 350);
+    pointer("pointerdown", 2, 540, 350, false);
+    send("touchstart", [b0], [a0, b0]);
+    // They spread apart.
+    for (let i = 1; i <= 5; i++) {
+      const a = touch(1, 500 - 20 * i, 350);
+      const b = touch(2, 540 + 20 * i, 350);
+      send("touchmove", [a, b], [a, b]);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    const a1 = touch(1, 400, 350);
+    const b1 = touch(2, 640, 350);
+    send("touchend", [a1, b1], []);
+    await expect.poll(() => drawnViewport().zoom).toBeGreaterThan(before.zoom * 1.5);
+    expect(document.querySelector("[data-marquee]")).toBeNull();
   });
 });

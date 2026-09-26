@@ -14,20 +14,37 @@
   pointer-events: none;
 }
 
-/* A ghost: where a card would land, drawn in sheet units inside the viewport. */
+/*
+ * Drawn in sheet units inside the viewport, so below 100% zoom lines divide by the zoom and keep their width on
+ * screen (spec L772), as the cards' do: the card-zoom layer sets --lx-sheet-zoom on the sheet.
+ */
+.ghost,
+.crosshair,
+.coordinates {
+  --ghost-zoom: min(var(--lx-sheet-zoom, 1), 1);
+  --ghost-mark: calc(max(var(--lx-stroke-hair), 1.5px) / var(--ghost-zoom));
+  --ghost-heavy: calc(var(--lx-stroke-heavy) / var(--ghost-zoom));
+}
+
+/* A ghost: where a card would land. */
 .ghost {
   position: absolute;
   box-sizing: border-box;
-  border: max(var(--lx-stroke-hair), 1.5px) dashed var(--lx-accent);
+  border: var(--ghost-mark) dashed var(--lx-accent);
   background: var(--lx-accent-soft);
   pointer-events: none;
 }
 
-/* The ghost's position, "x · y", in code type on the panel ground so it reads over cards and dots. */
+/*
+ * The ghost's position, "x · y", in code type on the panel ground so it reads over cards and dots; scaled back
+ * up below 100% zoom so it stays readable, anchored at its bottom-left corner on the ghost.
+ */
 .coordinates {
   position: absolute;
   inset-block-end: 100%;
   inset-inline-start: 0;
+  transform: scale(calc(1 / var(--ghost-zoom)));
+  transform-origin: bottom left;
   margin-block-end: var(--lx-space-1);
   padding: 0 var(--lx-space-2);
   border: var(--lx-stroke-hair) solid var(--lx-accent);
@@ -55,17 +72,17 @@
 }
 
 .crosshair::before {
-  inset-inline-start: calc(-1 * var(--lx-space-6));
-  inset-block-start: calc(-0.5 * var(--lx-stroke-heavy));
-  width: calc(2 * var(--lx-space-6));
-  height: var(--lx-stroke-heavy);
+  inset-inline-start: calc(-1 * var(--lx-space-6) / var(--ghost-zoom));
+  inset-block-start: calc(-0.5 * var(--ghost-heavy));
+  width: calc(2 * var(--lx-space-6) / var(--ghost-zoom));
+  height: var(--ghost-heavy);
 }
 
 .crosshair::after {
-  inset-block-start: calc(-1 * var(--lx-space-6));
-  inset-inline-start: calc(-0.5 * var(--lx-stroke-heavy));
-  width: var(--lx-stroke-heavy);
-  height: calc(2 * var(--lx-space-6));
+  inset-block-start: calc(-1 * var(--lx-space-6) / var(--ghost-zoom));
+  inset-inline-start: calc(-0.5 * var(--ghost-heavy));
+  width: var(--ghost-heavy);
+  height: calc(2 * var(--lx-space-6) / var(--ghost-zoom));
 }
 
 /* While Move to… places the selection, the whole sheet is the target. */

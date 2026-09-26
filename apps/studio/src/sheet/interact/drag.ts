@@ -84,7 +84,18 @@ export function beginDrag(names: readonly string[], grabbed: string, pressed: Po
     frame: requestAnimationFrame(tick),
     scrolled: false,
   };
+  window.addEventListener("blur", interrupted);
+  document.addEventListener("visibilitychange", hidden);
   follow(drag);
+}
+
+/** The window lost focus mid-drag (another app, a dialog): the drag ends where the cards are. */
+function interrupted(): void {
+  endDrag(null);
+}
+
+function hidden(): void {
+  if (document.visibilityState === "hidden") endDrag(null);
 }
 
 /** The pointer moved. */
@@ -96,13 +107,16 @@ export function moveDrag(client: Point): void {
 
 /**
  * The pointer let go (at `client`, when known): settle the cards, commit one undo step and say where they went.
- * `null` ends a drag that was interrupted, keeping where the cards are.
+ * `null` ends a drag that was interrupted (the window lost focus or was hidden, the sheet went away), keeping
+ * where the cards are: its frame loop stops and its undo step closes.
  */
 export function endDrag(client: Point | null): void {
   const d = drag;
   if (!d) return;
   drag = null;
   cancelAnimationFrame(d.frame);
+  window.removeEventListener("blur", interrupted);
+  document.removeEventListener("visibilitychange", hidden);
   if (client) {
     d.client = client;
     follow(d);

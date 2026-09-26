@@ -77,22 +77,36 @@ export function without(layout: Layout, names: readonly string[]): Layout {
  */
 export function settledOffset(layout: Layout, sizes: Sizes, names: readonly string[], by: Point, metrics: LayoutMetrics): Point {
   const bounds = groupBounds(layout, sizes, names, metrics);
-  if (!bounds) return by;
+  if (!bounds || !landsOnCard(layout, sizes, names, by, metrics)) return by;
+  const others = without(layout, names);
+  const at = { x: bounds.x + by.x, y: bounds.y + by.y };
+  const slot = freeSlot(others, sizes, at, { width: bounds.width, height: bounds.height }, metrics);
+  return { x: slot.x - bounds.x, y: slot.y - bounds.y };
+}
+
+/** Whether any of `names`, moved by `by`, would overlap a card that isn't moving. */
+export function landsOnCard(layout: Layout, sizes: Sizes, names: readonly string[], by: Point, metrics: LayoutMetrics): boolean {
   const others = without(layout, names);
   const obstacles = Object.keys(others).flatMap((name) => {
     const r = rectOf(others, sizes, name, metrics);
     return r ? [r] : [];
   });
-  const lands = names.some((name) => {
+  return names.some((name) => {
     const r = rectOf(layout, sizes, name, metrics);
-    if (!r) return false;
-    const moved = { ...r, x: r.x + by.x, y: r.y + by.y };
-    return obstacles.some((o) => overlapping(moved, o));
+    return r !== null && obstacles.some((o) => overlapping({ ...r, x: r.x + by.x, y: r.y + by.y }, o));
   });
-  if (!lands) return by;
-  const at = { x: bounds.x + by.x, y: bounds.y + by.y };
-  const slot = freeSlot(others, sizes, at, { width: bounds.width, height: bounds.height }, metrics);
-  return { x: slot.x - bounds.x, y: slot.y - bounds.y };
+}
+
+/**
+ * A nudge that never stacks cards (spec L425): `by`, or when that lands one of `names` on another card, the
+ * next multiple of `by` that doesn't. Always an answer: past the last card that way is clear.
+ */
+export function clearStep(layout: Layout, sizes: Sizes, names: readonly string[], by: Point, metrics: LayoutMetrics): Point {
+  if (by.x === 0 && by.y === 0) return by;
+  for (let k = 1; ; k++) {
+    const step = { x: by.x * k, y: by.y * k };
+    if (!landsOnCard(layout, sizes, names, step, metrics)) return step;
+  }
 }
 
 /** Cards a marquee `rect` (sheet units) touches, in layout order. */

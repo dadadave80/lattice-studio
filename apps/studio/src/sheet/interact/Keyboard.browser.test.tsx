@@ -63,8 +63,26 @@ describe("nudge", () => {
     settings.set({ nudge: { small: 16, large: 64 } });
     await focusOn(a as string);
     press("ArrowDown");
-    press("ArrowRight", { shiftKey: true });
-    expect(position(a as string)).toEqual({ x: 88, y: 40 });
+    press("ArrowDown", { shiftKey: true });
+    expect(position(a as string)).toEqual({ x: 24, y: 104 });
+  });
+
+  test("cards never stack: a nudge onto another card goes on past it", async () => {
+    const [a, b] = await sheet();
+    await focusOn(a as string);
+    // A (232 wide at x 24) and B (at x 296) are 40 px apart: 5 nudges fit, the 6th would land on B.
+    for (let i = 0; i < 5; i++) press("ArrowRight");
+    expect(position(a as string)).toEqual({ x: 64, y: 24 });
+    press("ArrowRight");
+    const r = cardNode(a as string).getBoundingClientRect();
+    await expect.poll(() => {
+      const o = cardNode(b as string).getBoundingClientRect();
+      const n = cardNode(a as string).getBoundingClientRect();
+      return n.left >= o.right && n.left !== r.left;
+    }).toBe(true);
+    expect(doc.state().undoLabel).toBe(`Moved ${a}`);
+    doc.undo();
+    expect(position(a as string)).toEqual({ x: 24, y: 24 });
   });
 
   test("with nothing selected the arrows scroll the sheet instead", async () => {

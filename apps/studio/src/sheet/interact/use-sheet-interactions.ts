@@ -8,8 +8,10 @@
  * which doesn't change. While Move to… places the selection, its layer takes the presses, so nothing drags.
  */
 import { layoutSizes } from "@lattice-studio/tokens";
+import type { MouseEvent, TouchEvent } from "react";
 import type { SheetInteractionProps } from "@/contracts";
 import type { Handlers } from "./handlers";
+import { notePress } from "./press";
 import { loadRuntime, loadedRuntime, withRuntime } from "./runtime";
 
 /** Shift, ⌘ or Ctrl held: a click adds or removes a card (IR L42), and React Flow keeps the rest selected. */
@@ -38,12 +40,17 @@ const onNodeContextMenu: Handlers["onNodeContextMenu"] = (event, node) => {
   void withRuntime((r) => r.handlers.onNodeContextMenu(event, node));
 };
 
-/** A press on a card: noted for the drag that may follow, and the runtime asked for if it isn't here yet. */
-const onPress: Handlers["onPress"] = (event) => {
-  const r = loadedRuntime();
-  if (r) r.handlers.onPress(event);
-  else void loadRuntime();
-};
+/**
+ * A press on a card: noted here, in the first load, so the drag that may follow anchors where the card was
+ * grabbed even before the runtime has loaded; and the runtime asked for if it isn't here yet.
+ */
+function onPress(event: MouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>): void {
+  const card = event.target instanceof Element ? event.target.closest<HTMLElement>(".react-flow__node[data-id]") : null;
+  const facet = card?.dataset.id;
+  const point = "touches" in event ? event.touches[0] : event;
+  notePress(facet !== undefined && point ? { facet, client: { x: point.clientX, y: point.clientY } } : null);
+  if (!loadedRuntime()) void loadRuntime();
+}
 
 const PROPS: SheetInteractionProps = {
   elementsSelectable: false,

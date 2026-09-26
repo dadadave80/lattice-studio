@@ -80,6 +80,22 @@ describe("dragging a card", () => {
     expect(doc.state().undoLabel).toBe(`Moved ${a}`);
   });
 
+  test("the window losing focus ends a drag where the cards are, as one undo step", async () => {
+    const [a] = await sheet();
+    await dragCard(a, { x: 0, y: 330 }, { release: false });
+    const moved = position(a);
+    expect(moved.y).toBeGreaterThan(300);
+    window.dispatchEvent(new Event("blur"));
+    expect(doc.state().undoLabel).toBe(`Moved ${a}`);
+    // Later moves of the orphaned gesture change nothing.
+    window.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, view: window, buttons: 1, clientX: 900, clientY: 100 }));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(position(a)).toEqual(moved);
+    await releaseDrag();
+    doc.undo();
+    expect(position(a)).toEqual({ x: 24, y: 24 });
+  });
+
   test("read-only: nothing moves, and the reason is logged", async () => {
     const [a] = await sheet();
     session.set({ readOnly: "Read-only: this is a shared link" });
