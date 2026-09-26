@@ -2,7 +2,11 @@
  * Keyboard helpers (IR "Keyboard"): F6 regions, F8 problems, the ⌘K palette and console verbs. They press keys
  * and find controls by role and accessible name only, like every page object (README.md).
  *
- * `MOD` is Playwright's `ControlOrMeta`: ⌘ on macOS, Ctrl elsewhere, as Studio's `Mod` binds.
+ * `MOD` is Playwright's `ControlOrMeta`, kept for anything that already imports it, but it resolves from the host
+ * running the test (`process.platform === "darwin"`), not the page: on a macOS host it presses ⌘ even against a
+ * Desktop Chrome project whose `navigator.platform` reports Windows, where Studio binds Ctrl. `openPalette` uses
+ * `modifierKey`/`pagePlatform` instead, which reads the platform the page itself reports, the way Studio's
+ * `currentPlatform` does.
  */
 import { expect, type Locator, type Page } from "@playwright/test";
 
@@ -19,6 +23,11 @@ export async function pagePlatform(page: Page): Promise<"mac" | "other"> {
     const name = data?.platform || navigator.platform || navigator.userAgent;
     return /mac|iphone|ipad|ipod/i.test(name) ? "mac" : "other";
   });
+}
+
+/** The modifier Studio's `Mod` binds on the page's own platform: "Meta" where it reports macOS, "Control" elsewhere. */
+export async function modifierKey(page: Page): Promise<"Meta" | "Control"> {
+  return (await pagePlatform(page)) === "mac" ? "Meta" : "Control";
 }
 
 /** The region landmarks F6 cycles through (contracts `REGION_LABELS`), in order. */
@@ -89,7 +98,7 @@ async function focusedRole(page: Page): Promise<string | null> {
  * doesn't open, for example over a modal dialog (IR "Command palette").
  */
 export async function openPalette(page: Page): Promise<Locator> {
-  await page.keyboard.press(`${MOD}+k`);
+  await page.keyboard.press(`${await modifierKey(page)}+k`);
   await expect.poll(() => focusedRole(page), { message: "⌘K should focus the palette's combobox" }).toBe("combobox");
   const comboboxes = page.getByRole("combobox");
   for (let i = 0; i < (await comboboxes.count()); i += 1) {
@@ -136,15 +145,25 @@ export function commandLine(page: Page): Locator {
 }
 
 /**
- * Types one console line and presses Enter, keyboard only: F6 to the Console region, Tab to the command line when
- * it isn't focused yet. The console echoes it ("› place governor").
+ * Types one console line and presses Enter, keyboard only: F6 to the Console region, then Tab to the command line
+ * when it isn't focused yet. The console's body (the log, its filter chips and the command line) is its own chunk,
+ * requested once the drawer is open (spec L822), so this waits for the command line to mount before tabbing:
+ * tabbing straight away can run out of the still-empty header's own controls first. From there it tabs by F6
+ * region order, not a fixed count: it stops the moment Tab leaves the Console region (overshoot) or after a
+ * generous ceiling, rather than giving up after an arbitrary number of presses that may sit short of the command
+ * line (the body's filter chips alone can outnumber a small fixed cap). The console echoes it ("› place governor").
  */
 export async function runConsole(page: Page, line: string): Promise<void> {
   const input = commandLine(page);
   const focused = async () => (await input.count()) === 1 && (await input.evaluate((el) => el === document.activeElement));
   if (!(await focused())) {
     await focusRegion(page, "Console");
-    for (let presses = 0; presses < 20 && !(await focused()); presses += 1) await page.keyboard.press("Tab");
+    await expect(input).toBeVisible();
+    for (let presses = 0; !(await focused()); presses += 1) {
+      if (presses >= 200) throw new Error("Tab never reached the console's command line.");
+      await page.keyboard.press("Tab");
+      if ((await focusedRegion(page)) !== "Console") throw new Error("Tab left the Console region before reaching the command line.");
+    }
   }
   await expect(input).toBeFocused();
   await page.keyboard.type(line);
