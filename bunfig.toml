@@ -1,6 +1,8 @@
 [install]
 # Classic node_modules layout: Vitest, Playwright and the hooks expect tools in node_modules/.bin at the root.
 linker = "hoisted"
+# A plain `bun install` never rewrites bun.lock (spec L892): dependency changes go through the orchestrator.
+frozenLockfile = true
 # Lifecycle scripts run only for packages listed in package.json "trustedDependencies", which stays empty.
 
 [test]

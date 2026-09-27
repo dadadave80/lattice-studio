@@ -158,3 +158,33 @@ export function missingReverts(name: string): string {
   return `Creating ${name} reverts: Arachnid's proxy gives no reason, so check the gas and the chain's code size limit.`;
 }
 export const NOTHING_MISSING = "Nothing to deploy: every contract is already on this chain.";
+
+/** What `creationFailed` says the replay gave: the mined transaction's call at the block before reverted too. */
+export const CREATION_REPLAYED = "Replayed with `eth_call` at the block before, the creation reverts the same way.";
+
+/**
+ * After CreateX's `FailedContractCreation`, which carries no reason (spec L75): which of the salt's addresses has
+ * code, then what replaying the creation with `eth_call` gave. A reverted transaction leaves no code behind, so code
+ * at the CREATE3 proxy means the salt was used before this transaction.
+ */
+export function creationFailed(found: { proxy: Address; diamond: Address; chain: string; proxyCode: boolean; diamondCode: boolean }): string {
+  const proxy = `the salt's CREATE3 proxy ${formatAddress(found.proxy)}`;
+  const diamond = `the diamond address ${formatAddress(found.diamond)}`;
+  const where = found.proxyCode && found.diamondCode
+    ? `Both ${proxy} and ${diamond} have code on ${found.chain}: this salt was used before. Use a new salt.`
+    : found.proxyCode
+      ? `${capitalized(proxy)} has code on ${found.chain} but ${diamond} has none: this salt was used before. Use a new salt.`
+      : found.diamondCode
+        ? `${capitalized(diamond)} has code on ${found.chain} but ${proxy} has none.`
+        : `Neither ${proxy} nor ${diamond} has code on ${found.chain}, so the salt is free: the creation itself failed.`;
+  return `${where} ${CREATION_REPLAYED}`;
+}
+
+/** When the salt's addresses couldn't be read after a `FailedContractCreation`. */
+export function creationUnread(chain: string, reason: string): string {
+  return `Couldn't read code at the salt's addresses on ${chain}: ${reason.replace(/\.$/, "")}. ${CREATION_REPLAYED}`;
+}
+
+function capitalized(text: string): string {
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+}

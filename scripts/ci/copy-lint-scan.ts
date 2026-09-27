@@ -6,11 +6,14 @@ import ts from "typescript";
 
 export type CopySpan = { readonly line: number; readonly text: string };
 
-/** JSX/object-literal props whose value is copy a person reads (brief Q6: "title, aria-label, label, placeholder"). */
-const COPY_PROP_NAMES = new Set(["title", "aria-label", "label", "placeholder"]);
+/** JSX/object-literal props whose value is copy a person reads (brief Q6: "title, aria-label, label,
+ * placeholder"; FX44 §13 #18 widens it to `log({text})`'s "text", a disabled reason's "reason", and
+ * "description" props). */
+const COPY_PROP_NAMES = new Set(["title", "aria-label", "label", "placeholder", "text", "reason", "description"]);
 
-/** Call expressions whose text arguments are toast or banner copy, matched by the callee's last identifier. */
-const COPY_CALL_PATTERN = /toast|banner/i;
+/** Call expressions whose text arguments are toast, banner, console or announcer copy, matched by the callee's
+ * last identifier (FX44 §13 #18 adds `say(...)` and `announce(...)`, the router's and shell's announcer calls). */
+const COPY_CALL_PATTERN = /toast|banner|\bsay\b|announce/i;
 
 function lineOf(sourceFile: ts.SourceFile, pos: number): number {
   return sourceFile.getLineAndCharacterOfPosition(pos).line + 1;
@@ -38,34 +41,11 @@ function calleeName(expr: ts.LeftHandSideExpression): string {
   return "";
 }
 
-/** JSX text, target props (JSX attributes and matching object properties) and toast/banner call arguments,
- * anywhere in the file. Meant for app UI source (brief: apps/studio/src/**, S12's problem pages). */
-export function extractAppCopy(sourceFile: ts.SourceFile): CopySpan[] {
-  const spans: CopySpan[] = [];
-
-  function visit(node: ts.Node): void {
-    if (ts.isJsxText(node)) {
-      const text = node.text.trim();
-      if (text) spans.push({ line: lineOf(sourceFile, node.getStart(sourceFile)), text });
-    } else if (ts.isJsxAttribute(node) && COPY_PROP_NAMES.has(node.name.getText(sourceFile))) {
-      const init = node.initializer;
-      const literal = init && ts.isJsxExpression(init) ? init.expression : init;
-      if (literal) spans.push(...literalSpans(sourceFile, literal));
-    } else if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name) && COPY_PROP_NAMES.has(node.name.text)) {
-      spans.push(...literalSpans(sourceFile, node.initializer));
-    } else if (ts.isCallExpression(node) && COPY_CALL_PATTERN.test(calleeName(node.expression))) {
-      for (const arg of node.arguments) spans.push(...literalSpans(sourceFile, arg));
-    }
-    ts.forEachChild(node, visit);
-  }
-  visit(sourceFile);
-  return spans;
-}
-
-/** Every string and template literal in the file, except object-literal property keys and import/export module
- * specifiers. Meant for C10's own narrate templates (packages/core/src/narrate/{lines,narrate,problem}.ts), a
- * small, known fileset where a blanket scan is safe. */
-export function extractTemplateCopy(sourceFile: ts.SourceFile): CopySpan[] {
+/** Every string and template literal under `root`, except object-literal property keys and import/export module
+ * specifiers. Shared by `extractTemplateCopy` (the whole file) and, inside `extractAppCopy`, a copy prop whose
+ * value is a function ("title: () => …") rather than a literal, so every branch of an arrow body — a ternary, a
+ * `??` fallback, a lookup table — is still found. */
+function collectLiteralSpans(sourceFile: ts.SourceFile, root: ts.Node): CopySpan[] {
   const spans: CopySpan[] = [];
 
   function visit(node: ts.Node): void {
@@ -85,8 +65,72 @@ export function extractTemplateCopy(sourceFile: ts.SourceFile): CopySpan[] {
     }
     ts.forEachChild(node, visit);
   }
+  visit(root);
+  return spans;
+}
+
+/** JSX text, target props (JSX attributes and matching object properties, including one whose value is an arrow
+ * function returning copy: "title: () => …") and toast/banner/say/announce call arguments, anywhere in the file.
+ * Meant for app UI source (brief: apps/studio/src/**, S12's problem pages). */
+export function extractAppCopy(sourceFile: ts.SourceFile): CopySpan[] {
+  const spans: CopySpan[] = [];
+
+  function visit(node: ts.Node): void {
+    if (ts.isJsxText(node)) {
+      const text = node.text.trim();
+      if (text) spans.push({ line: lineOf(sourceFile, node.getStart(sourceFile)), text });
+    } else if (ts.isJsxAttribute(node) && COPY_PROP_NAMES.has(node.name.getText(sourceFile))) {
+      const init = node.initializer;
+      const literal = init && ts.isJsxExpression(init) ? init.expression : init;
+      if (literal) spans.push(...literalSpans(sourceFile, literal));
+    } else if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name) && COPY_PROP_NAMES.has(node.name.text)) {
+      const init = node.initializer;
+      // A registry's `title`/`label` is often a function of its context ("title: () => `Set theme to ${x}`",
+      // "label: (args) => SHOW_TITLES[args.pane] ?? \"Show pane\""): scan its whole body for literals, not just a
+      // bare string, so a lookup table's fallback and a ternary's branches are covered too.
+      if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) spans.push(...collectLiteralSpans(sourceFile, init.body));
+      else spans.push(...literalSpans(sourceFile, init));
+    } else if (ts.isCallExpression(node) && COPY_CALL_PATTERN.test(calleeName(node.expression))) {
+      for (const arg of node.arguments) spans.push(...literalSpans(sourceFile, arg));
+    }
+    ts.forEachChild(node, visit);
+  }
   visit(sourceFile);
   return spans;
+}
+
+/** Every string and template literal in the file, except object-literal property keys and import/export module
+ * specifiers. Meant for a small, known fileset where a blanket scan is safe: C10's own narrate templates and
+ * (FX44 §13 #18) the core init, revert, share and plan copy named in `CORE_TEMPLATE_COPY_FILES`, plus the app's
+ * `copy.ts` constant modules (`isAppConstCopyFile`), none of which read like ordinary component source. */
+export function extractTemplateCopy(sourceFile: ts.SourceFile): CopySpan[] {
+  return collectLiteralSpans(sourceFile, sourceFile);
+}
+
+/** Core files, relative to `packages/core/src`, holding copy a person reads: C10's narrate templates plus the
+ * init, revert, share and plan modules the §13 audit found unscanned (init field labels and refusals, revert
+ * reasons, share-link errors, plan/status stamps and template notes). Scanned with `extractTemplateCopy`. */
+export const CORE_TEMPLATE_COPY_FILES: readonly string[] = [
+  "narrate/lines.ts",
+  "narrate/narrate.ts",
+  "narrate/problem.ts",
+  "init/encode/decode.ts",
+  "init/encode/encode.ts",
+  "init/encode/resolve.ts",
+  "init/plan/fields.ts",
+  "revert/decode.ts",
+  "revert/known.ts",
+  "share/link.ts",
+  "share/import.ts",
+  "plan/status.ts",
+  "plan/templates.ts",
+];
+
+/** True for a `copy.ts` module under `apps/studio/src` (e.g. `chain/deploy/copy.ts`): a plain constants-and-
+ * functions file with no JSX, so `extractAppCopy`'s prop/call matching would miss its bare `export const X =
+ * "…"` and `return \`…\`` copy. Scanned with `extractTemplateCopy` instead (FX44 §13 #18). */
+export function isAppConstCopyFile(fileName: string): boolean {
+  return /(?:^|[\\/])copy\.ts$/.test(fileName);
 }
 
 export function parseSource(fileName: string, text: string): ts.SourceFile {

@@ -1,12 +1,18 @@
 import type { Address, Deployment, Hex } from "@lattice-studio/core";
 import { formatAddress } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
-import { describe, expect, test, vi } from "vitest";
-import { page } from "vitest/browser";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { page, userEvent } from "vitest/browser";
 import {
-  command, commandState, doc, getAnalysis, getCatalog, getCommand, history, provideDeployController, putDeployment, runCommand,
-  session, type CommandContext, type DeployController,
+  command, commandState, DEFAULT_SETTINGS, doc, getAnalysis, getCatalog, getCommand, history, log, provideDeployController, putDeployment,
+  runCommand, session, settings, type CommandContext, type DeployController,
 } from "@/contracts";
+import { installShortcuts } from "@/commands/keys/dispatcher";
+import { COMMAND_LABEL } from "@/panels/console/CommandLine";
+import { ConsolePanel } from "@/panels/console/ConsolePanel";
+import { awaitConsoleBody, resetConsole } from "@/panels/console/test-support";
+import { keyLabel } from "@/ui/keys/key-labels";
+import { overridePlatform } from "@/ui/shared/platform";
 import { appDeployDeps } from "../deploy/app-deps";
 import { createDeployMachine, type DeployMachine } from "../deploy/machine";
 import { fakePort } from "../deploy/testing";
@@ -127,6 +133,83 @@ describe("deploy.open (Flow 12 step 1, IR L13)", () => {
     await runCommand({ id: "deploy.open", args: { chainId: 84532 } }, "console");
     expect(session.get().chainId).toBe(84532);
     expect(session.get().dialogs.map((d) => d.id)).toEqual(["deploy-review"]);
+  });
+
+  test("the blocker count names problem.next's key as remapped, or none when it's unbound (spec L661)", async () => {
+    onCleanup(overridePlatform("other"));
+    const project = makeProject({ recipe: makeRecipe({ facets: ["Receive"] }, deployableCatalog()) });
+    await studio({ project, settings: { keymap: { "problem.next": ["Alt+n"] } } });
+    expect(reason("deploy.open")).toBe(`Resolve 1 blocker · ${keyLabel("Alt+n", "other")}`);
+    expect(reason("deploy.again")).toBe(`Resolve 1 blocker · ${keyLabel("Alt+n", "other")}`);
+    onCleanup(() => settings.set({ keymap: DEFAULT_SETTINGS.keymap }));
+    settings.set({ keymap: { "problem.next": [] } });
+    expect(reason("deploy.open")).toBe("Resolve 1 blocker");
+  });
+});
+
+describe("⌘/Ctrl+Enter opens Deploy… from the Log and menus, never from text fields or dialogs (IR L13)", () => {
+  beforeEach(() => {
+    resetConsole();
+    onCleanup(installShortcuts());
+    onCleanup(overridePlatform("other"));
+  });
+
+  const reviewOpen = () => session.get().dialogs.some((d) => d.id === "deploy-review");
+
+  /** The review's host, the console, and a menu and a dialog stand-in, each with a focusable control. */
+  async function withConsole() {
+    fakeChainService({ account: account(), catalog: deployableCatalog() }).install();
+    installController(fakeDeployController());
+    installFees();
+    await renderWithStudio(
+      <>
+        <DialogHost />
+        <div style={{ height: "300px", display: "flex" }}>
+          <ConsolePanel />
+        </div>
+        <div data-keyctx="menu">
+          <button type="button">In a menu</button>
+        </div>
+        <div data-keyctx="dialog">
+          <button type="button">In a dialog</button>
+        </div>
+      </>,
+      { project: templateProject("ERC20"), catalog: deployableCatalog(), session: { chainId: SEPOLIA } },
+    );
+    await awaitConsoleBody();
+  }
+
+  test("from a focused log line", async () => {
+    await withConsole();
+    log({ tag: "Note", text: "Placed ERC20 · 9 selectors" });
+    const line = page.getByRole("button", { name: /Placed ERC20 · 9 selectors/ });
+    await expect.element(line).toBeInTheDocument();
+    (line.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    await expect.poll(reviewOpen).toBe(true);
+  });
+
+  test("from inside a menu", async () => {
+    await withConsole();
+    (page.getByRole("button", { name: "In a menu" }).element() as HTMLElement).focus();
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    await expect.poll(reviewOpen).toBe(true);
+  });
+
+  test("not from the console's command line, a text field", async () => {
+    await withConsole();
+    await userEvent.click(page.getByRole("textbox", { name: COMMAND_LABEL }));
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(reviewOpen()).toBe(false);
+  });
+
+  test("not from inside a dialog", async () => {
+    await withConsole();
+    (page.getByRole("button", { name: "In a dialog" }).element() as HTMLElement).focus();
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(reviewOpen()).toBe(false);
   });
 });
 

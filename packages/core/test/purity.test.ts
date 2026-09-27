@@ -13,6 +13,9 @@ const FORBIDDEN: readonly [string, RegExp][] = [
   ["randomness", /\bMath\.random\s*\(|\bgetRandomValues\s*\(|\brandomUUID\s*\(/],
   ["timers", /\bsetTimeout\s*\(|\bsetInterval\s*\(|\bsetImmediate\s*\(|\bqueueMicrotask\s*\(/],
   ["runtime", /\bprocess\.|\bBun\./],
+  // spec L102 "viem utilities only (keccak, ABI encoding), no network" (§19 audit #24): core only ever calls
+  // viem's pure encode/decode/hash helpers, never a client or a transport that could open a socket.
+  ["viem client or transport", /\bcreatePublicClient\s*\(|\bcreateWalletClient\s*\(|\bhttp\s*\(|\bwebSocket\s*\(|\bcustom\s*\(|from\s+["']viem\/actions["']/],
 ];
 
 function sources(dir: string): string[] {
@@ -44,9 +47,27 @@ describe("core purity", () => {
   });
 
   test("the scan catches each kind", () => {
-    for (const sample of ["await fetch(url)", "Date.now()", "new Date()", "Math.random()", "setTimeout(f, 1)", "Bun.file(x)"]) {
+    for (const sample of [
+      "await fetch(url)",
+      "Date.now()",
+      "new Date()",
+      "Math.random()",
+      "setTimeout(f, 1)",
+      "Bun.file(x)",
+      "createPublicClient({ chain, transport: http(url) })",
+      "createWalletClient({ transport })",
+      "webSocket(url)",
+      "custom(provider)",
+      "import { getBalance } from \"viem/actions\"",
+    ]) {
       expect([sample, FORBIDDEN.some(([, pattern]) => pattern.test(code(sample)))]).toEqual([sample, true]);
     }
     expect(FORBIDDEN.some(([, pattern]) => pattern.test(code("new Date(at) // Date.now() is the caller's")))).toBe(false);
+  });
+
+  test("doesn't trip on unrelated identifiers that merely start with custom or http", () => {
+    for (const sample of ["customEncode(bytes)", "httpStatus(response)", "keccak256(bytes)"]) {
+      expect([sample, FORBIDDEN.some(([, pattern]) => pattern.test(code(sample)))]).toEqual([sample, false]);
+    }
   });
 });

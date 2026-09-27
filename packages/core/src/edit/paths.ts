@@ -1,9 +1,8 @@
 /**
  * Init-argument paths (contracts §3.1 `Anchor`): `bundle.p.asset` addresses `init.args.p.asset`, and
  * `steps[2].admin` addresses `init.steps[2].args.admin`. `bundle` and `steps[2]` name the step itself.
- * Also used for `Project.provenance`, which is keyed by the same paths, so step edits can move its keys along.
+ * Also the keys of `Project.provenance` and `Project.labels`, so step edits can move both along.
  */
-import type { Project } from "../model/project";
 
 /** A parsed init path: the step it lives in, then the fields below it (none for the step itself). */
 export type InitPath =
@@ -34,13 +33,14 @@ export function isUnder(key: string, path: string): boolean {
   return key === path || key.startsWith(`${path}.`) || key.startsWith(`${path}[`);
 }
 
-type Provenance = Project["provenance"];
-
-/** Provenance without `path` and every path below it. Returns the input itself when nothing matched. */
-export function dropProvenance(provenance: Provenance, path: string): Provenance {
+/**
+ * A record keyed by init path (provenance or labels) without `path` and every path below it. Returns the input
+ * itself when nothing matched.
+ */
+export function dropProvenance<T>(provenance: Record<string, T>, path: string): Record<string, T> {
   const keys = Object.keys(provenance);
   if (!keys.some((key) => isUnder(key, path))) return provenance;
-  const out: Provenance = {};
+  const out: Record<string, T> = {};
   for (const key of keys) {
     const source = provenance[key];
     if (source !== undefined && !isUnder(key, path)) out[key] = source;
@@ -49,11 +49,11 @@ export function dropProvenance(provenance: Provenance, path: string): Provenance
 }
 
 /**
- * Provenance with every `steps[i]…` key moved to `steps[map(i)]…`, or dropped where `map` returns null.
+ * The record with every `steps[i]…` key moved to `steps[map(i)]…`, or dropped where `map` returns null.
  * Other keys (`bundle…`) stay. Used when steps are removed, inserted or reordered.
  */
-export function remapStepProvenance(provenance: Provenance, map: (index: number) => number | null): Provenance {
-  const out: Provenance = {};
+export function remapStepProvenance<T>(provenance: Record<string, T>, map: (index: number) => number | null): Record<string, T> {
+  const out: Record<string, T> = {};
   for (const key of Object.keys(provenance)) {
     const source = provenance[key];
     if (source === undefined) continue;

@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
 import { KEY_CONTEXT_ATTRIBUTE, useRegion, useSession, type RegionId, type RegionProps } from "@/contracts";
+import { BannerHost } from "@/feedback";
 import { ConsolePanel } from "@/panels/console";
-import { InspectorPanel } from "@/panels/inspector";
 import { Sheet } from "@/sheet/canvas";
 import { Splitter } from "@/ui/nav/Splitter";
 import { cx } from "@/ui/shared/cx";
 import { useFocusReturn } from "./focus-return";
+import { InspectorPane } from "./InspectorPane";
 import { isDrawerTier, useLayoutTier, useWindowHeight } from "./layout-tier";
 import { LeftPane } from "./LeftPane";
 import { PaneSwitcher } from "./PaneSwitcher";
@@ -45,6 +46,12 @@ function useRegions(): Record<Exclude<RegionId, "toasts">, RegionProps> {
  * Every region stays mounted at every width, in the same place in the tree; a tier or a pane change only
  * hides or moves them, so no pane change ever remounts the sheet or resets its viewport (PA L14, bug 6).
  * Hidden regions carry `hidden`, which also takes them out of F6.
+ *
+ * Banners show across the top of the content, under the title bar (spec L384, L389): above the canvas when the
+ * sheet shows, and still there when it doesn't (another pane under 768 px, or the console maximized), which is
+ * when "Deploying…" and the read-only banner matter most. They sit outside every pane, so no pane or drawer
+ * covers them, and a banner coming or going never remounts the canvas. The strip is its own key context
+ * (`global`), so a sheet shortcut never fires from a banner's button.
  */
 export function Shell() {
   const tier = useLayoutTier();
@@ -81,6 +88,9 @@ export function Shell() {
         <TitleBar />
         {phone ? <PaneSwitcher /> : null}
       </header>
+      <div className={styles.banners} {...{ [KEY_CONTEXT_ATTRIBUTE]: "global" }}>
+        <BannerHost />
+      </div>
       <div className={styles.body} hidden={!seen.left && !seen.sheet && !seen.inspector}>
         <aside
           {...regionProps(regions.left, styles.left)}
@@ -135,7 +145,7 @@ export function Shell() {
           id={PANE_IDS.inspector}
           hidden={!seen.inspector}
         >
-          <InspectorPanel />
+          <InspectorPane tier={tier} />
         </aside>
       </div>
       {consoleSplitter ? (

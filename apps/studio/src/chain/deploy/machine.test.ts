@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { Address, Catalog, Deployment, FacetDetail, Hex, Project } from "@lattice-studio/core";
-import { loadTemplate, multicallGas, recipeHash } from "@lattice-studio/core";
+import { CREATEX, createxProxy, formatAddress, loadTemplate, multicallGas, recipeHash } from "@lattice-studio/core";
 import { encodeErrorResult, parseAbi } from "viem";
 import { filledTemplate, loadBuiltCatalog, makeProject } from "@lattice-studio/core/testing";
 import { CANCELED_IN_WALLET, DEPLOY_BANNER_ID, MISMATCH, notSeenFor, OFFLINE_TRACKING } from "./copy";
@@ -23,9 +23,9 @@ function creationCode(name: string): Hex {
   const root = new URL("../../../../../catalog/", import.meta.url);
   const manifest = JSON.parse(readFileSync(new URL("manifest.json", root), "utf8")) as { default: string; catalogs: { id: string; path: string }[] };
   const entry = manifest.catalogs.find((c) => c.id === manifest.default);
-  const release = releaseOf(catalog, name);
-  if (!entry || !release) throw new Error(`no creation code for ${name}`);
-  return readFileSync(new URL(release.creationCode.path, new URL(entry.path, root)), "utf8").trim() as Hex;
+  const path = name === "Lattice" ? catalog.proxy.creationCode.path : releaseOf(catalog, name)?.creationCode.path;
+  if (!entry || !path) throw new Error(`no creation code for ${name}`);
+  return readFileSync(new URL(path, new URL(entry.path, root)), "utf8").trim() as Hex;
 }
 
 function project(name = "ERC20", overrides: Partial<Project> = {}): Project {
@@ -45,6 +45,13 @@ function rig(options: { project?: Project; account?: { address: Address; chainId
   h.inputs.setAck(h.inputs.analysis().problems.filter((p) => p.ack === true).map((p) => p.id));
   const m = createDeployMachine(h.deps);
   return { h, m };
+}
+
+/** The record written for `hash`. */
+function recordOf(h: DeployHarness, hash: Hex): Deployment {
+  const found = h.records.all().find((d) => d.tx === hash);
+  if (!found) throw new Error(`no record for ${hash}`);
+  return found;
 }
 
 function predicted(h: DeployHarness): Address {
@@ -385,6 +392,29 @@ describe("signing", () => {
   });
 });
 
+describe("the salt at Sign (spec L286, L574)", () => {
+  test("a salt that disagrees with the sending account: nothing is sent, and the console says why", async () => {
+    const { h, m } = rig();
+    m.open();
+    await flush();
+    expect(m.state().phase).toBe("ready");
+    // The prediction's salt no longer starts with the account it's for (a stored salt gone wrong).
+    const prediction = h.inputs.prediction;
+    h.inputs.prediction = () => {
+      const p = prediction();
+      return p.status === "ready" ? { ...p, salt: `${BOB.toLowerCase()}${p.salt.slice(42)}` as Hex } : p;
+    };
+    await m.sign();
+    await flush();
+    const error = `The salt starts with ${BOB}, not the sending account ${ALICE}.`;
+    expect(h.said.lines).toContainEqual({ tag: "Error", text: error });
+    expect(h.port.methods()).not.toContain("send");
+    expect(h.port.sent).toEqual([]);
+    expect(h.said.banners.has(DEPLOY_BANNER_ID)).toBe(false);
+    expect(m.state()).toMatchObject({ phase: "review", error });
+  });
+});
+
 describe("tracking", () => {
   test("receipt, facets() matches the plan: Confirmed record, Deployed line, Verifying, then Live once verified", async () => {
     const r = rig();
@@ -420,7 +450,7 @@ describe("tracking", () => {
     await flush();
     expect(m.state()).toMatchObject({ phase: "mismatch", error: MISMATCH });
     expect(h.records.get(SEPOLIA_ID, address)?.status).toBe("mismatch");
-    expect(h.said.texts().at(-1)).toMatch(/^Deployed at 0x.{4}….{4}, but `facets\(\)` doesn't match the sheet: 1 selector differ\.$/);
+    expect(h.said.texts().at(-1)).toMatch(/^Deployed at 0x.{4}….{4}, but `facets\(\)` doesn't match the sheet: 1 selector differs\.$/);
   });
 
   test("stale after the receipt timeout (fake timers), Keep waiting, then a late receipt is still recorded", async () => {
@@ -545,6 +575,72 @@ describe("tracking", () => {
     h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 41 });
     await flush();
     expect(m.state().error).toBe("Deploy reverted in Receive: `ReceiveStudioTestError(7)`.");
+  });
+
+  test("CreateX's FailedContractCreation: code read at the salt's CREATE3 proxy and the diamond address, then the replay", async () => {
+    const cases = [
+      { proxyCode: true, says: "has code on Sepolia but the diamond address", tail: "has none: this salt was used before. Use a new salt." },
+      { proxyCode: false, says: "Neither the salt's CREATE3 proxy", tail: "has code on Sepolia, so the salt is free: the creation itself failed." },
+    ];
+    for (const { proxyCode, says, tail } of cases) {
+      const base = project();
+      const r = rig({ project: { ...base, deploy: { ...base.deploy, path: "createx" } } });
+      const { h, m } = r;
+      h.code.set("Lattice", creationCode("Lattice"));
+      const hash = await submit(r);
+      const record = recordOf(h, hash);
+      expect(record.path).toBe("createx");
+      const proxy = createxProxy({ from: record.deployer, salt: record.salt, chainId: SEPOLIA_ID });
+      if (proxyCode) h.port.setCode(proxy, "0x6000");
+      h.port.replayData = encodeErrorResult({ abi: parseAbi(["error FailedContractCreation(address emitter)"]), errorName: "FailedContractCreation", args: [CREATEX] });
+      h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 42 });
+      await flush();
+      const error = m.state().error ?? "";
+      expect(m.state().phase).toBe("failed");
+      expect(error).toMatch(/^Deploy reverted in CreateX: `FailedContractCreation\(/);
+      expect(error).toContain(says);
+      expect(error).toContain(formatAddress(proxy));
+      expect(error).toContain(formatAddress(record.address));
+      expect(error).toContain(tail);
+      expect(error).toMatch(/Replayed with `eth_call` at the block before, the creation reverts the same way\.$/);
+      const read = h.port.calls.filter((c) => c.method === "codeAt").map((c) => String(c.args[1]).toLowerCase());
+      expect(read).toEqual(expect.arrayContaining([proxy.toLowerCase(), record.address.toLowerCase()]));
+      expect(h.said.lines.at(-1)).toEqual({ tag: "Error", text: error });
+      expect(h.records.get(SEPOLIA_ID, record.address)).toMatchObject({ status: "failed", block: 42 });
+    }
+  });
+
+  test("on the factory path FailedContractCreation keeps the decoder's hint and reads no code", async () => {
+    const r = rig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    h.port.replayData = encodeErrorResult({ abi: parseAbi(["error FailedContractCreation(address emitter)"]), errorName: "FailedContractCreation", args: [CREATEX] });
+    h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 43 });
+    await flush();
+    expect(m.state().error).toContain("check the salt's addresses for code");
+    expect(h.port.methods()).not.toContain("codeAt");
+  });
+
+  test("a tab demoted while the transaction is pending keeps tracking to confirmation, records it, and the other tab hears it (spec L505)", async () => {
+    const r = rig();
+    const { h, m } = r;
+    const heard: string[] = [];
+    // The tab that took over editing, listening to the same records.
+    h.records.subscribe((projectId) => heard.push(projectId));
+    const hash = await submit(r);
+    const address = predicted(h);
+    heard.length = 0;
+    h.inputs.setReadOnly("Editing moved to another tab");
+    expect(m.state().phase).toBe("pending");
+    expect(h.port.watching()).toContain(hash);
+    h.port.setFacets(address, loupeOf(h.inputs.analysis().plan));
+    h.port.mine(hash, { kind: "receipt", hash, status: "success", block: 77 });
+    await flush();
+    expect(m.state()).toMatchObject({ phase: "verifying", tx: hash });
+    expect(h.records.get(SEPOLIA_ID, address)).toMatchObject({ status: "confirmed", block: 77, tx: hash });
+    expect(heard).toContain("p1");
+    expect((await h.records.list("p1")).find((d) => d.tx === hash)?.status).toBe("confirmed");
+    expect(h.said.texts()).toContain(`Deployed at ${formatAddress(address)} in block 77. Matches the sheet.`);
   });
 
   test("offline mid-deploy says tracking resumes when you reconnect", async () => {

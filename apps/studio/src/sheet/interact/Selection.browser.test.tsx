@@ -3,8 +3,9 @@
  * Shift adding, ⌘A, a click on empty sheet and Esc clearing; each change announced (spec L745).
  */
 import { describe, expect, test } from "vitest";
-import { commandState, onCommandRun, session } from "@/contracts";
-import { onCleanup } from "../../../test/harness";
+import { commandState, doc, onCommandRun, session } from "@/contracts";
+import { fixtureCatalog, onCleanup } from "../../../test/harness";
+import { cardProject } from "../card/testing/projects";
 import {
   announced, cardNode, clickCard, marquee, position, press, releaseMarquee, renderInteractSheet, selection, sheetProject,
 } from "./testing/interact-harness";
@@ -110,6 +111,28 @@ describe("the marquee", () => {
     const [a] = project.recipe.facets as [string];
     await marquee({ x: 10, y: 600 }, { x: position(a).x + 10, y: position(a).y + 40 });
     expect(selection()).toEqual([]);
+  });
+});
+
+describe("selecting never expands a card (spec L479; xref §18 #63)", () => {
+  test("a click, a Shift-click and a marquee on a card with more than 9 selectors leave its expanded flag unset", async () => {
+    const MANY = "HyperlaneGatewayAdapter"; // 12 selectors, over the 9-selector expand threshold
+    const project = { ...cardProject(fixtureCatalog(), [MANY, "ERC20"], { columns: 2 }), id: "expand-on-select" };
+    await renderInteractSheet({ project, session: { viewports: { [project.id]: { x: 0, y: 0, zoom: 1 } } } });
+
+    clickCard(MANY);
+    expect(selection()).toEqual([MANY]);
+    expect(doc.get().layout[MANY]?.expanded).toBeUndefined();
+
+    clickCard("ERC20", { shiftKey: true });
+    expect(selection()).toEqual([MANY, "ERC20"]);
+    expect(doc.get().layout[MANY]?.expanded).toBeUndefined();
+
+    const bottom = position(MANY).y + 40;
+    await marquee({ x: 10, y: 600 }, { x: position(MANY).x + 10, y: bottom });
+    expect(selection()).toContain(MANY);
+    expect(doc.get().layout[MANY]?.expanded).toBeUndefined();
+    expect(cardNode(MANY).querySelectorAll("[data-selector]").length).toBe(6);
   });
 });
 

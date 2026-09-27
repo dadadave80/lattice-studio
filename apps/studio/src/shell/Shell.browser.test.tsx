@@ -3,9 +3,10 @@ import { afterEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import type { Problem } from "@lattice-studio/core";
 import {
-  commandRef, doc, emptyAnalysis, provideAnalysis, provideServices, runCommand, session, type ProjectsService,
-  type SaveStatus,
+  commandRef, doc, emptyAnalysis, hideBanner, provideAnalysis, provideServices, runCommand, session, showBanner,
+  type ProjectsService, type SaveStatus,
 } from "@/contracts";
+import { erc20Project } from "@/panels/console/test-support";
 import { keyContextOf } from "@/commands/keys/key-context";
 import { fixtureCatalog, onCleanup, renderWithStudio, seedDeployState } from "../../test/harness";
 import { Shell } from "./Shell";
@@ -47,6 +48,18 @@ function pane(id: "left" | "sheet" | "inspector" | "console"): HTMLElement {
 /** Which regions show now, by name. */
 function showing(): string[] {
   return (["left", "sheet", "inspector", "console"] as const).filter((id) => pane(id).checkVisibility());
+}
+
+/** The filled primary buttons that show (S0's `Button variant="primary"`), by their text (a disabled one's reason follows). */
+function visiblePrimaries(): string[] {
+  return [...document.querySelectorAll<HTMLElement>("[data-variant='primary']")]
+    .filter((el) => el.checkVisibility())
+    .map((el) => el.textContent?.trim() ?? "");
+}
+
+/** The sheet region's canvas (S4b's lazy chunk): what must never remount. */
+function canvas(): Element | null {
+  return pane("sheet").firstElementChild;
 }
 
 async function renderAt(width: number, options: Parameters<typeof renderWithStudio>[1] = {}) {
@@ -113,6 +126,10 @@ describe("regions at each width", () => {
         }
       }
       if (tier !== "phone") await expect.element(undo).toBeVisible();
+      // Exactly one filled primary button per view (spec L349): Deploy…, in the title block from 1024 px and in
+      // the title bar below that. The title block arrives with the sheet's lazy chrome.
+      await expect.poll(() => visiblePrimaries().length, { timeout: 10_000 }).toBe(1);
+      expect(visiblePrimaries()[0]).toMatch(/^Deploy…/);
       const titlebar = bar().element() as HTMLElement;
       expect(titlebar.scrollWidth).toBeLessThanOrEqual(titlebar.clientWidth);
       expectNoOverlap(titlebar);
@@ -302,6 +319,16 @@ describe("under 768 px", () => {
     await userEvent.keyboard("{Escape}");
   });
 
+  test("Export in the overflow menu lists Image, disabled: Arrives in v1.1 (spec L953)", async () => {
+    await renderAt(600);
+    await bar().getByRole("button", { name: "More" }).click();
+    await page.getByRole("menuitem", { name: "Export", exact: true }).click();
+    const image = page.getByRole("menu", { name: "Export" }).getByRole("menuitem", { name: "Image" });
+    await expect.element(image).toHaveAttribute("aria-disabled", "true");
+    await expect.element(image).toHaveAccessibleDescription("Arrives in v1.1");
+    await userEvent.keyboard("{Escape}{Escape}");
+  });
+
   test("Fill in shows only while arguments are missing", async () => {
     await renderAt(600);
     await runCommand(commandRef("pane.show", { pane: "inspector" }), "api");
@@ -415,6 +442,24 @@ describe("splitters", () => {
     expect(session.get().panes.inspector.size).toBe(308);
   });
 
+  test("the inspector's splitter stops at 420 and 280 (spec L358): End and Home reach them", async () => {
+    await renderAt(1440);
+    const splitter = page.getByRole("separator", { name: "Resize inspector" });
+    await expect.element(splitter).toHaveAttribute("aria-valuemin", "280");
+    await expect.element(splitter).toHaveAttribute("aria-valuemax", "420");
+    (splitter.element() as HTMLElement).focus();
+    await userEvent.keyboard("{End}");
+    expect(session.get().panes.inspector.size).toBe(420);
+    await expect.poll(() => pane("inspector").getBoundingClientRect().width).toBe(420);
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(session.get().panes.inspector.size).toBe(420);
+    await userEvent.keyboard("{Home}");
+    expect(session.get().panes.inspector.size).toBe(280);
+    await expect.poll(() => pane("inspector").getBoundingClientRect().width).toBe(280);
+    await userEvent.keyboard("{ArrowRight}");
+    expect(session.get().panes.inspector.size).toBe(280);
+  });
+
   test("the console resizes up to half the window's height", async () => {
     await renderAt(1440);
     const splitter = page.getByRole("separator", { name: "Resize console" });
@@ -433,6 +478,47 @@ describe("splitters", () => {
     expect(session.get().panes.left.size).toBe(248);
     await page.getByRole("menuitem", { name: "Collapse" }).click();
     await expect.poll(showing).toEqual(["sheet", "inspector", "console"]);
+  });
+
+  test("the inspector's menu has Narrower, Wider and Collapse (spec L764), and says why at a limit", async () => {
+    await renderAt(1440);
+    // The header sits over S5c's panel, which still fills the rest of the pane: nothing double-scrolls.
+    const aside = pane("inspector");
+    const panel = aside.querySelector<HTMLElement>("[data-inspector-view]");
+    if (!panel) throw new Error("No inspector panel.");
+    expect(panel.getBoundingClientRect().bottom).toBeCloseTo(aside.getBoundingClientRect().bottom, 0);
+    expect(panel.getBoundingClientRect().top).toBeCloseTo(aside.getBoundingClientRect().top + 36, 0);
+    expect(aside.scrollHeight).toBeLessThanOrEqual(aside.clientHeight + 1);
+    const inspector = page.getByRole("region", { name: "Inspector", exact: true });
+    await inspector.getByRole("button", { name: "Inspector menu" }).click();
+    const menu = page.getByRole("menu", { name: "Inspector menu" });
+    await menu.getByRole("menuitem", { name: "Wider" }).click();
+    expect(session.get().panes.inspector.size).toBe(324);
+    await menu.getByRole("menuitem", { name: "Narrower" }).click();
+    await menu.getByRole("menuitem", { name: "Narrower" }).click();
+    expect(session.get().panes.inspector.size).toBe(308);
+    await expect.poll(() => pane("inspector").getBoundingClientRect().width).toBe(308);
+    await userEvent.keyboard("{Escape}");
+    session.set((s) => ({ panes: { ...s.panes, inspector: { ...s.panes.inspector, size: 420 } } }));
+    await inspector.getByRole("button", { name: "Inspector menu" }).click();
+    await expect
+      .element(menu.getByRole("menuitem", { name: "Wider" }))
+      .toHaveAccessibleDescription("Inspector is at its widest; choose Narrower or Collapse");
+    await menu.getByRole("menuitem", { name: "Collapse" }).click();
+    await expect.poll(showing).toEqual(["left", "sheet", "console"]);
+  });
+
+  test("the inspector's menu works from the keyboard", async () => {
+    await renderAt(1440);
+    const trigger = page.getByRole("region", { name: "Inspector", exact: true }).getByRole("button", { name: "Inspector menu" });
+    (trigger.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByRole("menu", { name: "Inspector menu" })).toBeVisible();
+    await userEvent.keyboard("{ArrowDown}");
+    await expect.element(page.getByRole("menuitem", { name: "Wider" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(session.get().panes.inspector.size).toBe(324);
+    await userEvent.keyboard("{Escape}");
   });
 
   test("pane sizes stay out of undo", async () => {
@@ -459,15 +545,116 @@ describe("the sheet's keys", () => {
 describe("the sheet stays put", () => {
   test("pane changes and new widths never remount the sheet", async () => {
     await renderAt(1440);
-    const sheet = pane("sheet").firstElementChild;
-    expect(sheet).not.toBeNull();
+    await expect.poll(canvas, { timeout: 10_000 }).not.toBeNull();
+    const sheet = canvas();
     await runCommand(commandRef("pane.toggle", { pane: "console" }), "api");
     await runCommand(commandRef("pane.toggle", { pane: "left" }), "api");
     session.set((s) => ({ panes: { ...s.panes, console: { ...s.panes.console, maximized: true } } }));
     for (const width of [1100, 900, 600, 320, 1440]) {
       await page.viewport(width, 900);
       await expect.poll(() => document.querySelector("[data-layout]")?.getAttribute("data-layout")).toBe(tierOf(width));
-      expect(pane("sheet").firstElementChild).toBe(sheet);
+      expect(canvas()).toBe(sheet);
+    }
+  });
+});
+
+describe("banners (spec L384, L389)", () => {
+  const DEPLOYING = "Deploying the recipe as reviewed. Edits made now aren't part of it.";
+
+  afterEach(() => {
+    hideBanner("shell-test");
+  });
+
+  /** The banner shows in the window, under the title bar and above every pane that shows, and nothing scrolls. */
+  function expectPlaced(banner: HTMLElement): void {
+    const box = banner.getBoundingClientRect();
+    expect(box.top).toBeGreaterThanOrEqual((bar().element() as HTMLElement).getBoundingClientRect().bottom - 0.5);
+    expect(box.bottom).toBeLessThanOrEqual(window.innerHeight);
+    for (const id of ["left", "sheet", "inspector", "console"] as const) {
+      if (pane(id).checkVisibility()) expect(pane(id).getBoundingClientRect().top).toBeGreaterThanOrEqual(box.bottom - 0.5);
+    }
+    expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(window.innerHeight);
+  }
+
+  test("show under the title bar and above the canvas, in the window; coming and going never remounts the canvas", async () => {
+    await renderAt(1440);
+    await expect.poll(canvas, { timeout: 10_000 }).not.toBeNull();
+    const sheet = canvas();
+    showBanner("shell-test", { text: DEPLOYING, tone: "info" });
+    const banner = page.getByText(DEPLOYING);
+    await expect.element(banner).toBeVisible();
+    expectPlaced(banner.element() as HTMLElement);
+    expect(canvas()).toBe(sheet);
+    hideBanner("shell-test");
+    await expect.element(banner).not.toBeInTheDocument();
+    expect(canvas()).toBe(sheet);
+  });
+
+  test("an open drawer doesn't cover one", async () => {
+    await renderAt(1100);
+    await runCommand(commandRef("pane.show", { pane: "inspector" }), "api");
+    await expect.poll(showing).toContain("inspector");
+    showBanner("shell-test", { text: DEPLOYING, tone: "info" });
+    const banner = page.getByText(DEPLOYING);
+    await expect.element(banner).toBeVisible();
+    expectPlaced(banner.element() as HTMLElement);
+  });
+
+  test("under 768 px with the Console pane showing, the banner still shows", async () => {
+    await renderAt(600);
+    await runCommand(commandRef("pane.show", { pane: "console" }), "api");
+    await expect.poll(showing).toEqual(["console"]);
+    showBanner("shell-test", { text: DEPLOYING, tone: "info" });
+    const banner = page.getByText(DEPLOYING);
+    await expect.element(banner).toBeVisible();
+    await expect.element(banner).toBeInViewport();
+    expectPlaced(banner.element() as HTMLElement);
+  });
+
+  test("with the console maximized, the banner still shows", async () => {
+    await renderAt(1440);
+    session.set((s) => ({ panes: { ...s.panes, console: { ...s.panes.console, maximized: true } } }));
+    await expect.poll(showing).toEqual(["console"]);
+    showBanner("shell-test", { text: "Another tab is editing this project.", tone: "warning" });
+    const banner = page.getByText("Another tab is editing this project.");
+    await expect.element(banner).toBeVisible();
+    await expect.element(banner).toBeInViewport();
+    expectPlaced(banner.element() as HTMLElement);
+  });
+
+  test("a banner's buttons aren't sheet keys: the strip is the global key context", async () => {
+    await renderAt(1440);
+    showBanner("shell-test", { text: "Another tab is editing this project.", tone: "warning", dismissible: true });
+    const close = page.getByRole("button", { name: "Close", exact: true });
+    await expect.element(close).toBeVisible();
+    expect(keyContextOf(close.element(), "Delete")).toBe("global");
+  });
+});
+
+describe("reflow at 256 px tall (spec L373, WCAG 1.4.10)", () => {
+  /** Whether `el` scrolls along an axis: it overflows, and its style lets it scroll. */
+  function scrolls(el: Element, axis: "x" | "y"): boolean {
+    const style = getComputedStyle(el);
+    const overflow = axis === "x" ? style.overflowX : style.overflowY;
+    const over = axis === "x" ? el.scrollWidth > el.clientWidth + 1 : el.scrollHeight > el.clientHeight + 1;
+    const root = el === document.documentElement || el === document.body;
+    return over && (root ? overflow !== "hidden" && overflow !== "clip" : overflow === "auto" || overflow === "scroll");
+  }
+
+  test("with Script or Recipe JSON open at 1280 × 256, only the sheet and the code view scroll both ways", async () => {
+    await page.viewport(1280, 256);
+    await renderWithStudio(<Shell />, { project: erc20Project() });
+    for (const [tab, name] of [["script", "Script"], ["recipe", "Recipe JSON"]] as const) {
+      session.set((s) => ({ panes: { ...s.panes, console: { ...s.panes.console, open: true, tab } } }));
+      const code = page.getByRole("tabpanel", { name });
+      await expect.element(code, { timeout: 10_000 }).toBeVisible();
+      const inside = [pane("sheet"), code.element()];
+      const offenders = [document.documentElement, ...document.querySelectorAll("body *")].filter(
+        (el) => !inside.some((ok) => ok.contains(el)) && scrolls(el, "x") && scrolls(el, "y"),
+      );
+      expect(offenders.map((el) => el.id || el.className || el.tagName)).toEqual([]);
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+      expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(window.innerHeight);
     }
   });
 });

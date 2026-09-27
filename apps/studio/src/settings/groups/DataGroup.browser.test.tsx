@@ -28,4 +28,19 @@ describe("DataGroup", () => {
     await clear.click();
     await expect.poll(() => session.get().dialogs.map((d) => d.id)).toEqual(["clear-data"]);
   });
+
+  test("says whether storage is persistent (spec L637)", async () => {
+    testPersistence({
+      storage: { persisted: async () => true, estimate: async () => ({ usage: 2048, quota: 1024 * 1024 }) },
+    });
+    await renderWithStudio(<DataGroup />);
+    await expect.element(page.getByText("2.0 KB of 1.0 MB used", { exact: true })).toBeVisible();
+    await expect.element(page.getByText("Persistent storage: on.", { exact: true })).toBeVisible();
+  });
+
+  test("says so when storage isn't persistent", async () => {
+    testPersistence({ storage: { persisted: async () => false, estimate: async () => ({ usage: 0, quota: 1024 }) } });
+    await renderWithStudio(<DataGroup />);
+    await expect.element(page.getByText("Persistent storage: off.", { exact: true })).toBeVisible();
+  });
 });

@@ -73,6 +73,16 @@
   background: var(--lx-ground);
 }
 
+/* Banners (spec L384, L389): a strip under the title bar, above whichever panes show; nothing while empty. */
+.banners {
+  flex: none;
+  min-inline-size: 0;
+}
+
+.banners:empty {
+  display: none;
+}
+
 .console {
   display: flex;
   flex: none;

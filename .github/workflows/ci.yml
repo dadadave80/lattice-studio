@@ -168,6 +168,9 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun install --frozen-lockfile
       - run: bun scripts/ci/size.ts --build
+      # Reuses the build size.ts just made (spec L902, §17 audit #14): a config regression that drops the React
+      # Compiler preset fails here instead of only being caught by eye.
+      - run: bun scripts/ci/react-compiler-dist-check.ts
 
   lighthouse:
     name: Lighthouse CI (mobile)

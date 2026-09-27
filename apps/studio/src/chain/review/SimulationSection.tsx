@@ -33,6 +33,11 @@ function shown(review: Review, ticked: boolean): Shown {
     return { status: ticked ? "ok" : "tick", text };
   }
   if (simulation?.revert) return { status: "blocked", text: simulation.revert, revert: simulation.revert };
+  // Back in Review without a simulation, and why (a stop at Sign that dropped it, a read that failed), once the
+  // account and chain are known: the footer gives the same reason.
+  if (deploy.phase === "review" && simulation === undefined && deploy.error && review.account && review.chainId !== null) {
+    return { status: "waiting", text: deploy.error };
+  }
   return { status: "waiting", text: NOT_YET };
 }
 

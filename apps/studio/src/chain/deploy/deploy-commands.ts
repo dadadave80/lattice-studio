@@ -131,6 +131,7 @@ export const discardProposalCommand = command({
   title: () => "Discard proposal",
   category: "Deploy",
   palette: true,
+  // Ruling R9: no fix clause. Nothing is wrong; there's just no proposal waiting.
   enabled: (ctx) => (ctx.deploy.phase === "proposed" ? OK : { ok: false, reason: "There's no proposal to discard." }),
   run: () => withController((c) => c.discardProposal()),
 });
@@ -140,6 +141,7 @@ export const showProgressCommand = command({
   title: () => "Show deploy progress",
   category: "Deploy",
   palette: true,
+  // Ruling R9: no fix clause. Nothing is wrong; there's just no deploy to show yet.
   enabled: (ctx) => (ctx.deploy.phase === "idle" ? { ok: false, reason: "No deploy is in progress." } : OK),
   run(ctx) {
     if (!dialogComponent("deploy-review")) {

@@ -1,5 +1,7 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
-import { extractAppCopy, extractTemplateCopy, parseSource } from "./copy-lint-scan.ts";
+import { CORE_TEMPLATE_COPY_FILES, extractAppCopy, extractTemplateCopy, isAppConstCopyFile, parseSource } from "./copy-lint-scan.ts";
 
 function texts(source: string, fileName = "x.tsx"): string[] {
   return extractAppCopy(parseSource(fileName, source)).map((s) => s.text);
@@ -54,6 +56,80 @@ describe("extractAppCopy", () => {
     const src = `const X = () => (\n  <div>\n    <span>Deploy</span>\n  </div>\n);`;
     const spans = extractAppCopy(parseSource("x.tsx", src));
     expect(spans).toEqual([{ line: 3, text: "Deploy" }]);
+  });
+
+  // FX44 §13 #18: copy-lint-scan.ts used to miss `log({text})`, `say`/`announce` arguments, `reason:`,
+  // `text:` and `description:` props, and a `title: () => "…"` arrow value.
+  test("a log call's text property", () => {
+    expect(texts(`log({ tag: "Note", text: "Opened Settings." });`, "x.ts")).toEqual(["Opened Settings."]);
+  });
+
+  test("a disabled command's reason property", () => {
+    expect(texts(`const r = { ok: false, reason: "Place facets first" };`, "x.ts")).toEqual(["Place facets first"]);
+  });
+
+  test("a description prop", () => {
+    expect(texts(`const X = () => <div description="Arrives in v1.1" />;`)).toEqual(["Arrives in v1.1"]);
+  });
+
+  test("say and announce call arguments", () => {
+    expect(texts(`say("The App menu isn't showing."); announce("Undo delete");`, "x.ts")).toEqual([
+      "The App menu isn't showing.",
+      "Undo delete",
+    ]);
+  });
+
+  test("doesn't match an unrelated identifier that merely contains 'say'", () => {
+    expect(texts(`essay("Please fix");`, "x.ts")).toEqual([]);
+  });
+
+  test("a title arrow function's literal body", () => {
+    expect(texts(`const cmd = { title: () => "Open Settings" };`, "x.ts")).toEqual(["Open Settings"]);
+  });
+
+  test("a title arrow function's template-literal body", () => {
+    const spans = extractAppCopy(parseSource("x.ts", "const cmd = { title: ({ theme }) => `Set theme to ${theme}` };"));
+    expect(spans.map((s) => s.text)).toEqual(["Set theme to ", ""]);
+  });
+
+  test("a title arrow function's lookup-table fallback (a `??` default)", () => {
+    expect(texts(`const cmd = { title: (a) => TITLES[a.pane] ?? "Show pane" };`, "x.ts")).toEqual(["Show pane"]);
+  });
+});
+
+describe("isAppConstCopyFile", () => {
+  test("matches a copy.ts module at any depth", () => {
+    expect(isAppConstCopyFile("apps/studio/src/chain/deploy/copy.ts")).toBe(true);
+    expect(isAppConstCopyFile("copy.ts")).toBe(true);
+  });
+
+  test("doesn't match a file that merely ends in the word copy, or a .tsx file", () => {
+    expect(isAppConstCopyFile("apps/studio/src/ui/copy/copy-text.ts")).toBe(false);
+    expect(isAppConstCopyFile("apps/studio/src/panels/console/actions.ts")).toBe(false);
+    expect(isAppConstCopyFile("copy.tsx")).toBe(false);
+  });
+});
+
+// FX44 §13 #18: in core, copy-lint.ts used to scan only narrate/{lines,narrate,problem}.ts, missing the init,
+// revert, share and plan modules' labels, refusals and error copy.
+describe("CORE_TEMPLATE_COPY_FILES", () => {
+  const root = join(import.meta.dir, "..", "..", "packages", "core", "src");
+
+  test("every listed file exists", () => {
+    for (const f of CORE_TEMPLATE_COPY_FILES) expect(existsSync(join(root, f)), f).toBe(true);
+  });
+
+  test("covers the narrate templates plus init, revert, share and plan modules", () => {
+    const groups = ["narrate/", "init/", "revert/", "share/", "plan/"];
+    for (const group of groups) expect(CORE_TEMPLATE_COPY_FILES.some((f) => f.startsWith(group)), group).toBe(true);
+  });
+
+  test("extractTemplateCopy finds real copy in each listed file", () => {
+    for (const f of CORE_TEMPLATE_COPY_FILES) {
+      const text = readFileSync(join(root, f), "utf8");
+      const spans = extractTemplateCopy(parseSource(f, text));
+      expect(spans.length, f).toBeGreaterThan(0);
+    }
   });
 });
 

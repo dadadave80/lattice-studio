@@ -28,8 +28,8 @@ export const DIALOG_CATALOG: Readonly<Record<DialogId, DialogCatalogEntry>> = {
   "browse-recipes": { title: "Browse all recipes", owner: "S4d" },
 };
 
-/** The placeholder body: "Not built yet · WP-S8b", or "Not in v1." for a v2 dialog. */
+/** The placeholder body: "Not built yet · WP-S8b", or "Arrives in v2." for a v2 dialog. */
 export function notBuiltText(id: DialogId): string {
   const { owner } = DIALOG_CATALOG[id];
-  return owner === "v2" ? "Not in v1." : `Not built yet · WP-${owner}`;
+  return owner === "v2" ? "Arrives in v2." : `Not built yet · WP-${owner}`;
 }

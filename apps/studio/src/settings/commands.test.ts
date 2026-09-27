@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { commandState, defineCommands, runCommand, session, settings } from "@/contracts";
+import { commandState, defineCommands, doc, runCommand, session, settings } from "@/contracts";
+import { helpLines, runConsoleLine } from "@/commands/console/router";
 import { bufferedServices } from "@/contracts/services";
 import { isolateContracts } from "@/contracts/test-support";
 import { S10_COMMANDS } from "./commands";
@@ -38,6 +39,54 @@ describe("S10's commands (contracts §5.3)", () => {
     void runCommand({ id: "theme.set", args: { theme: "draft" } }, "button");
     expect(settings.get().theme).toBe("draft");
     expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Note", text: "Theme: Draft." });
+  });
+
+  test("theme.set stays out of undo: history can't undo it (IR L71)", async () => {
+    const before = doc.state();
+    for (const theme of ["draft", "system", "shop"] as const) {
+      await runCommand({ id: "theme.set", args: { theme } }, "button");
+      expect(settings.get().theme).toBe(theme);
+    }
+    expect(doc.state().canUndo).toBe(false);
+    expect(doc.state().lastChange).toBe(before.lastChange);
+    expect(doc.state().project).toBe(before.project);
+  });
+
+  test("the theme verb (IR L158): case-insensitive, and confirms with the Theme line", async () => {
+    expect(helpLines("theme")).toEqual([{ syntax: "theme <shop, draft or system>", id: "theme.set", aliases: [] }]);
+    const cases = [["theme DRAFT", "draft", "Draft"], ["theme System", "system", "System"], ["theme shop", "shop", "Shop"]] as const;
+    for (const [line, theme, label] of cases) {
+      expect((await runConsoleLine(line)).ok).toBe(true);
+      expect(settings.get().theme).toBe(theme);
+      expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Note", text: `Theme: ${label}.` });
+    }
+  });
+
+  test("the theme verb refuses anything else with the choices, and changes nothing", async () => {
+    const refusals = [
+      ["theme blue", "“blue” isn't a theme. Choose shop, draft or system."],
+      ["theme dark mode", "“dark mode” isn't a theme. Choose shop, draft or system."],
+      ["theme", "theme takes shop, draft or system."],
+      // Keys every object inherits aren't themes.
+      ...["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"].map(
+        (key) => [`theme ${key}`, `“${key}” isn't a theme. Choose shop, draft or system.`] as const,
+      ),
+    ] as const;
+    const before = settings.get().theme;
+    for (const [line, reason] of refusals) {
+      expect(await runConsoleLine(line)).toEqual({ ok: false, reason });
+      expect(settings.get().theme).toBe(before);
+      expect(bufferedServices().log.at(-1)).toMatchObject({ text: reason });
+    }
+  });
+
+  test("theme.set refuses an inherited key through the API too, and writes nothing", async () => {
+    const before = settings.get().theme;
+    const ref = { id: "theme.set", args: { theme: "constructor" } } as unknown as Parameters<typeof runCommand>[0];
+    expect(commandState(ref)).toMatchObject({ ok: false, reason: `"constructor" isn't a theme.` });
+    expect((await runCommand(ref, "api")).ok).toBe(false);
+    expect(settings.get().theme).toBe(before);
+    expect(bufferedServices().log.some((line) => line.text.startsWith("Theme:"))).toBe(false);
   });
 
   test("tour.start starts the tour and disables itself while running; tour.end stops it", async () => {

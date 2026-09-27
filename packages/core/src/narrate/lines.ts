@@ -97,7 +97,7 @@ export const lines: LinesApi = {
 
   mismatch: ({ address, differing }) => ({
     tag: "Deploy",
-    text: `Deployed at ${formatAddress(address)}, but \`facets()\` doesn't match the sheet: ${plural(differing, "selector")} differ.`,
+    text: `Deployed at ${formatAddress(address)}, but \`facets()\` doesn't match the sheet: ${plural(differing, "selector")} ${differing === 1 ? "differs" : "differ"}.`,
   }),
 
   verified: ({ status, forwardedTo }) => {

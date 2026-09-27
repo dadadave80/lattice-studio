@@ -5,7 +5,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { lintCopy } from "@lattice-studio/core";
-import { extractAppCopy, extractTemplateCopy, parseSource } from "./copy-lint-scan.ts";
+import { CORE_TEMPLATE_COPY_FILES, extractAppCopy, extractTemplateCopy, isAppConstCopyFile, parseSource } from "./copy-lint-scan.ts";
 
 const root = join(import.meta.dir, "..", "..");
 
@@ -26,9 +26,11 @@ function findSourceFiles(dir: string): string[] {
 /** files (relative to the repo root) → the extractor to run on them. */
 function targets(): { file: string; extract: (sf: ReturnType<typeof parseSource>) => { line: number; text: string }[] }[] {
   const appFiles = findSourceFiles(join(root, "apps", "studio", "src"));
-  const templateFiles = ["lines.ts", "narrate.ts", "problem.ts"].map((f) => join(root, "packages", "core", "src", "narrate", f));
+  const templateFiles = CORE_TEMPLATE_COPY_FILES.map((f) => join(root, "packages", "core", "src", f));
   return [
-    ...appFiles.map((file) => ({ file, extract: extractAppCopy })),
+    // A `copy.ts` module (chain/deploy/copy.ts and its siblings) is plain constants and functions, not JSX: the
+    // blanket scan finds its bare string and template literals that extractAppCopy's prop/call matching would miss.
+    ...appFiles.map((file) => ({ file, extract: isAppConstCopyFile(file) ? extractTemplateCopy : extractAppCopy })),
     ...templateFiles.filter(existsSync).map((file) => ({ file, extract: extractTemplateCopy })),
   ];
 }

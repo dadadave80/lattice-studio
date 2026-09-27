@@ -14,9 +14,10 @@ import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
 import { prediction } from "@/state";
 import { studioState } from "@/state/runtime";
+import { platform } from "@/ui/shared/platform";
 import {
-  DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, PLACE_FACETS_FIRST, fixtureBlock, ON_ITS_WAY, SCOPE_TITLES, WAITING_FOR_SAFE,
-  resolveBlockers, tickFirst,
+  DEPLOY_NEEDS_CONNECTION, IN_FLIGHT_PHASES, PLACE_FACETS_FIRST, fixtureBlock, nextProblemKey, ON_ITS_WAY, SCOPE_TITLES,
+  WAITING_FOR_SAFE, resolveBlockers as blockerText, tickFirst,
 } from "./entry-copy";
 
 const OK: Enablement = { ok: true };
@@ -33,6 +34,11 @@ function runs(): Promise<typeof import("./lazy")> {
 
 function blockers(ctx: CommandContext): Problem[] {
   return ctx.analysis.problems.filter((p) => p.severity === "blocker");
+}
+
+/** "Resolve 2 blockers · F8", naming `problem.next`'s key as remapped (spec L661). */
+function resolveBlockers(ctx: CommandContext, count: number): string {
+  return blockerText(count, nextProblemKey(ctx.settings, platform()));
 }
 
 /**
@@ -71,8 +77,8 @@ const open = command<CommandArgsOf<"deploy.open">>({
   title: () => "Deploy…",
   category: "Deploy",
   keys: ["Mod+Enter"],
-  // Everywhere except text fields and dialogs (IR L13).
-  keyContext: ["global", "sheet", "card-rows", "tree", "list"],
+  // Everywhere except text fields and dialogs (IR L13): the focused Log and menus too.
+  keyContext: ["global", "sheet", "card-rows", "tree", "list", "menu", "console"],
   palette: true,
   console: {
     verb: "deploy",
@@ -98,7 +104,7 @@ const open = command<CommandArgsOf<"deploy.open">>({
     if (ctx.project.recipe.facets.length === 0) return no(PLACE_FACETS_FIRST);
     const count = blockers(ctx).length;
     // ⌘/Ctrl+Enter jumps to the first blocker instead (spec L561); every other way in is disabled with the reason.
-    if (count > 0 && ctx.source !== "keys") return no(resolveBlockers(count), { id: "problem.next" });
+    if (count > 0 && ctx.source !== "keys") return no(resolveBlockers(ctx, count), { id: "problem.next" });
     if (typeof args.chainId === "number" && !findChain(args.chainId, env.e2e)) {
       return no(unsupportedChain(chainName(args.chainId, env.e2e), names()));
     }
@@ -122,7 +128,7 @@ const again = command({
     // confirmed the salt stays, so NET-05 counts, as it does for Deploy….
     const redraws = confirmedDeploy(ctx);
     const count = blockers(ctx).filter((p) => !(redraws && p.code === "NET-05")).length;
-    if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
+    if (count > 0) return no(resolveBlockers(ctx, count), { id: "problem.next" });
     return readOnly(ctx) ?? OK;
   },
   run: async (ctx) => (await runs()).runAgain(ctx),
@@ -210,7 +216,7 @@ const downloadSafeBatch = command({
     const locked = readOnly(ctx);
     if (locked) return locked;
     const count = blockers(ctx).length;
-    if (count > 0) return no(resolveBlockers(count), { id: "problem.next" });
+    if (count > 0) return no(resolveBlockers(ctx, count), { id: "problem.next" });
     // The review's ticks are the person's consent however the deploy goes out, a Safe batch included (spec L573).
     const acked = ctx.session.acks[ctx.analysis.recipeHash] ?? [];
     const unticked = ctx.analysis.problems.filter((p) => p.ack === true && p.severity === "warning" && !acked.includes(p.id)).length;

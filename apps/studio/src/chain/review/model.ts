@@ -236,13 +236,15 @@ export type SignInput = {
   /** The catalog hasn't loaded. */
   catalogLoading?: boolean;
   blockers: number;
+  /** `problem.next`'s key in effect, for "Resolve 2 blockers · F8" (spec L661); null when it has none. */
+  nextKey: string | null;
   chainId: number | null;
   chainName: string;
   readiness: ChainReadiness;
   account: { address: Address; chainId: number; kind?: AccountKind } | null;
   /** The name of the chain the wallet is on. */
   walletChainName: string;
-  deploy: Pick<DeployState, "phase" | "snapshot" | "changedSinceReview" | "simulation">;
+  deploy: Pick<DeployState, "phase" | "snapshot" | "changedSinceReview" | "simulation" | "error">;
   recipeHash: Hex;
   /** "Needs about 0.012 ETH; this account has 0.004." when the balance can't pay the deploy (Flow 14). */
   fundsShort?: string | null;
@@ -269,7 +271,7 @@ export function signEnablement(input: SignInput): Enablement {
   if (!input.online) return no(DEPLOY_NEEDS_CONNECTION);
   if (input.catalogLoading) return no("The catalog hasn't loaded yet");
   if (input.catalogBlock) return no(input.catalogBlock);
-  if (input.blockers > 0) return no(resolveBlockers(input.blockers));
+  if (input.blockers > 0) return no(resolveBlockers(input.blockers, input.nextKey));
   if (input.chainId === null) return no(CHOOSE_A_CHAIN);
   if (input.readiness.status === "error") return no(input.readiness.reason);
   if (input.readiness.status !== "ready") return no(checking(input.chainName));
@@ -291,6 +293,8 @@ export function signEnablement(input: SignInput): Enablement {
   const passed = deploy.simulation?.ok === true || noSimulation;
   if (!passed) {
     if (deploy.simulation?.revert) return no(`The simulation reverted: ${deploy.simulation.revert}`);
+    // Back in Review with no simulation and why (a stop at Sign that dropped it, a read that failed): not simulating.
+    if (deploy.phase === "review" && deploy.simulation === undefined && deploy.error) return no(deploy.error);
     return no(SIMULATING);
   }
   // Review with a result standing is signable too: a rejection in the wallet keeps the simulation (spec L574).

@@ -591,3 +591,105 @@ describe("with the fixture catalog", () => {
     expect(removed.project.recipe.init).toEqual(loaded.recipe.init);
   });
 });
+
+describe("ENS labels follow their init arguments (spec L462)", () => {
+  const OTHER = "0x0000000000000000000000000000000000000001";
+  const three = projectWith(
+    {
+      facets: ["ERC20", "OwnableFacet", "DiamondCutFacet"],
+      init: {
+        kind: "steps",
+        steps: [
+          { spec: "OwnableInit", args: { _owner: ADDRESS } },
+          { spec: "ERC20Init", args: {} },
+          { spec: "AccessInit", args: { admin: ADDRESS } },
+        ],
+      },
+    },
+    { labels: { "steps[0]._owner": "owner.eth", "steps[2].admin": "ops.eth" } },
+  );
+  const bundle = projectWith(
+    { facets: ["Vault", "Receive"], init: { kind: "bundle", spec: "VaultInit", args: { p: { asset: ADDRESS } } } },
+    { labels: { "bundle.p.asset": "asset.eth" } },
+  );
+
+  test("setting an address by hand drops its label and keeps the others'", () => {
+    const after = untouched(three, (p) => setInitArg(p, catalog, "steps[0]._owner", OTHER)).project;
+    expect(after.labels).toEqual({ "steps[2].admin": "ops.eth" });
+    const cleared = setInitArg(after, catalog, "steps[2].admin", undefined).project;
+    expect("labels" in cleared).toBe(false);
+  });
+
+  test("setting a tuple drops the labels below it", () => {
+    const after = setInitArg(bundle, catalog, "bundle.p", { asset: OTHER });
+    expect(after.changed).toBe(true);
+    expect("labels" in after.project).toBe(false);
+  });
+
+  test("a set that stores nothing new keeps the labels as they were", () => {
+    const result = setInitArg(three, catalog, "steps[0]._owner", ADDRESS.toLowerCase());
+    expect(result.changed).toBe(false);
+    expect(result.project.labels).toBe(three.labels);
+  });
+
+  test("a project without labels gains no key from any edit", () => {
+    const plain = projectWith({ facets: three.recipe.facets, init: three.recipe.init });
+    const edits = [
+      setInitArg(plain, catalog, "steps[0]._owner", OTHER),
+      addInitStep(removeInitStep(plain, catalog, "steps[1]").project, catalog, "ERC20Init", 0),
+      removeInitStep(plain, catalog, "steps[0]"),
+      moveInitStep(plain, catalog, 0, 2),
+      removeFacets(plain, catalog, ["OwnableFacet", "DiamondCutFacet"]),
+      loadRecipe(plain, catalog, bundle.recipe, bundle.layout),
+    ];
+    for (const edit of edits) expect("labels" in edit.project).toBe(false);
+  });
+
+  test("adding a step moves the later steps' labels along", () => {
+    const two = projectWith(
+      { init: { kind: "steps", steps: [{ spec: "OwnableInit", args: { _owner: ADDRESS } }, { spec: "AccessInit", args: { admin: ADDRESS } }] } },
+      { labels: { "steps[0]._owner": "owner.eth", "steps[1].admin": "ops.eth" } },
+    );
+    const after = untouched(two, (p) => addInitStep(p, catalog, "ERC20Init", 1)).project;
+    expect(after.labels).toEqual({ "steps[0]._owner": "owner.eth", "steps[2].admin": "ops.eth" });
+  });
+
+  test("moving a step takes its labels with it", () => {
+    const after = untouched(three, (p) => moveInitStep(p, catalog, 0, 2)).project;
+    expect(after.labels).toEqual({ "steps[2]._owner": "owner.eth", "steps[1].admin": "ops.eth" });
+    // Reorder steps automatically is a run of these moves, so the labels follow it too.
+    const back = moveInitStep(after, catalog, 2, 0).project;
+    expect(back.recipe.init).toEqual(three.recipe.init);
+    expect(back.labels).toEqual(three.labels);
+  });
+
+  test("removing a step drops its labels and moves the later ones along", () => {
+    const after = untouched(three, (p) => removeInitStep(p, catalog, "steps[0]")).project;
+    expect(after.labels).toEqual({ "steps[1].admin": "ops.eth" });
+    expect("labels" in removeInitStep(after, catalog, "steps[1]").project).toBe(false);
+  });
+
+  test("removing the bundle drops its labels", () => {
+    expect("labels" in removeInitStep(bundle, catalog, "bundle").project).toBe(false);
+  });
+
+  test("removing a facet drops its init step's labels and moves the later ones along", () => {
+    const after = untouched(three, (p) => removeFacets(p, catalog, ["OwnableFacet", "DiamondCutFacet"])).project;
+    expect(after.recipe.init.kind === "steps" && after.recipe.init.steps.map((s) => s.spec)).toEqual(["ERC20Init", "AccessInit"]);
+    expect(after.labels).toEqual({ "steps[1].admin": "ops.eth" });
+    expect("labels" in removeFacets(bundle, catalog, ["Vault"]).project).toBe(false);
+  });
+
+  test("removing a facet whose init stays keeps every label where it was", () => {
+    // OwnableInit serves OwnableFacet too, so its step stays.
+    const after = removeFacets(three, catalog, ["DiamondCutFacet"]).project;
+    expect(after.recipe.init).toEqual(three.recipe.init);
+    expect(after.labels).toBe(three.labels);
+  });
+
+  test("loading a recipe clears the labels with the provenance", () => {
+    const loaded = untouched(three, (p) => loadRecipe(p, catalog, bundle.recipe, bundle.layout)).project;
+    expect(loaded.provenance).toEqual({});
+    expect("labels" in loaded).toBe(false);
+  });
+});

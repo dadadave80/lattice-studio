@@ -167,6 +167,14 @@ describe("an address and its ENS label (spec L462)", () => {
     expect(again.summary).toBe("SafeDiamondCutInit.safe is already 0x71C7…976F.");
   });
 
+  test("the same name committed again, resolving to a different address, keeps its label", () => {
+    const project = safeCut({ safe: SAFE }, { "steps[0].safe": "safe.eth", "steps[0].admin": "ops.eth" });
+    const result = setAddressOp(catalog, "steps[0].safe", LINKED, "safe.eth", "Safe")(project);
+    expect(result).toMatchObject({ changed: true, summary: "Set Safe to safe.eth" });
+    expect(safeOf(result.project)).toBe(LINKED);
+    expect(result.project.labels).toEqual({ "steps[0].safe": "safe.eth", "steps[0].admin": "ops.eth" });
+  });
+
   test("a path core refuses stores no label either", () => {
     const project = safeCut({});
     const result = setAddressOp(catalog, "steps[4].safe", SAFE, "safe.eth", "Safe")(project);

@@ -117,6 +117,60 @@ describe("gestures", () => {
   });
 });
 
+describe("ENS labels (spec L462)", () => {
+  const SAFE = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+  const OTHER = "0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db";
+  /** What an address field's commit does: the address in the recipe and, when it came from a name, the label. */
+  const setSafe = (address: `0x${string}`, name: string | null) => (p: Project): EditResult => {
+    const { labels: _old, ...rest } = p;
+    const labels = name === null ? {} : { "steps[0].safe": name };
+    const recipe = { ...p.recipe, init: { kind: "steps" as const, steps: [{ spec: "SafeDiamondCutInit", args: { safe: address } }] } };
+    return { project: { ...rest, recipe, ...(name === null ? {} : { labels }) }, changed: true, summary: "Set Safe" };
+  };
+  const safeArg = (): unknown => {
+    const init = doc.get().recipe.init;
+    return init.kind === "steps" ? init.steps[0]?.args.safe : undefined;
+  };
+
+  test("undo takes the label back with the address, and redo brings both again", () => {
+    doc.apply("Set Safe", setSafe(SAFE, null));
+    doc.apply("Set Safe to safe.eth", setSafe(OTHER, "safe.eth"));
+    expect(doc.get().labels).toEqual({ "steps[0].safe": "safe.eth" });
+    doc.undo();
+    expect(safeArg()).toBe(SAFE);
+    expect("labels" in doc.get()).toBe(false);
+    doc.redo();
+    expect(safeArg()).toBe(OTHER);
+    expect(doc.get().labels).toEqual({ "steps[0].safe": "safe.eth" });
+    doc.apply("Set Safe", setSafe(SAFE, null));
+    expect("labels" in doc.get()).toBe(false);
+    doc.undo();
+    expect(doc.get().labels).toEqual({ "steps[0].safe": "safe.eth" });
+  });
+
+  test("an edit that changes only a label is a step of its own", () => {
+    doc.apply("Set Safe", setSafe(SAFE, null));
+    doc.apply("Set Safe to safe.eth", setSafe(SAFE, "safe.eth"));
+    expect(kit.state.document.history.getState().pastStates).toHaveLength(2);
+    expect(doc.undo()).toBe("Set Safe to safe.eth");
+    expect("labels" in doc.get()).toBe(false);
+  });
+
+  test("a drag that changes only a label commits one step, and cancel takes the label back", () => {
+    doc.apply("Set Safe", setSafe(SAFE, null));
+    doc.begin("Named Safe");
+    doc.update(setSafe(SAFE, "safe.eth"));
+    doc.commit();
+    expect(kit.state.document.history.getState().pastStates).toHaveLength(2);
+    doc.begin("Unnamed Safe");
+    doc.update(setSafe(SAFE, null));
+    expect("labels" in doc.get()).toBe(false);
+    doc.cancel();
+    expect(doc.get().labels).toEqual({ "steps[0].safe": "safe.eth" });
+    expect(kit.state.document.history.getState().pastStates).toHaveLength(2);
+  });
+});
+
 describe("selection and session", () => {
   test("each step keeps its selection: undo restores the one before, redo the one after", () => {
     const place = (name: string) => (p: Project): EditResult => ({

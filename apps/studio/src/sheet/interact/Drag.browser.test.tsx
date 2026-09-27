@@ -8,7 +8,7 @@ import { bufferedServices } from "../../../test/harness";
 import {
   announced, cardNode, client, cardPoint, clickCard, dragCard, drawnViewport, position, releaseDrag, renderInteractSheet,
   selection,
-  sheetProject, storedViewport,
+  sheetProject, storedViewport, touchDragCard, touchScreen,
 } from "./testing/interact-harness";
 
 const ID = "drag";
@@ -107,6 +107,19 @@ describe("dragging a card", () => {
     await releaseDrag();
     expect(position(a)).toEqual({ x: 24, y: 24 });
     expect(bufferedServices().log.some((line) => line.text === "Read-only: this is a shared link")).toBe(true);
+  });
+});
+
+describe("touch (IR L57, batch-2 #95)", () => {
+  test("a one-finger press, drag and lift moves a card, snapped to 8 px", async () => {
+    touchScreen();
+    const [a] = await sheet();
+    await touchDragCard(a, { x: 45, y: 367 });
+    // Same offset and snap as the mouse drag test above.
+    expect(position(a)).toEqual({ x: 72, y: 392 });
+    expect(selection()).toEqual([a]);
+    expect(doc.state().canUndo).toBe(true);
+    expect(doc.state().undoLabel).toBe(`Moved ${a}`);
   });
 });
 

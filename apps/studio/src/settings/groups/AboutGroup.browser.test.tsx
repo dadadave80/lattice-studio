@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
+import { version } from "../../../package.json";
 import { fixtureCatalog, renderWithStudio } from "../../../test/harness";
 import { AboutGroup } from "./AboutGroup";
 
@@ -24,5 +25,11 @@ describe("AboutGroup", () => {
     await renderWithStudio(<AboutGroup />, { catalog: null });
     await expect.element(page.getByText("Catalog: loading…")).toBeVisible();
     await expect.element(page.getByRole("heading", { name: "Licenses" })).toBeVisible();
+  });
+
+  test("names Studio's version from its package (spec L638)", async () => {
+    expect(version).toMatch(/^\d+\.\d+\.\d+/);
+    await renderWithStudio(<AboutGroup />);
+    await expect.element(page.getByText(`Version ${version}`, { exact: true })).toBeVisible();
   });
 });
