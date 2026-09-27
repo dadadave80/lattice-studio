@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
 import { KEY_CONTEXT_ATTRIBUTE, useRegion, useSession, type RegionId, type RegionProps } from "@/contracts";
+import { BannerHost } from "@/feedback";
 import { ConsolePanel } from "@/panels/console";
-import { InspectorPanel } from "@/panels/inspector";
 import { Sheet } from "@/sheet/canvas";
 import { Splitter } from "@/ui/nav/Splitter";
 import { cx } from "@/ui/shared/cx";
 import { useFocusReturn } from "./focus-return";
+import { InspectorPane } from "./InspectorPane";
 import { isDrawerTier, useLayoutTier, useWindowHeight } from "./layout-tier";
 import { LeftPane } from "./LeftPane";
 import { PaneSwitcher } from "./PaneSwitcher";
@@ -45,6 +46,11 @@ function useRegions(): Record<Exclude<RegionId, "toasts">, RegionProps> {
  * Every region stays mounted at every width, in the same place in the tree; a tier or a pane change only
  * hides or moves them, so no pane change ever remounts the sheet or resets its viewport (PA L14, bug 6).
  * Hidden regions carry `hidden`, which also takes them out of F6.
+ *
+ * Banners show at the top of the sheet region (spec L384, L389), above the canvas rather than over it, so
+ * they never cover the sheet's tools. The host and the canvas are always both there, in that order: a banner
+ * coming or going only resizes the canvas, never remounts it. The host is its own key context (`global`), so
+ * a sheet shortcut never fires from a banner's button.
  */
 export function Shell() {
   const tier = useLayoutTier();
@@ -111,7 +117,12 @@ export function Shell() {
           id={PANE_IDS.sheet}
           hidden={!seen.sheet}
         >
-          <Sheet />
+          <div className={styles.banners} {...{ [KEY_CONTEXT_ATTRIBUTE]: "global" }}>
+            <BannerHost />
+          </div>
+          <div className={styles.canvas}>
+            <Sheet />
+          </div>
         </main>
         {inspectorSplitter ? (
           <Splitter
@@ -135,7 +146,7 @@ export function Shell() {
           id={PANE_IDS.inspector}
           hidden={!seen.inspector}
         >
-          <InspectorPanel />
+          <InspectorPane tier={tier} />
         </aside>
       </div>
       {consoleSplitter ? (

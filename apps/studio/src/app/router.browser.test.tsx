@@ -48,15 +48,15 @@ describe("routes", () => {
 
   test("a route change keeps the same sheet", async () => {
     await renderWithStudio(<App />);
-    // The canvas is a lazy chunk (S4b), so the sheet's first child arrives a moment after the render.
-    const sheetOf = () => document.getElementById("shell-sheet")?.firstElementChild ?? null;
+    // The canvas is a lazy chunk (S4b), so it arrives a moment after the render, below the banner host.
+    const sheetOf = () => document.getElementById("shell-sheet")?.lastElementChild?.firstElementChild ?? null;
     await expect.poll(sheetOf, { timeout: 10_000 }).not.toBeNull();
     const sheet = sheetOf();
     location.hash = "#/docs/problems/SEL-01";
     await expect.poll(() => session.get().panes.inspector.view).toEqual({ kind: "doc", code: "SEL-01" });
     location.hash = "#/";
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(document.getElementById("shell-sheet")?.firstElementChild).toBe(sheet);
+    expect(sheetOf()).toBe(sheet);
   });
 
   test("#/settings runs Settings: its dialog opens, or, until S10 builds it, it says so", async () => {

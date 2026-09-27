@@ -36,6 +36,17 @@ export const S10_COMMANDS: readonly Command[] = [
     id: "theme.set",
     title: ({ theme }) => `Set theme to ${THEME_LABEL[theme]}`,
     category: "Session",
+    // IR L158: `theme <shop, draft or system>`, case-insensitive; run() confirms with the "Theme: X." line.
+    console: {
+      verb: "theme",
+      syntax: "theme <shop, draft or system>",
+      parse: (argv) => {
+        const text = argv.join(" ").trim();
+        const theme = text.toLowerCase();
+        if (theme in THEME_LABEL) return { ok: true, value: { theme: theme as ThemeChoice } };
+        return { ok: false, error: `${text === "" ? "theme takes" : `“${text}” isn't a theme. Choose`} shop, draft or system.` };
+      },
+    },
     enabled: (_ctx, { theme }) => (theme in THEME_LABEL ? { ok: true } : { ok: false, reason: `"${theme}" isn't a theme.` }),
     run: (_ctx, { theme }) => {
       settings.set({ theme });

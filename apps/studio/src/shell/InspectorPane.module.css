@@ -1,0 +1,34 @@
+/* The inspector pane (spec L358): its header row, then S5c's panel filling the rest. */
+.pane {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+/* 36 px, as the console drawer's header (spec L359). */
+.header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-3);
+  block-size: calc(var(--lx-space-8) + var(--lx-space-1));
+  padding-inline: var(--lx-space-4) var(--lx-space-1);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  background: var(--lx-panel);
+}
+
+.eyebrow {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+}
