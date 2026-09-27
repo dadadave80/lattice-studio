@@ -95,6 +95,24 @@ function cannotServe(recipe: Recipe, catalog: Catalog, selector: Hex4, facet: st
   return null;
 }
 
+/** How an edit moves the records keyed by init path: drop a path, shift step indexes, or clear them all. */
+type PathMove = <T>(record: Record<string, T>) => Record<string, T>;
+
+const KEEP_PATHS: PathMove = (record) => record;
+const CLEAR_PATHS: PathMove = () => ({});
+
+/**
+ * The project with its provenance and its ENS labels (spec L462) moved by `move`: a label follows its argument
+ * exactly as provenance does, so it never names an address it didn't resolve to. With no labels left, the key goes.
+ */
+function followPaths(project: Project, move: PathMove): Project {
+  const { labels, ...rest } = project;
+  const moved: Project = { ...rest, provenance: move(project.provenance) };
+  if (labels === undefined) return moved;
+  const next = move(labels);
+  return Object.keys(next).length > 0 ? { ...moved, labels: next } : moved;
+}
+
 /** The recipe normalized, in a new project. */
 function withRecipe(project: Project, catalog: Catalog, recipe: Recipe, extra: Partial<Project> = {}): Project {
   return { ...project, ...extra, recipe: normalizeRecipe(recipe, catalog) };
@@ -168,39 +186,36 @@ export const removeFacets: RemoveFacetsFn = (project, catalog, names) => {
   const dropped = new Set(
     removed.map((name) => facetOf(catalog, name)?.init).filter((spec): spec is string => spec !== undefined && !stillUsed.has(spec)),
   );
-  const { init, provenance } = dropInitSpecs(recipe.init, project.provenance, dropped);
+  const { init, move } = dropInitSpecs(recipe.init, dropped);
 
   const layout = { ...project.layout };
   for (const name of removed) delete layout[name];
 
   const next: Recipe = { ...recipe, facets: remaining, owners, exclude, init };
-  return done(withRecipe(project, catalog, next, { layout, provenance }), `Removed ${joinAnd(removed)}`);
+  return done(withRecipe(followPaths(project, move), catalog, next, { layout }), `Removed ${joinAnd(removed)}`);
 };
 
-/** The init without steps (or the bundle) whose spec is in `specs`, with provenance moved to match. */
-function dropInitSpecs(
-  init: RecipeInit,
-  provenance: Project["provenance"],
-  specs: ReadonlySet<string>,
-): { init: RecipeInit; provenance: Project["provenance"] } {
-  if (specs.size === 0) return { init, provenance };
+/** The init without steps (or the bundle) whose spec is in `specs`, and how provenance and labels move to match. */
+function dropInitSpecs(init: RecipeInit, specs: ReadonlySet<string>): { init: RecipeInit; move: PathMove } {
+  if (specs.size === 0) return { init, move: KEEP_PATHS };
   if (init.kind === "bundle") {
-    if (!specs.has(init.spec)) return { init, provenance };
-    return { init: EMPTY_INIT, provenance: dropProvenance(provenance, "bundle") };
+    if (!specs.has(init.spec)) return { init, move: KEEP_PATHS };
+    return { init: EMPTY_INIT, move: (record) => dropProvenance(record, "bundle") };
   }
-  if (init.kind !== "steps") return { init, provenance };
+  if (init.kind !== "steps") return { init, move: KEEP_PATHS };
   const kept: number[] = [];
   init.steps.forEach((step, index) => {
     if (!specs.has(step.spec)) kept.push(index);
   });
-  if (kept.length === init.steps.length) return { init, provenance };
+  if (kept.length === init.steps.length) return { init, move: KEEP_PATHS };
   const steps = kept.map((index) => init.steps[index]).filter((step): step is InitStep => step !== undefined);
   return {
     init: { ...init, steps },
-    provenance: remapStepProvenance(provenance, (index) => {
-      const at = kept.indexOf(index);
-      return at === -1 ? null : at;
-    }),
+    move: (record) =>
+      remapStepProvenance(record, (index) => {
+        const at = kept.indexOf(index);
+        return at === -1 ? null : at;
+      }),
   };
 }
 
@@ -269,8 +284,8 @@ export const loadRecipe: LoadRecipeFn = (project, catalog, recipe, layout) => {
     const entry = layout[name];
     if (entry !== undefined) copy[name] = { ...entry };
   }
-  // Provenance is keyed by the old recipe's argument paths; none of them describe the new one.
-  return done({ ...project, recipe: next, layout: copy, provenance: {} }, `Loaded ${title ?? "a recipe"}`);
+  // Provenance and labels are keyed by the old recipe's argument paths; none of them describe the new one.
+  return done({ ...followPaths(project, CLEAR_PATHS), recipe: next, layout: copy }, `Loaded ${title ?? "a recipe"}`);
 };
 
 function sameLayout(a: Project["layout"], b: Project["layout"]): boolean {
@@ -399,10 +414,11 @@ export const setInitArg: SetInitArgFn = (project, catalog, path, value) => {
   if (canonicalJson(next) === canonicalJson(normalizeRecipe(recipe, catalog))) {
     return noOp(project, stored === undefined ? `${label} is already empty.` : `${label} is already ${showArg(stored, param)}.`);
   }
-  // A value set by hand no longer came from a link or a file (LINK-01, spec L465).
-  const provenance = dropProvenance(project.provenance, path);
+  // A value set by hand no longer came from a link or a file (LINK-01, spec L465), nor from an ENS name (L462): a
+  // caller that resolved one writes the label back after this.
+  const moved = followPaths(project, (record) => dropProvenance(record, path));
   const summary = stored === undefined ? `Cleared ${label}` : `Set ${label} to ${showArg(stored, param)}`;
-  return done({ ...project, recipe: next, provenance }, summary);
+  return done({ ...moved, recipe: next }, summary);
 };
 
 /** The argument an init path addresses in `init`, if there is one. */
@@ -443,8 +459,8 @@ export const addInitStep: AddInitStepFn = (project, catalog, spec, index) => {
   const at = index === undefined || !Number.isFinite(index) ? steps.length : Math.min(Math.max(Math.trunc(index), 0), steps.length);
   const nextSteps = [...steps.slice(0, at), { spec, args: {} }, ...steps.slice(at)];
   const nextInit: RecipeInit = current.kind === "steps" ? { ...current, steps: nextSteps } : { kind: "steps", steps: nextSteps };
-  const provenance = remapStepProvenance(project.provenance, (i) => (i >= at ? i + 1 : i));
-  return done(withRecipe(project, catalog, { ...recipe, init: nextInit }, { provenance }), `Added ${spec} to the init plan`);
+  const moved = followPaths(project, (record) => remapStepProvenance(record, (i) => (i >= at ? i + 1 : i)));
+  return done(withRecipe(moved, catalog, { ...recipe, init: nextInit }), `Added ${spec} to the init plan`);
 };
 
 export const removeInitStep: RemoveInitStepFn = (project, catalog, path) => {
@@ -455,13 +471,14 @@ export const removeInitStep: RemoveInitStepFn = (project, catalog, path) => {
   if (typeof step === "string") return noOp(project, step);
   const summary = `Removed ${step.spec} from the init plan`;
   if (parsed.root === "bundle" || recipe.init.kind !== "steps") {
-    const provenance = dropProvenance(project.provenance, "bundle");
-    return done(withRecipe(project, catalog, { ...recipe, init: EMPTY_INIT }, { provenance }), summary);
+    const moved = followPaths(project, (record) => dropProvenance(record, "bundle"));
+    return done(withRecipe(moved, catalog, { ...recipe, init: EMPTY_INIT }), summary);
   }
   const removed = parsed.index;
   const steps = recipe.init.steps.filter((_, index) => index !== removed);
-  const provenance = remapStepProvenance(project.provenance, (i) => (i === removed ? null : i > removed ? i - 1 : i));
-  return done(withRecipe(project, catalog, { ...recipe, init: { ...recipe.init, steps } }, { provenance }), summary);
+  const moved = followPaths(project, (record) =>
+    remapStepProvenance(record, (i) => (i === removed ? null : i > removed ? i - 1 : i)));
+  return done(withRecipe(moved, catalog, { ...recipe, init: { ...recipe.init, steps } }), summary);
 };
 
 export const moveInitStep: MoveInitStepFn = (project, catalog, from, to) => {
@@ -480,8 +497,8 @@ export const moveInitStep: MoveInitStepFn = (project, catalog, from, to) => {
   order.splice(from, 1);
   order.splice(to, 0, from);
   const steps = order.map((index) => init.steps[index]).filter((step): step is InitStep => step !== undefined);
-  const provenance = remapStepProvenance(project.provenance, (i) => order.indexOf(i));
+  const moved = followPaths(project, (record) => remapStepProvenance(record, (i) => order.indexOf(i)));
   const before = to > 0 ? steps[to - 1]?.spec : undefined;
   const summary = before === undefined ? `Moved ${moving.spec} to step 1` : `Moved ${moving.spec} to step ${to + 1}, after ${before}`;
-  return done(withRecipe(project, catalog, { ...recipe, init: { ...init, steps } }, { provenance }), summary);
+  return done(withRecipe(moved, catalog, { ...recipe, init: { ...init, steps } }), summary);
 };
