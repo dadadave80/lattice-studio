@@ -31,19 +31,28 @@ export function projectFor(recipe: Recipe, extra: Partial<Project> = {}): Projec
 const KITCHEN: InitSpec = {
   name: "KitchenInit",
   contract: "KitchenInit",
-  fn: "init(bool,string,string,uint16,address)",
+  fn: "init(bool,string,string,uint16)",
   kind: "step",
   params: [
     { name: "paused", type: "bool", doc: "Start paused." },
     { name: "tier", type: "string", doc: "Which tier the vault starts in.", rule: "enum(bronze|silver|gold)" },
     { name: "label", type: "string", doc: "A short label.", rule: "maxlen(8)" },
     { name: "slots", type: "uint16", doc: "How many slots." },
-    // No nonzero rule: the zero address is allowed (spec L462's "Zero address" pick).
-    { name: "treasury", type: "address", doc: "Where fees go; the zero address keeps them in the vault." },
   ],
   initializes: [],
   after: [],
   sameCall: [],
+};
+
+/**
+ * KitchenInit plus an `address` field with no nonzero rule, so the zero address is allowed (spec L462's
+ * "Zero address" pick). Kept separate from KITCHEN so the reorder and step-order fixtures (which reuse KITCHEN
+ * unmodified) don't gain an extra field row.
+ */
+const KITCHEN_TREASURY: InitSpec = {
+  ...KITCHEN,
+  fn: "init(bool,string,string,uint16,address)",
+  params: [...KITCHEN.params, { name: "treasury", type: "address", doc: "Where fees go; the zero address keeps them in the vault." }],
 };
 
 /** An init with a documented order the fixture's real inits don't break: it must run after ERC20's (INIT-02). */
@@ -59,12 +68,18 @@ const PAYOUT: InitSpec = {
 };
 
 /**
- * The fixture catalog plus KitchenInit, whose five params cover the field kinds the real inits don't, and
+ * The fixture catalog plus KitchenInit, whose four params cover the field kinds the real inits don't, and
  * PayoutInit, which must follow ERC20Init.
  */
 export function kitchenCatalog(): Catalog {
   const catalog = fixtureCatalog();
   return { ...catalog, inits: [...catalog.inits, KITCHEN, PAYOUT] };
+}
+
+/** The fixture catalog plus KITCHEN_TREASURY, for the address-field (allowZero, help text) tests only. */
+export function kitchenTreasuryCatalog(): Catalog {
+  const catalog = fixtureCatalog();
+  return { ...catalog, inits: [...catalog.inits, KITCHEN_TREASURY] };
 }
 
 /** Three steps, the first out of order (INIT-02). */
@@ -83,6 +98,13 @@ export function stepsRecipe(catalog: Catalog): Recipe {
 }
 
 export function kitchenRecipe(catalog: Catalog): Recipe {
+  return {
+    ...templateRecipe("ERC20", catalog),
+    init: { kind: "steps", steps: [{ spec: "KitchenInit", args: {} }] },
+  };
+}
+
+export function kitchenTreasuryRecipe(catalog: Catalog): Recipe {
   return {
     ...templateRecipe("ERC20", catalog),
     init: { kind: "steps", steps: [{ spec: "KitchenInit", args: {} }] },

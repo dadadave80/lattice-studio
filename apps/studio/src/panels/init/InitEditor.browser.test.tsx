@@ -12,7 +12,9 @@ import { ensChainChanged } from "./AddressInput";
 import { ZERO_ADDRESS } from "./field-value";
 import { resetInitUi } from "./init-ui-store";
 import { InitEditor } from "./InitEditor";
-import { kitchenCatalog, kitchenRecipe, projectFor, SAFE, SOME_CODE, stepsRecipe, templateRecipe, TOKEN } from "./test-support";
+import {
+  kitchenCatalog, kitchenRecipe, kitchenTreasuryCatalog, kitchenTreasuryRecipe, projectFor, SAFE, SOME_CODE, stepsRecipe, templateRecipe, TOKEN,
+} from "./test-support";
 
 afterEach(resetInitUi);
 
@@ -330,8 +332,8 @@ describe("field types (spec L461-L466)", () => {
   });
 
   test("an allowZero address offers Zero address and stores the zero address", async () => {
-    const catalog = kitchenCatalog();
-    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(kitchenRecipe(catalog)), catalog });
+    const catalog = kitchenTreasuryCatalog();
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(kitchenTreasuryRecipe(catalog)), catalog });
     const zero = page.getByRole("group", { name: "Treasury quick picks" }).getByRole("button", { name: "Zero address" });
     await expect.element(zero).toHaveAttribute("aria-pressed", "false");
     await zero.click();
@@ -341,8 +343,8 @@ describe("field types (spec L461-L466)", () => {
   });
 
   test("help text comes from the field's NatSpec (field.doc)", async () => {
-    const catalog = kitchenCatalog();
-    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(kitchenRecipe(catalog)), catalog });
+    const catalog = kitchenTreasuryCatalog();
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(kitchenTreasuryRecipe(catalog)), catalog });
     await expect.element(page.getByRole("textbox", { name: "Slots", exact: true })).toHaveAccessibleDescription(/How many slots\./);
     await expect.element(page.getByRole("textbox", { name: "Treasury", exact: true })).toHaveAccessibleDescription(
       /Where fees go; the zero address keeps them in the vault\./,
