@@ -42,6 +42,9 @@ export default defineConfig(async (env) => {
       attachmentsDir: `${out}/attachments`,
       browser: {
         enabled: true,
+        // A machine under load shifts border antialiasing by 1-3% of pixels with no change in content (Q3's finding);
+        // a looser per-pixel threshold and up to 3% differing pixels absorb that without hiding a real change.
+        expect: { toMatchScreenshot: { comparatorOptions: { threshold: 0.3, allowedMismatchedPixelRatio: 0.03 } } },
         headless: true,
         provider: playwright(),
         instances: [{ browser: "chromium" }],
