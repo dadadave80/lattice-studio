@@ -420,7 +420,7 @@ describe("tracking", () => {
     await flush();
     expect(m.state()).toMatchObject({ phase: "mismatch", error: MISMATCH });
     expect(h.records.get(SEPOLIA_ID, address)?.status).toBe("mismatch");
-    expect(h.said.texts().at(-1)).toMatch(/^Deployed at 0x.{4}….{4}, but `facets\(\)` doesn't match the sheet: 1 selector differ\.$/);
+    expect(h.said.texts().at(-1)).toMatch(/^Deployed at 0x.{4}….{4}, but `facets\(\)` doesn't match the sheet: 1 selector differs\.$/);
   });
 
   test("stale after the receipt timeout (fake timers), Keep waiting, then a late receipt is still recorded", async () => {

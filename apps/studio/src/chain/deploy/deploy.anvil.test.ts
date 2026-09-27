@@ -279,7 +279,7 @@ describe.skipIf(!runnable || catalog === null)("the deploy machine on Anvil", ()
     expect(first.m.state().address).toBe(address);
     expect(second.records.get(ANVIL_ID, address)?.status).toBe("mismatch");
     expect(second.m.state().error).toBe("Deployed, but `facets()` doesn't match the plan.");
-    expect(second.said.some((t) => t.endsWith("doesn't match the sheet: 1 selector differ."))).toBe(true);
+    expect(second.said.some((t) => t.endsWith("doesn't match the sheet: 1 selector differs."))).toBe(true);
   }, 60_000);
 
   test("stale after the receipt timeout (manual clock), then the late receipt is recorded; a reload resumes from the record", async () => {

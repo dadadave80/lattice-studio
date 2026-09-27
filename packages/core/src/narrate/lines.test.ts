@@ -172,6 +172,13 @@ describe("lines", () => {
     expect(draft.tag).toBe("Deploy");
   });
 
+  test("mismatch: the verb agrees with one selector", () => {
+    const address = addr(6);
+    expect(record(lines.mismatch({ address, differing: 1 }).text)).toBe(
+      `Deployed at ${formatAddress(address)}, but \`facets()\` doesn't match the sheet: 1 selector differs.`,
+    );
+  });
+
   test("verified: spec example", () => {
     const draft = lines.verified({ status: "exact_match", forwardedTo: ["Etherscan", "Blockscout"] });
     expect(record(draft.text)).toBe("Verified on Sourcify (exact match); forwarded to Etherscan and Blockscout.");
