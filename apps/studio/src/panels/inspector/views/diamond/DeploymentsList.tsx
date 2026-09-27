@@ -54,6 +54,7 @@ export function DeploymentsList({ autoCheck }: { autoCheck: boolean }) {
                   explorer={explorerUrl(chains, record.chainId, record.address)}
                   chainKnown={known}
                   check={checks.checkOf(record)}
+                  online={online}
                   onRetry={() => checks.retry(record)}
                 />
               ))}

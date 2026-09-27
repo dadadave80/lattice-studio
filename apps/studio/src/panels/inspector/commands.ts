@@ -53,8 +53,8 @@ defineCommands([
     title: () => "Compare options…",
     category: "Build",
     enabled: (ctx, { options }) => {
-      if (!ctx.catalog) return { ok: false, reason: "The catalog hasn't loaded." };
-      if (options.length < 2) return { ok: false, reason: "Compare needs two or more options." };
+      if (!ctx.catalog) return { ok: false, reason: "The catalog hasn't loaded. Wait for it to finish." };
+      if (options.length < 2) return { ok: false, reason: "Compare needs two or more options. Select another option to compare." };
       const known = new Set(ctx.catalog.facets.map((facet) => facet.name));
       const missing = options.find((name) => !known.has(name));
       return missing === undefined ? OK : { ok: false, reason: `${missing} isn't in the catalog.` };
@@ -91,7 +91,7 @@ defineCommands([
     palette: true,
     enabled: (ctx) => (ctx.analysis.plan.length === 0 ? { ok: false, reason: "Place facets first" } : OK),
     run: async (ctx) => {
-      const text = planJson(ctx.analysis);
+      const text = planJson(ctx.analysis, ctx.project.recipe.facets);
       // Loaded on use: the copy helper brings the toast and fallback styles, which the entry chunk doesn't need.
       const { copyText } = await import("@/ui/copy/copy-text");
       await copyText(text, { label: "plan" });

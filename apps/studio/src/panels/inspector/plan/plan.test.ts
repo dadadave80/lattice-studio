@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { analyze, type Catalog } from "@lattice-studio/core";
+import { analyze, loadTemplate, type Catalog } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeRecipe } from "@lattice-studio/core/testing";
 import { planJson, planObject } from "./plan-json";
-import { planRows } from "./plan-rows";
+import { omittedFacets, planRows } from "./plan-rows";
 
 function catalog(): Catalog {
   const loaded = loadFixtureCatalog();
@@ -37,11 +37,30 @@ describe("planRows", () => {
   });
 });
 
+describe("omittedFacets", () => {
+  test("names a placed facet that routes nothing, in catalog order (PA L9, §18 #3c)", () => {
+    const c = catalog();
+    const loaded = loadTemplate(c, "GovernedVault");
+    if (!loaded.ok) throw new Error(loaded.error);
+    const recipe = { ...loaded.value, facets: [...loaded.value.facets, "ERC20Pausable"] };
+    const analysis = analyze(recipe, c);
+    expect(analysis.plan.some((entry) => entry.facet === "ERC20Pausable")).toBe(false);
+    expect(omittedFacets(analysis.plan, recipe.facets)).toEqual(["ERC20Pausable"]);
+  });
+
+  test("empty once every placed facet routes something", () => {
+    const c = catalog();
+    const analysis = analyze(makeRecipe({ facets: ["ERC20"] }, c), c);
+    expect(omittedFacets(analysis.plan, ["ERC20"])).toEqual([]);
+  });
+});
+
 describe("planJson", () => {
   test("FacetCuts in cut order under the recipe hash, two-space indented", () => {
     const c = catalog();
-    const analysis = analyze(makeRecipe({ facets: ["ERC20", "Receive"] }, c), c);
-    const object = planObject(analysis);
+    const recipe = makeRecipe({ facets: ["ERC20", "Receive"] }, c);
+    const analysis = analyze(recipe, c);
+    const object = planObject(analysis, recipe.facets);
     expect(object.recipeHash).toBe(analysis.recipeHash);
     expect(object.facetCuts.map((cut) => [cut.facet, cut.action, cut.functionSelectors.length])).toEqual(
       analysis.plan.map((entry) => [entry.facet, "Add", entry.selectors.length]),
@@ -56,9 +75,19 @@ describe("planJson", () => {
       action: "Add",
       functionSelectors: [...first.selectors],
     });
-    const text = planJson(analysis);
+    expect(object.omitted).toEqual([]);
+    const text = planJson(analysis, recipe.facets);
     expect(text.endsWith("}\n")).toBe(true);
     expect(JSON.parse(text)).toEqual(object);
     expect(text).toContain('\n  "facetCuts": [');
+  });
+
+  test("omitted names a placed facet the plan cuts no Add for (PA L9)", () => {
+    const c = catalog();
+    const loaded = loadTemplate(c, "GovernedVault");
+    if (!loaded.ok) throw new Error(loaded.error);
+    const recipe = { ...loaded.value, facets: [...loaded.value.facets, "ERC20Pausable"] };
+    const analysis = analyze(recipe, c);
+    expect(planObject(analysis, recipe.facets).omitted).toEqual(["ERC20Pausable"]);
   });
 });

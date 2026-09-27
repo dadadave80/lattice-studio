@@ -1,5 +1,5 @@
 import type { Address, CommandId, Deployment, Hex, Project, Recipe } from "@lattice-studio/core";
-import { analyze, formatAddress, loadTemplate, NotImplemented } from "@lattice-studio/core";
+import { analyze, formatAddress, formatTime, loadTemplate, NotImplemented } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
@@ -204,6 +204,8 @@ describe("DiamondView: chain readiness", () => {
     await renderWithStudio(view, { project: makeProject({ id: "ready-error" }), session: { chainId: SEPOLIA }, chain });
 
     await expect.element(page.getByText("Couldn't read Sepolia: the RPC didn't answer.")).toBeVisible();
+    // A background probe's failure is passive, not interrupting: no `alert` (spec L777, §14 #86).
+    expect(document.querySelectorAll('[role="alert"]')).toHaveLength(0);
     await page.getByRole("button", { name: "Retry reading Sepolia" }).click();
     await page.getByRole("button", { name: "Use another RPC…" }).click();
     expect(retry).toHaveBeenCalledTimes(1);
@@ -274,6 +276,13 @@ describe("DiamondView: deployments", () => {
     await expect.element(page.getByText("Not deployed yet.")).toBeVisible();
   });
 
+  test("Deployments is the view's last section (spec L358)", async () => {
+    await renderWithStudio(view, { project: makeProject({ id: "deploy-order", recipe: template("GovernedVault") }), chain: true });
+    const headings = [...document.querySelectorAll('[data-view="diamond"] h3')].map((h) => h.textContent);
+    expect(headings.length).toBeGreaterThan(1);
+    expect(headings.at(-1)).toBe("Deployments");
+  });
+
   test("Checking 2 deployments… while the reads are in flight", async () => {
     const chain = { ...fakeChainService(), codeAt: () => new Promise<never>(() => {}) };
     await putDeployment(record("deploy-checking", { address: address("b1") }));
@@ -312,6 +321,31 @@ describe("DiamondView: deployments", () => {
     await expect.element(page.getByText("Checking 1 deployment…")).not.toBeInTheDocument();
   });
 
+  test("offline, the verified mark reads Unknown instead of the stored status (ruling R7, spec L832)", async () => {
+    goOffline();
+    const id = "deploy-offline-verification";
+    await putDeployment(record(id, { address: address("b4"), verification: "exact_match" }));
+    await putDeployment(
+      record(id, { address: address("b5"), at: "2026-09-21T12:00:00.000Z", verification: "failed", verificationReason: "Sourcify didn't finish in time." }),
+    );
+    await renderWithStudio(view, { project: makeProject({ id }), chain: true });
+    expect(page.getByText("Verified (exact match)").elements()).toHaveLength(0);
+    expect(page.getByText("Couldn't verify").elements()).toHaveLength(0);
+    expect(page.getByText("Sourcify didn't finish in time.").elements()).toHaveLength(0);
+    expect(page.getByText("Unknown").elements()).toHaveLength(2);
+  });
+
+  test("a record's time shows the absolute time in its tooltip (spec L687)", async () => {
+    const id = "deploy-time-tooltip";
+    const at = "2026-09-20T12:00:00.000Z";
+    await putDeployment(record(id, { address: address("b6"), at }));
+    await renderWithStudio(view, { project: makeProject({ id }), chain: true });
+    const title = formatTime(at, new Date().toISOString()).title;
+    const time = document.querySelector<HTMLTimeElement>(`[data-record="${SEPOLIA}:${address("b6")}"] time`);
+    expect(time?.title).toBe(title);
+    expect(time?.getAttribute("dateTime")).toBe(at);
+  });
+
   test("a failed read marks its record; Retry reads it again", async () => {
     const chain = fakeChainService({ down: [SEPOLIA] });
     await putDeployment(record("deploy-down", { address: address("c1") }));
@@ -320,6 +354,8 @@ describe("DiamondView: deployments", () => {
 
     const failure = page.getByText("Couldn't read Sepolia for this record.");
     await expect.element(failure).toBeVisible();
+    // A background probe's failure is passive, not interrupting: no `alert` (spec L777, §14 #86).
+    expect(document.querySelectorAll('[role="alert"]')).toHaveLength(0);
     const reads = () => chain.calls.filter((call) => call.method === "codeAt").length;
     expect(reads()).toBe(1);
     chain.setDown(SEPOLIA, false);

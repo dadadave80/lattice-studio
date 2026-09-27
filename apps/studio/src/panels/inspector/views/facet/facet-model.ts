@@ -4,7 +4,7 @@
  * view and the Catalog preview.
  */
 import type { Catalog, Facet, Hex4, InitPlan, Problem, Recipe, Routing, Seam } from "@lattice-studio/core";
-import { formatCount, plural } from "@lattice-studio/core";
+import { formatCount } from "@lattice-studio/core";
 
 export type SelectorCounts = {
   exported: number;
@@ -39,10 +39,9 @@ export function selectorsText(counts: SelectorCounts): string {
   return `${counts.exported} exported · ${counts.excluded} excluded · ${counts.cut} cut`;
 }
 
-/** "ADD · 12 selectors"; "ADD · 0/2 selectors" while contested (the ⟂ is the view's); "none" when nothing is cut. */
+/** "ADD · 12/17 selectors" (spec L685; the ⟂ while contested is the view's); "none" when nothing is cut. */
 export function cutText(counts: SelectorCounts): string {
-  if (counts.contested) return `ADD · ${formatCount(counts.cut, counts.exported)}`;
-  if (counts.cut > 0) return `ADD · ${plural(counts.cut, "selector")}`;
+  if (counts.contested || counts.cut > 0) return `ADD · ${formatCount(counts.cut, counts.exported)}`;
   return "none";
 }
 
