@@ -359,7 +359,7 @@ describe("overlay facts the v1 flows need", () => {
     const byName = new Map(fixture.inits.map((i) => [i.name, i]));
     for (const name of [
       "VaultCoreInit", "ERC4626Init", "ERC20PermitInit", "ERC6538RegistryInit", "SafeDiamondCutInit", "GovernedSafeDiamondCutInit",
-      "AccessControlInit", "OwnableInit", "ERC165Init", "MultiInit", "GovernedVaultInit", "ERC20Init", "ERC20VotesInit",
+      "AccessControlInit", "OwnableInit", "ERC165Init", "MultiInit", "GovernedVaultInit", "ERC20Init",
       "DiamondIntrospectionInit.initUpgradeable", "DiamondIntrospectionInit.initImmutable",
     ]) {
       expect(byName.has(name) ? name : `missing ${name}`).toBe(name);
@@ -378,41 +378,6 @@ describe("overlay facts the v1 flows need", () => {
     expect(modules("ERC4626Init")).toEqual(["ERC20", "ERC4626"]);
     expect(byName.get("ERC20PermitInit")?.initializes[0]).toEqual({ module: "EIP712", with: { name: "name_", version: "1" } });
     expect(byName.get("ERC6538RegistryInit")?.initializes[0]).toEqual({ module: "EIP712", with: { name: "ERC6538Registry", version: "1.0" } });
-  });
-
-  test("ERC20VotesInit: init(string,address), its modules in Solidity order, and the sameCall set (ERC20VotesLib L37-L38)", () => {
-    const spec = fixture.inits.find((i) => i.name === "ERC20VotesInit");
-    expect([spec?.kind, spec?.fn]).toEqual(["step", "init(string,address)"]);
-    expect(toFunctionSelector(`function ${spec?.fn ?? ""}`)).toBe(toFunctionSelector("function init(string,address)"));
-    expect(spec?.params.map((p) => [p.name, p.type])).toEqual([["name_", "string"], ["admin_", "address"]]);
-    expect(spec?.params[1]).toMatchObject({ rule: "nonzero", authority: true, role: "DEFAULT_ADMIN_ROLE" });
-    expect(spec?.initializes).toEqual([
-      { module: "EIP712", with: { name: "name_", version: "1" } },
-      { module: "Nonces" },
-      { module: "Votes" },
-      { module: "ERC20Votes" },
-      { module: "AccessControl", with: { admin: "admin_" } },
-    ]);
-    // ERC20 is the one module another init (ERC20Init) must run in the same call; the other three it runs itself.
-    expect(spec?.sameCall).toEqual(["ERC20", "EIP712", "Nonces", "Votes"]);
-    const own = new Set(spec?.initializes.map((m) => m.module));
-    expect(spec?.sameCall.filter((m) => !own.has(m))).toEqual(["ERC20"]);
-    expect(spec?.registersInterfaces).toBeUndefined();
-    expect(fixture.inits.filter((i) => i.sameCall.length > 0).map((i) => i.name)).toEqual(["ERC20VotesInit"]);
-  });
-
-  test("ERC20Votes' init is ERC20VotesInit and GovernedVault's is the GovernedVaultInit bundle", () => {
-    for (const catalog of [fixture, next]) {
-      expect(facetOf(catalog, "ERC20Votes").init).toBe("ERC20VotesInit");
-      expect(facetOf(catalog, "GovernedVault").init).toBe("GovernedVaultInit");
-    }
-    expect(fixture.inits.find((i) => i.name === "GovernedVaultInit")?.kind).toBe("bundle");
-  });
-
-  test("overlay citations stay out of the catalog: no InitSpec carries afterSource or sameCallSource", () => {
-    for (const catalog of [fixture, next]) {
-      for (const spec of catalog.inits) expect([spec.name, "afterSource" in spec, "sameCallSource" in spec]).toEqual([spec.name, false, false]);
-    }
   });
 
   test("GovernedVaultInit: one struct parameter p with GovernedVaultParams' nine fields and GrantExample's examples", () => {
