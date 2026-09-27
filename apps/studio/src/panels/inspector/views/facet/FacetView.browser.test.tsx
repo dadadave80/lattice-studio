@@ -73,11 +73,12 @@ describe("spec rows", () => {
     expect(specValue("Source")).toBe("src/tokens/ERC4626/ERC4626.sol");
     expect(specValue("Version")).toBe("0.2.0");
     expect(specValue("Address")).toBe(erc4626?.release.address);
+    expect(specValue("Codehash")).toBe(erc4626?.release.codehash);
     expect(specValue("Namespace")).toBe("lattice.storage.ERC4626 · reads lattice.storage.ERC20");
     expect(specValue("Slot")).toBe(erc4626?.storage?.slot);
     expect(specValue("Selectors")).toBe("17 exported · 1 excluded · 16 cut");
     expect(specValue("Init")).toBe("ERC4626Init · Step 2 of 3");
-    expect(specValue("Cut")).toBe("ADD · 16 selectors");
+    expect(specValue("Cut")).toBe("ADD · 16/17 selectors");
     await expect.element(page.getByText(erc4626?.summary ?? "")).toBeVisible();
   });
 
@@ -86,7 +87,7 @@ describe("spec rows", () => {
     await shown("ERC20");
     expect(specValue("Selectors")).toBe("9 exported · 0 excluded · 9 cut");
     expect(specValue("Init")).toBe("ERC20Init");
-    expect(specValue("Cut")).toBe("ADD · 9 selectors");
+    expect(specValue("Cut")).toBe("ADD · 9/9 selectors");
     expect(specValue("Namespace")).toBe("lattice.storage.ERC20");
   });
 
@@ -250,6 +251,73 @@ describe("selectors list", () => {
     });
     await shown("ERC20");
     await expect.element(rows()[0] as HTMLElement).toHaveFocus();
+  });
+
+  test("Copy selector, Copy signature and Show owner reach the same commands from the list (ruling R3, IR L49)", async () => {
+    const copy = spy("selector.copy", "Copy selector");
+    const copySignature = spy("selector.copySignature", "Copy signature");
+    const showOwner = spy("selector.showOwner", "Show owner");
+    await renderWithStudio(<FacetView view={{ kind: "facet", facet: "ERC20" }} />, {
+      project: project({ facets: ["ERC20"] }, "facet-row-actions"),
+    });
+    await shown("ERC20");
+    const menuButton = page.getByRole("button", { name: "transfer(address,uint256) actions" });
+
+    await userEvent.click(menuButton);
+    await userEvent.click(page.getByRole("menuitem", { name: "Copy selector" }));
+    expect(argsOf(copy)).toEqual({ selector: TRANSFER, facet: "ERC20" });
+
+    await userEvent.click(menuButton);
+    await userEvent.click(page.getByRole("menuitem", { name: "Copy signature" }));
+    expect(argsOf(copySignature)).toEqual({ selector: TRANSFER, facet: "ERC20" });
+
+    await userEvent.click(menuButton);
+    await userEvent.click(page.getByRole("menuitem", { name: "Show owner" }));
+    expect(argsOf(showOwner)).toEqual({ selector: TRANSFER });
+  });
+
+  test("the actions menu's own arrows open it on its first item, instead of moving the list's rows", async () => {
+    await renderWithStudio(<FacetView view={{ kind: "facet", facet: "ERC20" }} />, {
+      project: project({ facets: ["ERC20"] }, "facet-row-actions-keys"),
+    });
+    await shown("ERC20");
+    const menuButton = page.getByRole("button", { name: "transfer(address,uint256) actions" });
+    (menuButton.element() as HTMLElement).focus();
+    // A regression here would have the list's own ↑/↓ handler (it bubbles through React's tree from the
+    // portaled popup too) steal this keypress and move focus to the next row's pin button instead.
+    await userEvent.keyboard("{ArrowDown}");
+    await expect.element(page.getByRole("menuitem", { name: "Copy selector" })).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    await expect.element(page.getByRole("menuitem", { name: "Copy signature" })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(menuButton).toHaveFocus();
+  });
+
+  test("a long signature wraps with no horizontal overflow (spec L787)", async () => {
+    const base = fixtureCatalog();
+    // The dense form shows the function name alone (formatSelector's "dense"): long enough on its own that
+    // without `overflow-wrap: anywhere` it would overflow the inspector's narrowest width (spec L353), no
+    // matter how short the fixture's real names are.
+    const LONG_NAME = "aFunctionNameLongEnoughThatWithoutWrapAnywhereItWouldOverflowTheInspectorAtItsNarrowestWidth";
+    const target = base.facets.find((f) => f.name === "ERC20");
+    const hex = target?.selectors[0]?.hex;
+    if (!target || !hex) throw new Error("ERC20 lost its first selector in the fixture catalog.");
+    const catalog: Catalog = {
+      ...base,
+      facets: base.facets.map((f) =>
+        f.name === "ERC20"
+          ? { ...f, selectors: f.selectors.map((s) => (s.hex === hex ? { ...s, signature: `${LONG_NAME}(address,uint256)` } : s)) }
+          : f,
+      ),
+    };
+    const result = await renderWithStudio(<FacetView view={{ kind: "facet", facet: "ERC20" }} />, {
+      catalog,
+      project: project({ facets: ["ERC20"] }, "facet-wrap", catalog),
+    });
+    (result.container as HTMLElement).style.width = "280px";
+    await shown("ERC20");
+    const signatureRow = row(hex);
+    expect(signatureRow.scrollWidth).toBeLessThanOrEqual(signatureRow.clientWidth);
   });
 });
 

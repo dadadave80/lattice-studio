@@ -12,7 +12,7 @@ import {
 } from "@lattice-studio/core";
 import { openDB } from "idb";
 import {
-  commandRef, doc as studioDoc, hideBanner, log, now as kernelNow, randomBytes, settings, showBanner,
+  announce, commandRef, doc as studioDoc, hideBanner, log, now as kernelNow, randomBytes, settings, showBanner,
   type DeploymentsService, type DocumentState, type NewProjectOptions, type ProjectsService, type SaveStatus,
   type Viewport,
 } from "@/contracts";
@@ -451,7 +451,11 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       const quota = isQuotaError(error);
       const firstTime = !failure || failure.quota !== quota;
       failure = { quota, reason: message(error) };
-      if (firstTime && !updated) log({ tag: "Error", text: quota ? `${FULL_TEXT}.` : `Not saved: ${message(error)}` });
+      if (firstTime && !updated) {
+        log({ tag: "Error", text: quota ? `${FULL_TEXT}.` : `Not saved: ${message(error)}` });
+        // A full storage interrupts (spec L777, ledger S9 ruling): said assertively, once until a save works again.
+        if (quota) announce(`${FULL_TEXT}.`, { politeness: "assertive" });
+      }
     } finally {
       if (submitted === project) submitted = null;
     }

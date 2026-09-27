@@ -3,14 +3,18 @@ import { createElement, Suspense } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
-  commandRef, doc, getAnalysis, history, inspectorViewComponent, runCommand, session, useSession, type ChainService,
-  type InspectorView,
+  commandRef, doc, getAnalysis, history, inspectorViewComponent, openDialog, runCommand, session, useSession,
+  type ChainService, type InspectorView,
 } from "@/contracts";
+import { DialogHost } from "@/ui";
 import { bufferedServices, fakeChainService, renderWithStudio, type FakeChain } from "../../../test/harness";
 import { ensChainChanged } from "./AddressInput";
+import { ZERO_ADDRESS } from "./field-value";
 import { resetInitUi } from "./init-ui-store";
 import { InitEditor } from "./InitEditor";
-import { kitchenCatalog, kitchenRecipe, projectFor, SAFE, SOME_CODE, stepsRecipe, templateRecipe, TOKEN } from "./test-support";
+import {
+  kitchenCatalog, kitchenRecipe, kitchenTreasuryCatalog, kitchenTreasuryRecipe, projectFor, SAFE, SOME_CODE, stepsRecipe, templateRecipe, TOKEN,
+} from "./test-support";
 
 afterEach(resetInitUi);
 
@@ -65,6 +69,17 @@ function lastLog(): string | undefined {
 /** Narration of the problems an edit resolves follows the edit's own line (S1), so look for it, not at the end. */
 function logged(text: string): boolean {
   return bufferedServices().log.some((line) => line.text === text);
+}
+
+/** An Authority row's text by role, or "" while it isn't there. */
+function authorityRow(table: Element, role: string): string {
+  return table.querySelector(`[data-authority-row="${role}"]`)?.textContent ?? "";
+}
+
+/** The row with Change who can upgrade…: the one Flow 17 changes. */
+function upgradeRow(table: Element): string {
+  const button = Array.from(table.querySelectorAll("button")).find((b) => b.textContent === "Change who can upgrade…");
+  return button?.closest("tr")?.textContent?.replace("Change who can upgrade…", "") ?? "";
 }
 
 /** Selects a chain after render, as a person would, so S1's chain mirror loads the test's fake chain service. */
@@ -279,7 +294,7 @@ describe("field types (spec L461-L466)", () => {
     );
   });
 
-  test("ENS names resolved for one chain are dropped when the chain changes", async () => {
+  test("an ENS name resolved for one chain isn't shown on another, and the project keeps it", async () => {
     const chain = fakeChainService({ ens: { "safe.eth": SAFE } });
     await renderWithStudio(<InitEditor view={{ kind: "init" }} />, {
       project: projectFor(templateRecipe("SafeDiamondCut")),
@@ -289,8 +304,85 @@ describe("field types (spec L461-L466)", () => {
     await page.getByRole("textbox", { name: "Safe", exact: true }).fill("safe.eth");
     await userEvent.keyboard("{Enter}");
     await expect.element(page.getByText(`safe.eth (${SAFE})`)).toBeVisible();
+    expect(logged("Set Safe to safe.eth.")).toBe(true);
     session.set({ chainId: 84532 });
     await expect.poll(() => page.getByText(`safe.eth (${SAFE})`).elements().length).toBe(0);
+    // Choosing a chain is never an undo step (spec L492), so it doesn't edit the project: the name stays stored.
+    expect(doc.get().labels).toEqual({ "steps[0].safe": "safe.eth" });
+    session.set({ chainId: 11155111 });
+    await expect.element(page.getByText(`safe.eth (${SAFE})`)).toBeVisible();
+  });
+
+  test("a plain address or a quick pick drops the field's ENS name in the same step", async () => {
+    const chain = fakeChainService({ ens: { "safe.eth": SAFE } });
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, {
+      project: projectFor(templateRecipe("SafeDiamondCut")),
+      session: { chainId: 11155111 },
+      chain,
+    });
+    const safe = page.getByRole("textbox", { name: "Safe", exact: true });
+    await safe.fill("safe.eth");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByText(`safe.eth (${SAFE})`)).toBeVisible();
+    await page.getByRole("group", { name: "Safe quick picks" }).getByRole("button", { name: "This diamond" }).click();
+    await expect.poll(() => argAt(doc.get(), "steps[0].safe")).toEqual({ $ref: "self" });
+    expect(doc.get().labels).toBeUndefined();
+    expect(page.getByText(`safe.eth (${SAFE})`).elements()).toHaveLength(0);
+    expect(logged("Set Safe to this diamond.")).toBe(true);
+  });
+
+  test("an allowZero address offers Zero address and stores the zero address", async () => {
+    const catalog = kitchenTreasuryCatalog();
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(kitchenTreasuryRecipe(catalog)), catalog });
+    const zero = page.getByRole("group", { name: "Treasury quick picks" }).getByRole("button", { name: "Zero address" });
+    await expect.element(zero).toHaveAttribute("aria-pressed", "false");
+    await zero.click();
+    await expect.poll(() => argAt(doc.get(), "steps[0].treasury")).toBe(ZERO_ADDRESS);
+    await expect.element(zero).toHaveAttribute("aria-pressed", "true");
+    await expect.element(page.getByRole("textbox", { name: "Treasury", exact: true })).toHaveValue(ZERO_ADDRESS);
+  });
+
+  test("help text comes from the field's NatSpec (field.doc)", async () => {
+    const catalog = kitchenTreasuryCatalog();
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(kitchenTreasuryRecipe(catalog)), catalog });
+    await expect.element(page.getByRole("textbox", { name: "Slots", exact: true })).toHaveAccessibleDescription(/How many slots\./);
+    await expect.element(page.getByRole("textbox", { name: "Treasury", exact: true })).toHaveAccessibleDescription(
+      /Where fees go; the zero address keeps them in the vault\./,
+    );
+    await expect.element(page.getByRole("switch", { name: "Paused" })).toHaveAccessibleDescription(/Start paused\./);
+  });
+
+  test("a committed field is one undo step, named for what it set", async () => {
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: vault() });
+    const before = argAt(doc.get(), "bundle.p.name");
+    const name = page.getByRole("textbox", { name: "Name", exact: true });
+    await name.fill("My vault");
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => argAt(doc.get(), "bundle.p.name")).toBe("My vault");
+    expect(doc.state().undoLabel).toBe("Set GovernedVaultInit.p.name to My vault");
+    expect(history.undo()).toBe("Set GovernedVaultInit.p.name to My vault");
+    expect(argAt(doc.get(), "bundle.p.name")).toBe(before);
+    expect(history.canUndo).toBe(false);
+    await expect.element(name).toHaveValue(String(before));
+  });
+
+  test("an ENS commit is one undo step too: undo takes the address and its name back", async () => {
+    const chain = fakeChainService({ ens: { "safe.eth": SAFE } });
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, {
+      project: projectFor(templateRecipe("SafeDiamondCut")),
+      session: { chainId: 11155111 },
+      chain,
+    });
+    await page.getByRole("textbox", { name: "Safe", exact: true }).fill("safe.eth");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByText(`safe.eth (${SAFE})`)).toBeVisible();
+    expect(doc.state().undoLabel).toBe("Set Safe to safe.eth");
+    expect(history.undo()).toBe("Set Safe to safe.eth");
+    expect(history.canUndo).toBe(false);
+    expect(argAt(doc.get(), "steps[0].safe")).toBeUndefined();
+    await expect.poll(() => page.getByText(`safe.eth (${SAFE})`).elements().length).toBe(0);
+    history.redo();
+    await expect.element(page.getByText(`safe.eth (${SAFE})`)).toBeVisible();
   });
 
   test("a name that finishes resolving after the chain changed stores nothing", async () => {
@@ -463,6 +555,49 @@ describe("From link, Confirm address… and the Authority table", () => {
     expect(rowText("Guardian")).toBe("GuardiannoneEmergencyStop (no guardian at init)");
     await table.getByRole("button", { name: "Change who can upgrade…" }).click();
     expect(session.get().dialogs.map((d) => d.id)).toEqual(["choose-mechanism"]);
+  });
+
+  test("a resolved reference shows as This diamond with its full address", async () => {
+    const chain = fakeChainService({ account: { address: SAFE, chainId: 11155111, connector: "io.metamask" } });
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: vault(), chain });
+    pickChain();
+    const table = page.getByRole("table", { name: "Authority" });
+    await expect.poll(() => authorityRow(table.element(), "DEFAULT_ADMIN_ROLE")).toMatch(/^DEFAULT_ADMIN_ROLEThis diamond \(0x[0-9a-fA-F]{40}\)GovernedVaultInit/);
+  });
+
+  test("editing the admin or the Safe changes its Authority row at once", async () => {
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(templateRecipe("SafeDiamondCut")) });
+    const table = page.getByRole("table", { name: "Authority" }).element();
+    await page.getByRole("textbox", { name: "Admin", exact: true }).fill(TOKEN);
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => authorityRow(table, "DEFAULT_ADMIN_ROLE")).toContain(TOKEN);
+    await page.getByRole("textbox", { name: "Safe", exact: true }).fill(SAFE);
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => upgradeRow(table)).toContain(SAFE);
+  });
+});
+
+describe("the Authority table after Flow 17 (spec L652)", () => {
+  test("Use SafeDiamondCut names the Safe on the Upgrade row; undo brings back the previous holder", async () => {
+    await renderWithStudio(
+      <>
+        <InitEditor view={{ kind: "init" }} />
+        <DialogHost />
+      </>,
+      { project: projectFor(templateRecipe("ERC20")) },
+    );
+    const table = page.getByRole("table", { name: "Authority" }).element();
+    await expect.poll(() => upgradeRow(table)).not.toBe("");
+    const previous = upgradeRow(table);
+    expect(previous).not.toContain(SAFE);
+    openDialog("choose-mechanism", { preset: "safe" });
+    const dialog = page.getByRole("dialog", { name: "Choose an upgrade mechanism" });
+    await dialog.getByRole("textbox", { name: "Safe address" }).fill(SAFE);
+    await dialog.getByRole("textbox", { name: "Minimum threshold" }).fill("2");
+    await dialog.getByRole("button", { name: "Use SafeDiamondCut" }).click();
+    await expect.poll(() => upgradeRow(page.getByRole("table", { name: "Authority" }).element())).toContain(SAFE);
+    history.undo();
+    await expect.poll(() => upgradeRow(page.getByRole("table", { name: "Authority" }).element())).toBe(previous);
   });
 });
 

@@ -17,9 +17,10 @@ export type SelectorListProps = {
 };
 
 /**
- * The facet's exported selectors with a filter (IR L118). Interactive, it's one Tab stop: ↑/↓/Home/End move
- * between rows, Enter or Space does what the row's tooltip says (Flow 6). inspector.focusSelectors lands on the
- * first row.
+ * The facet's exported selectors with a filter (IR L118). Interactive, its rows are one Tab stop: ↑/↓/Home/End
+ * move between them, Enter or Space does what the row's tooltip says (Flow 6). inspector.focusSelectors lands
+ * on the first row. Tab from the active row reaches its actions menu (Copy selector, Copy signature, Show
+ * owner; ruling R3) before leaving the list, since that menu shares the row's place in tab order.
  */
 export function SelectorList({ facet, catalog, readOnly }: SelectorListProps) {
   const routing = useAnalysis((a) => a.routing);
@@ -52,6 +53,9 @@ export function SelectorList({ facet, catalog, readOnly }: SelectorListProps) {
 
   const move = (event: KeyboardEvent<HTMLUListElement>) => {
     if (rows.length === 0) return;
+    // Only a pin button's own arrows move between rows: a row's actions menu (its trigger, or an item in its
+    // portaled popup, which still bubbles React events through this tree) keeps its own arrow handling.
+    if (!(event.target instanceof HTMLElement) || !event.target.hasAttribute("data-selector")) return;
     let next: number;
     switch (event.key) {
       case "ArrowDown":
@@ -86,6 +90,7 @@ export function SelectorList({ facet, catalog, readOnly }: SelectorListProps) {
               key={selector.hex}
               selector={selector}
               action={action}
+              facet={facet.name}
               readOnly={readOnly}
               tabIndex={index === current ? 0 : -1}
               onFocus={() => setActive(index)}

@@ -12,7 +12,9 @@ import { extractRpcUrls } from "@wagmi/core";
 import { createClients, viemChain } from "./clients";
 import { settings } from "@/contracts";
 import { isolateContracts } from "@/contracts/test-support";
-import { delegate, loadWalletConnect, walletChains } from "./runtime";
+import { recordedLog } from "@/contracts/kernel";
+import { WALLETCONNECT_NOT_SET_UP } from "./copy";
+import { delegate, followWalletConnectSetting, loadWalletConnect, walletChains } from "./runtime";
 import { ANVIL_ACCOUNT, e2eConnectors, notAnvil } from "./e2e";
 import { createWallet, LEGACY_INJECTED_ID, WALLETCONNECT_ID, type Wallet } from "./wallet";
 
@@ -212,6 +214,79 @@ describe("WalletConnect's setting", () => {
     } finally {
       restore();
     }
+  });
+
+  describe("the chain module follows Settings → Wallet (spec L635)", () => {
+    type Loaded = Awaited<ReturnType<Wallet["loadWalletConnect"]>>;
+    /** The wallet's WalletConnect side, recording what the setting asked of it. */
+    function fakeWalletConnect(load: () => Promise<Loaded>) {
+      const asked: string[] = [];
+      return {
+        asked,
+        loadWalletConnect: () => {
+          asked.push("load");
+          return load();
+        },
+        dropWalletConnect: async () => {
+          asked.push("drop");
+          return true;
+        },
+      };
+    }
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+    let restore: () => void = () => {};
+    afterEach(() => restore());
+
+    test("off: a WalletConnect session ends and the connector is dropped", async () => {
+      restore = isolateContracts();
+      settings.set({ walletConnect: true });
+      const fake = fakeWalletConnect(async () => ({ ok: true, value: undefined }));
+      const stop = followWalletConnectSetting(fake);
+      await settle();
+      expect(fake.asked).toEqual(["load"]);
+      settings.set({ walletConnect: false });
+      await settle();
+      expect(fake.asked).toEqual(["load", "drop"]);
+      stop();
+      settings.set({ walletConnect: true });
+      expect(fake.asked).toEqual(["load", "drop"]);
+    });
+
+    test("on: WalletConnect loads, and the setting stays on once it has", async () => {
+      restore = isolateContracts();
+      const fake = fakeWalletConnect(async () => ({ ok: true, value: undefined }));
+      const stop = followWalletConnectSetting(fake);
+      expect(fake.asked).toEqual([]);
+      settings.set({ walletConnect: true });
+      await settle();
+      expect(fake.asked).toEqual(["load"]);
+      expect(settings.get().walletConnect).toBe(true);
+      stop();
+    });
+
+    test("on without a project id: back off, and the console says why", async () => {
+      restore = isolateContracts();
+      const before = recordedLog().length;
+      const fake = fakeWalletConnect(async () => ({ ok: false, error: WALLETCONNECT_NOT_SET_UP }));
+      const stop = followWalletConnectSetting(fake);
+      settings.set({ walletConnect: true });
+      await settle();
+      expect(settings.get().walletConnect).toBe(false);
+      expect(recordedLog().slice(before).map((line) => [line.tag, line.text])).toEqual([["Note", WALLETCONNECT_NOT_SET_UP]]);
+      stop();
+    });
+
+    test("on with a chunk that won't load: back off, and S11a's banner speaks for the chunk", async () => {
+      restore = isolateContracts();
+      const before = recordedLog().length;
+      const fake = fakeWalletConnect(() => Promise.reject(new Error("Failed to fetch dynamically imported module")));
+      const stop = followWalletConnectSetting(fake);
+      settings.set({ walletConnect: true });
+      await settle();
+      expect(settings.get().walletConnect).toBe(false);
+      expect(recordedLog().slice(before)).toEqual([]);
+      stop();
+    });
   });
 });
 

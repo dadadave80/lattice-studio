@@ -1,6 +1,6 @@
 import type { CommandRef, Project, Recipe } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
   command, commandState, doc, getCommand, history, provideServices, runCommand, session, settings, type ProjectsService,
@@ -17,6 +17,7 @@ import { DialogHost } from "@/ui/overlays/DialogHost";
 import {
   bufferedServices, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio, type StudioOptions,
 } from "../../../test/harness";
+import { clearOpenFailure, showOpenFailure } from "@/persist/current";
 import { INIT_ORDER_ON } from "./commands";
 
 /** The sheet in a 1000 × 700 region with the dialog host beside it, motion reduced, the view applied. */
@@ -91,6 +92,21 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
     await expect.element(start.getByText(/^Drag from the catalog, or press (⌘K|Ctrl\+K)$/)).toBeVisible();
     await expect.element(start.getByText(/^New here\?/)).toBeVisible();
     await expect.element(start.getByRole("button", { name: "Take the 60-second tour" })).toBeVisible();
+  });
+
+  test("the three recipe cards say what each recipe is, word for word (spec L405, Flow 2)", async () => {
+    await renderChrome({ project: emptyProject("empty") });
+    const start = page.getByRole("region", { name: "Start a diamond" });
+    const blurbs: [string, string][] = [
+      ["GovernedVault", "Self-governed ERC-4626 vault"],
+      ["ERC20", "A fixed token, immutable by default"],
+      ["SafeDiamondCut", "A diamond only your Safe can upgrade"],
+    ];
+    for (const [name, blurb] of blurbs) {
+      const card = start.getByRole("button", { name: new RegExp(`^${name} `) });
+      await expect.element(card.getByText(blurb, { exact: true })).toBeVisible();
+      await expect.element(card).toHaveAccessibleName(`${name} ${blurb}`);
+    }
   });
 
   test("before the catalog loads, the block draws with v1's three recipes, each saying why it can't load yet (spec L815)", async () => {
@@ -224,6 +240,88 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
     await renderChrome({ project: stepsProject() });
     await expect.element(page.getByRole("toolbar", { name: "Sheet tools" })).toBeVisible();
     expect(document.querySelector('[data-chrome="start"]')).toBeNull();
+  });
+});
+
+describe("the sheet's error state (spec L696)", () => {
+  const REASON = "This project isn't in this browser's storage.";
+  const TEXT = `This project couldn't be opened: ${REASON}`;
+
+  async function failed(options: StudioOptions = { project: emptyProject("empty") }) {
+    onCleanup(clearOpenFailure);
+    await renderChrome(options);
+    showOpenFailure(REASON, ["While reopening your last project on load."]);
+    const region = page.getByRole("region", { name: TEXT });
+    await expect.element(region).toBeVisible();
+    return region;
+  }
+
+  test("says the project couldn't be opened and why, in the Start block's place, logged and announced once", async () => {
+    const region = await failed();
+    await expect.element(region.getByText(TEXT, { exact: true })).toBeVisible();
+    await expect.element(region.getByRole("button", { name: "Open another project" })).toBeVisible();
+    await expect.element(region.getByRole("button", { name: "Copy details" })).toBeVisible();
+    expect(document.querySelector('[data-chrome="start"]')).toBeNull();
+    expect(bufferedServices().log.filter((l) => l.text === TEXT)).toEqual([expect.objectContaining({ tag: "Error" })]);
+    expect(bufferedServices().announce.filter(([text]) => text === TEXT)).toHaveLength(1);
+    // Focus isn't moved to it.
+    expect(region.element().contains(document.activeElement)).toBe(false);
+  });
+
+  test("Open another project opens the Projects dialog (project.list)", async () => {
+    const ran: CommandRef[] = [];
+    overrideCommands([
+      command({ id: "project.list", title: () => "Projects", category: "Session", enabled: () => ({ ok: true }), run: (ctx) => void ran.push(ctx.ref) }),
+    ]);
+    const region = await failed();
+    await region.getByRole("button", { name: "Open another project" }).click();
+    expect(ran).toEqual([{ id: "project.list" }]);
+  });
+
+  test("Open another project works from the keyboard", async () => {
+    const ran: CommandRef[] = [];
+    overrideCommands([
+      command({ id: "project.list", title: () => "Projects", category: "Session", enabled: () => ({ ok: true }), run: (ctx) => void ran.push(ctx.ref) }),
+    ]);
+    const region = await failed();
+    (region.getByRole("button", { name: "Open another project" }).element() as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(ran).toEqual([{ id: "project.list" }]);
+  });
+
+  test("Copy details puts the message and its details on the clipboard, and says so", async () => {
+    const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    onCleanup(() => writes.mockRestore());
+    const region = await failed();
+    await region.getByRole("button", { name: "Copy details" }).click();
+    await expect.poll(() => writes.mock.calls).toEqual([[`${TEXT}\nWhile reopening your last project on load.`]]);
+    expect(bufferedServices().toast.at(-1)).toMatchObject({ text: "Copied details" });
+  });
+
+  test("another document ends it, and the Start block comes back on an empty sheet", async () => {
+    await failed();
+    doc.load(emptyProject("other"));
+    await expect.element(page.getByRole("region", { name: TEXT })).not.toBeInTheDocument();
+    await expect.element(page.getByRole("region", { name: "Start a diamond" })).toBeVisible();
+  });
+
+  test("an edit ends it", async () => {
+    await failed();
+    doc.apply("Renamed", (p) => ({ project: { ...p, name: "Renamed" }, changed: true, summary: "Renamed" }));
+    await expect.element(page.getByRole("region", { name: TEXT })).not.toBeInTheDocument();
+  });
+
+  test("Esc ends it", async () => {
+    await failed();
+    expect(runEscape()).toBe("handler");
+    await expect.element(page.getByRole("region", { name: TEXT })).not.toBeInTheDocument();
+    await expect.element(page.getByRole("region", { name: "Start a diamond" })).toBeVisible();
+  });
+
+  test("over a sheet with cards (a file that couldn't be imported) it shows too, and the cards stay", async () => {
+    await failed({ project: stepsProject() });
+    expect(doc.get().recipe.facets.length).toBe(5);
+    expect(document.querySelectorAll(".react-flow__node[data-id]").length).toBe(5);
   });
 });
 

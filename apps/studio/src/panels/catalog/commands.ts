@@ -3,6 +3,7 @@
  * (IR L104, opened by a catalog row's click and its context menu's Preview item).
  */
 import { command, defineCommands, session, type CommandArgsOf, type Enablement } from "@/contracts";
+import { WHEREVER_SINGLE_KEYS } from "@/commands/keys/resolve";
 import { focusCatalogSearch, hasSearchFocus } from "./search-focus";
 
 const OK: Enablement = { ok: true };
@@ -12,7 +13,9 @@ export const focusSearchCommand = command<CommandArgsOf<"catalog.focusSearch">>(
   title: () => "Search the catalog",
   category: "Build",
   keys: ["/"],
-  keyContext: ["global"],
+  // "Wherever single keys are active" (IR L33): the page, the sheet and a card's rows, never a tree, a list,
+  // a menu, the console, the palette or a text field (spec L659), and only while single keys are on.
+  keyContext: [...WHEREVER_SINGLE_KEYS],
   enabled: () => (hasSearchFocus() ? OK : { ok: false, reason: "Show the catalog to search it." }),
   run: () => {
     focusCatalogSearch();

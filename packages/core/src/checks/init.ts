@@ -153,7 +153,12 @@ function eip712Detail(keys: readonly string[]): string | undefined {
   return `set the diamond's one EIP-712 domain, to different ${what}, so only one standard's signatures would verify`;
 }
 
-/** "Use one admin": the later side's authority argument takes the other side's value. */
+/**
+ * "Use one admin": the later side's authority argument takes the other side's value. One fix, however many
+ * authority keys differ (spec L329 offers one "Use one admin"): it sets the first differing key, the one `admin`
+ * reports; `argPaths` still lists every differing argument, and a key still differing afterwards raises the
+ * warning again with its own fix.
+ */
 function oneAdmin(comparisons: readonly Comparison[]): { fixes: CommandRef[]; argPaths: string[]; admin?: Json } {
   const fixes: CommandRef[] = [];
   const argPaths: string[] = [];
@@ -170,7 +175,7 @@ function oneAdmin(comparisons: readonly Comparison[]): { fixes: CommandRef[]; ar
       if (!target?.argPath) continue;
       admin ??= source.value;
       // INIT-03's roles fix reads "Use one admin" (spec L329).
-      if (!fixes.some((f) => f.args?.["path"] === target.argPath)) fixes.push({ id: "init.setArg", args: { path: target.argPath, value: source.value, verb: "oneAdmin" } });
+      if (fixes.length === 0) fixes.push({ id: "init.setArg", args: { path: target.argPath, value: source.value, verb: "oneAdmin" } });
     }
     break;
   }

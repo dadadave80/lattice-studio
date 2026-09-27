@@ -84,6 +84,28 @@ describe("success", () => {
     expect(catalogLines[0]?.tag).toBe("Note");
   });
 
+  test("the console's first line is \"Catalog: Lattice 0.4.0 · 100 facets.\" and nothing comes before it (spec L401)", async () => {
+    // The generated catalog (100 facets) as a v0.4.0 release: the pinned Lattice is still a provisional
+    // dev build, so its own line names that instead (spec L401 describes the v1 release).
+    const REAL = new URL("../../../../catalog/", import.meta.url);
+    const realManifest = JSON.parse(readFileSync(new URL("manifest.json", REAL), "utf8")) as CatalogManifest;
+    const entry = realManifest.catalogs.find((c) => c.id === realManifest.default);
+    if (!entry) throw new Error("the generated manifest has no default entry");
+    const index = JSON.parse(readFileSync(new URL(entry.path, REAL), "utf8")) as Record<string, unknown>;
+    delete index.provisional;
+    index.lattice = { ...(index.lattice as Record<string, unknown>), tag: "v0.4.0" };
+    const indexUrl = `/catalog/${entry.path}`;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      return url === indexUrl ? new Response(JSON.stringify(index)) : new Response("", { status: 404 });
+    }) as typeof fetch;
+    const loader = createCatalogLoader();
+    loader.start({ ok: true, value: realManifest });
+    await waitFor(() => getCatalogStatus().status !== "loading");
+    expect(getCatalogStatus().status).toBe("ready");
+    expect(bufferedServices().log.map((line) => line.text)).toEqual(["Catalog: Lattice 0.4.0 · 100 facets."]);
+  });
+
   test("the fixture flag: lattice.tag is \"fixture\", surfaced through isFixtureCatalog()", async () => {
     globalThis.fetch = fixtureFetch();
     const loader = createCatalogLoader();

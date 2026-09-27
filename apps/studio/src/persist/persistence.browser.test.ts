@@ -7,13 +7,13 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { openDB } from "idb";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
-  createProject, deleteDeployment, doc, getCatalogStatus, listDeployments, loadViewport, openProject, putDeployment, saveStatus,
-  saveViewport, setCatalogStatus, settings, subscribeDeployments, type SaveStatus,
+  createProject, deleteDeployment, doc, getCatalogStatus, listDeployments, loadViewport, openProject, provideServices,
+  putDeployment, saveStatus, saveViewport, setCatalogStatus, settings, subscribeDeployments, type SaveStatus,
 } from "@/contracts";
 import { isUnpinned, UNPINNED_HASH } from "@/state/document-store";
 import { bufferedServices, fakeClock, fixtureCatalog, onCleanup } from "../../test/harness";
 import { META, openStudioDb } from "./db";
-import { bootPersistence, editLockState, persistence, subscribeEditLock } from "./index";
+import { bootPersistence, clearOpenFailure, editLockState, openFailure, persistence, subscribeEditLock } from "./index";
 import type { Persistence } from "./persistence";
 import { deleteDB } from "idb";
 import { createEditLock, STILL_SAVING } from "./lock";
@@ -181,6 +181,56 @@ describe("autosave", () => {
     await store.flush();
     expect(saveStatus()).toEqual({ state: "saved", text: "Saved" });
     expect(await storedName(store, project.id)).toBe("Fits again");
+  });
+
+  test("a full browser storage is announced assertively, once until a save works again (spec L777)", async () => {
+    const announced = vi.fn();
+    onCleanup(provideServices({ announce: announced }));
+    const store = testPersistence();
+    await created();
+    const put = IDBObjectStore.prototype.put;
+    let full = true;
+    vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>
+    ) {
+      if (full && this.name === "projects") throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+      return put.apply(this, args);
+    });
+    const FULL: [string, { politeness: "assertive" }] = ["Not saved: browser storage is full.", { politeness: "assertive" }];
+    const fullCalls = () => announced.mock.calls.filter(([text]) => text === FULL[0]);
+
+    rename("Too big");
+    await store.flush();
+    rename("Still too big");
+    await store.flush();
+    expect(fullCalls()).toEqual([FULL]);
+
+    full = false;
+    rename("Fits again");
+    await store.flush();
+    expect(saveStatus()).toEqual({ state: "saved", text: "Saved" });
+    full = true;
+    rename("Too big again");
+    await store.flush();
+    expect(fullCalls()).toEqual([FULL, FULL]);
+  });
+
+  test("another failed save isn't announced assertively", async () => {
+    const announced = vi.fn();
+    onCleanup(provideServices({ announce: announced }));
+    const store = testPersistence();
+    await created();
+    const put = IDBObjectStore.prototype.put;
+    vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>
+    ) {
+      if (this.name === "projects") throw new DOMException("The disk broke.", "UnknownError");
+      return put.apply(this, args);
+    });
+    rename("Broken");
+    await store.flush();
+    expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Error", text: "Not saved: The disk broke." });
+    expect(announced.mock.calls.filter(([, options]) => options?.politeness === "assertive")).toEqual([]);
   });
 
   test("switching the document to another project writes the previous one's pending save first", async () => {
@@ -540,6 +590,32 @@ describe("boot", () => {
     expect(await bootPersistence()).toMatchObject({ ok: true, value: { name: "First tab's work" } });
     expect(doc.get().name).toBe("First tab's work");
     expect(editLockState()).toEqual({ state: "elsewhere", projectId: firstDoc.get().id });
+  });
+
+  test("a last project that can't be opened shows the sheet's error state, logged once (spec L696)", async () => {
+    onCleanup(clearOpenFailure);
+    const earlier = testPersistence();
+    await created("Alpha");
+    const db = await openStudioDb(earlier.dbName, { onVersionChange: () => {} });
+    const newer = { ...makeProject({ id: "future", recipe }), recipe: { ...recipe, schemaVersion: 2 } };
+    await db.put("projects", { id: "future", savedAt: Date.now() + DAY, project: newer });
+    await db.put("meta", "future", META.lastProject);
+    db.close();
+    await earlier.close();
+
+    doc.load(makeProject({ id: "untitled", name: "Untitled", recipe }));
+    testPersistence({ dbName: earlier.dbName, start: false });
+    const reason = "This project needs Studio schema v2. This Studio reads v1.";
+    expect(await bootPersistence()).toEqual({ ok: false, error: reason });
+    const text = `This project couldn't be opened: ${reason}`;
+    expect(openFailure()).toEqual({ text, reason, details: `${text}\nWhile reopening your last project on load.` });
+    expect(bufferedServices().log.filter((l) => l.text.includes(reason) && !l.text.startsWith("Couldn't read"))).toEqual([
+      expect.objectContaining({ tag: "Error", text }),
+    ]);
+    // The untitled document stays; opening another project ends the error state.
+    expect(doc.get().name).toBe("Untitled");
+    doc.load(makeProject({ id: "other", name: "Other", recipe }));
+    expect(openFailure()).toBeNull();
   });
 
   test("a returning visitor lands in their last project", async () => {
@@ -1314,6 +1390,32 @@ describe("deleting a deployment record (Discard proposal, spec L580)", () => {
     await until(() => bufferedServices().banners.has("persist.updated"), "the reload banner");
     await deleteDeployment(proposed);
     expect(await upgraded.getAll("deployments")).toEqual([]);
+  });
+
+  test("after another tab deleted the database, deleting a record neither fails nor recreates the database", async () => {
+    const store = testPersistence();
+    const project = await created();
+    await putDeployment(deployment(project.id, 7, { status: "proposed" }));
+    const heard: string[] = [];
+    onCleanup(subscribeDeployments((id) => heard.push(id)));
+    // Clear data in another tab: the delete waits for this tab to let go, then removes everything.
+    await deleteDB(store.dbName);
+    await deleteDeployment(deployment(project.id, 7, { status: "proposed" }));
+    expect(heard).toEqual([]);
+    expect((await indexedDB.databases()).map((d) => d.name)).not.toContain(store.dbName);
+  });
+
+  test("after an upgrade, then the database deleted, deleting a record neither fails nor recreates the database", async () => {
+    const store = testPersistence();
+    const project = await created();
+    const proposed = deployment(project.id, 7, { status: "proposed" });
+    await putDeployment(proposed);
+    const upgraded = await openDB(store.dbName, 2);
+    await until(() => bufferedServices().banners.has("persist.updated"), "the reload banner");
+    upgraded.close();
+    await deleteDB(store.dbName);
+    await deleteDeployment(proposed);
+    expect((await indexedDB.databases()).map((d) => d.name)).not.toContain(store.dbName);
   });
 
   test("after an upgrade that dropped the deployments store, a record isn't deleted and it says why", async () => {

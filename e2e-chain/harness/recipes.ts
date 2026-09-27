@@ -1,10 +1,10 @@
 /**
- * The v1 recipes (templates that load on the plain Lattice proxy) from the real catalog, with the arguments the
- * templates leave for the person filled in, and the deploy core builds for them.
+ * The v1 recipes from the real catalog (spec L957: the Blank diamond plus the templates that load on the plain
+ * Lattice proxy), with the arguments the templates leave for the person filled in, and the deploy core builds for them.
  */
 import { keccak256, slice, stringToHex, type Address, type Hex } from "viem";
 import {
-  analyze, buildDiamondDeploy, buildSalt, createxPredict, encodeInit, factoryPredict, loadTemplate, planInit, templateList,
+  analyze, blankDiamond, buildDiamondDeploy, buildSalt, createxPredict, encodeInit, factoryPredict, loadTemplate, planInit, templateList,
   type Analysis, type Arg, type Catalog, type DiamondDeploy, type Project, type Recipe,
 } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
@@ -32,11 +32,27 @@ export async function etchSafe(node: Node, threshold = 2): Promise<void> {
   await node.client.setCode({ address: SAFE, bytecode: safeMockCode(threshold) });
 }
 
-/** The v1 recipes, in catalog order. */
+/**
+ * The Blank diamond (spec L990) isn't a catalog template: `fixture` builds it with core's `blankDiamond`. Its admin is
+ * "Deploying account", so it needs nothing filled in.
+ */
+export const BLANK = "Blank diamond";
+
+/** The v1 recipes: the Blank diamond, then the loadable templates in catalog order. */
 export function v1Recipes(catalog: Catalog): string[] {
-  return templateList(catalog)
-    .filter((item) => item.loadable)
-    .map((item) => item.name);
+  return [
+    BLANK,
+    ...templateList(catalog)
+      .filter((item) => item.loadable)
+      .map((item) => item.name),
+  ];
+}
+
+function load(catalog: Catalog, name: string): Recipe {
+  if (name === BLANK) return blankDiamond(catalog);
+  const loaded = loadTemplate(catalog, name);
+  if (!loaded.ok) throw new Error(loaded.error);
+  return loaded.value;
 }
 
 /** Fills what each v1 template leaves empty (INIT-01); a new v1 recipe that needs more fails `fixture`'s blocker check. */
@@ -61,7 +77,7 @@ function fill(name: string, recipe: Recipe, overrides: Record<string, Arg>): voi
 export type Fixture = { name: string; catalog: Catalog; recipe: Recipe; analysis: Analysis; project: Project };
 
 /**
- * Template `name`, filled in, analyzed with no chain. Throws if it still has a blocker, unless `allowBlockers`:
+ * Recipe `name` (a template or the Blank diamond), filled in, analyzed with no chain. Throws if it still has a blocker, unless `allowBlockers`:
  * the forced-failure tests send arguments the checks would stop (INIT-01) to see what the chain says.
  */
 export function fixture(
@@ -72,9 +88,7 @@ export function fixture(
   overrides: Record<string, Arg> = {},
   options: { allowBlockers?: boolean } = {},
 ): Fixture {
-  const loaded = loadTemplate(catalog, name);
-  if (!loaded.ok) throw new Error(loaded.error);
-  const recipe = loaded.value;
+  const recipe = load(catalog, name);
   fill(name, recipe, overrides);
   const analysis = analyze(recipe, catalog, { known: [], unconfirmed: [] });
   const blockers = analysis.problems.filter((p) => p.severity === "blocker");

@@ -1,5 +1,7 @@
+import type { Platform } from "@lattice-studio/core";
 import { useId, useState, useSyncExternalStore, type KeyboardEvent } from "react";
-import { runCommand, subscribeCommands } from "@/contracts";
+import { isSingleKey, matchSpec, type KeyInput } from "@/commands/keys/key-spec";
+import { listBindings, runCommand, subscribeCommands } from "@/contracts";
 import { platform } from "@/ui/shared/platform";
 import { commandHistory, remember, submitLine } from "./command-line";
 import styles from "./CommandLine.module.css";
@@ -10,9 +12,19 @@ export const COMMAND_LABEL = "Command line";
 export const COMMAND_PLACEHOLDER = "place governor · route erc20 · tidy · help";
 
 /**
+ * Whether a keypress in the command line is `console.clear`'s shortcut as bound now (Ctrl L on macOS by default,
+ * IR L35; spec L660). The field is a text context, so the dispatcher leaves it alone and the line asks the
+ * registry itself. A single-key remap never fires here: typing wins.
+ */
+export function clearsTheLog(event: KeyInput, on: Platform): boolean {
+  const binding = listBindings().find((b) => b.id === "console.clear");
+  return binding?.keys.some((spec) => !isSingleKey(spec) && matchSpec(spec, event, on) !== null) ?? false;
+}
+
+/**
  * The console's command line (IR L137): a "›" prompt; ↑ ↓ walk the history; Tab accepts the suggestion shown
- * after the caret, and otherwise moves focus as usual; Enter echoes the line and runs it. On macOS, Ctrl L clears
- * the log from here too, as in DevTools (IR L35).
+ * after the caret, and otherwise moves focus as usual; Enter echoes the line and runs it. `console.clear`'s
+ * shortcut (Ctrl L on macOS, as in DevTools, IR L35) clears the log from here too, as remapped.
  */
 export function CommandLine() {
   const [value, setValue] = useState("");
@@ -71,7 +83,7 @@ export function CommandLine() {
       }
       return;
     }
-    if (event.key.toLowerCase() === "l" && event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && platform() === "mac") {
+    if (clearsTheLog(event.nativeEvent, platform())) {
       event.preventDefault();
       void runCommand({ id: "console.clear" }, "keys");
     }

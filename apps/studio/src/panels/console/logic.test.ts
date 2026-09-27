@@ -47,6 +47,51 @@ describe("log store", () => {
     expect(logEntries()).toEqual([]);
   });
 
+  test("Error lines survive LOG_CAP: other lines age out around them until cleared (spec L700, R8)", () => {
+    appendLine(line("first failure", { tag: "Error" }));
+    appendLine(line("note 0"));
+    appendLine(line("second failure", { tag: "Error" }));
+    for (let i = 1; i < LOG_CAP * 2; i += 1) appendLine(line(`note ${i}`));
+    const entries = logEntries();
+    expect(entries).toHaveLength(LOG_CAP);
+    expect(entries.slice(0, 2).map((e) => [e.tag, e.text])).toEqual([["Error", "first failure"], ["Error", "second failure"]]);
+    expect(entries[2]?.text).toBe(`note ${LOG_CAP + 2}`);
+    expect(entries.at(-1)?.text).toBe(`note ${LOG_CAP * 2 - 1}`);
+    clearLog();
+    expect(logEntries()).toEqual([]);
+  });
+
+  test("a log of nothing but errors keeps every one past the cap; the newest line still shows, then ages out", () => {
+    for (let i = 0; i < LOG_CAP + 3; i += 1) appendLine(line(`failure ${i}`, { tag: "Error" }));
+    expect(logEntries()).toHaveLength(LOG_CAP + 3);
+    appendLine(line("a note"));
+    expect(logEntries()).toHaveLength(LOG_CAP + 4);
+    expect(logEntries().at(-1)?.text).toBe("a note");
+    appendLine(line("another note"));
+    expect(logEntries().map((e) => e.text).slice(-2)).toEqual([`failure ${LOG_CAP + 2}`, "another note"]);
+    expect(logEntries().filter((e) => e.tag === "Error")).toHaveLength(LOG_CAP + 3);
+  });
+
+  test("restored lines obey the same cap: kept errors stay, the oldest notes go", () => {
+    const store = new Map<string, string>();
+    const storage: LogStorage = {
+      getItem: (k) => store.get(k) ?? null,
+      setItem: (k, v) => void store.set(k, v),
+      removeItem: (k) => void store.delete(k),
+    };
+    const kept = [{ tag: "Error", text: "kept failure", at }, ...Array.from({ length: LOG_CAP }, (_, i) => ({ tag: "Note", text: `kept ${i}`, at }))];
+    store.set(LOG_STORAGE_KEY, JSON.stringify(kept));
+    setLogStorage(storage);
+    setKeepLog(true);
+    appendLine(line("new"));
+    restoreLog();
+    const entries = logEntries();
+    expect(entries).toHaveLength(LOG_CAP);
+    expect(entries[0]?.text).toBe("kept failure");
+    expect(entries[1]?.text).toBe("kept 2");
+    expect(entries.at(-1)?.text).toBe("new");
+  });
+
   test("Keep log across reloads writes the log and restores it before new lines, validating every field", () => {
     const store = new Map<string, string>();
     const storage: LogStorage = {

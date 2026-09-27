@@ -101,16 +101,19 @@ export function revertDetails(): Record<string, FacetDetail> {
 }
 
 /**
- * The shared contracts one deploy needs, by catalog name: every planned facet, the init contracts its steps call,
- * MultiInit when there are two or more steps, and, on the factory path, LatticeRegistry and LatticeFactory.
+ * The shared contracts one deploy needs, by the name `sharedContracts` lists them under: every planned facet, the
+ * init contracts its steps call, MultiInit when there are two or more steps, and, on the factory path,
+ * LatticeRegistry and LatticeFactory. Two specs of one contract share a release (DiamondIntrospectionInit's
+ * `initImmutable` and `initUpgradeable`), so a step names the contract by its release's first spec.
  */
 export function neededFor(catalog: Catalog, recipe: Recipe, plan: readonly PlanEntry[], path: "factory" | "createx"): string[] {
   const names = new Set<string>(path === "factory" ? ["LatticeRegistry", "LatticeFactory"] : []);
   for (const entry of plan) names.add(entry.facet);
+  const byAddress = new Map(sharedContracts(catalog).map((item) => [item.release.address.toLowerCase(), item.name]));
   const steps = planInit(recipe, catalog).steps;
   for (const step of steps) {
     const spec = catalog.inits.find((init) => init.name === step.spec);
-    if (spec?.release !== undefined) names.add(spec.name);
+    if (spec?.release !== undefined) names.add(byAddress.get(spec.release.address.toLowerCase()) ?? spec.name);
   }
   if (steps.length > 1) names.add("MultiInit");
   return [...names];

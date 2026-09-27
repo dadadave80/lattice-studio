@@ -18,7 +18,10 @@ export type LogTag = (typeof LOG_TAGS)[number];
 /** One entry: a line and how many times it arrived in a row. `at` is the latest arrival. */
 export type LogEntry = ConsoleLine & { id: number; count: number };
 
-/** The most entries kept; older ones drop off the top. */
+/**
+ * The most entries kept; older ones drop off the top. Error lines are exempt: they stay until cleared (spec
+ * L700; ruling R8), so only other lines age out, and a log of nothing but errors can pass the cap.
+ */
 export const LOG_CAP = 1000;
 
 /** Where kept lines live between reloads. */
@@ -48,8 +51,16 @@ function entryOf(line: ConsoleLine, count = 1): LogEntry {
   return { ...line, id: nextId++, count };
 }
 
+/** `list` within `LOG_CAP`: the oldest lines that aren't errors go first, in order; the newest always stays. */
 function capped(list: LogEntry[]): LogEntry[] {
-  return list.length > LOG_CAP ? list.slice(list.length - LOG_CAP) : list;
+  let over = list.length - LOG_CAP;
+  if (over <= 0) return list;
+  const newest = list.length - 1;
+  return list.filter((entry, i) => {
+    if (over <= 0 || entry.tag === "Error" || i === newest) return true;
+    over -= 1;
+    return false;
+  });
 }
 
 /** Appends a line: a repeat of the last entry bumps its count instead (IR L134 "Repeats collapse to ×n"). */

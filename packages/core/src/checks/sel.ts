@@ -63,7 +63,11 @@ function collisions(view: RecipeView, routing: Routing): Problem[] {
   return out;
 }
 
-/** Two contenders: Keep {A} · Route to {B}. Three or more: one route per contender, the owner menu (spec L436). */
+/**
+ * Two contenders: Keep {A} · Route to {B}. Three or more: one route per contender (the note's owner menu, spec
+ * L436), then Choose owner… (spec L311), which the inspector and Structure offer. The sheet's collision note
+ * builds its buttons from the contenders, not from these fixes, so it never shows Choose owner… twice.
+ */
 function routeFixes(selector: Hex4, contenders: readonly string[]): CommandRef[] {
   if (contenders.length === 2) {
     const [keep, other] = contenders;
@@ -72,7 +76,8 @@ function routeFixes(selector: Hex4, contenders: readonly string[]): CommandRef[]
       { id: "selector.route", args: { selector, facet: other ?? "" } },
     ];
   }
-  return contenders.map((facet) => ({ id: "selector.route", args: { selector, facet } }));
+  const routes: CommandRef[] = contenders.map((facet) => ({ id: "selector.route", args: { selector, facet } }));
+  return [...routes, { id: "collision.choosePerSelector", args: { selectors: [selector] } }];
 }
 
 function oneFamily(view: RecipeView, names: readonly string[]): boolean {

@@ -247,6 +247,20 @@ describe("exportSafeBatch", () => {
     expect(exported({ studioVersion: "1.0.1" }).text).not.toBe(exported().text);
   });
 
+  test("a placed facet that routes nothing is named in the description, before the shared contracts line (spec L509, PA bug 2)", () => {
+    const recipe = governedVault();
+    recipe.facets.push("ERC20Pausable");
+    const { file } = exported({ recipe });
+    const lines = (file.meta.description ?? "").split("\n");
+    const omitted = "Placed but routes nothing, so no Add is cut for it: ERC20Pausable.";
+    expect(lines).toContain(omitted);
+    expect(lines.indexOf(omitted)).toBe(lines.length - 2);
+    expect(lintCopy(file.meta.description ?? "")).toEqual([]);
+    // Without such a facet the line is absent.
+    expect(exported({ recipe: governedVault() }).file.meta.description).not.toContain("Placed but routes nothing");
+    expect(exported().file.meta.description).not.toContain("Placed but routes nothing");
+  });
+
   test("names from a person or a file reach the meta as one plain line", () => {
     const hostile = "Vault\n‮evil​\t\u0000name end";
     const recipe = { ...safeDiamondCut(), name: hostile };

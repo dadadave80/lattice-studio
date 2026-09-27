@@ -66,8 +66,12 @@ export function statusWord(record: Deployment, currentHash: Hex): string {
   }
 }
 
-/** Verification states (spec L579): Verifying, Verified (exact match or match), Couldn't verify. */
-export function verificationWord(verification: Deployment["verification"]): string {
+/**
+ * Verification states (spec L579): Verifying, Verified (exact match or match), Couldn't verify. Offline, the
+ * stored status can't be confirmed, so it reads Unknown instead (ruling R7, spec L832).
+ */
+export function verificationWord(verification: Deployment["verification"], online: boolean): string {
+  if (!online) return "Unknown";
   switch (verification) {
     case "pending":
       return "Verifying";
@@ -80,9 +84,12 @@ export function verificationWord(verification: Deployment["verification"]): stri
   }
 }
 
-/** Why a failed verification couldn't finish (spec L579, L606, Flow 14 "Verification failed: The reason"). */
-export function verificationFailureReason(record: Deployment): string | undefined {
-  return record.verification === "failed" ? record.verificationReason : undefined;
+/**
+ * Why a failed verification couldn't finish (spec L579, L606, Flow 14 "Verification failed: The reason").
+ * Offline, the record's verification is unknown, so a stale failure reason stays hidden too (ruling R7).
+ */
+export function verificationFailureReason(record: Deployment, online: boolean): string | undefined {
+  return online && record.verification === "failed" ? record.verificationReason : undefined;
 }
 
 export type DeploymentGroup = { chainId: number; records: Deployment[] };

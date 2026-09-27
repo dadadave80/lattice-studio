@@ -8,7 +8,7 @@
  * them by answer time (a failed ping last), and stops when the service says so: offline, the tab hidden, disposed.
  */
 import { createClient, fallback, http, type Chain, type Client, type Transport } from "viem";
-import { isRpcUrl, rpcUrls, type ChainSpec } from "./chains";
+import { ANVIL, isRpcUrl, knownChains, readUrls, type ChainSpec } from "./chains";
 
 /**
  * A chain's viem client, bare: callers import the actions they use from `viem/actions`, so the lazy chunk carries
@@ -55,6 +55,8 @@ export function chainTransport(urls: readonly string[], make: TransportFactory):
 export type ClientOptions = {
   /** The person's own RPC per chain (already debounced and checked by the service). */
   overrides?: Readonly<Record<number, string>>;
+  /** End-to-end build: every chain is read through local Anvil (`readUrls`). */
+  e2e?: boolean;
   transport?: TransportFactory;
   /** Ranking pass timing, and a clock for answer times; tests inject theirs. */
   interval?: number;
@@ -90,7 +92,8 @@ export function createClients(options: ClientOptions = {}): Clients {
   const ranked = new Map<number, { set: string; order: string[] }>();
   let timer: unknown = null;
 
-  const configured = (spec: ChainSpec): string[] => rpcUrls(spec, overrides[spec.id]);
+  const e2e = options.e2e ?? false;
+  const configured = (spec: ChainSpec): string[] => readUrls(spec, overrides, e2e);
   const urlsOf = (spec: ChainSpec): string[] => {
     const urls = configured(spec);
     const found = ranked.get(spec.id);
@@ -136,6 +139,10 @@ export function createClients(options: ClientOptions = {}): Clients {
       // What's actually used: an invalid override counts as none, so typing one changes nothing.
       const used = (text: string | undefined): string => (isRpcUrl(text) ? text.trim() : "");
       for (const id of ids) if (used(overrides[id]) !== used(next[id])) changed.push(id);
+      // End to end, every chain reads through Anvil's RPC, so a change to it changes them all.
+      if (e2e && changed.includes(ANVIL.id)) {
+        for (const chain of knownChains(true)) if (!changed.includes(chain.id)) changed.push(chain.id);
+      }
       overrides = { ...next };
       return changed;
     },

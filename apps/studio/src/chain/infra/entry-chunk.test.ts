@@ -41,9 +41,12 @@ afterAll(() => {
   if (out) rmSync(out, { recursive: true, force: true });
 });
 
-/** The chain module's chunk: named runtime-*, and other modules name theirs runtime.ts too (S4e), so pick by content. */
+/**
+ * The chain module's chunk: named runtime-*, and other modules name theirs runtime.ts too (S4e), so pick by content,
+ * the probes' program. (wagmi's core moves to a chunk it shares with WalletConnect when a build carries it.)
+ */
 function chainRuntime(): { name: string; text: string } | undefined {
-  return lazy.find((chunk) => chunk.name.startsWith("runtime-") && chunk.text.includes("@wagmi/core@"));
+  return lazy.find((chunk) => chunk.name.startsWith("runtime-") && PROBE_MARKERS.every((marker) => chunk.text.includes(marker)));
 }
 
 describe("the entry chunk", () => {
@@ -54,14 +57,23 @@ describe("the entry chunk", () => {
   test("a lazy chunk named for the chain module carries them", () => {
     const runtime = chainRuntime();
     expect(runtime).toBeDefined();
-    for (const marker of ["@wagmi/core@", ...PROBE_MARKERS]) expect(runtime?.text.includes(marker)).toBe(true);
+    expect(runtime?.text.includes("eip6963:requestProvider")).toBe(true);
+    expect(lazy.some((chunk) => chunk.text.includes("@wagmi/core@"))).toBe(true);
   });
 
   test("WalletConnect's SDK is in neither the entry nor the chain module: it loads only when chosen", () => {
     const runtime = chainRuntime();
+    // Chunk file names ("assets/w3m-modal-….js" in Vite's preload map) name the SDK's chunks without carrying it.
+    const code = (text: string) => text.replace(/assets\/[\w.-]+\.js/g, "");
     for (const marker of WALLETCONNECT_MARKERS) {
-      expect({ marker, entry: firstLoad.includes(marker), runtime: runtime?.text.includes(marker) }).toEqual({ marker, entry: false, runtime: false });
+      expect({ marker, entry: code(firstLoad).includes(marker), runtime: runtime && code(runtime.text).includes(marker) }).toEqual({ marker, entry: false, runtime: false });
     }
+  });
+
+  test("WalletConnect's chunk and SDK are in the build only when it has a project id (VITE_WALLETCONNECT_PROJECT_ID)", () => {
+    const withId = Boolean(process.env.VITE_WALLETCONNECT_PROJECT_ID);
+    expect(lazy.some((chunk) => chunk.name.startsWith("walletconnect-"))).toBe(withId);
+    expect(lazy.some((chunk) => chunk.text.includes("relay.walletconnect"))).toBe(withId);
   });
 
   test("the ENS normalizer loads on its own, only when a name is resolved", () => {

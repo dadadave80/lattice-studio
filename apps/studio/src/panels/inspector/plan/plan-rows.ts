@@ -2,7 +2,7 @@
  * The cut plan footer's rows (IR L126): `[00] ADD name`, the facet's address, routed/total selectors, and ⟂
  * while one of its selectors is still contested (no owner yet).
  */
-import type { Address, Analysis, Catalog } from "@lattice-studio/core";
+import type { Address, Analysis, Catalog, PlanEntry } from "@lattice-studio/core";
 import { formatCount, formatCutIndex } from "@lattice-studio/core";
 
 export type PlanRow = {
@@ -35,4 +35,13 @@ export function planRows(analysis: Pick<Analysis, "plan" | "routing">, catalog: 
       contested: contestedBy.has(entry.facet),
     };
   });
+}
+
+/**
+ * Facets on the sheet that route no selector, so the plan cuts no Add for them (PA L9, spec L509, §18 #3c): the
+ * footer and Copy plan as JSON say so too, the way every export already does (`buildPlan`'s `omitted`).
+ */
+export function omittedFacets(plan: readonly Pick<PlanEntry, "facet">[], placed: readonly string[]): string[] {
+  const planned = new Set(plan.map((entry) => entry.facet));
+  return placed.filter((name) => !planned.has(name));
 }

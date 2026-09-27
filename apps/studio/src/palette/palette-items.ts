@@ -238,25 +238,53 @@ export function queryWords(query: string): string[] {
   return query.toLowerCase().split(/\s+/).filter((w) => w !== "");
 }
 
-/** 0 when the title itself opens with the typed query; 1 for a row that only matches its category or a later word. */
-function titleRank(title: string, prefix: string): 0 | 1 {
-  return title.toLowerCase().startsWith(prefix) ? 0 : 1;
+/** Lowercased runs of letters and digits: "Place ERC20" → place, erc20; "Deploy…" → deploy. */
+function wordsOf(text: string): string[] {
+  return text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w !== "");
+}
+
+/** Where `words` first appear in `within` as a run of whole words, or -1. */
+function wholeWordRun(within: readonly string[], words: readonly string[]): number {
+  if (words.length === 0) return -1;
+  for (let i = 0; i + words.length <= within.length; i++) {
+    if (words.every((w, j) => within[i + j] === w)) return i;
+  }
+  return -1;
 }
 
 /**
- * Rows matching every word of `query` (in title, category, syntax, note, facet name or area). Within each
- * group (whose own order holds, IR L164) a title match leads; the sort is stable, so ties keep the group's order.
+ * How well a row's title matches the query, best first (Flow 3 route 4, spec L420: "⌘K, type the name,
+ * Enter" places that facet):
+ * 0. The title opens with the query's whole words ("deploy" → Deploy…, "place erc20" → Place ERC20).
+ * 1. The query's whole words come later in the title, such as a facet's own name ("erc20" → Place ERC20
+ *    before Place BridgeERC20; "pausable" → Place Pausable before Place ERC20Pausable).
+ * 2. The title opens with the query mid-word ("dep" → Deploy…).
+ * 3. Anything else that matched: part of a later word, the category, the syntax, the facet's area.
+ */
+function titleRank(title: string, query: string): 0 | 1 | 2 | 3 {
+  const run = wholeWordRun(wordsOf(title), wordsOf(query));
+  if (run === 0) return 0;
+  if (run > 0) return 1;
+  return title.toLowerCase().startsWith(query) ? 2 : 3;
+}
+
+/**
+ * Rows matching every word of `query` (in title, category, syntax, note, facet name or area). Groups keep
+ * their order (IR L164); within each, rows sort by `titleRank`, and the sort is stable, so ties keep the
+ * group's own order.
  */
 export function filterGroups(groups: readonly PaletteGroup[], query: string): PaletteGroup[] {
   const words = queryWords(query);
   if (words.length === 0) return [...groups];
-  const prefix = words.join(" ");
+  const typed = words.join(" ");
   return groups
     .map((g) => ({
       ...g,
       items: g.items
         .filter((i) => words.every((w) => i.search.includes(w)))
-        .toSorted((a, b) => titleRank(a.title, prefix) - titleRank(b.title, prefix)),
+        .map((i) => ({ i, rank: titleRank(i.title, typed) }))
+        .toSorted((a, b) => a.rank - b.rank)
+        .map(({ i }) => i),
     }))
     .filter((g) => g.items.length > 0);
 }
