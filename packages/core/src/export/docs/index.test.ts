@@ -327,6 +327,23 @@ describe("exportBrief", () => {
     expect(brief.text).toContain("leaves out the project's layout");
   });
 
+  test("names a placed facet that routes nothing under the cut plan, and says nothing when every facet routes (spec L509, PA bug 2)", () => {
+    const line = "Placed but routes nothing, so no Add is cut for it:";
+    expect(buildPlan(recipe, catalog, analysis.routing).omitted).toEqual([]);
+    expect(brief.text).not.toContain(line);
+
+    const erc20 = catalog.facets.find((f) => f.name === "ERC20");
+    const idle = makeRecipe({ ...recipe, exclude: (erc20?.selectors ?? []).map((s) => s.hex) }, catalog);
+    const idleAnalysis = analyze(idle, catalog);
+    expect(buildPlan(idle, catalog, idleAnalysis.routing).omitted).toEqual(["ERC20"]);
+    const text = exportBrief({ recipe: idle, catalog, analysis: idleAnalysis, studioVersion }).text;
+    expect(text).toContain(`${line} ERC20.`);
+    // Under the cut plan's table, before the next section.
+    const cutPlan = text.indexOf(SECTION_HEADINGS[1] ?? "");
+    expect(text.indexOf(line)).toBeGreaterThan(cutPlan);
+    expect(text.indexOf(line)).toBeLessThan(text.indexOf(SECTION_HEADINGS[2] ?? ""));
+  });
+
   test("is deterministic", () => {
     expect(exportBrief({ recipe, catalog, analysis, studioVersion }).text).toBe(brief.text);
   });

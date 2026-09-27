@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { computeRouting } from "../analysis/routing";
 import { catalog, fixture, S, sheet, template } from "../analysis/test-support";
 import type { Catalog } from "../model/catalog";
+import type { CommandRef } from "../model/commands";
 import type { Hex4 } from "../model/hex";
 import type { Problem } from "../model/problems";
 import type { Recipe } from "../model/recipe";
@@ -53,12 +54,28 @@ describe("SEL-01", () => {
     expect(problems.map((p) => p.id)).toEqual(["SEL-01:0xcdfe7f5c"]);
   });
 
-  test("three contenders: one route per contender (the owner menu), no Keep verb", () => {
+  test("three contenders: one route per contender (the owner menu), no Keep verb, then Choose owner… (spec L311)", () => {
     const three = makeCatalog({ facets: ["A", "B", "C"].map((name) => makeFacet({ name, selectors: ["same()"] })) });
     const [p] = sel(makeRecipe({ facets: ["C", "B", "A"] }), three);
     const selector = three.facets[0]?.selectors[0]?.hex ?? "0x";
     expect(p?.params["contenders"]).toEqual(["A", "B", "C"]);
-    expect(p?.fixes).toEqual(["A", "B", "C"].map((facet) => ({ id: "selector.route", args: { selector, facet } })));
+    expect(p?.fixes).toEqual([
+      ...["A", "B", "C"].map((facet): CommandRef => ({ id: "selector.route", args: { selector, facet } })),
+      { id: "collision.choosePerSelector", args: { selectors: [selector] } },
+    ]);
+  });
+
+  test("four contenders: still one Choose owner… for the one selector", () => {
+    const four = makeCatalog({ facets: ["A", "B", "C", "D"].map((name) => makeFacet({ name, selectors: ["same()"] })) });
+    const [p] = sel(makeRecipe({ facets: ["A", "B", "C", "D"] }), four);
+    const choose = p?.fixes.filter((fix) => fix.id === "collision.choosePerSelector");
+    expect(choose).toEqual([{ id: "collision.choosePerSelector", args: { selectors: [four.facets[0]?.selectors[0]?.hex ?? "0x"] } }]);
+  });
+
+  test("two contenders never offer Choose owner…", () => {
+    const two = makeCatalog({ facets: ["A", "B"].map((name) => makeFacet({ name, selectors: ["same()"] })) });
+    const [p] = sel(makeRecipe({ facets: ["A", "B"] }), two);
+    expect(p?.fixes.map((fix) => fix.id)).toEqual(["selector.route", "selector.route"]);
   });
 
   test.skipIf(fixture === null).each([
