@@ -149,6 +149,16 @@ export function rpcUrls(spec: ChainSpec, override: string | undefined): string[]
 }
 
 /**
+ * The URLs Studio reads `spec` through: `rpcUrls` with the person's override for that chain. An end-to-end build
+ * reads every chain through local Anvil instead (its override, then its default), so a test never reaches a public
+ * Sepolia, Base Sepolia or Ethereum RPC; the Anvil node stands in for whichever chain is selected.
+ */
+export function readUrls(spec: ChainSpec, overrides: Readonly<Record<number, string>>, e2e: boolean): string[] {
+  if (e2e && spec.id !== ANVIL.id) return rpcUrls(ANVIL, overrides[ANVIL.id]);
+  return rpcUrls(spec, overrides[spec.id]);
+}
+
+/**
  * The URLs a wallet may see: the chain's public RPCs only, never the person's own, which can carry an API key
  * (WalletConnect sends a chain's `rpcUrls` through its relay). Anvil in end-to-end builds is the exception: its
  * node is local, and wagmi's mock connector reaches it through `rpcUrls`.

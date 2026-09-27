@@ -52,6 +52,13 @@ export type Wallet = {
   switchChain(chainId: number, publicRpc: string): Promise<Result<void, string>>;
   /** Restores the last connection after a reload. */
   reconnect(): Promise<void>;
+  /**
+   * Loads WalletConnect's connector and registers it once, so choosing "Other wallets (QR)" reuses it and a
+   * session survives a reload (Settings → Wallet on). An error says why it can't be used.
+   */
+  loadWalletConnect(): Promise<Result<void, string>>;
+  /** Settings → Wallet off: ends a WalletConnect session and drops its connector. True when a session ended. */
+  dropWalletConnect(): Promise<boolean>;
 };
 
 /** A wallet error in the spec's words: a rejection, no wallet, else the error's own short message. */
@@ -118,6 +125,28 @@ export function createWallet(options: WalletOptions): Wallet {
     return { address: toChecksum(connection.address), chainId: connection.chainId, connector: connection.connector.id };
   };
 
+  /** WalletConnect's registered connector, or the load in flight; a failed load isn't kept, so the next try loads again. */
+  let walletConnect: Promise<Result<Connector, string>> | null = null;
+  const loadWalletConnect = (): Promise<Result<Connector, string>> => {
+    if (walletConnect) return walletConnect;
+    const loader = options.walletConnect;
+    if (!loader) return Promise.resolve({ ok: false, error: NO_WALLET });
+    const pending = loader().then((loaded): Result<Connector, string> => {
+      if (!loaded.ok) return loaded;
+      const connector = config._internal.connectors.setup(loaded.value);
+      config._internal.connectors.setState((list) => [...list, connector]);
+      return { ok: true, value: connector };
+    });
+    walletConnect = pending;
+    const forget = (): void => {
+      if (walletConnect === pending) walletConnect = null;
+    };
+    pending.then((loaded) => {
+      if (!loaded.ok) forget();
+    }, forget);
+    return pending;
+  };
+
   const connectWith = async (connector: Connector | CreateConnectorFn): Promise<Result<WalletState, string>> => {
     const current = read();
     if (current && typeof connector !== "function" && connector.id === current.connector) return { ok: true, value: current };
@@ -151,7 +180,7 @@ export function createWallet(options: WalletOptions): Wallet {
     },
     async connect(id) {
       if (id === WALLETCONNECT_ID) {
-        const loaded = options.walletConnect ? await options.walletConnect() : { ok: false as const, error: NO_WALLET };
+        const loaded = await loadWalletConnect();
         return loaded.ok ? connectWith(loaded.value) : loaded;
       }
       const connectors = getConnectors(config);
@@ -184,6 +213,27 @@ export function createWallet(options: WalletOptions): Wallet {
       } catch {
         // Nothing to restore, or the wallet declined: the person connects again.
       }
+    },
+    async loadWalletConnect() {
+      const loaded = await loadWalletConnect();
+      return loaded.ok ? { ok: true, value: undefined } : loaded;
+    },
+    async dropWalletConnect() {
+      const pending = walletConnect;
+      walletConnect = null;
+      const loaded = pending ? await pending.catch(() => null) : null;
+      if (!loaded?.ok) return false;
+      const connector = loaded.value;
+      const connected = config.state.connections.has(connector.uid);
+      if (connected) {
+        try {
+          await disconnect(config, { connector });
+        } catch {
+          // The relay is gone or the session already ended: wagmi has dropped the connection either way.
+        }
+      }
+      config._internal.connectors.setState((list) => list.filter((c) => c.uid !== connector.uid));
+      return connected;
     },
   };
 }

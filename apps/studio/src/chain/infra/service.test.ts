@@ -513,6 +513,12 @@ describe("the wallet account", () => {
         return { ok: true as const, value: undefined };
       },
       async reconnect() {},
+      async loadWalletConnect() {
+        return { ok: false as const, error: "WalletConnect isn't set up in this build of Studio." };
+      },
+      async dropWalletConnect() {
+        return false;
+      },
       set(next: WalletState | null) {
         state = next;
         for (const listener of listeners) listener(next);
