@@ -7,6 +7,7 @@ import {
   commandRef, commandState, doc, getAnalysis, getCatalog, inspectorViewComponent, isPlaceholder, openShareLink as routeShareLink, runCommand, session,
   useSession,
 } from "@/contracts";
+import { App } from "@/app";
 import { BannerHost } from "@/feedback/BannerHost";
 import { DialogHost } from "@/ui/overlays/DialogHost";
 import { bufferedServices, fakeChainService, fixtureCatalog, renderWithStudio } from "../../test/harness";
@@ -291,5 +292,28 @@ describe("a link naming a catalog this build doesn't bundle (spec L290, L504)", 
     expect(doc.get().recipe.catalog.tag).toBe("fixture");
     const place = commandState(commandRef("facet.place", { facet: "Pausable" }));
     expect(place.ok ? null : place.reason).not.toBe(UNBUNDLED);
+  });
+});
+
+describe("a name from a link is text (spec L859)", () => {
+  test("markup and a closing script tag in the recipe's name render literally, and nothing runs", async () => {
+    const hostile = `<img src=x onerror="window.__fx43=1"></script><script>window.__fx43=2</script>`;
+    const probe = window as unknown as { __fx43?: number };
+    delete probe.__fx43;
+    await renderWithStudio(<App />);
+    const opened = await openShareLink(linkOf({ ...template("ERC20"), name: hostile }));
+    expect(opened.ok).toBe(true);
+    const name = `${hostile} (shared)`;
+    expect(doc.get().name).toBe(name);
+    const titlebar = page.getByRole("region", { name: "Title bar", exact: true });
+    await expect.element(titlebar.getByText(name, { exact: true })).toBeVisible();
+    await expect.poll(() => document.title.startsWith(name)).toBe(true);
+    // Let an error handler have its chance, then check nothing was parsed as markup.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.querySelector("img[src='x']")).toBeNull();
+    expect([...document.querySelectorAll("script")].some((el) => el.textContent?.includes("__fx43"))).toBe(false);
+    const attributes = [...document.querySelectorAll("*")].flatMap((el) => [...el.attributes].map((a) => a.value));
+    expect(attributes.some((value) => value.includes("__fx43") && !value.includes("(shared)"))).toBe(false);
+    expect(probe.__fx43).toBeUndefined();
   });
 });

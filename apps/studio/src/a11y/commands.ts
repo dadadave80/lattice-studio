@@ -56,6 +56,7 @@ defineCommands([
       if (!REGION_IDS.includes(region)) return { ok: false, reason: `"${String(region)}" isn't a region.` };
       const reason = dialogReason();
       if (reason) return { ok: false, reason };
+      // No fix clause (ruling R9, spec L661): nothing a person does brings a notification up to go to.
       if (region === "toasts" && !toastsShowing()) return { ok: false, reason: "No notifications are showing." };
       return hiddenRegionState(region);
     },

@@ -604,7 +604,7 @@ describe("reflow at 256 px tall (spec L373, WCAG 1.4.10)", () => {
     for (const [tab, name] of [["script", "Script"], ["recipe", "Recipe JSON"]] as const) {
       session.set((s) => ({ panes: { ...s.panes, console: { ...s.panes.console, open: true, tab } } }));
       const code = page.getByRole("tabpanel", { name });
-      await expect.element(code).toBeVisible({ timeout: 10_000 });
+      await expect.element(code, { timeout: 10_000 }).toBeVisible();
       const inside = [pane("sheet"), code.element()];
       const offenders = [document.documentElement, ...document.querySelectorAll("body *")].filter(
         (el) => !inside.some((ok) => ok.contains(el)) && scrolls(el, "x") && scrolls(el, "y"),

@@ -124,7 +124,7 @@ describe("the status chip", () => {
     await chip.click();
     const inspector = page.getByRole("region", { name: "Inspector", exact: true });
     const heading = inspector.getByRole("heading", { name: "Deployments", exact: true });
-    await expect.element(heading).toBeVisible({ timeout: 10_000 });
+    await expect.element(heading, { timeout: 10_000 }).toBeVisible();
     await expect.element(heading).toHaveFocus();
     await expect.element(inspector.getByRole("region", { name: "Deployments", exact: true })).toBeInViewport();
   });
