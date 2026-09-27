@@ -3,7 +3,7 @@ import type { Catalog, LayoutMetrics, Project, Recipe } from "@lattice-studio/co
 import { analyze, loadTemplate, planMechanismChange } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeProject } from "@lattice-studio/core/testing";
 import { layoutSizes } from "@lattice-studio/tokens";
-import { applyMechanismOp, confirmAddressOp, remapProvenance } from "./ops";
+import { applyMechanismOp, confirmAddressOp, remapLabels, remapProvenance, setAddressOp } from "./ops";
 
 const loaded = loadFixtureCatalog();
 if (!loaded.ok) throw new Error(loaded.error);
@@ -124,5 +124,92 @@ describe("applying Flow 17", () => {
     const spots = Object.values(next.layout).map((p) => `${p.x},${p.y}`);
     expect(new Set(spots).size).toBe(spots.length);
     expect(Object.keys(next.layout).sort()).toEqual([...next.recipe.facets].sort());
+  });
+});
+
+describe("an address and its ENS label (spec L462)", () => {
+  const safeCut = (args: Record<string, string>, labels?: Record<string, string>): Project => {
+    const recipe: Recipe = {
+      ...template("SafeDiamondCut"),
+      init: { kind: "steps", steps: [{ spec: "SafeDiamondCutInit", args: { admin: LINKED, minThreshold: "2", ...args } }] },
+    };
+    return { ...projectWith(recipe), ...(labels ? { labels } : {}) };
+  };
+  const safeOf = (project: Project) => (project.recipe.init.kind === "steps" ? project.recipe.init.steps[0]?.args.safe : undefined);
+
+  test("a resolved name lands with its address in one edit", () => {
+    const result = setAddressOp(catalog, "steps[0].safe", SAFE, "safe.eth", "Safe")(safeCut({}));
+    expect(result.changed).toBe(true);
+    expect(result.summary).toBe("Set Safe to safe.eth");
+    expect(safeOf(result.project)).toBe(SAFE);
+    expect(result.project.labels).toEqual({ "steps[0].safe": "safe.eth" });
+  });
+
+  test("a plain address drops the label; other fields keep theirs; no labels leaves no key", () => {
+    const project = safeCut({ safe: SAFE }, { "steps[0].safe": "safe.eth", "steps[0].admin": "ops.eth" });
+    const result = setAddressOp(catalog, "steps[0].safe", LINKED, null, "Safe")(project);
+    expect(result.changed).toBe(true);
+    expect(result.summary).toBe("Set SafeDiamondCutInit.safe to 0x4B20…02db");
+    expect(result.project.labels).toEqual({ "steps[0].admin": "ops.eth" });
+    const last = setAddressOp(catalog, "steps[0].admin", SAFE, null, "Admin")(result.project);
+    expect(last.changed).toBe(true);
+    expect("labels" in last.project).toBe(false);
+  });
+
+  test("a name for the address already stored adds only the label; the same name again is a no-op that says why", () => {
+    const project = safeCut({ safe: SAFE });
+    const labeled = setAddressOp(catalog, "steps[0].safe", SAFE, "safe.eth", "Safe")(project);
+    expect(labeled).toMatchObject({ changed: true, summary: "Set Safe to safe.eth" });
+    expect(labeled.project.recipe).toBe(project.recipe);
+    expect(labeled.project.labels).toEqual({ "steps[0].safe": "safe.eth" });
+    const again = setAddressOp(catalog, "steps[0].safe", SAFE, "safe.eth", "Safe")(labeled.project);
+    expect(again.changed).toBe(false);
+    expect(again.summary).toBe("SafeDiamondCutInit.safe is already 0x71C7…976F.");
+  });
+
+  test("a path core refuses stores no label either", () => {
+    const project = safeCut({});
+    const result = setAddressOp(catalog, "steps[4].safe", SAFE, "safe.eth", "Safe")(project);
+    expect(result.changed).toBe(false);
+    expect(result.project).toBe(project);
+  });
+
+  test("Flow 17 carries a label with its address and drops one whose address is gone", () => {
+    const before: Recipe = {
+      ...template("SafeDiamondCut"),
+      init: {
+        kind: "steps",
+        steps: [
+          { spec: "ERC20Init", args: { name_: "Vault", symbol_: "V" } },
+          { spec: "SafeDiamondCutInit", args: { admin: LINKED, safe: SAFE, minThreshold: "2" } },
+        ],
+      },
+    };
+    const after: Recipe = {
+      ...before,
+      init: {
+        kind: "steps",
+        steps: [
+          { spec: "AccessControlInit", args: { admin: LINKED } },
+          { spec: "ERC20Init", args: { name_: "Vault", symbol_: "V" } },
+        ],
+      },
+    };
+    const labels = { "steps[1].admin": "ops.eth", "steps[1].safe": "safe.eth", "steps[0].name_": "not-an-address.eth" };
+    expect(remapLabels(labels, before, after)).toEqual({ "steps[0].admin": "ops.eth" });
+  });
+
+  test("applying Flow 17 keeps the admin's label on the step that now holds it", () => {
+    const recipe: Recipe = {
+      ...template("SafeDiamondCut"),
+      init: { kind: "steps", steps: [{ spec: "SafeDiamondCutInit", args: { admin: LINKED, safe: SAFE, minThreshold: "2" } }] },
+    };
+    const project: Project = { ...projectWith(recipe), labels: { "steps[0].admin": "ops.eth", "steps[0].safe": "safe.eth" } };
+    const change = planMechanismChange(recipe, catalog, "admin", {});
+    if (!change.ok) throw new Error(change.error);
+    const next = applyMechanismOp(change.value.next, catalog, metrics, "Use AccessControlDiamondCut")(project).project;
+    const steps = next.recipe.init.kind === "steps" ? next.recipe.init.steps : [];
+    const at = steps.findIndex((s) => s.spec === "AccessControlInit");
+    expect(next.labels).toEqual({ [`steps[${at}].admin`]: "ops.eth" });
   });
 });
