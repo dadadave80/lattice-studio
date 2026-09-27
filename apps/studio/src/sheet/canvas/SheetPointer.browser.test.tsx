@@ -104,6 +104,33 @@ describe("right-click on empty sheet", () => {
   });
 });
 
+describe("double-click on empty sheet (IR L52, spec L752)", () => {
+  test("does nothing: the viewport, the zoom and the selection stay as they were", async () => {
+    const project = sheetProject(4);
+    await renderSheet({ project });
+    const before = drawnViewport();
+    const stored = session.get().viewports[project.id];
+    const unchanged = async (selection: string[]) => {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(drawnViewport()).toEqual(before);
+      expect(session.get().viewports[project.id]).toEqual(stored);
+      expect(session.get().selection).toEqual(selection);
+    };
+    // A real double-click over empty sheet: no zoom (React Flow's zoomOnDoubleClick is off).
+    await userEvent.dblClick(paneElement(), { position: AT });
+    await unchanged([]);
+    // The dblclick event itself, with a card selected: the selection stays too. (A real double-click's two
+    // clicks clear it, as any click on empty sheet does, IR L51.)
+    const name = Object.keys(project.layout)[0] ?? "";
+    session.set({ selection: [name] });
+    const box = flowElement().getBoundingClientRect();
+    paneElement().dispatchEvent(new MouseEvent("dblclick", {
+      bubbles: true, cancelable: true, view: window, detail: 2, clientX: box.left + AT.x, clientY: box.top + AT.y,
+    }));
+    await unchanged([name]);
+  });
+});
+
 describe("pointer focus never pans", () => {
   test("pressing a visible card whose corner is under a floating panel leaves the view where it is", async () => {
     const project = sheetProject(4);

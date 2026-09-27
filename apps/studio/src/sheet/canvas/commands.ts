@@ -4,7 +4,7 @@
  * sheet is showing.
  *
  * Every command says what it did or why it didn't (contracts §6). Why it can't is its `enabled()` reason
- * (no period, like every disabled reason: "Already at 200%"), which `runCommand` logs and announces; a no-op
+ * (no period, like every disabled reason: "Already at 100%"), which `runCommand` logs and announces; a no-op
  * found while running (a tool that's already on) is said the same way. What it did is a sentence with a
  * period ("Zoom 75%."), announced, and logged too when typed in the console; a command another module runs
  * (`api`, after Tidy or a recipe load) says only why it didn't, since that module narrates what happened.
@@ -35,8 +35,15 @@ function refuse(reason: string): Enablement {
   return { ok: false, reason };
 }
 
+/**
+ * Why a zoom did nothing. At either end of the range it also names the way back (spec L661, R9): "Already at
+ * 200% · Zoom out or Fit". A zoom that's already where it was asked to go has nothing to fix.
+ */
 export function alreadyAt(zoom: number): string {
-  return `Already at ${percent(zoom)}`;
+  const reason = `Already at ${percent(zoom)}`;
+  if (same(zoom, MAX_ZOOM)) return `${reason} · Zoom out or Fit`;
+  if (same(zoom, MIN_ZOOM)) return `${reason} · Zoom in or Fit`;
+  return reason;
 }
 
 /** Says what a command did: announced; also logged when typed in the console; silent for `api` callers. */

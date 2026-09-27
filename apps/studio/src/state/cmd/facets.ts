@@ -7,6 +7,7 @@ import { lines, placeFacet, plural, removeFacets, routeSelector } from "@lattice
 import {
   command, isPlaceholder, runCommand, session, toast, type CommandArgsOf, type CommandContext,
 } from "@/contracts";
+import { panToPlaced } from "@/sheet/canvas/sheet-view";
 import { landing } from "./geometry";
 import {
   catalogName, combined, disabled, edit, err, facetOf, guard, isPlaced, isString, notOnSheet, OK, ok, parseFacet,
@@ -64,7 +65,10 @@ export const placeCommand = command<PlaceArgs>({
         facet, selectors: detail.selectors.length, ...(detail.storage ? { namespace: detail.storage.id } : {}),
       })],
     });
-    if (result.changed) session.set({ selection: [facet] });
+    if (!result.changed) return;
+    session.set({ selection: [facet] });
+    // The view pans only if the new card would be off-screen (spec L426).
+    panToPlaced(facet);
   },
 });
 
