@@ -5,14 +5,14 @@
       "id": "fixture",
       "tag": "fixture",
       "commit": "f4a32c8330934d39bcfdffff87d35a04b7fa6a79",
-      "hash": "0xce843be12f8b470d72cd0ddb41df9aed8a0c7d7abad718b34bb8b2731805ff24",
+      "hash": "0xfb12a48e0e8329c2e025e8a390b26d24d60e7052488955ec9061e2daa23e6e50",
       "path": "fixture/index.json"
     },
     {
       "id": "fixture-next",
       "tag": "fixture-next",
       "commit": "f4a32c8330934d39bcfdffff87d35a04b7fa6a79",
-      "hash": "0xbc2d93c80445019690776a5489015fc3fb6ffc5c3f02f0ede62177f7b545779a",
+      "hash": "0x03579c280c384dedddac9a2f96c4f89f59e7d5681ab52b67978eccf279c2ba47",
       "path": "fixture-next/index.json"
     }
   ]

@@ -177,6 +177,18 @@
         "source": "src/governance/libraries/GovernedDiamondCutLib.sol#L113-L114"
       }
     ],
+    "sameCall": [
+      {
+        "name": "ERC20VotesInit",
+        "sameCall": [
+          "ERC20",
+          "EIP712",
+          "Nonces",
+          "Votes"
+        ],
+        "source": "src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38"
+      }
+    ],
     "requires": [
       {
         "facet": "VaultCore",
@@ -413,6 +425,16 @@
         "source": "src/governance/GovernedDiamondCutInit.sol#L23-L23"
       },
       {
+        "facet": "ERC20Votes",
+        "init": "ERC20VotesInit",
+        "source": "src/tokens/ERC20/ERC20VotesInit.sol#L18-L18"
+      },
+      {
+        "facet": "GovernedVault",
+        "init": "GovernedVaultInit",
+        "source": "src/defi/GovernedVaultInit.sol#L44-L44"
+      },
+      {
         "facet": "DiamondCutFacet",
         "init": "OwnableInit",
         "source": "lib/diamond-lib/src/facets/DiamondCutFacet.sol#L24-L26"
@@ -451,6 +473,10 @@
       {
         "name": "ERC20Init",
         "source": "src/tokens/ERC20/ERC20Init.sol#L13-L15"
+      },
+      {
+        "name": "ERC20VotesInit",
+        "source": "src/tokens/ERC20/ERC20VotesInit.sol#L18-L24"
       },
       {
         "name": "ERC4626Init",

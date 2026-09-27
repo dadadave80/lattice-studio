@@ -208,6 +208,9 @@ export const FACET_INITS: { facet: string; init: string; source: Cite }[] = [
     source: { path: "src/governance/GovernedSafeDiamondCutInit.sol", needle: "function init(" },
   },
   { facet: "GovernedDiamondCut", init: "GovernedDiamondCutInit", source: { path: "src/governance/GovernedDiamondCutInit.sol", needle: "function init(" } },
+  { facet: "ERC20Votes", init: "ERC20VotesInit", source: { path: "src/tokens/ERC20/ERC20VotesInit.sol", needle: "function init(" } },
+  // A bundle: INIT-04 offers it only while the plan has no steps (FX23).
+  { facet: "GovernedVault", init: "GovernedVaultInit", source: { path: "src/defi/GovernedVaultInit.sol", needle: "function init(GovernedVaultParams calldata p)" } },
   // DiamondCutFacet checks the owner OwnableInit sets; without it the diamond can never be upgraded.
   { facet: "DiamondCutFacet", init: "OwnableInit", source: { path: "lib/diamond-lib/src/facets/DiamondCutFacet.sol", needle: "function diamondCut(", lines: 3 } },
   { facet: "OwnableFacet", init: "OwnableInit", source: { path: "lib/diamond-lib/src/initializers/OwnableInit.sol", needle: "function init(" } },
@@ -216,8 +219,11 @@ export const FACET_INITS: { facet: string; init: string; source: Cite }[] = [
 // ── init specs (spec L175-L191, contracts §3.1) ────────────────────────────────────────────────────
 
 /** An InitSpec before the generator adds `release`, with the source of its signature. */
-/** `afterSource` cites the library note an `after` constraint comes from (R10). */
-export type InitSource = Omit<InitSpec, "release"> & { path: string; source: Cite; afterSource?: Cite };
+/**
+ * `afterSource` cites the library note an `after` constraint comes from (R10); `sameCallSource` the note that
+ * names the modules another init must run in the same `initialize()` call.
+ */
+export type InitSource = Omit<InitSpec, "release"> & { path: string; source: Cite; afterSource?: Cite; sameCallSource?: Cite };
 
 const ADMIN_ROLE = "DEFAULT_ADMIN_ROLE";
 
@@ -322,6 +328,38 @@ export const INITS: InitSource[] = [
     sameCall: [],
     path: "src/tokens/ERC20/ERC20Init.sol",
     source: { path: "src/tokens/ERC20/ERC20Init.sol", needle: "function init(string memory name_", lines: 3 },
+  },
+  {
+    name: "ERC20VotesInit",
+    contract: "ERC20VotesInit",
+    fn: "init(string,address)",
+    kind: "step",
+    params: [
+      param({ name: "name_", type: "string", doc: "The EIP-712 domain name: the token name." }),
+      param({
+        name: "admin_",
+        type: "address",
+        doc: "The address granted `DEFAULT_ADMIN_ROLE` (gates a consumer's minting authority).",
+        rule: "nonzero",
+        authority: true,
+        role: ADMIN_ROLE,
+      }),
+    ],
+    // The Solidity order: ERC20Votes is the facet's module even though AccessControl comes last (FX23 `facetModule`).
+    initializes: [
+      { module: "EIP712", with: { name: "name_", version: "1" } },
+      { module: "Nonces" },
+      { module: "Votes" },
+      { module: "ERC20Votes" },
+      { module: "AccessControl", with: { admin: "admin_" } },
+    ],
+    after: [],
+    // `__ERC20Votes_init` has no storage of its own: these must initialize in the same initializer block. It runs
+    // EIP712, Nonces and Votes itself; ERC20 comes from ERC20Init alongside it (as the real overlay has it).
+    sameCall: ["ERC20", "EIP712", "Nonces", "Votes"],
+    sameCallSource: { path: "src/tokens/ERC20/libraries/ERC20VotesLib.sol", needle: "ERC20, EIP712, Nonces, and Votes must be", lines: 2 },
+    path: "src/tokens/ERC20/ERC20VotesInit.sol",
+    source: { path: "src/tokens/ERC20/ERC20VotesInit.sol", needle: "function init(string memory name_, address admin_)", lines: 7 },
   },
   {
     name: "ERC4626Init",

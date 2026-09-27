@@ -7,7 +7,7 @@
     "foundry": "1.8.3",
     "solc": "0.8.36"
   },
-  "hash": "0xce843be12f8b470d72cd0ddb41df9aed8a0c7d7abad718b34bb8b2731805ff24",
+  "hash": "0xfb12a48e0e8329c2e025e8a390b26d24d60e7052488955ec9061e2daa23e6e50",
   "deployer": {
     "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
     "codehash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989"
@@ -2781,6 +2781,7 @@
         "0x5c19a95c",
         "0xc3cda520"
       ],
+      "init": "ERC20VotesInit",
       "detail": {
         "path": "shards/ERC20Votes.json",
         "bytes": 2564,
@@ -3722,6 +3723,7 @@
         "0x91ddadf4",
         "0x4bf5d7e9"
       ],
+      "init": "GovernedVaultInit",
       "detail": {
         "path": "shards/GovernedVault.json",
         "bytes": 4201,
@@ -6349,6 +6351,70 @@
       }
     },
     {
+      "name": "ERC20VotesInit",
+      "contract": "ERC20VotesInit",
+      "fn": "init(string,address)",
+      "kind": "step",
+      "params": [
+        {
+          "name": "name_",
+          "type": "string",
+          "doc": "The EIP-712 domain name: the token name."
+        },
+        {
+          "name": "admin_",
+          "type": "address",
+          "doc": "The address granted `DEFAULT_ADMIN_ROLE` (gates a consumer's minting authority).",
+          "rule": "nonzero",
+          "authority": true,
+          "role": "DEFAULT_ADMIN_ROLE"
+        }
+      ],
+      "initializes": [
+        {
+          "module": "EIP712",
+          "with": {
+            "name": "name_",
+            "version": "1"
+          }
+        },
+        {
+          "module": "Nonces"
+        },
+        {
+          "module": "Votes"
+        },
+        {
+          "module": "ERC20Votes"
+        },
+        {
+          "module": "AccessControl",
+          "with": {
+            "admin": "admin_"
+          }
+        }
+      ],
+      "after": [],
+      "sameCall": [
+        "ERC20",
+        "EIP712",
+        "Nonces",
+        "Votes"
+      ],
+      "release": {
+        "salt": "0xfd475fa2935280764e3cf93d84b3e842f784f757b2b6b2cad50c06c72a0acab3",
+        "version": "0.2.0",
+        "address": "0xB7ff32287A3E084087fFA76586d3FaB352bb766B",
+        "codehash": "0x2dbe6f5dd5305cabdf44084733833802deaef99550402d4c056a8021967c16da",
+        "initCodeHash": "0x9e9e2a9e20773068b0195e1178a178c74966e85c65920a5973df0c69f34ed0c2",
+        "creationCode": {
+          "path": "code/ERC20VotesInit.creation.hex",
+          "bytes": 46,
+          "hash": "0x47bf081573e5a595b02094089aaa1aaa520f0da6f71d5dd55ed7c425b6f70a3d"
+        }
+      }
+    },
+    {
       "name": "ERC4626Init",
       "contract": "ERC4626Init",
       "fn": "init(address,string,string,uint8)",
@@ -6472,11 +6538,6 @@
         "AccessControl",
         "ERC4626"
       ],
-      "afterSource": {
-        "path": "src/defi/libraries/VaultCoreLib.sol",
-        "needle": "after ERC4626Lib.__ERC4626_init",
-        "lines": 2
-      },
       "sameCall": [],
       "release": {
         "salt": "0x45048efceb8d9b05cec3b0b7db3da77eb2628a2ed99b0a2e69eb2d195a48be77",
@@ -6733,11 +6794,6 @@
       "after": [
         "AccessControl"
       ],
-      "afterSource": {
-        "path": "src/governance/libraries/GovernedDiamondCutLib.sol",
-        "needle": "AccessControl must already be initialized",
-        "lines": 2
-      },
       "sameCall": [],
       "registersInterfaces": true,
       "release": {

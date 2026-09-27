@@ -297,7 +297,7 @@ function writeShard(files: Files, build: FacetBuild): void {
 
 function buildInits(files: Files): InitSpec[] {
   const releases = new Map<string, SharedContract>();
-  return INITS.map(({ path: _path, source: _source, ...spec }) => {
+  return INITS.map(({ path: _path, source: _source, afterSource: _after, sameCallSource: _sameCall, ...spec }) => {
     if (spec.ctorArgs) return spec;
     let release = releases.get(spec.contract);
     if (!release) {
@@ -448,6 +448,7 @@ function provenance(fixture: Catalog, builds: Map<string, number>): unknown {
       touchesOnly: TOUCHES_ONLY.map((t) => ({ facet: t.facet, namespace: t.namespace, source: cite(t.source) })),
       summaries: SUMMARIES.map((x) => ({ facet: x.facet, source: cite(x.source) })),
       after: INITS.flatMap((i) => (i.afterSource ? [{ name: i.name, after: i.after, source: cite(i.afterSource) }] : [])),
+      sameCall: INITS.flatMap((i) => (i.sameCallSource ? [{ name: i.name, sameCall: i.sameCall, source: cite(i.sameCallSource) }] : [])),
       requires: REQUIRES.map((r) => ({ facet: r.facet, anyOf: r.anyOf, strength: r.strength, source: cite(r.source) })),
       defaultOwnerOf: DEFAULT_OWNERS.map((d) => ({ facet: d.facet, selectors: d.selectors, source: cite(d.source) })),
       seams: SEAMS.map((s) => ({ selector: s.selector, when: s.when, anyOf: s.anyOf, source: cite(s.source) })),

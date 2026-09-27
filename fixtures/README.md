@@ -54,6 +54,7 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
 | DiamondCutFacet needs OwnableInit | `lib/diamond-lib/src/facets/DiamondCutFacet.sol#L24-L26` |
 | InitSpec signatures, parameter names and docs, `initializes` | each init contract's `init` body (see `provenance.json`) |
 | GovernedVaultInit's struct and sequence | `src/defi/GovernedVaultInit.sol#L20-L30`, `#L44-L87` |
+| ERC20VotesInit's `sameCall` | `src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38` |
 | GovernedVault examples | `script/base/defi/GrantExample.s.sol#L26` |
 | Salt, address and slot formulas | `script/deploy/DeployRelease.s.sol#L94-L97`, `#L238`; ERC-7201 |
 
@@ -98,10 +99,13 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
 - **`after` names modules** (contracts §4): an init satisfies `after: [M]` when earlier steps initialize M or it
   initializes M itself. VaultCoreInit has `after: ["AccessControl", "ERC4626"]` and GovernedDiamondCutInit
   `after: ["AccessControl"]`; both run those modules themselves, so neither fires on its own. `sameCall` is empty
-  everywhere (ERC20VotesInit, which needs it, isn't in the fixture).
+  everywhere but ERC20VotesInit: `__ERC20Votes_init` has no storage of its own, so ERC20, EIP712, Nonces and Votes
+  must initialize in the same initializer block (`ERC20VotesLib.sol#L37-L38`, as the real overlay has it). It runs
+  the last three itself; ERC20 comes from ERC20Init beside it.
 - **OwnableInit and the account inits initialize `Ownable`** through `OwnableLib.initializeOwner`, which isn't a
   `__X_init`; they list it so INIT-04 can see DiamondCutFacet's owner is set.
-- **Facet `init`** is set only where the facet has its own init contract in the fixture. ERC165Facet has none:
+- **Facet `init`** is set only where the facet has its own init contract in the fixture. ERC20Votes' is
+  ERC20VotesInit and GovernedVault's is the GovernedVaultInit bundle, as in the real catalog. ERC165Facet has none:
   no Lattice recipe runs ERC165Init (the known "no recipe registers 0x01ffc9a7" issue), and INIT-04 would block
   every template.
 - **Families**: `upgrade` is R4's five; `access` is AccessControl, AccessControlEnumerable and
