@@ -68,10 +68,10 @@ describe("DialogHost", () => {
     expect(session.get().dialogs).toEqual([]);
   });
 
-  test("a v2 dialog says it isn't in v1", async () => {
+  test("a v2 dialog names the phase it arrives in", async () => {
     await renderWithStudio(<DialogHost />);
     openDialog("open-diamond");
-    await expect.element(page.getByRole("dialog", { name: "Open diamond" }).getByText("Not in v1.")).toBeVisible();
+    await expect.element(page.getByRole("dialog", { name: "Open diamond" }).getByText("Arrives in v2.")).toBeVisible();
   });
 
   test("renders the registered component and returns focus to the opener after closing", async () => {
