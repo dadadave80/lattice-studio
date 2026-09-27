@@ -10,9 +10,15 @@ const repoRoot = join(import.meta.dir, "..", "..");
 const workflowsDir = join(repoRoot, ".github", "workflows");
 const files = readdirSync(workflowsDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
 
-type StepLike = { run?: unknown };
-type JobLike = { "runs-on"?: unknown; uses?: unknown; steps?: readonly StepLike[] };
-type WorkflowLike = { name?: unknown; jobs?: Record<string, JobLike> };
+type StepLike = { run?: unknown; uses?: unknown; if?: unknown; env?: Record<string, unknown>; permissions?: Record<string, unknown> };
+type JobLike = {
+  "runs-on"?: unknown;
+  uses?: unknown;
+  steps?: readonly StepLike[];
+  on?: unknown;
+  permissions?: Record<string, unknown>;
+};
+type WorkflowLike = { name?: unknown; on?: unknown; permissions?: Record<string, unknown>; env?: Record<string, unknown>; jobs?: Record<string, JobLike> };
 
 describe("GitHub Actions workflows", () => {
   test("at least one workflow file exists", () => {
@@ -57,8 +63,108 @@ describe("GitHub Actions workflows", () => {
           }
         }
       });
+
+      // spec L864 "Frozen lockfile" (§16 audit #36): a plain `bun install` inside a workflow step must always be
+      // frozen, so a rewritten bun.lock in CI can never quietly widen a dependency's version.
+      test("every `bun install` step passes --frozen-lockfile", () => {
+        const doc = Bun.YAML.parse(text) as WorkflowLike;
+        for (const [jobId, job] of Object.entries(doc.jobs ?? {})) {
+          for (const [i, step] of (job.steps ?? []).entries()) {
+            if (typeof step.run !== "string" || !/\bbun\s+install\b/.test(step.run)) continue;
+            expect(step.run, `${jobId} step ${i}: \`${step.run}\``).toMatch(/--frozen-lockfile\b/);
+          }
+        }
+      });
     });
   }
+});
+
+describe("frozen lockfile and blocked install scripts (§16 audit #36, #39, spec L864)", () => {
+  test("root package.json's trustedDependencies is empty", () => {
+    const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as { trustedDependencies?: unknown[] };
+    expect(pkg.trustedDependencies).toEqual([]);
+  });
+});
+
+describe("publish-cli.yml (§16 audit #40, spec L864 npm provenance)", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "publish-cli.yml"), "utf8")) as WorkflowLike;
+  const job = doc.jobs?.["publish"];
+
+  test("has id-token: write, for provenance", () => {
+    expect(doc.permissions?.["id-token"]).toBe("write");
+  });
+
+  test("publishes with --provenance", () => {
+    const publishStep = job?.steps?.find((s) => typeof s.run === "string" && s.run.includes("npm publish"));
+    expect(publishStep?.run).toContain("--provenance");
+  });
+});
+
+describe("nightly.yml (§17 audit #40, spec L914: scheduled, report-only)", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "nightly.yml"), "utf8")) as WorkflowLike & {
+    on?: { schedule?: readonly { cron?: string }[] };
+  };
+
+  test("runs on a schedule", () => {
+    expect(Array.isArray(doc.on?.schedule) && doc.on.schedule.length > 0).toBe(true);
+    expect(typeof doc.on?.schedule?.[0]?.cron).toBe("string");
+  });
+
+  test("every step that runs golden or chain tests is report-only (continue-on-error)", () => {
+    const job = Object.values(doc.jobs ?? {})[0];
+    const reportOnlySteps = (job?.steps ?? []).filter(
+      (s) => typeof s.run === "string" && /bun run (golden|test:chain)/.test(s.run),
+    );
+    expect(reportOnlySteps.length).toBeGreaterThan(0);
+    for (const s of reportOnlySteps) expect((s as { "continue-on-error"?: unknown })["continue-on-error"]).toBe(true);
+  });
+});
+
+describe("fork.yml (§17 audit #76, spec L935: the pinned block is the harness's, not a stale workflow env)", () => {
+  const text = readFileSync(join(workflowsDir, "fork.yml"), "utf8");
+  const doc = Bun.YAML.parse(text) as WorkflowLike;
+
+  test("declares no FORK_BLOCK env: e2e-chain/fork.chain.test.ts pins its own fork block and never reads one from the environment", () => {
+    expect(doc.env?.["FORK_BLOCK"]).toBeUndefined();
+    for (const job of Object.values(doc.jobs ?? {})) {
+      for (const step of job.steps ?? []) expect((step.env ?? {})["FORK_BLOCK"]).toBeUndefined();
+    }
+  });
+});
+
+describe("update-screenshots.yml (§17 audit #79, spec L937: the missing chromium-linux baselines)", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "update-screenshots.yml"), "utf8")) as WorkflowLike;
+  const job = Object.values(doc.jobs ?? {})[0];
+
+  test("is workflow_dispatch only: never runs on a pull request or push", () => {
+    expect(doc.on).toEqual({ workflow_dispatch: {} });
+  });
+
+  test("passes Vitest's own --update flag, not the frozen scripts/dev/test-browser.ts wrapper", () => {
+    const step = job?.steps?.find((s) => typeof s.run === "string" && s.run.includes("vitest"));
+    expect(step?.run).toContain("--update");
+  });
+
+  test("uploads the regenerated baselines as an artifact instead of committing them", () => {
+    const upload = job?.steps?.find((s) => s.uses === "actions/upload-artifact@v4");
+    expect(upload).toBeDefined();
+    const withOpts = (upload as { with?: { path?: string } } | undefined)?.with;
+    expect(withOpts?.path).toContain("chromium-linux");
+  });
+});
+
+describe("Dependabot (§16 audit #38, spec L864: dependency updates arrive as reviewed, grouped PRs)", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(repoRoot, ".github", "dependabot.yml"), "utf8")) as {
+    updates?: readonly { "package-ecosystem"?: string; groups?: Record<string, unknown> }[];
+  };
+
+  test("covers bun (not npm: an npm-ecosystem PR wouldn't touch bun.lock and would fail --frozen-lockfile) and github-actions, each grouped", () => {
+    const ecosystems = (doc.updates ?? []).map((u) => u["package-ecosystem"]);
+    expect(ecosystems).toContain("bun");
+    expect(ecosystems).not.toContain("npm");
+    expect(ecosystems).toContain("github-actions");
+    for (const update of doc.updates ?? []) expect(Object.keys(update.groups ?? {}).length, JSON.stringify(update)).toBeGreaterThan(0);
+  });
 });
 
 describe("release-please config", () => {
@@ -67,5 +173,29 @@ describe("release-please config", () => {
     const config = JSON.parse(readFileSync(join(configDir, "release-please-config.json"), "utf8")) as { packages: Record<string, unknown> };
     const manifest = JSON.parse(readFileSync(join(configDir, "release-please-manifest.json"), "utf8")) as Record<string, string>;
     expect(Object.keys(config.packages).sort()).toEqual(Object.keys(manifest).sort());
+  });
+
+  // §17 audit #24, spec L904/L945: without apps/studio in the manifest, release-please never bumps its
+  // package.json, and every Foundry script header, brief and Safe batch keeps saying "0.0.0" forever.
+  test("apps/studio is a manifest package, so its version bumps and every export stops saying 0.0.0", () => {
+    const configDir = join(import.meta.dir, "..", "..", ".github");
+    const config = JSON.parse(readFileSync(join(configDir, "release-please-config.json"), "utf8")) as { packages: Record<string, unknown> };
+    const manifest = JSON.parse(readFileSync(join(configDir, "release-please-manifest.json"), "utf8")) as Record<string, string>;
+    expect(config.packages["apps/studio"]).toBeDefined();
+    expect(manifest["apps/studio"]).toBeDefined();
+  });
+});
+
+describe("release-please.yml appends the catalog hash (§16 audit #7, spec L855)", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "release-please.yml"), "utf8")) as WorkflowLike;
+  const steps = Object.values(doc.jobs ?? {})[0]?.steps ?? [];
+
+  test("a step runs append-catalog-hash-to-release.ts for each manifest package, gated on that package's own release", () => {
+    const runs = steps.filter((s) => typeof s.run === "string" && s.run.includes("append-catalog-hash-to-release.ts"));
+    expect(runs.length).toBe(2);
+    for (const s of runs) {
+      expect(typeof s.if).toBe("string");
+      expect(s.if as string).toContain("release_created");
+    }
   });
 });
