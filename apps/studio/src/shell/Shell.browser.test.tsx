@@ -482,6 +482,13 @@ describe("splitters", () => {
 
   test("the inspector's menu has Narrower, Wider and Collapse (spec L764), and says why at a limit", async () => {
     await renderAt(1440);
+    // The header sits over S5c's panel, which still fills the rest of the pane: nothing double-scrolls.
+    const aside = pane("inspector");
+    const panel = aside.querySelector<HTMLElement>("[data-inspector-view]");
+    if (!panel) throw new Error("No inspector panel.");
+    expect(panel.getBoundingClientRect().bottom).toBeCloseTo(aside.getBoundingClientRect().bottom, 0);
+    expect(panel.getBoundingClientRect().top).toBeCloseTo(aside.getBoundingClientRect().top + 36, 0);
+    expect(aside.scrollHeight).toBeLessThanOrEqual(aside.clientHeight + 1);
     const inspector = page.getByRole("region", { name: "Inspector", exact: true });
     await inspector.getByRole("button", { name: "Inspector menu" }).click();
     const menu = page.getByRole("menu", { name: "Inspector menu" });
