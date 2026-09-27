@@ -63,9 +63,10 @@ export function setAddressOp(
     const before = project.labels?.[path] ?? null;
     const unchangedValue = !set.changed && typeof value === "string" && sameAddress(addressAt(project.recipe.init, path), value);
     if (!set.changed && !(unchangedValue && name !== before)) return set;
-    const { [path]: _dropped, ...others } = project.labels ?? {};
+    // Core's set drops the path's label with the old value, so the name is written back even when it is the same one.
+    const { [path]: _dropped, ...others } = set.project.labels ?? {};
     const labels = name === null ? others : { ...others, [path]: name };
-    const next = before === name ? set.project : withLabels(set.project, labels);
+    const next = withLabels(set.project, labels);
     if (name === null || typeof value !== "string") return { project: next, changed: true, summary: set.summary };
     return { project: next, changed: true, summary: `Set ${label} to ${labeledAddress(name, value as Address)}` };
   };
