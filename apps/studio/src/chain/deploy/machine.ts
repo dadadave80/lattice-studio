@@ -8,9 +8,9 @@
  *   open marks it "Changed since review" and simulates again (the machine watches its inputs; `changed()` does the
  *   same). The mark stays after the new result is in, until Sign or a fresh review, so it's seen on a fast chain too.
  *   An RPC that can't simulate at all says so; `sign({ withoutSimulation })` then goes on after the review's extra tick.
- * - **Sign.** Refused while the tab is read-only. Re-probes the chain first (the predicted address must still be
- *   empty), rebuilds the transaction, asserts that the salt's first 20 bytes are the sending account, re-reads the
- *   wallet's account and chain, then asks the wallet (bound to the chain). Rejected → Review with "You canceled in
+ * - **Sign.** Refused while the tab is read-only. Asserts first that the salt's first 20 bytes are the sending account,
+ *   then re-probes the chain (the predicted address must still be empty), rebuilds the transaction, re-reads the
+ *   wallet's account and chain, and asks the wallet (bound to the chain). Rejected → Review with "You canceled in
  *   your wallet."; sent → Pending, with a record written at once.
  * - **Pending → Stale → …** The machine owns the receipt timeout (Settings, 180 s): no receipt by then reads
  *   "Not seen for 3 minutes. It may have been dropped." while the watcher keeps going, so a late receipt is still
@@ -988,6 +988,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
 
   const discardProposal = (): void => {
     if (state.phase !== "proposed" || state.address === undefined || state.chainId === undefined) {
+      // Ruling R9: no fix clause. Nothing is wrong; there's just no proposal waiting.
       note("There's no proposal to discard.");
       return;
     }
