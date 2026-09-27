@@ -1,23 +1,27 @@
 import { useEffect, useId, useRef } from "react";
-import { log } from "@/contracts";
-import { Button } from "@/ui";
+import { log, useSettings } from "@/contracts";
+import { Button, usePlatform } from "@/ui";
 import { cantSimulate, pendingAcks, signEnablement, type Enablement } from "./model";
 import { shortOfFunds, useReview, type Review } from "./review-data";
 import { useReviewState } from "./review-state";
 import { CANCELED_IN_WALLET } from "./copy";
-import { fixtureBlock } from "./entry-copy";
+import { fixtureBlock, nextProblemKey } from "./entry-copy";
 import styles from "./review.module.css";
 
 /** Sign & deploy's enablement for this review (spec L573, IR L238). */
 export function useSignEnablement(review: Review): Enablement {
   const noSimulationTick = useReviewState((s) => s.noSimulationTick);
   const typedName = useReviewState((s) => s.typedName);
+  const keymap = useSettings((s) => s.keymap);
+  const singleKeys = useSettings((s) => s.singleKeys);
+  const platform = usePlatform();
   const { analysis, account, chainId, deploy } = review;
   return signEnablement({
     online: review.online,
     readOnly: review.readOnly,
     catalogBlock: fixtureBlock(review.catalog.lattice.tag),
     blockers: analysis.problems.filter((p) => p.severity === "blocker").length,
+    nextKey: nextProblemKey({ keymap, singleKeys }, platform),
     chainId,
     chainName: review.chainName,
     readiness: review.readiness,

@@ -2,8 +2,10 @@
  * The few words and phase sets the commands need (they're in the entry chunk). Everything else the review says
  * lives in `copy.ts` and `model.ts`, which only the review's lazy chunk imports.
  */
-import { plural, type DeployPath, type Scope } from "@lattice-studio/core";
-import type { DeployPhase } from "@/contracts";
+import { plural, type DeployPath, type Platform, type Scope } from "@lattice-studio/core";
+import { listBindings, type DeployPhase, type SettingsState } from "@/contracts";
+import { firstKeys, keyLabel } from "@/ui/keys/key-labels";
+import { liveSpecs } from "@/ui/keys/use-aria-key-shortcuts";
 
 /** Spec L561, IR L13: Deploy offline; ⌘/Ctrl+Enter only announces it. */
 export const DEPLOY_NEEDS_CONNECTION = "Deploy needs a connection";
@@ -14,9 +16,20 @@ export const PLACE_FACETS_FIRST = "Place facets first";
 /** Spec L385: Deploy while a Safe proposal waits. */
 export const WAITING_FOR_SAFE = "Waiting for the Safe to execute the batch";
 
-/** Spec L382, L661: Deploy disabled while blockers remain. */
-export function resolveBlockers(count: number): string {
-  return `Resolve ${plural(count, "blocker")} · F8`;
+/**
+ * `problem.next`'s key in effect, as its chip shows it ("F8", or its remap), or null when it has none here (the
+ * same reading as the console's `export-gates.ts` `bindingKey`, kept here so the entry needn't import the console).
+ */
+export function nextProblemKey(keys: Pick<SettingsState, "keymap" | "singleKeys">, platform: Platform): string | null {
+  const specs = listBindings(keys.keymap).find((b) => b.id === "problem.next")?.keys;
+  const shown = firstKeys(liveSpecs(specs, platform, keys.singleKeys), platform);
+  return shown === null ? null : keyLabel(shown, platform);
+}
+
+/** Spec L382, L661: Deploy disabled while blockers remain, naming `problem.next`'s key (none when it has none). */
+export function resolveBlockers(count: number, key: string | null): string {
+  const text = `Resolve ${plural(count, "blocker")}`;
+  return key === null ? text : `${text} · ${key}`;
 }
 
 /** Why Sign & deploy (or the Safe batch) waits on the acknowledgements (spec L573). */

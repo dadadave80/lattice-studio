@@ -56,6 +56,19 @@ describe("Cost", () => {
     await expect.element(cost).toHaveAttribute("data-status", "waiting");
   });
 
+  test("says Estimating gas… while the simulation estimates it, even over an earlier estimate (spec L701)", async () => {
+    const { controller } = await renderReview({ project: templateProject("ERC20"), chain: chainWith("5200000") });
+    await expect.poll(() => controller.methods()).toContain("open");
+    const cost = section("Cost");
+    controller.set({ phase: "simulating" });
+    await expect.element(cost.getByText("Estimating gas…", { exact: true })).toBeVisible();
+    await expect.element(cost).toHaveAttribute("data-status", "waiting");
+    expect(cost.getByText("about 5.2M gas").query()).toBeNull();
+    controller.set({ phase: "ready", simulation: { ok: true, block: 1 } });
+    await expect.element(cost.getByText("about 5.2M gas")).toBeVisible();
+    expect(cost.getByText("Estimating gas…").query()).toBeNull();
+  });
+
   test("an estimate over the cap blocks with NET-06 and Remove facets…", async () => {
     await renderReview({ project: templateProject("ERC20"), chain: chainWith("17200000") });
     const cost = section("Cost");

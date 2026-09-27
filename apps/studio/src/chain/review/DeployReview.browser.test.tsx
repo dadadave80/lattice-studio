@@ -2,8 +2,10 @@ import type { Address, Hex } from "@lattice-studio/core";
 import { formatAddress } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
-import { doc, getAnalysis, getCatalog, putDeployment, runCommand, session } from "@/contracts";
+import { DEFAULT_SETTINGS, doc, getAnalysis, getCatalog, putDeployment, runCommand, session, settings } from "@/contracts";
 import { prediction } from "@/state";
+import { keyLabel } from "@/ui/keys/key-labels";
+import { overridePlatform } from "@/ui/shared/platform";
 import { axeViolations } from "@/ui/testing/axe";
 import { FAKE_CHAINS, FAKE_CONNECTORS, fakeChainService, healthyChainState, onCleanup } from "../../../test/harness";
 import { appDeployDeps } from "../deploy/app-deps";
@@ -180,6 +182,36 @@ describe("Deployer (spec L564, Flow 14)", () => {
     await expect.element(signButton()).toHaveAccessibleDescription("Needs about 0.012 ETH; this account has 0.004.");
   });
 
+  test.each([
+    ["a testnet with a faucet links to it", "https://faucet.example/sepolia"],
+    ["a chain without a faucet has no link", null],
+  ] as const)("short of funds: %s (spec L592)", async (_name, faucet) => {
+    const chains = FAKE_CHAINS.map((c) => (c.id === SEPOLIA && faucet !== null ? { ...c, faucet } : c));
+    const chain = fakeChainService({
+      account: account({ balance: 4n * 10n ** 15n }), catalog: deployableCatalog(), state: { [SEPOLIA]: { gasEstimate: "5000000" } }, chains,
+    });
+    await readyReview({ chain, fees: async () => ({ ok: true, value: { about: 12n * 10n ** 15n, max: 2n * 10n ** 16n } }) });
+    const deployer = section("Deployer");
+    const funds = () => deployer.element().querySelector("[data-funds]")?.textContent ?? "";
+    await expect.poll(funds).toMatch(/^Needs about 0\.012 ETH; this account has 0\.004\./);
+    const link = deployer.getByRole("link", { name: "Get test ETH from a faucet" });
+    if (faucet === null) expect(link.query()).toBeNull();
+    else await expect.element(link).toHaveAttribute("href", faucet);
+  });
+
+  test("a stop at Sign that dropped the simulation says why, in the footer and the Simulation section, not Simulating…", async () => {
+    // Review with no simulation, as stopSign leaves it (the fake's open() doesn't simulate).
+    const { controller } = await renderReview({ project: templateProject("ERC20") });
+    await expect.poll(() => controller.methods()).toContain("open");
+    await tickExamples();
+    await expect.element(signButton()).toHaveAccessibleDescription("Simulating…");
+    const error = "0x5FbD…0aa3 already has code on Sepolia. Use a new salt.";
+    controller.set({ phase: "review", error });
+    await expect.element(signButton()).toHaveAccessibleDescription(error);
+    await expect.element(page.getByRole("dialog").getByText("Simulating…")).not.toBeInTheDocument();
+    await expect.element(section("Simulation").getByText(error)).toBeVisible();
+  });
+
   test("a Safe deploys through its batch: Sign & deploy says so and Download Transaction Builder batch is offered", async () => {
     const chain = fakeChainService({ account: account({ address: SAFE, kind: "safe" }), catalog: deployableCatalog() });
     await readyReview({ chain });
@@ -318,6 +350,17 @@ describe("Checks, acknowledgements and Sign & deploy (spec L569, L573)", () => {
     await expect.element(signButton()).toHaveAccessibleDescription("Resolve 1 blocker · F8");
     await expect.element(section("Checks").getByText(/^The loupe is incomplete/)).toBeVisible();
     await expect.element(section("Checks").getByText("Blocks deploy")).toBeVisible();
+  });
+
+  test("the blocker count names problem.next's key as remapped, or none when it's unbound (spec L661)", async () => {
+    onCleanup(overridePlatform("other"));
+    const project = templateProject("ERC20");
+    const recipe = { ...project.recipe, facets: project.recipe.facets.filter((f) => f !== "DiamondLoupeFacet") };
+    await renderReview({ project: { ...project, recipe }, settings: { keymap: { "problem.next": ["Alt+n"] } } });
+    await expect.element(signButton()).toHaveAccessibleDescription(`Resolve 1 blocker · ${keyLabel("Alt+n", "other")}`);
+    onCleanup(() => settings.set({ keymap: DEFAULT_SETTINGS.keymap }));
+    settings.set({ keymap: { "problem.next": [] } });
+    await expect.element(signButton()).toHaveAccessibleDescription("Resolve 1 blocker");
   });
 
   test("a plain warning (CORE-04) is listed in Checks and doesn't gate Sign & deploy (spec L296)", async () => {

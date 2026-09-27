@@ -34,6 +34,7 @@ function ready(patch: Partial<SignInput> = {}): SignInput {
     online: true,
     catalogBlock: null,
     blockers: 0,
+    nextKey: "F8",
     chainId: 11155111,
     chainName: "Sepolia",
     readiness: { status: "ready", state: chainState() },
@@ -66,6 +67,9 @@ describe("Sign & deploy enablement (spec L573, IR L238)", () => {
     expect(reason({ catalogLoading: true })).toBe("The catalog hasn't loaded yet");
     expect(reason({ blockers: 2 })).toBe("Resolve 2 blockers · F8");
     expect(reason({ blockers: 1 })).toBe("Resolve 1 blocker · F8");
+    // problem.next's key as remapped, or none when it has none (spec L661).
+    expect(reason({ blockers: 2, nextKey: "⌥N" })).toBe("Resolve 2 blockers · ⌥N");
+    expect(reason({ blockers: 2, nextKey: null })).toBe("Resolve 2 blockers");
     expect(reason({ chainId: null })).toBe(CHOOSE_A_CHAIN);
     expect(reason({ readiness: { status: "checking" } })).toBe("Checking Sepolia…");
     expect(reason({ readiness: { status: "error", reason: "Sepolia's public RPC isn't answering." } })).toBe("Sepolia's public RPC isn't answering.");
@@ -87,6 +91,13 @@ describe("Sign & deploy enablement (spec L573, IR L238)", () => {
       .toBe("The simulation reverted: VaultCore: InvalidAsset()");
     expect(reason({ deploy: { phase: "awaitingSignature", snapshot: HASH } })).toBe("Waiting for your wallet");
     expect(reason({ deploy: { phase: "pending", snapshot: HASH } })).toBe("This deploy is already on its way");
+  });
+
+  test("a stop at Sign that dropped the simulation gives its reason, not Simulating…", () => {
+    const error = "0x5FbD…0aa3 already has code on Sepolia.";
+    expect(reason({ deploy: { phase: "review", snapshot: HASH, error } })).toBe(error);
+    // Still simulating, or the new simulation under way: the error doesn't stand in for it.
+    expect(reason({ deploy: { phase: "simulating", snapshot: HASH, error } })).toBe(SIMULATING);
   });
 
   test("a rejection in the wallet goes back to Review with the simulation standing: Sign again enables (spec L574)", () => {
