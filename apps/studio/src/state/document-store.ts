@@ -4,7 +4,7 @@
  * Two zustand stores work together:
  * - the public store (`DocumentState`), which components read through `useDocument`;
  * - a history store wrapped in the vendored zundo `temporal` middleware. Its state is one `Snapshot`: the
- *   project's undoable part (`name`, `recipe`, `layout`, `provenance`), the selection that went with it, and
+ *   project's undoable part (`name`, `recipe`, `layout`, `provenance`, `labels`), the selection that went with it, and
  *   the label of the step that produced it. zundo keeps up to 200 past snapshots, one per gesture.
  *
  * `deploy` and `predicted` live only in the public project: `record` changes them without a step, and undo and
@@ -28,8 +28,8 @@ export const HISTORY_LIMIT = 200;
 /** Presses of one key closer together than this merge into one step (spec L475: "a burst of presses"). */
 export const BURST_GAP_MS = 1000;
 
-/** The part of a project that history covers (contracts §5.1). */
-export type Tracked = Pick<Project, "name" | "recipe" | "layout" | "provenance">;
+/** The part of a project that history covers (contracts §5.1), plus the ENS labels that go with its addresses (L462). */
+export type Tracked = Pick<Project, "name" | "recipe" | "layout" | "provenance" | "labels">;
 
 /** One history entry: the undoable part, its selection, and the label of the step that produced it. */
 export type Snapshot = { tracked: Tracked; selection: string[]; label: string | null };
@@ -85,15 +85,19 @@ export function untitledProject(): Project {
 }
 
 function pick(project: Project): Tracked {
-  return { name: project.name, recipe: project.recipe, layout: project.layout, provenance: project.provenance };
+  const { name, recipe, layout, provenance, labels } = project;
+  return { name, recipe, layout, provenance, ...(labels === undefined ? {} : { labels }) };
 }
 
+/** `project` with the tracked part replaced; a snapshot without labels takes the key away (FX42 keeps none when empty). */
 function merge(project: Project, tracked: Tracked): Project {
-  return { ...project, name: tracked.name, recipe: tracked.recipe, layout: tracked.layout, provenance: tracked.provenance };
+  const { labels: _current, ...rest } = project;
+  const { name, recipe, layout, provenance, labels } = tracked;
+  return { ...rest, name, recipe, layout, provenance, ...(labels === undefined ? {} : { labels }) };
 }
 
 function sameTracked(a: Tracked, b: Tracked): boolean {
-  return a.name === b.name && a.recipe === b.recipe && a.layout === b.layout && a.provenance === b.provenance;
+  return a.name === b.name && a.recipe === b.recipe && a.layout === b.layout && a.provenance === b.provenance && a.labels === b.labels;
 }
 
 function sameList(a: readonly string[], b: readonly string[]): boolean {
