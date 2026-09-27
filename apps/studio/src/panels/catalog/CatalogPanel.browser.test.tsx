@@ -1,9 +1,15 @@
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
+import { overrideCachedIndex } from "@/catalog";
+import { installShortcuts, remapBinding, WHEREVER_SINGLE_KEYS } from "@/commands";
 import {
-  command, doc, provideServices, session, setCatalogStatus, subscribeCatalogDrag, useCatalogStatus, type CatalogDrag,
+  command, doc, getCommand, provideServices, registerDropTarget, session, setCatalogStatus, settings, subscribeCatalogDrag,
+  useCatalogStatus, type CatalogDrag,
 } from "@/contracts";
+import { Tour } from "@/tour/Tour";
+import { resetTour, startTour } from "@/tour/tour-state";
+import { overridePlatform } from "@/ui/shared/platform";
 import {
   bufferedServices, fakeChainService, fixtureCatalog, healthyChainState, onCleanup, overrideCommands, renderWithStudio,
 } from "../../../test/harness";
@@ -140,6 +146,53 @@ describe("Catalog drag", () => {
     window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 7, clientX: 120, clientY: 240 }));
   });
 
+  function WithSheet() {
+    return (
+      <>
+        <div data-testid="sheet" style={{ position: "fixed", right: 0, bottom: 0, width: 120, height: 120, zIndex: 1 }} />
+        <CatalogPanel />
+      </>
+    );
+  }
+
+  test("touch: an unplaced row keeps vertical panning only, and a touch drag drops the facet on the sheet (spec L417)", async () => {
+    await renderWithStudio(<WithSheet />);
+    await typeQuery("erc4626");
+    await expect.poll(() => row("ERC4626")).not.toBeNull();
+    const target = row("ERC4626");
+    if (!target) throw new Error("ERC4626 row not found");
+    expect(getComputedStyle(target).touchAction).toBe("pan-y");
+    const dropped: CatalogDrag[] = [];
+    onCleanup(registerDropTarget({ element: page.getByTestId("sheet").element(), drop: (drag) => void dropped.push(drag) }));
+    const drags: (CatalogDrag | null)[] = [];
+    onCleanup(subscribeCatalogDrag((drag) => drags.push(drag)));
+    const sheet = page.getByTestId("sheet").element().getBoundingClientRect();
+    const x = Math.round(sheet.left + sheet.width / 2);
+    const y = Math.round(sheet.top + sheet.height / 2);
+    const touch = { bubbles: true, pointerId: 11, pointerType: "touch", isPrimary: true } as const;
+    target.dispatchEvent(new PointerEvent("pointerdown", { ...touch, clientX: 40, clientY: 200, button: 0 }));
+    expect(drags.at(-1)).toEqual({ facet: "ERC4626", pointerId: 11, clientX: 40, clientY: 200 });
+    window.dispatchEvent(new PointerEvent("pointermove", { ...touch, clientX: (40 + x) / 2, clientY: 200 }));
+    window.dispatchEvent(new PointerEvent("pointermove", { ...touch, clientX: x, clientY: y }));
+    window.dispatchEvent(new PointerEvent("pointerup", { ...touch, clientX: x, clientY: y }));
+    expect(dropped).toEqual([{ facet: "ERC4626", pointerId: 11, clientX: x, clientY: y }]);
+    expect(drags.at(-1)).toBeNull();
+  });
+
+  test("touch: a vertical swipe the browser takes for scrolling cancels the drag, and nothing drops", async () => {
+    await renderWithStudio(<WithSheet />);
+    await typeQuery("erc4626");
+    await expect.poll(() => row("ERC4626")).not.toBeNull();
+    const dropped: CatalogDrag[] = [];
+    onCleanup(registerDropTarget({ element: page.getByTestId("sheet").element(), drop: (drag) => void dropped.push(drag) }));
+    const touch = { bubbles: true, pointerId: 12, pointerType: "touch", isPrimary: true } as const;
+    row("ERC4626")?.dispatchEvent(new PointerEvent("pointerdown", { ...touch, clientX: 40, clientY: 200, button: 0 }));
+    window.dispatchEvent(new PointerEvent("pointercancel", { ...touch, clientX: 40, clientY: 260 }));
+    const sheet = page.getByTestId("sheet").element().getBoundingClientRect();
+    window.dispatchEvent(new PointerEvent("pointerup", { ...touch, clientX: sheet.left + 10, clientY: sheet.top + 10 }));
+    expect(dropped).toEqual([]);
+  });
+
   test("a placed (ghosted) row doesn't start a drag", async () => {
     const catalog = fixtureCatalog();
     const project = makeProject({ recipe: makeRecipe({ facets: ["ERC20"] }, catalog) });
@@ -187,14 +240,164 @@ describe("Catalog locate", () => {
   });
 });
 
-describe("Catalog focus search", () => {
-  test("/ from a tree row focuses the search field; / typed in the field does nothing special", async () => {
-    await renderWithStudio(<CatalogPanel />);
-    await clickRow(areaNodeId("tokens"));
+describe("Catalog focus search: / wherever single keys are active (IR L33, spec L659)", () => {
+  /** The page around the catalog: a plain control, and a sheet with a focused card and a card's rows. */
+  function Surroundings() {
+    return (
+      <>
+        <button type="button">Outside</button>
+        <div data-keyctx="sheet">
+          <button type="button">ERC20 card</button>
+          <div data-keyctx="card-rows">
+            <button type="button">transfer(address,uint256)</button>
+          </div>
+        </div>
+        <CatalogPanel />
+      </>
+    );
+  }
+
+  /** The real registration, through S2's real dispatcher: no fake binding stands in for it. */
+  async function renderReal(): Promise<void> {
+    onCleanup(overridePlatform("mac"));
+    onCleanup(installShortcuts());
+    await renderWithStudio(<Surroundings />);
+  }
+
+  const focusOn = (name: string) => {
+    (page.getByRole("button", { name }).element() as HTMLElement).focus();
+  };
+
+  test("registered wherever single keys are active, not in the global context alone", () => {
+    const registered = getCommand("catalog.focusSearch");
+    expect(registered.keys).toEqual(["/"]);
+    expect(registered.keyContext).toEqual([...WHEREVER_SINGLE_KEYS]);
+    expect(registered.keyContext).toEqual(["global", "sheet", "card-rows"]);
+  });
+
+  test("from a global control: focuses the search field, and the / isn't typed into it", async () => {
+    await renderReal();
+    focusOn("Outside");
     await userEvent.keyboard("/");
     await expect.element(search()).toHaveFocus();
-    await userEvent.keyboard("/erc20");
+    await expect.element(search()).toHaveValue("");
+  });
+
+  test("from a focused card on the sheet, and from a card's rows", async () => {
+    await renderReal();
+    focusOn("ERC20 card");
+    await userEvent.keyboard("/");
+    await expect.element(search()).toHaveFocus();
+    focusOn("transfer(address,uint256)");
+    await userEvent.keyboard("/");
+    await expect.element(search()).toHaveFocus();
+  });
+
+  test("from a tree row: nothing, since single keys never fire inside trees", async () => {
+    await renderReal();
+    await clickRow(areaNodeId("tokens"));
+    await userEvent.keyboard("/");
+    expect(document.activeElement).toBe(row(areaNodeId("tokens")));
+    await expect.element(search()).not.toHaveFocus();
+  });
+
+  test("with single keys off: nothing", async () => {
+    await renderReal();
+    settings.set({ singleKeys: false });
+    focusOn("Outside");
+    await userEvent.keyboard("/");
+    await expect.element(page.getByRole("button", { name: "Outside" })).toHaveFocus();
+    await expect.element(search()).not.toHaveFocus();
+  });
+
+  test("after a remap: / does nothing, and the new key focuses the search", async () => {
+    await renderReal();
+    expect(remapBinding("catalog.focusSearch", ["j"], { platform: "mac" }).ok).toBe(true);
+    focusOn("Outside");
+    await userEvent.keyboard("/");
+    await expect.element(page.getByRole("button", { name: "Outside" })).toHaveFocus();
+    await userEvent.keyboard("j");
+    await expect.element(search()).toHaveFocus();
+  });
+
+  test("/ typed in the search field is just text", async () => {
+    await renderReal();
+    await typeQuery("/erc20");
     await expect.element(search()).toHaveValue("/erc20");
+  });
+});
+
+describe("Catalog selection follows the sheet (spec L380)", () => {
+  const project = () => makeProject({ recipe: makeRecipe({ facets: ["ERC20", "Pausable"] }, fixtureCatalog()) });
+  const selectedOf = (id: string) => row(id)?.getAttribute("aria-selected");
+
+  test("selecting ERC20 on the sheet highlights its row; selecting another card moves the highlight", async () => {
+    await renderWithStudio(<CatalogPanel />, { project: project() });
+    await typeQuery("erc20");
+    await expect.poll(() => row("ERC20")).not.toBeNull();
+    expect(selectedOf("ERC20")).toBe("false");
+    session.set({ selection: ["ERC20"] });
+    await expect.poll(() => selectedOf("ERC20")).toBe("true");
+    session.set({ selection: ["Pausable"] });
+    await expect.poll(() => selectedOf("ERC20")).toBe("false");
+    expect(selectedOf("ERC20Pausable")).toBe("false");
+  });
+
+  test("an unplaced row previewed here keeps its local selection until the sheet's selection changes", async () => {
+    await renderWithStudio(<CatalogPanel />, { project: project(), session: { selection: ["ERC20"] } });
+    await typeQuery("erc20");
+    await expect.poll(() => selectedOf("ERC20")).toBe("true");
+    await clickRow("ERC20Permit");
+    await expect.poll(() => selectedOf("ERC20Permit")).toBe("true");
+    expect(selectedOf("ERC20")).toBe("false");
+    // The preview leaves the sheet's selection alone.
+    expect(session.get().selection).toEqual(["ERC20"]);
+    session.set({ selection: ["ERC20"] });
+    await expect.poll(() => selectedOf("ERC20")).toBe("true");
+    expect(selectedOf("ERC20Permit")).toBe("false");
+  });
+
+  test("moving onto a placed row with the keyboard selects its card, as the Structure tree does", async () => {
+    await renderWithStudio(<CatalogPanel />, { project: project() });
+    await typeQuery("erc20");
+    await expect.poll(() => row("ERC20")).not.toBeNull();
+    await clickRow("BridgeERC20");
+    expect(session.get().selection).toEqual([]);
+    const ids = [...document.querySelectorAll<HTMLElement>("[data-tree-id]")].map((r) => r.dataset.treeId);
+    const steps = ids.indexOf("ERC20") - ids.indexOf("BridgeERC20");
+    expect(steps).toBeGreaterThan(0);
+    for (let i = 0; i < steps; i++) await userEvent.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(row("ERC20"));
+    await expect.poll(() => session.get().selection).toEqual(["ERC20"]);
+    expect(selectedOf("ERC20")).toBe("true");
+  });
+});
+
+describe("Catalog coach mark (spec L400)", () => {
+  test("the tour's catalog step lands just below the search, beside the catalog's rows, not centered", async () => {
+    onCleanup(resetTour);
+    await renderWithStudio(
+      <>
+        <div style={{ position: "fixed", top: 40, left: 0, width: 280, height: 600 }} data-testid="left-pane">
+          <CatalogPanel />
+        </div>
+        <Tour />
+      </>,
+    );
+    startTour();
+    const card = page.getByRole("group", { name: "The catalog" });
+    await expect.element(card).toBeVisible();
+    const pane = page.getByTestId("left-pane").element();
+    const target = document.querySelector('[data-tour="catalog"]');
+    if (!target) throw new Error("no catalog coach-mark target");
+    expect(pane.contains(target)).toBe(true);
+    const targetRect = target.getBoundingClientRect();
+    const paneRect = pane.getBoundingClientRect();
+    await expect.poll(() => (card.element() as HTMLElement).getBoundingClientRect().top).toBeCloseTo(targetRect.bottom + 12, 0);
+    const cardRect = (card.element() as HTMLElement).getBoundingClientRect();
+    expect(cardRect.left).toBeLessThan(paneRect.right);
+    expect(cardRect.top).toBeGreaterThan(paneRect.top);
+    expect(cardRect.top).toBeLessThan(paneRect.bottom);
   });
 });
 
@@ -209,9 +412,21 @@ describe("Catalog areas", () => {
 });
 
 describe("Catalog loading and error", () => {
-  test("loading shows placeholder rows, no tree", async () => {
+  const placeholders = () => document.querySelector("[data-placeholder-rows]");
+
+  test("a first visit (no cached index): loading shows placeholder rows, no tree", async () => {
+    onCleanup(overrideCachedIndex(false));
     await renderWithStudio(<CatalogPanel />, { catalog: null });
     expect(document.body.textContent).toContain("Loading the catalog");
+    expect(placeholders()?.children.length).toBe(6);
+    expect(page.getByRole("tree").query()).toBeNull();
+  });
+
+  test("a later visit (the index is cached): no placeholder rows, still announced as loading", async () => {
+    onCleanup(overrideCachedIndex(true));
+    await renderWithStudio(<CatalogPanel />, { catalog: null });
+    expect(document.body.textContent).toContain("Loading the catalog");
+    expect(placeholders()).toBeNull();
     expect(page.getByRole("tree").query()).toBeNull();
   });
 
