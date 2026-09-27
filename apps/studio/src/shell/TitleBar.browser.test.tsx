@@ -81,6 +81,15 @@ describe("the project name", () => {
   });
 });
 
+/** A confirmed r1 on Sepolia whose recipe hash matches `HASH`: the chip reads Live. */
+function liveRecord(projectId: string): Deployment {
+  return {
+    projectId, chainId: 11155111, address: "0x5FbDB2315678afecb367f032d93F642f64180aa3", path: "factory",
+    deployer: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", salt: `0x${"00".repeat(32)}`, status: "confirmed",
+    recipeHash: HASH, catalogHash: HASH, at: "2026-01-01T00:00:00.000Z", verification: "exact_match", revision: 1,
+  };
+}
+
 describe("the status chip", () => {
   test("says Not deployed, and why it can't open the Deployments list while it can't", async () => {
     await renderWithStudio(<Shell />);
@@ -99,14 +108,25 @@ describe("the status chip", () => {
   test("reads the live record on the selected chain", async () => {
     useAnalysisOf({ ...emptyAnalysis(), recipeHash: HASH });
     const open = project();
-    const record: Deployment = {
-      projectId: open.id, chainId: 11155111, address: "0x5FbDB2315678afecb367f032d93F642f64180aa3", path: "factory",
-      deployer: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", salt: `0x${"00".repeat(32)}`, status: "confirmed",
-      recipeHash: HASH, catalogHash: HASH, at: "2026-01-01T00:00:00.000Z", verification: "exact_match", revision: 1,
-    };
-    await putDeployment(record);
+    await putDeployment(liveRecord(open.id));
     await renderWithStudio(<Shell />, { project: open, session: { chainId: 11155111 }, chain: true });
     await expect.element(bar().getByRole("button", { name: /^Live · Sepolia · r1/ })).toBeVisible();
+  });
+
+  test("clicking a live chip shows the Deployments list (IR L67)", async () => {
+    useAnalysisOf({ ...emptyAnalysis(), recipeHash: HASH });
+    const open = project();
+    await putDeployment(liveRecord(open.id));
+    const closed = { ...session.get().panes, inspector: { ...session.get().panes.inspector, open: false } };
+    await renderWithStudio(<Shell />, { project: open, session: { chainId: 11155111, panes: closed }, chain: true });
+    const chip = bar().getByRole("button", { name: /^Live · Sepolia · r1/ });
+    await expect.element(chip).toBeVisible();
+    await chip.click();
+    const inspector = page.getByRole("region", { name: "Inspector", exact: true });
+    const heading = inspector.getByRole("heading", { name: "Deployments", exact: true });
+    await expect.element(heading, { timeout: 10_000 }).toBeVisible();
+    await expect.element(heading).toHaveFocus();
+    await expect.element(inspector.getByRole("region", { name: "Deployments", exact: true })).toBeInViewport();
   });
 
   test("while a deploy is in flight, follows the deploy", async () => {

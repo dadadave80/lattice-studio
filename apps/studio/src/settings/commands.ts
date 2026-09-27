@@ -6,6 +6,16 @@ import { endTour, startTour, tourState } from "../tour/tour-state";
 
 const THEME_LABEL: Record<ThemeChoice, string> = { shop: "Shop", draft: "Draft", system: "System" };
 
+/** Own keys only: `constructor`, `toString` and `__proto__` are on every object's prototype, never themes. */
+function isTheme(value: string): value is ThemeChoice {
+  return Object.hasOwn(THEME_LABEL, value);
+}
+
+/** The theme's label, or what was given when it isn't one. */
+function themeLabel(value: string): string {
+  return isTheme(value) ? THEME_LABEL[value] : value;
+}
+
 type ThemeArgs = CommandArgsOf<"theme.set">;
 
 /** Exported so `commands.test.ts` can re-register them after `isolateContracts()` resets the registry. */
@@ -34,12 +44,23 @@ export const S10_COMMANDS: readonly Command[] = [
   }),
   command<ThemeArgs>({
     id: "theme.set",
-    title: ({ theme }) => `Set theme to ${THEME_LABEL[theme]}`,
+    title: ({ theme }) => `Set theme to ${themeLabel(theme)}`,
     category: "Session",
-    enabled: (_ctx, { theme }) => (theme in THEME_LABEL ? { ok: true } : { ok: false, reason: `"${theme}" isn't a theme.` }),
+    // IR L158: `theme <shop, draft or system>`, case-insensitive; run() confirms with the "Theme: X." line.
+    console: {
+      verb: "theme",
+      syntax: "theme <shop, draft or system>",
+      parse: (argv) => {
+        const text = argv.join(" ").trim();
+        const theme = text.toLowerCase();
+        if (isTheme(theme)) return { ok: true, value: { theme } };
+        return { ok: false, error: `${text === "" ? "theme takes" : `“${text}” isn't a theme. Choose`} shop, draft or system.` };
+      },
+    },
+    enabled: (_ctx, { theme }) => (isTheme(theme) ? { ok: true } : { ok: false, reason: `"${theme}" isn't a theme.` }),
     run: (_ctx, { theme }) => {
       settings.set({ theme });
-      log({ tag: "Note", text: `Theme: ${THEME_LABEL[theme]}.` });
+      log({ tag: "Note", text: `Theme: ${themeLabel(theme)}.` });
     },
   }),
   command({

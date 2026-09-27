@@ -56,7 +56,7 @@ describe("routes", () => {
     await expect.poll(() => session.get().panes.inspector.view).toEqual({ kind: "doc", code: "SEL-01" });
     location.hash = "#/";
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(document.getElementById("shell-sheet")?.firstElementChild).toBe(sheet);
+    expect(sheetOf()).toBe(sheet);
   });
 
   test("#/settings runs Settings: its dialog opens, or, until S10 builds it, it says so", async () => {

@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
 import { SkipLink } from "@/a11y";
-import { BannerHost } from "@/feedback";
 import { CommandPalette } from "@/palette";
 import { Shell, shellToasts } from "@/shell";
 import { LazyPart, lazyNamed } from "@/shell/LazyPart";
@@ -25,7 +24,8 @@ const ToastRegion = lazyNamed(() => import("@/ui/overlays/ToastRegion"), "ToastR
 /**
  * The app: "Skip to sheet" first in Tab order (spec L743), the shell, then what floats over it: the dialog
  * stack and the toast region (each in its own chunk; the toast manager exists from the first render), and the
- * palette, tour and banner host (each renders nothing until it has something to show). The router applies the
+ * palette and tour (each renders nothing until it has something to show). Banners aren't here: they show at
+ * the top of the sheet region (spec L384, L389), so the shell mounts the banner host. The router applies the
  * location's route.
  */
 export function App() {
@@ -54,7 +54,6 @@ export function App() {
       <div className={styles.overlays}>
         <CommandPalette />
         <Tour />
-        <BannerHost />
       </div>
     </>
   );

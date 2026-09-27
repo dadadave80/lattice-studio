@@ -35,6 +35,18 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * Base UI marks popups that scroll without a scrollbar (a Select's list) with this class and would inject these
+ * rules in a <style> element; the app turns those elements off (CSP), so the rules live here (spec L865).
+ */
+.base-ui-disable-scrollbar {
+  scrollbar-width: none;
+}
+
+.base-ui-disable-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 html[data-motion="reduce"] *,
 html[data-motion="reduce"] *::before,
 html[data-motion="reduce"] *::after {

@@ -6,8 +6,8 @@
  * and what the lazy chunks carry, the same way `apps/studio/src/chain/infra/entry-chunk.test.ts` does for the
  * chain module.
  *
- * The tour and the banner host are checked differently, below: `App.tsx` mounts `<Tour/>` and `<Toasts/>`
- * (the banner host) unconditionally, and this repo has seen the build's rolldown codeSplitting group (FX17)
+ * The tour and the banner host are checked differently, below: `App.tsx` mounts `<Tour/>` and `Shell.tsx`
+ * mounts `<BannerHost/>` (at the top of the sheet region) unconditionally, and this repo has seen the build's rolldown codeSplitting group (FX17)
  * disagree, run to run, on whether a chunk that tiny and that close to the entry's own graph stays out of it
  * — including runs of this very build spawned from inside `bun test`, which don't reproduce what
  * `bun run build` or `scripts/ci/size.ts --build` produce outside one. A static import-graph check (the
@@ -121,7 +121,7 @@ describe("the banner host's chunk (static, see the module doc above)", () => {
     join(src, "feedback", "services.ts"),
   ]);
 
-  test("App.tsx's eager <Toasts/> mount never statically reaches @/ui or BannerHost.tsx itself", () => {
+  test("Shell.tsx's eager <BannerHost/> mount never statically reaches @/ui or BannerHost.tsx itself", () => {
     expect([...entry.packages].some((p) => p === "@/ui" || p.startsWith("@/ui/"))).toBe(false);
     expect([...entry.files].some((f) => f.endsWith(join("feedback", "BannerHost.tsx")))).toBe(false);
   });

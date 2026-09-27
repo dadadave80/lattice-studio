@@ -54,10 +54,18 @@ describe("App", () => {
     }
   });
 
-  test("mounts the banner host by its name: a banner an owner posts shows over the shell", async () => {
+  test("a banner an owner posts shows under the title bar, above the sheet, in the window, and nothing scrolls (spec L384, L389)", async () => {
     await renderWithStudio(<App />);
     showBanner("app-test", { text: "Offline. Composing works; deploy needs a connection.", tone: "warning" });
-    await expect.element(page.getByText("Offline. Composing works; deploy needs a connection.")).toBeVisible();
+    const banner = page.getByText("Offline. Composing works; deploy needs a connection.");
+    await expect.element(banner).toBeVisible();
+    const top = (banner.element() as HTMLElement).getBoundingClientRect().top;
+    const titlebar = page.getByRole("region", { name: "Title bar", exact: true }).element() as HTMLElement;
+    expect(top).toBeGreaterThanOrEqual(titlebar.getBoundingClientRect().bottom);
+    expect(top).toBeLessThan(window.innerHeight);
+    const sheet = page.getByRole("region", { name: "Sheet", exact: true }).element() as HTMLElement;
+    expect(sheet.getBoundingClientRect().top).toBeGreaterThanOrEqual((banner.element() as HTMLElement).getBoundingClientRect().bottom - 0.5);
+    expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(window.innerHeight);
     hideBanner("app-test");
     await expect.element(page.getByText("Offline. Composing works; deploy needs a connection.")).not.toBeInTheDocument();
     // The interim alias S10 shipped is gone.
