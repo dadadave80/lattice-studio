@@ -30,7 +30,8 @@ const TABS: readonly { value: ConsoleTab; label: string; code: boolean }[] = [
 /**
  * The console drawer (spec L359, IR L128-L160): a 36 px header with Collapse/Expand, "Console", the summary and
  * its square, the tabs, the Export menu, the size menu and Maximize; then the Log, Script and Recipe JSON tabs
- * and the command line. Its key context is `console`, so single-key shortcuts stay inert inside it (spec L659).
+ * and the command line. Its key context is `console`, so single-key shortcuts stay inert inside it (spec L659),
+ * and it's the tour's console coach mark target (spec L400).
  *
  * The header is the frame and paints with the app; the body (`ConsoleBody`) is its own chunk, requested after the
  * first paint when the drawer starts open, else when it first opens, and kept mounted from then on.
@@ -58,6 +59,7 @@ export function ConsolePanel() {
       value={tab}
       onValueChange={(next: ConsoleTab) => showConsoleTab(next)}
       data-keyctx="console"
+      data-tour="console"
       data-open={open ? "" : undefined}
       data-maximized={maximized ? "" : undefined}
     >

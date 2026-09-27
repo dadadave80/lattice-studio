@@ -42,6 +42,16 @@
   flex: 1 1 0;
 }
 
+/* The Recipe JSON tab's header line: hash, catalog tag, Studio version and what the file leaves out. */
+.note {
+  margin: 0;
+  padding-block: var(--lx-space-1);
+  padding-inline: var(--lx-space-3);
+  border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  color: var(--lx-text-muted);
+  font: var(--lx-font-body-sm);
+}
+
 .empty {
   margin: 0;
   padding-block: var(--lx-space-2);

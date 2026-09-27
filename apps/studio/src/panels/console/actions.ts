@@ -2,7 +2,7 @@
  * What the Export menu, the console verbs and the code tabs do with an export (spec L507-L518): build it through
  * the exporter's lazy chunk, then download it or copy it, and say so in the console. Nothing here imports an
  * exporter directly. Behind the console body's boundary: the commands reach it through `loadConsoleBody()`; when
- * an export can run is `export-enablement.ts`'s, in the entry.
+ * an export can run is `export-gates.ts`'s, in the entry.
  */
 import type { Address, Analysis, Catalog, ExportFile, Hex, Project, Result } from "@lattice-studio/core";
 import { isNotImplemented, lines } from "@lattice-studio/core";
@@ -12,6 +12,7 @@ import { downloadFile } from "./download";
 import { CATALOG_NOT_LOADED } from "./export-enablement";
 import { loadExporter } from "./exporters";
 import { exportRecipe } from "./exporters/recipe";
+import { isRecipeJson, recipeJsonNotes } from "./recipe-notes";
 
 type Sources = { project: Project; catalog: Catalog; analysis: Analysis };
 
@@ -43,10 +44,16 @@ export async function recipeFile(from: Pick<Sources, "project" | "catalog"> | nu
   return { ok: true, value: recipeJson({ recipe: exportRecipe(input.value.project), catalog: input.value.catalog }) };
 }
 
-/** Downloads the file and logs "Exported DeployGovernedVault.s.sol · recipe 0x3f2a…a1c4" (spec L729). */
+/**
+ * Downloads the file and logs "Exported DeployGovernedVault.s.sol · recipe 0x3f2a…a1c4" (spec L729). recipe.json
+ * has no header of its own, so its line goes on with the catalog tag, the Studio version and what it leaves out
+ * (spec L509, L515; ruling R6).
+ */
 export function saveExport(file: ExportFile, recipeHash: Hex = getAnalysis().recipeHash): void {
   downloadFile(file);
-  const line = lines.exported({ filename: file.filename, recipeHash });
+  const exported = lines.exported({ filename: file.filename, recipeHash });
+  const tag = getCatalog()?.lattice.tag;
+  const line = isRecipeJson(file) && tag !== undefined ? { ...exported, text: `${exported.text} · ${recipeJsonNotes(tag)}` } : exported;
   log(line);
   announce(line.text);
 }

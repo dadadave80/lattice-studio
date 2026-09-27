@@ -4,8 +4,8 @@ import { makeProject } from "@lattice-studio/core/testing";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
-  doc, emptyAnalysis, getAnalysis, getCatalog, initialSession, provideDeployController, provideServices, runCommand,
-  session, type DeployController,
+  DEFAULT_SETTINGS, doc, emptyAnalysis, getAnalysis, getCatalog, initialSession, provideDeployController, provideServices,
+  runCommand, session, type DeployController,
 } from "@/contracts";
 import { DialogHost } from "@/ui/overlays/DialogHost";
 import { axeViolations } from "@/ui/testing/axe";
@@ -15,7 +15,7 @@ import { scriptChainIds } from "./chains";
 import { ConsolePanel } from "./ConsolePanel";
 import { downloadFile } from "./download";
 import { S5E_COMMANDS } from "./definitions";
-import { safeExportable } from "./export-enablement";
+import { safeExportable } from "./export-gates";
 import { logEntries } from "./log-store";
 import { DOWNLOAD_BATCH, NOT_AN_ADDRESS, SAFE_ADDRESS_LABEL } from "./SafeBatchDialog";
 import { awaitConsoleBody, captureDownloads, collisionProject, erc20Project, resetConsole } from "./test-support";
@@ -139,6 +139,39 @@ describe("Export menu (spec L509-L518, IR L132)", () => {
     const file = await waitForFile(files);
     expect(file).toEqual(expected);
     expect(JSON.parse(file.text).$schema).toMatch(/recipe\.v1\.json$/);
+  });
+
+  test("the Recipe JSON tab and its export line give the hash, catalog tag and Studio version and what it leaves out; the JSON is untouched (L509, L515, R6)", async () => {
+    const files = captureDownloads();
+    await renderConsole();
+    await userEvent.click(page.getByRole("tab", { name: "Recipe JSON" }));
+    await expect.element(page.getByText("recipe.json", { exact: true })).toBeVisible();
+    const hash = getAnalysis().recipeHash;
+    const short = `${hash.slice(0, 6)}…${hash.slice(-4)}`;
+    const tag = catalog().lattice.tag;
+    const notes = `catalog Lattice ${tag} · Studio ${studio.version} · Leaves out layout, deploy settings and deployments`;
+    await expect.element(page.getByText(`Recipe ${short} · ${notes}`, { exact: true })).toBeVisible();
+    // The note is the tab's, not the file's: the code shown and the file saved are core's recipe.json exactly.
+    const expected = exportRecipeJson(doc.get().recipe, catalog());
+    await vi.waitFor(() => expect(document.querySelector("[role='tabpanel'] pre")?.textContent ?? "").toContain('"$schema"'));
+    expect(document.querySelector("[role='tabpanel'] pre")?.textContent).not.toContain("Leaves out");
+    await userEvent.click(page.getByRole("button", { name: "Download" }));
+    const file = await waitForFile(files);
+    expect(file).toEqual(expected);
+    expect(file.text).not.toContain("Leaves out");
+    expect(logEntries().at(-1)?.text).toBe(`Exported recipe.json · recipe ${short} · ${notes}`);
+    expect(bufferedServices().announce.at(-1)?.[0]).toBe(`Exported recipe.json · recipe ${short} · ${notes}`);
+  });
+
+  test("the note follows the recipe: a new hash after an edit", async () => {
+    await renderConsole();
+    await userEvent.click(page.getByRole("tab", { name: "Recipe JSON" }));
+    const before = getAnalysis().recipeHash;
+    await expect.element(page.getByText(new RegExp(`^Recipe ${before.slice(0, 6)}…${before.slice(-4)} · `))).toBeVisible();
+    await runCommand({ id: "facet.place", args: { facet: "ERC20Permit" } }, "console");
+    const after = getAnalysis().recipeHash;
+    expect(after).not.toBe(before);
+    await expect.element(page.getByText(new RegExp(`^Recipe ${after.slice(0, 6)}…${after.slice(-4)} · `))).toBeVisible();
   });
 
   test("Safe batch asks for the Safe and chain, downloads the batch and records it as Proposed", async () => {
@@ -284,39 +317,39 @@ describe("safeExportable: the Safe batch waits for the review's acknowledgements
   const analysis = { ...emptyAnalysis(), recipeHash: "0xabc" as const, problems: [acknowledgement] };
 
   test("disabled with the same reason as deploy.downloadSafeBatch while it's unticked", () => {
-    const result = safeExportable({ catalog: fixture, project, analysis, session: initialSession() });
+    const result = safeExportable({ catalog: fixture, settings: DEFAULT_SETTINGS, project, analysis, session: initialSession() });
     expect(result).toEqual({ ok: false, reason: "Tick the acknowledgement first" });
   });
 
   test("several unticked acknowledgements are counted", () => {
     const second: Problem = { ...acknowledgement, id: "INIT-05:0xfeedface", code: "INIT-05" };
     const result = safeExportable({
-      catalog: fixture, project, analysis: { ...analysis, problems: [acknowledgement, second] }, session: initialSession(),
+      catalog: fixture, settings: DEFAULT_SETTINGS, project, analysis: { ...analysis, problems: [acknowledgement, second] }, session: initialSession(),
     });
     expect(result).toEqual({ ok: false, reason: "Tick the 2 acknowledgements first" });
   });
 
   test("the export.safe command itself gates on them (the console verb and Export ▸ Safe batch)", () => {
     const safe = S5E_COMMANDS.find((c) => c.id === "export.safe");
-    const ctx = { catalog: fixture, project, analysis, session: initialSession() } as unknown as Parameters<NonNullable<typeof safe>["enabled"]>[0];
+    const ctx = { catalog: fixture, settings: DEFAULT_SETTINGS, project, analysis, session: initialSession() } as unknown as Parameters<NonNullable<typeof safe>["enabled"]>[0];
     expect(safe?.enabled(ctx, {})).toEqual({ ok: false, reason: "Tick the acknowledgement first" });
   });
 
   test("once ticked for this recipe hash, it exports as before", () => {
     const ticked = { ...initialSession(), acks: { "0xabc": [acknowledgement.id] } };
-    expect(safeExportable({ catalog: fixture, project, analysis, session: ticked })).toEqual({ ok: true });
+    expect(safeExportable({ catalog: fixture, settings: DEFAULT_SETTINGS, project, analysis, session: ticked })).toEqual({ ok: true });
   });
 
   test("a tick for a different recipe hash doesn't count", () => {
     const ticked = { ...initialSession(), acks: { "0xother": [acknowledgement.id] } };
-    expect(safeExportable({ catalog: fixture, project, analysis, session: ticked }))
+    expect(safeExportable({ catalog: fixture, settings: DEFAULT_SETTINGS, project, analysis, session: ticked }))
       .toEqual({ ok: false, reason: "Tick the acknowledgement first" });
   });
 
   test("deployableExport's own gates still apply first: no facets, then blockers", () => {
     const empty = { ...analysis, problems: [] };
     const noFacets = { ...project, recipe: { ...project.recipe, facets: [] } };
-    expect(safeExportable({ catalog: fixture, project: noFacets, analysis: empty, session: initialSession() }))
+    expect(safeExportable({ catalog: fixture, settings: DEFAULT_SETTINGS, project: noFacets, analysis: empty, session: initialSession() }))
       .toEqual({ ok: false, reason: "Place facets first" });
   });
 
@@ -330,7 +363,7 @@ describe("safeExportable: the Safe batch waits for the review's acknowledgements
     const acked = [ticked.id];
     const mixed = { ...analysis, problems };
     const mixedSession = { ...initialSession(), acks: { [mixed.recipeHash]: acked } };
-    expect(safeExportable({ catalog: fixture, project, analysis: mixed, session: mixedSession }))
+    expect(safeExportable({ catalog: fixture, settings: DEFAULT_SETTINGS, project, analysis: mixed, session: mixedSession }))
       .toEqual({ ok: false, reason: tickFirst(pendingAcks(problems, acked).length) });
   });
 });

@@ -9,7 +9,8 @@ import { isAddress, toChecksum } from "@lattice-studio/core";
 import { announce, command, env, log, openDialog, type Command, type CommandArgsOf, type Enablement } from "@/contracts";
 import { chainFromText, pickerChains } from "@/chain/infra/chains";
 import { setConsoleMaximized, setConsoleOpen, showConsoleTab } from "./drawer";
-import { alwaysExportable, CATALOG_NOT_LOADED, deployableExport, safeExportable } from "./export-enablement";
+import { CATALOG_NOT_LOADED } from "./export-enablement";
+import { alwaysExportable, deployableExport, safeExportable } from "./export-gates";
 import { loadConsoleBody } from "./load-body";
 import { clearLog } from "./log-store";
 
