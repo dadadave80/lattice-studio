@@ -1,0 +1,25 @@
+# Dependency updates arrive as reviewed PRs, never a lifecycle script and never an unreviewed version at run
+# time (§16 audit #38, spec L864 "Compromised npm dependency"). Grouped so a routine update opens one PR to
+# review, not a flood; a major bump for anything the app ships still opens on its own so it gets its own look
+# (contracts §6: never add, remove or update a dependency outside the orchestrator's CCR process).
+version: 2
+updates:
+  # Dependabot's `bun` ecosystem (GA since 2025-02-13) updates the text `bun.lock` directly; `npm` would edit
+  # package.json without touching bun.lock, and every install step here requires --frozen-lockfile, so an
+  # npm-ecosystem PR would fail CI on its own.
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions-minor-and-patch:
+        update-types: ["minor", "patch"]

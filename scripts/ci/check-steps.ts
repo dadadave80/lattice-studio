@@ -12,4 +12,7 @@ export const CHECK_STEPS: readonly CheckStep[] = [
   { name: "token drift", cmd: ["bun", "run", "tokens:pull", "--", "--check"] },
   { name: "raw-color scan", cmd: ["bun", "scripts/ci/raw-color-scan.ts"] },
   { name: "copy lint", cmd: ["bun", "scripts/ci/copy-lint.ts"] },
+  { name: "house rules (spec L902)", cmd: ["bun", "scripts/ci/house-rules-scan.ts"] },
+  { name: "network boundary (spec L97)", cmd: ["bun", "scripts/ci/network-boundary-scan.ts"] },
+  { name: "React Compiler in dist", cmd: ["bun", "scripts/ci/react-compiler-dist-check.ts"] },
 ];

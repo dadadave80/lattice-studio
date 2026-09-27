@@ -7,6 +7,10 @@
     "packages/cli": {
       "package-name": "lattice-studio",
       "changelog-path": "CHANGELOG.md"
+    },
+    "apps/studio": {
+      "package-name": "lattice-studio-app",
+      "changelog-path": "CHANGELOG.md"
     }
   }
 }

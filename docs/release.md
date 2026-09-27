@@ -4,7 +4,7 @@ This describes how a change becomes a release: versioning, CI, hosting, and the 
 
 ## Versions and changelog
 
-[`release-please`](https://github.com/googleapis/release-please) reads conventional commits and keeps `packages/cli`'s version and `CHANGELOG.md` in step with them (`.github/workflows/release-please.yml`, configured in `.github/release-please-config.json`). On every push to `main`, it opens or updates a pull request proposing the next version from the commits since the last release; merging that pull request bumps `packages/cli/package.json`, writes the changelog, and tags the release. `apps/studio` and the other packages aren't independently versioned — the CLI is the one thing this project ships as a package.
+[`release-please`](https://github.com/googleapis/release-please) reads conventional commits and keeps two packages' versions and changelogs in step with them (`.github/workflows/release-please.yml`, configured in `.github/release-please-config.json` and `.github/release-please-manifest.json`): `packages/cli`, the one thing this project ships to a registry, and `apps/studio`, versioned so every export it writes (a Foundry script's header, an agent brief, a Safe batch) carries a real version instead of the placeholder `0.0.0` its `package.json` starts at. On every push to `main`, release-please opens or updates a pull request per package proposing its next version from the commits that touch it since its last release; merging a pull request bumps that package's `package.json`, writes its changelog, and tags its release. The other packages (`core`, `catalog-gen`, `tokens`) aren't independently versioned.
 
 **Needs David:** the workflow only runs once the repository has a `main` branch on GitHub (see below).
 
@@ -40,7 +40,7 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 
 ## CI
 
-`.github/workflows/` is written and ready but not running: `ci.yml` (the pull request gate: typecheck, lint, unit, browser, e2e, golden, chain, catalog drift, size, Lighthouse), `fork.yml` (the Sepolia fork suite), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only), `release-please.yml`, and `publish-cli.yml`.
+`.github/workflows/` is written and ready but not running: `ci.yml` (the pull request gate: typecheck, lint, unit, browser, e2e, golden, chain, catalog drift, size, Lighthouse), `fork.yml` (the Sepolia fork suite), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only), `release-please.yml`, `publish-cli.yml`, and `update-screenshots.yml` (manual, `workflow_dispatch` only: regenerates the missing `chromium-linux` screenshot baselines as a downloadable artifact — see "Linux screenshot baselines" below).
 
 **Needs David:**
 
@@ -48,6 +48,14 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 - Add the `SEPOLIA_RPC_URL` repository secret. Without it, `fork.yml`'s gate job checks for the secret, finds it missing, and stops there — the pull request gate's own `chain` job still runs against a local Anvil node either way, so this only adds the fork suite, it doesn't block anything by its absence.
 - Add the `NPM_TOKEN` repository secret, scoped to publish `lattice-studio` with provenance. Needed before `publish-cli.yml` can run at all.
 - Install solc 0.8.36 (Lattice's pin) before the `golden`, `chain`, and `catalog-drift` jobs run, so `forge build` inside the pinned Lattice checkout has it available.
+
+## Linux screenshot baselines
+
+Every `toMatchScreenshot` baseline committed today is `*-chromium-darwin.png`: made on a Mac, since that's where Studio has been built so far. `ci.yml`'s `browser` job runs on `ubuntu-latest`, so its first real run has no `chromium-linux` baseline to compare against for any of the 93 states on the Claude Design States boards, and the Components gate fails on missing references, not an actual difference.
+
+`update-screenshots.yml` (`workflow_dispatch` only) regenerates them: it runs `bun x vitest run --update` for `apps/studio` on `ubuntu-latest`, which writes a `chromium-linux` reference beside each test's existing `chromium-darwin` one, and uploads every `*-chromium-linux.png` it produced as a build artifact.
+
+**Needs David:** once the repository exists, dispatch `update-screenshots.yml`, download the `chromium-linux-baselines` artifact, review the images, and commit them into each test's `__screenshots__` folder next to the existing `chromium-darwin` files. This workflow only produces and uploads the images; nothing commits them automatically.
 
 ## Publishing the CLI
 
@@ -65,4 +73,30 @@ The catalog in `catalog/` is currently built from Lattice's `dev` branch, not a 
 
 Studio's chain module supports WalletConnect as one wallet option, but it needs a WalletConnect Cloud project id to work, and none has been supplied yet. Until it is, the chain module says "WalletConnect isn't set up in this build of Studio"; every other wallet path (an injected wallet, `viem`'s other connectors) works without it.
 
-**Needs David:** create a WalletConnect Cloud project and supply its project id. Where that id is read from is the chain module's own concern; check its documentation once that module ships.
+The id goes in the `VITE_WALLETCONNECT_PROJECT_ID` build-time environment variable, read by `apps/studio/src/contracts/env.ts` as `env.walletConnectProjectId`.
+
+**Needs David:** create a WalletConnect Cloud project and supply its project id, as `VITE_WALLETCONNECT_PROJECT_ID`.
+
+**Config follow-up, once an id is set:** with `VITE_WALLETCONNECT_PROJECT_ID` set, the build's `codeSplitting` app group currently pulls `viem`, `ox` and `noble` into the entry chunk instead of the lazy chain module, adding about 79 KB gz to first load, and the WalletConnect SDK's own chunks miss the build's `NO_BUDGET_PATTERN` allowance. Both need a build-config change (chunking rule and budget pattern) before the id is set for real; until then the size budget check would fail on set. Not yet filed as its own work package — raise it against `apps/studio/vite.config.ts` and `scripts/ci/size-logic.ts` once David supplies an id.
+
+## Real-device performance check
+
+The performance budgets (`docs/architecture.md`'s size, LCP and drag figures; spec "Performance and reliability") are measured in CI on a 4×-throttled headless Chromium, which the spec calls a stand-in: "must be re-checked on a real low-end phone before they are frozen."
+
+**Needs David:** before shipping v1, run the app on a real low-end Android phone over a slow (or throttled) connection, with WebPageTest, Chrome DevTools remote debugging, or Lighthouse's own mobile device emulation against the deployed preview, and confirm first-load JavaScript, LCP and the drag-cost figure hold on real hardware, not only in the emulated CI profile. Record the device, connection and measured figures next to this step before treating the budgets as frozen.
+
+## The v1 cut line
+
+v1 ships only once every gate below passes (spec "Phasing", cut line for "v1: compose and deploy on testnets"). Each row names its command or its owner; "Needs David" rows are steps only he can run.
+
+| Gate | Command or owner |
+| --- | --- |
+| Golden tests pass for all three recipes and shared-contract addresses | `bun run golden` |
+| Every exported script deploys on an Anvil fork once the shared contracts are in it | `bun run test:chain` (local Anvil); `fork.yml`'s Sepolia fork suite once **Needs David** adds `SEPOLIA_RPC_URL` |
+| A first-time user deploys and verifies on Sepolia in under 5 minutes, moderated | **Needs David**: run the timed script in `MANUAL.md` once it exists (pending Q25's permission decision) |
+| First-load JavaScript budget met | `bun scripts/ci/size.ts --build`, plus the real-device check above; **Needs David** to choose among Q19's budget options while the interim 370 KB gate holds |
+| LCP and drag-cost budgets met | `bun scripts/perf/run.ts` (or the `perf.yml` job); report-only until FX30 lands, then its `REPORT_ONLY` entries drop and Lighthouse's assert moves from `warn` to `error` |
+| axe clean, with the manual keyboard scripts and screen readers | `bun run e2e apps/studio/e2e/a11y`; **Needs David**: the twelve manual keyboard scripts and the tier 1/2 screen-reader passes before each minor release, pending Q25 |
+| Type-check, lint, size, schema and copy checks | `bun run check` |
+
+Mainnet stays off in v1 regardless of the above (spec "Phasing"; "Open questions → Mainnet"); that's a separate decision for David, not a cut-line gate.
