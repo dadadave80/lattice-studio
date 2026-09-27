@@ -7,21 +7,24 @@
 import {
   argProvenance, formatParseIssue, importFile, plural, type Catalog, type ParseIssue,
 } from "@lattice-studio/core";
-import { createProject, getCatalog, toast } from "@/contracts";
-import { persistence } from "@/persist";
-import { resetForProjectSwitch, sayError, sayNote } from "./cmd/shared";
+import { createProject, getCatalog } from "@/contracts";
+import { persistence, showOpenFailure } from "@/persist";
+import { resetForProjectSwitch, sayNote } from "./cmd/shared";
 
 function stem(filename: string): string {
   const base = filename.replace(/\.(lattice\.json|json)$/i, "");
   return base || "Untitled";
 }
 
-/** Every issue reaches the console; only the first becomes a toast (toasts show one at a time, spec L733). */
+/**
+ * A file that didn't parse: the sheet's open-failure state names it (spec L501's "names the file, the path
+ * and the reason"), which also logs the one Error line and announces it (`showOpenFailure`, FX33) — reporting
+ * it again here would double the console line.
+ */
 function reportIssues(filename: string, issues: readonly ParseIssue[]): void {
   const lines = issues.length > 0 ? issues.map(formatParseIssue) : [`${filename}: Studio couldn't read this file.`];
-  for (const text of lines) sayError(text);
-  const [first] = lines;
-  if (first) toast({ text: first, kind: "error" });
+  const [reason, ...details] = lines;
+  showOpenFailure(reason ?? `${filename}: Studio couldn't read this file.`, details);
 }
 
 function unknownFieldsLine(unknownFields: readonly string[]): void {
@@ -49,7 +52,7 @@ export async function openImportedFile(filename: string, text: string): Promise<
     const store = await persistence();
     const imported = await store.importProject(project, deployments);
     if (!imported.ok) {
-      sayError(`${filename}: ${imported.error}`);
+      showOpenFailure(`${filename}: ${imported.error}`);
       return;
     }
     resetForProjectSwitch();
@@ -68,7 +71,7 @@ export async function openImportedFile(filename: string, text: string): Promise<
   const name = recipe.name ?? stem(filename);
   const created = await createProject(recipe, name, { provenance: argProvenance(recipe, catalog, "file") });
   if (!created.ok) {
-    sayError(`${filename}: ${created.error}`);
+    showOpenFailure(`${filename}: ${created.error}`);
     return;
   }
   resetForProjectSwitch();

@@ -102,13 +102,17 @@ describe("save and reopen", () => {
     };
     (window as unknown as FsWindow).showSaveFilePicker = async () => handle;
 
+    const savedText = "Saved to vault.lattice.json";
+    const savedLines = () => bufferedServices().log.filter((l) => l.text === savedText);
+
     const { saveCopy, saveOrPrompt } = await import("./actions");
     const first = await saveCopy(project, "vault.lattice.json");
     expect(first.ok).toBe(true);
     expect(written).toContain('"Vault"');
     const firstWrite = written;
-    // spec L733: a saved file is a toast (no final period, unlike the console line).
-    expect(bufferedServices().toast.at(-1)).toEqual({ text: "Saved to vault.lattice.json" });
+    // spec L733: the toast is the one console line too (no separate, differently-worded log line).
+    expect(bufferedServices().toast.at(-1)).toEqual({ text: savedText });
+    expect(savedLines()).toHaveLength(1);
 
     // ⌘S again: writes the linked handle directly, without reopening Save a copy.
     written = "";
@@ -119,7 +123,9 @@ describe("save and reopen", () => {
     expect(openedDialog).toBe(false);
     expect(written).toContain('"Vault"');
     expect(written).toBe(firstWrite);
-    expect(bufferedServices().toast.at(-1)).toEqual({ text: "Saved to vault.lattice.json" });
+    expect(bufferedServices().toast.at(-1)).toEqual({ text: savedText });
+    // Each save toasts and logs once: two saves, two matching lines, not four.
+    expect(savedLines()).toHaveLength(2);
 
     // The same bytes, reopened: a new project, never the old one.
     const { openImportedFile } = await import("./actions");
@@ -175,7 +181,7 @@ describe("dropping a file", () => {
     expect(doc.get().id).not.toBe("file-project");
   });
 
-  test("names the file, the path and the reason for a file that doesn't parse", async () => {
+  test("names the file, the path and the reason for a file that doesn't parse, as one Error line (FX33's showOpenFailure)", async () => {
     readyCatalog();
     testPersistence();
     const target = document.createElement("div");
@@ -186,6 +192,9 @@ describe("dropping a file", () => {
       target.remove();
     });
 
+    const { openFailure, clearOpenFailure } = await import("@/persist");
+    onCleanup(clearOpenFailure);
+
     const file = new File(["not json"], "recipe.json", { type: "application/json" });
     const transfer = new DataTransfer();
     transfer.items.add(file);
@@ -193,11 +202,15 @@ describe("dropping a file", () => {
     Object.defineProperty(event, "dataTransfer", { value: transfer });
     target.dispatchEvent(event);
 
-    await until(() => bufferedServices().toast.some((t) => t.kind === "error"), "the error toast");
-    const line = bufferedServices().log.find((l) => l.tag === "Error");
-    expect(line?.text).toContain("recipe.json");
-    const toastLine = bufferedServices().toast.find((t) => t.kind === "error");
-    expect(toastLine?.text).toBe(line?.text);
+    await until(() => openFailure() !== null, "the open failure");
+    const failure = openFailure();
+    expect(failure?.reason).toContain("recipe.json");
+    expect(failure?.text).toBe(`This project couldn't be opened: ${failure?.reason}`);
+    // showOpenFailure logs the one Error line itself; nothing here logs a second, differently-worded one.
+    const errorLines = bufferedServices().log.filter((l) => l.tag === "Error");
+    expect(errorLines).toHaveLength(1);
+    expect(errorLines[0]?.text).toBe(failure?.text);
+    expect(bufferedServices().toast).toHaveLength(0);
   });
 });
 
@@ -218,6 +231,8 @@ describe("delete", () => {
     // spec L502, IR L218: the toast's button reads "Undo" (a label alongside the project.restore ref; S0's
     // ToastRegion reads it through FX14 — asserted here on the toast input, not the rendered button yet).
     expect(toast?.action).toEqual({ id: "project.restore", args: { id }, label: "Undo" });
+    // spec L733: the toast is the one console line; nothing here logs a second, differently-worded one.
+    expect(bufferedServices().log.filter((l) => l.text === "Moved Vault to Recently deleted")).toHaveLength(1);
 
     const undo = await runCommand(toast!.action!, "toast");
     expect(undo.ok).toBe(true);
