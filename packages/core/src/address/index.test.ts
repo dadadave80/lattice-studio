@@ -4,7 +4,7 @@ import { API_OWNERS, type ApiName } from "../model/api";
 import type { Address, Hex } from "../model/hex";
 import * as mod from "./index";
 import {
-  ARACHNID_PROXY, ARACHNID_PROXY_CODEHASH, arachnidAddress, assertSaltSender, buildSalt, CREATEX, createxPredict,
+  ARACHNID_PROXY, ARACHNID_PROXY_CODEHASH, arachnidAddress, assertSaltSender, buildSalt, CREATEX, createxPredict, createxProxy,
   FACTORY_PREDICT_SELECTOR, factoryPredict, newEntropy, sharedSalt,
 } from "./index";
 
@@ -146,6 +146,8 @@ describe("createxPredict", () => {
     const proxy = create2(CREATEX, guarded, "0x21c35dbe1b344a2488cf3321d6ce542f8e9f305544ff09e4993a62319a497c1f");
     const child = getAddress(slice(keccak256(concat(["0xd694", proxy, "0x01"])), 12));
     expect(createxPredict({ from: ALICE, salt, chainId: 11155111 })).toBe(child);
+    // The proxy itself, where a used salt leaves code (spec L75).
+    expect(createxProxy({ from: ALICE, salt, chainId: 11155111 })).toBe(proxy);
   });
 
   test("flag 0x00: _guard is keccak256(bytes32(from) ‖ salt)", () => {
@@ -154,6 +156,7 @@ describe("createxPredict", () => {
     const proxy = create2(CREATEX, guarded, "0x21c35dbe1b344a2488cf3321d6ce542f8e9f305544ff09e4993a62319a497c1f");
     const child = getAddress(slice(keccak256(concat(["0xd694", proxy, "0x01"])), 12));
     expect(createxPredict({ from: ALICE, salt, chainId: 1 })).toBe(child);
+    expect(createxProxy({ from: ALICE, salt, chainId: 1 })).toBe(proxy);
   });
 
   test("this chain only: two chain ids give two addresses", () => {

@@ -1,13 +1,15 @@
 import { formatFee, formatGas } from "@lattice-studio/core";
 import type { SectionStatus } from "./copy";
 import { OP_STACK_CHAINS } from "./fees";
-import { calldataBytes, grouped, magnitude, problemStatus, worse } from "./model";
+import { calldataBytes, grouped, magnitude, problemStatus, resimulating, worse } from "./model";
 import { ProblemList } from "./ProblemList";
 import { currencyOf, problemsIn, useReview } from "./review-data";
 import styles from "./review.module.css";
 import { Section } from "./Section";
 
 const READING_FEES = "Reading fees…";
+/** Spec L701: the Cost section's loading words while the simulation estimates the gas. */
+const ESTIMATING_GAS = "Estimating gas…";
 
 /**
  * Cost (spec L571): gas, an "about" and a "max" fee, the L1 data fee on OP Stack chains, the calldata size, and the
@@ -15,13 +17,17 @@ const READING_FEES = "Reading fees…";
  */
 export function CostSection() {
   const review = useReview();
-  const { cost, chainId, chainName, acked } = review;
+  const { cost, chainId, chainName, acked, deploy, analysis } = review;
   const problems = problemsIn(review, "cost");
   const { symbol, decimals } = currencyOf(review);
   const fee = (wei: bigint) => formatFee(wei, symbol, decimals);
 
+  // The simulation estimates the gas: while it runs, an earlier estimate is stale.
+  const estimating = deploy.phase === "simulating" || resimulating(deploy, analysis.recipeHash);
   let status: SectionStatus = problemStatus(problems, acked);
-  if (cost.gas === undefined) status = worse(status, "waiting");
+  if (cost.gas === undefined || estimating) status = worse(status, "waiting");
+
+  const gasText = estimating ? ESTIMATING_GAS : cost.gas === undefined ? "Estimated once the simulation runs" : formatGas(cost.gas);
 
   const { fees } = cost;
   const feeText =
@@ -41,7 +47,7 @@ export function CostSection() {
     <Section id="cost" status={status}>
       <dl className={styles.facts}>
         <dt>Gas</dt>
-        <dd data-gas="">{cost.gas === undefined ? "Estimated once the simulation runs" : formatGas(cost.gas)}</dd>
+        <dd data-gas="">{gasText}</dd>
         <dt>Fee</dt>
         <dd data-fee="">{feeText}</dd>
         {chainId !== null && OP_STACK_CHAINS.has(chainId) ? (

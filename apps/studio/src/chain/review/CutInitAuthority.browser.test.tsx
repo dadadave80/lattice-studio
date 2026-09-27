@@ -1,5 +1,5 @@
 import type { Address, Arg, Project } from "@lattice-studio/core";
-import { recipeStats, toChecksum } from "@lattice-studio/core";
+import { formatCount, recipeStats, toChecksum } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
 import { getAnalysis } from "@/contracts";
 import { resetInitUi, setEnsLabel } from "@/panels/init/init-ui-store";
@@ -45,6 +45,9 @@ describe("What gets cut", () => {
       await expect.element(row.getByText(toChecksum(entry.address), { exact: true })).toBeVisible();
       await expect.element(row.getByText("Matches")).toBeVisible();
       await expect.element(row.getByText("LatticeRegistry")).toBeVisible();
+      // "12/17 selectors", routed of exported, as every count reads (spec L685).
+      const exported = deployableCatalog().facets.find((f) => f.name === entry.facet)?.selectors.length ?? 0;
+      await expect.element(row.getByText(formatCount(entry.selectors.length, exported), { exact: true })).toBeVisible();
     }
     expect(dialog.element().querySelectorAll("[data-facet]").length).toBe(getAnalysis().plan.length);
   });
@@ -119,7 +122,7 @@ describe("Init", () => {
     await renderReview({ project, chain });
     const init = section("Init");
     await expect.element(init.getByText(`vault.eth (${VAULT})`)).toBeVisible();
-    await expect.element(init.getByText("ENS names typed this session are resolved again here.")).toBeVisible();
+    await expect.element(init.getByText("ENS names are resolved again here.")).toBeVisible();
     await expect.element(init.getByText(`vault.eth still resolves to ${VAULT}.`)).toBeVisible();
     expect(chain.calls.filter((c) => c.method === "resolveEns")).toEqual([{ method: "resolveEns", args: ["vault.eth", SEPOLIA] }]);
     await expect.element(section("Authority after deploy").getByText(`vault.eth (${VAULT})`)).toBeVisible();
@@ -139,6 +142,30 @@ describe("Init", () => {
     await expect.element(init.getByRole("button", { name: "Edit field" })).toBeVisible();
   });
 
+  test("after a reload, a name kept in the project is resolved again and still resolves", async () => {
+    withLabels();
+    resetInitUi();
+    // Nothing typed this session: only the project's own label, as a reload leaves it (spec L462).
+    const project = safeCut({ safe: VAULT }, { labels: { "steps[0].safe": "vault.eth" } });
+    const chain = chainWith({ ens: { "vault.eth": VAULT } });
+    await renderReview({ project, chain });
+    const init = section("Init");
+    await expect.element(init.getByText(`vault.eth (${VAULT})`)).toBeVisible();
+    await expect.element(init.getByText(`vault.eth still resolves to ${VAULT}.`)).toBeVisible();
+    expect(chain.calls.filter((c) => c.method === "resolveEns")).toEqual([{ method: "resolveEns", args: ["vault.eth", SEPOLIA] }]);
+  });
+
+  test("after a reload, a name kept in the project that resolves elsewhere now is flagged", async () => {
+    withLabels();
+    resetInitUi();
+    const project = safeCut({ safe: VAULT }, { labels: { "steps[0].safe": "vault.eth" } });
+    await renderReview({ project, chain: chainWith({ ens: { "vault.eth": OTHER } }) });
+    const init = section("Init");
+    const flag = init.getByText(`vault.eth now resolves to ${OTHER}, not ${VAULT} as when it was typed. Edit the field to use the new address.`);
+    await expect.element(flag).toBeVisible();
+    await expect.element(init.getByRole("button", { name: "Edit field" })).toBeVisible();
+  });
+
   test("never resolves a name typed for another chain", async () => {
     withLabels();
     const project = safeCut({ safe: VAULT });
@@ -150,7 +177,7 @@ describe("Init", () => {
     const init = section("Init");
     await expect.element(init.getByText(`deploying account (${ALICE})`)).toBeVisible();
     await expect.element(init.getByText(VAULT, { exact: true })).toBeVisible();
-    expect(init.getByText("ENS names typed this session are resolved again here.").query()).toBeNull();
+    expect(init.getByText("ENS names are resolved again here.").query()).toBeNull();
     expect(chain.calls.some((c) => c.method === "resolveEns")).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import { plural, recipeStats, toChecksum } from "@lattice-studio/core";
+import { formatCount, recipeStats, toChecksum } from "@lattice-studio/core";
 import { useState } from "react";
 import type { SectionStatus } from "./copy";
 import { cutRows, problemStatus, worse, type CutRow } from "./model";
@@ -7,10 +7,9 @@ import { problemsIn, useReview } from "./review-data";
 import styles from "./review.module.css";
 import { Section } from "./Section";
 
-/** "12 of 17 selectors" for a partial facet, "17 selectors" for a whole one. */
+/** "12/17 selectors", routed of exported, as every count reads (spec L685). */
 function selectorText(row: CutRow): string {
-  const routed = row.selectors.length;
-  return routed === row.exported ? plural(routed, "selector") : `${routed} of ${plural(row.exported, "selector")}`;
+  return formatCount(row.selectors.length, row.exported);
 }
 
 function checkText(row: CutRow, chainName: string): string {

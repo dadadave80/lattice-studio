@@ -88,9 +88,9 @@ export type TypedName = { name: string; address: Address; chainId: number };
 export type EnsEntry = { path: string; name: string; address: Address };
 
 /**
- * The ENS names typed this session for this project and this chain (spec L462) whose field still holds the address
- * the name resolved to. A name typed for another chain says nothing about this one, and a field edited since no
- * longer carries its name.
+ * The ENS names labeling this project's fields on this chain (spec L462; kept in the project, so after a reload too)
+ * whose field still holds the address the name resolved to. A name typed for another chain says nothing about this
+ * one, and a field edited since no longer carries its name.
  */
 export function ensEntries(
   labels: Readonly<Record<string, TypedName>>,

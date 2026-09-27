@@ -8,9 +8,9 @@
  *   open marks it "Changed since review" and simulates again (the machine watches its inputs; `changed()` does the
  *   same). The mark stays after the new result is in, until Sign or a fresh review, so it's seen on a fast chain too.
  *   An RPC that can't simulate at all says so; `sign({ withoutSimulation })` then goes on after the review's extra tick.
- * - **Sign.** Refused while the tab is read-only. Re-probes the chain first (the predicted address must still be
- *   empty), rebuilds the transaction, asserts that the salt's first 20 bytes are the sending account, re-reads the
- *   wallet's account and chain, then asks the wallet (bound to the chain). Rejected → Review with "You canceled in
+ * - **Sign.** Refused while the tab is read-only. Asserts first that the salt's first 20 bytes are the sending account,
+ *   then re-probes the chain (the predicted address must still be empty), rebuilds the transaction, re-reads the
+ *   wallet's account and chain, and asks the wallet (bound to the chain). Rejected → Review with "You canceled in
  *   your wallet."; sent → Pending, with a record written at once.
  * - **Pending → Stale → …** The machine owns the receipt timeout (Settings, 180 s): no receipt by then reads
  *   "Not seen for 3 minutes. It may have been dropped." while the watcher keeps going, so a late receipt is still
@@ -33,13 +33,13 @@ import type {
   Result, TxRequest,
 } from "@lattice-studio/core";
 import {
-  ARACHNID_PROXY, assertSaltSender, buildDiamondDeploy, buildMissingDeploys, decodeInit, decodeRevert, formatAddress, lines,
+  ARACHNID_PROXY, assertSaltSender, buildDiamondDeploy, buildMissingDeploys, createxProxy, decodeInit, decodeRevert, formatAddress, lines,
   MULTICALL3_CODEHASH, multicallGas, plural, sameAddress, toChecksum,
 } from "@lattice-studio/core";
 import type { DeployController, DeployPhase, DeployState } from "@/contracts";
 import {
   ACCOUNT_CHANGED, addressTaken, ALREADY_IN_FLIGHT, CANCELED_IN_WALLET, CANCELED_TRANSACTION, cantSimulate, checkWalletText, CONNECT_A_WALLET,
-  couldntReadRecord, DEPLOY_BANNER_ID, DEPLOY_NEEDS_CONNECTION, DEPLOYING_BANNER, discardedProposal, droppedRecorded,
+  couldntReadRecord, creationFailed, creationUnread, DEPLOY_BANNER_ID, DEPLOY_NEEDS_CONNECTION, DEPLOYING_BANNER, discardedProposal, droppedRecorded,
   fileRecordConfirmed, fileRecordMismatch, fileRecordUnchecked, groupDigits, landedAfterAll, MISMATCH, missingDone,
   missingReverts, missingWouldDeploy, notSeenFor, NOTHING_MISSING, OFFLINE_TRACKING, proposalExecuted, recordNotSaved,
   REPLACED_TRANSACTION, SIMULATE_FIRST, simulatedWithCall, simulationSummary, spedUp, stillWaiting, truncateHex6, walletOn,
@@ -401,8 +401,14 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     }));
   };
 
-  /** "Deploy reverted in LatticeRegistry: `LatticeRegistry__RecordNotFound(lattice.ERC20, 0.4.0)`." (spec L727). */
-  const revertLine = async (data: Hex, catalog: Catalog, context: { placed: readonly string[]; path: DeployPath; init?: Hex }): Promise<LineDraft> => {
+  /**
+   * "Deploy reverted in LatticeRegistry: `LatticeRegistry__RecordNotFound(lattice.ERC20, 0.4.0)`." (spec L727).
+   * `explain` may replace the decoder's hint with what the chain shows about the error, when it has more to say.
+   */
+  const revertLine = async (
+    data: Hex, catalog: Catalog,
+    context: { placed: readonly string[]; path: DeployPath; init?: Hex; explain?: (error: string) => Promise<string | null> },
+  ): Promise<LineDraft> => {
     const found = await revertDetails(catalog, context.placed);
     const init = context.init && context.init !== "0x" ? decodeInit(context.init, catalog) : null;
     const decoded = decodeRevert(data, catalog, {
@@ -411,12 +417,31 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       path: context.path,
       ...(init?.ok ? { init: init.value } : {}),
     });
+    const note = (await context.explain?.(decoded.error)) ?? decoded.hint;
     return lines.reverted({
       module: decoded.module,
       error: decoded.error,
       args: decoded.args.map((arg) => arg.value).join(", "),
-      ...(decoded.hint ? { note: decoded.hint } : {}),
+      ...(note ? { note } : {}),
     });
+  };
+
+  /**
+   * CreateX's `FailedContractCreation` carries no reason (spec L75): read code at the salt's CREATE3 proxy and at the
+   * diamond's address, and say which has it. `replay` has already replayed the creation with `eth_call`.
+   */
+  const creationCheck = async (port: DeployChainPort, record: Deployment): Promise<string> => {
+    const chain = chainName(record.chainId);
+    let proxy: Address;
+    try {
+      proxy = createxProxy({ from: record.deployer, salt: record.salt, chainId: record.chainId });
+    } catch (error) {
+      return creationUnread(chain, message(error));
+    }
+    const [atProxy, atDiamond] = await Promise.all([port.codeAt(record.chainId, proxy), port.codeAt(record.chainId, record.address)]);
+    if (!atProxy.ok) return creationUnread(chain, atProxy.error);
+    if (!atDiamond.ok) return creationUnread(chain, atDiamond.error);
+    return creationFailed({ proxy, diamond: record.address, chain, proxyCode: atProxy.value !== "0x", diamondCode: atDiamond.value !== "0x" });
   };
 
   const simulate = async (): Promise<void> => {
@@ -649,8 +674,10 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       const catalog = inputs.catalog();
       const data = await port.value.replay(record.chainId, outcome.hash);
       const placed = source?.placed ?? inputs.project().recipe.facets;
+      const explain = async (error: string): Promise<string | null> =>
+        record.path === "createx" && error === "FailedContractCreation" ? creationCheck(port.value, record) : null;
       const line = catalog && data
-        ? await revertLine(data, catalog, { placed, path: record.path })
+        ? await revertLine(data, catalog, { placed, path: record.path, explain })
         : { tag: "Error" as const, text: `Deploy reverted on ${chain} in block ${groupDigits(outcome.block)}.` };
       await save({ ...current, status: "failed", tx: outcome.hash, block: outcome.block });
       banner(false);
@@ -745,6 +772,10 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const snap = snapshotOf();
     if (!snap.ok) return stopSign(snap.error);
     const s = snap.value;
+    // The salt's first 20 bytes must be the sending account (spec L286, L574): checked before anything else at Sign,
+    // so a salt that disagrees is said in the console rather than only simulated again.
+    const salt = assertSaltSender(s.salt, s.from);
+    if (!salt.ok) return stopSign(salt.error);
     if (s.key !== (withoutSimulation ? unavailableKey : simulatedKey)) {
       note(SIMULATE_FIRST);
       await track(simulate());
@@ -789,8 +820,6 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const built = await buildTx(s, probed.value);
     if (!alive()) return;
     if (!built.ok) return back(built.error);
-    const salt = assertSaltSender(s.salt, account.address);
-    if (!salt.ok) return back(salt.error);
     // Only the reviewed transaction goes out: the wallet's account and chain again, right before asking it.
     const now = port.value.account();
     if (!now || !sameAddress(now.address, s.from)) return back(SIMULATE_FIRST);
@@ -959,6 +988,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
 
   const discardProposal = (): void => {
     if (state.phase !== "proposed" || state.address === undefined || state.chainId === undefined) {
+      // Ruling R9: no fix clause. Nothing is wrong; there's just no proposal waiting.
       note("There's no proposal to discard.");
       return;
     }

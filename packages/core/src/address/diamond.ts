@@ -77,10 +77,18 @@ function guard(from: Address, salt: Hex, chainId: number): Hex {
  * first CREATE (nonce 1), `keccak256(0xd694 ‖ proxy ‖ 0x01)[12:]`.
  * Throws for the two salt shapes CreateX rejects with `InvalidSalt` (see `guard`); `buildSalt` never makes them.
  */
-export const createxPredict: CreatexPredictFn = ({ from, salt, chainId }) => {
+export const createxPredict: CreatexPredictFn = (args) => {
+  return getContractAddress({ opcode: "CREATE", from: createxProxy(args), nonce: 1n });
+};
+
+/**
+ * The CREATE3 proxy CreateX makes for this `(from, salt, chainId)` before it creates the diamond, checksummed. After
+ * a `FailedContractCreation` Studio reads code here and at the diamond's address (spec L75): code at the proxy means
+ * the salt was used before. Throws as `createxPredict` does.
+ */
+export function createxProxy({ from, salt, chainId }: { from: Address; salt: Hex; chainId: number }): Address {
   assertAddress(from, "from");
   assertBytes(salt, 32, "salt");
   if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new RangeError(`chainId must be a positive integer, got ${chainId}`);
-  const proxy = getContractAddress({ opcode: "CREATE2", from: CREATEX, salt: guard(from, salt, chainId), bytecodeHash: CREATE3_PROXY_CHILD_HASH });
-  return getContractAddress({ opcode: "CREATE", from: proxy, nonce: 1n });
-};
+  return getContractAddress({ opcode: "CREATE2", from: CREATEX, salt: guard(from, salt, chainId), bytecodeHash: CREATE3_PROXY_CHILD_HASH });
+}

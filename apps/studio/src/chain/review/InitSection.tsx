@@ -32,7 +32,7 @@ function planOf(...args: Parameters<typeof planInit>): InitPlan | null {
 }
 
 /**
- * Init (spec L567): the decoded arguments, references as "this diamond (0x…)", ENS names typed this session beside
+ * Init (spec L567): the decoded arguments, references as "this diamond (0x…)", ENS names (kept in the project) beside
  * their addresses, each re-resolved once here and flagged when it points elsewhere now (spec L462). Before the init
  * data can be built (no wallet yet) it lists the planned arguments and says why.
  */
@@ -116,7 +116,7 @@ export function InitSection() {
       ))}
       {ens.length > 0 ? (
         <div className={styles.content} data-ens="">
-          <p className={styles.muted}>ENS names typed this session are resolved again here.</p>
+          <p className={styles.muted}>ENS names are resolved again here.</p>
           {ens.map((entry) => (
             <RecheckLine key={entry.path} entry={entry} recheck={rechecks[recheckKey(entry)] ?? (online ? { status: "pending" } : { status: "offline" })} />
           ))}
