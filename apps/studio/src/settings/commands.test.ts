@@ -67,6 +67,10 @@ describe("S10's commands (contracts §5.3)", () => {
       ["theme blue", "“blue” isn't a theme. Choose shop, draft or system."],
       ["theme dark mode", "“dark mode” isn't a theme. Choose shop, draft or system."],
       ["theme", "theme takes shop, draft or system."],
+      // Keys every object inherits aren't themes.
+      ...["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"].map(
+        (key) => [`theme ${key}`, `“${key}” isn't a theme. Choose shop, draft or system.`] as const,
+      ),
     ] as const;
     const before = settings.get().theme;
     for (const [line, reason] of refusals) {
@@ -74,6 +78,15 @@ describe("S10's commands (contracts §5.3)", () => {
       expect(settings.get().theme).toBe(before);
       expect(bufferedServices().log.at(-1)).toMatchObject({ text: reason });
     }
+  });
+
+  test("theme.set refuses an inherited key through the API too, and writes nothing", async () => {
+    const before = settings.get().theme;
+    const ref = { id: "theme.set", args: { theme: "constructor" } } as unknown as Parameters<typeof runCommand>[0];
+    expect(commandState(ref)).toMatchObject({ ok: false, reason: `"constructor" isn't a theme.` });
+    expect((await runCommand(ref, "api")).ok).toBe(false);
+    expect(settings.get().theme).toBe(before);
+    expect(bufferedServices().log.some((line) => line.text.startsWith("Theme:"))).toBe(false);
   });
 
   test("tour.start starts the tour and disables itself while running; tour.end stops it", async () => {

@@ -62,29 +62,25 @@
 
 /*
  * The sheet pans in two dimensions inside its own pane, the Reflow exception (spec L372). Its 8 px dot grid
- * belongs to S4b's canvas, which pans and zooms it. Banners stack above the canvas (spec L384, L389).
+ * belongs to S4b's canvas, which pans and zooms it.
  */
 .sheet {
   position: relative;
-  display: flex;
   flex: 1 1 0;
-  flex-direction: column;
   min-inline-size: 0;
   min-block-size: 0;
   overflow: hidden;
   background: var(--lx-ground);
 }
 
+/* Banners (spec L384, L389): a strip under the title bar, above whichever panes show; nothing while empty. */
 .banners {
   flex: none;
   min-inline-size: 0;
 }
 
-/* S4b's canvas fills this (`position: absolute; inset: 0`). */
-.canvas {
-  position: relative;
-  flex: 1 1 0;
-  min-block-size: 0;
+.banners:empty {
+  display: none;
 }
 
 .console {

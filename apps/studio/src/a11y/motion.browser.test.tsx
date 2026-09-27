@@ -7,6 +7,18 @@ function running(): Animation[] {
   return document.getAnimations().filter((animation) => animation.playState === "running");
 }
 
+/** What a running animation is, for the failure message: its kind, name or property, target and timing. */
+function about(animation: Animation): string {
+  const effect = animation.effect as KeyframeEffect | null;
+  const target = effect?.target;
+  const name =
+    animation instanceof CSSAnimation ? animation.animationName
+    : animation instanceof CSSTransition ? animation.transitionProperty
+    : "script";
+  const where = target ? `${target.tagName.toLowerCase()}.${String(target.className)}` : "no target";
+  return `${animation.constructor.name} ${name} on ${where} (${String(effect?.getTiming().duration)} ms)`;
+}
+
 /** Waits for the browser to style and paint twice, so animations have started or finished. */
 async function frames(): Promise<void> {
   for (let i = 0; i < 2; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -45,6 +57,8 @@ describe("reduced motion (spec L784)", () => {
       .poll(() => document.querySelectorAll("[class*='placeholderRow']").length, { timeout: 10_000 })
       .toBeGreaterThan(0);
     await frames();
-    expect(running().map((a) => (a as CSSAnimation).animationName ?? a.id)).toEqual([]);
+    // A transition that just started (0.01 ms under reduce) may still count as running for a frame; anything
+    // that pulses runs forever, so it would still be here when the poll gives up.
+    await expect.poll(() => running().map(about), { timeout: 2_000 }).toEqual([]);
   });
 });

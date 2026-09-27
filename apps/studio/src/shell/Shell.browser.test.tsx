@@ -59,7 +59,7 @@ function visiblePrimaries(): string[] {
 
 /** The sheet region's canvas (S4b's lazy chunk): what must never remount. */
 function canvas(): Element | null {
-  return pane("sheet").lastElementChild?.firstElementChild ?? null;
+  return pane("sheet").firstElementChild;
 }
 
 async function renderAt(width: number, options: Parameters<typeof renderWithStudio>[1] = {}) {
@@ -559,37 +559,73 @@ describe("the sheet stays put", () => {
 });
 
 describe("banners (spec L384, L389)", () => {
+  const DEPLOYING = "Deploying the recipe as reviewed. Edits made now aren't part of it.";
+
   afterEach(() => {
     hideBanner("shell-test");
   });
 
-  test("show at the top of the sheet region, in the window, and the page doesn't scroll", async () => {
+  /** The banner shows in the window, under the title bar and above every pane that shows, and nothing scrolls. */
+  function expectPlaced(banner: HTMLElement): void {
+    const box = banner.getBoundingClientRect();
+    expect(box.top).toBeGreaterThanOrEqual((bar().element() as HTMLElement).getBoundingClientRect().bottom - 0.5);
+    expect(box.bottom).toBeLessThanOrEqual(window.innerHeight);
+    for (const id of ["left", "sheet", "inspector", "console"] as const) {
+      if (pane(id).checkVisibility()) expect(pane(id).getBoundingClientRect().top).toBeGreaterThanOrEqual(box.bottom - 0.5);
+    }
+    expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(window.innerHeight);
+  }
+
+  test("show under the title bar and above the canvas, in the window; coming and going never remounts the canvas", async () => {
     await renderAt(1440);
     await expect.poll(canvas, { timeout: 10_000 }).not.toBeNull();
     const sheet = canvas();
-    const text = "Deploying the recipe as reviewed. Edits made now aren't part of it.";
-    showBanner("shell-test", { text, tone: "info" });
-    const banner = page.getByRole("region", { name: "Sheet", exact: true }).getByText(text);
+    showBanner("shell-test", { text: DEPLOYING, tone: "info" });
+    const banner = page.getByText(DEPLOYING);
     await expect.element(banner).toBeVisible();
-    const top = (banner.element() as HTMLElement).getBoundingClientRect().top;
-    const sheetTop = pane("sheet").getBoundingClientRect().top;
-    expect(top).toBeGreaterThanOrEqual((bar().element() as HTMLElement).getBoundingClientRect().bottom);
-    expect(top).toBeGreaterThanOrEqual(sheetTop);
-    expect(top).toBeLessThan(window.innerHeight);
-    expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(window.innerHeight);
-    // Above the canvas, not over it; coming and going never remounts the canvas.
-    const hostBottom = (pane("sheet").firstElementChild as HTMLElement).getBoundingClientRect().bottom;
-    expect((pane("sheet").lastElementChild as HTMLElement).getBoundingClientRect().top).toBeGreaterThanOrEqual(hostBottom - 0.5);
+    expectPlaced(banner.element() as HTMLElement);
     expect(canvas()).toBe(sheet);
     hideBanner("shell-test");
     await expect.element(banner).not.toBeInTheDocument();
     expect(canvas()).toBe(sheet);
   });
 
-  test("a banner's buttons aren't sheet keys: its region is the global key context", async () => {
+  test("an open drawer doesn't cover one", async () => {
+    await renderAt(1100);
+    await runCommand(commandRef("pane.show", { pane: "inspector" }), "api");
+    await expect.poll(showing).toContain("inspector");
+    showBanner("shell-test", { text: DEPLOYING, tone: "info" });
+    const banner = page.getByText(DEPLOYING);
+    await expect.element(banner).toBeVisible();
+    expectPlaced(banner.element() as HTMLElement);
+  });
+
+  test("under 768 px with the Console pane showing, the banner still shows", async () => {
+    await renderAt(600);
+    await runCommand(commandRef("pane.show", { pane: "console" }), "api");
+    await expect.poll(showing).toEqual(["console"]);
+    showBanner("shell-test", { text: DEPLOYING, tone: "info" });
+    const banner = page.getByText(DEPLOYING);
+    await expect.element(banner).toBeVisible();
+    await expect.element(banner).toBeInViewport();
+    expectPlaced(banner.element() as HTMLElement);
+  });
+
+  test("with the console maximized, the banner still shows", async () => {
+    await renderAt(1440);
+    session.set((s) => ({ panes: { ...s.panes, console: { ...s.panes.console, maximized: true } } }));
+    await expect.poll(showing).toEqual(["console"]);
+    showBanner("shell-test", { text: "Another tab is editing this project.", tone: "warning" });
+    const banner = page.getByText("Another tab is editing this project.");
+    await expect.element(banner).toBeVisible();
+    await expect.element(banner).toBeInViewport();
+    expectPlaced(banner.element() as HTMLElement);
+  });
+
+  test("a banner's buttons aren't sheet keys: the strip is the global key context", async () => {
     await renderAt(1440);
     showBanner("shell-test", { text: "Another tab is editing this project.", tone: "warning", dismissible: true });
-    const close = page.getByRole("region", { name: "Sheet", exact: true }).getByRole("button", { name: /Close|Dismiss/ });
+    const close = page.getByRole("button", { name: "Close", exact: true });
     await expect.element(close).toBeVisible();
     expect(keyContextOf(close.element(), "Delete")).toBe("global");
   });

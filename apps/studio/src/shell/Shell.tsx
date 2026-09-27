@@ -47,10 +47,11 @@ function useRegions(): Record<Exclude<RegionId, "toasts">, RegionProps> {
  * hides or moves them, so no pane change ever remounts the sheet or resets its viewport (PA L14, bug 6).
  * Hidden regions carry `hidden`, which also takes them out of F6.
  *
- * Banners show at the top of the sheet region (spec L384, L389), above the canvas rather than over it, so
- * they never cover the sheet's tools. The host and the canvas are always both there, in that order: a banner
- * coming or going only resizes the canvas, never remounts it. The host is its own key context (`global`), so
- * a sheet shortcut never fires from a banner's button.
+ * Banners show across the top of the content, under the title bar (spec L384, L389): above the canvas when the
+ * sheet shows, and still there when it doesn't (another pane under 768 px, or the console maximized), which is
+ * when "Deploying…" and the read-only banner matter most. They sit outside every pane, so no pane or drawer
+ * covers them, and a banner coming or going never remounts the canvas. The strip is its own key context
+ * (`global`), so a sheet shortcut never fires from a banner's button.
  */
 export function Shell() {
   const tier = useLayoutTier();
@@ -87,6 +88,9 @@ export function Shell() {
         <TitleBar />
         {phone ? <PaneSwitcher /> : null}
       </header>
+      <div className={styles.banners} {...{ [KEY_CONTEXT_ATTRIBUTE]: "global" }}>
+        <BannerHost />
+      </div>
       <div className={styles.body} hidden={!seen.left && !seen.sheet && !seen.inspector}>
         <aside
           {...regionProps(regions.left, styles.left)}
@@ -117,12 +121,7 @@ export function Shell() {
           id={PANE_IDS.sheet}
           hidden={!seen.sheet}
         >
-          <div className={styles.banners} {...{ [KEY_CONTEXT_ATTRIBUTE]: "global" }}>
-            <BannerHost />
-          </div>
-          <div className={styles.canvas}>
-            <Sheet />
-          </div>
+          <Sheet />
         </main>
         {inspectorSplitter ? (
           <Splitter
