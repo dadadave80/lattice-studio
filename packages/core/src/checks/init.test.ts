@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AnalysisContext, CheckInput } from "../model/analysis";
-import type { Catalog } from "../model/catalog";
+import type { Catalog, InitParam } from "../model/catalog";
 import type { ChainState } from "../model/chain";
 import type { Problem, ProblemCode } from "../model/problems";
 import type { Arg, Recipe } from "../model/recipe";
@@ -317,7 +317,7 @@ describe("INIT-03", () => {
   });
 
   test("several authority keys differ: one Use one admin fix, and every differing argument is highlighted", () => {
-    const authority = (name: string) => ({ name, type: "address", doc: "", authority: true });
+    const authority = (name: string): InitParam => ({ name, type: "address", doc: "", authority: true });
     const both = { module: "AccessControl", with: { admin: "admin", guardian: "guardian" } };
     const synthetic = makeCatalog({
       inits: [

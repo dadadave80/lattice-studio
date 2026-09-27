@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { computeRouting } from "../analysis/routing";
 import { catalog, fixture, S, sheet, template } from "../analysis/test-support";
 import type { Catalog } from "../model/catalog";
+import type { CommandRef } from "../model/commands";
 import type { Hex4 } from "../model/hex";
 import type { Problem } from "../model/problems";
 import type { Recipe } from "../model/recipe";
@@ -59,7 +60,7 @@ describe("SEL-01", () => {
     const selector = three.facets[0]?.selectors[0]?.hex ?? "0x";
     expect(p?.params["contenders"]).toEqual(["A", "B", "C"]);
     expect(p?.fixes).toEqual([
-      ...["A", "B", "C"].map((facet) => ({ id: "selector.route", args: { selector, facet } })),
+      ...["A", "B", "C"].map((facet): CommandRef => ({ id: "selector.route", args: { selector, facet } })),
       { id: "collision.choosePerSelector", args: { selectors: [selector] } },
     ]);
   });
