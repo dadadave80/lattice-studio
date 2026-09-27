@@ -1,7 +1,21 @@
-import { exportProjectFile } from "@lattice-studio/core";
+import { exportProjectFile, recipeHash, type Project } from "@lattice-studio/core";
 import { useRef, useState } from "react";
-import { closeDialog, useDocument, type DialogComponentProps } from "@/contracts";
+import { closeDialog, getCatalog, useDocument, type DialogComponentProps } from "@/contracts";
 import { Button, Dialog, TextField } from "@/ui";
+import { shortHash } from "../hash-label";
+import { STUDIO_VERSION } from "../version";
+
+/**
+ * Ruling R6: the dialog states the recipe hash, catalog tag and Studio version; the `.lattice.json` body
+ * stays exactly what core writes. Without a loaded catalog there's nothing to normalize the recipe against,
+ * so the header is left off rather than guessing at a hash.
+ */
+function header(project: Project): string | undefined {
+  const catalog = getCatalog();
+  if (!catalog) return undefined;
+  const hash = recipeHash(project.recipe, catalog);
+  return `Recipe ${shortHash(hash)} · catalog Lattice ${catalog.lattice.tag} · Studio ${STUDIO_VERSION}`;
+}
 
 /** Save a copy… (IR "Save a copy" dialog: File name field, Save primary, Cancel). */
 export function SaveCopyDialogPanel({ entry, top }: DialogComponentProps<"save-copy">) {
@@ -35,6 +49,7 @@ export function SaveCopyDialogPanel({ entry, top }: DialogComponentProps<"save-c
         if (!open) close();
       }}
       title="Save a copy"
+      description={header(project)}
       lossless
       top={top}
       initialFocus={inputRef}

@@ -216,8 +216,16 @@ test.describe("Foundry script (spec L513, L520-L528)", () => {
     await seedProject(page, { project });
     await runConsole(page, "export foundry");
     await expect(page.getByRole("tab", { name: "Script" })).toHaveAttribute("aria-selected", "true");
+    // Stabilizes under load (known flaky at 6 workers, ledger L449): `.focus()` doesn't wait for the tab's
+    // maximize transition or the script to finish generating the way `.click()` does, so under load it could
+    // focus (or not) a Download button that's still `aria-disabled`, or one about to re-render. Waiting for
+    // the console to finish maximizing and the button to become usable (matching the pointer test above)
+    // before focusing it removes the race.
+    await expect(page.getByRole("button", { name: "Restore console" })).toBeVisible();
     const downloadButton = console_(page).getByRole("button", { name: "Download" });
+    await expect(downloadButton).not.toHaveAttribute("aria-disabled", "true");
     await downloadButton.focus();
+    await expect(downloadButton).toBeFocused();
     const [download] = await Promise.all([page.waitForEvent("download"), page.keyboard.press("Enter")]);
     const text = await downloadText(download);
     expect(text).toContain(`Recipe hash: ${hash}`);
@@ -312,6 +320,12 @@ test.describe("Project file (spec L502, L516; S7b's project.exportFile)", () => 
     const dialog = page.getByRole("dialog", { name: "Save a copy" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByLabel("File name")).toHaveValue(/\.lattice\.json$/);
+    // Ruling R6: the dialog states the recipe hash, catalog tag and Studio version (the .lattice.json body
+    // itself is checked below to stay exactly what core writes).
+    const hash = recipeHash(project.recipe, catalog());
+    await expect(dialog.getByText(hash.slice(0, 6), { exact: false })).toBeVisible();
+    await expect(dialog.getByText(`catalog Lattice ${catalog().lattice.tag}`, { exact: false })).toBeVisible();
+    await expect(dialog.getByText(/Studio \S+/)).toBeVisible();
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
