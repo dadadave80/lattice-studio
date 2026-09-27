@@ -13,6 +13,7 @@ import styles from "./chrome.module.css";
 export { BrowseRecipesDialog } from "./BrowseRecipesDialog";
 export { InitBadge } from "./InitBadge";
 export { InitOrderOverlay } from "./InitOrderOverlay";
+export { OpenError } from "./OpenError";
 
 /** The tool strip, then the zoom readout: one layer, so both come before the notes in Tab order (spec L752). */
 export function ToolStripLayer() {
