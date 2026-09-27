@@ -3,11 +3,12 @@
  * and Collapse, the compact form, handles at C9's geometry, size and paint containment, and 1/zoom strokes.
  */
 import { cardSize, contestedSelectors, type Hex4, type Project } from "@lattice-studio/core";
+import type { ReactFlowInstance } from "@xyflow/react";
 import { describe, expect, test } from "vitest";
 import { cdp, page, userEvent } from "vitest/browser";
-import { doc, getAnalysis, getCommand, history, layoutMetrics, session, useSession } from "@/contracts";
+import { doc, getAnalysis, getCommand, history, layoutMetrics, runCommand, session, useSession } from "@/contracts";
 import { fixtureCatalog, overrideCommands, renderWithStudio } from "../../../test/harness";
-import { cardNameId } from "./node";
+import { cardNameId, type FacetNode } from "./node";
 import { CardSheet } from "./testing/CardSheet";
 import { cardProject, GALLERY_FACETS } from "./testing/projects";
 
@@ -302,14 +303,75 @@ describe("compact below 40% zoom (spec L481)", () => {
     expect(hyperlane.querySelector('.react-flow__handle[data-handleid="0xcdfe7f5c"]')).not.toBeNull();
   });
 
-  test("crossing 40% redraws the card at full size", async () => {
+  test("crossing 40% redraws the card at full size, and its handle follows to the row (spec L825)", async () => {
     const flow: { zoomTo?: (zoom: number) => Promise<boolean> } = {};
     await renderWithStudio(<CardSheet zoom={0.3} onInit={(rf) => (flow.zoomTo = (z) => rf.zoomTo(z))} />, { project: gallery() });
     await expect.poll(() => flow.zoomTo !== undefined).toBe(true);
     expect(card("ERC20").dataset.compact).toBe("");
+    const ALLOWANCE: Hex4 = "0xdd62ed3e";
+    const handle = () => card("ERC20").querySelector<HTMLElement>(`.react-flow__handle[data-handleid="${ALLOWANCE}"]`);
+    const compactTop = handle()?.style.top;
     await flow.zoomTo?.(0.5);
     await expect.poll(() => card("ERC20").dataset.compact).toBeUndefined();
     expect(card("ERC20").querySelectorAll("[data-selector]")).toHaveLength(9);
+    await expect.poll(() => handle()?.style.top).not.toBe(compactTop);
+    const index = [...card("ERC20").querySelectorAll<HTMLElement>("[data-selector]")].findIndex((r) => r.dataset.selector === ALLOWANCE);
+    expect(index).toBeGreaterThanOrEqual(0);
+    const expectedTop = layoutMetrics.headerHeight + layoutMetrics.grid + index * layoutMetrics.rowHeight + layoutMetrics.rowHeight / 2;
+    expect(handle()?.style.top).toBe(`${expectedTop}px`);
+  });
+});
+
+describe("handles follow an expand or a pin flip (spec L825, batch-3 #36)", () => {
+  /** React Flow's own handle bounds for `facet` (what `updateNodeInternals` refreshes), not just the DOM. */
+  function handleBounds(flow: { instance?: ReactFlowInstance<FacetNode> }, facet: string) {
+    return flow.instance?.getInternalNode(facet)?.internals.handleBounds;
+  }
+
+  test("expanding draws a handle for the newly-shown row, and React Flow's own handle bounds pick it up", async () => {
+    const flow: { instance?: ReactFlowInstance<FacetNode> } = {};
+    await renderWithStudio(<CardSheet onInit={(rf) => (flow.instance = rf)} />, { project: gallery() });
+    await expect.poll(() => document.querySelectorAll("[data-facet]").length).toBe(GALLERY_FACETS.length);
+    const HIDDEN: Hex4 = "0x3e56e39a"; // trustedRemoteOf(uint256), past Hyperlane's collapsed 6 rows
+    const hasBound = () => handleBounds(flow, "HyperlaneGatewayAdapter")?.source?.some((h) => h.id === HIDDEN) ?? false;
+    expect(card("HyperlaneGatewayAdapter").querySelector(`.react-flow__handle[data-handleid="${HIDDEN}"]`)).toBeNull();
+    expect(hasBound()).toBe(false);
+
+    await userEvent.click(page.getByRole("button", { name: "+ 6 more" }));
+    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll("[data-selector]").length).toBe(12);
+    const handle = () => card("HyperlaneGatewayAdapter").querySelector<HTMLElement>(`.react-flow__handle[data-handleid="${HIDDEN}"]`);
+    await expect.poll(() => handle() !== null).toBe(true);
+    // updateNodeInternals ran: React Flow's store, not just the DOM, now has a bound for the new handle.
+    await expect.poll(hasBound).toBe(true);
+    const index = [...card("HyperlaneGatewayAdapter").querySelectorAll<HTMLElement>("[data-selector]")].findIndex(
+      (r) => r.dataset.selector === HIDDEN,
+    );
+    expect(index).toBeGreaterThanOrEqual(0);
+    const expectedTop = layoutMetrics.headerHeight + layoutMetrics.grid + index * layoutMetrics.rowHeight + layoutMetrics.rowHeight / 2;
+    expect(handle()?.style.top).toBe(`${expectedTop}px`);
+    const bound = handleBounds(flow, "HyperlaneGatewayAdapter")?.source?.find((h) => h.id === HIDDEN);
+    expect(Math.round(bound?.y ?? 0)).toBe(expectedTop);
+  });
+
+  test("flipping pins moves a card's handles to its new side, in React Flow's own handle bounds too", async () => {
+    const flow: { instance?: ReactFlowInstance<FacetNode> } = {};
+    await renderWithStudio(<CardSheet onInit={(rf) => (flow.instance = rf)} />, { project: gallery() });
+    await expect.poll(() => document.querySelectorAll("[data-facet]").length).toBe(GALLERY_FACETS.length);
+    const ALLOWANCE: Hex4 = "0xdd62ed3e";
+    const handle = () => card("ERC20").querySelector<HTMLElement>(`.react-flow__handle[data-handleid="${ALLOWANCE}"]`);
+    const boundX = () => handleBounds(flow, "ERC20")?.source?.find((h) => h.id === ALLOWANCE)?.x;
+    expect(handle()?.classList.contains("react-flow__handle-left")).toBe(true);
+    const leftX = boundX();
+
+    await runCommand({ id: "layout.flipPins", args: { facets: ["ERC20"] } }, "api");
+    await expect.poll(() => card("ERC20").dataset.pins).toBe("right");
+    await expect.poll(() => handle()?.classList.contains("react-flow__handle-right")).toBe(true);
+    expect(handle()?.classList.contains("react-flow__handle-left")).toBe(false);
+    // Its top on the row's middle doesn't change: only the side does, in the DOM and in React Flow's bounds.
+    const index = [...card("ERC20").querySelectorAll<HTMLElement>("[data-selector]")].findIndex((r) => r.dataset.selector === ALLOWANCE);
+    const expectedTop = layoutMetrics.headerHeight + layoutMetrics.grid + index * layoutMetrics.rowHeight + layoutMetrics.rowHeight / 2;
+    expect(handle()?.style.top).toBe(`${expectedTop}px`);
+    await expect.poll(boundX).not.toBe(leftX);
   });
 });
 

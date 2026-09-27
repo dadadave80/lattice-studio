@@ -5,8 +5,8 @@
  */
 import { describe, expect, test } from "vitest";
 import { doc, startCatalogDrag } from "@/contracts";
-import { fixtureCatalog, onCleanup } from "../../../test/harness";
-import { cardNode, client, drawnViewport, paneElement, renderInteractSheet, selection, sheetProject } from "./testing/interact-harness";
+import { fixtureCatalog } from "../../../test/harness";
+import { cardNode, client, drawnViewport, paneElement, renderInteractSheet, selection, sheetProject, touchScreen } from "./testing/interact-harness";
 
 const ID = "drop";
 const VIEW = { session: { viewports: { [ID]: { x: 60, y: 80, zoom: 1 } } } };
@@ -74,17 +74,11 @@ describe("dropping a catalog row", () => {
   });
 });
 
-/**
- * d3-zoom (React Flow's panning) listens for touches only where the browser has them; this desktop test browser
- * says it does, so one-finger panning would really happen if the marquee didn't take the touch.
+/*
+ * d3-zoom (React Flow's panning) and d3-drag (dragging) listen for touches only where the browser has them;
+ * `touchScreen()` says this desktop test browser does, so a gesture the marquee or a card drag doesn't take
+ * would really pan or zoom.
  */
-function touchScreen(): void {
-  Object.defineProperty(HTMLElement.prototype, "ontouchstart", { configurable: true, writable: true, value: null });
-  onCleanup(() => {
-    delete (HTMLElement.prototype as unknown as Record<string, unknown>).ontouchstart;
-  });
-}
-
 describe("touch", () => {
   test("one finger on empty sheet draws the marquee and doesn't pan", async () => {
     touchScreen();
@@ -147,6 +141,43 @@ describe("pinch", () => {
     const b1 = touch(2, 640, 350);
     send("touchend", [a1, b1], []);
     await expect.poll(() => drawnViewport().zoom).toBeGreaterThan(before.zoom * 1.5);
+    expect(document.querySelector("[data-marquee]")).toBeNull();
+  });
+});
+
+describe("two-finger pan (IR L58, L97, batch-2 #97)", () => {
+  test("two fingers moving together pan without zooming", async () => {
+    touchScreen();
+    await sheet(2);
+    const pane = paneElement();
+    const before = drawnViewport();
+    const at = (x: number, y: number) => client({ x, y });
+    const touch = (id: number, x: number, y: number) => new Touch({ identifier: id, target: pane, ...at(x, y) });
+    const send = (type: string, changed: Touch[], touches: Touch[]) =>
+      pane.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches, targetTouches: touches, changedTouches: changed }));
+    const pointer = (type: string, id: number, x: number, y: number, primary: boolean) =>
+      pane.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, view: window, pointerId: id, pointerType: "touch", isPrimary: primary, button: 0,
+        buttons: type === "pointerup" ? 0 : 1, ...at(x, y),
+      }));
+    const a0 = touch(1, 500, 350);
+    pointer("pointerdown", 1, 500, 350, true);
+    send("touchstart", [a0], [a0]);
+    const b0 = touch(2, 540, 350);
+    pointer("pointerdown", 2, 540, 350, false);
+    send("touchstart", [b0], [a0, b0]);
+    // Both fingers move the same distance in the same direction: the gap between them never changes.
+    for (let i = 1; i <= 5; i++) {
+      const a = touch(1, 500 - 20 * i, 350 - 10 * i);
+      const b = touch(2, 540 - 20 * i, 350 - 10 * i);
+      send("touchmove", [a, b], [a, b]);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    const a1 = touch(1, 400, 300);
+    const b1 = touch(2, 440, 300);
+    send("touchend", [a1, b1], []);
+    await expect.poll(() => drawnViewport().x).not.toBeCloseTo(before.x, 0);
+    expect(drawnViewport().zoom).toBeCloseTo(before.zoom, 5);
     expect(document.querySelector("[data-marquee]")).toBeNull();
   });
 });

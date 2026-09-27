@@ -77,6 +77,23 @@ describe("pin states and what a click does (Flow 6)", () => {
     expect(symbol.label).toBe("symbol() 0x95d89b41, not in the diamond");
   });
 
+  test("an excluded selector reads 'not in the diamond' on every card that exports it (spec L455)", () => {
+    // transfer(address,uint256) is a seam on ERC20 (ERC20Votes is in the gallery) and shared by GovernedVault
+    // too; excluding it must read the same on both, ahead of any route or seam it would otherwise carry.
+    const TRANSFER: Hex4 = "0xa9059cbb";
+    const recipe = recipeOf(GALLERY, [SYMBOL, TRANSFER]);
+    const onErc20 = pin(view("ERC20", recipe), "transfer");
+    const onVault = pin(view("GovernedVault", recipe), "transfer");
+    expect(onErc20.state).toBe("excluded");
+    expect(onVault.state).toBe("excluded");
+    expect(onErc20.tooltip.text).toBe("Not in the diamond. Click to route here.");
+    expect(onVault.tooltip.text).toBe("Not in the diamond. Click to route here.");
+    expect(onErc20.mark).toBe(TRANSFER);
+    expect(onVault.mark).toBe(TRANSFER);
+    expect(onErc20.action).toEqual({ id: "selector.include", args: { selector: TRANSFER, facet: "ERC20" } });
+    expect(onVault.action).toEqual({ id: "selector.include", args: { selector: TRANSFER, facet: "GovernedVault" } });
+  });
+
   test("served by another facet: '→ GovernedVault', and a click routes it here instead", () => {
     const name = pin(view("ERC20", gallery), "name");
     expect(name.state).toBe("elsewhere");
