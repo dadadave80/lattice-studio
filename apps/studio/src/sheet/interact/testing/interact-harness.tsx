@@ -120,6 +120,44 @@ export async function dragCard(
 
 let lastDrag = { clientX: 0, clientY: 0 };
 
+/**
+ * Makes this desktop test browser report a touch screen (`navigator.maxTouchPoints` doesn't move in Chromium
+ * without device emulation, so d3-drag and d3-zoom's own touch feature test, `"ontouchstart" in element`, is
+ * given a reason to say yes). Cleaned up after the test.
+ */
+export function touchScreen(): void {
+  Object.defineProperty(HTMLElement.prototype, "ontouchstart", { configurable: true, writable: true, value: null });
+  onCleanup(() => {
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).ontouchstart;
+  });
+}
+
+/**
+ * A one-finger touch drag on a card from its header by `by` screen px, in `steps` moves. React Flow's node
+ * dragging (d3-drag) listens for raw `touchstart`/`touchmove`/`touchend` on the node itself, not pointer events
+ * (IR L57): `touchScreen()` must run first so it's willing to.
+ */
+export async function touchDragCard(facet: string, by: Point, options: { steps?: number } = {}): Promise<void> {
+  const { steps = 6 } = options;
+  const target = cardNode(facet);
+  const start = client(cardPoint(facet));
+  const at = (x: number, y: number) => ({ clientX: x, clientY: y });
+  const touch = (x: number, y: number) => new Touch({ identifier: 31, target, ...at(x, y) });
+  const send = (type: string, x: number, y: number) => {
+    const point = touch(x, y);
+    target.dispatchEvent(new TouchEvent(type, {
+      bubbles: true, cancelable: true, touches: type === "touchend" ? [] : [point], changedTouches: [point], targetTouches: type === "touchend" ? [] : [point],
+    }));
+  };
+  send("touchstart", start.clientX, start.clientY);
+  for (let i = 1; i <= steps; i++) {
+    send("touchmove", start.clientX + (by.x * i) / steps, start.clientY + (by.y * i) / steps);
+    await frame();
+  }
+  send("touchend", start.clientX + by.x, start.clientY + by.y);
+  await frame();
+}
+
 /** Lets go of a card drag started with `release: false`. */
 export async function releaseDrag(): Promise<void> {
   window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window, button: 0, buttons: 0, ...lastDrag }));

@@ -3,7 +3,8 @@
  * choices writing `owners`, the three-contender owner menu, Choose per selector, the seam and missing-dependency
  * notes, the note's context menu, Resolve collision…, F8 in problem order, and the fade with reduced motion.
  */
-import type { Hex4, Problem, Project, Recipe } from "@lattice-studio/core";
+import type { Catalog, Hex4, Problem, Project, Recipe } from "@lattice-studio/core";
+import { makeCatalog, makeFacet } from "@lattice-studio/core/testing";
 import { describe, expect, test } from "vitest";
 import { cdp, page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
@@ -15,6 +16,7 @@ import { fixtureCatalog, onCleanup, overrideCommands } from "../../../test/harne
 import { cardProject } from "../card/testing/projects";
 import { ensureElementVisible, panSheet } from "../canvas";
 import { drawn, renderSheet } from "../canvas/testing/sheet-harness";
+import noteStyles from "./Note.module.css";
 import { problemCursor, resetProblemCursor } from "./navigate";
 import { clearNoteFocus } from "./note-focus";
 import { computeOverlay } from "./overlay-model";
@@ -245,6 +247,92 @@ describe("seam and missing-dependency notes (Flow 5, spec L441-L449)", () => {
   });
 });
 
+describe("DEP-01 with more than one option (spec L446, IR L108, batch-1 #36/#37)", () => {
+  const optionsCatalog: Catalog = makeCatalog({
+    facets: [
+      makeFacet({
+        name: "Dependent",
+        requires: [{ anyOf: ["OptionA", "OptionB"], strength: "hard", reason: "it needs an option" }],
+      }),
+      makeFacet({ name: "OptionA" }),
+      makeFacet({ name: "OptionB" }),
+    ],
+  });
+
+  async function optionsSheet(): Promise<void> {
+    onCleanup(() => {
+      resetProblemCursor();
+      clearNoteFocus();
+    });
+    const options = cardProject(optionsCatalog, ["Dependent"], { columns: 1 });
+    await renderSheet({ project: options, catalog: optionsCatalog, settings: { reduceMotion: "on" } });
+  }
+
+  test("one Place button per anyOf option, plus Compare options…, which opens the preview", async () => {
+    await optionsSheet();
+    const el = await waitForNote("missing");
+    const placeA = page.getByRole("button", { name: "Place OptionA" });
+    const placeB = page.getByRole("button", { name: "Place OptionB" });
+    await expect.element(placeA).toBeInTheDocument();
+    await expect.element(placeB).toBeInTheDocument();
+    const compare = page.getByRole("button", { name: "Compare options…" });
+    await expect.element(compare).toBeInTheDocument();
+    expect(el.textContent).toContain("Dependent");
+    await compare.click();
+    expect(session.get().panes.inspector.view).toMatchObject({ kind: "preview", facet: "OptionA", compare: ["OptionA", "OptionB"] });
+    // Placing an option still puts it beside the dependent and clears the note (Flow 5).
+    await placeA.click();
+    expect(doc.get().recipe.facets).toContain("OptionA");
+    await expect.poll(() => note("missing")).toBeNull();
+  });
+});
+
+describe("the convention note is quieter than a missing-dependency note (spec L449, batch-1 #44)", () => {
+  test("a hairline, muted rule and caption instead of the heavy accent (DEP-01 vs DEP-02)", async () => {
+    await sheet(project(["GovernedDiamondCut", "VaultCore"]));
+    const missing = await waitForNote("missing");
+    const convention = await waitForNote("convention");
+    const missingStyle = getComputedStyle(missing);
+    const conventionStyle = getComputedStyle(convention);
+    expect(parseFloat(conventionStyle.borderInlineStartWidth)).toBeLessThan(parseFloat(missingStyle.borderInlineStartWidth));
+    expect(conventionStyle.borderInlineStartStyle).toBe("solid");
+    expect(missingStyle.borderInlineStartStyle).toBe("dashed");
+    expect(conventionStyle.borderInlineStartColor).not.toBe(missingStyle.borderInlineStartColor);
+    const captionOf = (note: HTMLElement) => note.querySelector<HTMLElement>(`.${noteStyles.caption}`);
+    const missingCaption = captionOf(missing);
+    const conventionCaption = captionOf(convention);
+    if (!missingCaption || !conventionCaption) throw new Error("No caption.");
+    expect(getComputedStyle(conventionCaption).color).not.toBe(getComputedStyle(missingCaption).color);
+  });
+});
+
+describe("Tab order: the notes sit between the tool strip and the title block (IR L18, spec L744, L752)", () => {
+  test("from the last tool-strip control, Tab reaches the notes, then the init chip, then the title block", async () => {
+    await sheet(project(["VaultCore"]));
+    const el = await waitForNote("missing");
+    session.set({ modes: { ...session.get().modes, initOrder: true } });
+    await expect.poll(() => document.querySelector('[data-chrome="init-chip"]')).not.toBeNull();
+    // The last tool-strip (or zoom readout) control that comes before the note in the document: title block and
+    // the init chip both sit after the note (spec L744), so this excludes them the way "a note out of view"
+    // does above.
+    const panels = [...document.querySelectorAll<HTMLElement>(".react-flow__panel button")];
+    const last = panels.filter((b) => b.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).at(-1);
+    if (!last) throw new Error("No tool-strip control.");
+    last.focus({ preventScroll: true });
+    await userEvent.tab();
+    expect(document.activeElement?.closest("[data-note-id]")).not.toBeNull();
+    let guard = 0;
+    while (document.activeElement?.closest("[data-note-id]") && guard < 10) {
+      await userEvent.tab();
+      guard += 1;
+    }
+    expect(guard).toBeGreaterThan(0);
+    expect(document.activeElement?.closest('[data-chrome="init-chip"]')).not.toBeNull();
+    await userEvent.tab();
+    expect(document.activeElement?.closest('[data-chrome="title-block"]')).not.toBeNull();
+  });
+});
+
 describe("traces and ties (IR L106-L107)", () => {
   test("a trace's reason shows from 75% zoom, below that while an end is selected, which also lights it", async () => {
     await sheet(project(["VaultCore", "ERC4626"], { columns: 2 }));
@@ -269,6 +357,36 @@ describe("traces and ties (IR L106-L107)", () => {
     expect(session.get().selection).toEqual([]);
     node.blur();
     await expect.poll(label).toBeNull();
+  });
+
+  test("a trace's line is 1.5 px until an end is selected, then 2 px accent (IR L106, batch-2 #135)", async () => {
+    await sheet(project(["VaultCore", "ERC4626"], { columns: 2 }));
+    const id = "needs:VaultCore:ERC4626";
+    const trace = () => document.querySelector<SVGGElement>(`g[data-edge='${id}']`);
+    await expect.poll(trace, { timeout: 8000 }).not.toBeNull();
+    const line = () => trace()?.querySelector("path:last-child") as SVGPathElement;
+    const width = () => parseFloat(getComputedStyle(line()).strokeWidth);
+    await expect.poll(width).toBeCloseTo(1.5, 1);
+    session.set({ selection: ["ERC4626"] });
+    await expect.poll(() => trace()?.hasAttribute("data-live")).toBe(true);
+    await expect.poll(width).toBeCloseTo(2, 1);
+    session.set({ selection: [] });
+    await expect.poll(() => trace()?.hasAttribute("data-live")).toBe(false);
+    await expect.poll(width).toBeCloseTo(1.5, 1);
+  });
+
+  test("more contrast: a trace's line holds 2 px even without a selected end (spec L786, batch-2 #103)", async () => {
+    await cdp().send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-contrast", value: "more" }] });
+    try {
+      await sheet(project(["VaultCore", "ERC4626"], { columns: 2 }));
+      const id = "needs:VaultCore:ERC4626";
+      const line = () => document.querySelector<SVGGElement>(`g[data-edge='${id}']`)?.querySelector("path:last-child") as SVGPathElement;
+      await expect.poll(() => document.querySelector(`g[data-edge='${id}']`), { timeout: 8000 }).not.toBeNull();
+      expect(matchMedia("(prefers-contrast: more)").matches).toBe(true);
+      expect(parseFloat(getComputedStyle(line()).strokeWidth)).toBeCloseTo(2, 1);
+    } finally {
+      await cdp().send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-contrast", value: "no-preference" }] });
+    }
   });
 
   test("below 75% zoom, pointing at a trace shows its reason", async () => {

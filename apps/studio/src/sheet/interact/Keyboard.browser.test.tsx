@@ -221,3 +221,25 @@ describe("Delete", () => {
     await expect.poll(() => document.activeElement).toBe(region());
   });
 });
+
+describe("Tidy and Flip keep focus (spec L755)", () => {
+  test("T (Tidy) leaves focus on the card that had it, though Tidy moves it", async () => {
+    const [a] = await sheet();
+    await focusOn(a as string);
+    const before = cardNode(a as string);
+    press("t");
+    await expect.poll(() => doc.state().undoLabel).toMatch(/^Tidied/);
+    expect(document.activeElement).toBe(before);
+    expect(focusedCard()).toBe(a);
+  });
+
+  test("F (Flip) leaves focus on the flipped card", async () => {
+    const [a] = await sheet();
+    await focusOn(a as string);
+    const before = cardNode(a as string);
+    press("f");
+    await expect.poll(() => doc.get().layout[a as string]?.pins).toBe("right");
+    expect(document.activeElement).toBe(before);
+    expect(focusedCard()).toBe(a);
+  });
+});
