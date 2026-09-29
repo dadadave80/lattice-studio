@@ -8,7 +8,7 @@ import { InitEditor } from "./InitEditor";
 import { projectFor, templateRecipe } from "./test-support";
 
 describe("accessibility in both themes (WCAG 2.2 AA)", () => {
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`the init plan has no axe violations in ${theme}`, async () => {
       const project = projectFor(templateRecipe("SafeDiamondCut"), { provenance: { "steps[0].admin": "link" } });
       const screen = await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project, theme });

@@ -25,7 +25,7 @@ beforeAll(async () => {
   );
 });
 
-describe.each(["shop", "draft"] as const)("provisional: Choose per selector, two owners to pick (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: Choose per selector, two owners to pick (%s)", (theme) => {
   test("one owner menu per contested selector, Apply owners disabled until one is chosen", async () => {
     const project = cardProject(catalog, [AXELAR, HYPERLANE], { columns: 2 });
     await renderSheet({ theme, project, settings: { reduceMotion: "on" } });

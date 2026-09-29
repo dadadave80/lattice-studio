@@ -21,7 +21,7 @@ async function hasText(locator: { element(): Element }, text: string): Promise<v
   await vi.waitFor(() => expect(locator.element().textContent ?? "").toContain(text));
 }
 
-async function renderConsole(options: { theme?: "shop" | "draft" } = {}) {
+async function renderConsole(options: { theme?: "dark" | "light" } = {}) {
   const rendered = await renderWithStudio(<div style={{ height: "400px", display: "flex" }}><ConsolePanel /></div>, {
     project: erc20Project(),
     ...(options.theme ? { theme: options.theme } : {}),
@@ -196,7 +196,7 @@ describe("Log (IR L134)", () => {
     expect(said()).toHaveLength(2);
   });
 
-  for (const theme of ["shop", "draft"] as const satisfies readonly ThemeChoice[]) {
+  for (const theme of ["dark", "light"] as const satisfies readonly ThemeChoice[]) {
     test(`no axe violations with lines, in ${theme}`, async () => {
       await renderConsole({ theme });
       seedLines();

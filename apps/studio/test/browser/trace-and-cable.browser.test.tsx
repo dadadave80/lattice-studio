@@ -1,7 +1,7 @@
 /**
  * Board: `design/boards/current-trace-and-cable.png` ("Trace and cable", row 03): dependency edges run foot to
  * foot; the overlap is a tie pin to pin. Trace/cable are the same edge (S4c's `TraceEdge`/`TieEdge`), themed:
- * shop draws the accent as a cable, draft keeps it as ink. A conflict tie is the same `TieEdge` between two
+ * dark draws the accent as a cable, light keeps it as ink. A conflict tie is the same `TieEdge` between two
  * contenders' pins for a contested selector.
  *
  * Provisional: forced-colors for traces and ties has no board (PA L82) — ties already carry a dash there
@@ -60,7 +60,7 @@ function flow(): HTMLElement {
   return el;
 }
 
-describe.each(["shop", "draft"] as const)("board: trace and cable, a dependency trace (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: trace and cable, a dependency trace (%s)", (theme) => {
   test("VaultCore needs ERC4626: the trace, labelled, from provider to dependent", async () => {
     const project = traceProject();
     await renderSheet({ theme, project, settings: { reduceMotion: "on" } });
@@ -72,7 +72,7 @@ describe.each(["shop", "draft"] as const)("board: trace and cable, a dependency 
   });
 });
 
-describe.each(["shop", "draft"] as const)("board: trace and cable, a conflict tie (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: trace and cable, a conflict tie (%s)", (theme) => {
   test("Axelar and Hyperlane: two ties, pin to pin, between the contended selectors", async () => {
     const project = cardProject(catalog, [AXELAR, HYPERLANE], { columns: 2 });
     await renderSheet({ theme, project, settings: { reduceMotion: "on" } });
@@ -83,16 +83,16 @@ describe.each(["shop", "draft"] as const)("board: trace and cable, a conflict ti
   });
 });
 
-describe("provisional: forced colors on a trace (shop)", () => {
+describe("provisional: forced colors on a trace (dark)", () => {
   test("a dependency trace keeps its 1.5 px ink in CanvasText under forced colors", async () => {
     const project = traceProject();
-    await renderSheet({ theme: "shop", project, settings: { reduceMotion: "on" } });
+    await renderSheet({ theme: "dark", project, settings: { reduceMotion: "on" } });
     await expect.poll(() => document.querySelector("g[data-edge='needs:VaultCore:ERC4626']"), { timeout: 8000 }).not.toBeNull();
     await emulateForcedColors(true);
     try {
       await settledScreen();
       await document.fonts.ready;
-      await expect.element(page.elementLocator(flow())).toMatchScreenshot("provisional-trace-forced-colors-shop");
+      await expect.element(page.elementLocator(flow())).toMatchScreenshot("provisional-trace-forced-colors-dark");
     } finally {
       await emulateForcedColors(false);
     }

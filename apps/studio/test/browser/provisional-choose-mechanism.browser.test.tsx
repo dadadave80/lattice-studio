@@ -22,7 +22,7 @@ beforeAll(async () => {
   );
 });
 
-async function openMechanismDialog(theme: "shop" | "draft", project: Project) {
+async function openMechanismDialog(theme: "dark" | "light", project: Project) {
   await renderWithStudio(<DialogHost />, { theme, project });
   openDialog("choose-mechanism", {});
   const dialog = page.getByRole("dialog", { name: TITLE });
@@ -30,7 +30,7 @@ async function openMechanismDialog(theme: "shop" | "draft", project: Project) {
   return dialog;
 }
 
-describe.each(["shop", "draft"] as const)("provisional: Choose an upgrade mechanism, its options (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: Choose an upgrade mechanism, its options (%s)", (theme) => {
   test("five options, the current one focused, Governance disabled with its reason", async () => {
     const dialog = await openMechanismDialog(theme, projectFor(templateRecipe("SafeDiamondCut")));
     for (const label of ["Admin role", "Safe", "Safe with delay", "Governance", "Immutable"]) {
@@ -42,7 +42,7 @@ describe.each(["shop", "draft"] as const)("provisional: Choose an upgrade mechan
   });
 });
 
-describe.each(["shop", "draft"] as const)("provisional: the Authority table (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: the Authority table (%s)", (theme) => {
   test("every role, its holder in full, and how it got there", async () => {
     await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { theme, project: projectFor(templateRecipe("GovernedVault")) });
     const table = page.getByRole("table", { name: "Authority" });

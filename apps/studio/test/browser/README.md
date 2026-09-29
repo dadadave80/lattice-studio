@@ -1,7 +1,7 @@
 # Visual baselines for the States boards (WP-Q3)
 
 Every state drawn on the Claude Design States boards (`.handoff/design/boards/*.png`, 18 files) gets a browser
-test and a screenshot baseline in both themes (shop, draft), with forced colors where the board draws lines
+test and a screenshot baseline in both themes (dark, light), with forced colors where the board draws lines
 (traces, cables, ties, pins, the init-order path, the minimap). Baselines already built elsewhere in the app
 (S4a's `FacetCard.screens.browser.test.tsx`) are referenced, not duplicated.
 
@@ -15,19 +15,19 @@ claim that the pixel layout is final.
 
 | # | Board | State | Test | Notes |
 | - | ----- | ----- | ---- | ----- |
-| 1 | current-catalog-row | Draft/Shop two-line rows: rest, hover, selected, in cut, verified | `catalog-row.browser.test.tsx` | |
+| 1 | current-catalog-row | Light/Dark two-line rows: rest, hover, selected, in cut, verified | `catalog-row.browser.test.tsx` | |
 | 1 | current-catalog-row | "Recipe segment" (area groups, X/Y cut counts) | `structure-tab.browser.test.tsx` (provisional) | This is the Structure tab's tree (S5b), which PA L78 lists as not designed yet even though this board draws it; see Interpretations |
-| 2 | current-selector-pin | Pin default/cut/excluded/collision, Draft square + Shop jack | covered by `src/sheet/card/FacetCard.screens.browser.test.tsx` (S4a) | The gallery's ERC20/ERC20Pausable/Axelar-Hyperlane cards show cut, excluded and conflicting pins in both themes; no new test |
-| 3 | current-trace-and-cable | Trace (Draft), cable (Shop), conflict trace/cable | `trace-and-cable.browser.test.tsx` | + provisional forced-colors variant (PA L82) |
+| 2 | current-selector-pin | Pin default/cut/excluded/collision, Light square + Dark jack | covered by `src/sheet/card/FacetCard.screens.browser.test.tsx` (S4a) | The gallery's ERC20/ERC20Pausable/Axelar-Hyperlane cards show cut, excluded and conflicting pins in both themes; no new test |
+| 3 | current-trace-and-cable | Trace (Light), cable (Dark), conflict trace/cable | `trace-and-cable.browser.test.tsx` | + provisional forced-colors variant (PA L82) |
 | 4 | current-selector-collision-callout | Callout, override typed, override accepted | dropped, no test | PA L59: "no override in this spec" |
 | 5 | current-console | All resolved, collisions, running, deployed, Script tab, JSON tab | `console.browser.test.tsx` | |
-| 6 | current-inspector | Facet, assembly (nothing selected), Shop facet, resolved+live assembly | `inspector.browser.test.tsx` | |
+| 6 | current-inspector | Facet, assembly (nothing selected), Dark facet, resolved+live assembly | `inspector.browser.test.tsx` | |
 | 7 | current-deploy-surface | Sign & deploy / Hold to deploy | `deploy-surface.browser.test.tsx` | PA L13, L74: hold-to-deploy dropped; superseded by the real deploy review (Flow 12). Extra review phases (missing contracts, proposed, mismatch, failed, live) are `provisional-*` in the same file since PA L74 lists the review as not designed |
 | 8 | current-title-block | Unresolved, predicted, live | `title-block.browser.test.tsx` | |
 | 9 | current-command-palette | Filtered query, groups, active row | `command-palette.browser.test.tsx` | |
 | 10 | current-init-order-mode | Dimmed sheet, dashed dependency path, order legend | `provisional-init-order-mode.browser.test.tsx` | Orchestrator: the legend and path were built without a board even though this board exists; see Interpretations |
-| 11 | current-empty-sheet | Draft dot grid / Shop rack rails | `empty-sheet.browser.test.tsx` | |
-| 12 | current-module-card | Pin strip, labelled pins, hover, conflict, selected, Shop faceplate/selected/conflict | covered by `src/sheet/card/FacetCard.screens.browser.test.tsx` (S4a) | No new test |
+| 11 | current-empty-sheet | Light dot grid / Dark rack rails | `empty-sheet.browser.test.tsx` | |
+| 12 | current-module-card | Pin strip, labelled pins, hover, conflict, selected, Dark faceplate/selected/conflict | covered by `src/sheet/card/FacetCard.screens.browser.test.tsx` (S4a) | No new test |
 | 13 | former-facet-card | Collapsed/hover/selected/expanded 176x80 card, in the palette | superseded by current-module-card, no test | The 232 px card fully replaces this size and layout |
 | 14 | former-edges-and-the-overlap-tie | Dependency edges, tie popover, overlap reconciled | superseded by current-trace-and-cable + `provisional-seam-pins.browser.test.tsx`'s SEM-01 note | The "Keep/Use" tie popover became the owner menu + collision note (contracts §6 owner-by-default ruling); no separate test |
 | 15 | former-empty-sheet | Pinned strip, presets, tool strip with M/N | `provisional-start-block.browser.test.tsx` covers the presets; M (Move to…) and N (Comment) are dropped (PA L70) | |
@@ -67,14 +67,14 @@ claim that the pixel layout is final.
   copy or data substitution — worth a decision in David's pass (group by area, or confirm flat-by-placement is
   intended). See `structure-tab.browser.test.tsx`.
 - **The empty-sheet's terse headline copy was never built.** `current-empty-sheet.png` draws "PLACE A MODULE.
-  ROUTE ITS SELECTORS." (Draft) / "PATCH A MODULE. ROUTE ITS JACKS." (Shop) over a bare grid with no cards. PA
+  ROUTE ITS SELECTORS." (Light) / "PATCH A MODULE. ROUTE ITS JACKS." (Dark) over a bare grid with no cards. PA
   L64-65 supersedes this with the Start block (v1's GovernedVault/ERC20/SafeDiamondCut cards, adopted), which is
   what actually renders — "Start a diamond", the three recipe cards, Browse all recipes, the drag/⌘K hint and
-  the tour line. The terse headline text itself doesn't exist anywhere in the app (grepped). Shop's rack rails
-  (PA L63, called "optional") also aren't implemented — no rack/rail CSS in the repo — so Shop's empty ground is
-  the same dot grid as Draft, just themed. Not a gap against the spec's decision, but worth flagging that the
+  the tour line. The terse headline text itself doesn't exist anywhere in the app (grepped). the dark theme's rack rails
+  (PA L63, called "optional") also aren't implemented — no rack/rail CSS in the repo — so the dark theme's empty ground is
+  the same dot grid as Light, just themed. Not a gap against the spec's decision, but worth flagging that the
   board's own headline copy has no home.
-- **Catalog rows group by area; the board doesn't.** `current-catalog-row.png`'s Draft/Shop columns show a flat
+- **Catalog rows group by area; the board doesn't.** `current-catalog-row.png`'s Light/Dark columns show a flat
   list. `CatalogPanel` groups rows under area headers ("Tokens", "Crosschain") and uses "ON SHEET" (IR L86) where
   the board says "IN CUT" — both are adopted decisions, not gaps.
 - **Catalog board's example facets aren't in our catalog.** current-catalog-row.png's RateLimiter/CircuitBreaker

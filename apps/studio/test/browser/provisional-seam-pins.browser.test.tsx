@@ -29,7 +29,7 @@ function card(facet: string): HTMLElement {
 }
 
 
-describe.each(["shop", "draft"] as const)("provisional: a seam pin on a facet card (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: a seam pin on a facet card (%s)", (theme) => {
   test("ERC20's transfer stays on GovernedVault: locked, no route", async () => {
     const project = cardProject(catalog, GALLERY_FACETS, { exclude: ["0x95d89b41"] });
     await renderWithStudio(<CardSheet />, { theme, project, settings: { reduceMotion: "on" } });
@@ -42,7 +42,7 @@ describe.each(["shop", "draft"] as const)("provisional: a seam pin on a facet ca
   });
 });
 
-describe.each(["shop", "draft"] as const)("provisional: the SEM-01 note (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: the SEM-01 note (%s)", (theme) => {
   test("a stale owner: transfer must stay on a version that moves vote checkpoints with balances", async () => {
     const project = cardProject(catalog, ["ERC20", "ERC20Votes", "ERC20Pausable"], {
       columns: 2,
@@ -63,7 +63,7 @@ describe.each(["shop", "draft"] as const)("provisional: the SEM-01 note (%s)", (
   });
 });
 
-describe("provisional: the Move to… crosshair (shop)", () => {
+describe("provisional: the Move to… crosshair (dark)", () => {
   test("M starts it; the crosshair and its ghost show over the sheet", async () => {
     const ID = "provisional-move-to";
     const project = sheetProject(4, { id: ID });
@@ -75,6 +75,6 @@ describe("provisional: the Move to… crosshair (shop)", () => {
     press("m");
     await expect.poll(() => document.querySelector("[data-move-to]")).not.toBeNull();
     await document.fonts.ready;
-    await expect.element(page.elementLocator(flowElement())).toMatchScreenshot("provisional-move-to-crosshair-shop");
+    await expect.element(page.elementLocator(flowElement())).toMatchScreenshot("provisional-move-to-crosshair-dark");
   });
 });

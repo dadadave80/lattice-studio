@@ -2,7 +2,7 @@
 
 Design tokens for Lattice Studio: CSS variables, typed TypeScript constants
 and Shiki themes, generated from `design/tokens.json` reconciled with the
-Final composer's Shop and Draft themes
+Final composer's dark and light themes
 (`design/prototype/composer-theme-tokens.css`), per decision D3
 (HANDOFF.md §11).
 
@@ -18,8 +18,8 @@ needs to change to flip it:
 
 ```ts
 export const D3_ACCENT_BY_THEME: Record<ThemeId, BrandId> = {
-  shop: "signal",
-  draft: "blueprint",
+  dark: "signal",
+  light: "blueprint",
 };
 ```
 
@@ -27,7 +27,7 @@ export const D3_ACCENT_BY_THEME: Record<ThemeId, BrandId> = {
 
 ## Role table
 
-| DS role (`tokens.css`) | Final composer variable | Shop value | Draft value |
+| DS role (`tokens.css`) | Final composer variable | Dark value | Light value |
 | --- | --- | --- | --- |
 | `--lx-ground` | `--field` | `#0C0D0F` | `#F3F1E9` |
 | `--lx-ground-well` | `--sunken` | `#0A0B0D` | `#E7E3D8` |
@@ -36,7 +36,7 @@ export const D3_ACCENT_BY_THEME: Record<ThemeId, BrandId> = {
 | `--lx-sunken` | `--sunken (composer draws one recessed surface; ground-well and sunken share it)` | `#0A0B0D` | `#E7E3D8` |
 | `--lx-text` | `--ink` | `#E9E7E1` | `#16150F` |
 | `--lx-text-muted` | `--ink-2` | `#9A9DA4` | `#3C3931` |
-| `--lx-text-faint` | `--ink-3 (Shop nudged toward --ink-2 for AA)` | `#80848B` | `#635E52` |
+| `--lx-text-faint` | `--ink-3 (dark theme nudged toward --ink-2 for AA)` | `#80848B` | `#635E52` |
 | `--lx-border` | `--strong` | `#6B6F77` | `#3C3931` |
 | `--lx-border-subtle` | `--hair` | `rgba(233,231,225,.12)` | `rgba(22,21,15,.22)` |
 | `--lx-border-strong` | `--ink (reused; composer has no fourth border tier)` | `#E9E7E1` | `#16150F` |

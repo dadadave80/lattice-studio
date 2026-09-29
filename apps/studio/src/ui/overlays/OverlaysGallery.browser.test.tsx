@@ -16,7 +16,7 @@ async function violations(open = false): Promise<string[]> {
 }
 
 describe("OverlaysGallery", () => {
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`nothing is open by default and it's axe-clean (${theme})`, async () => {
       await renderWithStudio(<OverlaysGallery />, { theme });
       await expect.element(page.getByRole("heading", { name: "Overlays" })).toBeVisible();

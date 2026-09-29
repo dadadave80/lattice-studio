@@ -49,9 +49,9 @@ export type PwaOptions = {
   publicDir?: string;
 };
 
-/** The web app manifest (the app opens in the Shop theme, so its ground colours the splash and title bar). */
+/** The web app manifest (the app opens in the dark theme, so its ground colours the splash and title bar). */
 export function webManifest(): NonNullable<VitePWAOptions["manifest"]> {
-  const ground = themeColors.shop.ground;
+  const ground = themeColors.dark.ground;
   return {
     name: "Lattice Studio",
     short_name: "Lattice Studio",
@@ -78,7 +78,7 @@ export function iconTags(base: string): HtmlTagDescriptor[] {
     { tag: "link", attrs: { rel: "icon", href: at("favicon.ico"), sizes: "32x32" }, injectTo: "head" },
     { tag: "link", attrs: { rel: "icon", href: at("favicon.svg"), type: "image/svg+xml" }, injectTo: "head" },
     { tag: "link", attrs: { rel: "apple-touch-icon", href: at("icons/apple-touch-icon.png") }, injectTo: "head" },
-    { tag: "meta", attrs: { name: "theme-color", content: themeColors.shop.ground }, injectTo: "head" },
+    { tag: "meta", attrs: { name: "theme-color", content: themeColors.dark.ground }, injectTo: "head" },
   ];
 }
 

@@ -10,7 +10,7 @@ export type MenuRadioGroupProps = {
   children: ReactNode;
 };
 
-/** One choice among `MenuRadioItem`s ("Theme: Shop, Draft"). */
+/** One choice among `MenuRadioItem`s ("Theme: Light, Dark"). */
 export function MenuRadioGroup({ value, onValueChange, label, children }: MenuRadioGroupProps) {
   return (
     <BaseMenu.RadioGroup value={value} onValueChange={(next: unknown) => onValueChange(String(next))}>

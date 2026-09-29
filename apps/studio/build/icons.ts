@@ -1,7 +1,7 @@
 /**
  * The app icons, drawn from the logomark exactly as `design/logos/` ships it (two concentric diamonds joined
  * by four struts on a 24-unit grid; display cut 0.75 stroke from 40 px up, small cut 1.1 below). The mark is
- * only scaled and coloured: Off-white on the Shop ground, never redrawn, restroked, filled or rounded.
+ * only scaled and coloured: Off-white on the dark ground, never redrawn, restroked, filled or rounded.
  *
  * `bun apps/studio/build/icons.ts` renders the PNGs and `favicon.ico` into `public/` with ImageMagick, and
  * writes `favicon.svg`. The outputs are committed; the build never shells out to ImageMagick.
@@ -18,9 +18,9 @@ const MARK_PATHS = [
 export const DISPLAY_STROKE = 0.75;
 export const SMALL_STROKE = 1.1;
 
-/** Ground and ink of the icons: the Shop theme, which Studio opens in. */
-export const ICON_GROUND = themeColors.shop.ground;
-export const ICON_INK = themeColors.shop.text;
+/** Ground and ink of the icons: the dark theme, which Studio opens in. */
+export const ICON_GROUND = themeColors.dark.ground;
+export const ICON_INK = themeColors.dark.text;
 
 /** The mark's own drawing, in its 24-unit box, stroked with `color`. */
 export function markPaths(stroke: number, color?: string): string {
@@ -53,7 +53,7 @@ export function markShapes(): { points: Point[]; closed: boolean }[] {
 }
 
 /**
- * ImageMagick arguments that draw a square icon of `size` px: the Shop ground, with the mark scaled so its
+ * ImageMagick arguments that draw a square icon of `size` px: the dark ground, with the mark scaled so its
  * 24-unit box spans `markShare` of the side (the box already carries 1.5 units of margin). ImageMagick's own
  * SVG renderer drops strokes, so the mark is drawn with its primitives from the same path data.
  */
@@ -79,7 +79,7 @@ export function iconDrawArgs(size: number, options: { markShare: number; stroke:
 export function faviconSvg(): string {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">`,
-    `<style>path{stroke:${themeColors.draft.text}}@media (prefers-color-scheme: dark){path{stroke:${themeColors.shop.text}}}</style>`,
+    `<style>path{stroke:${themeColors.light.text}}@media (prefers-color-scheme: dark){path{stroke:${themeColors.dark.text}}}</style>`,
     markPaths(SMALL_STROKE),
     "</svg>\n",
   ].join("");

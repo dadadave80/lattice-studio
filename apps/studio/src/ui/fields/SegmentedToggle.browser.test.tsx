@@ -6,12 +6,12 @@ import { emulateForcedColors } from "../testing/axe";
 import { SegmentedToggle } from "./SegmentedToggle";
 
 const THEMES = [
-  { value: "shop", label: "Shop" },
-  { value: "draft", label: "Draft" },
+  { value: "dark", label: "Dark" },
+  { value: "light", label: "Light" },
 ] as const;
 
 function Theme({ onChange, disabledReason }: { onChange?: (v: string) => void; disabledReason?: string }) {
-  const [value, setValue] = useState<"shop" | "draft">("shop");
+  const [value, setValue] = useState<"dark" | "light">("dark");
   return (
     <SegmentedToggle
       label="Theme"
@@ -31,30 +31,30 @@ describe("SegmentedToggle", () => {
     const onChange = vi.fn();
     await renderWithStudio(<Theme onChange={onChange} />);
     await expect.element(page.getByRole("group", { name: "Theme" })).toBeVisible();
-    const shop = page.getByRole("button", { name: "Shop" });
-    const draft = page.getByRole("button", { name: "Draft" });
-    await expect.element(shop).toHaveAttribute("aria-pressed", "true");
+    const dark = page.getByRole("button", { name: "Dark" });
+    const light = page.getByRole("button", { name: "Light" });
+    await expect.element(dark).toHaveAttribute("aria-pressed", "true");
 
     await userEvent.tab();
-    await expect.element(shop).toHaveFocus();
+    await expect.element(dark).toHaveFocus();
     await userEvent.keyboard("{ArrowRight}");
-    await expect.element(draft).toHaveFocus();
+    await expect.element(light).toHaveFocus();
     await userEvent.keyboard(" ");
-    await expect.element(draft).toHaveAttribute("aria-pressed", "true");
-    await expect.element(shop).toHaveAttribute("aria-pressed", "false");
+    await expect.element(light).toHaveAttribute("aria-pressed", "true");
+    await expect.element(dark).toHaveAttribute("aria-pressed", "false");
     await userEvent.keyboard("{ArrowLeft}");
-    await expect.element(shop).toHaveFocus();
+    await expect.element(dark).toHaveFocus();
     await userEvent.keyboard("{Enter}");
-    await expect.element(shop).toHaveAttribute("aria-pressed", "true");
-    expect(onChange.mock.calls).toEqual([["draft"], ["shop"]]);
+    await expect.element(dark).toHaveAttribute("aria-pressed", "true");
+    expect(onChange.mock.calls).toEqual([["light"], ["dark"]]);
   });
 
   test("pressing the pressed option keeps it pressed", async () => {
     const onChange = vi.fn();
     await renderWithStudio(<Theme onChange={onChange} />);
-    const shop = page.getByRole("button", { name: "Shop" });
-    await shop.click();
-    await expect.element(shop).toHaveAttribute("aria-pressed", "true");
+    const dark = page.getByRole("button", { name: "Dark" });
+    await dark.click();
+    await expect.element(dark).toHaveAttribute("aria-pressed", "true");
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -64,22 +64,22 @@ describe("SegmentedToggle", () => {
     const group = page.getByRole("group", { name: "Theme" });
     await expect.element(group).toHaveAttribute("aria-disabled", "true");
     await expect.element(group).toHaveAccessibleDescription("");
-    const shop = page.getByRole("button", { name: "Shop" });
-    const draft = page.getByRole("button", { name: "Draft" });
-    for (const option of [shop, draft]) {
+    const dark = page.getByRole("button", { name: "Dark" });
+    const light = page.getByRole("button", { name: "Light" });
+    for (const option of [dark, light]) {
       await expect.element(option).toHaveAttribute("aria-disabled", "true");
       await expect.element(option).toHaveAccessibleDescription("Resolve 2 blockers · F8");
     }
     // Every option is aria-disabled, so the tab stop stays on the pressed one and arrows have nowhere to go.
     await userEvent.tab();
-    await expect.element(shop).toHaveFocus();
+    await expect.element(dark).toHaveFocus();
     await userEvent.keyboard("{ArrowRight}");
-    await expect.element(shop).toHaveFocus();
+    await expect.element(dark).toHaveFocus();
     await userEvent.keyboard(" ");
     await userEvent.keyboard("{Enter}");
-    await expect.element(shop).toHaveAttribute("aria-pressed", "true");
-    await draft.click({ force: true });
-    await expect.element(draft).toHaveAttribute("aria-pressed", "false");
+    await expect.element(dark).toHaveAttribute("aria-pressed", "true");
+    await light.click({ force: true });
+    await expect.element(light).toHaveAttribute("aria-pressed", "false");
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -93,7 +93,7 @@ describe("SegmentedToggle", () => {
     const reasonId = holders[0]?.id;
     expect(reasonId).toBeTruthy();
     expect(group.hasAttribute("aria-describedby")).toBe(false);
-    for (const name of ["Shop", "Draft"]) {
+    for (const name of ["Dark", "Light"]) {
       expect(page.getByRole("button", { name }).element().getAttribute("aria-describedby")).toBe(reasonId);
     }
   });
@@ -106,13 +106,13 @@ describe("SegmentedToggle", () => {
       </>,
     );
     const tooltip = () => document.querySelector<HTMLElement>("[data-tooltip]")?.textContent;
-    await page.getByRole("button", { name: "Draft" }).hover();
+    await page.getByRole("button", { name: "Light" }).hover();
     await expect.poll(tooltip).toBe("Resolve 2 blockers · F8");
     await page.getByRole("button", { name: "Before" }).hover();
     await expect.poll(tooltip).toBeUndefined();
     await page.getByRole("button", { name: "Before" }).click();
     await userEvent.tab();
-    await expect.element(page.getByRole("button", { name: "Shop" })).toHaveFocus();
+    await expect.element(page.getByRole("button", { name: "Dark" })).toHaveFocus();
     await expect.poll(tooltip).toBe("Resolve 2 blockers · F8");
   });
 
@@ -126,37 +126,37 @@ describe("SegmentedToggle", () => {
       return <Theme {...(reason ? { disabledReason: reason } : {})} />;
     }
     await renderWithStudio(<Toggled />);
-    const shop = page.getByRole("button", { name: "Shop" });
+    const dark = page.getByRole("button", { name: "Dark" });
     await userEvent.tab();
-    await expect.element(shop).toHaveFocus();
-    const before = shop.element();
+    await expect.element(dark).toHaveFocus();
+    const before = dark.element();
     control.set("Resolve 2 blockers · F8");
-    await expect.element(shop).toHaveAttribute("aria-disabled", "true");
-    expect(shop.element()).toBe(before);
-    await expect.element(shop).toHaveFocus();
-    await page.getByRole("button", { name: "Draft" }).click({ force: true });
+    await expect.element(dark).toHaveAttribute("aria-disabled", "true");
+    expect(dark.element()).toBe(before);
+    await expect.element(dark).toHaveFocus();
+    await page.getByRole("button", { name: "Light" }).click({ force: true });
     await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent).toBe("Resolve 2 blockers · F8");
     control.set(undefined);
-    await expect.element(shop).not.toHaveAttribute("aria-disabled", "true");
+    await expect.element(dark).not.toHaveAttribute("aria-disabled", "true");
     await expect.poll(() => document.querySelector("[data-tooltip]")).toBeNull();
-    expect(shop.element()).toBe(before);
+    expect(dark.element()).toBe(before);
   });
 
   afterEach(async () => {
     await emulateForcedColors(false);
   });
 
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`a disabled pressed segment keeps its accent bar a thin line, not a fill, in ${theme}`, async () => {
       // Button.tsx defines the same `.button[aria-disabled="true"]` class Toggle.module.css's `.segment`
       // composes from. Whichever of the two stylesheets a page loads second wins ties in the cascade; importing
       // Button here reproduces a page that also renders a plain Button, so the reset has to win regardless.
       await import("../buttons/Button");
       await renderWithStudio(
-        <SegmentedToggle label="Theme" value="draft" options={THEMES} onValueChange={() => {}} disabledReason="Resolve 2 blockers · F8" />,
+        <SegmentedToggle label="Theme" value="light" options={THEMES} onValueChange={() => {}} disabledReason="Resolve 2 blockers · F8" />,
         { theme },
       );
-      const cs = getComputedStyle(page.getByRole("button", { name: "Draft" }).element());
+      const cs = getComputedStyle(page.getByRole("button", { name: "Light" }).element());
       expect(cs.backgroundSize).toBe("100% 2px");
       expect(cs.backgroundRepeat).toBe("no-repeat");
       expect(cs.backgroundPosition).toBe("50% 100%");
@@ -165,18 +165,18 @@ describe("SegmentedToggle", () => {
 
   test("in forced colors, a disabled pressed segment uses the system palette, underlined", async () => {
     await renderWithStudio(
-      <SegmentedToggle label="Theme" value="draft" options={THEMES} onValueChange={() => {}} disabledReason="Resolve 2 blockers · F8" />,
+      <SegmentedToggle label="Theme" value="light" options={THEMES} onValueChange={() => {}} disabledReason="Resolve 2 blockers · F8" />,
     );
     await emulateForcedColors(true);
     expect(matchMedia("(forced-colors: active)").matches).toBe(true);
-    const cs = getComputedStyle(page.getByRole("button", { name: "Draft" }).element());
+    const cs = getComputedStyle(page.getByRole("button", { name: "Light" }).element());
     expect(cs.backgroundImage).toBe("none");
     expect(cs.textDecorationLine).toContain("underline");
   });
 
   test("each option is at least 24 px square", async () => {
     await renderWithStudio(<Theme />);
-    const rect = page.getByRole("button", { name: "Draft" }).element().getBoundingClientRect();
+    const rect = page.getByRole("button", { name: "Light" }).element().getBoundingClientRect();
     expect(rect.width).toBeGreaterThanOrEqual(24);
     expect(rect.height).toBeGreaterThanOrEqual(24);
   });

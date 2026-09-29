@@ -1,7 +1,7 @@
 /**
- * Board: `design/boards/current-deploy-surface.png` ("Deploy surface", row 07): "Sign & deploy" (Draft, stamped)
- * and "Hold to deploy" (Shop, a press-and-hold bar). PA L13 and L74 (bugs/decisions #13, "to design next" #1):
- * shop's hold-to-deploy has no keyboard path and never asks for "override"; the spec drops both hold and
+ * Board: `design/boards/current-deploy-surface.png` ("Deploy surface", row 07): "Sign & deploy" (Light, stamped)
+ * and "Hold to deploy" (Dark, a press-and-hold bar). PA L13 and L74 (bugs/decisions #13, "to design next" #1):
+ * dark's hold-to-deploy has no keyboard path and never asks for "override"; the spec drops both hold and
  * override for one confirmation model, and the whole surface is superseded by the real deploy review (Flow 12,
  * `chain/review/DeployReview.tsx`) — nine sections proving readiness, not a static card. The two tests below map
  * directly to the board (the review open, with the chain/path choice visible in Address); everything past that
@@ -36,7 +36,7 @@ async function settleFrame(): Promise<void> {
 }
 
 /** Opens the review at its progress, with the fake controller already in `state` (contracts §5.2, `deploy`). */
-async function progressAt(state: DeployState, theme: "shop" | "draft" = "shop") {
+async function progressAt(state: DeployState, theme: "dark" | "light" = "dark") {
   const opened = await renderReview({
     controller: fakeDeployController({ chainId: SEPOLIA, ...state }),
     at: "progress",
@@ -83,7 +83,7 @@ beforeAll(async () => {
   );
 });
 
-describe.each(["shop", "draft"] as const)("board: deploy surface (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: deploy surface (%s)", (theme) => {
   test("current-deploy-surface: review open, path choice", async () => {
     const chain = fakeChainService({ account: account(), catalog: deployableCatalog() });
     const { dialog, controller } = await renderReview({ project: templateProject("ERC20"), chain, theme });

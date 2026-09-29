@@ -35,15 +35,15 @@ describe("S10's commands (contracts §5.3)", () => {
   });
 
   test("theme.set writes the setting, titles itself per theme, and logs it", () => {
-    expect(commandState({ id: "theme.set", args: { theme: "draft" } }).title).toBe("Set theme to Draft");
-    void runCommand({ id: "theme.set", args: { theme: "draft" } }, "button");
-    expect(settings.get().theme).toBe("draft");
-    expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Note", text: "Theme: Draft." });
+    expect(commandState({ id: "theme.set", args: { theme: "light" } }).title).toBe("Set theme to Light");
+    void runCommand({ id: "theme.set", args: { theme: "light" } }, "button");
+    expect(settings.get().theme).toBe("light");
+    expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Note", text: "Theme: Light." });
   });
 
   test("theme.set stays out of undo: history can't undo it (IR L71)", async () => {
     const before = doc.state();
-    for (const theme of ["draft", "system", "shop"] as const) {
+    for (const theme of ["light", "system", "dark"] as const) {
       await runCommand({ id: "theme.set", args: { theme } }, "button");
       expect(settings.get().theme).toBe(theme);
     }
@@ -53,8 +53,8 @@ describe("S10's commands (contracts §5.3)", () => {
   });
 
   test("the theme verb (IR L158): case-insensitive, and confirms with the Theme line", async () => {
-    expect(helpLines("theme")).toEqual([{ syntax: "theme <shop, draft or system>", id: "theme.set", aliases: [] }]);
-    const cases = [["theme DRAFT", "draft", "Draft"], ["theme System", "system", "System"], ["theme shop", "shop", "Shop"]] as const;
+    expect(helpLines("theme")).toEqual([{ syntax: "theme <light, dark or system>", id: "theme.set", aliases: [] }]);
+    const cases = [["theme LIGHT", "light", "Light"], ["theme System", "system", "System"], ["theme dark", "dark", "Dark"]] as const;
     for (const [line, theme, label] of cases) {
       expect((await runConsoleLine(line)).ok).toBe(true);
       expect(settings.get().theme).toBe(theme);
@@ -64,12 +64,12 @@ describe("S10's commands (contracts §5.3)", () => {
 
   test("the theme verb refuses anything else with the choices, and changes nothing", async () => {
     const refusals = [
-      ["theme blue", "“blue” isn't a theme. Choose shop, draft or system."],
-      ["theme dark mode", "“dark mode” isn't a theme. Choose shop, draft or system."],
-      ["theme", "theme takes shop, draft or system."],
+      ["theme blue", "“blue” isn't a theme. Choose light, dark or system."],
+      ["theme dark mode", "“dark mode” isn't a theme. Choose light, dark or system."],
+      ["theme", "theme takes light, dark or system."],
       // Keys every object inherits aren't themes.
       ...["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"].map(
-        (key) => [`theme ${key}`, `“${key}” isn't a theme. Choose shop, draft or system.`] as const,
+        (key) => [`theme ${key}`, `“${key}” isn't a theme. Choose light, dark or system.`] as const,
       ),
     ] as const;
     const before = settings.get().theme;

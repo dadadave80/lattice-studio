@@ -26,9 +26,9 @@ describe("WalletSupportStatus", () => {
     expect(screen.container.textContent).toBe("");
   });
 
-  test("“Loading wallet support…” as a polite status while it loads (Draft theme), then nothing", async () => {
+  test("“Loading wallet support…” as a polite status while it loads (Light theme), then nothing", async () => {
     const { loader, finish } = controlled();
-    const screen = await renderWithStudio(<WalletSupportStatus loader={loader} />, { theme: "draft" });
+    const screen = await renderWithStudio(<WalletSupportStatus loader={loader} />, { theme: "light" });
     void loader.load();
     const status = screen.getByRole("status");
     await expect.element(status).toHaveTextContent("Loading wallet support…");

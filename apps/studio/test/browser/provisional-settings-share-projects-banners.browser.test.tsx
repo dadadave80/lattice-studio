@@ -1,6 +1,6 @@
 /**
  * PA L80: Settings, Share, the Projects list with Recently deleted, and the banners have no board yet. Built
- * from the design system and the dialog/banner primitives. Shop only where a second theme would be redundant
+ * from the design system and the dialog/banner primitives. Dark only where a second theme would be redundant
  * (a static dialog/banner with no theme-dependent branching); both themes where the state itself differs
  * visually enough to be worth a second look.
  */
@@ -45,7 +45,7 @@ beforeAll(async () => {
 
 afterEach(() => resetBanners());
 
-describe.each(["shop", "draft"] as const)("provisional: settings dialog (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: settings dialog (%s)", (theme) => {
   test("provisional-settings-appearance", async () => {
     await renderWithStudio(<DialogHost />, { theme });
     openDialog("settings");
@@ -75,7 +75,7 @@ describe("provisional: share, over 2,000 characters", () => {
     await expect.element(count).toBeVisible();
     await expect
       .element(page.elementLocator(dialog.element() as HTMLElement))
-      .toMatchScreenshot("provisional-share-over-length-shop", { screenshotOptions: { mask: [count] } });
+      .toMatchScreenshot("provisional-share-over-length-dark", { screenshotOptions: { mask: [count] } });
   });
 });
 
@@ -95,7 +95,7 @@ describe("provisional: projects, Recently deleted", () => {
     await document.fonts.ready;
     await expect
       .element(page.elementLocator(dialog.element() as HTMLElement))
-      .toMatchScreenshot("provisional-projects-recently-deleted-shop");
+      .toMatchScreenshot("provisional-projects-recently-deleted-dark");
   });
 });
 
@@ -107,6 +107,6 @@ describe("provisional: a banner", () => {
     await expect.element(text).toBeVisible();
     await document.fonts.ready;
     const region = document.body.firstElementChild as HTMLElement;
-    await expect.element(page.elementLocator(region)).toMatchScreenshot("provisional-banner-update-shop");
+    await expect.element(page.elementLocator(region)).toMatchScreenshot("provisional-banner-update-dark");
   });
 });

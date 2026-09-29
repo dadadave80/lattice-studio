@@ -32,7 +32,7 @@ export interface ThemeRoles {
   readonly hatch: string;
 }
 
-export const THEMES: readonly ThemeId[] = ["shop", "draft"];
+export const THEMES: readonly ThemeId[] = ["dark", "light"];
 
 export function themeRoles(theme: ThemeId): ThemeRoles {
   const neutrals = neutralPaletteForTheme(theme);

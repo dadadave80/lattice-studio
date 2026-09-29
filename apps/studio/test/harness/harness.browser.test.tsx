@@ -23,22 +23,22 @@ function Probe() {
 
 describe("renderWithStudio", () => {
   test("seeds the document, the fixture catalog, settings, session and theme", async () => {
-    await renderWithStudio(<Probe />, { settings: { wheel: "zoom" }, session: { chainId: 84532 }, theme: "draft" });
+    await renderWithStudio(<Probe />, { settings: { wheel: "zoom" }, session: { chainId: 84532 }, theme: "light" });
     await expect.element(page.getByText("Untitled · fixture · zoom · 84532")).toBeVisible();
     expect(getCatalog()).toBe(fixtureCatalog());
     expect(getCatalog()?.facets.length).toBe(100);
-    expect(document.documentElement.dataset.theme).toBe("draft");
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 
   test("every test starts from fresh state", async () => {
     await renderWithStudio(<Probe />);
     await expect.element(page.getByText("Untitled · fixture · pan · no chain")).toBeVisible();
-    expect(document.documentElement.dataset.theme).toBe("shop");
+    expect(document.documentElement.dataset.theme).toBe("dark");
     expect(deployState()).toEqual({ phase: "idle" });
   });
 
   test("tokens are loaded: the theme's colors apply", async () => {
-    await renderWithStudio(<Probe />, { theme: "shop" });
+    await renderWithStudio(<Probe />, { theme: "dark" });
     const ground = getComputedStyle(document.documentElement).getPropertyValue("--lx-ground").trim();
     expect(ground.toLowerCase()).toBe("#0c0d0f");
   });

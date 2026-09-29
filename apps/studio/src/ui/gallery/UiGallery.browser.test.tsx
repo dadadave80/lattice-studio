@@ -1,6 +1,6 @@
 /**
  * The gallery is the primitives' conformance floor (brief S0 "Done when"): axe with the WCAG 2.2 AA tags and
- * target-size on, in Shop, in Draft and with forced colors emulated; and every pointer target at least
+ * target-size on, in Dark, in Light and with forced colors emulated; and every pointer target at least
  * 24 x 24 px (spec L770).
  */
 import { afterEach, describe, expect, test } from "vitest";
@@ -19,13 +19,13 @@ function galleryRoot(): Element {
   return root;
 }
 
-async function renderGallery(theme: "shop" | "draft") {
+async function renderGallery(theme: "dark" | "light") {
   await renderWithStudio(<UiGallery />, { theme });
   await expect.element(page.getByRole("heading", { name: "Primitives", level: 1 })).toBeVisible();
 }
 
 describe("#/__ui gallery", () => {
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`axe finds nothing in ${theme}`, async () => {
       await renderGallery(theme);
       expect(await axeViolations(galleryRoot())).toEqual([]);
@@ -37,14 +37,14 @@ describe("#/__ui gallery", () => {
       expect(matchMedia("(forced-colors: active)").matches).toBe(true);
       // The forced palette really applies (not just the media query).
       expect(getComputedStyle(document.documentElement).backgroundColor).not.toBe(
-        theme === "shop" ? "rgb(12, 13, 15)" : "rgb(243, 241, 233)",
+        theme === "dark" ? "rgb(12, 13, 15)" : "rgb(243, 241, 233)",
       );
       expect(await axeViolations(galleryRoot(), { forced: true })).toEqual([]);
     });
   }
 
   test("every pointer target is at least 24 x 24 px", async () => {
-    await renderGallery("shop");
+    await renderGallery("dark");
     const selector = [
       "button", "a[href]", "input:not([type=hidden])", "select", "textarea", "[role=button]", "[role=tab]",
       "[role=switch]", "[role=checkbox]", "[role=radio]", "[role=combobox]", "[role=treeitem]", "[role=menuitem]",
@@ -64,7 +64,7 @@ describe("#/__ui gallery", () => {
   });
 
   test("shows every primitive family", async () => {
-    await renderGallery("draft");
+    await renderGallery("light");
     for (const name of ["Buttons", "Keys", "Status", "Copy", "Icons (provisional)"]) {
       await expect.element(page.getByRole("heading", { name, level: 2 })).toBeVisible();
     }

@@ -27,7 +27,7 @@ function noProblems(): void {
   onCleanup(provideAnalysis({ getAnalysis: () => analysis, subscribe: () => () => undefined }));
 }
 
-async function renderConsole(project = erc20Project(), options: { theme?: "shop" | "draft" } = {}) {
+async function renderConsole(project = erc20Project(), options: { theme?: "dark" | "light" } = {}) {
   await renderWithStudio(
     <div style={{ width: 900, height: 260, display: "flex" }}>
       <ConsolePanel />
@@ -44,7 +44,7 @@ async function shoot(name: string): Promise<void> {
   await expect.element(page.elementLocator(el)).toMatchScreenshot(name);
 }
 
-describe.each(["shop", "draft"] as const)("board: console, all resolved (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: console, all resolved (%s)", (theme) => {
   test("Log tab, 0 collisions", async () => {
     noProblems();
     await renderConsole(erc20Project(), { theme });
@@ -54,7 +54,7 @@ describe.each(["shop", "draft"] as const)("board: console, all resolved (%s)", (
   });
 });
 
-describe.each(["shop", "draft"] as const)("board: console, collisions (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: console, collisions (%s)", (theme) => {
   test("Log tab, a SEL-01 collision logged", async () => {
     await renderConsole(collisionProject(), { theme });
     await expect.element(page.getByText("2 blockers", { exact: false })).toBeVisible();
@@ -71,20 +71,20 @@ describe.each(["shop", "draft"] as const)("board: console, collisions (%s)", (th
 });
 
 describe("board: console, code tabs", () => {
-  test("Script tab, shop only (cheap: no theme-dependent syntax highlighting difference expected)", async () => {
-    await renderConsole(erc20Project(), { theme: "shop" });
+  test("Script tab, dark only (cheap: no theme-dependent syntax highlighting difference expected)", async () => {
+    await renderConsole(erc20Project(), { theme: "dark" });
     await page.getByRole("tab", { name: "Script" }).click();
     const pre = () => document.querySelector("pre");
     await vi.waitFor(() => expect(pre()?.textContent).toContain("contract DeployERC20"));
     await vi.waitFor(() => expect(pre()?.hasAttribute("data-highlighted")).toBe(true), { timeout: 5000 });
-    await shoot("console-script-shop");
+    await shoot("console-script-dark");
   });
 
-  test("Recipe JSON tab, draft only", async () => {
-    await renderConsole(erc20Project(), { theme: "draft" });
+  test("Recipe JSON tab, light only", async () => {
+    await renderConsole(erc20Project(), { theme: "light" });
     await page.getByRole("tab", { name: "Recipe JSON" }).click();
     const pre = () => document.querySelector("pre");
     await vi.waitFor(() => expect(pre()?.textContent).toContain('"$schema"'));
-    await shoot("console-json-draft");
+    await shoot("console-json-light");
   });
 });

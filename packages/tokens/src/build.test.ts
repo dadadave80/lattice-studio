@@ -28,8 +28,8 @@ describe("build output is byte-identical across two runs", () => {
   });
 
   test("shiki themes", () => {
-    expect(renderShikiTheme("shop")).toBe(renderShikiTheme("shop"));
-    expect(renderShikiTheme("draft")).toBe(renderShikiTheme("draft"));
+    expect(renderShikiTheme("dark")).toBe(renderShikiTheme("dark"));
+    expect(renderShikiTheme("light")).toBe(renderShikiTheme("light"));
   });
 
   test("README", () => {
@@ -47,8 +47,8 @@ describe("build output is byte-identical across two runs", () => {
 describe("tokens.css structure", () => {
   test("defines both theme blocks and every role", async () => {
     const css = renderCss(await loadJson());
-    expect(css).toContain(':root[data-theme="shop"]');
-    expect(css).toContain(':root[data-theme="draft"]');
+    expect(css).toContain(':root[data-theme="dark"]');
+    expect(css).toContain(':root[data-theme="light"]');
     for (const role of [
       "ground",
       "ground-well",
@@ -108,15 +108,15 @@ describe("dist/* matches a fresh render from the vendored tokens.json (drift che
     expect(fresh).toBe(committed);
   });
 
-  test("shiki-shop.json", async () => {
-    const fresh = renderShikiTheme("shop");
-    const committed = await Bun.file(resolve(DIST_DIR, "shiki-shop.json")).text();
+  test("shiki-dark.json", async () => {
+    const fresh = renderShikiTheme("dark");
+    const committed = await Bun.file(resolve(DIST_DIR, "shiki-dark.json")).text();
     expect(fresh).toBe(committed);
   });
 
-  test("shiki-draft.json", async () => {
-    const fresh = renderShikiTheme("draft");
-    const committed = await Bun.file(resolve(DIST_DIR, "shiki-draft.json")).text();
+  test("shiki-light.json", async () => {
+    const fresh = renderShikiTheme("light");
+    const committed = await Bun.file(resolve(DIST_DIR, "shiki-light.json")).text();
     expect(fresh).toBe(committed);
   });
 
@@ -132,16 +132,16 @@ describe("tokens.ts structure", () => {
     const ts = renderTokensTs(await loadJson());
     expect(ts).toContain("export const themeColors");
     expect(ts).toContain("export const layoutSizes");
-    expect(ts).toContain('"shop"');
-    expect(ts).toContain('"draft"');
+    expect(ts).toContain('"dark"');
+    expect(ts).toContain('"light"');
   });
 });
 
 describe("shiki themes", () => {
-  test("are valid JSON scoped to shop=dark, draft=light", () => {
-    const shop = JSON.parse(renderShikiTheme("shop")) as { type: string };
-    const draft = JSON.parse(renderShikiTheme("draft")) as { type: string };
-    expect(shop.type).toBe("dark");
-    expect(draft.type).toBe("light");
+  test("are valid JSON typed dark and light", () => {
+    const dark = JSON.parse(renderShikiTheme("dark")) as { type: string };
+    const light = JSON.parse(renderShikiTheme("light")) as { type: string };
+    expect(dark.type).toBe("dark");
+    expect(light.type).toBe("light");
   });
 });

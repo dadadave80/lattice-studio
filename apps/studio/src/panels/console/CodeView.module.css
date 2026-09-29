@@ -105,15 +105,15 @@
 }
 
 .token {
-  color: var(--shiki-shop);
-  font-style: var(--shiki-shop-font-style, normal);
-  font-weight: var(--shiki-shop-font-weight, inherit);
+  color: var(--shiki-dark);
+  font-style: var(--shiki-dark-font-style, normal);
+  font-weight: var(--shiki-dark-font-weight, inherit);
 }
 
-:global(html[data-theme="draft"]) .token {
-  color: var(--shiki-draft);
-  font-style: var(--shiki-draft-font-style, normal);
-  font-weight: var(--shiki-draft-font-weight, inherit);
+:global(html[data-theme="light"]) .token {
+  color: var(--shiki-light);
+  font-style: var(--shiki-light-font-style, normal);
+  font-weight: var(--shiki-light-font-weight, inherit);
 }
 
 .stale .token {

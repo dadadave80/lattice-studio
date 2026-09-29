@@ -1,7 +1,7 @@
 /**
  * The component-test harness (contracts §1: K2, then frozen). Browser tests import from here:
  *
- *   const screen = await renderWithStudio(<CatalogPanel />, { project, theme: "draft" });
+ *   const screen = await renderWithStudio(<CatalogPanel />, { project, theme: "light" });
  *   const chain = fakeChainService({ account });   // then pass { chain } to renderWithStudio
  *   const clock = fakeClock({ at: "2026-09-23T12:00:00Z", timers: vi });
  *   overrideCommands([command({ id: "layout.tidy", … })]);

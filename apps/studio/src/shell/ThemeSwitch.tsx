@@ -4,16 +4,16 @@ import { useMediaQuery } from "@/a11y";
 import { SegmentedToggle } from "@/ui/fields/SegmentedToggle";
 
 const OPTIONS = [
-  { value: "shop", label: "Shop" },
-  { value: "draft", label: "Draft" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
 ] as const;
 
-/** The Shop / Draft switch (IR L71): runs `theme.set`; not an undo step. "System" shows the theme it resolves to. */
+/** The Light / Dark switch (IR L71): runs `theme.set`; not an undo step. "System" shows the theme it resolves to. */
 export function ThemeSwitch({ className }: { className?: string }) {
   const choice = useSettings((s) => s.theme);
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const theme: ThemeId = resolveTheme(choice, prefersDark);
-  const other: ThemeId = theme === "shop" ? "draft" : "shop";
+  const other: ThemeId = theme === "dark" ? "light" : "dark";
   const state = useCommandState(commandRef("theme.set", { theme: other }));
   return (
     <SegmentedToggle

@@ -4,22 +4,22 @@ import { useMediaQuery } from "@/a11y";
 import { MenuRadioGroup } from "@/ui/overlays/MenuRadioGroup";
 import { MenuRadioItem } from "@/ui/overlays/MenuRadioItem";
 
-/** Shop and Draft as menu radios (the overflow menu's theme switch): the checked one is the theme in use. */
+/** Light and Dark as menu radios (the overflow menu's theme switch): the checked one is the theme in use. */
 export function ThemeMenuGroup() {
   const choice = useSettings((s) => s.theme);
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const theme: ThemeId = resolveTheme(choice, prefersDark);
-  const shop = useCommandState(commandRef("theme.set", { theme: "shop" }), "menu");
-  const draft = useCommandState(commandRef("theme.set", { theme: "draft" }), "menu");
+  const dark = useCommandState(commandRef("theme.set", { theme: "dark" }), "menu");
+  const light = useCommandState(commandRef("theme.set", { theme: "light" }), "menu");
   return (
     <MenuRadioGroup
       value={theme}
       onValueChange={(next) => {
-        if (next === "shop" || next === "draft") void runCommand(commandRef("theme.set", { theme: next }), "menu");
+        if (next === "dark" || next === "light") void runCommand(commandRef("theme.set", { theme: next }), "menu");
       }}
     >
-      <MenuRadioItem value="shop" label="Shop" disabledReason={shop.ok ? null : shop.reason} />
-      <MenuRadioItem value="draft" label="Draft" disabledReason={draft.ok ? null : draft.reason} />
+      <MenuRadioItem value="light" label="Light" disabledReason={light.ok ? null : light.reason} />
+      <MenuRadioItem value="dark" label="Dark" disabledReason={dark.ok ? null : dark.reason} />
     </MenuRadioGroup>
   );
 }

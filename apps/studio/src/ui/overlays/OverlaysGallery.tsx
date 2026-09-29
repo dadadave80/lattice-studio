@@ -30,7 +30,7 @@ const noop = () => {};
 /** The overlays in the `#/__ui` gallery: every trigger, nothing open until pressed. */
 export function OverlaysGallery() {
   const [minimap, setMinimap] = useState(true);
-  const [theme, setTheme] = useState("shop");
+  const [theme, setTheme] = useState("dark");
   const [dialog, setDialog] = useState<GalleryDialog | null>(null);
   const [toasts] = useState(createToasts);
   const close = () => setDialog(null);
@@ -51,13 +51,13 @@ export function OverlaysGallery() {
           </MenuGroup>
           <MenuSeparator />
           <MenuRadioGroup label="Theme" value={theme} onValueChange={setTheme}>
-            <MenuRadioItem value="shop" label="Shop" />
-            <MenuRadioItem value="draft" label="Draft" />
+            <MenuRadioItem value="light" label="Light" />
+            <MenuRadioItem value="dark" label="Dark" />
           </MenuRadioGroup>
           <MenuSeparator />
           <Submenu label="Recent projects">
             <MenuItem label="GovernedVault" onSelect={noop} />
-            <MenuItem label="Shop sample" onSelect={noop} />
+            <MenuItem label="Dark sample" onSelect={noop} />
           </Submenu>
           <MenuItem label="Settings" onSelect={noop} shortcut="Mod+," icon="settings" />
         </Menu>

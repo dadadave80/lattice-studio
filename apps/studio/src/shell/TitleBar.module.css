@@ -1,6 +1,6 @@
 /*
  * The title bar (spec L355, final-*-sample screens): 40 px, the App menu and history at the start, the project
- * name, save status and status chip in the middle, Share, Shop/Draft and ⌘K at the end. Narrow layouts have no
+ * name, save status and status chip in the middle, Share, Light/Dark and ⌘K at the end. Narrow layouts have no
  * board yet (PA L78): built from the drawn bar and the tokens.
  */
 .bar {

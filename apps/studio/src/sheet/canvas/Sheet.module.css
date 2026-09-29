@@ -11,7 +11,7 @@
   --xy-selection-border: var(--lx-stroke-hair) solid var(--lx-accent);
 }
 
-/* The Select tool: a drag on empty sheet draws the marquee (S4e), a crosshair as the Draft board draws it. */
+/* The Select tool: a drag on empty sheet draws the marquee (S4e), a crosshair as the light theme's board draws it. */
 .sheet[data-tool="select"]:not([data-panning]) :global(.react-flow__pane) {
   cursor: crosshair;
 }

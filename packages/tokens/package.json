@@ -7,8 +7,8 @@
     ".": "./dist/tokens.ts",
     "./dist/tokens.css": "./dist/tokens.css",
     "./tokens.css": "./dist/tokens.css",
-    "./shiki-shop.json": "./dist/shiki-shop.json",
-    "./shiki-draft.json": "./dist/shiki-draft.json"
+    "./shiki-dark.json": "./dist/shiki-dark.json",
+    "./shiki-light.json": "./dist/shiki-light.json"
   },
   "scripts": {
     "build": "bun src/build.ts",

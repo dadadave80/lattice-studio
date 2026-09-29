@@ -1,7 +1,7 @@
 /**
  * PA L79: "Narrow layouts at 1024 and 768 px, the pane switcher below 768 px, and the title bar carrying the
  * status chip, Deploy… and the overflow menu" has no board. Built from the design system's shell chrome and
- * Shell.browser.test.tsx / TitleBar.browser.test.tsx's real widths (shop only; layout doesn't change by theme).
+ * Shell.browser.test.tsx / TitleBar.browser.test.tsx's real widths (dark only; layout doesn't change by theme).
  *
  * `layout-tier.ts`'s tiers: wide (≥1280), mid (1024-1279, one drawer at a time), narrow (768-1023, Deploy… and
  * the overflow menu join the bar), phone (<768, the pane switcher and no Undo/Redo in the bar). The switcher
@@ -39,7 +39,7 @@ async function renderAt(width: number) {
   await expect.poll(() => document.querySelector("[data-layout]")?.getAttribute("data-layout")).toBe(tierOf(width));
 }
 
-describe("provisional: narrow layouts (shop)", () => {
+describe("provisional: narrow layouts (dark)", () => {
   test("1024 px: the mid tier, one side pane at a time as a drawer", async () => {
     await renderAt(1024);
     await expect.element(bar().getByRole("group", { name: "Panes" })).toBeVisible();
@@ -57,7 +57,7 @@ describe("provisional: narrow layouts (shop)", () => {
       })
       .toBe(true);
     await document.fonts.ready;
-    await expect.element(page.elementLocator(document.body)).toMatchScreenshot("provisional-narrow-layouts-1024-shop");
+    await expect.element(page.elementLocator(document.body)).toMatchScreenshot("provisional-narrow-layouts-1024-dark");
   });
 
   test("768 px: the narrow tier, the title bar carries the status chip, Deploy… and the overflow menu", async () => {
@@ -66,7 +66,7 @@ describe("provisional: narrow layouts (shop)", () => {
     await expect.element(bar().getByRole("button", { name: "More" })).toBeVisible();
     await expect.element(bar().getByRole("button", { name: /^Not deployed/ })).toBeVisible();
     await document.fonts.ready;
-    await expect.element(page.elementLocator(bar().element() as HTMLElement)).toMatchScreenshot("provisional-narrow-layouts-title-bar-768-shop");
+    await expect.element(page.elementLocator(bar().element() as HTMLElement)).toMatchScreenshot("provisional-narrow-layouts-title-bar-768-dark");
   });
 
   test("under 768 px: the pane switcher, one pane at a time", async () => {
@@ -86,6 +86,6 @@ describe("provisional: narrow layouts (shop)", () => {
       );
     }).toBe(true);
     await document.fonts.ready;
-    await expect.element(page.elementLocator(document.body)).toMatchScreenshot("provisional-narrow-layouts-pane-switcher-600-shop");
+    await expect.element(page.elementLocator(document.body)).toMatchScreenshot("provisional-narrow-layouts-pane-switcher-600-dark");
   });
 });

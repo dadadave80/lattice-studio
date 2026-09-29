@@ -21,7 +21,7 @@ beforeEach(() => resetConsole());
 afterEach(() => resetTour());
 
 /** The console in a 400 px frame at the bottom of the page, with a button before it to Tab from. */
-async function renderConsole(extra: ReactNode = null, theme: "shop" | "draft" = "shop") {
+async function renderConsole(extra: ReactNode = null, theme: "dark" | "light" = "dark") {
   await renderWithStudio(
     <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column" }}>
       <button type="button">Before the console</button>
@@ -119,7 +119,7 @@ describe("Tab stops to the command line (a11y cleanup, ledger L437)", () => {
     await expect.element(page.getByRole("menuitem", { name: "Copy all" })).toBeVisible();
   });
 
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`the Log with its toolbars has no axe violations, in ${theme}`, async () => {
       await renderConsole(null, theme);
       log({ tag: "Error", text: "Couldn't load the catalog" });

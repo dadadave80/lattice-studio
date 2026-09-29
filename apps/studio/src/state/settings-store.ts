@@ -31,6 +31,9 @@ function oneOf<T extends string>(value: Json, options: readonly T[]): value is T
   return typeof value === "string" && (options as readonly string[]).includes(value);
 }
 
+/** Theme names saved before the Light and Dark ruling (2026-09-29), read as the themes they became. */
+const RENAMED_THEMES: ReadonlyMap<string, SettingsState["theme"]> = new Map([["shop", "dark"], ["draft", "light"]]);
+
 function positive(value: Json): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
@@ -52,7 +55,8 @@ export function readSettings(raw: string | null): SettingsState {
     return out;
   }
   const s = stored;
-  if (oneOf(s.theme, ["shop", "draft", "system"] as const)) out.theme = s.theme;
+  const theme = typeof s.theme === "string" ? (RENAMED_THEMES.get(s.theme) ?? s.theme) : s.theme;
+  if (oneOf(theme, ["light", "dark", "system"] as const)) out.theme = theme;
   if (oneOf(s.reduceMotion, ["system", "on", "off"] as const)) out.reduceMotion = s.reduceMotion;
   if (oneOf(s.wheel, ["pan", "zoom"] as const)) out.wheel = s.wheel;
   if (isRecord(s.nudge) && positive(s.nudge.small) && positive(s.nudge.large)) {

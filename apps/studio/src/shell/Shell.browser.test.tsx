@@ -364,8 +364,8 @@ describe("under 768 px", () => {
     await renderAt(600);
     await bar().getByRole("button", { name: "More" }).click();
     await page.getByRole("menuitem", { name: "Theme" }).click();
-    await expect.element(page.getByRole("menuitemradio", { name: "Shop" })).toHaveAttribute("aria-checked", "true");
-    await expect.element(page.getByRole("menuitemradio", { name: "Draft" })).toHaveAttribute("aria-checked", "false");
+    await expect.element(page.getByRole("menuitemradio", { name: "Dark" })).toHaveAttribute("aria-checked", "true");
+    await expect.element(page.getByRole("menuitemradio", { name: "Light" })).toHaveAttribute("aria-checked", "false");
     await userEvent.keyboard("{Escape}{Escape}");
     await bar().getByRole("button", { name: "More" }).click();
     await page.getByRole("menuitem", { name: "Tools" }).click();

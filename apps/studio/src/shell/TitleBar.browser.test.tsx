@@ -3,7 +3,7 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
-  commandRef, commandState, doc, emptyAnalysis, provideAnalysis, putDeployment, runCommand, session,
+  commandRef, commandState, doc, emptyAnalysis, provideAnalysis, putDeployment, runCommand, session, settings,
 } from "@/contracts";
 import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio, seedDeployState } from "../../test/harness";
 import { Shell } from "./Shell";
@@ -172,6 +172,17 @@ describe("the other controls", () => {
     await expect.element(bar().getByRole("button", { name: /^Share/ })).toHaveAttribute("aria-disabled", "true");
     await expect.element(bar().getByRole("button", { name: /⌘KCommand palette|⌘K Command palette/ })).toBeVisible();
     await expect.element(bar().getByRole("group", { name: "Theme" })).toBeVisible();
+  });
+
+  test("the theme switch names Light and Dark, in that order, and confirms a switch", async () => {
+    await renderWithStudio(<Shell />, { theme: "dark" });
+    const theme = bar().getByRole("group", { name: "Theme" });
+    expect(theme.getByRole("button").elements().map((b) => b.textContent)).toEqual(["Light", "Dark"]);
+    await expect.element(theme.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
+    await theme.getByRole("button", { name: "Light" }).click();
+    await expect.poll(() => settings.get().theme).toBe("light");
+    expect(bufferedServices().log.at(-1)?.text).toBe("Theme: Light.");
+    await expect.element(theme.getByRole("button", { name: "Light" })).toHaveAttribute("aria-pressed", "true");
   });
 
   test("the save status shows its details on click", async () => {

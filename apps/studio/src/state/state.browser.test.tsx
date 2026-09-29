@@ -98,11 +98,11 @@ describe("S1 in the browser", () => {
   test("settings persist to the browser's localStorage and come back", () => {
     try {
       const first = createSettingsStore(localStorage);
-      first.store.setState({ theme: "draft", minimap: true });
+      first.store.setState({ theme: "light", minimap: true });
       first.stop();
       const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") as { theme?: string; minimap?: boolean };
-      expect(stored).toMatchObject({ theme: "draft", minimap: true });
-      expect(createSettingsStore(localStorage).store.getState()).toMatchObject({ theme: "draft", minimap: true });
+      expect(stored).toMatchObject({ theme: "light", minimap: true });
+      expect(createSettingsStore(localStorage).store.getState()).toMatchObject({ theme: "light", minimap: true });
     } finally {
       localStorage.removeItem(SETTINGS_KEY);
     }
@@ -110,7 +110,7 @@ describe("S1 in the browser", () => {
 
   test("under Vitest the app's settings stay in memory", async () => {
     await renderWithStudio(<p>settings</p>);
-    settings.set({ theme: "draft" });
+    settings.set({ theme: "light" });
     expect(localStorage.getItem(SETTINGS_KEY)).toBeNull();
   });
 });

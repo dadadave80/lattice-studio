@@ -1,5 +1,5 @@
 /*
- * Tabs (final-shop-sample: the left pane's header). Text tabs on a hairline; the open tab is `text` with a
+ * Tabs (the design's dark sample screen: the left pane's header). Text tabs on a hairline; the open tab is `text` with a
  * 2 px `accent` underline, the others `text-muted`. Focus is the global outline, drawn inside the tab.
  */
 .root {

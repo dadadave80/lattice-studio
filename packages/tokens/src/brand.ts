@@ -7,7 +7,7 @@
 
 import { mix, withAlpha } from "./color-math.ts";
 
-export type ThemeId = "shop" | "draft";
+export type ThemeId = "dark" | "light";
 export type BrandId = "signal" | "blueprint";
 export type GroundTone = "dark" | "light";
 
@@ -34,13 +34,13 @@ const BRAND_OFFWHITE = "#E9E7E1";
 
 // Hover/pressed shift: lighten toward white on a dark ground, darken toward
 // black on a light ground. The magnitude matches the Final composer's own
-// shop accent-strong (#FF5A1F -> #FF7A45) and draft accent-strong
+// dark accent-strong (#FF5A1F -> #FF7A45) and light accent-strong
 // (#1F4FE0 -> #173FBE).
 const STRONG_SHIFT = 0.18;
 
 const SIGNAL: Brand = {
   id: "signal",
-  // Signal on dark: exact from Composer-Final.dc.html's Shop theme (the
+  // Signal on dark: exact from Composer-Final.dc.html's dark theme (the
   // current D3 default). 5.8:1 as text on Ink per design/tokens.json.
   dark: {
     accent: SIGNAL_BASE,
@@ -65,7 +65,7 @@ const SIGNAL: Brand = {
 
 const BLUEPRINT: Brand = {
   id: "blueprint",
-  // Blueprint on light: exact from Composer-Final.dc.html's Draft theme
+  // Blueprint on light: exact from Composer-Final.dc.html's light theme
   // (the current D3 default). 5.2:1 as text on Off-white.
   light: {
     accent: BLUEPRINT_BASE,
@@ -88,18 +88,18 @@ const BLUEPRINT: Brand = {
 
 const BRANDS: Record<BrandId, Brand> = { signal: SIGNAL, blueprint: BLUEPRINT };
 
-const THEME_TONE: Record<ThemeId, GroundTone> = { shop: "dark", draft: "light" };
+const THEME_TONE: Record<ThemeId, GroundTone> = { dark: "dark", light: "light" };
 
 /**
  * Decision D3 (HANDOFF §11): which brand color leads each theme. Signal
- * leads Shop, Blueprint leads Draft. The design system's own README has
+ * leads the dark theme, Blueprint the light one. The design system's own README has
  * Blueprint lead everywhere and Signal only alert; the Final composer,
  * which David chose, gives each theme one accent instead. Edit this map to
  * flip D3 — everything downstream follows.
  */
 export const D3_ACCENT_BY_THEME: Record<ThemeId, BrandId> = {
-  shop: "signal",
-  draft: "blueprint",
+  dark: "signal",
+  light: "blueprint",
 };
 
 export function accentPackageForTheme(theme: ThemeId): AccentPackage {

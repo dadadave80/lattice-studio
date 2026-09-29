@@ -22,7 +22,7 @@ export type StudioOptions = {
   project?: Project;
   /** Default: the fixture catalog. Null leaves the catalog loading. */
   catalog?: Catalog | null;
-  /** Default: Shop. */
+  /** Default: Dark. */
   theme?: ThemeId;
   /** Merged over the default settings. */
   settings?: Partial<SettingsState>;
@@ -35,7 +35,7 @@ export type StudioOptions = {
 /** Seeds the stores without rendering (for hooks and services). Returns the project and catalog it used. */
 export function seedStudio(options: StudioOptions = {}): { project: Project; catalog: Catalog | null } {
   const catalog = options.catalog === undefined ? fixtureCatalog() : options.catalog;
-  const theme: ThemeId = options.theme ?? "shop";
+  const theme: ThemeId = options.theme ?? "dark";
 
   settings.set({ ...structuredClone(DEFAULT_SETTINGS), ...options.settings, theme });
   session.set({ ...initialSession(), ...options.session });

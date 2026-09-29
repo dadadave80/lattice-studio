@@ -1,5 +1,5 @@
 /**
- * Board: `design/boards/current-catalog-row.png`, the two catalog columns (DRAFT and SHOP). Rest, on sheet
+ * Board: `design/boards/current-catalog-row.png`, the two catalog columns (light and dark themes). Rest, on sheet
  * (the board's "in cut"), verified and unavailable, in both themes.
  *
  * The board's own facet names (RateLimiter, CircuitBreaker) aren't in the fixture catalog: an "erc20" search
@@ -31,7 +31,7 @@ beforeAll(async () => {
   );
 });
 
-async function renderTokensExpanded(theme: "shop" | "draft") {
+async function renderTokensExpanded(theme: "dark" | "light") {
   const catalog = fixtureCatalog();
   const healthy = healthyChainState(CHAIN_ID, "Sepolia", catalog);
   const chain = fakeChainService({
@@ -56,7 +56,7 @@ async function renderTokensExpanded(theme: "shop" | "draft") {
   return page.getByRole("tree", { name: "Catalog" });
 }
 
-describe.each(["shop", "draft"] as const)("board: catalog row (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: catalog row (%s)", (theme) => {
   test("tokens area: on-sheet (ghosted), verified and rest rows", async () => {
     const tree = await renderTokensExpanded(theme);
     expect(row("ERC20")?.textContent).toContain("On sheet");

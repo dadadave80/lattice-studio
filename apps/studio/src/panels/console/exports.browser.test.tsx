@@ -24,7 +24,7 @@ beforeEach(() => resetConsole());
 
 const SAFE = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F" as const;
 
-async function renderConsole(project = erc20Project(), theme: "shop" | "draft" = "shop", chainId: number | null = null) {
+async function renderConsole(project = erc20Project(), theme: "dark" | "light" = "dark", chainId: number | null = null) {
   const rendered = await renderWithStudio(
     <>
       <div style={{ height: "600px", display: "flex" }}>
@@ -184,7 +184,7 @@ describe("Export menu (spec L509-L518, IR L132)", () => {
     onCleanup(provideDeployController(async () => controller));
     onCleanup(provideServices({ now: () => Date.parse("2026-09-23T12:00:00Z") }));
     const files = captureDownloads();
-    await renderConsole(erc20Project(), "shop", 84532);
+    await renderConsole(erc20Project(), "dark", 84532);
     tickAcknowledgements();
     await userEvent.click(exportMenu());
     await userEvent.click(item("Safe batch…"));
@@ -297,7 +297,7 @@ describe("Script and Recipe JSON tabs (IR L135-L136)", () => {
     expect(clicks).toEqual([{ name: "recipe.json", href: expect.stringMatching(/^blob:/) }]);
   });
 
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`the Script tab has no axe violations, in ${theme}`, async () => {
       await renderConsole(erc20Project(), theme);
       await userEvent.click(page.getByRole("tab", { name: "Script" }));

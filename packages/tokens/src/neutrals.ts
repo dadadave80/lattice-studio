@@ -1,5 +1,5 @@
 // The neutral (non-accent) side of the role table: grounds, text and
-// borders, reconciled from the Final composer's Shop and Draft variables
+// borders, reconciled from the Final composer's dark and light variables
 // (design/prototype/composer-theme-tokens.css) against the contrast floor
 // in contracts.md / spec L768-L787 (4.5:1 text, 3:1 meaningful lines).
 //
@@ -18,13 +18,13 @@
 //                                aren't exposed as roles; `tone-3` is only
 //                                ever the scrollbar thumb in the prototype.)
 //   ink        -> text          ink-2   -> text-muted
-//   ink-3      -> text-faint    (Draft's ink-3 already clears 4.5:1 on every
-//                                ground; Shop's does not (3.46-3.91:1), so
-//                                Shop's is nudged toward ink-2 - see
-//                                `deriveShopTextFaint` - just far enough to
+//   ink-3      -> text-faint    (the light ink-3 already clears 4.5:1 on every
+//                                ground; the dark one does not (3.46-3.91:1), so
+//                                it is nudged toward ink-2 - see
+//                                `deriveDarkTextFaint` - just far enough to
 //                                clear 4.5:1 with margin)
-//   hair       -> border-subtle (documented exempt: 1.3:1 Shop, 1.6:1
-//                                Draft; decorative dividers only, per the
+//   hair       -> border-subtle (documented exempt: 1.3:1 dark, 1.6:1
+//                                light; decorative dividers only, per the
 //                                brief and design/design-system-rules.md)
 //   strong     -> border        (composer's own control-outline color;
 //                                >=3:1 against every ground)
@@ -80,7 +80,7 @@ interface ComposerNeutrals {
   readonly dot: string; // rgba()
 }
 
-const SHOP: ComposerNeutrals = {
+const DARK: ComposerNeutrals = {
   field: "#0C0D0F",
   panel: "#131417",
   raised: "#181A1E",
@@ -93,7 +93,7 @@ const SHOP: ComposerNeutrals = {
   dot: "rgba(233,231,225,.06)",
 };
 
-const DRAFT: ComposerNeutrals = {
+const LIGHT: ComposerNeutrals = {
   field: "#F3F1E9",
   panel: "#F7F5EF",
   raised: "#FBFAF5",
@@ -107,12 +107,12 @@ const DRAFT: ComposerNeutrals = {
 };
 
 /**
- * Shop's `ink-3` is 3.46-3.91:1 on its own grounds and panel (below 4.5:1).
+ * The dark theme's `ink-3` is 3.46-3.91:1 on its own grounds and panel (below 4.5:1).
  * Nudges it toward `ink-2` — which clears 4.5:1 everywhere — by the smallest
- * amount that clears 4.5:1 against Shop's lightest ground (`raised`, the
+ * amount that clears 4.5:1 against the dark theme's lightest ground (`raised`, the
  * worst case), plus a small margin.
  */
-function deriveShopTextFaint(n: ComposerNeutrals): string {
+function deriveDarkTextFaint(n: ComposerNeutrals): string {
   const candidate = mix(n.ink3, n.ink2, 0.45);
   const worstCase = Math.min(
     contrastRatio(candidate, n.field),
@@ -121,7 +121,7 @@ function deriveShopTextFaint(n: ComposerNeutrals): string {
     contrastRatio(candidate, n.sunken),
   );
   if (worstCase < 4.5) {
-    throw new Error(`Shop text-faint (${candidate}) only clears ${worstCase.toFixed(2)}:1`);
+    throw new Error(`Dark text-faint (${candidate}) only clears ${worstCase.toFixed(2)}:1`);
   }
   return candidate;
 }
@@ -144,9 +144,9 @@ function fromComposer(n: ComposerNeutrals, textFaint: string): NeutralPalette {
 }
 
 const PALETTES: Record<ThemeId, NeutralPalette> = {
-  shop: fromComposer(SHOP, deriveShopTextFaint(SHOP)),
-  // Draft's own ink-3 already clears 4.5:1 everywhere (5.03-6.18:1).
-  draft: fromComposer(DRAFT, DRAFT.ink3),
+  dark: fromComposer(DARK, deriveDarkTextFaint(DARK)),
+  // The light theme's own ink-3 already clears 4.5:1 everywhere (5.03-6.18:1).
+  light: fromComposer(LIGHT, LIGHT.ink3),
 };
 
 export function neutralPaletteForTheme(theme: ThemeId): NeutralPalette {

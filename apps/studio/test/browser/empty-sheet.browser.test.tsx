@@ -7,9 +7,9 @@
  * no cards. PA L65 says v1's Start block ships GovernedVault, ERC20 and SafeDiamondCut cards instead, and that
  * is what `StartBlock` (`sheet/chrome/StartBlock.tsx`) actually renders: "Start a diamond", Blank diamond, the
  * three recipe cards, Browse all recipes, the hint ("Drag from the catalog, or press ⌘K") and the tour line.
- * The terse headline copy itself was never built; this baseline shoots the real DOM. Shop's rack rails
- * (PA L63: "optional") aren't implemented either — grep finds no rack/rail styling — so the shop screenshot
- * shows the same ground as draft, just themed.
+ * The terse headline copy itself was never built; this baseline shoots the real DOM. the dark theme's rack rails
+ * (PA L63: "optional") aren't implemented either — grep finds no rack/rail styling — so the dark screenshot
+ * shows the same ground as light, just themed.
  */
 import { beforeAll, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
@@ -29,7 +29,7 @@ beforeAll(async () => {
   );
 });
 
-describe.each(["shop", "draft"] as const)("board: empty sheet (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: empty sheet (%s)", (theme) => {
   test("the dot grid behind Start a diamond: Blank diamond, v1's three recipes, the hint and the tour line", async () => {
     await renderSheet({ project: emptyProject("empty"), theme, settings: { reduceMotion: "on" } });
     const start = page.getByRole("region", { name: "Start a diamond" });
