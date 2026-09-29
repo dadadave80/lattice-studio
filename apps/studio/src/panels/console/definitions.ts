@@ -82,7 +82,7 @@ export const S5E_COMMANDS: readonly Command[] = [
   }),
   command<HelpArgs>({
     id: "console.help",
-    title: () => "Console help",
+    title: () => "Show console help",
     category: "Console",
     console: {
       verb: "help",

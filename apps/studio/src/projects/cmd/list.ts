@@ -4,7 +4,7 @@ import { OK } from "./shared";
 
 export const listCommand = command({
   id: "project.list",
-  title: () => "Projects",
+  title: () => "Open Projects",
   category: "Session",
   palette: true,
   enabled: () => OK,

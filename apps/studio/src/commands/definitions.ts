@@ -30,7 +30,7 @@ export const S2_COMMANDS: readonly Command[] = [
   }),
   command({
     id: "shortcuts.open",
-    title: () => "Keyboard shortcuts",
+    title: () => "Show keyboard shortcuts",
     category: "Session",
     keys: ["?"],
     keyContext: [...WHEREVER_SINGLE_KEYS],

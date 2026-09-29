@@ -45,7 +45,7 @@ function setPanes(next: Panes): void {
 
 export const appMenuCommand = command({
   id: "app.menu",
-  title: () => "App menu",
+  title: () => "Open the App menu",
   category: "Session",
   palette: true,
   enabled: () => OK,

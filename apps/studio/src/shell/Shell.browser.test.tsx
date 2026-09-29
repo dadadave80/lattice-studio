@@ -375,7 +375,7 @@ describe("under 768 px", () => {
       (el) => (el.getAttribute("role") === "separator" ? "·" : document.getElementById(el.getAttribute("aria-labelledby") ?? "")?.textContent),
     );
     expect(labels).toEqual([
-      "Select", "Hand", "·", "Zoom out", "Zoom in", "Fit", "·", "Init order", "Tidy", "Auto-layout", "·", "Minimap",
+      "Select", "Hand", "·", "Zoom out", "Zoom in", "Fit", "·", "Init order", "Tidy", "Auto-layout", "·", "Show or hide minimap",
     ]);
     await expect.element(tools.getByRole("menuitem", { name: "Auto-layout" })).toHaveAccessibleDescription("Arrives in v1.1");
     await userEvent.keyboard("{Escape}{Escape}");

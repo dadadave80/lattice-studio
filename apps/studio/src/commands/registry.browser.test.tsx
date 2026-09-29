@@ -12,7 +12,7 @@ describe("discovery (contracts §5.3)", () => {
   test("the glob found S2's commands.ts and services.ts: real commands, the dialog and the Esc stack", () => {
     expect(isPlaceholder("ui.escape")).toBe(false);
     expect(isPlaceholder("shortcuts.open")).toBe(false);
-    expect(getCommand("shortcuts.open").title({})).toBe("Keyboard shortcuts");
+    expect(getCommand("shortcuts.open").title({})).toBe("Show keyboard shortcuts");
     expect(listBindings().find((b) => b.id === "shortcuts.open")?.keys).toEqual(["?"]);
     expect(listPaletteRows().some((r) => r.ref.id === "shortcuts.open")).toBe(true);
     expect(dialogComponent("keyboard-shortcuts")).not.toBeNull();

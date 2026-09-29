@@ -67,7 +67,7 @@ describe("Keyboard shortcuts dialog (IR L186)", () => {
     await userEvent.clear(search());
     await userEvent.type(search(), "?");
     // Typing ? in Search types it: no second dialog.
-    await expect.element(page.getByRole("listitem").first()).toMatchTextContent(/Keyboard shortcuts/);
+    await expect.element(page.getByRole("listitem").first()).toMatchTextContent(/Show keyboard shortcuts/);
     expect(session.get().dialogs).toHaveLength(1);
     await userEvent.clear(search());
     await userEvent.type(search(), "zzz");
