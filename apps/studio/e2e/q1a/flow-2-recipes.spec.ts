@@ -13,10 +13,10 @@
  *   5. INIT-01 for a required argument with no safe default: "1 parameter to fill" and Fill in; focus isn't moved.
  */
 import { analyze, loadTemplate, plural, recipeStats, templateList } from "@lattice-studio/core";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { catalog } from "../_support/catalog.ts";
 import { expect, test } from "../_support/fixtures.ts";
-import { commandLine, pagePlatform, region } from "../_support/keys.ts";
+import { commandLine, region, runInPalette } from "../_support/keys.ts";
 import { recipeProject } from "../_support/projects.ts";
 import { expectProject, openEmpty, seedProject } from "../_support/seed.ts";
 import { expectTier, tierAt, viewportAt } from "../_support/viewports.ts";
@@ -35,64 +35,11 @@ function loadedLine(name: string): string {
   return `Loaded ${name} · ${plural(stats.facets, "facet")} · ${plural(stats.selectors, "selector")}${script ? ` · from ${script}` : ""}.`;
 }
 
-// ── Local shims for two `_support/keys.ts` bugs found while writing this suite (see the handback report) ─────
-//
-// 1. `openPalette`/`runInPalette` press `${MOD}+k`, where `MOD` is Playwright's "ControlOrMeta". That alias
-//    follows the machine actually running the tests (`process.platform`), but the app decides Mod from the
-//    page's `navigator.userAgentData.platform`, which the chromium project's Desktop Chrome device emulates as
-//    "Windows" regardless of the host. On a macOS host (this one) that's Meta from Playwright vs. Ctrl expected
-//    by the app, so ⌘K never opens the palette on chromium. `pagePlatform` (also in keys.ts) already computes
-//    the app's own answer correctly; these shims press whatever it says instead of trusting `MOD`.
-// 2. `runConsole` tabs into the console up to 20 times looking for the command line. This build's console
-//    toolbar (Collapse, the Log/Script/Recipe JSON tabs, Export, the console menu, Maximize, the tag filter
-//    buttons, the filter field, Clear the log, Copy line, the log menu, then the log's own lines) puts the
-//    command line one Tab past that ceiling, so the loop always times out. `runConsoleLine` below focuses the
-//    command line directly instead (the same `.focus()` pattern flow-1 already uses for the tour link).
-//
-// Both are reported to the lead; this file works around them without touching the shared kit.
-
-async function paletteModifier(page: Page): Promise<"Meta" | "Control"> {
-  return (await pagePlatform(page)) === "mac" ? "Meta" : "Control";
-}
-
-async function focusedRole(page: Page): Promise<string | null> {
-  return page.evaluate(() => document.activeElement?.getAttribute("role") ?? null);
-}
-
-async function activeOptionText(input: Locator): Promise<string | null> {
-  return input.evaluate((el) => {
-    const id = el.getAttribute("aria-activedescendant");
-    const option = id ? document.getElementById(id) : null;
-    return option?.textContent ?? null;
-  });
-}
-
-async function openPaletteShim(page: Page): Promise<Locator> {
-  const mod = await paletteModifier(page);
-  await page.keyboard.press(`${mod}+k`);
-  await expect.poll(() => focusedRole(page), { message: "The palette shortcut should focus its combobox" }).toBe("combobox");
-  const comboboxes = page.getByRole("combobox");
-  for (let i = 0; i < (await comboboxes.count()); i += 1) {
-    const candidate = comboboxes.nth(i);
-    if (await candidate.evaluate((el) => el === document.activeElement)) {
-      await expect(candidate).toBeFocused();
-      return candidate;
-    }
-  }
-  throw new Error("The palette shortcut focused a combobox that the accessibility tree doesn't list.");
-}
-
-async function runInPaletteShim(page: Page, query: string): Promise<void> {
-  const input = await openPaletteShim(page);
-  await input.fill(query);
-  await expect
-    .poll(async () => (await activeOptionText(input))?.toLowerCase().includes(query.toLowerCase()) ?? false, {
-      message: `the palette's active row should be "${query}"`,
-    })
-    .toBe(true);
-  await page.keyboard.press("Enter");
-}
-
+// `runConsole` (`_support/keys.ts`) tabs into the console up to 20 times looking for the command line. This
+// build's console toolbar (Collapse, the Log/Script/Recipe JSON tabs, Export, the console menu, Maximize, the tag
+// filter buttons, the filter field, Clear the log, Copy line, the log menu, then the log's own lines) puts the
+// command line one Tab past that ceiling, so the loop always times out. `runConsoleLine` below focuses the
+// command line directly instead (the same `.focus()` pattern flow-1 already uses for the tour link).
 async function runConsoleLine(page: Page, line: string): Promise<void> {
   const input = commandLine(page);
   await input.focus();
@@ -146,7 +93,7 @@ test.describe("Flow 2. Start from a recipe", () => {
 
   test("loads GovernedVault via the command palette: Recipe: GovernedVault @smoke", async ({ page }) => {
     await openEmpty(page);
-    await runInPaletteShim(page, "Recipe: GovernedVault");
+    await runInPalette(page, "Recipe: GovernedVault");
 
     const console_ = new ConsolePage(page);
     await expect(console_.line(loadedLine("GovernedVault"))).toBeVisible();
@@ -215,7 +162,7 @@ test.describe("Flow 2. Start from a recipe", () => {
     await expect(sheet.card("ERC20")).toBeVisible();
 
     await waitForSaved(page);
-    await runInPaletteShim(page, "Projects");
+    await runInPalette(page, "Projects");
     const projects = new ProjectsPage(page);
     // toBeAttached, not toBeVisible: this build's Projects row runs out of width for its name once the status
     // chip, saved time and four action buttons are all in the same 606px row, so the name button lays out at
@@ -240,7 +187,7 @@ test.describe("Flow 2. Start from a recipe", () => {
     await expect(sheet.card(GOVERNED_VAULT_ONLY_FACET)).toBeVisible();
 
     await waitForSaved(page);
-    await runInPaletteShim(page, "Projects");
+    await runInPalette(page, "Projects");
     const projects = new ProjectsPage(page);
     // toBeAttached: see the comment on the previous test about the row's own width bug (unrelated to Flow 2).
     await expect(projects.row("My other project")).toBeAttached();
@@ -255,7 +202,7 @@ test.describe("Flow 2. Start from a recipe", () => {
     await expect(sheet.card("ERC20")).toBeVisible();
     await expect(sheet.card(GOVERNED_VAULT_ONLY_FACET)).toHaveCount(0);
 
-    await runInPaletteShim(page, "Replace this sheet with GovernedVault");
+    await runInPalette(page, "Replace this sheet with GovernedVault");
 
     // In place: the project keeps its name (loadRecipe never renames it) — it isn't a new project.
     await expectProject(page, project.name);
@@ -264,7 +211,7 @@ test.describe("Flow 2. Start from a recipe", () => {
     await expect(sheet.card(GOVERNED_VAULT_ONLY_FACET)).toBeVisible();
 
     await waitForSaved(page);
-    await runInPaletteShim(page, "Projects");
+    await runInPalette(page, "Projects");
     const projects = new ProjectsPage(page);
     // toBeAttached: see the comment further up about the row's own width bug (unrelated to Flow 2).
     await expect(projects.row(project.name)).toBeAttached();
@@ -306,7 +253,7 @@ test.describe("Flow 2. Start from a recipe", () => {
    */
   test("an unset example argument still shows the Example mark", async ({ page }) => {
     await seedProject(page, { project: recipeProject("GovernedVault") });
-    await runInPaletteShim(page, "Open init plan");
+    await runInPalette(page, "Open init plan");
     await expect(region(page, "Inspector").getByText("Example", { exact: true }).first()).toBeVisible();
   });
 
