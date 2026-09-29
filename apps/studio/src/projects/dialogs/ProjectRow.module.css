@@ -1,14 +1,23 @@
+/*
+ * At the Projects dialog's 640 px "wide" width, the status chip, "saved …" text and four action buttons
+ * already come close to (or exceed, on some rows) the row's content width. `flex-wrap` puts the name on its
+ * own full-width line (`flex-basis: 100%`, CCR: was `flex: 1 1 auto` with nothing left to grow into once the
+ * rest claimed the row, shrinking the name button to 0 px and making it unreachable to a pointer) and lets
+ * everything else wrap onto the next line(s) instead of fighting the name for space.
+ */
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--lx-space-3);
+  gap: var(--lx-space-2) var(--lx-space-3);
   padding: var(--lx-space-3) 0;
   border-block-end: var(--lx-stroke-hair) solid var(--lx-border-subtle);
 }
 
 .name {
-  flex: 1 1 auto;
+  flex: 1 1 100%;
   min-inline-size: 0;
+  min-block-size: 24px;
   text-align: start;
   color: var(--lx-text);
   font: var(--lx-font-body);
@@ -33,7 +42,9 @@
 }
 
 .actions {
-  flex: none;
+  flex: 1 1 auto;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--lx-space-2);
 }

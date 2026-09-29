@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { chainService, closeDialog, type DialogComponentProps } from "@/contracts";
 import { persistence, subscribeProjects, type ProjectSummary, type TrashSummary } from "@/persist";
 import { Button, Dialog, Tabs, TabPanel } from "@/ui";
+import { subscribeProjectsRefresh } from "../list-refresh";
 import { registerListFocus } from "./list-focus";
 import { ProjectRow } from "./ProjectRow";
 import styles from "./ProjectsDialogPanel.module.css";
@@ -44,9 +45,13 @@ export function ProjectsDialogPanel({ entry, top }: DialogComponentProps<"projec
     const safe = () => void load().catch(() => {});
     safe();
     const stop = subscribeProjects(safe);
+    // An in-place `project.rename` (the open project's own row) never reaches `subscribeProjects` (it edits
+    // the document only); `renameStoredProject` notifies here once the rename is flushed to storage.
+    const stopRefresh = subscribeProjectsRefresh(safe);
     return () => {
       cancelled = true;
       stop();
+      stopRefresh();
     };
   }, []);
 

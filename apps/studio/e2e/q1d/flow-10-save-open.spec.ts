@@ -110,7 +110,7 @@ test.describe("Flow 10 step 1: autosave (spec L497)", () => {
     await expectSaveStatus(page, "Saved");
   });
 
-  test("an explicit save logs \"Saved to {filename}.\" and toasts it without the period (spec L497, actions.ts)", async ({
+  test("an explicit save toasts \"Saved to {filename}\" as its one console line (spec L497, L733)", async ({
     page,
     context,
   }) => {
@@ -125,8 +125,11 @@ test.describe("Flow 10 step 1: autosave (spec L497)", () => {
     await clickSave(page);
     await download;
 
-    await expectLogLine(page, `Saved to ${filename}.`);
-    await expect(region(page, "Notifications").getByText(`Saved to ${filename}`, { exact: true })).toBeVisible();
+    const text = `Saved to ${filename}`;
+    await expectLogLine(page, text);
+    await expect(region(page, "Notifications").getByText(text, { exact: true })).toBeVisible();
+    // One line per toast (spec L733): the toast's own log line, not a second, separately-worded one.
+    await expect(log(page).getByText(text, { exact: true })).toHaveCount(1);
   });
 });
 
@@ -173,7 +176,7 @@ test.describe("Flow 10 step 2: Ctrl/Cmd+S and Save a copy, File System Access of
     expect(parsed.project.name).toBe("DownloadedVault");
     expect(parsed.deployments).toEqual([]);
 
-    await expectLogLine(page, `Saved to ${filename}.`);
+    await expectLogLine(page, `Saved to ${filename}`);
   });
 
   test("Cancel closes Save a copy without saving anything", async ({ page }) => {
@@ -191,7 +194,7 @@ test.describe("Flow 10 step 2: Ctrl/Cmd+S and Save a copy, File System Access st
     await stubSaveFilePicker(context);
   });
 
-  test("Save a copy links the file; a second Ctrl/Cmd+S writes it directly and says \"Saved to {name}.\" @smoke", async ({
+  test("Save a copy links the file; a second Ctrl/Cmd+S writes it directly and says \"Saved to {name}\" @smoke", async ({
     page,
   }) => {
     const project = vault("LinkedVault");
@@ -206,15 +209,15 @@ test.describe("Flow 10 step 2: Ctrl/Cmd+S and Save a copy, File System Access st
     expect(firstWrite).not.toBeNull();
     const firstParsed = JSON.parse(firstWrite ?? "null") as { project: { id: string } };
     expect(firstParsed.project.id).toBe(project.id);
-    await expectLogLine(page, `Saved to ${filename}.`);
+    await expectLogLine(page, `Saved to ${filename}`);
 
-    // A second Ctrl/Cmd+S: the linked handle means no dialog opens this time, and it writes directly.
-    const before = await log(page).getByText(`Saved to ${filename}.`).count();
+    // A second Ctrl/Cmd+S: the linked handle means no dialog opens this time, and it writes directly. One
+    // console line per toast (spec L733) means the identical text repeats onto the same line (IR L134's ×n
+    // collapse) rather than adding a second, differently-worded line the way the pre-logged duplicate did.
     await pressSave(page);
     await expect(saveCopyDialog(page)).toHaveCount(0);
-    await expect
-      .poll(() => log(page).getByText(`Saved to ${filename}.`).count())
-      .toBeGreaterThan(before);
+    await expect(log(page).getByText(`Saved to ${filename}`)).toHaveCount(1);
+    await expect(log(page).getByText("×2", { exact: false })).toBeVisible();
   });
 });
 
@@ -371,8 +374,13 @@ test.describe("Flow 10 step 4: Open (spec L501)", () => {
     await pressOpen(page);
     (await chooser).setFiles({ name: filename, mimeType: "application/json", buffer: Buffer.from(text, "utf8") });
 
-    await expectLogLine(page, expectedLine);
-    await expect(region(page, "Notifications").getByText(expectedLine, { exact: true })).toBeVisible();
+    // Routed through FX33's `showOpenFailure` (spec L696's sheet error state), not a toast: the console gets
+    // its one Error line, and the sheet names the file, the path and the reason in the Start block's place.
+    const failureText = `This project couldn't be opened: ${expectedLine}`;
+    await expectLogLine(page, failureText);
+    // Scoped to the Sheet region: the console's own Error line carries the identical text too.
+    await expect(region(page, "Sheet").getByText(failureText, { exact: true })).toBeVisible();
+    await expect(region(page, "Notifications").getByText(expectedLine)).toHaveCount(0);
     // The file never opened as a project: the boot's "Untitled" project is still showing.
     await expectProject(page, "Untitled");
   });
@@ -397,18 +405,9 @@ test.describe("Flow 10 step 5: Projects (spec L502)", () => {
   });
 
   test("a row's name opens it and closes the dialog", async ({ page }) => {
-    // CCR (ProjectRow.tsx / ProjectRow.module.css): at the Projects dialog's own "wide" width (640 px, the
-    // popup CSS's `.wide`), a Recent row's status chip + "saved …" text + the four action buttons alone
-    // (measured: ~128 + ~116 + ~375 px, before gaps) already exceed the row's ~606 px content width, for
-    // every project regardless of its name. `.name`'s `flex: 1 1 auto; min-inline-size: 0` then has nothing
-    // left to grow into and shrinks all the way to 0, so the row's own name button is genuinely 0 px wide,
-    // unreachable to a real click (confirmed via `getBoundingClientRect`, not a Playwright quirk: Chromium
-    // still resolves the locator to a real, unique, in-DOM button, just with zero size). This reproduces at
-    // this suite's default desktop viewport (1440x900), not only narrow widths. Filed as a CCR for the
-    // wp-implementer to escalate; skipped here rather than papering over it with a forced click. The
-    // keyboard-only variant below still exercises the underlying `project.open` command by focusing the same
-    // (zero-width but still focusable) button directly, since `.focus()` doesn't require visibility.
-    test.skip(true, "CCR: ProjectRow's name button is 0 px wide in the Projects dialog (Recent row overflow at 640 px)");
+    // FX32 (ProjectRow.module.css): the name now wraps onto its own full-width line (`flex-basis: 100%`) so
+    // it stays a real, clickable target at the Projects dialog's 640 px "wide" width, even once the status
+    // chip, "saved …" text and four action buttons wrap onto the line(s) below it.
     const other = vault("OtherRowVault", { filled: false });
     await storeProject(page, { project: other });
     const open = vault("StartingProjectVault");
@@ -419,7 +418,7 @@ test.describe("Flow 10 step 5: Projects (spec L502)", () => {
     await expectProject(page, "OtherRowVault");
   });
 
-  test("a row's name opens it and closes the dialog (keyboard: focus works despite CCR's zero-width button)", async ({
+  test("a row's name opens it and closes the dialog (keyboard-only)", async ({
     page,
   }) => {
     const other = vault("OtherRowKeyboardVault", { filled: false });
@@ -441,21 +440,19 @@ test.describe("Flow 10 step 5: Projects (spec L502)", () => {
 
     await openProjectsDialog(page);
     await renameRow(page, "RenameRowVault", "RenameRowVault Renamed");
-    // Checked via the row (found by its stable "Rename …" action button), not `rowNameButton`'s own visibility:
-    // the CCR above means the plain name button is 0 px wide right now regardless of its text.
+    // Checked via the row (found by its stable "Rename …" action button), not the row's own name button.
     await expect(projectRow(page, "RenameRowVault Renamed")).toBeVisible();
     await expect(projectRow(page, "RenameRowVault Renamed")).toContainText("RenameRowVault Renamed");
   });
 
-  test("renaming the open project from its own row routes to the same in-place rename as the title bar", async ({
+  test("renaming the open project from its own row routes to the same in-place rename as the title bar, live", async ({
     page,
   }) => {
     // `renameStoredProject` (actions.ts): when the row's project is the one open, it runs `project.rename`
     // (the same command the title bar's own rename uses) instead of writing the stored record directly, so
-    // the open document (and the title bar) update at once. That command edits the document only: it never
-    // calls `emitProjects()` (only create/delete/restore/duplicate/import/clear and the *other*-project rename
-    // path do), so the dialog's own Recent row keeps its old name until the list is fetched again - closing
-    // and reopening the dialog, here, rather than a live update within the same session.
+    // the open document (and the title bar) update at once. That command edits the document only and never
+    // calls persist's `emitProjects()` (frozen), so `renameStoredProject` flushes the rename to storage and
+    // notifies the dialog itself (`list-refresh.ts`): the row updates without closing and reopening.
     const open = vault("SelfRenameVault");
     await seedProject(page, { project: open });
     await openProjectsDialog(page);
@@ -464,12 +461,7 @@ test.describe("Flow 10 step 5: Projects (spec L502)", () => {
     await field.press("Enter");
     await expectProject(page, "SelfRenameVault Renamed");
 
-    // The title bar (like the rest of the app behind an open dialog) is inert while a modal is open, so the
-    // save status can't be read until the dialog closes. Waiting for it to settle here, before reopening,
-    // makes sure the rename autosaved before the list is fetched fresh from storage (not the live document).
-    await page.getByRole("dialog", { name: "Projects" }).getByRole("button", { name: "Close" }).click();
-    await expectSaveStatus(page, "Saved");
-    await openProjectsDialog(page);
+    // Still the same dialog session, no close/reopen: the row already carries the new name.
     await expect(projectRow(page, "SelfRenameVault Renamed")).toBeVisible();
   });
 
@@ -522,7 +514,8 @@ test.describe("Flow 10 step 5: Projects (spec L502)", () => {
     await openProjectsDialog(page);
     await deleteRow(page, "DeleteRowVault");
     await expect(projectRow(page, "DeleteRowVault")).toHaveCount(0);
-    await expectLogLine(page, "Moved DeleteRowVault to Recently deleted.");
+    // spec L733: the toast is the one console line (no separate, period-terminated line).
+    await expectLogLine(page, "Moved DeleteRowVault to Recently deleted");
     const notifications = region(page, "Notifications");
     await expect(notifications.getByText("Moved DeleteRowVault to Recently deleted", { exact: true })).toBeVisible();
     const undo = notifications.getByRole("button", { name: "Undo" });
@@ -678,8 +671,8 @@ test.describe("Flow 10 steps 1-5, keyboard-only (save, open, Projects mechanics)
     await page.keyboard.press("Enter");
     await expectProject(page, "KeyboardOtherVault");
 
-    // Renames a row that isn't the open project (the open-row case, whose row goes stale until the dialog
-    // reopens, is covered on its own above): "KeyboardMainVault" is stored but no longer the open document.
+    // Renames a row that isn't the open project (the open-row case is covered live, on its own, above):
+    // "KeyboardMainVault" is stored but no longer the open document.
     await runInPalette(page, "Projects");
     await projectRow(page, "KeyboardMainVault").getByRole("button", { name: "Rename KeyboardMainVault" }).focus();
     await page.keyboard.press("Enter");

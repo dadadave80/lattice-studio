@@ -5,15 +5,16 @@
  * load (contracts §6, the size gate).
  */
 import {
-  exportProjectFile, formatTime, plural, type CommandRef, type Deployment, type Project, type Recipe,
+  exportProjectFile, lines, plural, type CommandRef, type Deployment, type Project, type Recipe,
 } from "@lattice-studio/core";
 import {
   announce, commandRef, createProject as createProjectService, getCatalog, listDeployments, log,
   openProject as openProjectService, runCommand, showBanner, toast,
 } from "@/contracts";
-import { persistence } from "@/persist";
+import { flushPendingSave, persistence } from "@/persist";
 import { downloadFile, forgetHandle, linkedHandle, saveAllTo, saveProjectAs, writeLinked } from "./file-io";
-import { resetForProjectSwitch, sayError, sayNote } from "./cmd/shared";
+import { reportOpenFailure, resetForProjectSwitch, sayError, sayNote } from "./cmd/shared";
+import { notifyProjectsRefresh } from "./list-refresh";
 
 export { openImportedFile } from "./import-file";
 
@@ -40,27 +41,33 @@ export async function startNewProject(): Promise<void> {
   sayNote("New project.");
 }
 
-/** Opens a stored project by id, logging "Opened X · N facets · saved 2 min ago." (spec L708). */
+/** Opens a stored project by id, logging "Opened X · N facets · saved 2 min ago." through core's own line
+ * builder (spec L708), so the relative time matches every other line that reports one. */
 export async function openStoredProject(id: string): Promise<void> {
   const store = await persistence();
   const before = (await store.listProjects()).find((p) => p.id === id);
   const opened = await openProjectService(id);
   if (!opened.ok) {
-    sayError(`Couldn't open this project. ${opened.error}`);
+    reportOpenFailure(opened.error);
     return;
   }
   resetForProjectSwitch();
-  const ago = before ? formatTime(new Date(before.savedAt).toISOString(), new Date().toISOString()).text : "just now";
-  sayNote(`Opened ${opened.value.name} · ${plural(opened.value.recipe.facets.length, "facet")} · saved ${ago}.`);
+  const now = new Date().toISOString();
+  const savedAt = before ? new Date(before.savedAt).toISOString() : now; // No prior record: "saved just now".
+  const line = lines.projectOpened({ name: opened.value.name, facets: opened.value.recipe.facets.length, savedAt, now });
+  log(line);
+  announce(line.text);
 }
 
 async function currentDeployments(project: Project): Promise<readonly Deployment[]> {
   return listDeployments(project.id);
 }
 
-/** Console + status region ("Saved to X.") and the toast (spec L733: a saved file is a toast, no period). */
+/**
+ * The toast ("Saved to X", spec L497) is also the one console line (spec L733: `toast()` logs it) and its
+ * own accessible announcement (Base UI's toast viewport is `aria-live="polite"`), so nothing else says it.
+ */
 function announceSaved(filename: string): void {
-  sayNote(`Saved to ${filename}.`);
   toast({ text: `Saved to ${filename}` });
 }
 
@@ -108,12 +115,20 @@ async function afterExplicitSave(): Promise<void> {
   }
 }
 
-/** Renames a stored project: the open one through `project.rename` (S1), any other through persistence. */
+/**
+ * Renames a stored project: the open one through `project.rename` (S1), any other through persistence.
+ * `project.rename` only edits the document; it never calls persist's `emitProjects` (frozen), so the
+ * Projects dialog's own row would keep the old name until it closed and reopened. Flushing the rename to
+ * storage right away, then notifying `list-refresh`'s own subscribers, keeps the row live instead.
+ */
 export async function renameStoredProject(id: string, name: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const store = await persistence();
   if (store.documentId() === id) {
     const result = await runCommand({ id: "project.rename", args: { name } }, "menu");
-    return result.ok ? { ok: true } : { ok: false, error: result.reason };
+    if (!result.ok) return { ok: false, error: result.reason };
+    await flushPendingSave();
+    notifyProjectsRefresh();
+    return { ok: true };
   }
   const renamed = await store.renameProject(id, name);
   return renamed.ok ? { ok: true } : { ok: false, error: renamed.error };
@@ -166,7 +181,7 @@ export async function deleteProject(id: string): Promise<void> {
     return;
   }
   forgetHandle(id);
-  log({ tag: "Note", text: `Moved ${name} to Recently deleted.` });
+  // The toast is the one console line too (spec L733), so nothing here logs it a second time.
   toast({ text: `Moved ${name} to Recently deleted`, action: labeled(commandRef("project.restore", { id }), "Undo") });
 }
 

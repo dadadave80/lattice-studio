@@ -3,11 +3,11 @@
  * the save-and-reopen round trip through the File System Access API, dropping a bad file, delete with
  * Undo, and the unknown-fields line (spec L289).
  */
-import { toChecksum, type Deployment } from "@lattice-studio/core";
+import { lines, toChecksum, type Deployment } from "@lattice-studio/core";
 import { makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test } from "vitest";
 import {
-  createProject, doc, loadViewport, putDeployment, runCommand, saveViewport, session, setCatalogStatus,
+  createProject, doc, loadViewport, openDialog, putDeployment, runCommand, saveViewport, session, setCatalogStatus,
 } from "@/contracts";
 import { testPersistence } from "@/persist/testing";
 import { bufferedServices, fixtureCatalog, onCleanup } from "../../test/harness";
@@ -82,6 +82,68 @@ describe("project.new", () => {
   });
 });
 
+describe("openStoredProject", () => {
+  test("opens a stored project, logging the exact line core's own lines.projectOpened builds (spec L708)", async () => {
+    readyCatalog();
+    testPersistence();
+    const created = await createProject(makeRecipe({}, catalog), "OpenMeVault");
+    if (!created.ok) throw new Error(created.error);
+    const target = created.value.id;
+    // A second project becomes the open one, so opening `target` again exercises the "stored, not open" path.
+    const other = await createProject(makeRecipe({}, catalog), "Other");
+    if (!other.ok) throw new Error(other.error);
+
+    const { openStoredProject } = await import("./actions");
+    await openStoredProject(target);
+
+    expect(doc.get().id).toBe(target);
+    // Opened moments after being stored, so `formatTime` reads "just now" on both sides regardless of the
+    // exact millisecond each `Date.now()` lands on.
+    const now = new Date().toISOString();
+    const expected = lines.projectOpened({ name: "OpenMeVault", facets: 0, savedAt: now, now }).text;
+    expect(bufferedServices().log.at(-1)?.text).toBe(expected);
+  });
+
+  test("a project whose open fails shows the sheet's error state, with one Error line (spec L696)", async () => {
+    readyCatalog();
+    testPersistence();
+    const { openFailure, clearOpenFailure } = await import("@/persist");
+    onCleanup(clearOpenFailure);
+
+    const { openStoredProject } = await import("./actions");
+    await openStoredProject("does-not-exist");
+
+    const failure = openFailure();
+    expect(failure?.reason).toBe("This project isn't in this browser's storage.");
+    const errorLines = bufferedServices().log.filter((l) => l.tag === "Error");
+    expect(errorLines).toHaveLength(1);
+    expect(errorLines[0]?.text).toBe(failure?.text);
+    expect(bufferedServices().toast).toHaveLength(0);
+  });
+
+  test("with a dialog open, the same failure toasts instead: the sheet sits behind it (spec L733)", async () => {
+    readyCatalog();
+    testPersistence();
+    const { openFailure, openFailureText, clearOpenFailure } = await import("@/persist");
+    onCleanup(clearOpenFailure);
+    openDialog("clear-data");
+    onCleanup(() => session.set({ dialogs: [] }));
+
+    const { openStoredProject } = await import("./actions");
+    await openStoredProject("does-not-exist");
+
+    // The dialog masked the sheet, so showOpenFailure's own state (and its console line) never ran.
+    expect(openFailure()).toBeNull();
+    const toast = bufferedServices().toast.at(-1);
+    const expectedText = openFailureText("This project isn't in this browser's storage.");
+    expect(toast).toEqual({ text: expectedText, kind: "error" });
+    // The toast is the one console line (spec L733): exactly one Error line, matching the toast's own text.
+    const errorLines = bufferedServices().log.filter((l) => l.tag === "Error");
+    expect(errorLines).toHaveLength(1);
+    expect(errorLines[0]?.text).toBe(expectedText);
+  });
+});
+
 describe("save and reopen", () => {
   test("⌘S with no linked file links one on Save a copy…, then reuses it; the same file reopens as a new project", async () => {
     readyCatalog();
@@ -102,13 +164,17 @@ describe("save and reopen", () => {
     };
     (window as unknown as FsWindow).showSaveFilePicker = async () => handle;
 
+    const savedText = "Saved to vault.lattice.json";
+    const savedLines = () => bufferedServices().log.filter((l) => l.text === savedText);
+
     const { saveCopy, saveOrPrompt } = await import("./actions");
     const first = await saveCopy(project, "vault.lattice.json");
     expect(first.ok).toBe(true);
     expect(written).toContain('"Vault"');
     const firstWrite = written;
-    // spec L733: a saved file is a toast (no final period, unlike the console line).
-    expect(bufferedServices().toast.at(-1)).toEqual({ text: "Saved to vault.lattice.json" });
+    // spec L733: the toast is the one console line too (no separate, differently-worded log line).
+    expect(bufferedServices().toast.at(-1)).toEqual({ text: savedText });
+    expect(savedLines()).toHaveLength(1);
 
     // ⌘S again: writes the linked handle directly, without reopening Save a copy.
     written = "";
@@ -119,7 +185,9 @@ describe("save and reopen", () => {
     expect(openedDialog).toBe(false);
     expect(written).toContain('"Vault"');
     expect(written).toBe(firstWrite);
-    expect(bufferedServices().toast.at(-1)).toEqual({ text: "Saved to vault.lattice.json" });
+    expect(bufferedServices().toast.at(-1)).toEqual({ text: savedText });
+    // Each save toasts and logs once: two saves, two matching lines, not four.
+    expect(savedLines()).toHaveLength(2);
 
     // The same bytes, reopened: a new project, never the old one.
     const { openImportedFile } = await import("./actions");
@@ -175,7 +243,7 @@ describe("dropping a file", () => {
     expect(doc.get().id).not.toBe("file-project");
   });
 
-  test("names the file, the path and the reason for a file that doesn't parse", async () => {
+  test("names the file, the path and the reason for a file that doesn't parse, as one Error line (FX33's showOpenFailure)", async () => {
     readyCatalog();
     testPersistence();
     const target = document.createElement("div");
@@ -186,6 +254,9 @@ describe("dropping a file", () => {
       target.remove();
     });
 
+    const { openFailure, clearOpenFailure } = await import("@/persist");
+    onCleanup(clearOpenFailure);
+
     const file = new File(["not json"], "recipe.json", { type: "application/json" });
     const transfer = new DataTransfer();
     transfer.items.add(file);
@@ -193,11 +264,15 @@ describe("dropping a file", () => {
     Object.defineProperty(event, "dataTransfer", { value: transfer });
     target.dispatchEvent(event);
 
-    await until(() => bufferedServices().toast.some((t) => t.kind === "error"), "the error toast");
-    const line = bufferedServices().log.find((l) => l.tag === "Error");
-    expect(line?.text).toContain("recipe.json");
-    const toastLine = bufferedServices().toast.find((t) => t.kind === "error");
-    expect(toastLine?.text).toBe(line?.text);
+    await until(() => openFailure() !== null, "the open failure");
+    const failure = openFailure();
+    expect(failure?.reason).toContain("recipe.json");
+    expect(failure?.text).toBe(`This project couldn't be opened: ${failure?.reason}`);
+    // showOpenFailure logs the one Error line itself; nothing here logs a second, differently-worded one.
+    const errorLines = bufferedServices().log.filter((l) => l.tag === "Error");
+    expect(errorLines).toHaveLength(1);
+    expect(errorLines[0]?.text).toBe(failure?.text);
+    expect(bufferedServices().toast).toHaveLength(0);
   });
 });
 
@@ -218,6 +293,8 @@ describe("delete", () => {
     // spec L502, IR L218: the toast's button reads "Undo" (a label alongside the project.restore ref; S0's
     // ToastRegion reads it through FX14 — asserted here on the toast input, not the rendered button yet).
     expect(toast?.action).toEqual({ id: "project.restore", args: { id }, label: "Undo" });
+    // spec L733: the toast is the one console line; nothing here logs a second, differently-worded one.
+    expect(bufferedServices().log.filter((l) => l.text === "Moved Vault to Recently deleted")).toHaveLength(1);
 
     const undo = await runCommand(toast!.action!, "toast");
     expect(undo.ok).toBe(true);
