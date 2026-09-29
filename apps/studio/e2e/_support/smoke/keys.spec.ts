@@ -6,7 +6,8 @@
 import { showsNotBuilt, skipUnlessBuilt } from "../built.ts";
 import { expect, test } from "../fixtures.ts";
 import {
-  REGIONS, commandLine, focusedRegion, nextProblem, nextRegion, openPalette, pagePlatform, previousRegion, runConsole,
+  REGIONS, commandLine, focusedRegion, nextProblem, nextRegion, openPalette, pagePlatform, paletteDialog, previousRegion,
+  runConsole, runInPalette,
 } from "../keys.ts";
 import { collisionsProject } from "../projects.ts";
 import { openEmpty, seedProject } from "../seed.ts";
@@ -52,6 +53,20 @@ test.describe("keyboard helpers @smoke", () => {
     await page.keyboard.press("Escape");
     await page.keyboard.press("Escape");
     await expect(input).toHaveCount(0);
+  });
+
+  test("runInPalette returns once the palette has closed and the command has run", async ({ page }) => {
+    await openEmpty(page);
+    await runInPalette(page, "Open Settings");
+    expect(await paletteDialog(page).count()).toBe(0);
+    await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  });
+
+  test("runInPalette fails on a disabled command, which keeps the palette open", async ({ page }) => {
+    await openEmpty(page);
+    // Nothing is placed, so Deploy… is disabled with its reason.
+    await expect(runInPalette(page, "Deploy…")).rejects.toThrow(/the palette should close and run "Deploy…"/);
+    await expect(paletteDialog(page)).toBeVisible();
   });
 
   test("the console runs a verb", async ({ page }) => {

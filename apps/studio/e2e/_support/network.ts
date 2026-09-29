@@ -39,18 +39,64 @@ export async function keepLocal(context: BrowserContext): Promise<string[]> {
   return blocked;
 }
 
+/** The page global `stayOnline` keeps the test's own offline state in. */
+const TEST_OFFLINE = "__latticeStudioE2eOffline";
+
+const staying = new WeakSet<BrowserContext>();
+
 /**
- * Keeps the page online whatever the machine's own connection does. Studio reads `navigator.onLine` and the window's
- * `offline` event (src/pwa/connection.ts) and blocks Deploy while offline ("Deploy needs a connection"), even for a
- * local Anvil node; Chromium reports the host's network, so a dropped Wi-Fi link during a run failed deploy specs
- * although every request they make stays on the loopback. The `anvil` fixture applies it, so every Anvil test has
- * it; a suite about going offline must not. Call before the first `page.goto`.
+ * Keeps the page online whatever the machine's own connection does, while the test's own `context.setOffline` still
+ * works. Studio reads `navigator.onLine` and the window's `online` and `offline` events (src/pwa/connection.ts) and
+ * blocks Deploy while offline ("Deploy needs a connection"), even for a local Anvil node; Chromium reports the host's
+ * network, so a dropped Wi-Fi link during a run failed deploy specs although every request they make stays on the
+ * loopback.
+ *
+ * So the page's `navigator.onLine` answers from the test's state, never the host's, and the browser's own `online`
+ * and `offline` events never reach the app. `context.setOffline` is wrapped to change that state and fire the event
+ * itself: going offline, the page hears it before the network goes (as it would); coming back, after the network is
+ * there again, so the probe Studio sends on `online` gets an answer.
+ *
+ * The `anvil` fixture applies it, so every Anvil test has it. The offline suite doesn't ask for `anvil`, and leaves
+ * the host's connection alone apart from its own `setOffline`. Call before the first `page.goto`.
  */
 export async function stayOnline(context: BrowserContext): Promise<void> {
-  await context.addInitScript(() => {
-    Object.defineProperty(Navigator.prototype, "onLine", { configurable: true, get: () => true });
-    window.addEventListener("offline", (event) => event.stopImmediatePropagation(), true);
-  });
+  if (staying.has(context)) return;
+  staying.add(context);
+  await context.addInitScript((key) => {
+    const state = window as unknown as Record<string, boolean | undefined>;
+    Object.defineProperty(Navigator.prototype, "onLine", { configurable: true, get: () => state[key] !== true });
+    const ignoreHost = (event: Event) => {
+      if (event.isTrusted) event.stopImmediatePropagation();
+    };
+    window.addEventListener("online", ignoreHost, true);
+    window.addEventListener("offline", ignoreHost, true);
+  }, TEST_OFFLINE);
+
+  const setOffline = context.setOffline.bind(context);
+  const tell = async (offline: boolean): Promise<void> => {
+    // Pages opened or reloaded from now on start in this state (init scripts run in the order they were added).
+    await context.addInitScript(({ key, value }) => {
+      (window as unknown as Record<string, boolean>)[key] = value;
+    }, { key: TEST_OFFLINE, value: offline });
+    for (const page of context.pages()) {
+      await page
+        .evaluate(({ key, value }) => {
+          (window as unknown as Record<string, boolean>)[key] = value;
+          window.dispatchEvent(new Event(value ? "offline" : "online"));
+        }, { key: TEST_OFFLINE, value: offline })
+        // A page that's closing or between documents picks the state up from the init script instead.
+        .catch(() => undefined);
+    }
+  };
+  context.setOffline = async (offline: boolean): Promise<void> => {
+    if (offline) {
+      await tell(true);
+      await setOffline(true);
+    } else {
+      await setOffline(false);
+      await tell(false);
+    }
+  };
 }
 
 /** The binding pages report CSP violations through. */
