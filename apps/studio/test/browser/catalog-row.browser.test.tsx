@@ -1,5 +1,5 @@
 /**
- * Board: `design/boards/current-catalog-row.png`, the two catalog columns (DRAFT and SHOP). Rest, on sheet
+ * Board: `design/boards/current-catalog-row.png`, the two catalog columns (light and dark themes). Rest, on sheet
  * (the board's "in cut"), verified and unavailable, in both themes.
  *
  * The board's own facet names (RateLimiter, CircuitBreaker) aren't in the fixture catalog: an "erc20" search
