@@ -27,13 +27,18 @@ function SheetRegion() {
   );
 }
 
-/** Renders the sheet in a 1000 × 700 sheet region with shortcuts on; motion reduced so view moves land at once. */
-export async function renderInteractSheet(options: StudioOptions = {}) {
+/**
+ * Renders the sheet in a 1000 × 700 sheet region with shortcuts on; motion reduced so view moves land at once.
+ * Waits for the overlays' chunk unless `overlays` is false.
+ */
+export async function renderInteractSheet(options: StudioOptions = {}, { overlays = true }: { overlays?: boolean } = {}) {
   // ⌘ is Mod in these tests, whatever machine runs them.
   onCleanup(overridePlatform("mac"));
   onCleanup(installShortcuts());
   const screen = await renderWithStudio(<SheetRegion />, { ...options, settings: { reduceMotion: "on", ...options.settings } });
   await settled();
+  // A test that holds the overlays' chunk back doesn't wait for it.
+  if (!overlays) return screen;
   // The interactions layer arrives in its own chunk: a cold one takes longer under a full parallel run.
   await expect.poll(() => document.querySelector('[data-tour="place-facet"]'), { timeout: 10_000 }).not.toBeNull();
   // Its listeners attach in effects, after the first paint.
