@@ -45,6 +45,8 @@ test("deleting a row moves focus to the list, not the body", async () => {
   await expect.element(deleteButton).toBeVisible();
   await deleteButton.click();
 
-  await expect.element(screen.getByText("No projects yet.")).toBeVisible();
+  // The harness's own Untitled document autosaves about a second after mount, so the list may or may not be
+  // empty by now: wait for Vault's row to go, not for "No projects yet.".
+  await expect.element(deleteButton).not.toBeInTheDocument();
   expect(document.activeElement?.tagName).not.toBe("BODY");
 });
