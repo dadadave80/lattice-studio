@@ -34,7 +34,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     const sheet = new SheetPage(page);
     await sheet.fit();
     const console_ = new ConsolePage(page);
-    const pin = sheet.pinLike("ERC165Facet", new RegExp(`^${SUPPORTS_INTERFACE.replace(/[().]/g, "\\$&")} ${SUPPORTS_INTERFACE_HEX},`));
+    const pin = sheet.pinLike("ERC165Facet", new RegExp(`${SUPPORTS_INTERFACE.replace(/[().]/g, "\\$&")} ${SUPPORTS_INTERFACE_HEX},`));
 
     await expect(sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, routes here`)).toBeVisible();
     await expect(pin).toHaveAccessibleDescription(`${SUPPORTS_INTERFACE}: routes here. Click to leave it out of the diamond.`);
@@ -119,7 +119,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     await seedProject(page, { project: blankConvention() });
     const sheet = new SheetPage(page);
     await sheet.fit();
-    const pin = sheet.pinLike("ERC165Facet", new RegExp(`^${SUPPORTS_INTERFACE.replace(/[().]/g, "\\$&")} ${SUPPORTS_INTERFACE_HEX},`));
+    const pin = sheet.pinLike("ERC165Facet", new RegExp(`${SUPPORTS_INTERFACE.replace(/[().]/g, "\\$&")} ${SUPPORTS_INTERFACE_HEX},`));
 
     await pin.click({ button: "right" });
     const menu = page.getByRole("menu");

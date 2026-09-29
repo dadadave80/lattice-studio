@@ -27,7 +27,10 @@ export class SheetPage {
     return this.root.locator(`[data-facet="${facet}"]`).getAttribute("data-border");
   }
 
-  /** A pin row on the sheet, by its exact accessible name: "sendMessage(bytes,bytes,bytes[]) 0xcdfe7f5c, routed". */
+  /**
+   * A pin row on the sheet, by its exact accessible name, which starts with the drawn words (FX52):
+   * "sendMessage 0xcdfe7f5c, sendMessage(bytes,bytes,bytes[]) 0xcdfe7f5c, routed". Prefer `pinLike` with a fragment.
+   */
   pin(name: string): Locator {
     return this.root.getByRole("button", { name, exact: true });
   }
