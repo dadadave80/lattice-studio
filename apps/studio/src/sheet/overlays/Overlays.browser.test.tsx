@@ -397,13 +397,28 @@ describe("traces and ties (IR L106-L107)", () => {
     await expect.poll(trace, { timeout: 8000 }).not.toBeNull();
     const line = () => trace()?.querySelector("path:last-child") as SVGPathElement;
     const width = () => parseFloat(getComputedStyle(line()).strokeWidth);
+    const stroke = () => getComputedStyle(line()).stroke;
+    // --lx-accent as the browser resolves it, read through a probe so the test never names a hex.
+    const resolved = (token: string): string => {
+      const probe = document.body.appendChild(document.createElement("span"));
+      probe.style.color = `var(${token})`;
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    const accent = resolved("--lx-accent");
     await expect.poll(width).toBeCloseTo(1.5, 1);
+    const rest = stroke();
+    expect(rest).not.toBe(accent);
     session.set({ selection: ["ERC4626"] });
     await expect.poll(() => trace()?.hasAttribute("data-live")).toBe(true);
     await expect.poll(width).toBeCloseTo(2, 1);
+    await expect.poll(stroke).toBe(accent);
     session.set({ selection: [] });
     await expect.poll(() => trace()?.hasAttribute("data-live")).toBe(false);
     await expect.poll(width).toBeCloseTo(1.5, 1);
+    await expect.poll(stroke).toBe(rest);
+    expect(stroke()).not.toBe(accent);
   });
 
   test("more contrast: a trace's line holds 2 px even without a selected end (spec L786, batch-2 #103)", async () => {
