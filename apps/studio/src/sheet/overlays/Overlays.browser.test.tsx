@@ -8,7 +8,7 @@ import { makeCatalog, makeFacet } from "@lattice-studio/core/testing";
 import { describe, expect, test } from "vitest";
 import { cdp, page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
-import { command, doc, emptyAnalysis, getAnalysis, history, provideAnalysis, runCommand, session } from "@/contracts";
+import { command, commandState, doc, emptyAnalysis, getAnalysis, history, provideAnalysis, runCommand, session } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
 import { installShortcuts } from "@/commands/keys/dispatcher";
 import { DialogHost } from "@/ui/overlays/DialogHost";
@@ -142,6 +142,10 @@ describe("three or more contenders (spec L436, PA bug 22)", () => {
     expect(noteById(`collision:${CCIP}+${HYPERLANE}`)).not.toBeNull();
     const el = noteById(three) as HTMLElement;
     expect(el.querySelector("button")?.textContent).toBe(`Owner: ${AXELAR}`);
+    // Two selectors share the set: Choose per selector… appears once in the note, and Choose owner… never does.
+    const words = [...el.querySelectorAll<HTMLElement>("button")].map((b) => (b.textContent ?? "").trim());
+    expect(words.filter((w) => w === "Choose per selector…")).toHaveLength(1);
+    expect(words).not.toContain("Choose owner…");
     // No Keep/Route pair once there are three.
     expect(el.textContent).not.toContain("Keep ");
     (el.querySelector("button") as HTMLElement).click();
@@ -152,6 +156,33 @@ describe("three or more contenders (spec L436, PA bug 22)", () => {
     await expect.poll(() => noteById(three)).toBeNull();
     // The other set is still open.
     expect(noteById(`collision:${CCIP}+${HYPERLANE}`)).not.toBeNull();
+  });
+});
+
+describe("Choose owner… on one selector with three contenders (spec L311, batch-2 #35)", () => {
+  const SHARED: Hex4 = "0x5c60da1b";
+  const trio: Catalog = makeCatalog({
+    facets: ["Ash", "Birch", "Cedar"].map((name) => makeFacet({ name, selectors: [{ hex: SHARED, signature: "shared()" }] })),
+  });
+
+  test("SEL-01 carries it once, titled Choose owner…; the note shows the owner menu and doesn't repeat it (contracts §3.3)", async () => {
+    onCleanup(() => {
+      resetProblemCursor();
+      clearNoteFocus();
+    });
+    const p = cardProject(trio, ["Ash", "Birch", "Cedar"], { columns: 3, rowPitch: 420 });
+    await renderSheet({ project: p, catalog: trio, settings: { reduceMotion: "on" } });
+    await expect.poll(() => noteById("collision:Ash+Birch+Cedar"), { timeout: 8000 }).not.toBeNull();
+    const el = noteById("collision:Ash+Birch+Cedar") as HTMLElement;
+    // The problem's own fixes hold the one Choose owner… (the inspector and Structure render them).
+    const fixes = getAnalysis().problems.find((q) => q.id === `SEL-01:${SHARED}`)?.fixes ?? [];
+    const chooser = fixes.filter((f) => f.id === "collision.choosePerSelector");
+    expect(chooser).toHaveLength(1);
+    expect(commandState(chooser[0] as (typeof fixes)[number]).title).toBe("Choose owner…");
+    // The note builds its buttons from the contenders: the owner menu, and no second Choose owner….
+    const words = [...el.querySelectorAll<HTMLElement>("button")].map((b) => (b.textContent ?? "").trim());
+    expect(words.filter((w) => w.startsWith("Owner:"))).toHaveLength(1);
+    expect(words.filter((w) => w === "Choose owner…" || w.startsWith("Choose per selector"))).toHaveLength(0);
   });
 });
 

@@ -94,6 +94,17 @@ describe("accessible name and description (spec L745-L746)", () => {
   });
 });
 
+describe("the receive pin (spec L64)", () => {
+  test("draws 'receive' with the hex mark, and its row name starts with receive() 0x00000000", async () => {
+    await sheet(gallery());
+    const receive = row("Receive", "0x00000000");
+    expect(receive.querySelector("[class*='name']")?.textContent).toBe("receive");
+    expect(receive.querySelector("[class*='mark']")?.textContent).toBe("0x00000000");
+    expect(receive.getAttribute("aria-label")?.startsWith("receive 0x00000000, receive() 0x00000000")).toBe(true);
+    await expect.element(page.getByRole("button", { name: /^receive 0x00000000, receive\(\) 0x00000000/ })).toBeInTheDocument();
+  });
+});
+
 describe("what a pin does (Flow 6, IR L47, L104)", () => {
   test("a click leaves a routed selector out, a second brings it back; the selection doesn't change", async () => {
     await renderWithStudio(

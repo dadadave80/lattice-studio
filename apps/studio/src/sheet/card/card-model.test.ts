@@ -69,6 +69,15 @@ describe("pin states and what a click does (Flow 6)", () => {
     expect(allowance.label).toBe("allowance(address,address) 0xdd62ed3e, routes here");
   });
 
+  test("Receive's 0x00000000 pin draws 'receive' with the hex mark, and its row label starts with the drawn words (spec L64)", () => {
+    const receive = pin(view("Receive", gallery), "receive");
+    expect(receive.selector).toBe("0x00000000");
+    expect(receive.signature).toBe("receive()");
+    expect(receive.name).toBe("receive");
+    expect(receive.mark).toBe("0x00000000");
+    expect(receive.rowLabel.startsWith("receive 0x00000000, receive() 0x00000000")).toBe(true);
+  });
+
   test("not in the diamond: a click routes it here", () => {
     const symbol = pin(view("ERC20", gallery), "symbol");
     expect(symbol.state).toBe("excluded");
