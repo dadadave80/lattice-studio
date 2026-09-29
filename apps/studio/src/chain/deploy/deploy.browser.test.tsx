@@ -102,7 +102,7 @@ describe("Deploy missing contracts", () => {
         { ...ITEMS[1]!, status: "failed", reason: "Creating Receive reverts: Arachnid's proxy gives no reason, so check the gas and the chain's code size limit." },
       ],
     });
-    const screen = await renderWithStudio(<MissingContractsDialog entry={entry()} top />, { theme: "draft" });
+    const screen = await renderWithStudio(<MissingContractsDialog entry={entry()} top />, { theme: "light" });
     await expect.element(screen.getByRole("alert")).toHaveTextContent("You canceled in your wallet.");
     await expect.element(screen.getByText(/^Creating Receive reverts/)).toBeVisible();
     await screen.getByRole("button", { name: "Retry Receive" }).click();

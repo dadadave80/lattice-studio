@@ -40,7 +40,7 @@ test("(warm-up) loads the sheet's lazy chunk", async () => {
   await warm.unmount();
 });
 
-describe.each(["shop", "draft"] as const)("provisional: the Start block, v1's three presets (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: the Start block, v1's three presets (%s)", (theme) => {
   test("Blank diamond, GovernedVault, ERC20 and SafeDiamondCut (not Account or Account6900, PA L65/L84)", async () => {
     await renderSheet({ project: emptyProject("empty"), theme, settings: { reduceMotion: "on" } });
     const start = page.getByRole("region", { name: "Start a diamond" });

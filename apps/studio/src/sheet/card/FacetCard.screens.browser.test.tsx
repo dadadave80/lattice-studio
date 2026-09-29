@@ -1,5 +1,5 @@
 /**
- * Screenshot baselines (brief S4a): every pin state and every border, in Shop and Draft and with forced colors;
+ * Screenshot baselines (brief S4a): every pin state and every border, in Dark and Light and with forced colors;
  * hover; the compact form; focus. And axe on the same sheet. The gallery (see `testing/projects.ts`):
  *
  * - ERC20: routed, not in the diamond (symbol), served elsewhere (name → GovernedVault), seams that stay on
@@ -81,7 +81,7 @@ function card(facet: string): HTMLElement {
   return el;
 }
 
-async function gallery(theme: "shop" | "draft", zoom = 1) {
+async function gallery(theme: "dark" | "light", zoom = 1) {
   withChip();
   const project = cardProject(catalog, GALLERY_FACETS, {
     exclude: [SYMBOL], pinsRight: ["GovernedVault"], expanded: ["GovernedVault"],
@@ -93,7 +93,7 @@ async function gallery(theme: "shop" | "draft", zoom = 1) {
   await document.fonts.ready;
 }
 
-describe.each(["shop", "draft"] as const)("%s", (theme) => {
+describe.each(["dark", "light"] as const)("%s", (theme) => {
   test("every pin state and border", async () => {
     await gallery(theme);
     expect(card("ERC20Votes").textContent).toContain("Not on Base Sepolia");

@@ -322,7 +322,7 @@ describe("Command palette (IR L162-L168)", () => {
 });
 
 describe("Command palette: themes and motion", () => {
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`${theme}: no axe violations with a disabled row active, 560 px wide`, async () => {
       await renderWithStudio(<App />, { theme });
       await openFromOpener();

@@ -20,7 +20,7 @@ function App() {
 }
 
 describe("Skip to sheet", () => {
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`is the first Tab stop, hidden until focused (${theme})`, async () => {
       await renderWithStudio(<App />, { theme });
       const link = page.getByRole("link", { name: "Skip to sheet" });

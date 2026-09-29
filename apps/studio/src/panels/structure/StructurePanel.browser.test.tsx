@@ -27,7 +27,7 @@ const twoSteps = (): Recipe => ({
   init: { kind: "steps", steps: [{ spec: "ERC20Init", args: { name_: "Token", symbol_: "TKN" } }, { spec: "AccessControlInit", args: {} }] },
 });
 
-async function renderTree(recipe: Recipe, options: { theme?: "shop" | "draft" } = {}) {
+async function renderTree(recipe: Recipe, options: { theme?: "dark" | "light" } = {}) {
   const screen = await renderWithStudio(<StructurePanel />, { project: makeProject({ recipe }), ...options });
   await expect.element(page.getByRole("tree", { name: "Structure" })).toBeVisible();
   return screen;
@@ -72,8 +72,8 @@ describe("Structure tree: shape and names", () => {
     expect(document.querySelectorAll('[role="treeitem"][tabindex="0"]')).toHaveLength(1);
   });
 
-  test("no axe violations in Shop and Draft", async () => {
-    for (const theme of ["shop", "draft"] as const) {
+  test("no axe violations in Dark and Light", async () => {
+    for (const theme of ["dark", "light"] as const) {
       const screen = await renderTree(collision(), { theme });
       row("facet:AxelarGatewayAdapter").focus();
       await userEvent.keyboard("{ArrowRight}");

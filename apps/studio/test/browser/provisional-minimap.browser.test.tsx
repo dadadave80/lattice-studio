@@ -61,7 +61,7 @@ test("(warm-up) loads the sheet's and the minimap's lazy chunks", async () => {
   await warm.unmount();
 });
 
-describe.each(["shop", "draft"] as const)("provisional: the minimap, open (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: the minimap, open (%s)", (theme) => {
   test("cards in ink, the view outlined in the accent, top-right above the sheet", { timeout: 15000 }, async () => {
     const project = erc20Project();
     await renderSheet({ project, theme, settings: { reduceMotion: "on" } });

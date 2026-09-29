@@ -48,7 +48,7 @@ beforeAll(async () => {
   );
 });
 
-describe.each(["shop", "draft"] as const)("board: title block (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: title block (%s)", (theme) => {
   test("unresolved: two collisions, Deploy disabled", async () => {
     useAnalysisOf({ problems: [{ id: "SEL-01:0", code: "SEL-01", severity: "blocker", where: [{ kind: "diamond" }], params: {}, message: "", fixes: [] }] });
     fakeChainService({ account: account() }).install();
@@ -83,7 +83,7 @@ describe.each(["shop", "draft"] as const)("board: title block (%s)", (theme) => 
   });
 });
 
-describe.each(["shop", "draft"] as const)("provisional: title block forms with no board (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: title block forms with no board (%s)", (theme) => {
   test("collapsed: one row, stamp and short address", async () => {
     useAnalysisOf({});
     fakeChainService({ account: account() }).install();

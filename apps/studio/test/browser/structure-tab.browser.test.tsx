@@ -30,7 +30,7 @@ beforeAll(async () => {
   );
 });
 
-async function renderTree(theme: "shop" | "draft") {
+async function renderTree(theme: "dark" | "light") {
   const project = makeProject({ recipe: template("GovernedVault") });
   await renderWithStudio(
     <div style={{ width: 320, height: 560 }}>
@@ -43,7 +43,7 @@ async function renderTree(theme: "shop" | "draft") {
   return tree;
 }
 
-describe.each(["shop", "draft"] as const)("provisional: structure tab (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: structure tab (%s)", (theme) => {
   test("provisional-structure-tab-nothing-selected", async () => {
     const tree = await renderTree(theme);
     await expect.element(page.getByRole("treeitem", { name: "ERC20, 9 selectors, 4 served by other facets" })).toBeVisible();

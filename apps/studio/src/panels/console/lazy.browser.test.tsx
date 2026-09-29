@@ -48,8 +48,8 @@ describe("lazy chunks", () => {
     expect(highlighterLoaded()).toBe(true);
     // Tokens are React elements whose colors are the themes' custom properties, not Shiki's inline HTML.
     const token = pre()?.querySelector<HTMLElement>("span[style]");
-    expect(token?.style.getPropertyValue("--shiki-shop")).toMatch(/^#/);
-    expect(token?.style.getPropertyValue("--shiki-draft")).toMatch(/^#/);
+    expect(token?.style.getPropertyValue("--shiki-dark")).toMatch(/^#/);
+    expect(token?.style.getPropertyValue("--shiki-light")).toMatch(/^#/);
     expect(getComputedStyle(token as HTMLElement).color).not.toBe("");
 
     // The exporters are one chunk (FX17): the recipe's is asked for with its tab; the brief and the Safe batch only

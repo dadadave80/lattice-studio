@@ -29,7 +29,7 @@ function governedVault() {
 }
 
 /** The panel at its default pane width (spec L358's default, contracts §… `panes.inspector.size`). */
-async function renderPanel(theme: "shop" | "draft", project: ReturnType<typeof makeProject>, options: Parameters<typeof renderWithStudio>[1] = {}) {
+async function renderPanel(theme: "dark" | "light", project: ReturnType<typeof makeProject>, options: Parameters<typeof renderWithStudio>[1] = {}) {
   return renderWithStudio(
     <div style={{ width: 316, height: 900 }}>
       <InspectorPanel />
@@ -44,7 +44,7 @@ function panel(): HTMLElement {
   return el;
 }
 
-describe.each(["shop", "draft"] as const)("board: inspector, a facet with its plan (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: inspector, a facet with its plan (%s)", (theme) => {
   test("ERC4626, unresolved: source through cut, the DiamondCut plan, predicted address", async () => {
     const recipe = governedVault();
     const project = makeProject({ id: `inspector-facet-${theme}`, name: "GovernedVault", recipe });
@@ -66,7 +66,7 @@ describe.each(["shop", "draft"] as const)("board: inspector, a facet with its pl
   });
 });
 
-describe.each(["shop", "draft"] as const)("board: inspector, the assembly (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: inspector, the assembly (%s)", (theme) => {
   test("nothing selected: the diamond itself, its plan and predicted address", async () => {
     const recipe = governedVault();
     const project = makeProject({ id: `inspector-assembly-${theme}`, name: "GovernedVault", recipe });
@@ -79,7 +79,7 @@ describe.each(["shop", "draft"] as const)("board: inspector, the assembly (%s)",
   });
 });
 
-describe("board: inspector, the assembly resolved and live (shop)", () => {
+describe("board: inspector, the assembly resolved and live (dark)", () => {
   test("a live deployment, nothing missing: the address takes the accent, no collision", async () => {
     // ERC20 alone has no missing init arguments and no blockers (DiamondView.browser.test.tsx: "Fill in hides
     // when no required argument is missing"), so this is genuinely resolved, not just live with a warning open.
@@ -94,11 +94,11 @@ describe("board: inspector, the assembly resolved and live (shop)", () => {
       recipeHash: hash, catalogHash: fixtureCatalog().hash, at: "2026-09-23T12:00:00.000Z",
       verification: "exact_match", revision: 1,
     });
-    await renderPanel("shop", project, { session: { chainId: SEPOLIA }, chain: fakeChainService() });
+    await renderPanel("dark", project, { session: { chainId: SEPOLIA }, chain: fakeChainService() });
     await expect.element(page.getByRole("region", { name: "DiamondCut plan" }).getByText("Live", { exact: true })).toBeVisible();
     await expect.element(page.getByRole("region", { name: "Deployments" })).toBeVisible();
     await expect.element(page.getByText(/blocker/)).not.toBeInTheDocument();
     await document.fonts.ready;
-    await expect.element(page.elementLocator(panel())).toMatchScreenshot("inspector-assembly-live-shop");
+    await expect.element(page.elementLocator(panel())).toMatchScreenshot("inspector-assembly-live-dark");
   });
 });

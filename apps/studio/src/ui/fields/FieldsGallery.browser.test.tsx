@@ -8,7 +8,7 @@ afterEach(async () => {
   await forcedColors(false);
 });
 
-async function renderGallery(theme: "shop" | "draft"): Promise<Element> {
+async function renderGallery(theme: "dark" | "light"): Promise<Element> {
   const screen = await renderWithStudio(
     <main data-fields-gallery="">
       <FieldsGallery />
@@ -22,7 +22,7 @@ async function renderGallery(theme: "shop" | "draft"): Promise<Element> {
 }
 
 describe("FieldsGallery", () => {
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`renders every field family and axe finds nothing in ${theme}`, async () => {
       const root = await renderGallery(theme);
       for (const name of [
@@ -42,7 +42,7 @@ describe("FieldsGallery", () => {
   }
 
   test("every pointer target is at least 24 x 24 px", async () => {
-    const root = await renderGallery("shop");
+    const root = await renderGallery("dark");
     const selector = [
       "button", "input:not([type=hidden])", "[role=button]", "[role=switch]", "[role=checkbox]", "[role=radio]",
       "[role=combobox]", "[tabindex='0']",

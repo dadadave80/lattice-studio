@@ -5,7 +5,7 @@ import { axeViolations } from "../testing/axe";
 import { NavGallery } from "./NavGallery";
 
 describe("NavGallery", () => {
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`is axe-clean in ${theme}`, async () => {
       const screen = await renderWithStudio(<NavGallery />, { theme });
       await expect.element(page.getByRole("tree", { name: "Large tree" })).toBeVisible();

@@ -81,7 +81,7 @@ afterEach(async () => {
   await emulateForcedColors(false);
 });
 
-describe.each(["shop", "draft"] as const)("provisional: init order mode (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("provisional: init order mode (%s)", (theme) => {
   // The first test in this file pays for the sheet's lazy chunk (SheetCanvas, the chrome layers) on top of
   // several polls, which can outrun the default 5 s test timeout on a cold cache.
   test("the sheet dims, a dashed path joins the steps, and the legend lists the order", { timeout: 15000 }, async () => {
@@ -127,9 +127,9 @@ describe.each(["shop", "draft"] as const)("provisional: init order mode (%s)", (
   });
 });
 
-test("provisional: init order mode with forced colors (shop) — the dashed path stays legible", async () => {
+test("provisional: init order mode with forced colors (dark) — the dashed path stays legible", async () => {
   const project = stepsProject();
-  await renderSheet({ project, theme: "shop", settings: { reduceMotion: "on" } });
+  await renderSheet({ project, theme: "dark", settings: { reduceMotion: "on" } });
   await settled();
   await initOrderOn();
   await emulateForcedColors(true);
@@ -138,5 +138,5 @@ test("provisional: init order mode with forced colors (shop) — the dashed path
   await document.fonts.ready;
   await expect
     .element(page.elementLocator(document.querySelector('[data-region="sheet"]') as HTMLElement))
-    .toMatchScreenshot("provisional-init-order-mode-forced-shop");
+    .toMatchScreenshot("provisional-init-order-mode-forced-dark");
 });

@@ -44,7 +44,7 @@ const search = () => page.getByRole("combobox", { name: "Search commands, facets
 const opener = () => page.getByRole("button", { name: "Opener" });
 const active = () => document.querySelector<HTMLElement>("[role=option][data-highlighted]");
 
-async function openAndFilter(theme: "shop" | "draft"): Promise<void> {
+async function openAndFilter(theme: "dark" | "light"): Promise<void> {
   await renderWithStudio(<App />, { theme });
   (opener().element() as HTMLElement).focus();
   await userEvent.keyboard("{Meta>}k{/Meta}");
@@ -61,7 +61,7 @@ beforeAll(async () => {
   );
 });
 
-describe.each(["shop", "draft"] as const)("board: command palette (%s)", (theme) => {
+describe.each(["dark", "light"] as const)("board: command palette (%s)", (theme) => {
   test("filtered query, Place facet group, active row's accent", async () => {
     await openAndFilter(theme);
     expect(active()?.textContent).toMatch(/^Place ERC20Pausable|^Place Pausable/);

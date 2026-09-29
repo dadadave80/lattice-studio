@@ -122,9 +122,9 @@ describe("Menu", () => {
       <Menu trigger={<Button>View</Button>} label="View">
         <MenuCheckboxItem label="Minimap" checked onCheckedChange={() => {}} />
         <MenuCheckboxItem label="Snap" checked={false} onCheckedChange={() => {}} disabledReason="Open a project first" />
-        <MenuRadioGroup label="Theme" value="shop" onValueChange={() => {}}>
-          <MenuRadioItem value="shop" label="Shop" />
-          <MenuRadioItem value="draft" label="Draft" disabledReason="Draft needs a project" />
+        <MenuRadioGroup label="Theme" value="dark" onValueChange={() => {}}>
+          <MenuRadioItem value="dark" label="Dark" />
+          <MenuRadioItem value="light" label="Light" disabledReason="Light needs a project" />
         </MenuRadioGroup>
         <Submenu label="Move to…" disabledReason="Select a facet first">
           <MenuItem label="Left" onSelect={() => {}} />
@@ -140,12 +140,12 @@ describe("Menu", () => {
     await expect.element(snap).not.toBeChecked();
     expect(snap.element().getAttribute("aria-disabled")).toBe("true");
     await expect.element(snap).toHaveAccessibleDescription("Open a project first");
-    const shop = page.getByRole("menuitemradio", { name: "Shop" });
-    await expect.element(shop).toBeChecked();
-    await expect.element(shop).toHaveAccessibleDescription("");
-    const draft = page.getByRole("menuitemradio", { name: "Draft" });
-    expect(draft.element().getAttribute("aria-disabled")).toBe("true");
-    await expect.element(draft).toHaveAccessibleDescription("Draft needs a project");
+    const dark = page.getByRole("menuitemradio", { name: "Dark" });
+    await expect.element(dark).toBeChecked();
+    await expect.element(dark).toHaveAccessibleDescription("");
+    const light = page.getByRole("menuitemradio", { name: "Light" });
+    expect(light.element().getAttribute("aria-disabled")).toBe("true");
+    await expect.element(light).toHaveAccessibleDescription("Light needs a project");
     const move = item("Move to…");
     expect(move.element().getAttribute("aria-disabled")).toBe("true");
     await expect.element(move).toHaveAccessibleDescription("Select a facet first");
@@ -209,8 +209,8 @@ describe("Menu", () => {
       await renderWithStudio(
         <Menu trigger={<Button>View</Button>} label="View">
           <MenuCheckboxItem label="Show minimap" checked={false} onCheckedChange={toggled} />
-          <MenuRadioGroup label="Layout" value="shop" onValueChange={toggled}>
-            <MenuRadioItem value="draft" label="Draft" />
+          <MenuRadioGroup label="Layout" value="dark" onValueChange={toggled}>
+            <MenuRadioItem value="light" label="Light" />
           </MenuRadioGroup>
           <Submenu label="Move to…">
             <MenuItem label="Left" onSelect={toggled} />
@@ -330,15 +330,15 @@ describe("MenuCommandItem", () => {
 describe("Menu groups, checkbox and radio items, submenus", () => {
   function ViewMenu() {
     const [minimap, setMinimap] = useState(false);
-    const [theme, setTheme] = useState("shop");
+    const [theme, setTheme] = useState("dark");
     return (
       <Menu trigger={<Button>View</Button>} label="View">
         <MenuGroup label="Sheet">
           <MenuCheckboxItem label="Minimap" checked={minimap} onCheckedChange={setMinimap} />
         </MenuGroup>
         <MenuRadioGroup label="Theme" value={theme} onValueChange={setTheme}>
-          <MenuRadioItem value="shop" label="Shop" />
-          <MenuRadioItem value="draft" label="Draft" />
+          <MenuRadioItem value="dark" label="Dark" />
+          <MenuRadioItem value="light" label="Light" />
         </MenuRadioGroup>
         <Submenu label="Move to…">
           <MenuItem label="Left of ERC4626" onSelect={() => {}} />
@@ -355,10 +355,10 @@ describe("Menu groups, checkbox and radio items, submenus", () => {
     await expect.element(minimap).not.toBeChecked();
     await minimap.click();
     await expect.element(minimap).toBeChecked();
-    const draft = page.getByRole("menuitemradio", { name: "Draft" });
-    await draft.click();
-    await expect.element(draft).toBeChecked();
-    await expect.element(page.getByRole("menuitemradio", { name: "Shop" })).not.toBeChecked();
+    const light = page.getByRole("menuitemradio", { name: "Light" });
+    await light.click();
+    await expect.element(light).toBeChecked();
+    await expect.element(page.getByRole("menuitemradio", { name: "Dark" })).not.toBeChecked();
   });
 
   test("→ opens a submenu on its first item and ← returns to it", async () => {

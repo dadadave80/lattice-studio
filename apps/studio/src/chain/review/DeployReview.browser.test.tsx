@@ -59,7 +59,7 @@ describe("the deploy review", () => {
     await expect.element(dialog.getByText(/· catalog v0\.4\.0$/)).toBeVisible();
   });
 
-  test.each(["shop", "draft"] as const)("passes axe in the %s theme", async (theme) => {
+  test.each(["dark", "light"] as const)("passes axe in the %s theme", async (theme) => {
     await readyReview({ theme });
     await expect.element(section("Checks")).toBeVisible();
     expect(await axeViolations(page.getByRole("dialog").element())).toEqual([]);

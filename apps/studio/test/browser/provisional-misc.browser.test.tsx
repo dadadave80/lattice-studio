@@ -1,6 +1,6 @@
 /**
  * Three small surfaces the orchestrator flagged as built without a board (no States board draws them): the
- * pane size menu, the copy-blocked fallback and the not-built-yet dialog placeholder. Shop only: these are
+ * pane size menu, the copy-blocked fallback and the not-built-yet dialog placeholder. Dark only: these are
  * small controls, not full boards, and none of the three branches on theme.
  */
 import { useState } from "react";
@@ -34,7 +34,7 @@ describe("provisional: PaneSizeMenu", () => {
     const menu = page.getByRole("menu");
     await expect.element(page.getByRole("menuitem", { name: "Narrower" })).toBeVisible();
     await document.fonts.ready;
-    await expect.element(page.elementLocator(menu.element() as HTMLElement)).toMatchScreenshot("provisional-pane-size-menu-open-shop");
+    await expect.element(page.elementLocator(menu.element() as HTMLElement)).toMatchScreenshot("provisional-pane-size-menu-open-dark");
   });
 });
 
@@ -49,7 +49,7 @@ describe("provisional: copy fallback", () => {
     await document.fonts.ready;
     const fallback = document.querySelector<HTMLElement>("[data-copy-fallback]");
     if (!fallback) throw new Error("No copy fallback.");
-    await expect.element(page.elementLocator(fallback)).toMatchScreenshot("provisional-copy-fallback-selected-shop");
+    await expect.element(page.elementLocator(fallback)).toMatchScreenshot("provisional-copy-fallback-selected-dark");
   });
 });
 
@@ -61,6 +61,6 @@ describe("provisional: NotBuiltDialog", () => {
     const dialog = page.getByRole("dialog", { name: "Deploy review" });
     await expect.element(dialog.getByText("Not built yet · WP-S8b")).toBeVisible();
     await document.fonts.ready;
-    await expect.element(page.elementLocator(dialog.element() as HTMLElement)).toMatchScreenshot("provisional-not-built-dialog-shop");
+    await expect.element(page.elementLocator(dialog.element() as HTMLElement)).toMatchScreenshot("provisional-not-built-dialog-dark");
   });
 });

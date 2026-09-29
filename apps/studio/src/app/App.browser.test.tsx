@@ -13,7 +13,7 @@ afterEach(async () => {
 });
 
 describe("App", () => {
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`renders the five regions by name (${theme})`, async () => {
       await renderWithStudio(<App />, { theme });
       for (const name of REGIONS) {
