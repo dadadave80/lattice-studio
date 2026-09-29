@@ -93,6 +93,45 @@ export async function boxes(locators: readonly Locator[]): Promise<Rect[]> {
   return found;
 }
 
+/** Where a Tab stop sits relative to the sheet (spec L751): the part of it that holds focus, or outside it. */
+export type SheetStop = {
+  /** "card", "tool strip", "note", "title block", "sheet" (anything else on it) or "outside". */
+  part: string;
+  /** `role "name"` of the focused element, for failure messages. */
+  describe: string;
+};
+
+/** Whether focus is inside any element `locator` matches. */
+async function holdsFocus(locator: Locator): Promise<boolean> {
+  return locator.evaluateAll((els) => els.some((el) => el.contains(document.activeElement)));
+}
+
+/**
+ * The sheet's parts in the order spec L751 names them, found by role and accessible name. The zoom readout floats
+ * beside the tool strip and counts as part of it.
+ */
+function sheetParts(page: Page): [string, Locator][] {
+  const sheet = region(page, "Sheet");
+  return [
+    ["title block", sheet.getByRole("region", { name: "Title block" })],
+    ["tool strip", sheet.getByRole("toolbar", { name: "Sheet tools" }).or(sheet.getByRole("button", { name: /^Zoom \d+%$/ }))],
+    ["note", sheet.getByRole("note")],
+    ["card", sheet.getByRole("group", { name: / \d+ selectors?/ })],
+  ];
+}
+
+/** The focused element's place on the sheet. */
+export async function sheetStop(page: Page): Promise<SheetStop> {
+  const describe = await page.evaluate(() => {
+    const el = document.activeElement;
+    const name = el ? (el.getAttribute("aria-label") ?? el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 50) : "";
+    return `${el?.getAttribute("role") ?? el?.tagName.toLowerCase() ?? "nothing"} "${name}"`;
+  });
+  if (!(await holdsFocus(region(page, "Sheet")))) return { part: "outside", describe };
+  for (const [part, locator] of sheetParts(page)) if (await holdsFocus(locator)) return { part, describe };
+  return { part: "sheet", describe };
+}
+
 /** The overlap of two rects in px² (0 when they don't touch). */
 export function overlap(a: Rect, b: Rect): number {
   const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);

@@ -8,7 +8,7 @@ import { expect, test } from "../_support/fixtures.ts";
 import { REGIONS, focusRegion, focusedRegion, nextRegion, pagePlatform, previousRegion, region } from "../_support/keys.ts";
 import { collisionsProject, recipeProject } from "../_support/projects.ts";
 import { openEmpty, seedProject } from "../_support/seed.ts";
-import { focusRing, tabStops, type TabStop } from "./support/focus.ts";
+import { focusRing, sheetStop, tabStops, type SheetStop, type TabStop } from "./support/focus.ts";
 import { commandLine, isFocused, pressMod, runConsole, runInPalette, tabTo, waitForSheet } from "./support/keyboard.ts";
 import { focusFirstCard } from "./support/states.ts";
 
@@ -66,6 +66,34 @@ test.describe("F6 regions (spec L743, IR L16)", () => {
       expect(await nextRegion(page, { ctrl: true })).toBe("Notifications");
       expect(await nextRegion(page, { ctrl: true })).toBe("Title bar");
     }
+  });
+});
+
+/** The parts Tab passes through, in order, each run of stops in one part counted once. */
+function partsInOrder(stops: readonly SheetStop[]): string[] {
+  const parts: string[] = [];
+  for (const stop of stops) if (parts[parts.length - 1] !== stop.part) parts.push(stop.part);
+  return parts;
+}
+
+test.describe("Tab leaves the sheet (spec L751, WCAG 2.1.2)", () => {
+  test("from the card grid Tab reaches the tool strip, the notes and the title block, then leaves the Sheet", async ({ page }) => {
+    await seedProject(page, { project: collisionsProject() });
+    await waitForSheet(page);
+    await focusFirstCard(page);
+    const stops: SheetStop[] = [await sheetStop(page)];
+    // The limit turns a trap into a failure instead of a hang: 30 cards' notes fit well under it.
+    for (let presses = 0; presses < 200; presses += 1) {
+      await page.keyboard.press("Tab");
+      const stop = await sheetStop(page);
+      stops.push(stop);
+      if (stop.part === "outside") break;
+    }
+    const trail = stops.map((stop) => `${stop.part}: ${stop.describe}`).join("\n");
+    const after = stops[stops.length - 1];
+    expect(after?.part, `Tab never left the sheet:\n${trail}`).toBe("outside");
+    const parts = partsInOrder(stops.slice(0, -1));
+    expect(parts, trail).toEqual(["card", "tool strip", "note", "title block"]);
   });
 });
 

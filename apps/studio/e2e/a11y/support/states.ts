@@ -175,6 +175,18 @@ export const DIALOG_STATES: readonly AppState[] = [
     },
   },
   {
+    // Spec L770 (FX32's dialog): the Recent list with the seeded project's row, its actions and Recently deleted.
+    name: "Projects dialog",
+    scope: openDialog,
+    async reach(page) {
+      await seedErc20(page);
+      await runInPalette(page, "Projects");
+      const projects = page.getByRole("dialog", { name: "Projects" });
+      await expect(projects).toBeVisible();
+      await expect(projects.getByText("ERC20", { exact: false }).first()).toBeVisible();
+    },
+  },
+  {
     name: "Browse all recipes dialog",
     scope: openDialog,
     async reach(page) {
