@@ -24,11 +24,34 @@
   opacity: 0;
 }
 
-/* Keyboard focus lands on the item itself; the shared `.item` draws its inset ring. Never remove it here. */
+/* One row: the drawn `.content` sets its height; the `.item` lies over it (see `MenuRow`). */
+.row {
+  position: relative;
+}
+
+/*
+ * The item takes the pointer, the highlight and the focus ring for the whole row; the shared `.item` draws
+ * the ring inset. Never remove it here. It holds the icon or check, in the same column as the content's.
+ */
 .item {
   composes: item from "../shared/controls.module.css";
+  position: absolute;
+  inset: 0;
   gap: var(--lx-space-2);
   padding-block: var(--lx-space-1);
+}
+
+/* The text, shortcut and chevron drawn over the item; the pointer reaches the item through it. */
+.content {
+  composes: item from "../shared/controls.module.css";
+  position: relative;
+  gap: var(--lx-space-2);
+  padding-block: var(--lx-space-1);
+  pointer-events: none;
+}
+
+.row:has(> .item[data-disabled]) .content {
+  color: var(--lx-text-faint);
 }
 
 .slot {
@@ -94,9 +117,18 @@
     color: GrayText;
   }
 
-  .item[data-highlighted] .reason,
   .item[data-highlighted] .slot,
-  .item[data-highlighted] .chevron {
+  .row:has(> .item[data-highlighted]) .content,
+  .row:has(> .item[data-highlighted]) .reason,
+  .row:has(> .item[data-highlighted]) .chevron {
     color: HighlightText;
+  }
+
+  .row:has(> .item[data-highlighted]) .content {
+    forced-color-adjust: none;
+  }
+
+  .row:has(> .item[data-disabled]) .content {
+    color: GrayText;
   }
 }

@@ -15,6 +15,7 @@ import { MenuRadioGroup } from "./MenuRadioGroup";
 import { MenuRadioItem } from "./MenuRadioItem";
 import { MenuSeparator } from "./MenuSeparator";
 import { Submenu } from "./Submenu";
+import { axeViolations } from "../testing/axe";
 
 function ExportMenu({ onFoundry = () => {}, onDisabled = () => {} }: { onFoundry?: () => void; onDisabled?: () => void }) {
   return (
@@ -94,11 +95,79 @@ describe("Menu", () => {
     expect(safe.element().getAttribute("aria-disabled")).toBe("true");
     await expect.element(safe).toHaveAccessibleName("Safe batch");
     await expect.element(safe).toHaveAccessibleDescription("Choose a Safe first");
-    await expect.element(safe.getByText("Choose a Safe first")).toBeVisible();
+    await expect.element(page.getByText("Choose a Safe first")).toBeVisible();
     await userEvent.keyboard("{Enter}");
     await safe.click({ force: true });
     expect(onDisabled).not.toHaveBeenCalled();
     await expect.element(page.getByRole("menu")).toBeVisible();
+  });
+
+  test("a disabled item's accessible name is its visible label; the reason is its description (axe label-content-name-mismatch)", async () => {
+    await renderWithStudio(<ExportMenu />);
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    const safe = item("Safe batch");
+    await expect.element(safe).toBeVisible();
+    await expect.element(safe).toHaveAccessibleName("Safe batch");
+    await expect.element(safe).toHaveAccessibleDescription("Choose a Safe first");
+    await expect.element(page.getByText("Choose a Safe first")).toBeVisible();
+    const menu = page.getByRole("menu", { name: "Export" }).element();
+    // axe reads an item's visible text only once the popup has faded in; before that the rule doesn't apply.
+    await expect.poll(() => getComputedStyle(menu).opacity).toBe("1");
+    expect(await axeViolations(menu, { rules: { "label-content-name-mismatch": { enabled: true } } })).toEqual([]);
+  });
+
+  describe("⌘/Ctrl+Enter on a focused item", () => {
+    test("reaches the document-level handler and doesn't activate the item; plain Enter still does", async () => {
+      const onFoundry = vi.fn();
+      const seen: { defaultPrevented: boolean }[] = [];
+      const listen = (event: KeyboardEvent) => {
+        if (event.key === "Enter" && event.ctrlKey) seen.push({ defaultPrevented: event.defaultPrevented });
+      };
+      window.addEventListener("keydown", listen);
+      onCleanup(() => window.removeEventListener("keydown", listen));
+      await renderWithStudio(<ExportMenu onFoundry={onFoundry} />);
+      await userEvent.tab();
+      await userEvent.keyboard("{Enter}");
+      await expect.element(item("Foundry script")).toHaveFocus();
+      await userEvent.keyboard("{Control>}{Enter}{/Control}");
+      await expect.poll(() => seen.length).toBe(1);
+      expect(seen[0]?.defaultPrevented).toBe(false);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(onFoundry).not.toHaveBeenCalled();
+      await userEvent.keyboard("{Enter}");
+      expect(onFoundry).toHaveBeenCalledTimes(1);
+    });
+
+    test("checkbox, radio and submenu items pass it on the same way", async () => {
+      const seen: boolean[] = [];
+      const listen = (event: KeyboardEvent) => {
+        if (event.key === "Enter" && event.metaKey) seen.push(event.defaultPrevented);
+      };
+      window.addEventListener("keydown", listen);
+      onCleanup(() => window.removeEventListener("keydown", listen));
+      const toggled = vi.fn();
+      await renderWithStudio(
+        <Menu trigger={<Button>View</Button>} label="View">
+          <MenuCheckboxItem label="Show minimap" checked={false} onCheckedChange={toggled} />
+          <MenuRadioGroup label="Layout" value="shop" onValueChange={toggled}>
+            <MenuRadioItem value="draft" label="Draft" />
+          </MenuRadioGroup>
+          <Submenu label="Move to…">
+            <MenuItem label="Left" onSelect={toggled} />
+          </Submenu>
+        </Menu>,
+      );
+      await userEvent.tab();
+      await userEvent.keyboard("{Enter}");
+      for (const step of ["", "{ArrowDown}", "{ArrowDown}"]) {
+        if (step) await userEvent.keyboard(step);
+        await userEvent.keyboard("{Meta>}{Enter}{/Meta}");
+      }
+      await expect.poll(() => seen.length).toBe(3);
+      expect(seen).toEqual([false, false, false]);
+      expect(toggled).not.toHaveBeenCalled();
+    });
   });
 
   test("an item runs on Enter and click, closes the menu, and shows its shortcut", async () => {
@@ -108,7 +177,7 @@ describe("Menu", () => {
     await trigger().click();
     const foundry = item("Foundry script");
     expect(foundry.element().getAttribute("aria-keyshortcuts")).toBe("Meta+E");
-    await expect.element(foundry.getByText("⌘E")).toBeVisible();
+    await expect.element(page.getByText("⌘E")).toBeVisible();
     await foundry.click();
     expect(onFoundry).toHaveBeenCalledTimes(1);
     await expect.element(page.getByRole("menu")).not.toBeInTheDocument();
@@ -187,7 +256,7 @@ describe("MenuCommandItem", () => {
     );
     await page.getByRole("button", { name: "Sheet" }).click();
     const tidyItem = item("Tidy layout");
-    await expect.element(tidyItem.getByText("⇧T")).toBeVisible();
+    await expect.element(page.getByText("⇧T")).toBeVisible();
     const deployItem = item("Deploy…");
     await expect.element(deployItem).toHaveAccessibleDescription("Resolve 2 blockers · F8");
     await deployItem.click({ force: true });

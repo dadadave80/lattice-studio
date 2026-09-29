@@ -2,6 +2,7 @@ import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { useId } from "react";
 import { Icon } from "../icons/Icon";
 import styles from "./Menu.module.css";
+import { MenuRow, passModEnter } from "./menu-item-parts";
 
 export type MenuCheckboxItemProps = {
   label: string;
@@ -16,30 +17,25 @@ export function MenuCheckboxItem({ label, checked, onCheckedChange, disabledReas
   const id = useId();
   const disabled = Boolean(disabledReason);
   return (
-    <BaseMenu.CheckboxItem
-      className={styles.item}
-      label={label}
-      checked={checked}
-      disabled={disabled}
-      onCheckedChange={(next) => {
-        if (!disabled) onCheckedChange(next);
-      }}
-      aria-labelledby={`${id}-label`}
-      {...(disabled ? { "aria-describedby": `${id}-reason` } : {})}
-    >
-      <span className={styles.slot}>
-        <BaseMenu.CheckboxItemIndicator>
-          <Icon name="check" />
-        </BaseMenu.CheckboxItemIndicator>
-      </span>
-      <span className={styles.text}>
-        <span id={`${id}-label`}>{label}</span>
-        {disabled ? (
-          <span id={`${id}-reason`} className={styles.reason}>
-            {disabledReason}
-          </span>
-        ) : null}
-      </span>
-    </BaseMenu.CheckboxItem>
+    <MenuRow id={id} label={label} reason={disabledReason} slot>
+      <BaseMenu.CheckboxItem
+        className={styles.item}
+        label={label}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(next) => {
+          if (!disabled) onCheckedChange(next);
+        }}
+        aria-labelledby={`${id}-label`}
+        onKeyDown={passModEnter}
+        {...(disabled ? { "aria-describedby": `${id}-reason` } : {})}
+      >
+        <span className={styles.slot}>
+          <BaseMenu.CheckboxItemIndicator>
+            <Icon name="check" />
+          </BaseMenu.CheckboxItemIndicator>
+        </span>
+      </BaseMenu.CheckboxItem>
+    </MenuRow>
   );
 }

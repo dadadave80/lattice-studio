@@ -7,6 +7,7 @@ import { ShortcutChip } from "../keys/ShortcutChip";
 import { useAriaKeyShortcuts } from "../keys/use-aria-key-shortcuts";
 import { cx } from "../shared/cx";
 import styles from "./Menu.module.css";
+import { MenuRow, passModEnter } from "./menu-item-parts";
 
 export type MenuItemProps = {
   /** What the item does, in sentence case ("Move to…", "Flip pins"). */
@@ -28,36 +29,29 @@ export type MenuItemProps = {
 export function MenuItem({ label, onSelect, shortcut, icon, disabledReason, keepOpen = false }: MenuItemProps) {
   const id = useId();
   const keyshortcuts = useAriaKeyShortcuts(shortcut);
-  const labelId = `${id}-label`;
-  const reasonId = `${id}-reason`;
   const disabled = Boolean(disabledReason);
+  const chip = shortcut === undefined ? null : <ShortcutChip keys={shortcut} className={cx(styles.shortcut)} />;
   return (
-    <BaseMenu.Item
-      className={styles.item}
-      label={label}
-      disabled={disabled}
-      closeOnClick={!keepOpen}
-      onClick={() => {
-        if (!disabled) onSelect();
-      }}
-      aria-labelledby={labelId}
-      {...(disabled ? { "aria-describedby": reasonId } : {})}
-      {...keyshortcuts}
-    >
-      {icon ? (
-        <span className={styles.slot}>
-          <Icon name={icon} />
-        </span>
-      ) : null}
-      <span className={styles.text}>
-        <span id={labelId}>{label}</span>
-        {disabled ? (
-          <span id={reasonId} className={styles.reason}>
-            {disabledReason}
+    <MenuRow id={id} label={label} reason={disabledReason} slot={Boolean(icon)} end={chip}>
+      <BaseMenu.Item
+        className={styles.item}
+        label={label}
+        disabled={disabled}
+        closeOnClick={!keepOpen}
+        onClick={() => {
+          if (!disabled) onSelect();
+        }}
+        aria-labelledby={`${id}-label`}
+        onKeyDown={passModEnter}
+        {...(disabled ? { "aria-describedby": `${id}-reason` } : {})}
+        {...keyshortcuts}
+      >
+        {icon ? (
+          <span className={styles.slot}>
+            <Icon name={icon} />
           </span>
         ) : null}
-      </span>
-      {shortcut === undefined ? null : <ShortcutChip keys={shortcut} className={cx(styles.shortcut)} />}
-    </BaseMenu.Item>
+      </BaseMenu.Item>
+    </MenuRow>
   );
 }
