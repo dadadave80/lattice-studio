@@ -4,10 +4,11 @@
  */
 import type { DiamondState, ProjectStatus } from "@lattice-studio/core";
 import { formatStamp, isNotImplemented, projectStatus } from "@lattice-studio/core";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
-  chainService, useAnalysis, useDeployments, useDeployState, useDocument, useSession, type DeployState,
+  env, useAnalysis, useDeployments, useDeployState, useDocument, useSession, type DeployState,
 } from "@/contracts";
+import { chainName as knownChainName } from "@/chain/infra/chains";
 import type { StatusTone } from "@/ui/status/StatusChip";
 
 export type StatusChipWords = { tone: StatusTone; text: string };
@@ -54,37 +55,14 @@ const NOT_DEPLOYED: ProjectStatus = {
   state: "not-deployed", stamp: formatStamp({ state: "not-deployed" }), chainId: null, live: [], deployAgain: false,
 };
 
-/** Chain names from the chain module, loaded only once a chain is selected (spec L28: the wallet stack loads on demand). */
-function useChainNames(chainId: number | null): ReadonlyMap<number, string> {
-  const [names, setNames] = useState<ReadonlyMap<number, string>>(() => new Map());
-  const known = chainId === null || names.has(chainId);
-  useEffect(() => {
-    if (known) return;
-    let live = true;
-    chainService().then(
-      (service) => {
-        if (live) setNames(new Map(service.chains().map((chain) => [chain.id, chain.name])));
-      },
-      () => {
-        // No chain module yet (S8a): names fall back to "Chain 11155111".
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [known]);
-  return names;
-}
-
 /** The open project's status on the selected chain (C5a), re-rendering when records, chain or recipe change. */
 export function useProjectStatus(): { status: ProjectStatus; chainName: (chainId: number) => string } {
   const project = useDocument((s) => s.project);
   const records = useDeployments(project.id);
   const chainId = useSession((s) => s.chainId);
   const recipeHash = useAnalysis((a) => a.recipeHash);
-  const names = useChainNames(chainId);
   return useMemo(() => {
-    const chainName = (id: number) => names.get(id) ?? `Chain ${id}`;
+    const chainName = (id: number) => knownChainName(id, env.e2e);
     const deployments = records.status === "ready" ? records.deployments : [];
     try {
       return { status: projectStatus(project, deployments, chainId, recipeHash, chainName), chainName };
@@ -92,7 +70,7 @@ export function useProjectStatus(): { status: ProjectStatus; chainName: (chainId
       if (!isNotImplemented(error)) throw error;
       return { status: NOT_DEPLOYED, chainName };
     }
-  }, [project, records, chainId, recipeHash, names]);
+  }, [project, records, chainId, recipeHash]);
 }
 
 /** The chip's tone and words now. */
