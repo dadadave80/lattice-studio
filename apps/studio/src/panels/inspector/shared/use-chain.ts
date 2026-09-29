@@ -5,7 +5,8 @@
  * (spec L28, decision 13).
  */
 import type { ChainInfo, ChainReadiness, ChainService } from "@/contracts";
-import { chainService } from "@/contracts";
+import { chainService, env } from "@/contracts";
+import { chainName as knownChainName } from "@/chain/infra/chains";
 import { isNotImplemented } from "@lattice-studio/core";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
@@ -43,9 +44,9 @@ export function useChainService(wanted: boolean): ChainAccess {
   return access ?? (wanted ? LOADING : IDLE);
 }
 
-/** "Sepolia" for a chain id, from the chain module's list; "Chain 11155111" when it doesn't know it. */
+/** "Sepolia" for a chain id: the chain module's list, else the static table (so a name shows before the module loads); "Chain 5" for one Studio doesn't list. */
 export function chainNameOf(chains: readonly ChainInfo[] | null | undefined, chainId: number): string {
-  return chains?.find((chain) => chain.id === chainId)?.name ?? `Chain ${chainId}`;
+  return chains?.find((chain) => chain.id === chainId)?.name ?? knownChainName(chainId, env.e2e);
 }
 
 /** The chains the module knows, in display order; empty until it loads. */

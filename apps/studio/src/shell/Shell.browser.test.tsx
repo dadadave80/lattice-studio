@@ -397,7 +397,7 @@ describe("under 768 px", () => {
 
     // A deploy in flight: the chip shrinks to its dot and one word, and keeps its full words for assistive tech.
     seedDeployState({ phase: "pending", chainId: 11155111 });
-    const chip = bar().getByRole("button", { name: "Pending · Chain 11155111" });
+    const chip = bar().getByRole("button", { name: "Pending · Sepolia" });
     await expect.element(chip).toBeVisible();
     const shown = (chip.element() as HTMLElement).querySelector("[aria-hidden='true']:not(:empty)") as HTMLElement;
     expect(shown.textContent).toBe("Pending");
