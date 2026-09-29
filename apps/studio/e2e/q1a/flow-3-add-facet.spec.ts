@@ -73,10 +73,8 @@ async function typeInPalette(page: Page, query: string): Promise<void> {
 
 /**
  * The palette is already open (route 7: a menu command opens it filtered to facets); type `query` and wait for it
- * to rank the right row before pressing Enter. The palette's search is a plain substring filter over each row's
- * full title in catalog order, not fuzzy-ranked, so a bare facet name that's also another facet's suffix (e.g.
- * "ERC20" inside "BridgeERC20", "Pausable" inside "ERC20Pausable") can rank the wrong one first; queries below use
- * "place <name>" to exclude those (their titles don't contain "place " immediately before a different facet name).
+ * to rank the right row before pressing Enter. The palette keeps the rows that match every typed word and ranks a
+ * whole-word match in the title first, so the active row's title containing `query` is the row Enter runs.
  */
 async function chooseInPalette(page: Page, query: string): Promise<void> {
   const input = page.getByRole("combobox");
@@ -129,7 +127,7 @@ test.describe("Flow 3. Add a facet", () => {
     await catalogPage.placeByDoubleClick("ERC20");
 
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
   });
 
   test("route 2: Enter on a focused catalog row places it", async ({ page }) => {
@@ -141,7 +139,7 @@ test.describe("Flow 3. Add a facet", () => {
     await catalogPage.placeByKeyboard("Pausable");
 
     await sheet.expectSelected("Pausable");
-    await console_.expectLastLine(placedLine("Pausable"));
+    await console_.expectLine(placedLine("Pausable"));
   });
 
   test("route 3: Place on sheet in the inspector's catalog preview", async ({ page }) => {
@@ -158,7 +156,7 @@ test.describe("Flow 3. Add a facet", () => {
     await inspector.placeOnSheetButton.click();
 
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
   });
 
   test("route 4: ⌘K, type the name, Enter @smoke", async ({ page }) => {
@@ -166,14 +164,12 @@ test.describe("Flow 3. Add a facet", () => {
     const sheet = new SheetPage(page);
     const console_ = new ConsolePage(page);
 
-    // "ERC20" alone (the spec's literal wording) ranks "Place BridgeERC20" first: the palette's search is a plain
-    // substring filter over each row's full title in catalog order, not fuzzy-ranked, and "BridgeERC20" (Crosschain
-    // area) sorts ahead of the standalone "ERC20" facet. "place erc20" excludes it (its title has no "erc20"
-    // right after "place ") and keeps "ERC20" first among what's left ("ERC20Burnable" etc. sort after it).
-    await typeInPalette(page, "place erc20");
+    // The spec's wording (L420): type the name, Enter. The palette ranks a whole-word match ahead of a facet whose
+    // name merely ends in it, so "ERC20" lands on Place ERC20, not Place BridgeERC20.
+    await typeInPalette(page, "ERC20");
 
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
   });
 
   test("route 5: console `place erc20` @smoke", async ({ page }) => {
@@ -184,7 +180,7 @@ test.describe("Flow 3. Add a facet", () => {
     await typeConsole(page, "place erc20");
 
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
   });
 
   test("already placed: selects and locates the existing card instead of duplicating it", async ({ page }) => {
@@ -194,7 +190,7 @@ test.describe("Flow 3. Add a facet", () => {
 
     await typeConsole(page, "place erc20");
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
 
     await typeConsole(page, "place erc20");
 
@@ -215,7 +211,7 @@ test.describe("Flow 3. Add a facet", () => {
       const note = sheet.note("Missing dependency");
       await expect(note).toBeVisible();
       await expect(note.getByRole("button", { name: "Place ERC20" })).toBeVisible();
-      await console_.expectLastLine(missingLine("ERC4626", "ERC20"));
+      await console_.expectLine(missingLine("ERC4626", "ERC20"));
     });
 
     test("Place ERC20 on the missing-dependency note resolves it @smoke", async ({ page }) => {
@@ -279,7 +275,7 @@ test.describe("Flow 3. Add a facet", () => {
       await catalogPage.dragRowToSheet("ERC20", target);
 
       await sheet.expectSelected("ERC20");
-      await console_.expectLastLine(placedLine("ERC20"));
+      await console_.expectLine(placedLine("ERC20"));
     });
   });
 
@@ -306,12 +302,12 @@ test.describe("Flow 3. Add a facet", () => {
       await menu.getByRole("menuitem", { name: "Add facet here…" }).click();
 
       // The palette is now open, filtered to facets (S6's `mode: "facets"`); type the name and press Enter.
-      // "place pausable" (not bare "Pausable") for the same ranking reason as route 4 above.
+      // "place pausable" names the command's own words, the way the console verb does.
       await expect(page.getByRole("combobox")).toBeFocused();
       await chooseInPalette(page, "place pausable");
 
       await sheet.expectSelected("Pausable");
-      await console_.expectLastLine(placedLine("Pausable"));
+      await console_.expectLine(placedLine("Pausable"));
     });
   });
 
@@ -326,19 +322,18 @@ test.describe("Flow 3. Add a facet", () => {
     // Route 5: the console verb.
     await typeConsole(page, "place erc20");
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
 
-    // Route 4: the palette ("place pausable" over bare "Pausable" for the same reason as route 4 above: it
-    // excludes "Place ERC20Pausable", which would otherwise sort first).
+    // Route 4: the palette.
     await typeInPalette(page, "place pausable");
     await sheet.expectSelected("Pausable");
-    await console_.expectLastLine(placedLine("Pausable"));
+    await console_.expectLine(placedLine("Pausable"));
 
     // Route 2: Enter on a focused catalog row. `placeByKeyboard` types into Search (a real keystroke, no pointer)
     // and presses Enter; it never clicks.
     await catalogPage.placeByKeyboard("AccessControl");
     await sheet.expectSelected("AccessControl");
-    await console_.expectLastLine(placedLine("AccessControl"));
+    await console_.expectLine(placedLine("AccessControl"));
 
     // Route 3 (a single click on an unplaced row) has no keyboard equivalent: Enter on a catalog row activates
     // (places) it directly rather than opening the Catalog preview (S5a's Tree `onKeyDown`), so it's left out of
@@ -382,7 +377,7 @@ test.describe("Flow 3. Add a facet", () => {
           // lazy chunk — see `typeConsole`'s doc comment) before reading the log.
           await region(page, "Console").getByRole("button", { name: "Expand console" }).click();
           await commandLine(page).waitFor({ state: "attached" });
-          await console_.expectLastLine(placedLine("ERC20"));
+          await console_.expectLine(placedLine("ERC20"));
         }
       });
     });

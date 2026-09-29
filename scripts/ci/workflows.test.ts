@@ -80,6 +80,12 @@ describe("GitHub Actions workflows", () => {
 });
 
 describe("frozen lockfile and blocked install scripts (§16 audit #36, #39, spec L864)", () => {
+  // spec L892: a plain `bun install` never rewrites bun.lock, here or in an agent's worktree (batch-2 §17 #2).
+  test("bunfig.toml's [install] sets frozenLockfile = true", () => {
+    const bunfig = Bun.TOML.parse(readFileSync(join(repoRoot, "bunfig.toml"), "utf8")) as { install?: { frozenLockfile?: unknown } };
+    expect(bunfig.install?.frozenLockfile).toBe(true);
+  });
+
   test("root package.json's trustedDependencies is empty", () => {
     const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as { trustedDependencies?: unknown[] };
     expect(pkg.trustedDependencies).toEqual([]);

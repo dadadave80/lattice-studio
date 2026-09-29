@@ -48,7 +48,9 @@ test.describe("Flow 1. First visit", () => {
   test("the console's first line names the catalog @smoke", async ({ page }) => {
     await openEmpty(page);
     const console_ = new ConsolePage(page);
-    await expect(console_.line(firstCatalogLine())).toBeVisible();
+    // The e2e blocks service workers (`_support/fixtures.ts`), so the worker's failed registration adds a Note of
+    // its own; nothing else may come before the catalog line.
+    await console_.expectFirstLine(firstCatalogLine(), /work offline/);
   });
 
   test("the tour runs only on request: five coach marks that never block input", async ({ page }) => {
