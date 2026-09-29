@@ -406,8 +406,9 @@ describe("the salt at Sign (spec L286, L574)", () => {
     };
     await m.sign();
     await flush();
+    // Core's reason (C5b); FX48 appends its fix clause ("Use a new salt."), so match the sentence, not the whole line.
     const error = `The salt starts with ${BOB}, not the sending account ${ALICE}.`;
-    expect(h.said.lines).toContainEqual({ tag: "Error", text: error });
+    expect(h.said.lines.some((line) => line.tag === "Error" && line.text.startsWith(error))).toBe(true);
     expect(h.port.methods()).not.toContain("send");
     expect(h.port.sent).toEqual([]);
     expect(h.said.banners.has(DEPLOY_BANNER_ID)).toBe(false);
