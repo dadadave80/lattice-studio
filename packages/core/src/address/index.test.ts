@@ -22,7 +22,7 @@ describe("module", () => {
   test("every C5b function is exported and built", () => {
     const owned = (Object.keys(API_OWNERS) as ApiName[]).filter((name) => API_OWNERS[name] === "C5b");
     expect(owned.sort()).toEqual(
-      ["arachnidAddress", "assertSaltSender", "buildSalt", "createxPredict", "factoryPredict", "newEntropy", "sharedSalt"],
+      ["arachnidAddress", "assertSaltSender", "buildSalt", "createxPredict", "createxProxy", "factoryPredict", "newEntropy", "sharedSalt"],
     );
     for (const name of owned) expect(typeof (mod as Record<string, unknown>)[name]).toBe("function");
     expect(() => newEntropy(() => new Uint8Array(11))).not.toThrow();

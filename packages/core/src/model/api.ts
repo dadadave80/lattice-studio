@@ -272,7 +272,7 @@ export const API_OWNERS = {
   authorityTable: "C4c", mechanismOptions: "C4c", planMechanismChange: "C4c",
   buildPlan: "C5a", comparePlan: "C5a", templateList: "C5a", loadTemplate: "C5a", blankDiamond: "C5a",
   projectStatus: "C5a", recipeStats: "C5a",
-  arachnidAddress: "C5b", sharedSalt: "C5b", factoryPredict: "C5b", createxPredict: "C5b",
+  arachnidAddress: "C5b", sharedSalt: "C5b", factoryPredict: "C5b", createxPredict: "C5b", createxProxy: "C5b",
   buildSalt: "C5b", assertSaltSender: "C5b", newEntropy: "C5b",
   buildDiamondDeploy: "C5c", buildMissingDeploys: "C5c", calldataHash: "C5c", gasShare: "C5c",
   decodeRevert: "C6",
