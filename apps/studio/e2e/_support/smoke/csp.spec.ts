@@ -16,7 +16,7 @@ test.describe("CSP guard @smoke", () => {
       document.head.append(script);
     });
     await expect.poll(() => cspViolations.length).toBe(1);
-    expect(cspViolations[0]).toMatch(/^script-src(-elem)? blocked inline .* on \/$/);
+    expect(cspViolations[0]).toMatch(/^script-src(-elem)? blocked inline\b.* on \/$/);
     expect(await page.evaluate(() => window.name)).not.toBe("ran");
     // Provoked on purpose and asserted on: leave nothing for the fixture to fail on.
     cspViolations.length = 0;
