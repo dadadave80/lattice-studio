@@ -1,4 +1,4 @@
-// Renders dist/shiki-shop.json and dist/shiki-draft.json: Shiki themes for
+// Renders dist/shiki-dark.json and dist/shiki-light.json: Shiki themes for
 // Solidity and JSON, built only from this theme's own role colors (no new
 // hues), on `ground-well` (where code blocks sit per design/tokens.json).
 
@@ -40,7 +40,7 @@ function tokenColors(roles: ThemeRoles): TokenColorRule[] {
 
 function shikiTheme(theme: ThemeId): Record<string, unknown> {
   const roles = themeRoles(theme);
-  const type = theme === "shop" ? "dark" : "light";
+  const type = theme;
   return {
     name: `lattice-studio-${theme}`,
     type,

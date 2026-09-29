@@ -1,5 +1,5 @@
-// Renders README.md's role table: DS role, Final composer variable, Shop
-// value, Draft value — so the D3 mapping (brand.ts) and the neutral
+// Renders README.md's role table: DS role, Final composer variable, Dark
+// value, Light value — so the D3 mapping (brand.ts) and the neutral
 // reconciliation (neutrals.ts) stay visible in one place, as the brief asks.
 
 import { D3_ACCENT_BY_THEME } from "./brand.ts";
@@ -24,7 +24,7 @@ const COMPOSER_VAR: Record<keyof ThemeRoles, string> = {
   sunken: "--sunken (composer draws one recessed surface; ground-well and sunken share it)",
   text: "--ink",
   textMuted: "--ink-2",
-  textFaint: "--ink-3 (Shop nudged toward --ink-2 for AA)",
+  textFaint: "--ink-3 (dark theme nudged toward --ink-2 for AA)",
   border: "--strong",
   borderSubtle: "--hair",
   borderStrong: "--ink (reused; composer has no fourth border tier)",
@@ -61,12 +61,12 @@ const ROLE_ORDER: readonly (keyof ThemeRoles)[] = [
 ];
 
 function roleTable(): string {
-  const shop = themeRoles("shop");
-  const draft = themeRoles("draft");
+  const dark = themeRoles("dark");
+  const light = themeRoles("light");
   const rows = ROLE_ORDER.map(
-    (role) => `| \`--lx-${kebab(role)}\` | \`${COMPOSER_VAR[role]}\` | \`${shop[role]}\` | \`${draft[role]}\` |`,
+    (role) => `| \`--lx-${kebab(role)}\` | \`${COMPOSER_VAR[role]}\` | \`${dark[role]}\` | \`${light[role]}\` |`,
   );
-  return `| DS role (\`tokens.css\`) | Final composer variable | Shop value | Draft value |
+  return `| DS role (\`tokens.css\`) | Final composer variable | Dark value | Light value |
 | --- | --- | --- | --- |
 ${rows.join("\n")}`;
 }
@@ -76,7 +76,7 @@ export function renderReadme(): string {
 
 Design tokens for Lattice Studio: CSS variables, typed TypeScript constants
 and Shiki themes, generated from \`design/tokens.json\` reconciled with the
-Final composer's Shop and Draft themes
+Final composer's dark and light themes
 (\`design/prototype/composer-theme-tokens.css\`), per decision D3
 (HANDOFF.md §11).
 
@@ -92,8 +92,8 @@ needs to change to flip it:
 
 \`\`\`ts
 export const D3_ACCENT_BY_THEME: Record<ThemeId, BrandId> = {
-  shop: "${D3_ACCENT_BY_THEME.shop}",
-  draft: "${D3_ACCENT_BY_THEME.draft}",
+  dark: "${D3_ACCENT_BY_THEME.dark}",
+  light: "${D3_ACCENT_BY_THEME.light}",
 };
 \`\`\`
 

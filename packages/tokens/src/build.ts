@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-// Builds dist/tokens.css, dist/tokens.ts, dist/shiki-shop.json,
-// dist/shiki-draft.json and README.md from the vendored tokens.json (run
+// Builds dist/tokens.css, dist/tokens.ts, dist/shiki-dark.json,
+// dist/shiki-light.json and README.md from the vendored tokens.json (run
 // `bun run tokens:pull` first if design/tokens.json changed upstream).
 // Pure and deterministic: two runs produce byte-identical output.
 
@@ -23,8 +23,8 @@ async function main(): Promise<void> {
   const outputs: Record<string, string> = {
     [resolve(DIST_DIR, "tokens.css")]: renderCss(json),
     [resolve(DIST_DIR, "tokens.ts")]: renderTokensTs(json),
-    [resolve(DIST_DIR, "shiki-shop.json")]: renderShikiTheme("shop"),
-    [resolve(DIST_DIR, "shiki-draft.json")]: renderShikiTheme("draft"),
+    [resolve(DIST_DIR, "shiki-dark.json")]: renderShikiTheme("dark"),
+    [resolve(DIST_DIR, "shiki-light.json")]: renderShikiTheme("light"),
     [resolve(PACKAGE_DIR, "README.md")]: renderReadme(),
   };
 

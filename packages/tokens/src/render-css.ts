@@ -1,4 +1,4 @@
-// Renders dist/tokens.css: `:root[data-theme="shop"|"draft"]` role blocks,
+// Renders dist/tokens.css: `:root[data-theme="dark"|"light"]` role blocks,
 // the (theme-independent) type scale, spacing, radius and stroke, and the
 // `forced-colors` / `prefers-contrast` blocks (spec L785-L786).
 
