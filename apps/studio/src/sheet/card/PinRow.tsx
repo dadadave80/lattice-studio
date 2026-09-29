@@ -63,6 +63,7 @@ export const PinRow = memo(function PinRow({ pin, side }: PinRowProps) {
       </span>
       <span className={cx(styles.label, pin.mark !== pin.selector && styles.labelLong)} aria-hidden="true">
         <span className={styles.name}>{pin.name}</span>
+        {" "}
         {pin.state === "seam" ? <Icon name="lock" size="small" className={styles.lock} /> : null}
         {pin.state === "default" ? <span className={styles.dot} /> : null}
         <span className={styles.mark}>{pin.mark}</span>
