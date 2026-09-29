@@ -30,7 +30,8 @@ test("a Recent row's name button is a real target (not 0 px) at the dialog's wid
   const nameButton = screen.getByRole("button", { name: "A project with a fairly long name" });
   await expect.element(nameButton).toBeVisible();
   const rect = nameButton.element().getBoundingClientRect();
-  expect(rect.width).toBeGreaterThan(0);
+  // A real, 2.5.8-sized target (spec's 24 × 24 CSS px minimum), not merely non-zero.
+  expect(rect.width).toBeGreaterThanOrEqual(24);
   expect(rect.height).toBeGreaterThanOrEqual(24);
 });
 

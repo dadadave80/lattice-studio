@@ -5,15 +5,15 @@
  * load (contracts §6, the size gate).
  */
 import {
-  exportProjectFile, formatTime, plural, type CommandRef, type Deployment, type Project, type Recipe,
+  exportProjectFile, lines, plural, type CommandRef, type Deployment, type Project, type Recipe,
 } from "@lattice-studio/core";
 import {
-  announce, commandRef, createProject as createProjectService, getCatalog, listDeployments,
+  announce, commandRef, createProject as createProjectService, getCatalog, listDeployments, log,
   openProject as openProjectService, runCommand, showBanner, toast,
 } from "@/contracts";
-import { flushPendingSave, persistence, showOpenFailure } from "@/persist";
+import { flushPendingSave, persistence } from "@/persist";
 import { downloadFile, forgetHandle, linkedHandle, saveAllTo, saveProjectAs, writeLinked } from "./file-io";
-import { resetForProjectSwitch, sayError, sayNote } from "./cmd/shared";
+import { reportOpenFailure, resetForProjectSwitch, sayError, sayNote } from "./cmd/shared";
 import { notifyProjectsRefresh } from "./list-refresh";
 
 export { openImportedFile } from "./import-file";
@@ -41,18 +41,22 @@ export async function startNewProject(): Promise<void> {
   sayNote("New project.");
 }
 
-/** Opens a stored project by id, logging "Opened X · N facets · saved 2 min ago." (spec L708). */
+/** Opens a stored project by id, logging "Opened X · N facets · saved 2 min ago." through core's own line
+ * builder (spec L708), so the relative time matches every other line that reports one. */
 export async function openStoredProject(id: string): Promise<void> {
   const store = await persistence();
   const before = (await store.listProjects()).find((p) => p.id === id);
   const opened = await openProjectService(id);
   if (!opened.ok) {
-    showOpenFailure(opened.error);
+    reportOpenFailure(opened.error);
     return;
   }
   resetForProjectSwitch();
-  const ago = before ? formatTime(new Date(before.savedAt).toISOString(), new Date().toISOString()).text : "just now";
-  sayNote(`Opened ${opened.value.name} · ${plural(opened.value.recipe.facets.length, "facet")} · saved ${ago}.`);
+  const now = new Date().toISOString();
+  const savedAt = before ? new Date(before.savedAt).toISOString() : now; // No prior record: "saved just now".
+  const line = lines.projectOpened({ name: opened.value.name, facets: opened.value.recipe.facets.length, savedAt, now });
+  log(line);
+  announce(line.text);
 }
 
 async function currentDeployments(project: Project): Promise<readonly Deployment[]> {

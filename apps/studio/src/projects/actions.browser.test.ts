@@ -3,11 +3,11 @@
  * the save-and-reopen round trip through the File System Access API, dropping a bad file, delete with
  * Undo, and the unknown-fields line (spec L289).
  */
-import { toChecksum, type Deployment } from "@lattice-studio/core";
+import { lines, toChecksum, type Deployment } from "@lattice-studio/core";
 import { makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test } from "vitest";
 import {
-  createProject, doc, loadViewport, putDeployment, runCommand, saveViewport, session, setCatalogStatus,
+  createProject, doc, loadViewport, openDialog, putDeployment, runCommand, saveViewport, session, setCatalogStatus,
 } from "@/contracts";
 import { testPersistence } from "@/persist/testing";
 import { bufferedServices, fixtureCatalog, onCleanup } from "../../test/harness";
@@ -79,6 +79,68 @@ describe("project.new", () => {
     expect(session.get().modes).toEqual({ initOrder: false, moveTo: false, rows: null });
     expect(await loadViewport(doc.get().id)).toBeNull();
     expect(bufferedServices().log.at(-1)?.text).toBe("New project.");
+  });
+});
+
+describe("openStoredProject", () => {
+  test("opens a stored project, logging the exact line core's own lines.projectOpened builds (spec L708)", async () => {
+    readyCatalog();
+    testPersistence();
+    const created = await createProject(makeRecipe({}, catalog), "OpenMeVault");
+    if (!created.ok) throw new Error(created.error);
+    const target = created.value.id;
+    // A second project becomes the open one, so opening `target` again exercises the "stored, not open" path.
+    const other = await createProject(makeRecipe({}, catalog), "Other");
+    if (!other.ok) throw new Error(other.error);
+
+    const { openStoredProject } = await import("./actions");
+    await openStoredProject(target);
+
+    expect(doc.get().id).toBe(target);
+    // Opened moments after being stored, so `formatTime` reads "just now" on both sides regardless of the
+    // exact millisecond each `Date.now()` lands on.
+    const now = new Date().toISOString();
+    const expected = lines.projectOpened({ name: "OpenMeVault", facets: 0, savedAt: now, now }).text;
+    expect(bufferedServices().log.at(-1)?.text).toBe(expected);
+  });
+
+  test("a project whose open fails shows the sheet's error state, with one Error line (spec L696)", async () => {
+    readyCatalog();
+    testPersistence();
+    const { openFailure, clearOpenFailure } = await import("@/persist");
+    onCleanup(clearOpenFailure);
+
+    const { openStoredProject } = await import("./actions");
+    await openStoredProject("does-not-exist");
+
+    const failure = openFailure();
+    expect(failure?.reason).toBe("This project isn't in this browser's storage.");
+    const errorLines = bufferedServices().log.filter((l) => l.tag === "Error");
+    expect(errorLines).toHaveLength(1);
+    expect(errorLines[0]?.text).toBe(failure?.text);
+    expect(bufferedServices().toast).toHaveLength(0);
+  });
+
+  test("with a dialog open, the same failure toasts instead: the sheet sits behind it (spec L733)", async () => {
+    readyCatalog();
+    testPersistence();
+    const { openFailure, openFailureText, clearOpenFailure } = await import("@/persist");
+    onCleanup(clearOpenFailure);
+    openDialog("clear-data");
+    onCleanup(() => session.set({ dialogs: [] }));
+
+    const { openStoredProject } = await import("./actions");
+    await openStoredProject("does-not-exist");
+
+    // The dialog masked the sheet, so showOpenFailure's own state (and its console line) never ran.
+    expect(openFailure()).toBeNull();
+    const toast = bufferedServices().toast.at(-1);
+    const expectedText = openFailureText("This project isn't in this browser's storage.");
+    expect(toast).toEqual({ text: expectedText, kind: "error" });
+    // The toast is the one console line (spec L733): exactly one Error line, matching the toast's own text.
+    const errorLines = bufferedServices().log.filter((l) => l.tag === "Error");
+    expect(errorLines).toHaveLength(1);
+    expect(errorLines[0]?.text).toBe(expectedText);
   });
 });
 
