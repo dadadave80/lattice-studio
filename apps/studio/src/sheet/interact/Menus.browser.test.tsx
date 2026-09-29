@@ -97,9 +97,9 @@ describe("the card menu", () => {
     session.set({ readOnly: "Read-only: this is a shared link" });
     await userEvent.click(cardNode(a), { button: "right", position: { x: 60, y: 20 } });
     await items();
-    const remove = page.getByRole("menuitem", { name: "Remove" }).element();
-    expect(remove.getAttribute("aria-disabled")).toBe("true");
-    expect(remove.textContent).toContain("Read-only: this is a shared link");
+    const remove = page.getByRole("menuitem", { name: "Remove" });
+    expect(remove.element().getAttribute("aria-disabled")).toBe("true");
+    await expect.element(remove).toHaveAccessibleDescription("Read-only: this is a shared link");
   });
 });
 
@@ -203,9 +203,9 @@ describe("the sheet menu", () => {
     await userEvent.click(paneElement(), { button: "right", position: { x: 500, y: 450 } });
     expect(await items()).toEqual(["Add facet here…", "Tidy", "Fit", "Select all", "Paste"]);
     expect(menu()?.getAttribute("aria-label")).toBe("Sheet actions");
-    const paste = page.getByRole("menuitem", { name: "Paste" }).element();
-    expect(paste.getAttribute("aria-disabled")).toBe("true");
-    expect(paste.textContent).toContain("Arrives in v1.1");
+    const paste = page.getByRole("menuitem", { name: "Paste" });
+    expect(paste.element().getAttribute("aria-disabled")).toBe("true");
+    await expect.element(paste).toHaveAccessibleDescription("Arrives in v1.1");
   });
 
   test("Add facet here… opens the palette for facets, placing at the pointer", async () => {
