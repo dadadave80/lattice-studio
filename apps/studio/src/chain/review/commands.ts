@@ -21,7 +21,7 @@ import {
 } from "./entry-copy";
 
 const OK: Enablement = { ok: true };
-const CATALOG_LOADING = "The catalog hasn't loaded yet";
+const CATALOG_LOADING = "The catalog hasn't loaded yet · Wait for it to finish";
 
 function no(reason: string, fix?: CommandRef): Enablement {
   return fix ? { ok: false, reason, fix } : { ok: false, reason };

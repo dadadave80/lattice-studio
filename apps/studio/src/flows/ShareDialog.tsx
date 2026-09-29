@@ -22,7 +22,7 @@ async function saveRecipeFile(): Promise<void> {
     saveExport(file.value);
     return;
   }
-  const reason = file ? file.error : "The catalog hasn't loaded yet";
+  const reason = file ? file.error : "The catalog hasn't loaded yet · Wait for it to finish";
   log({ tag: "Error", text: `Couldn't save the recipe file. ${reason}` });
   announce(`Couldn't save the recipe file. ${reason}`);
 }
@@ -65,7 +65,7 @@ export function ShareDialog({ entry, top }: DialogComponentProps<"share">) {
         <>
           <Button onClick={close}>Cancel</Button>
           <Button onClick={() => void copyAnyway()}>Copy anyway</Button>
-          <Button ref={saveRef} disabledReason={catalog ? null : "The catalog hasn't loaded yet"} onClick={saveFile}>
+          <Button ref={saveRef} disabledReason={catalog ? null : "The catalog hasn't loaded yet · Wait for it to finish"} onClick={saveFile}>
             Save a file instead
           </Button>
         </>

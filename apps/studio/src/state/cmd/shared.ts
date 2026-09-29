@@ -10,7 +10,7 @@ import { studioState } from "../runtime";
 export const OK: Enablement = { ok: true };
 
 /** While the catalog loads or after it failed: nothing can be edited against it. */
-export const CATALOG_NOT_LOADED = "The catalog hasn't loaded yet";
+export const CATALOG_NOT_LOADED = "The catalog hasn't loaded yet · Wait for it to finish";
 
 /**
  * The first reason a document command can't run: the session's read-only reason (spec L389, IR L66), then a

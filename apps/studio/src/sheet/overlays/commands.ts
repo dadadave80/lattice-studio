@@ -29,7 +29,7 @@ function isHex4(value: unknown): value is Hex4 {
 /** Why owners can't be chosen for `selectors` now, or null (read-only first, like every editing command). */
 export function chooseReason(ctx: CommandContext, selectors: unknown): string | null {
   if (ctx.session.readOnly !== null) return ctx.session.readOnly;
-  if (!ctx.catalog) return "The catalog hasn't loaded yet";
+  if (!ctx.catalog) return "The catalog hasn't loaded yet · Wait for it to finish";
   const list = Array.isArray(selectors) ? selectors.filter(isHex4) : [];
   if (list.length === 0) return "Name the selectors to choose owners for";
   const lone = list.find((s) => (ctx.analysis.routing[s]?.contenders.length ?? 0) < 2);

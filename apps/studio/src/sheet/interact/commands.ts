@@ -234,7 +234,7 @@ const copySignature = command({
   category: "Build",
   enabled(ctx, { selector, facet }) {
     if (!isHex4(selector)) return refuse(NAME_A_SELECTOR);
-    if (!ctx.catalog) return refuse("The catalog hasn't loaded yet");
+    if (!ctx.catalog) return refuse("The catalog hasn't loaded yet · Wait for it to finish");
     return known(ctx, selector, facet) ? OK : refuse(`No facet in the catalog exports ${selector}`);
   },
   run: run("selector.copySignature"),

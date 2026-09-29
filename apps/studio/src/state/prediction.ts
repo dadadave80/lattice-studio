@@ -29,7 +29,7 @@ export type Prediction =
 /** Spec L365: the title block's line while no wallet is connected. */
 export const NEEDS_WALLET = "Connect a wallet to see the deploy address (it depends on the deploying account)";
 export const NEEDS_CHAIN = "Choose a chain to see the deploy address";
-export const NEEDS_CATALOG = "The catalog hasn't loaded";
+export const NEEDS_CATALOG = "The catalog hasn't loaded yet · Wait for it to finish";
 
 export type PredictionInput = {
   deploy: Project["deploy"];

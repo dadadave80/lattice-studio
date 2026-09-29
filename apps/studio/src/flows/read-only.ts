@@ -45,7 +45,7 @@ export function migrationTarget(ref: { tag: string; hash: Hex }, status: Catalog
     return pin.migrateTo ? { ok: true, entry: pin.migrateTo } : { ok: false, reason: "This build bundles no catalog to migrate to" };
   }
   if (pin.status === "unpinned") return { ok: false, reason: "This project isn't on a catalog yet" };
-  if (status.status !== "ready" || !status.manifest) return { ok: false, reason: "The catalog hasn't loaded yet" };
+  if (status.status !== "ready" || !status.manifest) return { ok: false, reason: "The catalog hasn't loaded yet · Wait for it to finish" };
   const target = defaultEntry(status.manifest);
   const own = findEntry(status.manifest, ref.hash);
   if (target && own && own.id !== target.id) return { ok: true, entry: target };

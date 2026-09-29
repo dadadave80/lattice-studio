@@ -42,7 +42,7 @@ export const ARRIVES_V11 = "Arrives in v1.1";
 /** Why init order mode can't open. */
 export const NO_INIT_STEPS = "The init plan has no steps";
 /** Why a command waits on the catalog (the words S1 and S8b use). */
-export const CATALOG_LOADING = "The catalog hasn't loaded yet";
+export const CATALOG_LOADING = "The catalog hasn't loaded yet · Wait for it to finish";
 /** Flow 7 step 5: a bundle shows its fixed order and no controls (legend line, no period, like a reason). */
 export function bundleFixed(bundle: string): string {
   return `${bundle} is a bundle: its order is fixed`;

@@ -264,7 +264,7 @@ export function signEnablement(input: SignInput): Enablement {
   const no = (reason: string): Enablement => ({ ok: false, reason });
   if (input.readOnly) return no(input.readOnly);
   if (!input.online) return no(DEPLOY_NEEDS_CONNECTION);
-  if (input.catalogLoading) return no("The catalog hasn't loaded yet");
+  if (input.catalogLoading) return no("The catalog hasn't loaded yet · Wait for it to finish");
   if (input.catalogBlock) return no(input.catalogBlock);
   if (input.blockers > 0) return no(resolveBlockers(input.blockers, input.nextKey));
   if (input.chainId === null) return no(CHOOSE_A_CHAIN);

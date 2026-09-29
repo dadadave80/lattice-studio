@@ -64,7 +64,7 @@ describe("Sign & deploy enablement (spec L573, IR L238)", () => {
   test("each missing condition disables it with its own reason", () => {
     expect(reason({ online: false })).toBe(DEPLOY_NEEDS_CONNECTION);
     expect(reason({ catalogBlock: "Fixture catalog: build the real catalog first" })).toBe("Fixture catalog: build the real catalog first");
-    expect(reason({ catalogLoading: true })).toBe("The catalog hasn't loaded yet");
+    expect(reason({ catalogLoading: true })).toBe("The catalog hasn't loaded yet · Wait for it to finish");
     expect(reason({ blockers: 2 })).toBe("Resolve 2 blockers · F8");
     expect(reason({ blockers: 1 })).toBe("Resolve 1 blocker · F8");
     // problem.next's key as remapped, or none when it has none (spec L661).

@@ -7,7 +7,7 @@ import type { Analysis } from "@lattice-studio/core";
 import { plural } from "@lattice-studio/core";
 
 /** While the catalog loads or after it failed. */
-export const CATALOG_NOT_LOADED = "The catalog hasn't loaded yet";
+export const CATALOG_NOT_LOADED = "The catalog hasn't loaded yet · Wait for it to finish";
 /** An empty sheet has nothing to export (spec L378's "Place facets first"). */
 export const PLACE_FACETS_FIRST = "Place facets first";
 /** The Script and Recipe JSON tabs on an empty sheet (spec L699). */

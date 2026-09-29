@@ -116,7 +116,7 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
     for (const name of ["GovernedVault", "ERC20", "SafeDiamondCut"]) {
       const card = start.getByRole("button", { name: new RegExp(`^${name} `) });
       await expect.element(card).toHaveAttribute("aria-disabled", "true");
-      await expect.element(card).toHaveAccessibleDescription("The catalog hasn't loaded yet");
+      await expect.element(card).toHaveAccessibleDescription("The catalog hasn't loaded yet · Wait for it to finish");
     }
     await expect.element(start.getByRole("button", { name: "Blank diamond (core only)" })).toHaveAttribute("aria-disabled", "true");
   });

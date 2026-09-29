@@ -53,7 +53,7 @@ export function RemoveFacetsDialog({ entry, top }: DialogComponentProps<"remove-
   const close = () => closeDialog("remove-facets");
   const reason =
     readOnly ??
-    (catalog ? null : "The catalog hasn't loaded yet") ??
+    (catalog ? null : "The catalog hasn't loaded yet · Wait for it to finish") ??
     (chosen.length === 0 ? TICK_FIRST : null) ??
     (combined === null ? null : plain(combined));
 

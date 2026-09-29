@@ -62,7 +62,7 @@ export function ChoosePerSelectorDialog({ entry, top }: DialogComponentProps<"ch
     const facet = draft[row.hex];
     return facet !== undefined && facet !== row.owner ? [{ selector: row.hex, facet }] : [];
   });
-  const reason = readOnly ?? (catalog ? null : "The catalog hasn't loaded yet") ?? (choices.length === 0 ? "Choose an owner first" : null);
+  const reason = readOnly ?? (catalog ? null : "The catalog hasn't loaded yet · Wait for it to finish") ?? (choices.length === 0 ? "Choose an owner first" : null);
 
   const apply = () => {
     if (reason !== null) return;

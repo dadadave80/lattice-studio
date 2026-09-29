@@ -11,7 +11,7 @@ import { openConfirm } from "./init-ui-store";
 import { planField, planOf, showInitPlan } from "./navigation";
 
 const OK: Enablement = { ok: true };
-const CATALOG_NOT_LOADED = "The catalog hasn't loaded yet";
+const CATALOG_NOT_LOADED = "The catalog hasn't loaded yet · Wait for it to finish";
 
 function disabled(reason: string): Enablement {
   return { ok: false, reason };

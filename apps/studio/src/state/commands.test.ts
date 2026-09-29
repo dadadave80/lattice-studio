@@ -115,8 +115,8 @@ describe("read-only", () => {
   test("without a catalog, document commands wait for it", () => {
     start(undefined, undefined);
     setCatalogStatus({ status: "loading" });
-    expect(reason("facet.place", { facet: "ERC20" })).toBe("The catalog hasn't loaded yet");
-    expect(reason("layout.tidy")).toBe("The catalog hasn't loaded yet");
+    expect(reason("facet.place", { facet: "ERC20" })).toBe("The catalog hasn't loaded yet · Wait for it to finish");
+    expect(reason("layout.tidy")).toBe("The catalog hasn't loaded yet · Wait for it to finish");
   });
 });
 

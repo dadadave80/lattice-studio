@@ -201,7 +201,7 @@ describe("commands", () => {
     await renderWithStudio(<InspectorPanel />, { project: project(["VaultCore"]), catalog: null });
     expect(commandState(commandRef("dependency.compare", { options: ["ERC20", "ERC4626"] }))).toMatchObject({
       ok: false,
-      reason: "The catalog hasn't loaded. Wait for it to finish.",
+      reason: "The catalog hasn't loaded yet · Wait for it to finish",
     });
   });
 
