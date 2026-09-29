@@ -524,6 +524,35 @@ describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20Vo
     expect(problems[0]?.fixes).toEqual([]);
   });
 
+  test("every catalog facet with an init: INIT-04 names the facet's own module, or the one module its step init sets up, never an unrelated one (FX48)", () => {
+    const named: string[] = [];
+    const renamed: string[] = [];
+    for (const facet of realCatalog.facets) {
+      if (facet.init === undefined) continue;
+      const spec = realCatalog.inits.find((s) => s.name === facet.init);
+      if (!spec) throw new Error(`${facet.name}'s init ${facet.init} isn't in the built catalog`);
+      const recipe = makeRecipe({ facets: [facet.name], init: { kind: "steps", steps: [] } }, realCatalog);
+      const problems = only(run(recipe, realCatalog), "INIT-04").filter((p) => p.where.some((w) => w.kind === "facet" && w.facet === facet.name));
+      expect([facet.name, problems.length]).toEqual([facet.name, 1]);
+      const module = problems[0]?.params["module"];
+      named.push(facet.name);
+      if (module === facet.name) continue;
+      renamed.push(`${facet.name} -> ${String(module)}`);
+      // A facet whose module has another name is a step init's own: its last module, which the init lists.
+      expect([facet.name, spec.kind]).toEqual([facet.name, "step"]);
+      expect(spec.initializes.some((entry) => entry.module === module)).toBe(true);
+      expect(problems[0]?.message).toContain(`${String(module)} is never initialized`);
+    }
+    expect(named.length).toBeGreaterThan(60);
+    // Pinned: a new entry here means a facet whose message names another module, and someone should look at it.
+    expect(renamed.sort()).toEqual([
+      "CrosschainTimelockHandler -> CrosschainLink",
+      "DiamondCutFacet -> Ownable",
+      "ERC20Pausable -> AccessControl",
+      "OwnableFacet -> Ownable",
+    ]);
+  });
+
   test("GovernedVault with its own bundle, or with the ENS bundle that covers it, raises no INIT-04", () => {
     for (const name of ["GovernedVault", "GovernedVaultENS"]) {
       const found = realCatalog.recipes.find((r) => r.name === name);
