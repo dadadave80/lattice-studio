@@ -11,12 +11,12 @@ import { OverlaysGallery } from "./overlays/OverlaysGallery";
 import { overridePlatform, usePlatform } from "./shared/platform";
 
 function currentTheme(): ThemeId {
-  return document.documentElement.dataset.theme === "draft" ? "draft" : "shop";
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
 }
 
 const THEMES = [
-  { value: "shop", label: "Shop" },
-  { value: "draft", label: "Draft" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
 ] as const;
 
 const KEY_LABELS = [

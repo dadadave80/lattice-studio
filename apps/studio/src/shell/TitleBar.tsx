@@ -17,7 +17,7 @@ import styles from "./TitleBar.module.css";
 
 /**
  * The title bar (spec L355, IR L60-L74), 40 px tall. At every width: the App menu, the project name, the
- * status chip. 1024 px and wider: Undo, Redo, the save status, Share, Shop/Draft and ⌘K; 768-1279 px adds the
+ * status chip. 1024 px and wider: Undo, Redo, the save status, Share, Light/Dark and ⌘K; 768-1279 px adds the
  * pane toggles. Below 1024 px Deploy… moves here, the product name and the save status shrink to icons, and
  * an overflow menu (⋯) takes Share, the theme and ⌘K; under 768 px it also takes Undo, Redo, Export and the
  * tool strip, and the save status shows only when something needs saying. When the middle runs out of room, the name truncates

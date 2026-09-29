@@ -17,8 +17,8 @@ const ACCOUNT = "0xC584D72D380Cb5b1e3aB71383a168C93d08e0Fe2";
 const SALT = "0x4d631cbb92253e2f0d4268cf5019d60a50e0b54791ba533a9f897bd0f6715456";
 
 const THEMES = [
-  { value: "shop", label: "Shop" },
-  { value: "draft", label: "Draft" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
 ] as const;
 
 const NETWORKS: SelectOption[] = [
@@ -55,7 +55,7 @@ const noop = () => {};
 /** Toggles, switches, checkboxes, radios, selects and text and number fields, in every state. */
 export function FieldsGallery() {
   const [minimap, setMinimap] = useState(true);
-  const [theme, setTheme] = useState<"shop" | "draft">("shop");
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [motion, setMotion] = useState(true);
   const [ack, setAck] = useState(true);
   const [deployWith, setDeployWith] = useState("safe");
@@ -91,7 +91,7 @@ export function FieldsGallery() {
           <SegmentedToggle label="Theme" options={THEMES} value={theme} onValueChange={setTheme} />
         </Specimen>
         <Specimen label="Disabled with a reason">
-          <SegmentedToggle label="Theme" options={THEMES} value="draft" onValueChange={noop} disabledReason={BLOCKERS} />
+          <SegmentedToggle label="Theme" options={THEMES} value="light" onValueChange={noop} disabledReason={BLOCKERS} />
         </Specimen>
       </GallerySection>
 

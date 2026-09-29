@@ -68,7 +68,7 @@ describe("critical CSS token values match tokens.css", () => {
     expectSameValue(criticalRoot, tokensRoot, "--lxs-stroke-hair", "--lx-stroke-hair");
   });
 
-  for (const theme of ["shop", "draft"] as const) {
+  for (const theme of ["dark", "light"] as const) {
     test(`colors, ${theme}`, () => {
       const criticalTheme = block(indexHtml, `:root[data-theme="${theme}"]`);
       const tokensTheme = block(tokensCss, `:root[data-theme="${theme}"]`);

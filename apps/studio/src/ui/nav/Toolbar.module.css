@@ -1,5 +1,5 @@
 /*
- * A toolbar (final-shop-sample: the sheet's tool strip). An outlined strip on `panel`; icon buttons are the
+ * A toolbar (the design's dark sample screen: the sheet's tool strip). An outlined strip on `panel`; icon buttons are the
  * 28 px square `IconButton` look. A pressed tool takes the accent edge and `accent-soft`; focus is the global
  * outline, so the two never look alike.
  */

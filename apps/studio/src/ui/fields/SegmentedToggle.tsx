@@ -8,7 +8,7 @@ import styles from "./Toggle.module.css";
 
 export type SegmentedOption<V extends string = string> = {
   value: V;
-  /** Sentence-case text; it is the option's accessible name ("Shop", "Draft"). */
+  /** Sentence-case text; it is the option's accessible name ("Light", "Dark"). */
   label: string;
 };
 
@@ -29,7 +29,7 @@ export type SegmentedToggleProps<V extends string = string> = {
 };
 
 /**
- * One choice from two or three short options, side by side (the title bar's Shop / Draft switch). Arrow keys
+ * One choice from two or three short options, side by side (the title bar's Light / Dark switch). Arrow keys
  * move between options and Space or Enter picks one. There is always exactly one pressed.
  */
 export function SegmentedToggle<V extends string = string>({

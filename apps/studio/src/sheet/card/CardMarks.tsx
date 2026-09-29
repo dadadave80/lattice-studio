@@ -3,8 +3,8 @@ import styles from "./FacetCard.module.css";
 const CORNERS = ["topLeft", "topRight", "bottomLeft", "bottomRight"] as const;
 
 /**
- * The card's corner furniture, decorative: Shop's four detent screws, lit when selected, and Draft's CAD
- * corner ticks around a selected card (design boards: module card, Selected and Shop, selected).
+ * The card's corner furniture, decorative: the dark theme's four detent screws, lit when selected, and the light theme's CAD
+ * corner ticks around a selected card (design boards: module card, Selected, in both themes).
  */
 export function CardMarks({ selected }: { selected: boolean }) {
   return (

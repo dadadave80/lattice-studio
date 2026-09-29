@@ -4,7 +4,7 @@ import {
 } from "@/contracts";
 import { endTour, startTour, tourState } from "../tour/tour-state";
 
-const THEME_LABEL: Record<ThemeChoice, string> = { shop: "Shop", draft: "Draft", system: "System" };
+const THEME_LABEL: Record<ThemeChoice, string> = { light: "Light", dark: "Dark", system: "System" };
 
 /** Own keys only: `constructor`, `toString` and `__proto__` are on every object's prototype, never themes. */
 function isTheme(value: string): value is ThemeChoice {
@@ -46,15 +46,15 @@ export const S10_COMMANDS: readonly Command[] = [
     id: "theme.set",
     title: ({ theme }) => `Set theme to ${themeLabel(theme)}`,
     category: "Session",
-    // IR L158: `theme <shop, draft or system>`, case-insensitive; run() confirms with the "Theme: X." line.
+    // IR L158: `theme <light, dark or system>`, case-insensitive; run() confirms with the "Theme: X." line.
     console: {
       verb: "theme",
-      syntax: "theme <shop, draft or system>",
+      syntax: "theme <light, dark or system>",
       parse: (argv) => {
         const text = argv.join(" ").trim();
         const theme = text.toLowerCase();
         if (isTheme(theme)) return { ok: true, value: { theme } };
-        return { ok: false, error: `${text === "" ? "theme takes" : `“${text}” isn't a theme. Choose`} shop, draft or system.` };
+        return { ok: false, error: `${text === "" ? "theme takes" : `“${text}” isn't a theme. Choose`} light, dark or system.` };
       },
     },
     enabled: (_ctx, { theme }) => (isTheme(theme) ? { ok: true } : { ok: false, reason: `"${theme}" isn't a theme.` }),

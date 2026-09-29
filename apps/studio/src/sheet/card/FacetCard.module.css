@@ -43,7 +43,7 @@
   --card-frame-color: var(--lx-border-strong);
 }
 
-/* Selected: the accent, with corner ticks (Draft) or lit screws (Shop). */
+/* Selected: the accent, with corner ticks (light theme) or lit screws (dark theme). */
 .selected {
   --card-frame-color: var(--lx-accent);
   --card-frame-width: var(--card-mark);
@@ -467,28 +467,28 @@
   border-inline-end-width: var(--card-mark);
 }
 
-/* Shop: an engraved faceplate with four screws, uppercase labels and round jacks instead of square pins. */
-:global(:root[data-theme="shop"]) .screw {
+/* The dark theme: an engraved faceplate with four screws, uppercase labels and round jacks instead of square pins. */
+:global(:root[data-theme="dark"]) .screw {
   display: block;
 }
 
-:global(:root[data-theme="shop"]) .corner {
+:global(:root[data-theme="dark"]) .corner {
   display: none;
 }
 
-:global(:root[data-theme="shop"]) .title {
+:global(:root[data-theme="dark"]) .title {
   font: var(--lx-font-label);
   letter-spacing: var(--lx-tracking-label);
   text-transform: uppercase;
 }
 
-:global(:root[data-theme="shop"]) .pin .name {
+:global(:root[data-theme="dark"]) .pin .name {
   font: var(--lx-font-label);
   letter-spacing: var(--lx-tracking-label);
   text-transform: uppercase;
 }
 
-:global(:root[data-theme="shop"]) .node {
+:global(:root[data-theme="dark"]) .node {
   border-radius: 50%;
 }
 

@@ -12,8 +12,8 @@ export function AppearanceGroup() {
         value={theme}
         onValueChange={(theme) => settings.set({ theme })}
         options={[
-          { value: "shop", label: "Shop" },
-          { value: "draft", label: "Draft" },
+          { value: "light", label: "Light" },
+          { value: "dark", label: "Dark" },
           { value: "system", label: "System" },
         ]}
       />
