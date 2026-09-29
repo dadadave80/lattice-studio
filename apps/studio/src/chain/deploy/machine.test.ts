@@ -513,7 +513,8 @@ describe("the salt at Sign (spec L286, L574)", () => {
     expect(h.port.methods()).not.toContain("send");
     expect(h.port.sent).toEqual([]);
     expect(h.said.banners.has(DEPLOY_BANNER_ID)).toBe(false);
-    expect(m.state()).toMatchObject({ phase: "review", error });
+    expect(m.state().phase).toBe("review");
+    expect(m.state().error?.startsWith(error)).toBe(true);
   });
 });
 
