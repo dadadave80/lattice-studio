@@ -21,7 +21,9 @@ const FONT_COUNT = 2;
 
 test.beforeAll(() => {
   if (existsSync(join(distDir, "index.html"))) return;
-  const result = spawnSync("bun", ["run", "build"], { cwd: repoRoot, stdio: "inherit" });
+  // A production build, whatever the e2e run set: `VITE_STUDIO_E2E` would make this the e2e build (the config guard
+  // refuses it), and it would then sit in `dist/` for every later size check.
+  const result = spawnSync("bun", ["run", "build"], { cwd: repoRoot, stdio: "inherit", env: { ...process.env, VITE_STUDIO_E2E: "" } });
   if (result.status !== 0) throw new Error("`bun run build` failed; see the output above.");
 });
 

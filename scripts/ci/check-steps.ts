@@ -7,7 +7,7 @@ export const CHECK_STEPS: readonly CheckStep[] = [
   { name: "typecheck (TypeScript 7)", cmd: ["bun", "run", "typecheck"] },
   { name: "typecheck:ts6 (TypeScript 6.0)", cmd: ["bun", "run", "typecheck:ts6"] },
   { name: "lint", cmd: ["bun", "run", "lint"] },
-  { name: "size budgets", cmd: ["bun", "scripts/ci/size.ts"] },
+  { name: "size budgets", cmd: ["bun", "scripts/ci/size.ts", "--build"] },
   { name: "schema drift", cmd: ["bun", "scripts/ci/schema-drift.ts"] },
   { name: "token drift", cmd: ["bun", "run", "tokens:pull", "--", "--check"] },
   { name: "raw-color scan", cmd: ["bun", "scripts/ci/raw-color-scan.ts"] },

@@ -19,7 +19,9 @@ export const envDefaults = {
   STUDIO_PORT: "5173",
   VITEST_BROWSER_PORT: "63315",
   PLAYWRIGHT_PORT: "4173",
-  ANVIL_PORT_BASE: "8545",
+  // Not 8545: that is the product's own default Anvil RPC (chains.ts), and the fallback transport would reach the
+  // kit's node whenever a test points Studio at a dead port (q1e's "RPC down").
+  ANVIL_PORT_BASE: "8560",
 } as const;
 
 export type LocalEnvName = keyof typeof envDefaults;

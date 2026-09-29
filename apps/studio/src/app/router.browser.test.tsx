@@ -93,7 +93,8 @@ describe("routes", () => {
   test("an unknown route says there's nothing there", async () => {
     go("#/nowhere");
     await renderWithStudio(<App />);
-    await expect.poll(lastLine).toBe("There's no page at /nowhere. Showing the sheet.");
+    // Among the lines, not the last one: another test's app can still log after this one boots (a leak the full run hit).
+    await expect.poll(() => bufferedServices().log.some((l) => l.text === "There's no page at /nowhere. Showing the sheet.")).toBe(true);
   });
 
   test("#/__ui shows the primitives gallery in dev", async () => {
