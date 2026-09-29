@@ -234,6 +234,18 @@ describe("the app, Vercel build", () => {
     expect(sw).toContain("lattice-catalog-shards");
   });
 
+  test("prompt mode: the worker skips waiting only when the page asks (Reload), never on its own", () => {
+    const sw = readFileSync(join(out, "sw.js"), "utf8");
+    // registerType 'prompt' (spec L830): workbox-window's `messageSkipWaiting()` posts SKIP_WAITING when the person
+    // chooses Reload, and this handler is the only place the worker may call skipWaiting().
+    const onRequest =
+      /self\.addEventListener\(\s*"message"\s*,\s*\(?(\w+)\)?\s*=>\s*\{\s*\1\.data\s*&&\s*"SKIP_WAITING"\s*===\s*\1\.data\.type\s*&&\s*self\.skipWaiting\(\)\s*;?\s*\}\s*\)/;
+    expect(sw).toMatch(onRequest);
+    expect(sw.replace(onRequest, "")).not.toContain("skipWaiting");
+    // The first install still takes control at once (`clientsClaim`), so a first visit works offline.
+    expect(sw).toContain("clientsClaim()");
+  });
+
   test("registers nothing inline and ships the manifest, icons and schema", () => {
     const html = readFileSync(join(out, "index.html"), "utf8");
     expect(html).not.toContain("registerSW");
