@@ -219,11 +219,6 @@ export const PROGRESS_PHASES: ReadonlySet<DeployPhase> = new Set<DeployPhase>([
 /** Before signing: an edit, account or chain change sends the review back to simulating (spec L562). */
 export const PRE_SIGN_PHASES: ReadonlySet<DeployPhase> = new Set<DeployPhase>(["review", "simulating", "ready", "failed"]);
 
-/** "0x3f2a…a1c4": a hash's first four and last four hex digits (spec L504). */
-export function shortHash(hash: string): string {
-  return hash.length > 12 ? `${hash.slice(0, 6)}…${hash.slice(-4)}` : hash;
-}
-
 // ---------------------------------------------------------------------------------------------------------
 // Sign & deploy
 

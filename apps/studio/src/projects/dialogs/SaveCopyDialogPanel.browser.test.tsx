@@ -8,8 +8,8 @@ import { expect, test } from "vitest";
 import { createProject, openDialog, setCatalogStatus } from "@/contracts";
 import { DialogHost } from "@/ui";
 import { fixtureCatalog, onCleanup, renderWithStudio } from "../../../test/harness";
-import { shortHash } from "../hash-label";
-import { STUDIO_VERSION } from "../version";
+import { shortHash } from "@/app/format";
+import { STUDIO_VERSION } from "@/app/version";
 
 const catalog = fixtureCatalog();
 

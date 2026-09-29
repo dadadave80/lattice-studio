@@ -7,7 +7,7 @@ import { exportFoundry } from "@lattice-studio/core";
 import { loadCreationCode } from "@/contracts";
 import { scriptChainIds } from "../chains";
 import { exportRecipe } from "./recipe";
-import { STUDIO_VERSION } from "./version";
+import { STUDIO_VERSION } from "@/app/version";
 
 export type FoundryInput = { project: Project; catalog: Catalog; analysis: Analysis };
 

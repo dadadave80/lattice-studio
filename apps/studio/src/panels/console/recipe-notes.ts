@@ -5,7 +5,8 @@
  * console line for a saved recipe.json carry them instead.
  */
 import type { ExportFile, Hex } from "@lattice-studio/core";
-import { STUDIO_VERSION } from "./exporters/version";
+import { shortHash } from "@/app/format";
+import { STUDIO_VERSION } from "@/app/version";
 
 /** Spec L515's words. */
 export const RECIPE_JSON_LEAVES_OUT = "Leaves out layout, deploy settings and deployments";
@@ -15,11 +16,6 @@ export const RECIPE_JSON_FILENAME = "recipe.json";
 
 export function isRecipeJson(file: Pick<ExportFile, "filename">): boolean {
   return file.filename === RECIPE_JSON_FILENAME;
-}
-
-/** A recipe hash as the console writes it: 6 + 4 (spec L679, `0x3f2a…a1c4`). */
-export function shortHash(hash: Hex): string {
-  return hash.length <= 10 ? hash : `${hash.slice(0, 6)}…${hash.slice(-4)}`;
 }
 
 /** "catalog Lattice v0.4.0 · Studio 0.1.0 · Leaves out layout, deploy settings and deployments" */

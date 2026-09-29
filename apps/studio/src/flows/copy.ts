@@ -3,6 +3,7 @@
  * titles and reasons and the read-only banners read them.
  */
 import type { Hex } from "@lattice-studio/core";
+import { shortHash } from "@/app/format";
 
 /** The read-only reasons (spec L389), which are also the banners' text (IR L204-L206) and Deploy's reason. */
 export const ELSEWHERE = "Another tab is editing this project";
@@ -15,11 +16,6 @@ export const PLACE_FACETS_FIRST = "Place facets first";
 /** Banner ids (not contracted: see the report's CCR on banner ordering). */
 export const READ_ONLY_BANNER = "flows.read-only";
 export const SHARED_LINK_BANNER = "flows.shared-link";
-
-/** "0x3f2a…a1c4": a recipe hash as the banner and the console line show it (spec L504, L709). */
-export function shortHash(hash: Hex): string {
-  return `${hash.slice(0, 6)}…${hash.slice(-4)}`;
-}
 
 /** Spec L504, word for word. */
 export function sharedLinkBanner(hash: Hex): string {

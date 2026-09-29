@@ -5,7 +5,7 @@ import { CHOOSE_A_CHAIN, CONNECT_A_WALLET } from "@/chain/infra/copy";
 import { CHANGED_SINCE_REVIEW, DEPLOY_NEEDS_CONNECTION, SAFE_SIGNS_BY_BATCH, SIMULATING, TYPE_THE_NAME } from "./copy";
 import {
   CONTROLLER_NOT_BUILT, ackProblems, cantSimulate, changedSinceReview, cutRows, fundsShort, gasByFacet, grouped, magnitude,
-  pendingAcks, problemStatus, readinessLine, resimulating, sectionOf, shortHash, signEnablement, signStepNote, simulationOwnsError,
+  pendingAcks, problemStatus, readinessLine, resimulating, sectionOf, signEnablement, signStepNote, simulationOwnsError,
   worse, type SignInput,
 } from "./model";
 
@@ -215,7 +215,6 @@ describe("cost helpers", () => {
     expect(magnitude(17_200_000n)).toBe("17.2M");
     expect(magnitude(820_000n)).toBe("820K");
     expect(grouped(9_123_456)).toBe("9,123,456");
-    expect(shortHash(`0x3f2a${"0".repeat(56)}a1c4`)).toBe("0x3f2a…a1c4");
   });
 
   test("not enough funds, in Flow 14's words", () => {

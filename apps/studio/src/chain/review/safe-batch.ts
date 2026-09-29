@@ -10,7 +10,7 @@ import {
 } from "@/contracts";
 import { exportRecipe } from "@/panels/console/exporters/recipe";
 import { saveFile } from "./save-file";
-import { STUDIO_VERSION } from "./version";
+import { STUDIO_VERSION } from "@/app/version";
 
 function say(text: string, tag: "Note" | "Deploy" | "Error" = "Note"): void {
   log({ tag, text });

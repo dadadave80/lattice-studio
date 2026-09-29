@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Address, Deployment, Hex } from "@lattice-studio/core";
 import { formatAddress } from "@lattice-studio/core";
-import { groupDeployments, holderText, shortHash, statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
+import { groupDeployments, holderText, statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
 
 const CURRENT: Hex = `0x${"ab".repeat(32)}`;
 
@@ -66,10 +66,6 @@ describe("diamond-words", () => {
       { chainId: 2, records: [b] },
       { chainId: 1, records: [c, a] },
     ]);
-  });
-
-  test("short hashes are 6 + 4", () => {
-    expect(shortHash(CURRENT)).toBe("0xabab…abab");
   });
 
   test("verification failure reason: only for a failed record, and only online", () => {

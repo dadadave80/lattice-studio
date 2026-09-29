@@ -2,8 +2,8 @@ import { exportProjectFile, recipeHash, type Project } from "@lattice-studio/cor
 import { useRef, useState } from "react";
 import { closeDialog, getCatalog, useDocument, type DialogComponentProps } from "@/contracts";
 import { Button, Dialog, TextField } from "@/ui";
-import { shortHash } from "../hash-label";
-import { STUDIO_VERSION } from "../version";
+import { shortHash } from "@/app/format";
+import { STUDIO_VERSION } from "@/app/version";
 
 /**
  * Ruling R6: the dialog states the recipe hash, catalog tag and Studio version; the `.lattice.json` body

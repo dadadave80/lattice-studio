@@ -18,9 +18,9 @@ import { CutSection } from "./CutSection";
 import { DeployerSection } from "./DeployerSection";
 import { InitSection } from "./InitSection";
 import {
-  IN_FLIGHT_PHASES, PRE_SIGN_PHASES, PROGRESS_PHASES, changedSinceReview, controllerChainName, resimulating, shortHash,
-  signStepNote,
+  IN_FLIGHT_PHASES, PRE_SIGN_PHASES, PROGRESS_PHASES, changedSinceReview, controllerChainName, resimulating, signStepNote,
 } from "./model";
+import { shortHash } from "@/app/format";
 import { NetworkSection } from "./NetworkSection";
 import { ProgressView } from "./ProgressView";
 import { ReviewContext, type Review } from "./review-data";

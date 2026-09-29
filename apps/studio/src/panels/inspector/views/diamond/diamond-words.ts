@@ -5,11 +5,6 @@
 import type { Arg, AuthorityRow, Catalog, Deployment, Hex, InitPlan, Recipe } from "@lattice-studio/core";
 import { formatAddress, isAddress, plural } from "@lattice-studio/core";
 
-/** Recipe hashes: 6 + 4 (spec L679), as addresses are. */
-export function shortHash(hash: string): string {
-  return hash.length <= 10 ? hash : `${hash.slice(0, 6)}…${hash.slice(-4)}`;
-}
-
 function isRef(arg: Arg): arg is { $ref: "self" | "deployer" } {
   return typeof arg === "object" && !Array.isArray(arg) && "$ref" in arg;
 }

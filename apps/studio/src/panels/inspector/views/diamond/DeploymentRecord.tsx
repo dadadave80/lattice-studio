@@ -6,7 +6,8 @@ import { Button } from "@/ui/buttons/Button";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { copyText } from "@/ui/copy/copy-text";
 import sheet from "../../shared/sheet.module.css";
-import { shortHash, statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
+import { shortHash } from "@/app/format";
+import { statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
 import type { RecordCheck } from "./use-record-checks";
 import styles from "./diamond.module.css";
 

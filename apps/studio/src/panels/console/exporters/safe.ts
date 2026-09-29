@@ -11,7 +11,7 @@ import { exportSafeBatch, safeBatchTarget } from "@lattice-studio/core";
 import { loadCreationCode } from "@/contracts";
 import { studioState } from "@/state/runtime";
 import { exportRecipe } from "./recipe";
-import { STUDIO_VERSION } from "./version";
+import { STUDIO_VERSION } from "@/app/version";
 
 export type SafeInput = { project: Project; catalog: Catalog; safe: Address; chainId: number; now: number };
 
