@@ -11,7 +11,7 @@ screenshot baseline in both themes (spec "Design stays in step with code"). Chec
 - [ ] Focus is visible after every action (placement, deletion, undo, dialog close)
 - [ ] Accessible names: `aria-label`/`aria-labelledby` on every control this PR adds; `aria-disabled` carries
       a stated reason, never a bare disabled control
-- [ ] Both themes (Shop and Draft) render correctly
+- [ ] Both themes (Light and Dark) render correctly
 - [ ] Reduced motion respected (`prefers-reduced-motion`)
 - [ ] `axe` run locally against the states this PR adds or changes (`bun run e2e`), clean or with findings noted
       below
