@@ -26,16 +26,19 @@ export const buildSalt: BuildSaltFn = (from, scope, entropy) => {
   return `${from.toLowerCase()}${SCOPE_FLAG[scope].slice(2)}${entropy.slice(2).toLowerCase()}` as Hex;
 };
 
+/** The fix clause of a salt that can't be signed with (ruling R9, spec L565): a new salt is built from the signing account. */
+const NEW_SALT = "Use a new salt.";
+
 /**
  * Ok with the salt when `bytes20(salt) == from` and the flag byte is `0x00` or `0x01`, the assertion Studio makes
  * before it asks a wallet to sign (spec L286, L574, L856). Otherwise an error that says which part is wrong.
  */
 export const assertSaltSender: AssertSaltSenderFn = (salt, from) => {
   if (!isAddress(from)) return err(`The sending account ${from} isn't an address.`);
-  if (!/^0x[0-9a-fA-F]{64}$/.test(salt)) return err(`The salt ${salt} isn't 32 bytes.`);
+  if (!/^0x[0-9a-fA-F]{64}$/.test(salt)) return err(`The salt ${salt} isn't 32 bytes. ${NEW_SALT}`);
   const prefix = `0x${salt.slice(2, 42)}`;
   if (!sameAddress(prefix, from)) {
-    return err(`The salt starts with ${toChecksum(prefix)}, not the sending account ${toChecksum(from)}.`);
+    return err(`The salt starts with ${toChecksum(prefix)}, not the sending account ${toChecksum(from)}. ${NEW_SALT}`);
   }
   const flag = salt.slice(42, 44);
   if (flag !== "00" && flag !== "01") return err(`The salt's scope byte is 0x${flag.toLowerCase()}; it must be 0x00 or 0x01.`);

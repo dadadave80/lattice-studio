@@ -429,12 +429,12 @@ describe("INIT-04", () => {
     const problems = only(run(recipe, synthetic), "INIT-04");
     expect(problems).toEqual([
       {
-        id: "INIT-04:Governor",
+        id: "INIT-04:GovernedVault",
         code: "INIT-04",
         severity: "blocker",
         where: [{ kind: "facet", facet: "GovernedVault" }],
-        params: { module: "Governor", spec: "", facet: "GovernedVault" },
-        message: "GovernedVault has no init step, so Governor is never initialized.",
+        params: { module: "GovernedVault", spec: "", facet: "GovernedVault" },
+        message: "GovernedVault has no init step, so GovernedVault is never initialized.",
         fixes: [],
       },
     ]);
@@ -452,7 +452,7 @@ describe("INIT-04", () => {
     const recipe = makeRecipe({ facets: ["GovernedVault"] }, synthetic);
     const problems = only(run(recipe, synthetic), "INIT-04");
     expect(problems.map((p) => [p.id, p.params["spec"], p.fixes])).toEqual([
-      ["INIT-04:Governor", "GovernedVaultInit", [{ id: "init.addStep", args: { spec: "GovernedVaultInit" } }]],
+      ["INIT-04:GovernedVault", "GovernedVaultInit", [{ id: "init.addStep", args: { spec: "GovernedVaultInit" } }]],
     ]);
     applyAddStepFixes(recipe, synthetic, problems);
   });
@@ -510,6 +510,28 @@ describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20Vo
     expect(problems.length).toBeGreaterThan(0);
     for (const p of problems) expect(p.fixes.some((f) => f.args?.["spec"] === "GovernedVaultInit")).toBe(false);
     applyAddStepFixes(recipe, realCatalog, problems);
+  });
+
+  test("Blank diamond + GovernedVault names GovernedVault, not the bundle's last module Governor (spec L330, FX48)", () => {
+    const recipe = makeRecipe(
+      { facets: [...BLANK_FACETS, "GovernedVault"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } },
+      realCatalog,
+    );
+    const problems = only(run(recipe, realCatalog), "INIT-04").filter((p) => p.where.some((w) => w.kind === "facet" && w.facet === "GovernedVault"));
+    expect(problems.map((p) => [p.id, p.params["module"], p.message])).toEqual([
+      ["INIT-04:GovernedVault", "GovernedVault", "GovernedVault has no init step, so GovernedVault is never initialized."],
+    ]);
+    expect(problems[0]?.fixes).toEqual([]);
+  });
+
+  test("GovernedVault with its own bundle, or with the ENS bundle that covers it, raises no INIT-04", () => {
+    for (const name of ["GovernedVault", "GovernedVaultENS"]) {
+      const found = realCatalog.recipes.find((r) => r.name === name);
+      if (!found) throw new Error(`${name} isn't in the built catalog`);
+      expect(only(run(found.recipe, realCatalog), "INIT-04")).toEqual([]);
+    }
+    const ensBundle = makeRecipe({ facets: [...BLANK_FACETS, "GovernedVault"], init: { kind: "bundle", spec: "GovernedVaultENSInit", args: {} } }, realCatalog);
+    expect(only(run(ensBundle, realCatalog), "INIT-04")).toEqual([]);
   });
 });
 

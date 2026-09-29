@@ -230,7 +230,14 @@ describe("assertSaltSender", () => {
 
   test("an error naming both accounts when the salt belongs to someone else", () => {
     const result = assertSaltSender(buildSalt(BOB, "every-chain", ENTROPY), ALICE);
-    expect(result).toEqual({ ok: false, error: `The salt starts with ${BOB}, not the sending account ${ALICE}.` });
+    expect(result).toEqual({ ok: false, error: `The salt starts with ${BOB}, not the sending account ${ALICE}. Use a new salt.` });
+  });
+
+  test("a salt that can't be signed with says its fix (R9): a new salt is built from the signing account (spec L565)", () => {
+    const wrongSender = assertSaltSender(buildSalt(BOB, "every-chain", ENTROPY), ALICE);
+    expect(wrongSender.ok).toBe(false);
+    if (!wrongSender.ok) expect(wrongSender.error.endsWith(" Use a new salt.")).toBe(true);
+    expect(assertSaltSender("0x1234", ALICE)).toEqual({ ok: false, error: "The salt 0x1234 isn't 32 bytes. Use a new salt." });
   });
 
   test("an error for a scope byte CreateX would reject, a short salt or a bad account", () => {

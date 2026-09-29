@@ -240,7 +240,11 @@ function init04(input: CheckInput, steps: readonly PlannedStep[]): Problem[] {
     // The facet's own module, not the init's last one: ERC20VotesInit ends with AccessControl even though
     // ERC20Votes is its own module (FX23).
     const module = facetModule(facet.name, spec);
-    if (initialized.has(module) || reported.has(module)) continue;
+    // A bundle's facet with no module of its own is provided by any step that initializes all the bundle does
+    // (GovernedVaultENSInit covers GovernedVaultInit), where a module facet needs its own module initialized.
+    const whole = spec.kind === "bundle" && !modulesOf(spec).has(module);
+    const provided = whole ? [...modulesOf(spec)].every((m) => initialized.has(m)) : initialized.has(module);
+    if (provided || reported.has(module)) continue;
     reported.add(module);
     const params: ProblemParams["INIT-04"] = { module, spec: spec.name, facet: facet.name };
     const consequence = CONSEQUENCES[module];
