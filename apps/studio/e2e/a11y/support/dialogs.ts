@@ -40,6 +40,28 @@ export async function closeWithEscape(page: Page, popup: Locator): Promise<void>
   await expect(popup).toHaveCount(0);
 }
 
+/**
+ * Clicks the scrim around `dialog` (IR L188): a point near a corner of the viewport that the dialog's box doesn't
+ * cover, so the press lands on the backdrop and nothing else.
+ */
+export async function clickScrim(page: Page, dialog: Locator): Promise<void> {
+  const box = await dialog.boundingBox();
+  const view = page.viewportSize();
+  if (!box || !view) throw new Error("The dialog or the viewport has no box to click around.");
+  const inset = 6;
+  const corners = [
+    { x: inset, y: view.height - inset },
+    { x: view.width - inset, y: view.height - inset },
+    { x: inset, y: inset },
+    { x: view.width - inset, y: inset },
+  ];
+  const clear = corners.find(
+    (p) => p.x < box.x || p.x > box.x + box.width || p.y < box.y || p.y > box.y + box.height,
+  );
+  if (!clear) throw new Error("The dialog covers every corner of the viewport, so there's no scrim to click.");
+  await page.mouse.click(clear.x, clear.y);
+}
+
 /** From the focused element: opens `popup`, checks it takes focus, closes it with Esc and checks focus came back. */
 export async function roundTrip(page: Page, open: () => Promise<void>, popup: Locator): Promise<void> {
   await markOrigin(page);
