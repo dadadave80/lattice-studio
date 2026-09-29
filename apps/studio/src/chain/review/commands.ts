@@ -77,7 +77,8 @@ const open = command<CommandArgsOf<"deploy.open">>({
   title: () => "Deploy…",
   category: "Deploy",
   keys: ["Mod+Enter"],
-  // Everywhere except text fields and dialogs (IR L13): the focused Log and menus too.
+  // Everywhere except text fields and dialogs (IR L13): the focused Log and the menu context too. An item of
+  // Studio's Menu takes ⌘/Ctrl+Enter as Enter itself (Base UI), so there the item runs instead (an FX47 follow-up).
   keyContext: ["global", "sheet", "card-rows", "tree", "list", "menu", "console"],
   palette: true,
   console: {

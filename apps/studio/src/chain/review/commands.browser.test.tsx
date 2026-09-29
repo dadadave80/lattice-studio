@@ -19,7 +19,7 @@ import { fakePort } from "../deploy/testing";
 import { handleKeyDown } from "@/commands/keys/dispatcher";
 import { FIXTURE_CATALOG } from "@/chain/infra";
 import { NEEDS_WALLET, predict, prediction } from "@/state";
-import { DialogHost } from "@/ui";
+import { Button, DialogHost, Menu, MenuItem } from "@/ui";
 import {
   bufferedServices, fakeChainService, onCleanup, overrideCommands, renderWithStudio, seedDeployState, type StudioOptions,
 } from "../../../test/harness";
@@ -56,7 +56,7 @@ async function predicted(): Promise<string> {
 }
 
 describe("deploy.open (Flow 12 step 1, IR L13)", () => {
-  test("is Deploy… on ⌘/Ctrl+Enter, in the palette and as console `deploy [chain]`", () => {
+  test("is Deploy…, bound to ⌘/Ctrl+Enter (pressing it is tested below), in the palette and as console `deploy [chain]`", () => {
     const open = getCommand("deploy.open");
     expect(open.title({})).toBe("Deploy…");
     expect(open.keys).toEqual(["Mod+Enter"]);
@@ -147,7 +147,7 @@ describe("deploy.open (Flow 12 step 1, IR L13)", () => {
   });
 });
 
-describe("⌘/Ctrl+Enter opens Deploy… from the Log and menus, never from text fields or dialogs (IR L13)", () => {
+describe("⌘/Ctrl+Enter opens Deploy… from the Log and the menu key context, never from text fields or dialogs (IR L13)", () => {
   beforeEach(() => {
     resetConsole();
     onCleanup(installShortcuts());
@@ -156,8 +156,8 @@ describe("⌘/Ctrl+Enter opens Deploy… from the Log and menus, never from text
 
   const reviewOpen = () => session.get().dialogs.some((d) => d.id === "deploy-review");
 
-  /** The review's host, the console, and a menu and a dialog stand-in, each with a focusable control. */
-  async function withConsole() {
+  /** The review's host, the console, a real menu (Studio's `Menu`), and menu-context and dialog stand-ins with a control each. */
+  async function withConsole(onItem: () => void = () => {}) {
     fakeChainService({ account: account(), catalog: deployableCatalog() }).install();
     installController(fakeDeployController());
     installFees();
@@ -167,8 +167,12 @@ describe("⌘/Ctrl+Enter opens Deploy… from the Log and menus, never from text
         <div style={{ height: "300px", display: "flex" }}>
           <ConsolePanel />
         </div>
+        <Menu trigger={<Button>Overflow test menu</Button>} label="Overflow test menu">
+          <MenuItem label="Foundry script" onSelect={onItem} />
+          <MenuItem label="Agent brief" onSelect={onItem} />
+        </Menu>
         <div data-keyctx="menu">
-          <button type="button">In a menu</button>
+          <button type="button">In the menu context</button>
         </div>
         <div data-keyctx="dialog">
           <button type="button">In a dialog</button>
@@ -189,11 +193,40 @@ describe("⌘/Ctrl+Enter opens Deploy… from the Log and menus, never from text
     await expect.poll(reviewOpen).toBe(true);
   });
 
-  test("from inside a menu", async () => {
+  test("from a control in the menu key context that doesn't take Enter itself", async () => {
     await withConsole();
-    (page.getByRole("button", { name: "In a menu" }).element() as HTMLElement).focus();
+    (page.getByRole("button", { name: "In the menu context" }).element() as HTMLElement).focus();
     await userEvent.keyboard("{Control>}{Enter}{/Control}");
     await expect.poll(reviewOpen).toBe(true);
+  });
+
+  /** Opens Studio's `Menu` by keyboard, the first item focused, and presses ⌘/Ctrl+Enter there. */
+  async function ctrlEnterOnMenuItem() {
+    const selected = vi.fn();
+    await withConsole(selected);
+    (page.getByRole("button", { name: "Overflow test menu" }).element() as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
+    const menu = page.getByRole("menu", { name: "Overflow test menu" });
+    await expect.element(menu).toBeVisible();
+    expect(menu.element().getAttribute("data-keyctx")).toBe("menu");
+    await expect.element(page.getByRole("menuitem", { name: "Foundry script" })).toHaveFocus();
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    return selected;
+  }
+
+  test("on an item of Studio's Menu, Base UI takes ⌘/Ctrl+Enter as Enter: the item runs and Deploy… doesn't (today)", async () => {
+    const selected = await ctrlEnterOnMenuItem();
+    await expect.poll(() => selected.mock.calls.length).toBe(1);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(reviewOpen()).toBe(false);
+  });
+
+  // IR L13 says everywhere but text fields and dialogs, menus included. The item handles the key and prevents its
+  // default, and the dispatcher leaves prevented keys alone, so this waits on a MenuItem or dispatcher change
+  // (reported as an FX47 follow-up). `fails` flags it the day it works.
+  test.fails("on an item of Studio's Menu, ⌘/Ctrl+Enter opens Deploy… (IR L13; not yet)", async () => {
+    await ctrlEnterOnMenuItem();
+    await expect.poll(reviewOpen, { timeout: 500 }).toBe(true);
   });
 
   test("not from the console's command line, a text field", async () => {

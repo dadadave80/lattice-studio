@@ -388,6 +388,9 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
       // An Error line: the deploy didn't go out, and the default "errors" announcements read it (spec L778).
       await expect(new ConsoleLog(page).line("Error", "You canceled in your wallet.")).toBeVisible();
       await expect(review.root.getByRole("button", { name: "Sign again", exact: true })).toBeVisible();
+      // A rejection keeps the simulation (spec L574): its section still reads Ready, never "Waiting" (L701).
+      await expect(review.section("Simulation")).toHaveAccessibleDescription("Ready");
+      await expect(review.section("Simulation").getByRole("button", { name: "Simulate again", exact: true })).toHaveCount(0);
       expect(rejected()).toBe(1);
       expect(await anvil.rpc<Hex>("eth_getCode", [predictedAddress(recipeProject("GovernedVault", { filled: true })), "latest"])).toBe("0x");
     });
