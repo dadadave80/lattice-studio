@@ -28,6 +28,12 @@ function firstCatalogLine(): string {
 }
 
 test.describe("Flow 1. First visit", () => {
+  // A first visit reaches nothing but Studio's own origin (spec L13, L882); `no-network.spec.ts` adds a recipe and
+  // an export to the run.
+  test.afterEach(({ blockedRequests }) => {
+    expect(blockedRequests, `outside requests:\n${blockedRequests.join("\n")}`).toEqual([]);
+  });
+
   test("opens an untitled project on the Start block, with no modal", async ({ page }) => {
     await openEmpty(page);
     const sheet = new SheetPage(page);

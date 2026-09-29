@@ -11,21 +11,14 @@ import { expect, test } from "../_support/fixtures.ts";
 import { focusRegion, region } from "../_support/keys.ts";
 import { checkEveryEmulation } from "./support/axe-check.ts";
 import {
-  DEPLOY_FAILURE_LINE, deployReview, failDeploy, openDeployReview, readyToDeploy, refuseTransactions, stayOnline,
-  tickAcknowledgements,
+  DEPLOY_FAILURE_LINE, deployReview, failDeploy, openDeployReview, readyToDeploy, refuseTransactions, tickAcknowledgements,
 } from "./support/deploy.ts";
-import { closeWithEscape, focusInside, originFocused, roundTrip } from "./support/dialogs.ts";
+import { clickScrim, closeWithEscape, focusInside, originFocused, roundTrip } from "./support/dialogs.ts";
 import { runInPalette, tabTo } from "./support/keyboard.ts";
 import { withoutKnownGaps } from "./support/known-gaps.ts";
 import { THEMES, expectTheme, seedTheme, type AppState } from "./support/states.ts";
 
 test.describe.configure({ mode: "default", timeout: 180_000 });
-
-// Every request here stays on the loopback, so the machine's own connection mustn't decide the result (it did once:
-// a Wi-Fi drop mid-run made Studio say "Deploy needs a connection" and the review never opened).
-test.beforeEach(async ({ context }) => {
-  await stayOnline(context);
-});
 
 /** The review and a refused deploy, scoped to the review (the page behind it is inert). */
 const DEPLOY_STATES: readonly AppState[] = [
@@ -109,5 +102,17 @@ test.describe("focus around deploying (spec L751-L761, WCAG 2.4.3)", () => {
     if (!said.includes(text)) problems.push(`refused send: "${text}" is logged but not announced (4.1.3)`);
     const unknown = withoutKnownGaps(problems, test.info());
     expect(unknown, unknown.join("\n")).toEqual([]);
+  });
+});
+
+test.describe("a scrim click leaves the Deploy review open (IR L188)", () => {
+  test("the review holds acknowledgements and a simulation, so the scrim doesn't close it", async ({ page, anvil }) => {
+    expect(anvil.url).toContain("127.0.0.1");
+    await readyToDeploy(page);
+    const review = await openDeployReview(page);
+    await clickScrim(page, review);
+    // Closing runs on the press itself; give it the time an exit animation would take before judging.
+    await page.waitForTimeout(400);
+    await expect(review).toBeVisible();
   });
 });

@@ -259,14 +259,14 @@ test.describe("Flow 3. Add a facet", () => {
   });
 
   test.describe("route 1: drag a catalog row onto the sheet (pointer)", () => {
-    // Not @smoke: `dragRowToSheet`'s real `page.mouse` sequence is flaky on this harness (observed roughly 1 run
-    // in 3 failing outright — the card never appears — even alone on the `chromium` project, no relation to the
-    // other timing bugs above), so it isn't a reliable pick for the WebKit smoke run. It passes far more often
-    // than not, so it stays as a real (non-@smoke) test rather than being thinned to a skip.
+    // The sheet's canvas, the drop target, arrives after the first paint: a drag that ends before it has loaded
+    // lands on the bare region and places nothing (this was the "1 run in 3" flake, and on a busy machine every
+    // run). So the drag waits for the sheet's tool strip, which the canvas brings.
     test("drops the card near the pointer, selected", async ({ page }) => {
       await openEmpty(page);
       const catalogPage = new CatalogPage(page);
       const sheet = new SheetPage(page);
+      await expect(sheet.root.getByRole("toolbar", { name: "Sheet tools" })).toBeVisible();
       const console_ = new ConsolePage(page);
 
       const box = await sheet.root.boundingBox();

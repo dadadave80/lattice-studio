@@ -19,7 +19,17 @@ this folder builds and serves the app, seeds state, runs Anvil and holds the hel
 - **Service workers** are blocked, so routes see every request. A suite about offline or updates opts in with
   `test.use({ serviceWorkers: "allow" })`, and that weakens the guard: requests the worker makes itself, and
   responses it serves from its cache, bypass `page.route` and `blockedRequests`. Such a suite asserts on the network
-  itself.
+  itself, as `e2e/offline/` does (a cache-busted request must fail once `context.setOffline(true)` is on). Seeding's
+  catalog hold is a `page.route` too, so under a controlling worker open the app with `openEmpty` and compose from
+  there rather than `seedProject`.
+- **CSP**: every page reports its `securitypolicyviolation` events to the automatic `cspViolations` fixture, and a
+  test fails when it ends with any left (spec L863-L865: no `unsafe-inline`, Base UI's styles through
+  `CSPProvider`). A test that provokes one on purpose asserts on it and then empties the list.
+- **The host's connection**: Chromium reports the machine's own network in `navigator.onLine` and the `online` and
+  `offline` events, so a dropped Wi-Fi link would make Studio say "Offline" and disable Deploy mid-run. The `anvil`
+  fixture applies `stayOnline(context)` (`network.ts`): the page ignores the host's connection, and the test's own
+  `context.setOffline` still takes it offline and back. A suite about going offline (`e2e/offline/`) doesn't ask for
+  `anvil`.
 
 ## Writing a suite
 
@@ -68,13 +78,14 @@ landed.
 
 | File | What it gives you |
 | --- | --- |
-| `fixtures.ts` | `test` with `blockedRequests` (automatic) and `anvil` (a fresh node on the prepared chain for this test, wired to the page) |
+| `fixtures.ts` | `test` with `blockedRequests` and `cspViolations` (both automatic) and `anvil` (a fresh node on the prepared chain for this test, wired to the page, kept online whatever the host's Wi-Fi does) |
+| `network.ts` | `keepLocal`, `recordCspViolations` and `stayOnline(context)`, which the fixtures apply; `isLocalUrl` |
 | `seed.ts` | `openEmpty(page)`, `seedProject(page, { project, deployments })`, `seedSettings(context, settings)`, `expectProject(page, name)` |
 | `projects.ts` | Projects to seed, built with core against the real catalog: `recipeProject("GovernedVault", { filled })`, `collisionsProject()` (30 cards, SEL-01), `projectFile()` and `importedProject(file)` (From file records), `filePayload(file)` for a file chooser, `shareLink(recipe)` (`page.goto("/" + link)`), `deploymentFor(project)` |
 | `anvil.ts` | `startAnvil(port)`, `acquireAnvil(port)`, `loadPrepared(node)`, `prepareAnvil(node, { recipes })`, `deployShared`, `etchVendored`, `etchSafe`, `sweepAnvils(port)`; `ALICE`, `BOB`, `SAFE` |
 | `wallet.ts` | `seedAnvilRpc(context, node)`, `connectMockWallet(page)` (console `chain anvil`, palette Connect wallet, Switch network), `MOCK_ACCOUNT` |
-| `keys.ts` | `nextRegion` / `previousRegion` (F6, Ctrl+F6), `focusRegion`, `focusedRegion`, `nextProblem` / `previousProblem` (F8), `openPalette`, `runInPalette(page, "Connect wallet")`, `runConsole(page, "place erc20")`, `pagePlatform`, `modifierKey(page)` (⌘ or Ctrl, from the page's own platform), `region(page, name)` |
-| `axe.ts` | `expectNoAxeViolations(page, { include, disable })` and `runAxe`: the `wcag2a` to `wcag22aa` tags with `target-size` on (spec L797) |
+| `keys.ts` | `nextRegion` / `previousRegion` (F6, Ctrl+F6), `focusRegion`, `focusedRegion`, `nextProblem` / `previousProblem` (F8), `openPalette`, `runInPalette(page, "Connect wallet")` (returns once the palette has closed, which is when the command runs; a disabled command keeps it open and fails the call), `paletteDialog`, `expectPaletteClosed`, `runConsole(page, "place erc20")`, `pagePlatform`, `modifierKey(page)` (⌘ or Ctrl, from the page's own platform), `region(page, name)` |
+| `axe.ts` | `expectNoAxeViolations(page, { include, disable })` and `runAxe`: the `wcag2a` to `wcag22aa` tags with `target-size` (2.5.8) and `label-content-name-mismatch` (2.5.3, spec L779) on (spec L797) |
 | `viewports.ts` | `NARROW_WIDTHS` (768, 375), `viewportAt(width)` for `test.use`, `tierAt(width)`, `expectTier(page, tier)` |
 | `built.ts` | `skipUnlessBuilt(page, …wps)`, `showsNotBuilt(page, wp)` |
 | `catalog.ts` | The built catalog in Node, `v1Recipes()`, `neededFor(recipe)`, `sharedContracts()`, `creationCode(names)` |
@@ -120,6 +131,15 @@ for (const width of NARROW_WIDTHS) {
   });
 }
 ```
+
+### Importing from the app
+
+Playwright runs specs under Node with its own TypeScript loader, which knows nothing of Vite's `@/` alias or
+`import.meta.env`. A spec may import a module from `src/` by relative path only when that module, and everything it
+imports, never reaches `@/…` (`@/contracts` above all) at runtime: `src/persist/db.ts` and
+`src/panels/console/export-enablement.ts` are fine, a component or a command module isn't, and the spec fails to
+load because the alias can't be resolved. Type-only imports (`import type …`) are always fine, since they're
+erased. Copy the constant into the page object instead, quoting the spec line it comes from.
 
 ## Rules
 
