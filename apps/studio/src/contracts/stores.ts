@@ -178,7 +178,7 @@ export function initialSession(): SessionState {
 // ---------------------------------------------------------------------------------------------------------
 // Settings store
 
-export type ThemeChoice = "shop" | "draft" | "system";
+export type ThemeChoice = "dark" | "light" | "system";
 
 export type SettingsState = {
   theme: ThemeChoice;

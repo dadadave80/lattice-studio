@@ -1,6 +1,6 @@
 /**
- * Keeps `<html>` in step with the Appearance settings (contracts §5.4, spec L631): `data-theme` (Shop is the
- * dark theme, Draft the light one, System follows `prefers-color-scheme`) and `data-motion="reduce"` (Reduce
+ * Keeps `<html>` in step with the Appearance settings (contracts §5.4, spec L631): `data-theme` (`light` or
+ * `dark`; System follows `prefers-color-scheme`) and `data-motion="reduce"` (Reduce
  * motion: Follow system, On or Off). Styles key off the attributes, never the media queries, so the in-app
  * choice wins over the system's.
  */
@@ -8,7 +8,7 @@ import type { ThemeId } from "@lattice-studio/tokens";
 import { settings, type SettingsState, type ThemeChoice } from "./stores";
 
 export function resolveTheme(choice: ThemeChoice, prefersDark: boolean): ThemeId {
-  if (choice === "system") return prefersDark ? "shop" : "draft";
+  if (choice === "system") return prefersDark ? "dark" : "light";
   return choice;
 }
 
