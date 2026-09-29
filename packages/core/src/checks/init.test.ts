@@ -407,7 +407,7 @@ describe("INIT-04", () => {
         severity: "blocker",
         where: [{ kind: "facet", facet: "ERC20Votes" }],
         params: { module: "ERC20Votes", spec: "ERC20VotesInit", facet: "ERC20Votes" },
-        message: "ERC20Votes has no init step, so ERC20Votes is never initialized.",
+        message: "ERC20Votes has no init step, so it is never initialized.",
         fixes: [{ id: "init.addStep", args: { spec: "ERC20VotesInit" } }],
       },
     ]);
@@ -434,7 +434,7 @@ describe("INIT-04", () => {
         severity: "blocker",
         where: [{ kind: "facet", facet: "GovernedVault" }],
         params: { module: "GovernedVault", spec: "", facet: "GovernedVault" },
-        message: "GovernedVault has no init step, so GovernedVault is never initialized.",
+        message: "GovernedVault has no init step, so it is never initialized.",
         fixes: [],
       },
     ]);
@@ -519,7 +519,7 @@ describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20Vo
     );
     const problems = only(run(recipe, realCatalog), "INIT-04").filter((p) => p.where.some((w) => w.kind === "facet" && w.facet === "GovernedVault"));
     expect(problems.map((p) => [p.id, p.params["module"], p.message])).toEqual([
-      ["INIT-04:GovernedVault", "GovernedVault", "GovernedVault has no init step, so GovernedVault is never initialized."],
+      ["INIT-04:GovernedVault", "GovernedVault", "GovernedVault has no init step, so it is never initialized."],
     ]);
     expect(problems[0]?.fixes).toEqual([]);
   });

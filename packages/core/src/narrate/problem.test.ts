@@ -243,6 +243,7 @@ describe("INIT", () => {
 
   test("INIT-04: generic wording without a consequence", () => {
     expect(render("INIT-04", { module: "ERC20Init", spec: "ERC20Init", facet: "ERC20" })).toBe("ERC20 has no init step, so ERC20Init is never initialized.");
+    expect(render("INIT-04", { module: "GovernedVault", spec: "GovernedVaultInit", facet: "GovernedVault" })).toBe("GovernedVault has no init step, so it is never initialized.");
   });
 
   test("INIT-04: a sameCall module with no init", () => {

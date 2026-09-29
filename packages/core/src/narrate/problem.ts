@@ -150,7 +150,9 @@ function renderInit03(p: ProblemParams["INIT-03"]): string {
 
 function renderInit04(p: ProblemParams["INIT-04"]): string {
   if (p.facet) {
-    return p.consequence ? `${p.facet} has no init step, so ${clause(p.consequence)}.` : `${p.facet} has no init step, so ${p.module} is never initialized.`;
+    if (p.consequence) return `${p.facet} has no init step, so ${clause(p.consequence)}.`;
+    // A bundle facet with no entry of its own is its own module (FX48): "so it is never initialized", not "so X … X".
+    return `${p.facet} has no init step, so ${p.module === p.facet ? "it" : p.module} is never initialized.`;
   }
   return p.sameCallWith
     ? `${p.module} has no init step; it initializes in the same call as ${p.sameCallWith}, so it needs one too.`
