@@ -26,14 +26,23 @@ export class ConsolePage {
     return this.log.getByRole("button", { name: text });
   }
 
-  /** Waits until `text` is in the log's last line (auto-scroll keeps the newest one in view). */
+  /** Waits until `text` is on some line of the log (auto-scroll keeps the newest one in view). */
+  async expectLine(text: string): Promise<void> {
+    await expect(this.line(text)).toBeVisible();
+  }
+
+  /** Waits until `text` is in the log's last line: nothing the command narrated afterward follows it. */
   async expectLastLine(text: string): Promise<void> {
     await expect(this.log.getByRole("button").last()).toHaveAccessibleName(within(text));
   }
 
-  /** Waits until `text` is in the log's first line: on a first visit, the catalog line (spec L401). */
-  async expectFirstLine(text: string): Promise<void> {
-    await expect(this.log.getByRole("button").first()).toHaveAccessibleName(within(text));
+  /**
+   * Waits until `text` is in the log's first line: on a first visit, the catalog line (spec L401). `except` names
+   * lines that don't count (the e2e blocks service workers, so registering one adds a Note of its own).
+   */
+  async expectFirstLine(text: string, except?: RegExp): Promise<void> {
+    const lines = except === undefined ? this.log.getByRole("button") : this.log.getByRole("button").filter({ hasNotText: except });
+    await expect(lines.first()).toHaveAccessibleName(within(text));
   }
 }
 

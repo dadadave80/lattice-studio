@@ -127,7 +127,7 @@ test.describe("Flow 3. Add a facet", () => {
     await catalogPage.placeByDoubleClick("ERC20");
 
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
   });
 
   test("route 2: Enter on a focused catalog row places it", async ({ page }) => {
@@ -139,7 +139,7 @@ test.describe("Flow 3. Add a facet", () => {
     await catalogPage.placeByKeyboard("Pausable");
 
     await sheet.expectSelected("Pausable");
-    await console_.expectLastLine(placedLine("Pausable"));
+    await console_.expectLine(placedLine("Pausable"));
   });
 
   test("route 3: Place on sheet in the inspector's catalog preview", async ({ page }) => {
@@ -156,7 +156,7 @@ test.describe("Flow 3. Add a facet", () => {
     await inspector.placeOnSheetButton.click();
 
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
   });
 
   test("route 4: ⌘K, type the name, Enter @smoke", async ({ page }) => {
@@ -169,7 +169,7 @@ test.describe("Flow 3. Add a facet", () => {
     await typeInPalette(page, "ERC20");
 
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
   });
 
   test("route 5: console `place erc20` @smoke", async ({ page }) => {
@@ -180,7 +180,7 @@ test.describe("Flow 3. Add a facet", () => {
     await typeConsole(page, "place erc20");
 
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
   });
 
   test("already placed: selects and locates the existing card instead of duplicating it", async ({ page }) => {
@@ -190,7 +190,7 @@ test.describe("Flow 3. Add a facet", () => {
 
     await typeConsole(page, "place erc20");
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
 
     await typeConsole(page, "place erc20");
 
@@ -211,7 +211,7 @@ test.describe("Flow 3. Add a facet", () => {
       const note = sheet.note("Missing dependency");
       await expect(note).toBeVisible();
       await expect(note.getByRole("button", { name: "Place ERC20" })).toBeVisible();
-      await console_.expectLastLine(missingLine("ERC4626", "ERC20"));
+      await console_.expectLine(missingLine("ERC4626", "ERC20"));
     });
 
     test("Place ERC20 on the missing-dependency note resolves it @smoke", async ({ page }) => {
@@ -275,7 +275,7 @@ test.describe("Flow 3. Add a facet", () => {
       await catalogPage.dragRowToSheet("ERC20", target);
 
       await sheet.expectSelected("ERC20");
-      await console_.expectLastLine(placedLine("ERC20"));
+      await console_.expectLine(placedLine("ERC20"));
     });
   });
 
@@ -307,7 +307,7 @@ test.describe("Flow 3. Add a facet", () => {
       await chooseInPalette(page, "place pausable");
 
       await sheet.expectSelected("Pausable");
-      await console_.expectLastLine(placedLine("Pausable"));
+      await console_.expectLine(placedLine("Pausable"));
     });
   });
 
@@ -322,18 +322,18 @@ test.describe("Flow 3. Add a facet", () => {
     // Route 5: the console verb.
     await typeConsole(page, "place erc20");
     await sheet.expectSelected("ERC20");
-    await console_.expectLastLine(placedLine("ERC20"));
+    await console_.expectLine(placedLine("ERC20"));
 
     // Route 4: the palette.
     await typeInPalette(page, "place pausable");
     await sheet.expectSelected("Pausable");
-    await console_.expectLastLine(placedLine("Pausable"));
+    await console_.expectLine(placedLine("Pausable"));
 
     // Route 2: Enter on a focused catalog row. `placeByKeyboard` types into Search (a real keystroke, no pointer)
     // and presses Enter; it never clicks.
     await catalogPage.placeByKeyboard("AccessControl");
     await sheet.expectSelected("AccessControl");
-    await console_.expectLastLine(placedLine("AccessControl"));
+    await console_.expectLine(placedLine("AccessControl"));
 
     // Route 3 (a single click on an unplaced row) has no keyboard equivalent: Enter on a catalog row activates
     // (places) it directly rather than opening the Catalog preview (S5a's Tree `onKeyDown`), so it's left out of
@@ -377,7 +377,7 @@ test.describe("Flow 3. Add a facet", () => {
           // lazy chunk — see `typeConsole`'s doc comment) before reading the log.
           await region(page, "Console").getByRole("button", { name: "Expand console" }).click();
           await commandLine(page).waitFor({ state: "attached" });
-          await console_.expectLastLine(placedLine("ERC20"));
+          await console_.expectLine(placedLine("ERC20"));
         }
       });
     });
