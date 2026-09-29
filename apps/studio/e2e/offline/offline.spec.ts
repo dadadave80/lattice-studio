@@ -75,9 +75,9 @@ async function place(page: Page, facet: string): Promise<void> {
 
 /**
  * Waits until autosave (750 ms after the last edit, `src/persist/persistence.ts`) has stored the last project with
- * `facet` on it, so a reload lands there (spec L401) instead of racing the write.
+ * exactly `facets` on it, so a reload lands there (spec L401) instead of racing the write.
  */
-async function waitForAutosave(page: Page, facet: string): Promise<void> {
+async function waitForAutosave(page: Page, facets: readonly string[]): Promise<void> {
   const stored = () =>
     page.evaluate(
       async ({ dbName, lastKey }) => {
@@ -103,7 +103,7 @@ async function waitForAutosave(page: Page, facet: string): Promise<void> {
       },
       { dbName: DB_NAME, lastKey: META.lastProject },
     );
-  await expect.poll(stored, { message: `autosave stores the project with ` }).toContain(facet);
+  await expect.poll(stored, { message: `autosave stores the project with [${facets.join(", ")}]` }).toEqual(facets);
 }
 
 /** Without the File System Access API, saving a file is a browser download (Firefox and Safari's path). */
@@ -127,7 +127,7 @@ test.describe("Offline (spec L830-L832)", () => {
     expect(await networkAnswers(page), "still offline after the reload").toBe(false);
   });
 
-  test("a facet whose shard was warmed keeps its detail offline; one never placed doesn't", async ({ page, context }) => {
+  test("a facet whose shard was warmed places offline with its detail; one never placed has none", async ({ page, context }) => {
     await openControlled(page);
     await place(page, "ERC20");
     await expect.poll(() => warmedShards(page), { message: "placing ERC20 warms its shard" }).toContainEqual(
@@ -136,11 +136,22 @@ test.describe("Offline (spec L830-L832)", () => {
     const erc20 = (await warmedShards(page)).find((path) => path.endsWith("/shards/ERC20.json")) ?? "";
     const cold = erc20.replace(/ERC20\.json$/, "AccessControl.json");
     expect(await warmedShards(page)).not.toContain(cold);
-    await waitForAutosave(page, "ERC20");
+    // Take it off again, so the offline session places it afresh.
+    await region(page, "Title bar").getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(region(page, "Sheet").getByRole("group", { name: /^ERC20(,|$)/ })).toHaveCount(0);
+    await waitForAutosave(page, []);
 
     await goOffline(context, page);
     await page.reload();
-    await expect(region(page, "Sheet").getByRole("group", { name: /^ERC20(,|$)/ })).toBeVisible();
+    await expect(region(page, "Sheet").getByRole("toolbar", { name: "Sheet tools" })).toBeVisible();
+    await expect(region(page, "Sheet").getByRole("group", { name: /^ERC20(,|$)/ })).toHaveCount(0);
+
+    // Placing it offline loads its detail shard (the inspector and the warm-up ask for it), and the worker answers.
+    const shard = page.waitForResponse((response) => new URL(response.url()).pathname === erc20);
+    await place(page, "ERC20");
+    const response = await shard;
+    expect(response.status(), "the warmed shard loads offline").toBe(200);
+    expect(response.fromServiceWorker(), "from the service worker's cache").toBe(true);
 
     const status = (path: string) =>
       page.evaluate(async (url) => {
@@ -161,7 +172,7 @@ test.describe("Offline (spec L830-L832)", () => {
     await saveThroughDownloads(context);
     await openControlled(page);
     await place(page, "ERC20");
-    await waitForAutosave(page, "ERC20");
+    await waitForAutosave(page, ["ERC20"]);
     await goOffline(context, page);
     await page.reload();
     await expect(region(page, "Sheet").getByRole("group", { name: /^ERC20(,|$)/ })).toBeVisible();
