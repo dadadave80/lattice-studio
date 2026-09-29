@@ -9,8 +9,8 @@ import { collisionsProject, recipeProject } from "../../_support/projects.ts";
 import { openEmpty, seedProject, seedSettings } from "../../_support/seed.ts";
 import { isFocused, openPalette, paletteInput, runInPalette, tabTo, waitForSheet } from "./keyboard.ts";
 
-/** The two themes Studio draws (spec: Shop and Draft); `system` resolves to one of them. */
-export const THEMES = ["shop", "draft"] as const satisfies readonly ThemeChoice[];
+/** The two themes Studio draws (Light and Dark); `system` resolves to one of them. */
+export const THEMES = ["dark", "light"] as const satisfies readonly ThemeChoice[];
 export type Theme = (typeof THEMES)[number];
 
 /** Seeds the theme before the app's first script runs. Call before the first `page.goto`. */

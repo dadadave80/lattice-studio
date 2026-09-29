@@ -142,12 +142,25 @@ test.describe("seeding @smoke", () => {
   });
 
   test("settings reach the app before its first script", async ({ page, context }) => {
-    await seedSettings(context, { theme: "draft", rpc: { 31337: "http://127.0.0.1:1" } });
+    await seedSettings(context, { theme: "light", rpc: { 31337: "http://127.0.0.1:1" } });
     await openEmpty(page);
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "draft");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}") as { rpc?: Record<string, string> }, SETTINGS_KEY);
     expect(stored.rpc?.["31337"]).toBe("http://127.0.0.1:1");
   });
+
+  for (const [saved, theme] of [["shop", "dark"], ["draft", "light"]] as const) {
+    test(`a theme saved as "${saved}" before the rename opens in the ${theme} theme`, async ({ page, context }) => {
+      await context.addInitScript(
+        ({ key, value }) => window.localStorage.setItem(key, JSON.stringify({ theme: value })),
+        { key: SETTINGS_KEY, value: saved },
+      );
+      // The system prefers the other theme, so falling back to System would show the wrong one.
+      await page.emulateMedia({ colorScheme: theme === "dark" ? "light" : "dark" });
+      await openEmpty(page);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    });
+  }
 
   test("records name the address core predicts", () => {
     const project = recipeProject("ERC20", { filled: true });
