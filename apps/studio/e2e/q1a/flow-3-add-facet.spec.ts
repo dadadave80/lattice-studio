@@ -261,12 +261,15 @@ test.describe("Flow 3. Add a facet", () => {
   test.describe("route 1: drag a catalog row onto the sheet (pointer)", () => {
     // The sheet's canvas, the drop target, arrives after the first paint: a drag that ends before it has loaded
     // lands on the bare region and places nothing (this was the "1 run in 3" flake, and on a busy machine every
-    // run). So the drag waits for the sheet's tool strip, which the canvas brings.
+    // run). So the drag waits for the drop target itself: the canvas marks its root `data-drop-target="ready"`
+    // once the interactions layer's shell has registered it (it doesn't wait for the layer's lazy overlays: a drop
+    // before they load is placed all the same, `DropEarly.browser.test.tsx`). The tool strip isn't that condition:
+    // it comes from a different chunk.
     test("drops the card near the pointer, selected", async ({ page }) => {
       await openEmpty(page);
       const catalogPage = new CatalogPage(page);
       const sheet = new SheetPage(page);
-      await expect(sheet.root.getByRole("toolbar", { name: "Sheet tools" })).toBeVisible();
+      await expect(sheet.root.locator('.react-flow[data-drop-target="ready"]')).toBeVisible();
       const console_ = new ConsolePage(page);
 
       const box = await sheet.root.boundingBox();

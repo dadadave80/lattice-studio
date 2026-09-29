@@ -25,9 +25,9 @@
  *   `DiamondIntrospectionInit.initImmutable` (`automatic: "initImmutable"`, locked) — the automatic ERC-165 step
  *   this file's step-3 test needs. `SafeDiamondCut`'s own init registers the flags itself (spec L468) and has no
  *   automatic step at all; neither recipe has 2+ *movable* steps (ERC20's only movable step is ERC20Init itself),
- *   so "Reorder steps automatically" (needs 2+) and an actual ↑/↓ or Alt+↑/↓ move have nowhere to run — see the
- *   Follow-ups in the WP-Q1c report. ERC20Init's own ↑/↓ buttons *do* render (`movable` is 1, not null, and the
- *   step isn't locked), both disabled at the list's one edge, which this file does check.
+ *   so the moves themselves live in `flow-07-init-order.spec.ts`, on `seeds.ts`'s Blank diamond + ERC20Init (WP-FX50).
+ *   ERC20Init's own ↑/↓ buttons *do* render (`movable` is 1, not null, and the step isn't locked), both disabled
+ *   at the list's one edge, which this file does check.
  */
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../_support/fixtures.ts";
