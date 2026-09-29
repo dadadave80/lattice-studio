@@ -117,6 +117,12 @@
     color: GrayText;
   }
 
+  /* Precedence: a disabled row stays navigable, so it is often highlighted too. Disabled comes first and the
+     highlighted rules after it, at equal specificity, so a highlighted disabled row stays HighlightText on Highlight. */
+  .row:has(> .item[data-disabled]) .content {
+    color: GrayText;
+  }
+
   .item[data-highlighted] .slot,
   .row:has(> .item[data-highlighted]) .content,
   .row:has(> .item[data-highlighted]) .reason,
@@ -126,9 +132,5 @@
 
   .row:has(> .item[data-highlighted]) .content {
     forced-color-adjust: none;
-  }
-
-  .row:has(> .item[data-disabled]) .content {
-    color: GrayText;
   }
 }

@@ -15,7 +15,7 @@ import { MenuRadioGroup } from "./MenuRadioGroup";
 import { MenuRadioItem } from "./MenuRadioItem";
 import { MenuSeparator } from "./MenuSeparator";
 import { Submenu } from "./Submenu";
-import { axeViolations } from "../testing/axe";
+import { axeViolations, emulateForcedColors } from "../testing/axe";
 
 function ExportMenu({ onFoundry = () => {}, onDisabled = () => {} }: { onFoundry?: () => void; onDisabled?: () => void }) {
   return (
@@ -117,6 +117,65 @@ describe("Menu", () => {
     expect(await axeViolations(menu, { rules: { "label-content-name-mismatch": { enabled: true } } })).toEqual([]);
   });
 
+  test("checkbox, radio and submenu items are named by their label and described by their reason", async () => {
+    await renderWithStudio(
+      <Menu trigger={<Button>View</Button>} label="View">
+        <MenuCheckboxItem label="Minimap" checked onCheckedChange={() => {}} />
+        <MenuCheckboxItem label="Snap" checked={false} onCheckedChange={() => {}} disabledReason="Open a project first" />
+        <MenuRadioGroup label="Theme" value="shop" onValueChange={() => {}}>
+          <MenuRadioItem value="shop" label="Shop" />
+          <MenuRadioItem value="draft" label="Draft" disabledReason="Draft needs a project" />
+        </MenuRadioGroup>
+        <Submenu label="Move to…" disabledReason="Select a facet first">
+          <MenuItem label="Left" onSelect={() => {}} />
+        </Submenu>
+      </Menu>,
+    );
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    const minimap = page.getByRole("menuitemcheckbox", { name: "Minimap" });
+    await expect.element(minimap).toBeChecked();
+    await expect.element(minimap).toHaveAccessibleDescription("");
+    const snap = page.getByRole("menuitemcheckbox", { name: "Snap" });
+    await expect.element(snap).not.toBeChecked();
+    expect(snap.element().getAttribute("aria-disabled")).toBe("true");
+    await expect.element(snap).toHaveAccessibleDescription("Open a project first");
+    const shop = page.getByRole("menuitemradio", { name: "Shop" });
+    await expect.element(shop).toBeChecked();
+    await expect.element(shop).toHaveAccessibleDescription("");
+    const draft = page.getByRole("menuitemradio", { name: "Draft" });
+    expect(draft.element().getAttribute("aria-disabled")).toBe("true");
+    await expect.element(draft).toHaveAccessibleDescription("Draft needs a project");
+    const move = item("Move to…");
+    expect(move.element().getAttribute("aria-disabled")).toBe("true");
+    await expect.element(move).toHaveAccessibleDescription("Select a facet first");
+  });
+
+  test("forced colors: a highlighted disabled item keeps its label in HighlightText, not GrayText", async () => {
+    await emulateForcedColors(true);
+    onCleanup(() => void emulateForcedColors(false));
+    await renderWithStudio(<ExportMenu />);
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    const safe = item("Safe batch");
+    await expect.element(safe).toHaveFocus();
+    await expect.poll(() => safe.element().hasAttribute("data-highlighted")).toBe(true);
+    const colorOf = (color: string) => {
+      const probe = document.createElement("span");
+      probe.style.color = color;
+      document.body.append(probe);
+      const resolved = getComputedStyle(probe).color;
+      probe.remove();
+      return resolved;
+    };
+    const label = safe.element().parentElement?.querySelector<HTMLElement>('[id$="-label"]');
+    const reason = safe.element().parentElement?.querySelector<HTMLElement>('[id$="-reason"]');
+    expect(label && getComputedStyle(label).color).toBe(colorOf("HighlightText"));
+    expect(reason && getComputedStyle(reason).color).toBe(colorOf("HighlightText"));
+    expect(label && getComputedStyle(label).color).not.toBe(colorOf("GrayText"));
+  });
+
   describe("⌘/Ctrl+Enter on a focused item", () => {
     test("reaches the document-level handler and doesn't activate the item; plain Enter still does", async () => {
       const onFoundry = vi.fn();
@@ -167,6 +226,7 @@ describe("Menu", () => {
       await expect.poll(() => seen.length).toBe(3);
       expect(seen).toEqual([false, false, false]);
       expect(toggled).not.toHaveBeenCalled();
+      expect(page.getByRole("menu", { name: "Move to…" }).elements()).toHaveLength(0);
     });
   });
 

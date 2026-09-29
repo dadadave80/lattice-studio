@@ -32,7 +32,7 @@ type MenuRowProps = {
  */
 export function MenuRow({ id, label, reason, slot = false, end, children }: MenuRowProps) {
   return (
-    <div className={styles.row}>
+    <div className={styles.row} role="none">
       {children}
       <span className={styles.content} aria-hidden="true">
         {slot ? <span className={styles.slot} /> : null}
