@@ -16,15 +16,6 @@ export type KnownGap = {
 };
 
 export const KNOWN_GAPS: readonly KnownGap[] = [
-  {
-    // A disabled menu item shows its reason under the label inside the item (`MenuItem.tsx`: named by the label,
-    // described by the reason), so the item's visible text is more than its name. Found when FX45 switched the rule
-    // on (the Export menu with blockers).
-    id: "FX45-G2 disabled menu item reason in its text",
-    owner: "S0 · apps/studio/src/ui/overlays (MenuItem and the other menu items)",
-    rule: "spec L779 · WCAG 2.5.3",
-    matches: (finding) => /: label-content-name-mismatch .*role="menuitem"[^>]*aria-disabled="true"/.test(finding),
-  },
 ];
 
 /** Splits findings into known gaps (annotated on `info`) and the rest, which fail the test. */
