@@ -6,7 +6,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { doc, startCatalogDrag } from "@/contracts";
 import { fixtureCatalog } from "../../../test/harness";
-import { client, renderInteractSheet, selection, sheetProject } from "./testing/interact-harness";
+import { client, flowElement, renderInteractSheet, selection, sheetProject } from "./testing/interact-harness";
 
 const gate = vi.hoisted(() => {
   let release: () => void = () => {};
@@ -36,7 +36,7 @@ describe("dropping a catalog row before the overlays have loaded", () => {
     const facet = fixtureCatalog().facets.map((f) => f.name).find((name) => !project.recipe.facets.includes(name));
     if (!facet) throw new Error("Every fixture facet is placed.");
     // The drop target is up while the chunk is held back.
-    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await expect.poll(() => flowElement().dataset.dropTarget).toBe("ready");
     expect(overlays()).toBeNull();
 
     startCatalogDrag(facet, { pointerId: 11, ...client({ x: -100, y: 300 }) });

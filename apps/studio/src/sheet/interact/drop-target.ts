@@ -61,7 +61,10 @@ export function useSheetDropTarget(): void {
         void runCommand(commandRef("facet.place", { facet: drag.facet, at: landingPoint(drag, root) }), "button");
       },
     });
+    // Says the sheet takes drops now (the e2e drags once it does).
+    root.setAttribute("data-drop-target", "ready");
     return () => {
+      root.removeAttribute("data-drop-target");
       stop();
       show(null);
     };
