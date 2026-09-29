@@ -252,6 +252,20 @@ describe("the review's marks after a change or a sign (spec L562, L574, L601)", 
     expect(changedSinceReview({ phase: "pending", snapshot: OTHER, changedSinceReview: true }, HASH)).toBe(false);
   });
 
+  test("simulating again needs a change: a first simulation, a changed review with no snapshot, and a deploy under way aren't", () => {
+    // The review's first simulation isn't "again": no change was marked and the snapshot is the recipe's.
+    expect(resimulating({ phase: "simulating", snapshot: HASH }, HASH)).toBe(false);
+    expect(resimulating({ phase: "simulating" }, HASH)).toBe(false);
+    // Marked changed, settled in Review, and no snapshot to be older than the recipe: the mark stays, nothing simulates.
+    expect(resimulating({ phase: "review", changedSinceReview: true }, HASH)).toBe(false);
+    expect(changedSinceReview({ phase: "review", changedSinceReview: true }, HASH)).toBe(true);
+    // A failed deploy is before the next sign: an edit the controller hasn't taken up is simulating again.
+    expect(resimulating({ phase: "failed", snapshot: OTHER, changedSinceReview: true }, HASH)).toBe(true);
+    // Once a transaction is on its way, nothing "simulates again", whatever the flag or the snapshot says.
+    expect(resimulating({ phase: "pending", snapshot: OTHER, changedSinceReview: true }, HASH)).toBe(false);
+    expect(resimulating({ phase: "awaitingSignature", snapshot: OTHER }, HASH)).toBe(false);
+  });
+
   test("the sign step's reason shows while the simulation stands, unless the Simulation section says it", () => {
     const canceled = "You canceled in your wallet.";
     const named = (id: number) => (id === 11155111 ? "Sepolia" : `Chain ${id}`);

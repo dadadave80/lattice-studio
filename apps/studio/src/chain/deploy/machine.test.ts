@@ -60,6 +60,39 @@ function predicted(h: DeployHarness): Address {
   return p.address;
 }
 
+/** `FailedContractCreation(CreateX)`, as CreateX reverts when the creation fails (no reason, spec L75). */
+const FAILED_CREATION = encodeErrorResult({
+  abi: parseAbi(["error FailedContractCreation(address emitter)"]), errorName: "FailedContractCreation", args: [CREATEX],
+});
+
+/** A rig on the CreateX path, with the proxy's creation code loaded. */
+function createxRig(): Rig {
+  const base = project();
+  const r = rig({ project: { ...base, deploy: { ...base.deploy, path: "createx" } } });
+  r.h.code.set("Lattice", creationCode("Lattice"));
+  return r;
+}
+
+/** Holds every `codeAt` read until the returned function is called. */
+function holdCodeAt(h: DeployHarness): () => void {
+  let release = (): void => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const read = h.port.codeAt.bind(h.port);
+  h.port.codeAt = async (chainId, address) => {
+    const answer = read(chainId, address);
+    await held;
+    return answer;
+  };
+  return release;
+}
+
+/** The addresses `codeAt` was asked about, lower-cased. */
+function codeReads(h: DeployHarness): string[] {
+  return h.port.calls.filter((c) => c.method === "codeAt").map((c) => String(c.args[1]).toLowerCase());
+}
+
 /** Open, simulate, sign: the transaction is pending. Returns its hash. */
 async function submit({ h, m }: Rig): Promise<Hex> {
   m.open();
@@ -115,6 +148,74 @@ describe("review and simulation", () => {
     expect(line?.tag).toBe("Error");
     expect(line?.text).toMatch(/^Deploy reverted/);
     expect(h.port.calls.filter((c) => c.method === "noteEstimate").at(-1)?.args).toEqual([SEPOLIA_ID, null]);
+  });
+
+  describe("CreateX's FailedContractCreation before anything is signed (spec L75)", () => {
+    /** Opens a CreateX review whose simulation (or, with `estimate`, its eth_call and gas estimate) reverts so. */
+    async function simulated(code: { proxy?: boolean; diamond?: boolean }, estimate = false) {
+      const r = createxRig();
+      const { h, m } = r;
+      const p = h.inputs.prediction();
+      if (p.status !== "ready") throw new Error(p.reason);
+      const proxy = createxProxy({ from: p.from, salt: p.salt, chainId: SEPOLIA_ID });
+      if (code.proxy) h.port.setCode(proxy, "0x6000");
+      if (estimate) h.port.patch(SEPOLIA_ID, { simulate: false });
+      // Only the explanation's reads see the diamond's code: the probe stays clean, as NET-05 would have stopped it.
+      if (code.diamond) {
+        const read = h.port.codeAt.bind(h.port);
+        h.port.codeAt = async (chainId, address) => {
+          const answer = await read(chainId, address);
+          return address.toLowerCase() === p.address.toLowerCase() ? { ok: true, value: "0x6000" } : answer;
+        };
+      }
+      h.port.simulation = { kind: "reverted", block: 50, data: FAILED_CREATION, method: estimate ? "call" : "simulate" };
+      m.open();
+      await flush();
+      return { ...r, proxy, diamond: p.address };
+    }
+
+    const cases = [
+      { name: "the proxy has code", code: { proxy: true }, says: "The salt's CREATE3 proxy", tail: "has none: this salt was used before. Use a new salt." },
+      { name: "the diamond has code", code: { diamond: true }, says: "The diamond address", tail: "has code on Sepolia but the salt's CREATE3 proxy" },
+      { name: "neither has code", code: {}, says: "Neither the salt's CREATE3 proxy", tail: "so the salt is free: the creation itself failed." },
+    ];
+    for (const { name, code, says, tail } of cases) {
+      test(`the simulation reverts and ${name}: said from both addresses' code, without a replay sentence`, async () => {
+        const { h, m, proxy, diamond } = await simulated(code);
+        const revert = m.state().simulation?.revert ?? "";
+        expect(m.state()).toMatchObject({ phase: "review", simulation: { ok: false, block: 50 } });
+        expect(revert).toMatch(/^Deploy reverted in CreateX: `FailedContractCreation\(/);
+        expect(revert).toContain(`\`. ${says}`);
+        expect(revert).toContain(tail);
+        expect(revert).toContain(formatAddress(proxy));
+        expect(revert).toContain(formatAddress(diamond));
+        expect(revert).not.toContain("check the salt's addresses for code");
+        // The simulation is the eth_call: nothing replayed it.
+        expect(revert).not.toContain("Replayed with `eth_call`");
+        expect(codeReads(h)).toEqual(expect.arrayContaining([proxy.toLowerCase(), diamond.toLowerCase()]));
+        expect(h.said.lines.at(-1)).toEqual({ tag: "Error", text: revert });
+      });
+    }
+
+    test("the gas estimate reverts (no eth_simulateV1): explained the same way", async () => {
+      const { m, proxy } = await simulated({ proxy: true }, true);
+      const revert = m.state().simulation?.revert ?? "";
+      expect(revert).toContain(`The salt's CREATE3 proxy ${formatAddress(proxy)} has code on Sepolia`);
+      expect(revert).toContain("this salt was used before. Use a new salt.");
+    });
+
+    test("a code read that fails says it couldn't read them", async () => {
+      const r = createxRig();
+      const { h, m } = r;
+      h.port.codeAt = async () => ({ ok: false, error: "Sepolia's public RPC isn't answering." });
+      h.port.simulation = { kind: "reverted", block: 51, data: FAILED_CREATION, method: "simulate" };
+      m.open();
+      await flush();
+      expect(m.state().simulation?.revert).toMatch(
+        /^Deploy reverted in CreateX: `FailedContractCreation\(.*\)`\. Couldn't read code at the salt's addresses on Sepolia: Sepolia's public RPC isn't answering\.$/,
+      );
+      expect(m.state().phase).toBe("review");
+    });
   });
 
   test("an RPC failure stays in Review with the spec's sentence", async () => {
@@ -583,16 +684,14 @@ describe("tracking", () => {
       { proxyCode: false, says: "Neither the salt's CREATE3 proxy", tail: "has code on Sepolia, so the salt is free: the creation itself failed." },
     ];
     for (const { proxyCode, says, tail } of cases) {
-      const base = project();
-      const r = rig({ project: { ...base, deploy: { ...base.deploy, path: "createx" } } });
+      const r = createxRig();
       const { h, m } = r;
-      h.code.set("Lattice", creationCode("Lattice"));
       const hash = await submit(r);
       const record = recordOf(h, hash);
       expect(record.path).toBe("createx");
       const proxy = createxProxy({ from: record.deployer, salt: record.salt, chainId: SEPOLIA_ID });
       if (proxyCode) h.port.setCode(proxy, "0x6000");
-      h.port.replayData = encodeErrorResult({ abi: parseAbi(["error FailedContractCreation(address emitter)"]), errorName: "FailedContractCreation", args: [CREATEX] });
+      h.port.replayData = FAILED_CREATION;
       h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 42 });
       await flush();
       const error = m.state().error ?? "";
@@ -603,11 +702,100 @@ describe("tracking", () => {
       expect(error).toContain(formatAddress(record.address));
       expect(error).toContain(tail);
       expect(error).toMatch(/Replayed with `eth_call` at the block before, the creation reverts the same way\.$/);
-      const read = h.port.calls.filter((c) => c.method === "codeAt").map((c) => String(c.args[1]).toLowerCase());
-      expect(read).toEqual(expect.arrayContaining([proxy.toLowerCase(), record.address.toLowerCase()]));
-      expect(h.said.lines.at(-1)).toEqual({ tag: "Error", text: error });
+      expect(codeReads(h)).toEqual(expect.arrayContaining([proxy.toLowerCase(), record.address.toLowerCase()]));
+      // The Error line with the decoder's hint first, then the explanation as its own line once the reads are in.
+      const [reverted, explained] = h.said.lines.slice(-2);
+      expect(reverted?.tag).toBe("Error");
+      expect(reverted?.text).toMatch(/^Deploy reverted in CreateX: `FailedContractCreation\(.*CreateX gives no reason when creation fails/);
+      expect(explained).toEqual({ tag: "Error", text: error.slice(error.indexOf(proxyCode ? "The salt's" : "Neither")) });
       expect(h.records.get(SEPOLIA_ID, record.address)).toMatchObject({ status: "failed", block: 42 });
     }
+  });
+
+  test("a failed deploy is recorded and said before the code reads return; the explanation attaches after", async () => {
+    const r = createxRig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    const record = recordOf(h, hash);
+    h.port.setCode(createxProxy({ from: record.deployer, salt: record.salt, chainId: SEPOLIA_ID }), "0x6000");
+    const release = holdCodeAt(h);
+    h.port.replayData = FAILED_CREATION;
+    h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 44 });
+    await flush();
+    // Both reads are still out, and the record, the phase, the banner and the Error line are already there.
+    expect(codeReads(h)).toHaveLength(2);
+    expect(h.records.get(SEPOLIA_ID, record.address)).toMatchObject({ status: "failed", tx: hash, block: 44 });
+    expect(m.state().phase).toBe("failed");
+    expect(h.said.banners.has(DEPLOY_BANNER_ID)).toBe(false);
+    const first = h.said.lines.at(-1);
+    expect(first?.tag).toBe("Error");
+    expect(first?.text).toMatch(/^Deploy reverted in CreateX: `FailedContractCreation\(.*CreateX gives no reason when creation fails/);
+    expect(m.state().error).toBe(first?.text);
+    const stored = h.records.get(SEPOLIA_ID, record.address);
+    release();
+    await flush();
+    expect(m.state().error).toMatch(/^Deploy reverted in CreateX: `FailedContractCreation\(.*\)`\. The salt's CREATE3 proxy .* this salt was used before\. Use a new salt\./);
+    expect(h.said.lines.at(-1)?.text).toMatch(/^The salt's CREATE3 proxy /);
+    expect(h.records.get(SEPOLIA_ID, record.address)).toEqual(stored);
+  });
+
+  test("a code read that fails after a failed deploy says so and leaves the record as written", async () => {
+    const r = createxRig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    const record = recordOf(h, hash);
+    h.port.codeAt = async () => ({ ok: false, error: "Sepolia's public RPC isn't answering." });
+    h.port.replayData = FAILED_CREATION;
+    h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 45 });
+    await flush();
+    expect(h.said.lines.at(-1)).toEqual({
+      tag: "Error",
+      text: "Couldn't read code at the salt's addresses on Sepolia: Sepolia's public RPC isn't answering. Replayed with `eth_call` at the block before, the creation reverts the same way.",
+    });
+    expect(m.state().phase).toBe("failed");
+    expect(m.state().error).toMatch(/^Deploy reverted in CreateX: `FailedContractCreation\(.*\)`\. Couldn't read code/);
+    expect(h.records.get(SEPOLIA_ID, record.address)).toMatchObject({ status: "failed", tx: hash, block: 45 });
+  });
+
+  test("a code read that throws is said the same way, never left unhandled", async () => {
+    const r = createxRig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    h.port.codeAt = async () => {
+      throw new Error("socket closed");
+    };
+    h.port.replayData = FAILED_CREATION;
+    h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 47 });
+    await flush();
+    expect(h.said.lines.at(-1)?.text).toMatch(/^Couldn't read code at the salt's addresses on Sepolia: socket closed\. /);
+    expect(m.state().phase).toBe("failed");
+  });
+
+  test("an explanation that returns after Try again is logged, not written over the new review", async () => {
+    const r = createxRig();
+    const { h, m } = r;
+    const hash = await submit(r);
+    const release = holdCodeAt(h);
+    h.port.replayData = FAILED_CREATION;
+    h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 46 });
+    await flush();
+    m.retry();
+    release();
+    await flush();
+    expect(m.state().phase).not.toBe("failed");
+    expect(m.state().error ?? "").not.toContain("CREATE3 proxy");
+    expect(h.said.texts().some((t) => t.startsWith("Neither the salt's CREATE3 proxy"))).toBe(true);
+  });
+
+  test("the explanation's line is read once: by the console while the failure shows, else by the machine", async () => {
+    const r = createxRig();
+    const { h } = r;
+    const hash = await submit(r);
+    h.port.replayData = FAILED_CREATION;
+    h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 48 });
+    await flush();
+    // S5e's console reads Error lines while a failed deploy shows, so the machine doesn't announce it too.
+    expect(h.said.announced.map(([text]) => text).some((t) => t.startsWith("Neither the salt's CREATE3 proxy"))).toBe(false);
   });
 
   test("on the factory path FailedContractCreation keeps the decoder's hint and reads no code", async () => {

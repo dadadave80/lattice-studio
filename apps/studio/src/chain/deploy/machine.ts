@@ -112,6 +112,9 @@ type Tracker = { abort: AbortController; timer: unknown; record: Deployment; pla
 
 type Level = "info" | "warn" | "alert";
 
+/** A decoded revert: its line with the decoder's own hint, and the same line with another note in the hint's place. */
+type Reverted = { error: string; line: LineDraft; noted(note: string): LineDraft };
+
 const IDLE: DeployState = Object.freeze({ phase: "idle" });
 const ZERO: Address = "0x0000000000000000000000000000000000000000";
 const REVIEWING: readonly DeployPhase[] = ["review", "simulating", "ready"];
@@ -250,7 +253,9 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
    */
   const emit = (line: LineDraft, level: Level = line.tag === "Error" ? "alert" : "info"): void => {
     deps.say.log(line);
-    const consoleSays = line.tag === "Deploy" || line.tag === "Verify" || (line.tag === "Error" && line.text.startsWith("Deploy"));
+    // S5e's console also reads any Error line while a failed deploy shows (its STREAMING phases include "failed").
+    const consoleSays = line.tag === "Deploy" || line.tag === "Verify"
+      || (line.tag === "Error" && (line.text.startsWith("Deploy") || state.phase === "failed"));
     if (consoleSays || deps.settings().deployAnnouncements === "none") return;
     deps.say.announce(line.text.replaceAll("`", ""), { politeness: level === "alert" ? "assertive" : "polite" });
   };
@@ -402,13 +407,12 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
   };
 
   /**
-   * "Deploy reverted in LatticeRegistry: `LatticeRegistry__RecordNotFound(lattice.ERC20, 0.4.0)`." (spec L727).
-   * `explain` may replace the decoder's hint with what the chain shows about the error, when it has more to say.
+   * "Deploy reverted in LatticeRegistry: `LatticeRegistry__RecordNotFound(lattice.ERC20, 0.4.0)`." (spec L727). `noted`
+   * swaps the decoder's hint for what the chain shows about the error, when that has more to say.
    */
-  const revertLine = async (
-    data: Hex, catalog: Catalog,
-    context: { placed: readonly string[]; path: DeployPath; init?: Hex; explain?: (error: string) => Promise<string | null> },
-  ): Promise<LineDraft> => {
+  const decodeReverted = async (
+    data: Hex, catalog: Catalog, context: { placed: readonly string[]; path: DeployPath; init?: Hex },
+  ): Promise<Reverted> => {
     const found = await revertDetails(catalog, context.placed);
     const init = context.init && context.init !== "0x" ? decodeInit(context.init, catalog) : null;
     const decoded = decodeRevert(data, catalog, {
@@ -417,13 +421,13 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       path: context.path,
       ...(init?.ok ? { init: init.value } : {}),
     });
-    const note = (await context.explain?.(decoded.error)) ?? decoded.hint;
-    return lines.reverted({
+    const noted = (note: string | undefined): LineDraft => lines.reverted({
       module: decoded.module,
       error: decoded.error,
       args: decoded.args.map((arg) => arg.value).join(", "),
       ...(note ? { note } : {}),
     });
+    return { error: decoded.error, line: noted(decoded.hint), noted };
   };
 
   /**
@@ -442,7 +446,13 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     } catch (error) {
       return creationUnread(chain, message(error), replayed);
     }
-    const [atProxy, atDiamond] = await Promise.all([port.codeAt(at.chainId, proxy), port.codeAt(at.chainId, at.address)]);
+    let atProxy: Result<Hex, string>;
+    let atDiamond: Result<Hex, string>;
+    try {
+      [atProxy, atDiamond] = await Promise.all([port.codeAt(at.chainId, proxy), port.codeAt(at.chainId, at.address)]);
+    } catch (error) {
+      return creationUnread(chain, message(error), replayed);
+    }
     if (!atProxy.ok) return creationUnread(chain, atProxy.error, replayed);
     if (!atDiamond.ok) return creationUnread(chain, atDiamond.error, replayed);
     return creationFailed({ proxy, diamond: at.address, chain, proxyCode: atProxy.value !== "0x", diamondCode: atDiamond.value !== "0x" }, replayed);
@@ -508,11 +518,12 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       return;
     }
     port.value.noteEstimate(s.chainId, null);
-    // The simulation or the gas estimate reverted before anything was signed: explained as after a sent one (L75).
-    const explain = async (error: string): Promise<string | null> => unexplainedCreation(s.path, error)
-      ? creationCheck(port.value, { chainId: s.chainId, deployer: s.from, salt: s.salt, address: s.address }, null)
-      : null;
-    const line = await revertLine(outcome.data, s.catalog, { placed: s.placed, path: s.path, init: s.init.data, explain });
+    // The simulation or the gas estimate (the port reports both as a revert) failed before anything was signed:
+    // explained as after a sent one (L75). Nothing is recorded yet, so the line can wait for the reads.
+    const reverted = await decodeReverted(outcome.data, s.catalog, { placed: s.placed, path: s.path, init: s.init.data });
+    const line = unexplainedCreation(s.path, reverted.error)
+      ? reverted.noted(await creationCheck(port.value, { chainId: s.chainId, deployer: s.from, salt: s.salt, address: s.address }, null))
+      : reverted.line;
     if (!alive()) return;
     done({ phase: "review", simulation: { ok: false, block: outcome.block, revert: line.text } });
     emit(line, "alert");
@@ -685,18 +696,29 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       const catalog = inputs.catalog();
       const data = await port.value.replay(record.chainId, outcome.hash);
       const placed = source?.placed ?? inputs.project().recipe.facets;
-      const explain = async (error: string): Promise<string | null> =>
-        record.path === "createx" && error === "FailedContractCreation" ? creationCheck(port.value, record) : null;
-      const line = catalog && data
-        ? await revertLine(data, catalog, { placed, path: record.path, explain })
-        : { tag: "Error" as const, text: `Deploy reverted on ${chain} in block ${groupDigits(outcome.block)}.` };
-      await save({ ...current, status: "failed", tx: outcome.hash, block: outcome.block });
+      const reverted = catalog && data ? await decodeReverted(data, catalog, { placed, path: record.path }) : null;
+      const line = reverted?.line ?? { tag: "Error" as const, text: `Deploy reverted on ${chain} in block ${groupDigits(outcome.block)}.` };
+      // The failure is recorded and said first; the code reads that explain a FailedContractCreation never hold it up.
+      const failed = await save({ ...current, status: "failed", tx: outcome.hash, block: outcome.block });
       banner(false);
       if (!disposed) patch({ phase: "failed", tx: outcome.hash, error: line.text });
       emit(line, "alert");
+      if (reverted && unexplainedCreation(record.path, reverted.error)) void track(explainFailure(port.value, failed, reverted));
       return;
     }
     await settle({ ...current, tx: outcome.hash, block: outcome.block }, source, true, outcome.block);
+  };
+
+  /**
+   * Attaches the code reads' answer to a failure already recorded and said: the review's error gains it while it
+   * still shows this failure, and the console gets it as its own line. A read that fails says so; the record,
+   * written before the reads, is left as it is either way.
+   */
+  const explainFailure = async (port: DeployChainPort, record: Deployment, reverted: Reverted): Promise<void> => {
+    const text = await creationCheck(port, record);
+    if (disposed) return;
+    if (state.phase === "failed" && state.tx === record.tx) patch({ error: reverted.noted(text).text });
+    emit({ tag: "Error", text }, "warn");
   };
 
   // -------------------------------------------------------------------------------------------------------------
