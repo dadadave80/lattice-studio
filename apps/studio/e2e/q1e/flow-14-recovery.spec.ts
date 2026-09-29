@@ -47,7 +47,9 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
         await runConsoleLine(page, "chain anvil");
 
         const readiness = new Inspector(page).readiness();
-        await expect(readiness.getByRole("alert")).toHaveText("Couldn't read Anvil: the RPC didn't answer.");
+        // A passive chain read's failure isn't an alert (FX41); the console's Error line is what's announced.
+        const unread = readiness.getByText("Couldn't read Anvil: the RPC didn't answer.", { exact: true });
+        await expect(unread).toBeVisible();
         await expect(new ConsoleLog(page).line("Error", "Anvil's public RPC isn't answering.")).toBeVisible();
         const retry = readiness.getByRole("button", { name: "Retry reading Anvil", exact: true });
         const another = readiness.getByRole("button", { name: "Use another RPC…", exact: true });
@@ -77,7 +79,7 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
 
         if (mode === "pointer" && (await retry.isVisible())) await retry.click();
         else if (await retry.isVisible()) await runPalette(page, "Retry reading Anvil");
-        await expect(readiness.getByRole("alert")).toHaveCount(0);
+        await expect(unread).toHaveCount(0);
         await expect(readiness).toContainText("14 of 14 on Anvil");
       });
     }
@@ -388,6 +390,9 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
       // An Error line: the deploy didn't go out, and the default "errors" announcements read it (spec L778).
       await expect(new ConsoleLog(page).line("Error", "You canceled in your wallet.")).toBeVisible();
       await expect(review.root.getByRole("button", { name: "Sign again", exact: true })).toBeVisible();
+      // A rejection keeps the simulation (spec L574): its section still reads Ready, never "Waiting" (L701).
+      await expect(review.section("Simulation")).toHaveAccessibleDescription("Ready");
+      await expect(review.section("Simulation").getByRole("button", { name: "Simulate again", exact: true })).toHaveCount(0);
       expect(rejected()).toBe(1);
       expect(await anvil.rpc<Hex>("eth_getCode", [predictedAddress(recipeProject("GovernedVault", { filled: true })), "latest"])).toBe("0x");
     });

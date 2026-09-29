@@ -85,6 +85,12 @@ describe("simulating without eth_simulateV1", () => {
     expect(outcome).toMatchObject({ kind: "reverted", data: "0x08c379a0" });
   });
 
+  test("a gas estimate that reverts with data (CreateX's FailedContractCreation) is a revert with its data, for the machine to explain", async () => {
+    const data = "0xc05cee7a000000000000000000000000ba5ed099633d3b313e4d5f7bdc1305d3c28ba5ed" as Hex;
+    const outcome = await simulate(port({ eth_estimateGas: { code: 3, message: "execution reverted", data } }));
+    expect(outcome).toEqual({ kind: "reverted", block: 16, data, method: "call" });
+  });
+
   test("an internal error from a node a block behind is an error to try again, not can't simulate", async () => {
     const outcome = await simulate(port({ eth_call: { code: -32603, message: "header not found" } }));
     expect(outcome.kind).toBe("error");
