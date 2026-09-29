@@ -165,9 +165,13 @@ export const CREATION_REPLAYED = "Replayed with `eth_call` at the block before, 
 /**
  * After CreateX's `FailedContractCreation`, which carries no reason (spec L75): which of the salt's addresses has
  * code, then what replaying the creation with `eth_call` gave. A reverted transaction leaves no code behind, so code
- * at the CREATE3 proxy means the salt was used before this transaction.
+ * at the CREATE3 proxy means the salt was used before this transaction. `replayed` is that last sentence: a mined
+ * transaction's replay by default; null for a simulation, which is the `eth_call` itself and has nothing to add.
  */
-export function creationFailed(found: { proxy: Address; diamond: Address; chain: string; proxyCode: boolean; diamondCode: boolean }): string {
+export function creationFailed(
+  found: { proxy: Address; diamond: Address; chain: string; proxyCode: boolean; diamondCode: boolean },
+  replayed: string | null = CREATION_REPLAYED,
+): string {
   const proxy = `the salt's CREATE3 proxy ${formatAddress(found.proxy)}`;
   const diamond = `the diamond address ${formatAddress(found.diamond)}`;
   const where = found.proxyCode && found.diamondCode
@@ -177,12 +181,13 @@ export function creationFailed(found: { proxy: Address; diamond: Address; chain:
       : found.diamondCode
         ? `${capitalized(diamond)} has code on ${found.chain} but ${proxy} has none.`
         : `Neither ${proxy} nor ${diamond} has code on ${found.chain}, so the salt is free: the creation itself failed.`;
-  return `${where} ${CREATION_REPLAYED}`;
+  return replayed === null ? where : `${where} ${replayed}`;
 }
 
-/** When the salt's addresses couldn't be read after a `FailedContractCreation`. */
-export function creationUnread(chain: string, reason: string): string {
-  return `Couldn't read code at the salt's addresses on ${chain}: ${reason.replace(/\.$/, "")}. ${CREATION_REPLAYED}`;
+/** When the salt's addresses couldn't be read after a `FailedContractCreation`; `replayed` as for `creationFailed`. */
+export function creationUnread(chain: string, reason: string, replayed: string | null = CREATION_REPLAYED): string {
+  const unread = `Couldn't read code at the salt's addresses on ${chain}: ${reason.replace(/\.$/, "")}.`;
+  return replayed === null ? unread : `${unread} ${replayed}`;
 }
 
 function capitalized(text: string): string {

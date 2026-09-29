@@ -428,21 +428,28 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
 
   /**
    * CreateX's `FailedContractCreation` carries no reason (spec L75): read code at the salt's CREATE3 proxy and at the
-   * diamond's address, and say which has it. `replay` has already replayed the creation with `eth_call`.
+   * diamond's address, and say which has it. After a mined transaction `replay` has already replayed the creation
+   * with `eth_call` and the sentence says so; a simulation (`replayed: null`) is that `eth_call` itself. NET-05 reads
+   * only the diamond's address, so a used proxy shows only here.
    */
-  const creationCheck = async (port: DeployChainPort, record: Deployment): Promise<string> => {
-    const chain = chainName(record.chainId);
+  const creationCheck = async (
+    port: DeployChainPort, at: Pick<Deployment, "chainId" | "deployer" | "salt" | "address">, replayed?: string | null,
+  ): Promise<string> => {
+    const chain = chainName(at.chainId);
     let proxy: Address;
     try {
-      proxy = createxProxy({ from: record.deployer, salt: record.salt, chainId: record.chainId });
+      proxy = createxProxy({ from: at.deployer, salt: at.salt, chainId: at.chainId });
     } catch (error) {
-      return creationUnread(chain, message(error));
+      return creationUnread(chain, message(error), replayed);
     }
-    const [atProxy, atDiamond] = await Promise.all([port.codeAt(record.chainId, proxy), port.codeAt(record.chainId, record.address)]);
-    if (!atProxy.ok) return creationUnread(chain, atProxy.error);
-    if (!atDiamond.ok) return creationUnread(chain, atDiamond.error);
-    return creationFailed({ proxy, diamond: record.address, chain, proxyCode: atProxy.value !== "0x", diamondCode: atDiamond.value !== "0x" });
+    const [atProxy, atDiamond] = await Promise.all([port.codeAt(at.chainId, proxy), port.codeAt(at.chainId, at.address)]);
+    if (!atProxy.ok) return creationUnread(chain, atProxy.error, replayed);
+    if (!atDiamond.ok) return creationUnread(chain, atDiamond.error, replayed);
+    return creationFailed({ proxy, diamond: at.address, chain, proxyCode: atProxy.value !== "0x", diamondCode: atDiamond.value !== "0x" }, replayed);
   };
+
+  /** `FailedContractCreation` on the CreateX path is the one revert whose explanation needs the chain. */
+  const unexplainedCreation = (path: DeployPath, error: string): boolean => path === "createx" && error === "FailedContractCreation";
 
   const simulate = async (): Promise<void> => {
     const mine = ++epoch;
@@ -501,7 +508,11 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       return;
     }
     port.value.noteEstimate(s.chainId, null);
-    const line = await revertLine(outcome.data, s.catalog, { placed: s.placed, path: s.path, init: s.init.data });
+    // The simulation or the gas estimate reverted before anything was signed: explained as after a sent one (L75).
+    const explain = async (error: string): Promise<string | null> => unexplainedCreation(s.path, error)
+      ? creationCheck(port.value, { chainId: s.chainId, deployer: s.from, salt: s.salt, address: s.address }, null)
+      : null;
+    const line = await revertLine(outcome.data, s.catalog, { placed: s.placed, path: s.path, init: s.init.data, explain });
     if (!alive()) return;
     done({ phase: "review", simulation: { ok: false, block: outcome.block, revert: line.text } });
     emit(line, "alert");
