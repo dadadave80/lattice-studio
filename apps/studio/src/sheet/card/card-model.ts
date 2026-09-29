@@ -33,8 +33,10 @@ export type PinView = {
   mark: string;
   /** What a click does (Flow 6). */
   tooltip: TooltipCopy;
-  /** The row's accessible name: the drawn words ("name mark"), then signature, hex and state in words. */
+  /** The selector's accessible name where it is spelled out in full: signature, hex and state in words. */
   label: string;
+  /** The card row's accessible name: the drawn words ("name mark"), then `label`, so it contains the visible text. */
+  rowLabel: string;
   /** What a click or Space runs; null on a seam, which offers no route (IR L104). */
   action: CommandRef | null;
 };
@@ -160,16 +162,16 @@ type PinInputs = {
 };
 
 /**
- * One pin's state, copy and action (Flow 6, IR L104). The row's accessible name starts with the words the row
- * draws, the short name and its mark ("transfer → ERC20"), so the visible text is inside the name (WCAG 2.5.3,
- * spec L779); the full signature, hex and state follow.
+ * One pin's state, copy and action (Flow 6, IR L104). `label` names the selector wherever it is spelled out in
+ * full (the Structure tree); `rowLabel` names the card's row, which starts with the words the row draws, the short
+ * name and its mark ("transfer → ERC20"), so the visible text is inside the name (WCAG 2.5.3, spec L779).
  */
 export function pinView(inputs: PinInputs): PinView {
   const view = pinStates(inputs);
-  return { ...view, label: `${view.name} ${view.mark}, ${view.label}` };
+  return { ...view, rowLabel: `${view.name} ${view.mark}, ${view.label}` };
 }
 
-function pinStates({ facet, selector, route, excluded, catalog }: PinInputs): PinView {
+function pinStates({ facet, selector, route, excluded, catalog }: PinInputs): Omit<PinView, "rowLabel"> {
   const { hex, signature } = selector;
   const name = functionName(signature);
   const base = { selector: hex, signature, name };

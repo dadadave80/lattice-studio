@@ -66,7 +66,7 @@ describe("pin states and what a click does (Flow 6)", () => {
       code: "allowance(address,address)", text: ": routes here. Click to leave it out of the diamond.",
     });
     expect(allowance.action).toEqual({ id: "selector.exclude", args: { selector: "0xdd62ed3e" } });
-    expect(allowance.label).toBe("allowance 0xdd62ed3e, allowance(address,address) 0xdd62ed3e, routes here");
+    expect(allowance.label).toBe("allowance(address,address) 0xdd62ed3e, routes here");
   });
 
   test("not in the diamond: a click routes it here", () => {
@@ -74,7 +74,7 @@ describe("pin states and what a click does (Flow 6)", () => {
     expect(symbol.state).toBe("excluded");
     expect(symbol.tooltip.text).toBe("Not in the diamond. Click to route here.");
     expect(symbol.action).toEqual({ id: "selector.include", args: { selector: SYMBOL, facet: "ERC20" } });
-    expect(symbol.label).toBe("symbol 0x95d89b41, symbol() 0x95d89b41, not in the diamond");
+    expect(symbol.label).toBe("symbol() 0x95d89b41, not in the diamond");
   });
 
   test("an excluded selector reads 'not in the diamond' on every card that exports it (spec L455)", () => {
@@ -151,9 +151,7 @@ describe("pin states and what a click does (Flow 6)", () => {
     expect(send.state).toBe("contested");
     expect(send.tooltip.text).toBe("Collides with HyperlaneGatewayAdapter. Click to route here.");
     expect(send.action).toEqual({ id: "selector.route", args: { selector: "0xcdfe7f5c", facet: "AxelarGatewayAdapter" } });
-    expect(send.label).toBe(
-      "sendMessage 0xcdfe7f5c, sendMessage(bytes,bytes,bytes[]) 0xcdfe7f5c, contested with HyperlaneGatewayAdapter",
-    );
+    expect(send.label).toBe("sendMessage(bytes,bytes,bytes[]) 0xcdfe7f5c, contested with HyperlaneGatewayAdapter");
   });
 });
 
@@ -161,12 +159,12 @@ describe("a pin's accessible name contains the words the row draws (WCAG 2.5.3, 
   test("it starts with the short name and the mark, so '→ owner' and 'Seam: stays on owner' are in the name", () => {
     const card = view("ERC20", gallery);
     for (const row of [...card.all, ...view("GovernedVault", gallery).all, ...view("AxelarGatewayAdapter", gallery).all]) {
-      expect(row.label.startsWith(`${row.name} ${row.mark}, ${row.signature}`)).toBe(true);
+      expect(row.rowLabel.startsWith(`${row.name} ${row.mark}, ${row.signature}`)).toBe(true);
     }
-    expect(pin(card, "name").label).toBe(
+    expect(pin(card, "name").rowLabel).toBe(
       "name → GovernedVault, name() 0x06fdde03, served by GovernedVault",
     );
-    expect(pin(card, "transfer").label).toBe(
+    expect(pin(card, "transfer").rowLabel).toBe(
       "transfer Seam: stays on GovernedVault, transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault",
     );
   });

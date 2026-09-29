@@ -54,7 +54,7 @@ export const PinRow = memo(function PinRow({ pin, side }: PinRowProps) {
       data-card-row=""
       data-selector={pin.selector}
       data-state={pin.state}
-      aria-label={pin.label}
+      aria-label={pin.rowLabel}
       aria-describedby={pin.action === null ? undefined : describedBy}
       onClick={run}
     >
