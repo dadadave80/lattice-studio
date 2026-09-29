@@ -26,8 +26,18 @@ export class ConsolePage {
     return this.log.getByRole("button", { name: text });
   }
 
-  /** Waits until `text` is the last line's exact wording (auto-scroll keeps the newest one in view). */
+  /** Waits until `text` is in the log's last line (auto-scroll keeps the newest one in view). */
   async expectLastLine(text: string): Promise<void> {
-    await expect(this.line(text)).toBeVisible();
+    await expect(this.log.getByRole("button").last()).toHaveAccessibleName(within(text));
   }
+
+  /** Waits until `text` is in the log's first line: on a first visit, the catalog line (spec L401). */
+  async expectFirstLine(text: string): Promise<void> {
+    await expect(this.log.getByRole("button").first()).toHaveAccessibleName(within(text));
+  }
+}
+
+/** A line's accessible name repeats its tag word first, so the spec's wording is matched as a substring. */
+function within(text: string): RegExp {
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 }

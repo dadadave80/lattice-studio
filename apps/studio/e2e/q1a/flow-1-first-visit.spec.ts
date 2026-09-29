@@ -48,7 +48,7 @@ test.describe("Flow 1. First visit", () => {
   test("the console's first line names the catalog @smoke", async ({ page }) => {
     await openEmpty(page);
     const console_ = new ConsolePage(page);
-    await expect(console_.line(firstCatalogLine())).toBeVisible();
+    await console_.expectFirstLine(firstCatalogLine());
   });
 
   test("the tour runs only on request: five coach marks that never block input", async ({ page }) => {

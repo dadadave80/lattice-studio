@@ -73,10 +73,8 @@ async function typeInPalette(page: Page, query: string): Promise<void> {
 
 /**
  * The palette is already open (route 7: a menu command opens it filtered to facets); type `query` and wait for it
- * to rank the right row before pressing Enter. The palette's search is a plain substring filter over each row's
- * full title in catalog order, not fuzzy-ranked, so a bare facet name that's also another facet's suffix (e.g.
- * "ERC20" inside "BridgeERC20", "Pausable" inside "ERC20Pausable") can rank the wrong one first; queries below use
- * "place <name>" to exclude those (their titles don't contain "place " immediately before a different facet name).
+ * to rank the right row before pressing Enter. The palette keeps the rows that match every typed word and ranks a
+ * whole-word match in the title first, so the active row's title containing `query` is the row Enter runs.
  */
 async function chooseInPalette(page: Page, query: string): Promise<void> {
   const input = page.getByRole("combobox");
@@ -166,11 +164,9 @@ test.describe("Flow 3. Add a facet", () => {
     const sheet = new SheetPage(page);
     const console_ = new ConsolePage(page);
 
-    // "ERC20" alone (the spec's literal wording) ranks "Place BridgeERC20" first: the palette's search is a plain
-    // substring filter over each row's full title in catalog order, not fuzzy-ranked, and "BridgeERC20" (Crosschain
-    // area) sorts ahead of the standalone "ERC20" facet. "place erc20" excludes it (its title has no "erc20"
-    // right after "place ") and keeps "ERC20" first among what's left ("ERC20Burnable" etc. sort after it).
-    await typeInPalette(page, "place erc20");
+    // The spec's wording (L420): type the name, Enter. The palette ranks a whole-word match ahead of a facet whose
+    // name merely ends in it, so "ERC20" lands on Place ERC20, not Place BridgeERC20.
+    await typeInPalette(page, "ERC20");
 
     await sheet.expectSelected("ERC20");
     await console_.expectLastLine(placedLine("ERC20"));
@@ -306,7 +302,7 @@ test.describe("Flow 3. Add a facet", () => {
       await menu.getByRole("menuitem", { name: "Add facet here…" }).click();
 
       // The palette is now open, filtered to facets (S6's `mode: "facets"`); type the name and press Enter.
-      // "place pausable" (not bare "Pausable") for the same ranking reason as route 4 above.
+      // "place pausable" names the command's own words, the way the console verb does.
       await expect(page.getByRole("combobox")).toBeFocused();
       await chooseInPalette(page, "place pausable");
 
@@ -328,8 +324,7 @@ test.describe("Flow 3. Add a facet", () => {
     await sheet.expectSelected("ERC20");
     await console_.expectLastLine(placedLine("ERC20"));
 
-    // Route 4: the palette ("place pausable" over bare "Pausable" for the same reason as route 4 above: it
-    // excludes "Place ERC20Pausable", which would otherwise sort first).
+    // Route 4: the palette.
     await typeInPalette(page, "place pausable");
     await sheet.expectSelected("Pausable");
     await console_.expectLastLine(placedLine("Pausable"));

@@ -95,7 +95,7 @@ v1 ships only once every gate below passes (spec "Phasing", cut line for "v1: co
 | Every exported script deploys on an Anvil fork once the shared contracts are in it | `bun run test:chain` (local Anvil); `fork.yml`'s Sepolia fork suite once **Needs David** adds `SEPOLIA_RPC_URL` |
 | A first-time user deploys and verifies on Sepolia in under 5 minutes, moderated | **Needs David**: run the timed script in `MANUAL.md` once it exists (pending Q25's permission decision) |
 | First-load JavaScript budget met | `bun scripts/ci/size.ts --build`, plus the real-device check above; **Needs David** to choose among Q19's budget options while the interim 370 KB gate holds |
-| LCP and drag-cost budgets met | `bun scripts/perf/run.ts` (or the `perf.yml` job); report-only until FX30 lands, then its `REPORT_ONLY` entries drop and Lighthouse's assert moves from `warn` to `error` |
+| LCP and drag-cost budgets met | `bun scripts/perf/run.ts` (or the `perf.yml` job); LCP and drag stay report-only until an open first-load decision is made; `scripts/perf/report.ts`'s `REPORT_ONLY` names both, and when it lands their entries drop and Lighthouse's assert moves from `warn` to `error` |
 | axe clean, with the manual keyboard scripts and screen readers | `bun run e2e apps/studio/e2e/a11y`; **Needs David**: the twelve manual keyboard scripts and the tier 1/2 screen-reader passes before each minor release, pending Q25 |
 | Type-check, lint, size, schema and copy checks | `bun run check` |
 
