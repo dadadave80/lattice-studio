@@ -55,6 +55,8 @@ export const NO_SIMULATION_TICK = "Deploy without a simulation";
 export const NO_SIMULATION_NOTE = "This RPC couldn't simulate the deploy, so nothing checked it before you sign.";
 
 export const SIMULATING = "Simulating…";
+/** The Simulation section's way out after a stop that dropped the simulation (spec L701: per section, its own way out). */
+export const SIMULATE_AGAIN = "Simulate again";
 
 /** Spec L573, L792: the typed confirmation on mainnets. */
 export function typeToConfirm(name: string): string {

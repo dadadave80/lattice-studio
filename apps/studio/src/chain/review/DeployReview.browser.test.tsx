@@ -1,7 +1,7 @@
 import type { Address, Hex } from "@lattice-studio/core";
 import { formatAddress } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { DEFAULT_SETTINGS, doc, getAnalysis, getCatalog, putDeployment, runCommand, session, settings } from "@/contracts";
 import { prediction } from "@/state";
 import { keyLabel } from "@/ui/keys/key-labels";
@@ -209,7 +209,52 @@ describe("Deployer (spec L564, Flow 14)", () => {
     controller.set({ phase: "review", error });
     await expect.element(signButton()).toHaveAccessibleDescription(error);
     await expect.element(page.getByRole("dialog").getByText("Simulating…")).not.toBeInTheDocument();
-    await expect.element(section("Simulation").getByText(error)).toBeVisible();
+    const simulation = section("Simulation");
+    await expect.element(simulation.getByText(error)).toBeVisible();
+    // Nothing runs until the person acts, so it isn't "Waiting" (spec L701): it blocks, with its way out.
+    await expect.element(simulation).toHaveAttribute("data-status", "blocked");
+    await expect.element(simulation).toHaveAccessibleDescription("Blocks deploy");
+    const again = simulation.getByRole("button", { name: "Simulate again" });
+    (again.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(controller.calls.filter((c) => c.method === "retry")).toHaveLength(1);
+    // The fake's retry() doesn't simulate: play what the machine does, and focus stays in the section.
+    controller.set({ phase: "simulating", error: undefined });
+    await expect.element(simulation.getByText("Simulating…")).toBeVisible();
+    await expect.element(simulation).toHaveAttribute("data-status", "waiting");
+    await expect.element(simulation.getByRole("button", { name: "Simulate again" })).not.toBeInTheDocument();
+    expect(simulation.element().contains(document.activeElement)).toBe(true);
+  });
+
+  test("each stop that drops the simulation blocks with Simulate again, and the footer gives the same reason", async () => {
+    const { controller } = await renderReview({ project: templateProject("ERC20") });
+    await expect.poll(() => controller.methods()).toContain("open");
+    await tickExamples();
+    const simulation = section("Simulation");
+    // A dropped simulation's reason (the chain module failing to load), then an RPC error.
+    for (const error of ["The chain module didn't load. Try again.", "Sepolia's public RPC isn't answering."]) {
+      controller.set({ phase: "review", error, simulation: undefined });
+      await expect.element(simulation.getByText(error)).toBeVisible();
+      await expect.element(simulation).toHaveAttribute("data-status", "blocked");
+      await expect.element(simulation.getByRole("button", { name: "Simulate again" })).not.toHaveAttribute("aria-disabled");
+      await expect.element(signButton()).toHaveAccessibleDescription(error);
+    }
+    // A rejection keeps the simulation (FX27): the section stays Ready and has no retry of its own.
+    controller.set({ phase: "review", error: CANCELED_IN_WALLET, simulation: { ok: true, block: 9123456 } });
+    await expect.element(simulation).toHaveAttribute("data-status", "ok");
+    await expect.element(simulation.getByRole("button", { name: "Simulate again" })).not.toBeInTheDocument();
+  });
+
+  test("offline, Simulate again is disabled with the reason", async () => {
+    goOffline();
+    const { controller } = await renderReview({ project: templateProject("ERC20") });
+    await expect.poll(() => controller.methods()).toContain("open");
+    controller.set({ phase: "review", error: "Deploy needs a connection.", simulation: undefined });
+    const again = section("Simulation").getByRole("button", { name: "Simulate again" });
+    await expect.element(again).toHaveAttribute("aria-disabled", "true");
+    await expect.element(again).toHaveAccessibleDescription("Deploy needs a connection");
+    await again.click({ force: true });
+    expect(controller.methods()).not.toContain("retry");
   });
 
   test("a Safe deploys through its batch: Sign & deploy says so and Download Transaction Builder batch is offered", async () => {

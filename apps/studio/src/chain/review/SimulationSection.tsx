@@ -1,5 +1,6 @@
+import { useRef } from "react";
 import { Button, copyText } from "@/ui";
-import { NO_SIMULATION_NOTE, SIMULATING, type SectionStatus } from "./copy";
+import { DEPLOY_NEEDS_CONNECTION, NO_SIMULATION_NOTE, SIMULATING, SIMULATE_AGAIN, type SectionStatus } from "./copy";
 import {
   CONTROLLER_NOT_BUILT, cantSimulate, controllerChainName, grouped, pathName, resimulating, simulationOwnsError,
 } from "./model";
@@ -11,11 +12,13 @@ import { Section } from "./Section";
 
 const NOT_YET = "Runs once the network, the account and the inputs are known.";
 
-type Shown = { status: SectionStatus; text: string; revert?: string };
+type Shown = { status: SectionStatus; text: string; revert?: string; retry?: true };
 
 /**
  * What the section says, in the order Sign & deploy reads the same state (model `signEnablement`), so the mark and
- * the footer never disagree: not built, simulating (again), passed, reverted, couldn't simulate, not yet.
+ * the footer never disagree: not built, simulating (again), passed, reverted, couldn't simulate, stopped, not yet.
+ * "Waiting" is only for what waits on something (spec L701): the controller, a simulation under way, or the network,
+ * the account and the inputs it runs on.
  */
 function shown(review: Review, ticked: boolean): Shown {
   const { deploy, analysis } = review;
@@ -34,9 +37,10 @@ function shown(review: Review, ticked: boolean): Shown {
   }
   if (simulation?.revert) return { status: "blocked", text: simulation.revert, revert: simulation.revert };
   // Back in Review without a simulation, and why (a stop at Sign that dropped it, a read that failed), once the
-  // account and chain are known: the footer gives the same reason.
+  // account and chain are known: nothing runs until the person acts, so it blocks, with its way out (spec L701,
+  // Flow 14). The footer gives the same reason.
   if (deploy.phase === "review" && simulation === undefined && deploy.error && review.account && review.chainId !== null) {
-    return { status: "waiting", text: deploy.error };
+    return { status: "blocked", text: deploy.error, retry: true };
   }
   return { status: "waiting", text: NOT_YET };
 }
@@ -49,7 +53,17 @@ function shown(review: Review, ticked: boolean): Shown {
 export function SimulationSection() {
   const review = useReview();
   const tick = useReviewState((s) => s.noSimulationTick);
-  const { status, text, revert } = shown(review, tick === review.analysis.recipeHash);
+  const { status, text, revert, retry } = shown(review, tick === review.analysis.recipeHash);
+  const line = useRef<HTMLParagraphElement>(null);
+  const { controller } = review;
+  const retryBlock = !controller ? CONTROLLER_NOT_BUILT : !review.online ? DEPLOY_NEEDS_CONNECTION : null;
+
+  const simulateAgain = () => {
+    if (!controller) return;
+    controller.retry();
+    // The button goes once the simulation starts: focus stays in the section, on the line that now says so.
+    line.current?.focus();
+  };
 
   const copyDetails = () => {
     if (revert === undefined) return;
@@ -68,9 +82,16 @@ export function SimulationSection() {
 
   return (
     <Section id="simulation" status={status}>
-      <p className={status === "waiting" ? styles.muted : styles.line} data-simulation="">
+      <p ref={line} tabIndex={-1} className={status === "waiting" ? styles.muted : styles.line} data-simulation="">
         {text}
       </p>
+      {retry ? (
+        <div className={styles.actions}>
+          <Button size="small" disabledReason={retryBlock} onClick={simulateAgain}>
+            {SIMULATE_AGAIN}
+          </Button>
+        </div>
+      ) : null}
       {revert !== undefined ? (
         <div className={styles.actions}>
           <Button size="small" icon="copy" onClick={copyDetails}>
