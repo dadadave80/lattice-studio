@@ -219,7 +219,7 @@ describe("Deployer (spec L564, Flow 14)", () => {
     await userEvent.keyboard("{Enter}");
     expect(controller.calls.filter((c) => c.method === "retry")).toHaveLength(1);
     // The fake's retry() doesn't simulate: play what the machine does, and focus stays in the section.
-    controller.set({ phase: "simulating", error: undefined });
+    controller.set({ phase: "simulating" });
     await expect.element(simulation.getByText("Simulating…")).toBeVisible();
     await expect.element(simulation).toHaveAttribute("data-status", "waiting");
     await expect.element(simulation.getByRole("button", { name: "Simulate again" })).not.toBeInTheDocument();
@@ -233,7 +233,7 @@ describe("Deployer (spec L564, Flow 14)", () => {
     const simulation = section("Simulation");
     // A dropped simulation's reason (the chain module failing to load), then an RPC error.
     for (const error of ["The chain module didn't load. Try again.", "Sepolia's public RPC isn't answering."]) {
-      controller.set({ phase: "review", error, simulation: undefined });
+      controller.set({ phase: "review", error });
       await expect.element(simulation.getByText(error)).toBeVisible();
       await expect.element(simulation).toHaveAttribute("data-status", "blocked");
       await expect.element(simulation.getByRole("button", { name: "Simulate again" })).not.toHaveAttribute("aria-disabled");
@@ -249,7 +249,7 @@ describe("Deployer (spec L564, Flow 14)", () => {
     goOffline();
     const { controller } = await renderReview({ project: templateProject("ERC20") });
     await expect.poll(() => controller.methods()).toContain("open");
-    controller.set({ phase: "review", error: "Deploy needs a connection.", simulation: undefined });
+    controller.set({ phase: "review", error: "Deploy needs a connection." });
     const again = section("Simulation").getByRole("button", { name: "Simulate again" });
     await expect.element(again).toHaveAttribute("aria-disabled", "true");
     await expect.element(again).toHaveAccessibleDescription("Deploy needs a connection");
