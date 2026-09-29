@@ -17,10 +17,15 @@ describe("facetModule", () => {
     expect(mainModule(spec)).toBe("AccessControl");
   });
 
-  test("falls back to mainModule when no entry is named after the facet, as a bundle's own facet isn't (GovernedVaultInit has no \"GovernedVault\" entry)", () => {
+  test("a bundle with no entry named after the facet: the facet itself, never the bundle's last module (GovernedVaultInit ends with Governor, FX48)", () => {
     const spec = makeInit({ name: "GovernedVaultInit", kind: "bundle", initializes: [{ module: "AccessControl" }, { module: "Governor" }] });
-    expect(facetModule("GovernedVault", spec)).toBe(mainModule(spec));
-    expect(facetModule("GovernedVault", spec)).toBe("Governor");
+    expect(mainModule(spec)).toBe("Governor");
+    expect(facetModule("GovernedVault", spec)).toBe("GovernedVault");
+  });
+
+  test("a bundle with an entry named after the facet still gives that entry", () => {
+    const spec = makeInit({ name: "VaultInit", kind: "bundle", initializes: [{ module: "AccessControl" }, { module: "VaultCore" }, { module: "Extra" }] });
+    expect(facetModule("VaultCore", spec)).toBe("VaultCore");
   });
 
   test("falls back for a facet whose module is named differently, e.g. OwnableFacet -> Ownable", () => {
