@@ -4,25 +4,12 @@
  * deploy comes from the transaction being refused: `eth_sendTransaction` is answered with a JSON-RPC error, and
  * everything else goes through.
  */
-import { expect, type BrowserContext, type Locator, type Page, type Route } from "@playwright/test";
+import { expect, type Locator, type Page, type Route } from "@playwright/test";
 import { focusRegion } from "../../_support/keys.ts";
 import { recipeProject } from "../../_support/projects.ts";
 import { seedProject } from "../../_support/seed.ts";
 import { MOCK_ACCOUNT, shortAddress } from "../../_support/wallet.ts";
 import { pressMod, runConsole, runInPalette, tabTo, waitForSheet } from "./keyboard.ts";
-
-/**
- * Keeps the page online whatever the machine's own connection does. Studio reads `navigator.onLine` and the
- * window's `offline` event (src/pwa/connection.ts) and blocks Deploy while offline ("Deploy needs a connection"),
- * even for a local Anvil node; Chromium reports the host's network, so a dropped Wi-Fi link during a run failed
- * these specs although every request they make stays on the loopback. Call before the first `page.goto`.
- */
-export async function stayOnline(context: BrowserContext): Promise<void> {
-  await context.addInitScript(() => {
-    Object.defineProperty(Navigator.prototype, "onLine", { configurable: true, get: () => true });
-    window.addEventListener("offline", (event) => event.stopImmediatePropagation(), true);
-  });
-}
 
 /** The review dialog: "Deploy {project}". */
 export function deployReview(page: Page): Locator {

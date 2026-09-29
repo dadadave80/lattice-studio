@@ -120,10 +120,24 @@ async function activeOptionText(input: Locator): Promise<string | null> {
   });
 }
 
+/** The palette's dialog: "Command palette", or "Add facet here…" when the sheet's context menu opened it. */
+export function paletteDialog(page: Page): Locator {
+  return page.getByRole("dialog", { name: /^(Command palette|Add facet here…)$/ });
+}
+
+/**
+ * Waits until the palette has closed. The palette runs the chosen command only once its close animation has ended
+ * and focus is back (`PalettePopup.tsx`), so a step that follows `runInPalette` without this races the command. A
+ * disabled command keeps the palette open and says why in the console, so this fails there, naming the query.
+ */
+export async function expectPaletteClosed(page: Page, query: string): Promise<void> {
+  await expect(paletteDialog(page), `the palette should close and run "${query}" (a disabled command keeps it open)`).toHaveCount(0);
+}
+
 /**
  * Runs a command through the palette: opens it, types `query`, waits until the active row is the one `query` names
- * (its title contains the query, case-insensitively) and presses Enter. Keyboard only. `query` should single out the
- * row: a command's title, "Connect wallet".
+ * (its title contains the query, case-insensitively), presses Enter and waits for the palette to close, which is when
+ * the command runs. Keyboard only. `query` should single out the row: a command's title, "Connect wallet".
  */
 export async function runInPalette(page: Page, query: string): Promise<void> {
   const input = await openPalette(page);
@@ -134,6 +148,7 @@ export async function runInPalette(page: Page, query: string): Promise<void> {
     })
     .toBe(true);
   await page.keyboard.press("Enter");
+  await expectPaletteClosed(page, query);
 }
 
 /**

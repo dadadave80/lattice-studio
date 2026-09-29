@@ -38,3 +38,43 @@ export async function keepLocal(context: BrowserContext): Promise<string[]> {
   );
   return blocked;
 }
+
+/**
+ * Keeps the page online whatever the machine's own connection does. Studio reads `navigator.onLine` and the window's
+ * `offline` event (src/pwa/connection.ts) and blocks Deploy while offline ("Deploy needs a connection"), even for a
+ * local Anvil node; Chromium reports the host's network, so a dropped Wi-Fi link during a run failed deploy specs
+ * although every request they make stays on the loopback. The `anvil` fixture applies it, so every Anvil test has
+ * it; a suite about going offline must not. Call before the first `page.goto`.
+ */
+export async function stayOnline(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, "onLine", { configurable: true, get: () => true });
+    window.addEventListener("offline", (event) => event.stopImmediatePropagation(), true);
+  });
+}
+
+/** The binding pages report CSP violations through. */
+const CSP_BINDING = "__latticeStudioE2eCspViolation";
+
+/**
+ * Records every `securitypolicyviolation` event in `context`'s pages, from before their first script runs, and
+ * returns the list, one line per violation, filled as they happen. Studio's CSP has no `unsafe-inline` or
+ * `unsafe-eval` (spec L863-L865): a style Base UI injects without `CSPProvider`, a style attribute set from markup,
+ * an `eval` or a script from another origin is a violation, and the `cspViolations` fixture fails the test on any.
+ */
+export async function recordCspViolations(context: BrowserContext): Promise<string[]> {
+  const violations: string[] = [];
+  await context.exposeBinding(CSP_BINDING, (_source, line: string) => {
+    violations.push(line);
+  });
+  await context.addInitScript((binding) => {
+    document.addEventListener("securitypolicyviolation", (event) => {
+      const where = event.sourceFile ? ` at ${event.sourceFile}:${event.lineNumber}:${event.columnNumber}` : "";
+      const sample = event.sample ? ` (${event.sample.slice(0, 80)})` : "";
+      const line = `${event.effectiveDirective} blocked ${event.blockedURI || "inline"}${where}${sample} on ${location.pathname}`;
+      const report = (window as unknown as Record<string, ((line: string) => Promise<void>) | undefined>)[binding];
+      void report?.(line);
+    });
+  }, CSP_BINDING);
+  return violations;
+}
