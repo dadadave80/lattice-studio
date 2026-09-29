@@ -214,19 +214,11 @@ describe("⌘/Ctrl+Enter opens Deploy… from the Log and the menu key context, 
     return selected;
   }
 
-  test("on an item of Studio's Menu, Base UI takes ⌘/Ctrl+Enter as Enter: the item runs and Deploy… doesn't (today)", async () => {
+  test("on an item of Studio's Menu, ⌘/Ctrl+Enter opens Deploy… and the item doesn't run (IR L13)", async () => {
     const selected = await ctrlEnterOnMenuItem();
-    await expect.poll(() => selected.mock.calls.length).toBe(1);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(reviewOpen()).toBe(false);
-  });
-
-  // IR L13 says everywhere but text fields and dialogs, menus included. The item handles the key and prevents its
-  // default, and the dispatcher leaves prevented keys alone, so this waits on a MenuItem or dispatcher change
-  // (reported as an FX47 follow-up). `fails` flags it the day it works.
-  test.fails("on an item of Studio's Menu, ⌘/Ctrl+Enter opens Deploy… (IR L13; not yet)", async () => {
-    await ctrlEnterOnMenuItem();
-    await expect.poll(reviewOpen, { timeout: 500 }).toBe(true);
+    await expect.poll(reviewOpen).toBe(true);
+    expect(selected).not.toHaveBeenCalled();
+    await expect.element(page.getByRole("menu", { name: "Overflow test menu" })).not.toBeInTheDocument();
   });
 
   test("not from the console's command line, a text field", async () => {
