@@ -84,12 +84,12 @@ describe("accessible name and description (spec L745-L746)", () => {
 
   test("pin rows are named by signature, hex and state, and described by what a click does", async () => {
     await sheet(gallery());
-    const allowance = page.getByRole("button", { name: "allowance(address,address) 0xdd62ed3e, routes here" });
+    const allowance = page.getByRole("button", { name: "allowance 0xdd62ed3e, allowance(address,address) 0xdd62ed3e, routes here" });
     await expect.element(allowance).toHaveAccessibleDescription(
       "allowance(address,address): routes here. Click to leave it out of the diamond.",
     );
     await expect
-      .element(page.getByRole("button", { name: "name() 0x06fdde03, served by GovernedVault" }))
+      .element(page.getByRole("button", { name: "name → GovernedVault, name() 0x06fdde03, served by GovernedVault" }))
       .toHaveAccessibleDescription("Served by GovernedVault. Click to route here instead.");
   });
 });
@@ -137,7 +137,7 @@ describe("what a pin does (Flow 6, IR L47, L104)", () => {
     const transfer = row("ERC20", "0xa9059cbb");
     expect(transfer.getAttribute("aria-disabled")).toBe("true");
     await expect
-      .element(page.getByRole("button", { name: "transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault" }).first())
+      .element(page.getByRole("button", { name: "transfer Seam: stays on GovernedVault, transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault" }).first())
       .toHaveAccessibleDescription("Seam: stays on GovernedVault because its version moves vote checkpoints with balances.");
     const before = doc.get().recipe;
     await userEvent.click(transfer, { force: true });
@@ -166,7 +166,7 @@ describe("disabled commands (spec L661)", () => {
     const allowance = row("ERC20", "0xdd62ed3e");
     await expect.poll(() => allowance.getAttribute("aria-disabled")).toBe("true");
     await expect
-      .element(page.getByRole("button", { name: "allowance(address,address) 0xdd62ed3e, routes here" }))
+      .element(page.getByRole("button", { name: "allowance 0xdd62ed3e, allowance(address,address) 0xdd62ed3e, routes here" }))
       .toHaveAccessibleDescription(new RegExp(reason));
     await userEvent.click(allowance, { force: true });
     expect(doc.get().recipe.exclude).not.toContain("0xdd62ed3e");

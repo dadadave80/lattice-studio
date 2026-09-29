@@ -155,6 +155,21 @@ describe("pin states and what a click does (Flow 6)", () => {
   });
 });
 
+describe("a pin's accessible name contains the words the row draws (WCAG 2.5.3, spec L779)", () => {
+  test("it starts with the short name and the mark, so '→ owner' and 'Seam: stays on owner' are in the name", () => {
+    const card = view("ERC20", gallery);
+    for (const row of [...card.all, ...view("GovernedVault", gallery).all, ...view("AxelarGatewayAdapter", gallery).all]) {
+      expect(row.rowLabel.startsWith(`${row.name} ${row.mark}, ${row.signature}`)).toBe(true);
+    }
+    expect(pin(card, "name").rowLabel).toBe(
+      "name → GovernedVault, name() 0x06fdde03, served by GovernedVault",
+    );
+    expect(pin(card, "transfer").rowLabel).toBe(
+      "transfer Seam: stays on GovernedVault, transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault",
+    );
+  });
+});
+
 describe("borders", () => {
   test("a collision is a conflict", () => {
     expect(view("AxelarGatewayAdapter", gallery).border).toBe("conflict");
