@@ -1,4 +1,5 @@
 import type { CommandRef, Project, Recipe } from "@lattice-studio/core";
+import { CORE_FACETS } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
@@ -144,11 +145,12 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
     await expect.poll(() => doc.get().recipe.facets.length).toBe(14);
     expect(doc.get().id).toBe(project.id);
     await expect.element(page.getByRole("region", { name: "Start a diamond" })).not.toBeInTheDocument();
-    await expect.poll(() => document.querySelectorAll(".react-flow__node[data-id]").length).toBe(14);
+    // 14 facets in the recipe, the core's two among them: 12 cards.
+    await expect.poll(() => document.querySelectorAll(".react-flow__node[data-id]").length).toBe(12);
     expect(bufferedServices().log.some((l) => l.text.startsWith("Loaded GovernedVault"))).toBe(true);
     // One undo step: the empty sheet comes back, and with it the block.
     history.undo();
-    await expect.poll(() => doc.get().recipe.facets.length).toBe(0);
+    await expect.poll(() => doc.get().recipe.facets).toEqual([...CORE_FACETS]);
     await expect.element(page.getByRole("region", { name: "Start a diamond" })).toBeVisible();
   });
 

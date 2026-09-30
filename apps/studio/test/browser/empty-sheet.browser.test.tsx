@@ -14,6 +14,7 @@
 import { beforeAll, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
 import { emptyProject, renderSheet } from "@/sheet/canvas/testing/sheet-harness";
+import { BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
 
 function sheetElement(): HTMLElement {
   const el = document.querySelector<HTMLElement>('[data-region="sheet"]');
@@ -34,7 +35,7 @@ describe.each(["dark", "light"] as const)("board: empty sheet (%s)", (theme) => 
     await renderSheet({ project: emptyProject("empty"), theme, settings: { reduceMotion: "on" } });
     const start = page.getByRole("region", { name: "Start a diamond" });
     await expect.element(start).toBeVisible();
-    await expect.element(start.getByRole("button", { name: "Blank diamond (core only)" })).toBeVisible();
+    await expect.element(start.getByRole("button", { name: BLANK_DIAMOND_LABEL })).toBeVisible();
     for (const name of ["GovernedVault", "ERC20", "SafeDiamondCut"]) {
       await expect.element(start.getByRole("button", { name: new RegExp(`^${name} `) })).toBeVisible();
     }

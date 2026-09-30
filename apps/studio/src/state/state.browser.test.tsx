@@ -1,4 +1,5 @@
 import type { CommandRef } from "@lattice-studio/core";
+import { isCoreFacet } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { doc, layoutMetrics, runCommand, session, settings, useAnalysis, useCommandState, useDocument } from "@/contracts";
@@ -23,7 +24,8 @@ function CommandButton({ command }: { command: CommandRef }) {
 }
 
 function Sheet() {
-  const facets = useDocument((s) => s.project.recipe.facets.length);
+  // Cards: the recipe's facets without the core's two, as every count in the app reads.
+  const facets = useDocument((s) => s.project.recipe.facets.filter((name) => !isCoreFacet(name)).length);
   const undoLabel = useDocument((s) => s.undoLabel);
   const routed = useAnalysis((a) => a.stats.routed);
   return (
@@ -44,20 +46,20 @@ function Address() {
 describe("S1 in the browser", () => {
   test("placing and undoing with buttons: one step each, re-rendered through selectors", async () => {
     await renderWithStudio(<Sheet />);
-    await expect.element(page.getByText("0 facets · 0 routed · undo: none")).toBeVisible();
+    await expect.element(page.getByText("0 facets · 5 routed · undo: none")).toBeVisible();
     const undo = page.getByRole("button", { name: "Undo" });
     await expect.element(undo).toHaveAttribute("aria-disabled", "true");
     await expect.element(undo).toHaveAttribute("title", "Nothing to undo");
 
     await page.getByRole("button", { name: "Place ERC20" }).click();
-    await expect.element(page.getByText("1 facets · 9 routed · undo: Placed ERC20")).toBeVisible();
+    await expect.element(page.getByText("1 facets · 14 routed · undo: Placed ERC20")).toBeVisible();
     await expect.element(undo).toHaveAttribute("aria-disabled", "false");
     expect(bufferedServices().log.map((l) => l.text)).toContain("Placed ERC20 · 9 selectors · erc7201:lattice.storage.ERC20");
 
     // Keyboard path: focus Undo and press Enter.
     (await undo.element() as HTMLElement).focus();
     await userEvent.keyboard("{Enter}");
-    await expect.element(page.getByText("0 facets · 0 routed · undo: none")).toBeVisible();
+    await expect.element(page.getByText("0 facets · 5 routed · undo: none")).toBeVisible();
     expect(bufferedServices().log.map((l) => l.text)).toContain("Undid: Placed ERC20.");
     await expect.element(page.getByRole("button", { name: "Redo" })).toHaveAttribute("aria-disabled", "false");
   });
@@ -69,7 +71,7 @@ describe("S1 in the browser", () => {
     await expect.element(place).toHaveAttribute("aria-disabled", "true");
     await expect.element(place).toHaveAttribute("title", "Another tab is editing this project.");
     await place.click({ force: true });
-    await expect.element(page.getByText("0 facets · 0 routed · undo: none")).toBeVisible();
+    await expect.element(page.getByText("0 facets · 5 routed · undo: none")).toBeVisible();
   });
 
   test("usePrediction shows why there's no address, then the address once a wallet and chain are known", async () => {

@@ -81,7 +81,8 @@ describe("the cell", () => {
     expect(cellRow("Cut socket: empty · immutable").textContent).toContain("Empty · immutable");
     doc.load(coreProject(["ERC20", "SafeDiamondCut", "GovernedDiamondCut"], { id: ID }));
     await expect.poll(() => cellRow(/^Cut socket/).getAttribute("data-cut")).toBe("conflict");
-    const conflict = cellRow("Cut socket: SafeDiamondCut · GovernedDiamondCut, both claim it");
+    // The first in catalog order holds the socket, whatever the placement order; the other is its rival.
+    const conflict = cellRow("Cut socket: GovernedDiamondCut · SafeDiamondCut, both claim it");
     expect(getComputedStyle(conflict).backgroundImage).toContain("repeating-linear-gradient");
     doc.load(coreProject(["ERC20", "GovernedDiamondCut"], { id: ID }));
     await expect.poll(() => cellRow(/^Cut socket/).getAttribute("data-cut")).toBe("one");

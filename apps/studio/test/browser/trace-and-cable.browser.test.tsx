@@ -7,7 +7,7 @@
  * Provisional: forced-colors for traces and ties has no board (PA L82) — ties already carry a dash there
  * (Edges.module.css); this adds the trace.
  */
-import { analyze, contestedSelectors, type Hex4 } from "@lattice-studio/core";
+import { analyze, contestedSelectors, withCore, type Hex4, type Project } from "@lattice-studio/core";
 import { makeRecipe } from "@lattice-studio/core/testing";
 import { beforeAll, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
@@ -31,7 +31,12 @@ function traceProject() {
   const recipe = makeRecipe({ facets }, catalog);
   const contested = contestedSelectors(analyze(recipe, catalog), "VaultCore");
   const owners = Object.fromEntries(contested.map((hex: Hex4) => [hex, "VaultCore"]));
-  return cardProject(catalog, facets, { columns: 3, owners });
+  return withCoreFacets(cardProject(catalog, facets, { columns: 3, owners }));
+}
+
+/** The recipe carries the core, as every project does once parsed; the core is never a card. */
+function withCoreFacets(project: Project): Project {
+  return { ...project, recipe: withCore(project.recipe, catalog) };
 }
 
 /** Waits until the title block's summary text (async on the analysis) has painted and holds still. */
@@ -74,7 +79,7 @@ describe.each(["dark", "light"] as const)("board: trace and cable, a dependency 
 
 describe.each(["dark", "light"] as const)("board: trace and cable, a conflict tie (%s)", (theme) => {
   test("Axelar and Hyperlane: two ties, pin to pin, between the contended selectors", async () => {
-    const project = cardProject(catalog, [AXELAR, HYPERLANE], { columns: 2 });
+    const project = withCoreFacets(cardProject(catalog, [AXELAR, HYPERLANE], { columns: 2 }));
     await renderSheet({ theme, project, settings: { reduceMotion: "on" } });
     await expect.poll(() => document.querySelectorAll("path[data-edge^='tie:']").length, { timeout: 8000 }).toBe(2);
     await settledScreen();

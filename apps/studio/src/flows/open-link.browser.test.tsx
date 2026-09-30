@@ -1,5 +1,5 @@
 import type { Recipe } from "@lattice-studio/core";
-import { encodeShareLink, recipeHash } from "@lattice-studio/core";
+import { encodeShareLink, isCoreFacet, recipeHash } from "@lattice-studio/core";
 import { createElement, Suspense } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
@@ -60,7 +60,7 @@ describe("opening a shared link (Flow 10 step 7)", () => {
     expect(project.name).toBe("Treasury (shared)");
     expect(recipeHash(project.recipe)).toBe(hash);
     // Tidied on open: every card has a place, though the link carries no layout (spec L291).
-    expect(Object.keys(project.layout).sort()).toEqual([...project.recipe.facets].sort());
+    expect(Object.keys(project.layout).sort()).toEqual(project.recipe.facets.filter((name) => !isCoreFacet(name)).sort());
     expect(project.provenance["steps[0].admin"]).toBe("link");
     expect(project.provenance["steps[0].safe"]).toBe("link");
     expect(logged(`Opened a shared link · recipe ${short(hash)} · 2 addresses to confirm.`)).toBe(true);

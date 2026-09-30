@@ -1,3 +1,4 @@
+import { isCoreFacet } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
@@ -662,7 +663,8 @@ describe("locate, Back to content, minimap, auto-pan", () => {
 
   test("at 200%, every card auto-pan lands clear of the real tool strip, zoom readout and title block (2.4.11)", async () => {
     const catalog = fixtureCatalog();
-    const facets = catalog.facets.map((f) => f.name);
+    // Every facet but the core's two, which are never cards.
+    const facets = catalog.facets.map((f) => f.name).filter((name) => !isCoreFacet(name));
     const project = cardProject(catalog, facets, { columns: 5, rowPitch: 500, expanded: facets });
     await renderSheet({ project });
     await expect.poll(() => document.querySelector('[data-chrome="zoom-readout"]'), { timeout: 5000 }).not.toBeNull();
