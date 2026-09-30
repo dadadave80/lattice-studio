@@ -219,6 +219,16 @@
   font-weight: 600;
 }
 
+/* The cut row says which variant and which mechanism: a long pair wraps rather than hiding the mechanism. */
+.row[data-cut] .value {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.cell[data-collapsed] .row[data-cut] .value {
+  white-space: nowrap;
+}
+
 .empty {
   color: var(--lx-text-muted);
 }
