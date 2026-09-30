@@ -253,6 +253,16 @@ describe("load", () => {
     expect(bufferedServices().log.at(-1)?.text).toBe("Took over editing: undo history starts here.");
   });
 
+  test("a load drops any layout entry for the core: the core is never a card", () => {
+    const base = makeProject({ id: "core-cards", name: "Core cards" });
+    const layout = { ERC20: { x: 0, y: 0, pins: "left" as const }, DiamondLoupeFacet: { x: 272, y: 0, pins: "left" as const } };
+    doc.load({ ...base, layout });
+    expect(Object.keys(doc.get().layout)).toEqual(["ERC20"]);
+    const clean = { ...base, id: "clean", layout: { ERC20: { x: 0, y: 0, pins: "left" as const } } };
+    doc.load(clean);
+    expect(doc.get()).toBe(clean);
+  });
+
   test("a load deselects the core and leaves the card selection to the project switch", () => {
     session.set({ selection: [], coreSelected: true });
     expect(session.get().coreSelected).toBe(true);

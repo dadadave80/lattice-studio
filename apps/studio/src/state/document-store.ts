@@ -14,7 +14,7 @@
  * session never enter history.
  */
 import type { EditResult, Hex, Project, Recipe } from "@lattice-studio/core";
-import { CORE_FACETS, lines } from "@lattice-studio/core";
+import { CORE_FACETS, lines, withoutCore } from "@lattice-studio/core";
 import { createStore, type StoreApi } from "zustand/vanilla";
 import {
   announce, DEFAULT_SETTINGS, log, now, session, type DocumentActions, type DocumentChange, type DocumentState,
@@ -294,7 +294,10 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
       store.setState({ project, lastChange: change("record", label) });
       return { ...result, project };
     },
-    load(project, reason) {
+    load(loaded, reason) {
+      // The core is never a card: whatever path a project took here, its layout holds no entry for the core.
+      const layout = withoutCore(loaded.layout);
+      const project = layout === loaded.layout ? loaded : { ...loaded, layout };
       drag = null;
       burst = null;
       silently({ tracked: pick(project), selection: [], label: null });
