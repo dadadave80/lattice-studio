@@ -299,9 +299,9 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
       burst = null;
       silently({ tracked: pick(project), selection: [], label: null });
       history.getState().clear();
-      // Nothing from the old sheet stays selected, the core included: the session's `set` drops `coreSelected`
-      // on any selection write, so this one write clears both.
-      selection.set([]);
+      // A new document starts with the core deselected. The card selection is the project switch's to reset
+      // (projects/cmd/shared.ts), as before; the history filter drops names that aren't on the new sheet.
+      if (session.get().coreSelected) session.set({ coreSelected: false });
       publish(project, "load", reason ?? `Opened ${project.name}`);
       if (reason) log({ tag: "Note", text: reason });
     },

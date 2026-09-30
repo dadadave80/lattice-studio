@@ -43,7 +43,7 @@ function isOpen(): boolean {
 describe("Remove facets (NET-06, IR L177)", () => {
   test("lists the plan's facets by their share of the gas, focus on the checklist", async () => {
     const dialog = await open();
-    await expect.poll(() => names(dialog)).toEqual(["ERC20", "DiamondLoupeFacet", "Receive", "ERC165Facet"]);
+    await expect.poll(() => names(dialog)).toEqual(["ERC20", "DiamondLoupeFacet", "ERC165Facet", "Receive"]);
     await expect.element(dialog.getByRole("checkbox", { name: "ERC20" })).toHaveFocus();
     await expect.element(dialog.getByRole("checkbox", { name: "ERC20" })).toHaveAccessibleDescription("9 selectors · about 12M gas");
     await expect.element(dialog.getByRole("checkbox", { name: "DiamondLoupeFacet" })).toHaveAccessibleDescription(/^4 selectors · about 5.3M gas/);
@@ -131,7 +131,7 @@ describe("Remove facets (NET-06, IR L177)", () => {
 
   test("without an estimate it sorts by selectors cut and says so", async () => {
     const dialog = await open({ estimate: false });
-    await expect.poll(() => names(dialog)).toEqual(["ERC20", "DiamondLoupeFacet", "Receive", "ERC165Facet"]);
+    await expect.poll(() => names(dialog)).toEqual(["ERC20", "DiamondLoupeFacet", "ERC165Facet", "Receive"]);
     await expect.element(dialog.getByRole("checkbox", { name: "ERC20" })).toHaveAccessibleDescription("9 selectors");
     await expect.element(dialog.getByRole("status")).toHaveTextContent("No gas estimate yet: sorted by selectors cut.");
   });

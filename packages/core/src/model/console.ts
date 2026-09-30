@@ -54,7 +54,7 @@ export type ConsoleLineBuilders = {
   undid(args: { label: string }): LineDraft;
   /** S5d · L652 "Upgrade mechanism: SafeDiamondCut · Safe 0x71C7…976F." */
   mechanismChanged(args: { facet: string; holder?: string }): LineDraft;
-  /** S8c · L720 "Review: Sepolia · LatticeFactory · 14 facets." */
+  /** S8c · L720 "Review: Sepolia · LatticeFactory · the core and 12 facets." `facets`: the cut's cards, the core aside. */
   reviewOpened(args: { chain: string; path: "factory" | "createx"; facets: number }): LineDraft;
   /** S8c · L721 "Simulated at block 9,123,456: succeeded, 7 events." */
   simulated(args: { block: number; events: number }): LineDraft;

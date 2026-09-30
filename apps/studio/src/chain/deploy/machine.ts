@@ -33,7 +33,8 @@ import type {
   Result, TxRequest,
 } from "@lattice-studio/core";
 import {
-  ARACHNID_PROXY, assertSaltSender, buildDiamondDeploy, buildMissingDeploys, createxProxy, decodeInit, decodeRevert, formatAddress, lines,
+  ARACHNID_PROXY, assertSaltSender, buildDiamondDeploy, buildMissingDeploys, createxProxy, decodeInit, decodeRevert, formatAddress,
+  isCoreFacet, lines,
   MULTICALL3_CODEHASH, multicallGas, plural, sameAddress, toChecksum,
 } from "@lattice-studio/core";
 import type { DeployController, DeployPhase, DeployState } from "@/contracts";
@@ -46,6 +47,11 @@ import {
 } from "./copy";
 import { judgeDiamond, releaseOf, templatePlan, withDependencies } from "./judge";
 import type { DeployChainPort, DeployDeps } from "./ports";
+
+/** The cut's cards: its Adds without the core's two, which every line names as "the core". */
+function cardsCut(plan: readonly Pick<PlanEntry, "facet">[]): number {
+  return plan.filter((entry) => !isCoreFacet(entry.facet)).length;
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // Types
@@ -511,7 +517,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       simulatedKey = s.key;
       const selectors = s.plan.reduce((n, entry) => n + entry.selectors.length, 0);
       const summary = simulationSummary({
-        block, address: s.address, facets: s.plan.length, selectors, ...(outcome.events === undefined ? {} : { events: outcome.events }),
+        block, address: s.address, facets: cardsCut(s.plan), selectors, ...(outcome.events === undefined ? {} : { events: outcome.events }),
       });
       done({ phase: "ready", simulation: { ok: true, block: outcome.block, summary } });
       emit(outcome.events === undefined ? { tag: "Deploy", text: simulatedWithCall(block) } : lines.simulated({ block: outcome.block, events: outcome.events }));
@@ -739,7 +745,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       ...(chainId === null ? {} : { chainId }),
     });
     if (chainId !== null) {
-      emit(lines.reviewOpened({ chain: chainName(chainId), path: inputs.project().deploy.path, facets: inputs.analysis().plan.length }));
+      emit(lines.reviewOpened({ chain: chainName(chainId), path: inputs.project().deploy.path, facets: cardsCut(inputs.analysis().plan) }));
     }
     void track(simulate());
   };

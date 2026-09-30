@@ -9,7 +9,7 @@ import sheet from "../../shared/sheet.module.css";
 import { initText, missingArgs, namespaceIds } from "./diamond-words";
 import styles from "./diamond.module.css";
 
-/** The diamond at a glance (IR L119): hash, catalog, facets, selectors, problems, namespaces and init. */
+/** The diamond at a glance (IR L119): hash, catalog, facets, problems, namespaces and init; the Core section above has the selectors. */
 export function DiamondSummary() {
   const recipe = useDocument((s) => s.project.recipe);
   const catalog = useCatalog();
@@ -41,10 +41,8 @@ export function DiamondSummary() {
         <SpecRows>
           <SpecRow label="Recipe hash">{recipeHash}</SpecRow>
           <SpecRow label="Catalog">{recipe.catalog.tag}</SpecRow>
+          {/* Cards: the core's facets aside. Its Fallback row above carries the selector counts. */}
           <SpecRow label="Facets">{stats.facets}</SpecRow>
-          <SpecRow label="Selectors">
-            {`${stats.routed} routed · ${stats.exported} exported · ${stats.excluded} excluded`}
-          </SpecRow>
           <SpecRow label="Problems">{formatProblemSummary(counts)}</SpecRow>
           <SpecRow label="Namespaces">
             <span>{`${plural(namespaces.length, "namespace")} · ${counts.storageClash ? "overlapping" : "disjoint"}`}</span>

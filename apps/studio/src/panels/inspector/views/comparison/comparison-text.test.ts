@@ -40,9 +40,11 @@ describe("comparison words", () => {
   });
 
   test("the plan's size and the verdict, with plurals (spec L576)", () => {
-    expect(planSize(plan)).toBe("2 facets, 3 selectors");
-    expect(planSize([entry("ERC20", A, [TRANSFER])])).toBe("1 facet, 1 selector");
-    expect(verdict({ matches: true }, plan)).toBe("Diamond matches the sheet: 2 facets, 3 selectors.");
+    expect(planSize(plan)).toBe("the core and 2 facets, 3 selectors");
+    expect(planSize([entry("ERC20", A, [TRANSFER])])).toBe("the core and 1 facet, 1 selector");
+    // The core's two Adds are named, not counted.
+    expect(planSize([entry("DiamondLoupeFacet", A, [TRANSFER]), entry("ERC20", A, [TRANSFER])])).toBe("the core and 1 facet, 2 selectors");
+    expect(verdict({ matches: true }, plan)).toBe("Diamond matches the sheet: the core and 2 facets, 3 selectors.");
     expect(verdict({ matches: false }, plan)).toBe("Deployed, but doesn't match the sheet");
   });
 });
@@ -62,7 +64,7 @@ describe("comparisonText", () => {
         `Record's recipe hash: ${HASH_RECORD}`,
         `Sheet's recipe hash: ${HASH_SHEET}`,
         "",
-        "Diamond matches the sheet: 2 facets, 3 selectors.",
+        "Diamond matches the sheet: the core and 2 facets, 3 selectors.",
       ].join("\n"),
     );
   });

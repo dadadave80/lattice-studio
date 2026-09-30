@@ -132,10 +132,10 @@ describe("lines", () => {
   });
 
   test("reviewOpened: spec example, and the CreateX path", () => {
-    const draft = lines.reviewOpened({ chain: "Sepolia", path: "factory", facets: 14 });
-    expect(record(draft.text)).toBe("Review: Sepolia · LatticeFactory · 14 facets.");
+    const draft = lines.reviewOpened({ chain: "Sepolia", path: "factory", facets: 12 });
+    expect(record(draft.text)).toBe("Review: Sepolia · LatticeFactory · the core and 12 facets.");
     expect(draft.tag).toBe("Deploy");
-    expect(record(lines.reviewOpened({ chain: "Sepolia", path: "createx", facets: 14 }).text)).toBe("Review: Sepolia · CreateX · 14 facets.");
+    expect(record(lines.reviewOpened({ chain: "Sepolia", path: "createx", facets: 1 }).text)).toBe("Review: Sepolia · CreateX · the core and 1 facet.");
   });
 
   test("simulated: spec example, block grouped", () => {

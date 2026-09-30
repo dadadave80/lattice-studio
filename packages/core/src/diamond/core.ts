@@ -4,7 +4,6 @@
  */
 import { LOUPE_SELECTORS, SUPPORTS_INTERFACE_SELECTOR } from "../checks/core";
 import { planInit } from "../init/plan";
-import { hasUpgradeMechanism } from "../init/plan/specs";
 import type { PlanEntry } from "../model/analysis";
 import type { CoreStatusFn, IsCoreFacetFn, IsCoreOnlyFn } from "../model/api";
 import type { Catalog } from "../model/catalog";
@@ -27,19 +26,22 @@ const IDIAMOND_LOUPE: InterfaceId = { id: "0x48e2b093", name: "IDiamondLoupe" };
 const IDIAMOND_CUT: InterfaceId = { id: "0x1f931c1c", name: "IDiamondCut" };
 const INTERFACES: readonly InterfaceId[] = [IERC165, IDIAMOND_LOUPE, IDIAMOND_CUT];
 
+/** The introspection init that sets IDiamondLoupe alone (DiamondIntrospectionInit.sol). */
+const LOUPE_ONLY_INIT = "DiamondIntrospectionInit.initImmutable";
+
 /**
- * What one step of the init plan registers (lattice/src/utils/DiamondIntrospectionInit.sol): a step that
- * initializes ERC165 sets IERC165's own id; the automatic introspection step, or a step whose spec registers the
- * interfaces itself, sets IDiamondLoupe and, with an upgrade mechanism placed, IDiamondCut.
+ * What one step of the init plan registers: a step that initializes ERC165 sets IERC165's own id
+ * (ERC165Lib.registerInterface); `initImmutable` sets IDiamondLoupe alone; every other step that registers
+ * interfaces (`initUpgradeable`, the bundles, AccountInit) calls DiamondLib.registerInterface(), which sets
+ * IDiamondCut and IDiamondLoupe whether or not a cut facet is placed. The automatic step is one of the two
+ * DiamondIntrospectionInit functions, chosen by the upgrade mechanism (init/plan).
  */
-function registeredBy(step: InitStepView, catalog: Catalog, upgradeable: boolean): InterfaceId[] {
+function registeredBy(step: InitStepView, catalog: Catalog): InterfaceId[] {
   const spec = catalog.inits.find((candidate) => candidate.name === step.spec);
   const out: InterfaceId[] = [];
   if (spec?.initializes.some((entry) => entry.module === "ERC165")) out.push(IERC165);
-  if (step.automatic !== undefined || spec?.registersInterfaces === true) {
-    out.push(IDIAMOND_LOUPE);
-    if (upgradeable) out.push(IDIAMOND_CUT);
-  }
+  if (step.spec === LOUPE_ONLY_INIT) out.push(IDIAMOND_LOUPE);
+  else if (step.automatic !== undefined || spec?.registersInterfaces === true) out.push(IDIAMOND_LOUPE, IDIAMOND_CUT);
   return out;
 }
 
@@ -58,9 +60,8 @@ export const coreStatus: CoreStatusFn = (recipe, catalog, analysis) => {
   const placed = new Set(recipe.facets);
   // Catalog order: the raw recipe may list its facets in placement order.
   const cut = catalog.facets.filter((facet) => facet.family === "upgrade" && placed.has(facet.name)).map((facet) => facet.name);
-  const upgradeable = hasUpgradeMechanism(recipe.facets, catalog);
   const steps = planInit(recipe, catalog).steps;
-  const registered = new Set(steps.flatMap((step) => registeredBy(step, catalog, upgradeable)).map((entry) => entry.id));
+  const registered = new Set(steps.flatMap((step) => registeredBy(step, catalog)).map((entry) => entry.id));
   return {
     fallback: { ...analysis.stats },
     loupe: { selectors: loupe, covered: loupe.filter(routes) },

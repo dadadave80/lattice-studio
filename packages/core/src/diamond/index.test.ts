@@ -111,6 +111,20 @@ describe("coreStatus on the fixture catalog", () => {
     expect(status.cut.facet).toBe("GovernedDiamondCut");
   });
 
+  test.skipIf(!fixture.ok)("an init that calls DiamondLib.registerInterface() registers both, with or without a cut facet", () => {
+    // SafeDiamondCutInit's recipe carries its cut facet; here the step stands alone on a core-only sheet.
+    const status = statusOf(recipe([], { kind: "steps", steps: [{ spec: "SafeDiamondCutInit", args: {} }] }));
+    expect(status.cut.facet).toBeNull();
+    expect(status.erc165.interfaceIds).toEqual([LOUPE, CUT]);
+    expect(status.init).toEqual(["SafeDiamondCutInit"]);
+  });
+
+  test.skipIf(!fixture.ok)("a hand-added initImmutable beside a cut facet registers IDiamondLoupe alone, as the Solidity does", () => {
+    const steps = [{ spec: "DiamondIntrospectionInit.initImmutable", args: {} }];
+    const status = statusOf(recipe(["AccessControlDiamondCut"], { kind: "steps", steps }));
+    expect(status.erc165.interfaceIds).toEqual([LOUPE]);
+  });
+
   test.skipIf(!fixture.ok)("an ERC165Init step adds IERC165 first", () => {
     const status = statusOf(recipe([], { kind: "steps", steps: [{ spec: "ERC165Init", args: {} }] }));
     expect(status.erc165.interfaceIds).toEqual([IERC165, LOUPE]);

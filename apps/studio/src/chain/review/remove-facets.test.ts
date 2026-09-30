@@ -14,24 +14,24 @@ function template(name: string): Project {
   return makeProject({ recipe: recipe.value });
 }
 
-const LOUPE = "The loupe is incomplete: `facets()` is missing. Every Lattice diamond needs all four.";
+const VAULT_CORE = "`totalAssets()` must be served by a version that counts the assets strategies hold: place VaultCore.";
 
 describe("requiredFacets", () => {
-  test("locks DiamondLoupeFacet with CORE-01's message", () => {
+  test("the core's facets add no blocker: removing them is refused before any check runs (the dialog locks them itself)", () => {
     const locked = requiredFacets(template("ERC20"), catalog, ["ERC20", "Receive", "DiamondLoupeFacet", "ERC165Facet"]);
-    expect(locked.get("DiamondLoupeFacet")).toBe(LOUPE);
+    expect([...locked.keys()]).toEqual([]);
   });
 
   test("leaves a facet whose removal adds no blocker unlocked", () => {
-    const locked = requiredFacets(template("ERC20"), catalog, ["ERC20", "Receive", "DiamondLoupeFacet", "ERC165Facet"]);
-    expect([...locked.keys()]).toEqual(["DiamondLoupeFacet"]);
+    const locked = requiredFacets(template("GovernedVault"), catalog, ["Receive", "VaultCore"]);
+    expect([...locked.keys()]).toEqual(["VaultCore"]);
   });
 
   test("ignores blockers the recipe already has", () => {
     // GovernedVault starts with an INIT-01 blocker (the asset isn't set); removing Receive keeps it and adds nothing.
     const locked = requiredFacets(template("GovernedVault"), catalog, ["Receive", "ERC4626", "VaultCore"]);
     expect(locked.has("Receive")).toBe(false);
-    expect(locked.get("VaultCore")).toBe("`totalAssets()` must be served by a version that counts the assets strategies hold: place VaultCore.");
+    expect(locked.get("VaultCore")).toBe(VAULT_CORE);
     expect(locked.has("ERC4626")).toBe(true);
   });
 
@@ -42,7 +42,7 @@ describe("requiredFacets", () => {
 
 describe("removalBlocker", () => {
   test("names the first blocker the combination adds", () => {
-    expect(removalBlocker(template("ERC20"), catalog, ["DiamondLoupeFacet", "Receive"])).toBe(LOUPE);
+    expect(removalBlocker(template("GovernedVault"), catalog, ["VaultCore", "Receive"])).toBe(VAULT_CORE);
   });
 
   test("is null when the combination adds none, or nothing is ticked", () => {

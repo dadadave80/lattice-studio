@@ -3,7 +3,7 @@ import { analyze, CORE_FACETS, formatAddress, formatTime, loadTemplate, NotImple
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
-import { command, provideServices, putDeployment } from "@/contracts";
+import { command, provideServices, putDeployment, session } from "@/contracts";
 import { BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
 import {
   bufferedServices, fakeChainService, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio,
@@ -111,7 +111,9 @@ describe("DiamondView: a core-only sheet", () => {
   });
 
   test("while the core is selected, the title reads Core · the diamond's fixed part", async () => {
-    await renderWithStudio(view, { project: coreOnly("empty-core-selected"), session: { coreSelected: true } });
+    await renderWithStudio(view, { project: coreOnly("empty-core-selected") });
+    // After the project loads: a load starts with the core deselected.
+    session.set({ selection: [], coreSelected: true });
     await expect.element(page.getByRole("heading", { level: 2, name: "Core · the diamond's fixed part" })).toBeVisible();
     await expect.element(page.getByText("Assembly")).toBeVisible();
     expect(page.getByRole("heading", { level: 2, name: "My diamond" }).elements()).toHaveLength(0);
@@ -132,8 +134,8 @@ describe("DiamondView: a core-only sheet", () => {
     ]);
     const headings = [...document.querySelectorAll('[data-view="diamond"] h3')].map((h) => h.textContent);
     expect(headings[0]).toBe("Core");
-    // The Summary's own Selectors row still reads the same counts, in its own region.
-    await expect.element(page.getByRole("region", { name: "Summary" }).getByText("29 routed · 29 exported · 0 excluded")).toBeVisible();
+    // The counts show once: the Summary no longer repeats them.
+    expect(page.getByRole("region", { name: "Summary" }).getByText("29 routed · 29 exported · 0 excluded").elements()).toHaveLength(0);
   });
 });
 
@@ -145,8 +147,10 @@ describe("DiamondView: summary, actions and authority", () => {
 
     await expect.element(rows.getByText(hashOf(recipe))).toBeVisible();
     await expect.element(rows.getByText("fixture", { exact: true })).toBeVisible();
-    await expect.element(rows.getByText("14", { exact: true })).toBeVisible();
-    await expect.element(rows.getByText("120 routed · 143 exported · 0 excluded")).toBeVisible();
+    // 12 cards: the core's two facets aside. The selector counts are the Core section's Fallback row, once.
+    await expect.element(rows.getByText("12", { exact: true })).toBeVisible();
+    expect(rows.getByText("120 routed · 143 exported · 0 excluded").elements()).toHaveLength(0);
+    await expect.element(page.getByText("120 routed · 143 exported · 0 excluded")).toBeVisible();
     await expect.element(rows.getByText("1 blocker · 1 warning")).toBeVisible();
     await expect.element(rows.getByText("11 namespaces · disjoint")).toBeVisible();
     await expect.element(rows.getByText("lattice.storage.GovernedVault")).toBeVisible();

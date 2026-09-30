@@ -106,7 +106,7 @@ test.describe("Flow 12. Deploy", () => {
         await expect(review.section("What gets cut")).toContainText("14 facets · 120 selectors");
         const address = shortAddress(predictedAddress(recipeProject("GovernedVault", { filled: true })));
         await expect(review.section("Simulation")).toContainText(
-          new RegExp(`Simulated at block [\\d,]+: diamond at ${address} with 14 facets, 120 selectors, \\d+ events\\.`),
+          new RegExp(`Simulated at block [\\d,]+: diamond at ${address} with the core and 12 facets, 120 selectors, \\d+ events\\.`),
         );
         const log = new ConsoleLog(page);
         await expect(log.line("Deploy", "Review: Anvil · LatticeFactory · 14 facets.")).toBeVisible();
@@ -199,7 +199,7 @@ test.describe("Flow 12. Deploy", () => {
         expect(address).toBeDefined();
         await expect(review.section("Address")).toContainText(`Free: no code at this address on Anvil.`);
         await expect(review.section("Simulation")).toContainText(
-          new RegExp(`Simulated at block [\\d,]+: diamond at ${shortAddress(address)} with 14 facets, 120 selectors`),
+          new RegExp(`Simulated at block [\\d,]+: diamond at ${shortAddress(address)} with the core and 12 facets, 120 selectors`),
         );
         // Sign & deploy enables once every acknowledgement is ticked (spec L573).
         await expect(review.sign()).toHaveAttribute("aria-disabled", "true");
