@@ -1,5 +1,5 @@
 import type { Hex4, Route } from "@lattice-studio/core";
-import { contestedSelectors, coreStatus, isCoreOnly } from "@lattice-studio/core";
+import { contestedSelectors, coreStatus, isCoreOnly, mechanismOptions } from "@lattice-studio/core";
 import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { layoutMetrics, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
@@ -74,6 +74,12 @@ function CoreLayerBody() {
   }, [root, hot]);
 
   const status = useMemo(() => (catalog ? coreStatus(recipe, catalog, analysis) : null), [recipe, catalog, analysis]);
+  // The cut row names the mechanism as the inspector does ("Safe", "Admin role").
+  const mode = useMemo(() => {
+    if (!catalog) return undefined;
+    const options = mechanismOptions(recipe, catalog);
+    return options.options.find((option) => option.id === options.current)?.label;
+  }, [recipe, catalog]);
   const owners = useMemo(() => ownersOf(analysis.routing), [analysis]);
   const cutFacets = useMemo(
     () => new Set(catalog?.facets.filter((facet) => facet.family === "upgrade").map((facet) => facet.name) ?? []),
@@ -120,6 +126,7 @@ function CoreLayerBody() {
       <CoreTraces traces={traces} pads={pads} />
       <CoreCell
         status={status}
+        mode={mode}
         selected={selected}
         empty={isCoreOnly(recipe)}
         hot={hot}

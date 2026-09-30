@@ -43,11 +43,12 @@ describe("the cell", () => {
     await expect.element(toolbar).toBeVisible();
     expect(cell().getAttribute("data-keyctx")).toBe("global");
     const s = status();
-    expect(cellRow("Core: the diamond's fixed part")).toBeTruthy();
-    expect(cellRow(`Fallback: ${s.fallback.routed} routed`).textContent).toContain(`${s.fallback.routed} routed`);
-    expect(cellRow("Loupe socket: 4 of 4 covered").textContent).toContain("4/4");
+    expect(cellRow("Core The diamond's fixed part")).toBeTruthy();
+    expect(cellRow(`Fallback ${s.fallback.routed} routed`).textContent).toContain(`${s.fallback.routed} routed`);
+    expect(cellRow("Loupe 4/4, 4 of 4 covered").textContent).toContain("4/4");
     expect(cellRow("ERC-165 socket: covered")).toBeTruthy();
-    expect(cellRow("Cut socket: SafeDiamondCut · upgradeable").textContent).toContain("SafeDiamondCut · upgradeable");
+    // The mechanism by its label, as the inspector's Core section names it.
+    expect(cellRow("Cut SafeDiamondCut · Safe").textContent).toContain("SafeDiamondCut · Safe");
     expect(cellRow("Collapse the core cell")).toBeTruthy();
     // Every loupe pad is filled, and so is the cut socket's.
     expect([...cellRow(/^Loupe/).querySelectorAll("[data-on]")]).toHaveLength(4);
@@ -71,22 +72,22 @@ describe("the cell", () => {
     expect(cell().textContent).toContain(EMPTY_HINT);
     await expect.element(page.getByRole("heading", { name: "Start a diamond" })).toBeVisible();
     const s = status();
-    expect(cellRow(`Fallback: ${s.fallback.routed} routed`)).toBeTruthy();
-    expect(cellRow("Cut socket: empty · no upgrade mechanism").textContent).toContain("Empty · no upgrade mechanism");
+    expect(cellRow(`Fallback ${s.fallback.routed} routed`)).toBeTruthy();
+    expect(cellRow("Cut Empty · no upgrade mechanism").textContent).toContain("Empty · no upgrade mechanism");
     expect(pad("cut").hasAttribute("data-on")).toBe(false);
   });
 
   test("the cut row: kept immutable, a placed variant, or two claiming it (hatched)", async () => {
     await renderCoreSheet({ project: coreProject(["ERC20"], { id: ID, immutable: true }), ...VIEW });
-    expect(cellRow("Cut socket: empty · immutable").textContent).toContain("Empty · immutable");
+    expect(cellRow("Cut Empty · immutable").textContent).toContain("Empty · immutable");
     doc.load(coreProject(["ERC20", "SafeDiamondCut", "GovernedDiamondCut"], { id: ID }));
-    await expect.poll(() => cellRow(/^Cut socket/).getAttribute("data-cut")).toBe("conflict");
+    await expect.poll(() => cellRow(/^Cut /).getAttribute("data-cut")).toBe("conflict");
     // The first in catalog order holds the socket, whatever the placement order; the other is its rival.
-    const conflict = cellRow("Cut socket: GovernedDiamondCut · SafeDiamondCut, both claim it");
+    const conflict = cellRow("Cut GovernedDiamondCut · SafeDiamondCut, both claim it");
     expect(getComputedStyle(conflict).backgroundImage).toContain("repeating-linear-gradient");
     doc.load(coreProject(["ERC20", "GovernedDiamondCut"], { id: ID }));
-    await expect.poll(() => cellRow(/^Cut socket/).getAttribute("data-cut")).toBe("one");
-    expect(getComputedStyle(cellRow(/^Cut socket/)).backgroundImage).toBe("none");
+    await expect.poll(() => cellRow(/^Cut /).getAttribute("data-cut")).toBe("one");
+    expect(getComputedStyle(cellRow(/^Cut /)).backgroundImage).toBe("none");
   });
 });
 
@@ -101,7 +102,7 @@ describe("selecting the core", () => {
     expect(selection()).toEqual([]);
     expect(announced().at(-1)).toBe("Selected the core.");
     await expect.poll(() => cell().hasAttribute("data-selected")).toBe(true);
-    expect(cellRow("Core: the diamond's fixed part").getAttribute("aria-pressed")).toBe("true");
+    expect(cellRow("Core The diamond's fixed part").getAttribute("aria-pressed")).toBe("true");
     // The accent frame: the border and the outline take the accent token.
     const probe = document.createElement("span");
     probe.style.color = "var(--lx-accent)";
@@ -124,7 +125,7 @@ describe("selecting the core", () => {
 
   test("Enter and Space on a row select it; Esc, a card click and a click on empty sheet deselect it", async () => {
     await renderCoreSheet({ project: coreProject(["ERC20", "ERC4626"], { id: ID }), ...VIEW });
-    const diamond = cellRow("Core: the diamond's fixed part");
+    const diamond = cellRow("Core The diamond's fixed part");
     diamond.focus();
     await userEvent.keyboard("{Enter}");
     await expect.poll(() => session.get().coreSelected).toBe(true);
@@ -141,7 +142,7 @@ describe("selecting the core", () => {
     await expect.poll(() => session.get().coreSelected).toBe(false);
     expect(selection()).toEqual(["ERC4626"]);
 
-    await userEvent.click(cellRow(/^Cut socket/));
+    await userEvent.click(cellRow(/^Cut /));
     await expect.poll(() => session.get().coreSelected).toBe(true);
     expect(selection()).toEqual([]);
     clickPane({ x: 500, y: 450 });
@@ -174,7 +175,7 @@ describe("the pads", () => {
     cellRow(/^Fallback/).blur();
     await expect.poll(() => flow().hasAttribute("data-core-lit")).toBe(false);
 
-    await userEvent.hover(cellRow(/^Cut socket/));
+    await userEvent.hover(cellRow(/^Cut /));
     await expect.poll(() => flow().hasAttribute("data-core-cut-lit")).toBe(true);
     await expect.poll(() => traceOf("SafeDiamondCut")?.dataset.tone).toBe("soft");
     expect(traceOf("SafeDiamondCut")?.dataset.to).toBe("cut");
@@ -182,7 +183,7 @@ describe("the pads", () => {
     await expect.poll(() => getComputedStyle(glyphOf("SafeDiamondCut")).color).not.toBe(rest);
     await expect.poll(() => getComputedStyle(glyphOf("ERC20")).color).toBe(rest);
     expect(padTone("cut")).toBe("soft");
-    await userEvent.unhover(cellRow(/^Cut socket/));
+    await userEvent.unhover(cellRow(/^Cut /));
     await expect.poll(() => traceOf("SafeDiamondCut")).toBeNull();
   });
 });
@@ -200,17 +201,17 @@ describe("the keyboard", () => {
     }
     expect(cell().contains(document.activeElement)).toBe(true);
     expect(before?.closest('[data-chrome="title-block"]')).not.toBeNull();
-    expect(document.activeElement).toBe(cellRow("Core: the diamond's fixed part"));
+    expect(document.activeElement).toBe(cellRow("Core The diamond's fixed part"));
     await userEvent.keyboard("{ArrowDown}");
     await expect.poll(() => document.activeElement).toBe(cellRow("Collapse the core cell"));
     await userEvent.keyboard("{ArrowDown}");
     await expect.poll(() => document.activeElement).toBe(cellRow(/^Fallback/));
     await userEvent.keyboard("{End}");
-    await expect.poll(() => document.activeElement).toBe(cellRow(/^Cut socket/));
+    await expect.poll(() => document.activeElement).toBe(cellRow(/^Cut /));
     await userEvent.keyboard("{Home}");
-    await expect.poll(() => document.activeElement).toBe(cellRow("Core: the diamond's fixed part"));
+    await expect.poll(() => document.activeElement).toBe(cellRow("Core The diamond's fixed part"));
     await userEvent.keyboard("{ArrowUp}");
-    await expect.poll(() => document.activeElement).toBe(cellRow(/^Cut socket/));
+    await expect.poll(() => document.activeElement).toBe(cellRow(/^Cut /));
     // Tab leaves the cell: no trap.
     await userEvent.tab();
     expect(cell().contains(document.activeElement)).toBe(false);

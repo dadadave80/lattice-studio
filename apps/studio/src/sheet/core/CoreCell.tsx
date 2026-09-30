@@ -19,6 +19,8 @@ export type PadTone = "soft" | "live" | null;
 
 export type CoreCellProps = {
   status: CoreStatus;
+  /** The upgrade mechanism's label ("Admin role", "Safe"), for the cut row; undefined without one. */
+  mode: string | undefined;
   /** The core is selected: the accent frame. */
   selected: boolean;
   /** Nothing but the core on the sheet: the hint row shows. */
@@ -70,7 +72,7 @@ function samePads(a: Pads | null, b: Pads | null): boolean {
  * and a click, Enter or Space on any of them runs `core.select`. The FALLBACK and CUT pads are where traces end.
  * The chevron folds it to one line (`session.panes.core.collapsed`).
  */
-export function CoreCell({ status, selected, empty, hot, onHot, tones, onPads }: CoreCellProps) {
+export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onPads }: CoreCellProps) {
   const root = useStore((s) => s.domNode);
   const title = useTitleBlockSize();
   const collapsed = useSession((s) => s.panes.core.collapsed);
@@ -161,6 +163,7 @@ export function CoreCell({ status, selected, empty, hot, onHot, tones, onPads }:
       >
         <CellRows
           status={status}
+          mode={mode}
           selected={selected}
           collapsed={collapsed}
           empty={empty}
@@ -175,6 +178,7 @@ export function CoreCell({ status, selected, empty, hot, onHot, tones, onPads }:
 
 type CellRowsProps = {
   status: CoreStatus;
+  mode: string | undefined;
   selected: boolean;
   collapsed: boolean;
   empty: boolean;
@@ -184,8 +188,8 @@ type CellRowsProps = {
 };
 
 /** The cell's rows, an APG toolbar: re-rendered only when what they say changes, never for a pad's tone. */
-const CellRows = memo(function CellRows({ status, selected, collapsed, empty, onHot, fallbackPad, cutPad }: CellRowsProps) {
-  const cut = cutRow(status);
+const CellRows = memo(function CellRows({ status, mode, selected, collapsed, empty, onHot, fallbackPad, cutPad }: CellRowsProps) {
+  const cut = cutRow(status, mode);
   const loupe = status.loupe;
   const padProps = (pad: Pad) => ({
     "data-pad-row": pad,
@@ -199,7 +203,7 @@ const CellRows = memo(function CellRows({ status, selected, collapsed, empty, on
       <div className={cx(styles.line, styles.header)}>
         <BaseToolbar.Button className={styles.row} aria-label={diamondName()} aria-pressed={selected} onClick={select}>
           <span className={styles.key}>{CORE}</span>
-          {collapsed ? null : <span className={styles.tagline}>{CORE_TAGLINE}</span>}
+          {collapsed ? null : <> <span className={styles.tagline}>{CORE_TAGLINE}</span></>}
         </BaseToolbar.Button>
         {collapsed ? null : (
           <ToolbarButton icon="chevron-down" label={COLLAPSE_CELL} aria-expanded className={styles.chevron} onClick={toggleCollapsed} />
@@ -208,18 +212,19 @@ const CellRows = memo(function CellRows({ status, selected, collapsed, empty, on
       <div className={styles.line}>
         <BaseToolbar.Button className={styles.row} aria-label={fallbackName(status)} onClick={select} {...padProps("fallback")}>
           <span ref={fallbackPad} className={styles.pad} data-pad="fallback" data-on="" />
-          {collapsed ? null : <span className={styles.key}>{FALLBACK}</span>}
+          {collapsed ? null : <><span className={styles.key}>{FALLBACK}</span> </>}
           <span className={styles.value}>{fallbackText(status)}</span>
         </BaseToolbar.Button>
       </div>
       <div className={styles.line}>
         <BaseToolbar.Button className={styles.row} aria-label={loupeName(status)} onClick={select}>
-          {collapsed ? null : <span className={styles.key}>{LOUPE}</span>}
+          {collapsed ? null : <><span className={styles.key}>{LOUPE}</span> </>}
           <span className={styles.pads}>
             {loupe.selectors.map((selector) => (
               <span key={selector} className={styles.pad} data-on={loupe.covered.includes(selector) ? "" : undefined} />
             ))}
           </span>
+          {" "}
           <span className={styles.value}>{loupeText(status)}</span>
         </BaseToolbar.Button>
         <BaseToolbar.Button className={styles.row} aria-label={erc165Name(status)} onClick={select}>
@@ -230,13 +235,13 @@ const CellRows = memo(function CellRows({ status, selected, collapsed, empty, on
       <div className={styles.line}>
         <BaseToolbar.Button
           className={cx(styles.row, cut.state === "conflict" && styles.conflict)}
-          aria-label={cutName(status)}
+          aria-label={cutName(status, mode)}
           data-cut={cut.state}
           onClick={select}
           {...padProps("cut")}
         >
           <span className={styles.key}>{CUT}</span>
-          {collapsed ? null : <span className={cx(styles.value, cut.state === "empty" && styles.empty)}>{cut.text}</span>}
+          {collapsed ? null : <> <span className={cx(styles.value, cut.state === "empty" && styles.empty)}>{cut.text}</span></>}
           <span ref={cutPad} className={styles.pad} data-pad="cut" data-on={cut.state === "empty" ? undefined : ""} />
         </BaseToolbar.Button>
         {collapsed ? (
