@@ -420,9 +420,15 @@ export const history: {
   subscribe: (listener) => relays.document.api.subscribe(listener),
 };
 
+/** Any write to the card selection deselects the core, unless the patch says otherwise (`core.select`). */
+function clearingCore(patch: Partial<SessionState>): Partial<SessionState> {
+  return "selection" in patch && !("coreSelected" in patch) ? { ...patch, coreSelected: false } : patch;
+}
+
 export const session: StoreAccess<SessionState> = {
   get: () => relays.session.api.getState(),
-  set: (patch) => relays.session.api.setState(patch),
+  set: (patch) =>
+    relays.session.api.setState(typeof patch === "function" ? (s) => clearingCore(patch(s)) : clearingCore(patch)),
   subscribe: (listener) => relays.session.api.subscribe(listener),
 };
 
