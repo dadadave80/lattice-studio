@@ -1,6 +1,6 @@
 /**
  * The Esc stack (contracts §5.2 "escape stack", IR L17): Esc closes the top overlay; else leaves a mode
- * (Move to…, init order, a card's rows); else clears the selection. Overlays that aren't Base UI dialogs,
+ * (Move to…, init order, a card's rows); else deselects the core; else clears the selection. Overlays that aren't Base UI dialogs,
  * menus or popovers (those close themselves) push a handler while they show; the modes, the rows and the
  * selection live in the session, so they're left in that order when no handler takes Esc.
  */
@@ -17,8 +17,8 @@ export function pushEscapeHandler(handler: EscapeHandler): () => void {
   };
 }
 
-/** What Esc did: an overlay's handler, a mode left, the selection cleared, or nothing. */
-export type EscapeOutcome = "handler" | "moveTo" | "initOrder" | "rows" | "selection" | null;
+/** What Esc did: an overlay's handler, a mode left, the core deselected, the selection cleared, or nothing. */
+export type EscapeOutcome = "handler" | "moveTo" | "initOrder" | "rows" | "core" | "selection" | null;
 
 function runHandler(handler: EscapeHandler): boolean {
   try {
@@ -48,6 +48,10 @@ export function runEscape(): EscapeOutcome {
   if (s.modes.rows !== null) {
     session.set((x) => ({ modes: { ...x.modes, rows: null } }));
     return "rows";
+  }
+  if (s.coreSelected) {
+    session.set({ coreSelected: false });
+    return "core";
   }
   if (s.selection.length) {
     session.set({ selection: [] });

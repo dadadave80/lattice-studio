@@ -10,9 +10,11 @@ export const isCoreFacet: IsCoreFacetFn = (name) => (CORE_FACETS as readonly str
 
 export const isCoreOnly: IsCoreOnlyFn = (recipe) => recipe.facets.every(isCoreFacet);
 
-/** The ids DiamondIntrospectionInit registers: IERC165 and IDiamondLoupe always, IDiamondCut with an upgrade mechanism. */
+/**
+ * The ids DiamondIntrospectionInit registers (lattice/src/utils/DiamondIntrospectionInit.sol): IDiamondLoupe always,
+ * IDiamondCut with an upgrade mechanism. IERC165 itself comes only from ERC165Init.
+ */
 const INTERFACES: readonly { id: Hex4; name: string; upgradeable?: true }[] = [
-  { id: "0x01ffc9a7", name: "IERC165" },
   { id: "0x48e2b093", name: "IDiamondLoupe" },
   { id: "0x1f931c1c", name: "IDiamondCut", upgradeable: true },
 ];

@@ -11,7 +11,10 @@ export type CoreStatus = {
   fallback: Analysis["stats"];
   /** The four loupe selectors in LatticeFactory's order, and the ones that route. */
   loupe: { selectors: Hex4[]; covered: Hex4[] };
-  /** `covered`: supportsInterface routes. `interfaceIds`: what the init registers, IERC165 first. */
+  /**
+   * `covered`: supportsInterface routes. `interfaceIds`: what the init registers. DiamondIntrospectionInit
+   * registers IDiamondLoupe, plus IDiamondCut with an upgrade mechanism; IERC165 itself only through ERC165Init.
+   */
   erc165: { covered: boolean; interfaceIds: { id: Hex4; name: string }[] };
   /**
    * The placed cut facet (family "upgrade") and any rivals placed beside it (`conflict` when there are any);
