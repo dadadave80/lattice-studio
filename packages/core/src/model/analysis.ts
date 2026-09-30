@@ -18,6 +18,10 @@ export type Analysis = {
   plan: PlanEntry[];
   /** `data` once a deploy context resolves every ref. */
   init: { target: Address; data?: Hex; refs: ("self" | "deployer")[] } | null;
+  /**
+   * `facets` counts cards: the recipe's facets without the core (DiamondLoupeFacet, ERC165Facet). `routed`,
+   * `exported` and `excluded` count selectors and include the core's five, so a core-only recipe routes 5.
+   */
   stats: { facets: number; routed: number; exported: number; excluded: number; namespaces: number };
 };
 
