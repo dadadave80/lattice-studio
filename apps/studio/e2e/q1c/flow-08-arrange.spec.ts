@@ -34,6 +34,7 @@
  *    (`sheet.focusFirst`/Home, real DOM focus) wherever a bare key follows, and otherwise clicks the header
  *    text (`getByText(name, { exact: true })`) when only mouse-driven selection (a menu command) is needed.
  */
+import { isCoreFacet } from "@lattice-studio/core";
 import { expect, test } from "../_support/fixtures.ts";
 import { focusRegion } from "../_support/keys.ts";
 import { collisionsProject, recipeProject } from "../_support/projects.ts";
@@ -476,7 +477,8 @@ test.describe("Locate", () => {
     const project = collisionsProject(30);
     await seedProject(page, { project });
     const sheet = new SheetPage(page);
-    const target = project.recipe.facets.at(-1);
+    // The last card: the core's facets are in the recipe but never on the sheet (nor in the tree's facet rows).
+    const target = project.recipe.facets.filter((name) => !isCoreFacet(name)).at(-1);
     expect(target).toBeDefined();
     if (!target) return;
 
@@ -503,7 +505,7 @@ test.describe("Back to content", () => {
     const project = collisionsProject(30);
     await seedProject(page, { project });
     const sheet = new SheetPage(page);
-    const [first] = project.recipe.facets;
+    const [first] = project.recipe.facets.filter((name) => !isCoreFacet(name));
     expect(first).toBeDefined();
     if (!first) return;
 

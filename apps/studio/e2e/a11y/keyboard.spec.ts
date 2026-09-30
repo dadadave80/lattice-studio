@@ -77,7 +77,7 @@ function partsInOrder(stops: readonly SheetStop[]): string[] {
 }
 
 test.describe("Tab leaves the sheet (spec L751, WCAG 2.1.2)", () => {
-  test("from the card grid Tab reaches the tool strip, the notes and the title block, then leaves the Sheet", async ({ page }) => {
+  test("from the card grid Tab reaches the tool strip, the notes, the title block and the core, then leaves the Sheet", async ({ page }) => {
     await seedProject(page, { project: collisionsProject() });
     await waitForSheet(page);
     await focusFirstCard(page);
@@ -93,7 +93,7 @@ test.describe("Tab leaves the sheet (spec L751, WCAG 2.1.2)", () => {
     const after = stops[stops.length - 1];
     expect(after?.part, `Tab never left the sheet:\n${trail}`).toBe("outside");
     const parts = partsInOrder(stops.slice(0, -1));
-    expect(parts, trail).toEqual(["card", "tool strip", "note", "title block"]);
+    expect(parts, trail).toEqual(["card", "tool strip", "note", "title block", "core"]);
   });
 });
 

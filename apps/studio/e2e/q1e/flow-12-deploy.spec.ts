@@ -103,13 +103,14 @@ test.describe("Flow 12. Deploy", () => {
         for (const title of REVIEW_SECTIONS) await expect(review.section(title)).toBeVisible();
         // Spec L563's readiness line, for Anvil.
         await expect(review.section("Network")).toContainText("Anvil · LatticeFactory ✓ · 15 of 15 facets and init contracts ✓");
-        await expect(review.section("What gets cut")).toContainText("14 facets · 120 selectors");
+        // The core's two Adds are named, not counted (GovernedVault: the core and 12 facets).
+        await expect(review.section("What gets cut")).toContainText("The core and 12 facets · 120 selectors");
         const address = shortAddress(predictedAddress(recipeProject("GovernedVault", { filled: true })));
         await expect(review.section("Simulation")).toContainText(
           new RegExp(`Simulated at block [\\d,]+: diamond at ${address} with the core and 12 facets, 120 selectors, \\d+ events\\.`),
         );
         const log = new ConsoleLog(page);
-        await expect(log.line("Deploy", "Review: Anvil · LatticeFactory · 14 facets.")).toBeVisible();
+        await expect(log.line("Deploy", "Review: Anvil · LatticeFactory · the core and 12 facets.")).toBeVisible();
         await expect(log.lineMatching("Deploy", /Simulated at block [\d,]+: succeeded, \d+ events\./)).toBeVisible();
         // Two acknowledgements wait: Cut without the registry check (NET-08) and Keep example values (INIT-05).
         await expectDisabledWith(review.sign(), "Tick the 2 acknowledgements first");
