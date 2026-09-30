@@ -119,6 +119,8 @@ export type InspectorView =
 export type SessionState = {
   /** Selected facet names. */
   selection: string[];
+  /** The core (the pinned diamond) is selected. Any card selection, Esc, clearing the selection or opening a project clears it. Not in history. */
+  coreSelected: boolean;
   /** What keyboard focus is on, as an anchor (a card, a pin, a problem's note). */
   focus: Anchor | null;
   tool: Tool;
@@ -157,6 +159,7 @@ export type SessionState = {
 export function initialSession(): SessionState {
   return {
     selection: [],
+    coreSelected: false,
     focus: null,
     tool: "select",
     modes: { initOrder: false, moveTo: false, rows: null },
