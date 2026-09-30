@@ -63,7 +63,8 @@ function useKeepFocusOnSheet(empty: boolean): void {
 
 /**
  * Start a diamond (spec L378, IR L108, Flows 1-2): on an empty sheet, in the card grid's place. Blank diamond
- * (core only), v1's three recipe cards, Browse all recipes, the hint and the tour line. Every choice runs a
+ * (the core, Receive, AccessControl and its cut), v1's three recipe cards, Browse all recipes, the hint and the tour
+ * line. Every choice runs a
  * command: `recipe.load` loads in place on an empty sheet and as a new project otherwise (spec L408), so the
  * block never decides that itself. A recipe this catalog can't load isn't offered.
  *

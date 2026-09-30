@@ -84,7 +84,7 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
     await renderChrome({ project: emptyProject("empty") });
     const start = page.getByRole("region", { name: "Start a diamond" });
     await expect.element(start).toBeVisible();
-    await expect.element(start.getByRole("button", { name: "Blank diamond (core only)" })).toBeVisible();
+    await expect.element(start.getByRole("button", { name: "Blank diamond", exact: true })).toBeVisible();
     for (const name of ["GovernedVault", "ERC20", "SafeDiamondCut"]) {
       await expect.element(start.getByRole("button", { name: new RegExp(`^${name} `) })).toBeVisible();
     }
@@ -118,7 +118,7 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
       await expect.element(card).toHaveAttribute("aria-disabled", "true");
       await expect.element(card).toHaveAccessibleDescription("The catalog hasn't loaded yet · Wait for it to finish");
     }
-    await expect.element(start.getByRole("button", { name: "Blank diamond (core only)" })).toHaveAttribute("aria-disabled", "true");
+    await expect.element(start.getByRole("button", { name: "Blank diamond", exact: true })).toHaveAttribute("aria-disabled", "true");
   });
 
   test("once the catalog loads, a recipe it can't load isn't offered", async () => {
@@ -152,9 +152,9 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
     await expect.element(page.getByRole("region", { name: "Start a diamond" })).toBeVisible();
   });
 
-  test("Blank diamond (core only) loads with Enter from the keyboard", async () => {
+  test("Blank diamond loads with Enter from the keyboard", async () => {
     await renderChrome({ project: emptyProject("empty") });
-    const blank = page.getByRole("button", { name: "Blank diamond (core only)" });
+    const blank = page.getByRole("button", { name: "Blank diamond", exact: true });
     (blank.element() as HTMLElement).focus();
     await userEvent.keyboard("{Enter}");
     await expect.poll(() => doc.get().recipe.facets.length).toBeGreaterThan(0);
