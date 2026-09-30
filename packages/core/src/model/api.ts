@@ -13,6 +13,7 @@ import type {
   MissingDeploys, MissingDeploysArgs, Random, Refs, RevertContext, Scope,
 } from "./chain";
 import type { ConsoleLineBuilders, CopyIssue, LineDraft, NarrateCause, Platform, RelativeTime, SelectorRef } from "./console";
+import type { CoreStatus } from "./diamond";
 import type { Address, Hex, Hex4 } from "./hex";
 import type { ArgContext, AuthorityRow, DecodedInit, FieldModel, InitCall, InitPlan, Mechanism, MechanismChange, MechanismInputs, MechanismOptions } from "./init";
 import type {
@@ -102,6 +103,13 @@ export type PlanMechanismChangeFn = (
   choice: Mechanism,
   inputs: MechanismInputs,
 ) => Result<MechanismChange, string>;
+
+// ── diamond (C2) ───────────────────────────────────────────────────────────────────────────────────
+
+/** DiamondLoupeFacet and ERC165Facet: in every recipe, never on the sheet, first in the cut plan. */
+export type IsCoreFacetFn = (name: string) => boolean;
+/** The diamond's fixed part for the core cell, the Diamond view and the console's `core` verb. */
+export type CoreStatusFn = (recipe: Recipe, catalog: Catalog, analysis: Analysis) => CoreStatus;
 
 // ── plan (C5a) ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -266,7 +274,7 @@ export type RecordPredictionFn = (project: Project, prediction: { chainId: numbe
 export const API_OWNERS = {
   canonicalJson: "C1", normalizeRecipe: "C1", recipeHash: "C1", catalogHash: "C1",
   parseRecipe: "C1", parseProject: "C1", parseProjectFile: "C1", migrate: "C1",
-  analyze: "C2", computeRouting: "C2", sortProblems: "C2",
+  analyze: "C2", computeRouting: "C2", sortProblems: "C2", isCoreFacet: "C2", coreStatus: "C2",
   planInit: "C4a", autoOrder: "C4a", fieldModel: "C4a", validateArg: "C4a",
   resolveRefs: "C4b", collectRefs: "C4b", encodeInit: "C4b", decodeInit: "C4b",
   authorityTable: "C4c", mechanismOptions: "C4c", planMechanismChange: "C4c",

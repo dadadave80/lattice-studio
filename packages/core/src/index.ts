@@ -4,6 +4,7 @@ export * from "./model";
 export * from "./canonical";
 export * from "./analysis";
 export * from "./checks";
+export * from "./diamond";
 export * from "./init/plan";
 export * from "./init/encode";
 export * from "./authority";
