@@ -201,7 +201,7 @@ const removeFacets = command({
     const locked = readOnly(ctx);
     if (locked) return locked;
     if (!ctx.catalog) return no(CATALOG_LOADING);
-    if (ctx.analysis.plan.length === 0) return no("No facets are cut yet");
+    if (isCoreOnly(ctx.project.recipe)) return no("No facets are cut yet");
     return OK;
   },
   run: async (ctx) => (await runs()).runRemoveFacets(ctx),
