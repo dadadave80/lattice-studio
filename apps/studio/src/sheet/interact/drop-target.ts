@@ -7,7 +7,8 @@
 import type { Point } from "@lattice-studio/core";
 import { useStore, useStoreApi, type ReactFlowState } from "@xyflow/react";
 import { useEffect, useSyncExternalStore } from "react";
-import { commandRef, layoutMetrics, registerDropTarget, runCommand, type CatalogDrag } from "@/contracts";
+import { announce, commandRef, layoutMetrics, log, registerDropTarget, runCommand, type CatalogDrag } from "@/contracts";
+import { DROP_REFUSED } from "@/sheet/core/copy";
 
 /** Where the dragged row would land: the facet and the snapped point. */
 export type DropPreview = { facet: string; at: Point };
@@ -53,12 +54,24 @@ export function useSheetDropTarget(): void {
       const y = (drag.clientY - box.top - ty) / zoom - headerHeight / 2;
       return { x: Math.round(x / snap) * snap, y: Math.round(y / snap) * snap };
     };
+    // The core cell takes no cards: no ghost over it, and a drop there places nothing and says why.
+    const overCell = (drag: CatalogDrag): boolean => {
+      const cell = root.querySelector("[data-core-cell]");
+      if (!cell) return false;
+      const r = cell.getBoundingClientRect();
+      return drag.clientX >= r.left && drag.clientX <= r.right && drag.clientY >= r.top && drag.clientY <= r.bottom;
+    };
     const stop = registerDropTarget({
       element: root,
-      over: (drag) => show({ facet: drag.facet, at: landing(drag) }),
+      over: (drag) => show(overCell(drag) ? null : { facet: drag.facet, at: landing(drag) }),
       leave: () => show(null),
       drop: (drag) => {
         show(null);
+        if (overCell(drag)) {
+          log({ tag: "Note", text: DROP_REFUSED });
+          announce(DROP_REFUSED);
+          return;
+        }
         void runCommand(commandRef("facet.place", { facet: drag.facet, at: landing(drag) }), "button");
       },
     });

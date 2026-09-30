@@ -92,8 +92,12 @@ export function Marquee() {
       const { moved, shift } = drag;
       drag = null;
       setBox(null);
-      // A click on empty sheet clears the selection; Shift-click keeps it.
-      if (!moved && !shift) select([]);
+      // A click on empty sheet clears the selection; Shift-click keeps it. It deselects the core too: `select([])`
+      // writes nothing when nothing is selected, and only a selection write clears `coreSelected` by itself.
+      if (!moved && !shift) {
+        select([]);
+        if (session.get().coreSelected) session.set({ coreSelected: false });
+      }
     };
     const cancel = (event: PointerEvent) => {
       if (!drag || event.pointerId !== drag.pointerId) return;

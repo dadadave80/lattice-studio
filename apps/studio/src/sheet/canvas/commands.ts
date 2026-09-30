@@ -10,8 +10,10 @@
  * (`api`, after Tidy or a recipe load) says only why it didn't, since that module narrates what happened.
  */
 import type { Hex4, Result } from "@lattice-studio/core";
+import { isCoreFacet } from "@lattice-studio/core";
 import {
-  announce, command, defineCommands, log, settings, session, type CommandArgsOf, type CommandContext, type Enablement,
+  announce, command, commandRef, defineCommands, log, runCommand, settings, session, type CommandArgsOf, type CommandContext,
+  type Enablement,
 } from "@/contracts";
 import { focusCard } from "@/a11y/focus";
 import { tabStopOf } from "./nodes";
@@ -231,9 +233,15 @@ const locate = command<LocateArgs>({
   category: "Sheet",
   enabled(ctx, { facet }) {
     if (typeof facet !== "string" || facet === "") return refuse(NAME_A_FACET);
+    // The core's facets have no card: locating one selects the core instead.
+    if (isCoreFacet(facet)) return OK;
     return ctx.project.layout[facet] ? OK : refuse(`${facet} isn't on the sheet`);
   },
   run(ctx, { facet, selector }) {
+    if (isCoreFacet(facet)) {
+      void runCommand(commandRef("core.select"), ctx.source);
+      return;
+    }
     if (locateCard(facet, selector as Hex4 | undefined)) say(ctx, `Located ${facet}.`);
   },
 });
