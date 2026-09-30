@@ -167,9 +167,18 @@ test.describe("The pinned diamond core", () => {
 
   test("a recipe load flashes the new cards' traces, then lets them go", async ({ page }) => {
     await openEmpty(page);
+    // The flash lasts 1.6 s: watch for it from before the click, so a busy machine can't poll past it.
+    await page.evaluate(() => {
+      const w = window as unknown as { flashSeen?: boolean };
+      w.flashSeen = false;
+      const seen = () => {
+        if (document.querySelector('[data-core-traces] [data-tone="flash"]')) w.flashSeen = true;
+      };
+      new MutationObserver(seen).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-tone"] });
+    });
     await region(page, "Sheet").getByRole("button", { name: /^ERC20 / }).click();
     await expect(sheetCards(page)).toHaveCount(2);
-    await expect(page.locator('[data-core-traces] [data-tone="flash"]').first()).toBeAttached();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { flashSeen?: boolean }).flashSeen)).toBe(true);
     await expect(page.locator('[data-core-traces] [data-tone="flash"]')).toHaveCount(0, { timeout: 5000 });
   });
 

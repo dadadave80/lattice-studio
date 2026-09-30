@@ -131,12 +131,27 @@ function sizes() {
   return cardSizes(doc.get().layout, getCatalog(), getAnalysis());
 }
 
+/**
+ * How much of the sheet's bottom the core cell holds, in px, while it shows: Fit frames the cards above it, so
+ * the cell never covers a card or a note it just framed. The title block, narrower and pre-existing, still may.
+ */
+function coreCellInset(): number {
+  const sheet = mounted()?.element();
+  const cell = sheet?.querySelector<HTMLElement>('[data-chrome="core-cell"]');
+  if (!sheet || !cell || cell.getClientRects().length === 0) return 0;
+  return Math.max(0, sheet.getBoundingClientRect().bottom - cell.getBoundingClientRect().top);
+}
+
 /** Frames `names` (every card when omitted), up to 100% for Fit and 200% for a selection. Null when none is placed. */
 export function fitCards(names?: readonly string[]): Viewport | null {
   const layout = doc.get().layout;
   const bounds = cardsBounds(layout, sizes(), names);
   if (!bounds) return null;
-  return moveViewport(fitRect(bounds, sheetSize(), { maxZoom: names ? MAX_ZOOM : FIT_MAX_ZOOM }));
+  const size = sheetSize();
+  // Fit frames everything above the core cell (FIT_PADDING still pads that part on every side); a selection is
+  // centered on the whole sheet, as before.
+  const room = names ? size : { width: size.width, height: Math.max(size.height / 2, size.height - coreCellInset()) };
+  return moveViewport(fitRect(bounds, room, { maxZoom: names ? MAX_ZOOM : FIT_MAX_ZOOM }));
 }
 
 /** Zooms to `zoom` (clamped) at a screen point, the sheet's center by default. */
