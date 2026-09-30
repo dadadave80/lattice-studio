@@ -1,7 +1,7 @@
 import { Toolbar as BaseToolbar } from "@base-ui/react/toolbar";
 import type { CoreStatus } from "@lattice-studio/core";
 import { Panel, useStore } from "@xyflow/react";
-import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import { memo, useLayoutEffect, useRef, type CSSProperties, type RefObject } from "react";
 import { commandRef, KEY_CONTEXT_ATTRIBUTE, runCommand, session, useSession } from "@/contracts";
 import { useTitleBlockSize } from "@/sheet/chrome/title-block-size";
 import { Toolbar } from "@/ui/nav/Toolbar";
@@ -140,19 +140,12 @@ export function CoreCell({ status, selected, empty, hot, onHot, tones, onPads }:
     [root, onPads],
   );
 
-  const cut = cutRow(status);
-  const loupe = status.loupe;
-  const padProps = (pad: Pad) => ({
-    "data-hot": hot === pad ? "" : undefined,
-    onPointerEnter: () => onHot(pad),
-    onPointerLeave: () => onHot(null),
-    onFocus: () => onHot(pad),
-    onBlur: () => onHot(null),
-  });
   const style: CSSProperties | undefined = title
     ? { marginInlineEnd: `calc(var(--lx-space-4) + ${title.width + GAP}px)` }
     : undefined;
 
+  // What the pads show (a trace ending on them, the pointer on them) is said on the cell's own element, so a card
+  // hovered on the sheet changes one attribute here and never re-renders the toolbar's buttons (`CellRows`).
   return (
     <Panel position="bottom-right" className={styles.panel} style={style} data-chrome="core-cell">
       <div
@@ -161,59 +154,96 @@ export function CoreCell({ status, selected, empty, hot, onHot, tones, onPads }:
         data-core-cell=""
         data-selected={selected ? "" : undefined}
         data-collapsed={collapsed ? "" : undefined}
+        data-hot={hot ?? undefined}
+        data-fallback-tone={tones.fallback ?? undefined}
+        data-cut-tone={tones.cut ?? undefined}
         {...CORE_KEYS}
       >
-        <Toolbar label={CELL_LABEL} orientation={collapsed ? "horizontal" : "vertical"} className={styles.rows}>
-          <div className={cx(styles.line, styles.header)}>
-            <BaseToolbar.Button className={styles.row} aria-label={diamondName()} aria-pressed={selected} onClick={select}>
-              <span className={styles.key}>{CORE}</span>
-              {collapsed ? null : <span className={styles.tagline}>{CORE_TAGLINE}</span>}
-            </BaseToolbar.Button>
-            {collapsed ? null : (
-              <ToolbarButton icon="chevron-down" label={COLLAPSE_CELL} aria-expanded className={styles.chevron} onClick={toggleCollapsed} />
-            )}
-          </div>
-          <div className={styles.line}>
-            <BaseToolbar.Button className={styles.row} aria-label={fallbackName(status)} onClick={select} {...padProps("fallback")}>
-              <span ref={fallbackPad} className={styles.pad} data-pad="fallback" data-on="" data-tone={tones.fallback ?? undefined} />
-              {collapsed ? null : <span className={styles.key}>{FALLBACK}</span>}
-              <span className={styles.value}>{fallbackText(status)}</span>
-            </BaseToolbar.Button>
-          </div>
-          <div className={styles.line}>
-            <BaseToolbar.Button className={styles.row} aria-label={loupeName(status)} onClick={select}>
-              {collapsed ? null : <span className={styles.key}>{LOUPE}</span>}
-              <span className={styles.pads}>
-                {loupe.selectors.map((selector) => (
-                  <span key={selector} className={styles.pad} data-on={loupe.covered.includes(selector) ? "" : undefined} />
-                ))}
-              </span>
-              <span className={styles.value}>{loupeText(status)}</span>
-            </BaseToolbar.Button>
-            <BaseToolbar.Button className={styles.row} aria-label={erc165Name(status)} onClick={select}>
-              {collapsed ? null : <span className={styles.key}>{ERC165}</span>}
-              <span className={styles.pad} data-on={status.erc165.covered ? "" : undefined} />
-            </BaseToolbar.Button>
-          </div>
-          <div className={styles.line}>
-            <BaseToolbar.Button
-              className={cx(styles.row, cut.state === "conflict" && styles.conflict)}
-              aria-label={cutName(status)}
-              data-cut={cut.state}
-              onClick={select}
-              {...padProps("cut")}
-            >
-              <span className={styles.key}>{CUT}</span>
-              {collapsed ? null : <span className={cx(styles.value, cut.state === "empty" && styles.empty)}>{cut.text}</span>}
-              <span ref={cutPad} className={styles.pad} data-pad="cut" data-on={cut.state === "empty" ? undefined : ""} data-tone={tones.cut ?? undefined} />
-            </BaseToolbar.Button>
-            {collapsed ? (
-              <ToolbarButton icon="chevron-up" label={EXPAND_CELL} aria-expanded={false} className={styles.chevron} onClick={toggleCollapsed} />
-            ) : null}
-          </div>
-          {empty && !collapsed ? <p className={styles.hint}>{EMPTY_HINT}</p> : null}
-        </Toolbar>
+        <CellRows
+          status={status}
+          selected={selected}
+          collapsed={collapsed}
+          empty={empty}
+          onHot={onHot}
+          fallbackPad={fallbackPad}
+          cutPad={cutPad}
+        />
       </div>
     </Panel>
   );
 }
+
+type CellRowsProps = {
+  status: CoreStatus;
+  selected: boolean;
+  collapsed: boolean;
+  empty: boolean;
+  onHot: (pad: Pad | null) => void;
+  fallbackPad: RefObject<HTMLSpanElement | null>;
+  cutPad: RefObject<HTMLSpanElement | null>;
+};
+
+/** The cell's rows, an APG toolbar: re-rendered only when what they say changes, never for a pad's tone. */
+const CellRows = memo(function CellRows({ status, selected, collapsed, empty, onHot, fallbackPad, cutPad }: CellRowsProps) {
+  const cut = cutRow(status);
+  const loupe = status.loupe;
+  const padProps = (pad: Pad) => ({
+    "data-pad-row": pad,
+    onPointerEnter: () => onHot(pad),
+    onPointerLeave: () => onHot(null),
+    onFocus: () => onHot(pad),
+    onBlur: () => onHot(null),
+  });
+  return (
+    <Toolbar label={CELL_LABEL} orientation={collapsed ? "horizontal" : "vertical"} className={styles.rows}>
+      <div className={cx(styles.line, styles.header)}>
+        <BaseToolbar.Button className={styles.row} aria-label={diamondName()} aria-pressed={selected} onClick={select}>
+          <span className={styles.key}>{CORE}</span>
+          {collapsed ? null : <span className={styles.tagline}>{CORE_TAGLINE}</span>}
+        </BaseToolbar.Button>
+        {collapsed ? null : (
+          <ToolbarButton icon="chevron-down" label={COLLAPSE_CELL} aria-expanded className={styles.chevron} onClick={toggleCollapsed} />
+        )}
+      </div>
+      <div className={styles.line}>
+        <BaseToolbar.Button className={styles.row} aria-label={fallbackName(status)} onClick={select} {...padProps("fallback")}>
+          <span ref={fallbackPad} className={styles.pad} data-pad="fallback" data-on="" />
+          {collapsed ? null : <span className={styles.key}>{FALLBACK}</span>}
+          <span className={styles.value}>{fallbackText(status)}</span>
+        </BaseToolbar.Button>
+      </div>
+      <div className={styles.line}>
+        <BaseToolbar.Button className={styles.row} aria-label={loupeName(status)} onClick={select}>
+          {collapsed ? null : <span className={styles.key}>{LOUPE}</span>}
+          <span className={styles.pads}>
+            {loupe.selectors.map((selector) => (
+              <span key={selector} className={styles.pad} data-on={loupe.covered.includes(selector) ? "" : undefined} />
+            ))}
+          </span>
+          <span className={styles.value}>{loupeText(status)}</span>
+        </BaseToolbar.Button>
+        <BaseToolbar.Button className={styles.row} aria-label={erc165Name(status)} onClick={select}>
+          {collapsed ? null : <span className={styles.key}>{ERC165}</span>}
+          <span className={styles.pad} data-on={status.erc165.covered ? "" : undefined} />
+        </BaseToolbar.Button>
+      </div>
+      <div className={styles.line}>
+        <BaseToolbar.Button
+          className={cx(styles.row, cut.state === "conflict" && styles.conflict)}
+          aria-label={cutName(status)}
+          data-cut={cut.state}
+          onClick={select}
+          {...padProps("cut")}
+        >
+          <span className={styles.key}>{CUT}</span>
+          {collapsed ? null : <span className={cx(styles.value, cut.state === "empty" && styles.empty)}>{cut.text}</span>}
+          <span ref={cutPad} className={styles.pad} data-pad="cut" data-on={cut.state === "empty" ? undefined : ""} />
+        </BaseToolbar.Button>
+        {collapsed ? (
+          <ToolbarButton icon="chevron-up" label={EXPAND_CELL} aria-expanded={false} className={styles.chevron} onClick={toggleCollapsed} />
+        ) : null}
+      </div>
+      {empty && !collapsed ? <p className={styles.hint}>{EMPTY_HINT}</p> : null}
+    </Toolbar>
+  );
+});

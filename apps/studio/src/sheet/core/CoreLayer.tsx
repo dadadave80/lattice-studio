@@ -5,13 +5,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { layoutMetrics, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
 import { useLayoutTier } from "@/shell/layout-tier";
 import { visibleRows } from "@/sheet/card/card-model";
-import { trackFocusedCard, useFocusedCard } from "@/sheet/overlays/focused-card";
 import { CoreCell, type Pad, type PadTone } from "./CoreCell";
 import { CoreTraces, shapeKey, shapeOf, type Tone, type TraceSpec } from "./CoreTraces";
 import { stubOffsets } from "./geometry";
 import type { Pads } from "./painter";
 import { useFlashing } from "./use-flash";
-import { useHoveredCard } from "./use-hot-card";
+import { useHoveredCard, useKeyboardFocusedCard } from "./use-hot-card";
 
 /** Soft traces draw under live ones; a card asked for twice keeps the stronger tone. */
 const TONE_ORDER: Record<Tone, number> = { flash: 0, soft: 1, live: 2 };
@@ -54,13 +53,11 @@ function CoreLayerBody() {
   const selection = useSession((s) => s.selection);
   const selected = useSession((s) => s.coreSelected);
   const hovered = useHoveredCard(root);
-  const focused = useFocusedCard();
+  const focused = useKeyboardFocusedCard(root);
   const flashing = useFlashing();
   const [hot, setHot] = useState<Pad | null>(null);
   const [pads, setPads] = useState<Pads | null>(null);
   const onPads = useCallback((next: Pads | null) => setPads(next), []);
-
-  useEffect(() => (root ? trackFocusedCard(root) : undefined), [root]);
 
   useEffect(() => {
     if (!root) return undefined;

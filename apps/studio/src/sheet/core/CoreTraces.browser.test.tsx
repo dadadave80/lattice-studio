@@ -14,7 +14,7 @@ import { panSheet } from "../canvas/sheet-view";
 import { drawn } from "../canvas/testing/sheet-harness";
 import { cardNode, clickCard, dragCard, press, selection } from "../interact/testing/interact-harness";
 import { GLYPH_LEAD, GUTTER, RAIL_GAP } from "./geometry";
-import { cell, coreProject, glyphOf, pad, rectIn, renderCoreSheet, traceOf, traces, wireOf } from "./testing/core-harness";
+import { cell, coreProject, glyphOf, pad, padTone, rectIn, renderCoreSheet, traceOf, traces, wireOf } from "./testing/core-harness";
 
 const ID = "core-traces";
 const VIEW = { session: { viewports: { [ID]: { x: 0, y: 0, zoom: 1 } } } };
@@ -74,26 +74,41 @@ describe("hover and focus", () => {
     await expect.poll(() => trace.querySelector("path")?.getAttribute("d")).toMatch(/^M/);
     expectWire(trace, "ERC20", "fallback");
     expect(trace.querySelectorAll("circle")).toHaveLength(0);
-    expect(pad("fallback").dataset.tone).toBe("soft");
+    expect(padTone("fallback")).toBe("soft");
     expect(traces()).toHaveLength(1);
     await userEvent.unhover(cardNode("ERC20"));
     await expect.poll(() => traceOf("ERC20")).toBeNull();
-    expect(pad("fallback").dataset.tone).toBeUndefined();
+    expect(padTone("fallback")).toBeNull();
   });
 
   test("keyboard focus on a card draws its wire; the cut facet's wire ends on the CUT pad", async () => {
     await sheet();
+    // A key press first, so the focus that follows is the keyboard's (:focus-visible), as roving focus is.
+    await userEvent.keyboard("{Shift}");
     cardNode("SafeDiamondCut").focus();
+    expect(cardNode("SafeDiamondCut").matches(":focus-visible")).toBe(true);
     await expect.poll(() => traceOf("SafeDiamondCut")).not.toBeNull();
     const trace = traceOf("SafeDiamondCut");
     if (!trace) throw new Error("No trace.");
     expect(trace.dataset.to).toBe("cut");
     await expect.poll(() => trace.querySelector("path")?.getAttribute("d")).toMatch(/^M/);
     expectWire(trace, "SafeDiamondCut", "cut");
-    expect(pad("cut").dataset.tone).toBe("soft");
-    expect(pad("fallback").dataset.tone).toBeUndefined();
+    expect(padTone("cut")).toBe("soft");
+    expect(padTone("fallback")).toBeNull();
     cardNode("SafeDiamondCut").blur();
     await expect.poll(() => traceOf("SafeDiamondCut")).toBeNull();
+  });
+
+  test("a card a click focused draws nothing once it's deselected: only keyboard focus draws a wire", async () => {
+    await sheet();
+    await userEvent.click(cardNode("ERC4626"), { position: { x: 40, y: 12 } });
+    await expect.poll(() => traceOf("ERC4626")?.dataset.tone).toBe("live");
+    press("Escape");
+    await expect.poll(() => selection()).toEqual([]);
+    // The pointer is still over the card: park it on empty sheet, and the wire goes though the card keeps focus.
+    await userEvent.hover(document.querySelector<HTMLElement>(".react-flow__pane") as HTMLElement, { position: { x: 300, y: 690 } });
+    expect(cardNode("ERC4626").contains(document.activeElement)).toBe(true);
+    await expect.poll(() => traceOf("ERC4626")).toBeNull();
   });
 
   test("a card that routes nothing never draws a wire", async () => {
@@ -123,7 +138,7 @@ describe("selection", () => {
     // The painter writes the geometry on the next frame: one stub run into the gutter per routed row.
     await expect.poll(() => (trace.querySelectorAll("path")[1]?.getAttribute("d") ?? "").split("H")).toHaveLength(routed + 1);
     await expect.poll(() => trace.querySelector("circle")?.getAttribute("r")).toBe("2.5");
-    expect(pad("fallback").dataset.tone).toBe("live");
+    expect(padTone("fallback")).toBe("live");
     const glyph = glyphOf("ERC20");
     expect(glyph.hasAttribute("data-live")).toBe(true);
     press("Escape");

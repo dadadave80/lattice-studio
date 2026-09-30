@@ -56,6 +56,11 @@ export function pad(which: "fallback" | "cut"): HTMLElement {
   return el;
 }
 
+/** How a pad shows the trace ending on it ("soft", "live"), as the cell says it; null when none does. */
+export function padTone(which: "fallback" | "cut"): string | null {
+  return cell().getAttribute(`data-${which}-tone`);
+}
+
 export function traceOf(facet: string): SVGGElement | null {
   return document.querySelector<SVGGElement>(`[data-trace="${CSS.escape(facet)}"]`);
 }

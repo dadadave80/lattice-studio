@@ -17,6 +17,8 @@
   max-inline-size: none;
   overflow: visible;
   pointer-events: none;
+  /* Its own compositor layer: a wire that appears, moves or goes repaints this layer, not the sheet's ground. */
+  will-change: transform;
 }
 
 .trace path {
@@ -174,8 +176,10 @@
   color: var(--lx-text-muted);
 }
 
+/* The pressed diamond, and the pad row under the pointer or focus (the cell says which, `data-hot`). */
 .row[aria-pressed="true"] .key,
-.row[data-hot] .key {
+.cell[data-hot="fallback"] .row[data-pad-row="fallback"] .key,
+.cell[data-hot="cut"] .row[data-pad-row="cut"] .key {
   color: var(--lx-accent);
 }
 
@@ -242,14 +246,17 @@
   background: var(--lx-text);
 }
 
-.pad[data-tone="soft"] {
+/* A trace ends on the pad: ink for a soft one, the accent for a live one (the cell says which, per pad). */
+.cell[data-fallback-tone="soft"] .pad[data-pad="fallback"],
+.cell[data-cut-tone="soft"] .pad[data-pad="cut"] {
   border-color: var(--lx-text);
   background: var(--lx-text);
   outline: var(--lx-stroke-hair) solid var(--lx-text);
   outline-offset: var(--lx-stroke-hair);
 }
 
-.pad[data-tone="live"] {
+.cell[data-fallback-tone="live"] .pad[data-pad="fallback"],
+.cell[data-cut-tone="live"] .pad[data-pad="cut"] {
   border-color: var(--lx-accent);
   background: var(--lx-accent);
   outline: var(--lx-stroke-hair) solid var(--lx-accent);
@@ -298,20 +305,23 @@
   }
 
   .pad[data-on],
-  .pad[data-tone="soft"] {
+  .cell[data-fallback-tone="soft"] .pad[data-pad="fallback"],
+  .cell[data-cut-tone="soft"] .pad[data-pad="cut"] {
     border-color: CanvasText;
     background: CanvasText;
     outline-color: CanvasText;
   }
 
-  .pad[data-tone="live"] {
+  .cell[data-fallback-tone="live"] .pad[data-pad="fallback"],
+  .cell[data-cut-tone="live"] .pad[data-pad="cut"] {
     border-color: Highlight;
     background: Highlight;
     outline-color: Highlight;
   }
 
   .row[aria-pressed="true"] .key,
-  .row[data-hot] .key,
+  .cell[data-hot="fallback"] .row[data-pad-row="fallback"] .key,
+  .cell[data-hot="cut"] .row[data-pad-row="cut"] .key,
   .conflict .value {
     color: Highlight;
   }

@@ -17,7 +17,7 @@ import {
   announced, cardNode, clickCard, client, flowElement, layoutNow, position, press, selection,
 } from "../interact/testing/interact-harness";
 import { DROP_REFUSED, EMPTY_HINT } from "./copy";
-import { cell, cellRow, clickPane, coreProject, glyphOf, pad, renderCoreSheet, stampOf, traceOf } from "./testing/core-harness";
+import { cell, cellRow, clickPane, coreProject, glyphOf, pad, padTone, renderCoreSheet, stampOf, traceOf } from "./testing/core-harness";
 
 const ID = "core-cell";
 const VIEW = { session: { viewports: { [ID]: { x: 0, y: 0, zoom: 1 } } } };
@@ -164,7 +164,7 @@ describe("the pads", () => {
     await userEvent.hover(cellRow(/^Fallback/));
     await expect.poll(() => flow().hasAttribute("data-core-lit")).toBe(true);
     await expect.poll(() => getComputedStyle(glyphOf("ERC20")).color).not.toBe(rest);
-    expect(pad("fallback").dataset.tone).toBe("soft");
+    expect(padTone("fallback")).toBe("soft");
     await userEvent.unhover(cellRow(/^Fallback/));
     await expect.poll(() => flow().hasAttribute("data-core-lit")).toBe(false);
     await expect.poll(() => getComputedStyle(glyphOf("ERC20")).color).toBe(rest);
@@ -181,7 +181,7 @@ describe("the pads", () => {
     expect(traceOf("ERC20")).toBeNull();
     await expect.poll(() => getComputedStyle(glyphOf("SafeDiamondCut")).color).not.toBe(rest);
     await expect.poll(() => getComputedStyle(glyphOf("ERC20")).color).toBe(rest);
-    expect(pad("cut").dataset.tone).toBe("soft");
+    expect(padTone("cut")).toBe("soft");
     await userEvent.unhover(cellRow(/^Cut socket/));
     await expect.poll(() => traceOf("SafeDiamondCut")).toBeNull();
   });
