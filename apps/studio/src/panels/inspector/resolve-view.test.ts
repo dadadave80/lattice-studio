@@ -47,6 +47,14 @@ describe("resolveView", () => {
     const view = { kind: "init", focus: "bundle.p.asset" } as const;
     expect(resolveView({ ...base, view })).toBe(view);
   });
+
+  test("the core selected shows the Diamond view, and a view that no longer applies falls back to it", () => {
+    expect(resolveView({ ...base, view: null, coreSelected: true })).toEqual({ kind: "diamond" });
+    expect(resolveView({ ...base, view: { kind: "facet", facet: "Gone" }, coreSelected: true })).toEqual({ kind: "diamond" });
+    // A view a command routed here after the core was selected still wins: the selection only resets it once.
+    const preview = { kind: "preview", facet: "Governor" } as const;
+    expect(resolveView({ ...base, view: preview, coreSelected: true })).toBe(preview);
+  });
 });
 
 describe("kinds", () => {

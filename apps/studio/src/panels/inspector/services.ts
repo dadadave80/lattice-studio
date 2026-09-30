@@ -1,9 +1,10 @@
 /**
  * The inspector follows the selection (contracts §5.1 `InspectorView`: null follows it). A view a command
- * routed here (a catalog preview, a problem, a doc page) gives way when the selection changes on its own, so
- * clicking a card after previewing shows that card. Views that are a task in progress (the Init plan, Confirm
- * addresses…) stay. A command that routes the view and changes the selection in the same task (one update or
- * two, in either order: F8 selects the card and shows its problem) keeps its view.
+ * routed here (a catalog preview, a problem, a doc page) gives way when the selection changes on its own, or
+ * when the core is selected, so clicking a card after previewing shows that card and selecting the core shows
+ * the Diamond view. Views that are a task in progress (the Init plan, Confirm addresses…) stay. A command that
+ * routes the view and changes the selection in the same task (one update or two, in either order: F8 selects
+ * the card and shows its problem) keeps its view.
  * Registration only: discovered eagerly (contracts/discover.ts).
  */
 import { session, type InspectorView } from "@/contracts";
@@ -25,7 +26,8 @@ session.subscribe((state, previous) => {
     return;
   }
   if (view === null || STAYS.has(view.kind) || routedThisTask) return;
+  const coreSelected = state.coreSelected && !previous.coreSelected;
   // Identity, not members: clicking the card that's already selected still brings its facet view back.
-  if (state.selection === previous.selection) return;
+  if (state.selection === previous.selection && !coreSelected) return;
   session.set((s) => ({ panes: { ...s.panes, inspector: { ...s.panes.inspector, view: null } } }));
 });

@@ -1,6 +1,8 @@
+import { isCoreFacet } from "@lattice-studio/core";
 import type { InspectorViewProps } from "@/contracts";
 import { commandRef, useCatalog } from "@/contracts";
-import { CommandButton } from "@/ui";
+import { Button, CommandButton } from "@/ui";
+import { CORE_FACET_REASON } from "../../../core-copy";
 import { ViewHeader } from "../../shared/ViewHeader";
 import sheet from "../../shared/sheet.module.css";
 import { FacetSheet } from "../facet/FacetSheet";
@@ -61,9 +63,16 @@ export function PreviewView({ view }: InspectorViewProps<"preview">) {
         <>
           <div className={sheet.section}>
             <div className={sheet.actions}>
-              <CommandButton command={commandRef("facet.place", { facet: facet.name })} variant="primary" size="small">
-                Place on sheet
-              </CommandButton>
+              {isCoreFacet(facet.name) ? (
+                // Never a card: the core is in every diamond already, so there's nothing to place.
+                <Button variant="primary" size="small" disabledReason={CORE_FACET_REASON}>
+                  Place on sheet
+                </Button>
+              ) : (
+                <CommandButton command={commandRef("facet.place", { facet: facet.name })} variant="primary" size="small">
+                  Place on sheet
+                </CommandButton>
+              )}
             </div>
           </div>
           <FacetSheet facet={facet} catalog={catalog} readOnly />

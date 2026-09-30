@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { analyze, loadTemplate, type Catalog } from "@lattice-studio/core";
+import { analyze, CORE_FACETS, loadTemplate, type Catalog } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeRecipe } from "@lattice-studio/core/testing";
 import { planJson, planObject } from "./plan-json";
-import { omittedFacets, planRows } from "./plan-rows";
+import { omittedFacets, orderedPlan, planRows } from "./plan-rows";
 
 function catalog(): Catalog {
   const loaded = loadFixtureCatalog();
@@ -34,6 +34,42 @@ describe("planRows", () => {
     const c = catalog();
     const analysis = analyze(makeRecipe({ facets: ["ERC20"] }, c), c);
     expect(planRows(analysis, null)[0]?.count).toBe("9/9 selectors");
+  });
+
+  test("the core's entries lead, in CORE_FACETS order, tagged fixed; the cards follow in the plan's order", () => {
+    const c = catalog();
+    const analysis = analyze(makeRecipe({ facets: ["HyperlaneGatewayAdapter", ...CORE_FACETS, "AxelarGatewayAdapter"] }, c), c);
+    const rows = planRows(analysis, c);
+    expect(rows.map((r) => [r.index, r.facet, r.count, r.fixed, r.contested])).toEqual([
+      ["[00]", "DiamondLoupeFacet", "4/4 selectors", true, false],
+      ["[01]", "ERC165Facet", "1/1 selector", true, false],
+      ["[02]", "AxelarGatewayAdapter", "7/9 selectors", false, true],
+      ["[03]", "HyperlaneGatewayAdapter", "10/12 selectors", false, true],
+    ]);
+  });
+
+  test("a core-only recipe plans the core's two cuts", () => {
+    const c = catalog();
+    const analysis = analyze(makeRecipe({ facets: [...CORE_FACETS] }, c), c);
+    expect(planRows(analysis, c).map((r) => [r.facet, r.fixed])).toEqual([["DiamondLoupeFacet", true], ["ERC165Facet", true]]);
+  });
+});
+
+describe("orderedPlan", () => {
+  test("puts the core's entries first whatever the analysis's order, and leaves the rest as they were", () => {
+    const c = catalog();
+    const recipe = makeRecipe({ facets: ["ERC20", ...CORE_FACETS, "Receive"] }, c);
+    const plan = analyze(recipe, c).plan;
+    const reversed = [...plan].reverse();
+    const cards = plan.filter((entry) => !(CORE_FACETS as readonly string[]).includes(entry.facet)).map((entry) => entry.facet);
+    expect(orderedPlan(reversed).map((entry) => entry.facet)).toEqual([...CORE_FACETS, ...[...cards].reverse()]);
+    expect(orderedPlan(plan).map((entry) => entry.facet)).toEqual([...CORE_FACETS, ...cards]);
+  });
+
+  test("a plan without the core is unchanged", () => {
+    const c = catalog();
+    const plan = analyze(makeRecipe({ facets: ["ERC20", "Receive"] }, c), c).plan;
+    expect(orderedPlan(plan)).toEqual(plan);
   });
 });
 

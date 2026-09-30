@@ -30,6 +30,8 @@ export type ViewInputs = {
   placed: readonly string[];
   /** Ids of the problems the analysis raises now. */
   problems: readonly string[];
+  /** The core (the pinned diamond) is selected: the Diamond view, whatever the card selection says. */
+  coreSelected?: boolean;
 };
 
 /** The view the selection implies. Selected names that aren't placed are ignored. */
@@ -62,8 +64,8 @@ export function viewKey(view: ResolvedView): string {
   }
 }
 
-export function resolveView({ view, selection, placed, problems }: ViewInputs): ResolvedView {
-  const fallback = (): ResolvedView => selectionView(selection, placed);
+export function resolveView({ view, selection, placed, problems, coreSelected = false }: ViewInputs): ResolvedView {
+  const fallback = (): ResolvedView => (coreSelected ? { kind: "diamond" } : selectionView(selection, placed));
   if (view === null) return fallback();
   switch (view.kind) {
     case "facet":
