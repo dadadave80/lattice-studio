@@ -684,7 +684,10 @@ describe("locate, Back to content, minimap, auto-pan", () => {
       // only a card that fits is held to full clearance.
       const fits = card.height <= sheetBox.height - 48 && card.width <= sheetBox.width - 48;
       if (!fits) continue;
-      const floats = [...document.querySelectorAll(".react-flow__panel")].map((el) => el.getBoundingClientRect());
+      // The three floats this case is about. The core cell fills the bottom's middle too: a card as tall as the
+      // sheet can clear it only by squeezing between the zoom readout and the cell, where a wide card can't go, so
+      // the cell stands under spec L771's exception here; `CoreCell.browser.test.tsx` holds a card that fits clear of it.
+      const floats = [...document.querySelectorAll('.react-flow__panel:not([data-chrome="core-cell"])')].map((el) => el.getBoundingClientRect());
       const covered = floats.reduce((sum, f) => sum + overlapArea(card, f), 0);
       expect(covered, `${name}'s focused card lands under floating UI: ${JSON.stringify(card)}`).toBe(0);
     }

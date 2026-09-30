@@ -19,7 +19,8 @@ function paneMenus(): MouseEvent[] {
   return calls;
 }
 
-const AT = { x: 500, y: 660 }; // Empty sheet; the bottom-right corner belongs to S4d's title block.
+// Empty sheet: the bottom edge's left corner holds the zoom readout, its middle the core cell, its right corner the title block.
+const AT = { x: 200, y: 660 };
 
 function point(offset = { x: 0, y: 0 }) {
   const box = flowElement().getBoundingClientRect();
