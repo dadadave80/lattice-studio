@@ -1,14 +1,15 @@
 /**
- * The Structure tree's content (spec L747, IR L90-L97): the sheet's facets with their selectors, a Problems
- * branch and an Init plan branch, as `Tree` nodes plus what each node is. Pure: the panel renders this and
- * decides nothing about a selector's state, a name or a step's moves itself, so every rule is unit-tested.
+ * The Structure tree's content (spec L747, IR L90-L97): the core (the proxy's fallback, DiamondLoupeFacet and
+ * ERC165Facet), the sheet's facets with their selectors, a Problems branch and an Init plan branch, as `Tree`
+ * nodes plus what each node is. Pure: the panel renders this and decides nothing about a selector's state, a
+ * name or a step's moves itself, so every rule is unit-tested.
  *
  * A facet's name, count and description are its card's, and a selector's state, words and action are its
  * pin's: both come from S4a's card model (`cardView`, `pinView`), so the tree and the card can't drift
- * (spec L745-L746, Flow 6, IR L104).
+ * (spec L745-L746, Flow 6, IR L104). The core's facets read the same way, though they're never cards.
  */
-import type { Analysis, Catalog, Hex4, InitPlan, InitStepView, Problem, Recipe, Severity } from "@lattice-studio/core";
-import { plural } from "@lattice-studio/core";
+import type { Analysis, Catalog, Facet, Hex4, InitPlan, InitStepView, Problem, Recipe, Severity } from "@lattice-studio/core";
+import { CORE_FACETS, isCoreFacet, plural } from "@lattice-studio/core";
 import { layoutMetrics } from "@/contracts/layout-metrics";
 import { cardAnalysis, cardView, type PinView, type TooltipCopy } from "@/sheet/card/card-model";
 import type { TreeNode } from "@/ui/nav/tree-model";
@@ -16,17 +17,26 @@ import type { TreeNode } from "@/ui/nav/tree-model";
 // ---------------------------------------------------------------------------------------------------------
 // Ids
 
-/** Problems and Init plan are the two branches after the facets. */
+/** The core is the first branch; Problems and Init plan are the two after the facets. */
+export const CORE_ID = "core";
+export const FALLBACK_ID = "core:fallback";
 export const PROBLEMS_ID = "problems";
 export const INIT_ID = "init";
 
 export const facetId = (facet: string): string => `facet:${facet}`;
 export const selectorId = (facet: string, selector: Hex4): string => `selector:${facet}:${selector}`;
 export const problemId = (id: string): string => `problem:${id}`;
+export const coreFacetId = (facet: string): string => `core:facet:${facet}`;
+export const coreSelectorId = (facet: string, selector: Hex4): string => `core:selector:${facet}:${selector}`;
 
-/** The facet a node id names, or null when it isn't a facet's. */
+/** The facet a node id names, or null when it isn't a card's. */
 export function facetOfId(id: string): string | null {
   return id.startsWith("facet:") ? id.slice("facet:".length) : null;
+}
+
+/** Whether a node id is the core's: the group, the fallback, a core facet or one of its selectors. */
+export function isCoreId(id: string): boolean {
+  return id === CORE_ID || id.startsWith("core:");
 }
 
 /** A pin's tooltip as one sentence: what a seam or an unchecked selector says when Space has nothing to run. */
@@ -97,6 +107,12 @@ export function moveTarget(
 
 /** What a node is. */
 export type StructureMeta =
+  /** The Core group: the diamond's fixed part. */
+  | { kind: "core"; label: string }
+  /** The proxy's fallback and how many selectors it routes. */
+  | { kind: "fallback"; label: string; routed: number }
+  /** A core facet (DiamondLoupeFacet, ERC165Facet), named as a card would be, though it's never one. */
+  | { kind: "coreFacet"; facet: string; label: string; description: string; count: string; known: boolean }
   | { kind: "facet"; facet: string; label: string; description: string; count: string; known: boolean }
   | { kind: "selector"; facet: string; view: PinView }
   | { kind: "problems"; label: string; count: number }
@@ -108,7 +124,7 @@ export type StructureMeta =
 export type Structure = {
   nodes: TreeNode[];
   meta: ReadonlyMap<string, StructureMeta>;
-  /** Facet ids in tree order, for focus after a delete. */
+  /** Card ids in tree order, for focus after a delete. The core's facets aren't cards. */
   facets: string[];
 };
 
@@ -139,14 +155,63 @@ function initSummary(plan: InitPlan | null, recipe: Recipe): string {
   return plural(plan?.steps.length ?? init.steps.length, "step");
 }
 
-/** The tree: every placed facet (recipe order) with its selectors, then Problems, then Init plan. */
+/** "Fallback · 5 selectors routed". */
+export function fallbackLabel(routed: number): string {
+  return `Fallback · ${plural(routed, "selector")} routed`;
+}
+
+/** What a facet's row shares with a core facet's: the card's name, connections and count. */
+type FacetWords = { label: string; description: string; count: string };
+
+/** The tree: the core, every card (recipe order) with its selectors, then Problems, then Init plan. */
 export function buildStructure({ recipe, catalog, analysis, plan }: StructureInput): Structure {
   const meta = new Map<string, StructureMeta>();
   const nodes: TreeNode[] = [];
   const excluded = new Set(recipe.exclude);
   const facets: string[] = [];
 
+  /**
+   * A facet's row as its card reads: its name, count, connections and pins, whatever its size on the sheet.
+   * Registers the selector rows' meta and returns the node with them as children, plus the card's words.
+   */
+  const facetRow = (facet: Facet, from: Catalog, id: string, selectorIdOf: (hex: Hex4) => string): { node: TreeNode; words: FacetWords } => {
+    const card = cardView({
+      facet, catalog: from, slice: cardAnalysis(analysis, facet), excluded, placed: recipe.facets,
+      pins: "right", expanded: true, compact: false, metrics: layoutMetrics,
+    });
+    const children = card.all.map((view): TreeNode => {
+      const child = selectorIdOf(view.selector);
+      meta.set(child, { kind: "selector", facet: facet.name, view });
+      return { id: child, label: view.signature };
+    });
+    return {
+      node: { id, label: facet.name, ...(children.length > 0 ? { children } : {}) },
+      words: { label: card.name, description: card.connections, count: card.count },
+    };
+  };
+
+  // The core: the fallback, then each core facet in the recipe (CORE_FACETS order) with its selectors. Always
+  // present, since the fallback is; without a catalog the facets list by name.
+  const routed = analysis.stats.routed;
+  meta.set(FALLBACK_ID, { kind: "fallback", label: fallbackLabel(routed), routed });
+  const core: TreeNode[] = [{ id: FALLBACK_ID, label: "Fallback" }];
+  for (const name of CORE_FACETS.filter((facet) => recipe.facets.includes(facet))) {
+    const id = coreFacetId(name);
+    const facet = catalog?.facets.find((f) => f.name === name);
+    if (!catalog || !facet) {
+      meta.set(id, { kind: "coreFacet", facet: name, label: name, description: "", count: "", known: false });
+      core.push({ id, label: name });
+      continue;
+    }
+    const row = facetRow(facet, catalog, id, (hex) => coreSelectorId(name, hex));
+    meta.set(id, { kind: "coreFacet", facet: name, ...row.words, known: true });
+    core.push(row.node);
+  }
+  meta.set(CORE_ID, { kind: "core", label: "Core" });
+  nodes.push({ id: CORE_ID, label: "Core", children: core });
+
   for (const name of recipe.facets) {
+    if (isCoreFacet(name)) continue;
     const id = facetId(name);
     facets.push(id);
     const facet = catalog?.facets.find((f) => f.name === name);
@@ -155,18 +220,9 @@ export function buildStructure({ recipe, catalog, analysis, plan }: StructureInp
       nodes.push({ id, label: name });
       continue;
     }
-    // The card's own view: its name, count, connections and pins, whatever its size on the sheet.
-    const card = cardView({
-      facet, catalog, slice: cardAnalysis(analysis, facet), excluded, placed: recipe.facets,
-      pins: "right", expanded: true, compact: false, metrics: layoutMetrics,
-    });
-    meta.set(id, { kind: "facet", facet: name, label: card.name, description: card.connections, count: card.count, known: true });
-    const children = card.all.map((view): TreeNode => {
-      const child = selectorId(name, view.selector);
-      meta.set(child, { kind: "selector", facet: name, view });
-      return { id: child, label: view.signature };
-    });
-    nodes.push({ id, label: name, ...(children.length > 0 ? { children } : {}) });
+    const row = facetRow(facet, catalog, id, (hex) => selectorId(name, hex));
+    meta.set(id, { kind: "facet", facet: name, ...row.words, known: true });
+    nodes.push(row.node);
   }
 
   const problems = analysis.problems.map((problem): TreeNode => {

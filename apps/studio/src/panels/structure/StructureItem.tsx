@@ -1,3 +1,4 @@
+import { plural } from "@lattice-studio/core";
 import { Icon, VisuallyHidden } from "@/ui";
 import { codeRuns, SEVERITY_WORD, stepTitle, type StructureMeta } from "./structure-model";
 import styles from "./StructurePanel.module.css";
@@ -16,7 +17,17 @@ const STATE_WORD: Partial<Record<string, string>> = {
  */
 export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; descriptionId?: string | undefined }) {
   switch (meta.kind) {
+    case "core":
+      return <span className={styles.name}>Core</span>;
+    case "fallback":
+      return (
+        <>
+          <span className={styles.name}>Fallback</span>
+          <span className={styles.aside}>{`${plural(meta.routed, "selector")} routed`}</span>
+        </>
+      );
     case "facet":
+    case "coreFacet":
       return (
         <>
           <span className={styles.name}>{meta.facet}</span>

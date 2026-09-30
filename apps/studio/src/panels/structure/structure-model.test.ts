@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { Catalog, Recipe, Route } from "@lattice-studio/core";
-import { analyze, blankDiamond, loadTemplate, planInit } from "@lattice-studio/core";
+import { analyze, blankDiamond, CORE_FACETS, isCoreFacet, loadTemplate, planInit } from "@lattice-studio/core";
 import { loadFixtureCatalog } from "@lattice-studio/core/testing";
 import { placeholderFixLabel } from "./fix-labels";
 import {
-  buildStructure, codeRuns, facetId, facetOfId, focusAfterRemove, INIT_ID, moveTarget, plainText, PROBLEMS_ID,
-  selectorId, tooltipText, type StructureMeta,
+  buildStructure, codeRuns, CORE_ID, coreFacetId, coreSelectorId, facetId, facetOfId, FALLBACK_ID, focusAfterRemove, INIT_ID,
+  isCoreId, moveTarget, plainText, PROBLEMS_ID, selectorId, tooltipText, type StructureMeta,
 } from "./structure-model";
 
 const loaded = loadFixtureCatalog();
@@ -34,14 +34,42 @@ const collision = (): Recipe => {
 };
 
 describe("buildStructure", () => {
-  test("the placed facets in recipe order, then Problems, then Init plan", () => {
+  test("the core first, then the cards in recipe order, then Problems, then Init plan", () => {
     const recipe = template("GovernedVault");
+    const cards = recipe.facets.filter((name) => !isCoreFacet(name));
     const { nodes, facets } = structureOf(recipe);
-    expect(nodes.map((n) => n.id)).toEqual([...recipe.facets.map(facetId), PROBLEMS_ID, INIT_ID]);
-    expect(facets).toEqual(recipe.facets.map(facetId));
-    const erc20 = nodes[0];
+    expect(nodes.map((n) => n.id)).toEqual([CORE_ID, ...cards.map(facetId), PROBLEMS_ID, INIT_ID]);
+    // The core's facets aren't cards: focus after a delete never lands on them.
+    expect(facets).toEqual(cards.map(facetId));
+    const erc20 = nodes[1];
     expect(erc20?.label).toBe("ERC20");
     expect(erc20?.children?.map((c) => c.label)).toEqual(catalog.facets.find((f) => f.name === "ERC20")?.selectors.map((s) => s.signature));
+  });
+
+  test("the Core group: the fallback's routed count, then DiamondLoupeFacet and ERC165Facet with their selectors", () => {
+    const recipe = template("ERC20");
+    const { nodes, meta: m } = structureOf(recipe);
+    const core = nodes[0];
+    expect(core?.children?.map((c) => c.id)).toEqual([FALLBACK_ID, ...CORE_FACETS.map(coreFacetId)]);
+    expect(meta(m, CORE_ID, "core").label).toBe("Core");
+    expect(meta(m, FALLBACK_ID, "fallback")).toEqual({ kind: "fallback", label: "Fallback · 15 selectors routed", routed: 15 });
+    const loupe = meta(m, coreFacetId("DiamondLoupeFacet"), "coreFacet");
+    expect(loupe.label).toBe("DiamondLoupeFacet, 4 selectors");
+    expect(loupe.count).toBe("4/4 selectors");
+    const loupeNode = core?.children?.find((c) => c.id === coreFacetId("DiamondLoupeFacet"));
+    const selectors = catalog.facets.find((f) => f.name === "DiamondLoupeFacet")?.selectors ?? [];
+    expect(loupeNode?.children?.map((c) => c.id)).toEqual(selectors.map((s) => coreSelectorId("DiamondLoupeFacet", s.hex)));
+    const first = selectors[0];
+    if (!first) throw new Error("DiamondLoupeFacet has no selectors");
+    expect(meta(m, coreSelectorId("DiamondLoupeFacet", first.hex), "selector").view.state).toBe("routed");
+    expect([CORE_ID, FALLBACK_ID, coreFacetId("ERC165Facet"), coreSelectorId("ERC165Facet", "0x01ffc9a7")].every(isCoreId)).toBe(true);
+    expect(isCoreId(facetId("ERC20"))).toBe(false);
+  });
+
+  test("a recipe without the core's facets still shows the group with its fallback", () => {
+    const recipe: Recipe = { ...template("ERC20"), facets: ["ERC20"] };
+    const { nodes } = structureOf(recipe);
+    expect(nodes[0]?.children?.map((c) => c.id)).toEqual([FALLBACK_ID]);
   });
 
   test("a facet is named as its card is (spec L745), with its connections as the description", () => {
@@ -82,18 +110,21 @@ describe("buildStructure", () => {
     expect(meta(erc20.meta, "step:auto", "step").label).toBe("Step 2, Register ERC-165 interfaces (automatic), initImmutable(), locked");
   });
 
-  test("no init and no problems still show both branches, as leaves", () => {
-    const recipe: Recipe = { ...template("ERC20"), facets: [], init: { kind: "none" } };
+  test("a core-only sheet with no init and no problems still shows the core and both branches, as leaves", () => {
+    const recipe: Recipe = { ...template("ERC20"), facets: [...CORE_FACETS], init: { kind: "none" } };
     const s = buildStructure({ recipe, catalog, analysis: { ...analyze(recipe, catalog), problems: [] }, plan: planInit(recipe, catalog) });
-    expect(s.nodes.map((n) => [n.id, n.children?.length ?? 0])).toEqual([[PROBLEMS_ID, 0], [INIT_ID, 0]]);
+    expect(s.nodes.map((n) => [n.id, n.children?.length ?? 0])).toEqual([[CORE_ID, 3], [PROBLEMS_ID, 0], [INIT_ID, 0]]);
+    expect(s.facets).toEqual([]);
     expect(meta(s.meta, PROBLEMS_ID, "problems").label).toBe("Problems, none");
     expect(meta(s.meta, INIT_ID, "init").label).toBe("Init plan, no init");
   });
 
-  test("without a catalog, facets are listed by name with no selectors", () => {
+  test("without a catalog, facets are listed by name with no selectors, the core's too", () => {
     const recipe = template("ERC20");
     const s = buildStructure({ recipe, catalog: null, analysis: analyze(recipe, catalog), plan: null });
-    expect(s.nodes[0]).toEqual({ id: facetId("ERC20"), label: "ERC20" });
+    expect(s.nodes[1]).toEqual({ id: facetId("ERC20"), label: "ERC20" });
+    expect(s.nodes[0]?.children?.[1]).toEqual({ id: coreFacetId("DiamondLoupeFacet"), label: "DiamondLoupeFacet" });
+    expect(meta(s.meta, coreFacetId("DiamondLoupeFacet"), "coreFacet").known).toBe(false);
   });
 });
 

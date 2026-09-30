@@ -1,7 +1,7 @@
 import type { CommandArgs } from "@/contracts";
 import type { CommandId, Recipe } from "@lattice-studio/core";
-import { blankDiamond, loadTemplate } from "@lattice-studio/core";
-import { makeProject } from "@lattice-studio/core/testing";
+import { blankDiamond, CORE_FACETS, loadTemplate } from "@lattice-studio/core";
+import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { command, doc, history, session } from "@/contracts";
@@ -80,6 +80,113 @@ describe("Structure tree: shape and names", () => {
       expect(await axeViolations(screen.container)).toEqual([]);
       await screen.unmount();
     }
+  });
+});
+
+describe("Structure tree: the core", () => {
+  const REFUSAL = "DiamondLoupeFacet is the diamond's core and stays.";
+
+  /** `facet.remove` as A registers it: a core facet is refused with the reason (pinned here, so the test doesn't depend on A). */
+  function refuseCoreRemoval(): void {
+    overrideCommands([
+      command<{ facets: string[] }>({
+        id: "facet.remove", title: () => "Remove", category: "Build",
+        enabled: (_ctx, { facets }) => {
+          const core = facets.find((name) => (CORE_FACETS as readonly string[]).includes(name));
+          return core === undefined ? { ok: true } : { ok: false, reason: `${core} is the diamond's core and stays.` };
+        },
+        run: () => undefined,
+      }),
+    ]);
+  }
+
+  test("the Core group leads the tree, expanded: the fallback, DiamondLoupeFacet and ERC165Facet; a core-only sheet says so", async () => {
+    await renderTree(makeRecipe({ facets: [...CORE_FACETS] }, catalog));
+    await expect.element(page.getByText("Core only")).toBeVisible();
+    const core = page.getByRole("treeitem", { name: "Core", exact: true });
+    await expect.element(core).toHaveAttribute("aria-level", "1");
+    await expect.element(core).toHaveAttribute("aria-expanded", "true");
+    const ids = [...document.querySelectorAll<HTMLElement>("[data-tree-id]")].map((r) => r.dataset.treeId);
+    expect(ids.slice(0, 4)).toEqual(["core", "core:fallback", "core:facet:DiamondLoupeFacet", "core:facet:ERC165Facet"]);
+    await expect.element(page.getByRole("treeitem", { name: "Fallback · 5 selectors routed" })).toBeVisible();
+    await expect.element(page.getByRole("treeitem", { name: "DiamondLoupeFacet, 4 selectors" })).toBeVisible();
+    expect(document.querySelectorAll('[role="treeitem"][tabindex="0"]')).toHaveLength(1);
+    expect(row("core").tabIndex).toBe(0);
+  });
+
+  test("with cards, the tree reads Core, the cards, Problems and Init plan; no Core only line", async () => {
+    await renderTree(template("ERC20"));
+    expect(page.getByText("Core only").elements()).toHaveLength(0);
+    const roots = [...document.querySelectorAll<HTMLElement>('[role="treeitem"][aria-level="1"]')].map((r) => r.dataset.treeId);
+    expect(roots).toEqual(["core", "facet:ERC20", "facet:Receive", "problems", "init"]);
+  });
+
+  test("Enter or Space on the group or the fallback selects the core; the group shows selected while it is", async () => {
+    await renderTree(template("ERC20"));
+    session.set({ selection: ["ERC20"] });
+    row("core").focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => session.get().coreSelected).toBe(true);
+    expect(session.get().selection).toEqual([]);
+    await expect.element(page.getByRole("treeitem", { name: "Core", exact: true })).toHaveAttribute("aria-selected", "true");
+    expect(lastAnnounce()).toBe("Selected the core.");
+    // Esc deselects it from the session; Space on the fallback selects it again.
+    session.set({ coreSelected: false });
+    await expect.element(page.getByRole("treeitem", { name: "Core", exact: true })).toHaveAttribute("aria-selected", "false");
+    row("core:fallback").focus();
+    await userEvent.keyboard(" ");
+    await expect.poll(() => session.get().coreSelected).toBe(true);
+    // A click on a core facet's row selects the core too, never the facet.
+    session.set({ coreSelected: false });
+    await page.getByRole("treeitem", { name: "ERC165Facet, 1 selector" }).click();
+    await expect.poll(() => session.get().coreSelected).toBe(true);
+    expect(session.get().selection).toEqual([]);
+  });
+
+  test("Enter on a core facet opens it in the inspector; → shows its selectors", async () => {
+    const shown = spy("inspector.show");
+    await renderTree(template("ERC20"));
+    row("core:facet:DiamondLoupeFacet").focus();
+    await userEvent.keyboard("{Enter}");
+    expect(shown).toEqual([{ facet: "DiamondLoupeFacet" }]);
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+    expect(focusedId()).toMatch(/^core:selector:DiamondLoupeFacet:0x/);
+    expect(row(focusedId() ?? "").getAttribute("aria-label")).toMatch(/, routes here$/);
+  });
+
+  test("Delete on a core facet asks to remove it: the refusal shows, focus stays, nothing changes", async () => {
+    refuseCoreRemoval();
+    const recipe = template("ERC20");
+    await renderTree(recipe);
+    row("core:facet:DiamondLoupeFacet").focus();
+    await userEvent.keyboard("{Delete}");
+    expect(lastLog()).toBe(REFUSAL);
+    expect(lastAnnounce()).toBe(REFUSAL);
+    expect(focusedId()).toBe("core:facet:DiamondLoupeFacet");
+    expect(doc.get().recipe).toEqual(recipe);
+    // On the group, the refusal names the core's first facet.
+    row("core").focus();
+    await userEvent.keyboard("{Backspace}");
+    expect(lastLog()).toBe(REFUSAL);
+    expect(focusedId()).toBe("core");
+  });
+
+  test("a core row's menu offers Open in inspector and Select the core, and nothing that moves or removes", async () => {
+    const shown = spy("inspector.show");
+    await renderTree(template("ERC20"));
+    row("core:facet:ERC165Facet").focus();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    const menu = page.getByRole("menu", { name: "ERC165Facet actions" });
+    await expect.element(menu).toBeVisible();
+    expect(menu.getByRole("menuitem").elements()).toHaveLength(2);
+    await expect.element(menu.getByRole("menuitem", { name: "Select the core" })).toBeVisible();
+    await menu.getByRole("menuitem", { name: "Open in inspector" }).click();
+    expect(shown).toEqual([{ facet: "ERC165Facet" }]);
+    row("core").focus();
+    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+    const coreMenu = page.getByRole("menu", { name: "Core actions" });
+    await coreMenu.getByRole("menuitem", { name: "Select the core" }).click();
+    await expect.poll(() => session.get().coreSelected).toBe(true);
   });
 });
 
