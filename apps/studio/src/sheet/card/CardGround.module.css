@@ -1,0 +1,96 @@
+/*
+ * The ground glyph (⏚) under a card's pin-side bottom corner: the routed count, then the mark, with the stem on
+ * the card's edge in line with its pin nodes. Outside the card's box (React Flow measures the wrapper, so sizes
+ * and contentBounds are the card's), no pointer, and scaled back to screen size down to 50% zoom, then with the
+ * sheet: the card-zoom layer sets --lx-sheet-zoom on the sheet. The mark's stroke stays 1.5 px on screen at any
+ * zoom (spec L772). Tokens only; forced colors keep the mark in CanvasText and light it in Highlight.
+ */
+.ground {
+  --ground-zoom: var(--lx-sheet-zoom, 1);
+  --ground-scale: calc(1 / max(var(--ground-zoom), 0.5));
+  /* On screen the glyph draws at min(1, 2 × zoom) of its box: the stroke divides by that to stay 1.5 px. */
+  --ground-mark: calc(max(var(--lx-stroke-hair), 1.5px) * max(1, 0.5 / var(--ground-zoom)));
+  position: absolute;
+  top: 100%;
+  display: flex;
+  gap: var(--lx-space-1);
+  align-items: flex-start;
+  block-size: 16px;
+  transform: scale(var(--ground-scale));
+  color: var(--lx-text-muted);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Pins on the left: the mark leads, on the left corner, the count on its inner side. */
+.left {
+  left: -7px;
+  flex-direction: row-reverse;
+  transform-origin: 7px 0;
+}
+
+/* Pins on the right: the count, then the mark on the right corner. */
+.right {
+  right: -7px;
+  transform-origin: calc(100% - 7px) 0;
+}
+
+.count {
+  forced-color-adjust: none;
+}
+
+.mark {
+  flex: none;
+  inline-size: 14px;
+  block-size: 16px;
+  max-inline-size: none;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--ground-mark);
+  stroke-linecap: butt;
+  forced-color-adjust: none;
+}
+
+.dashed {
+  stroke-dasharray: 2 2;
+}
+
+/* Nothing routed: the fainter ink, like an excluded pin. */
+.ground[data-ground="none"] {
+  color: var(--lx-text-faint);
+}
+
+/* Lit: with its card (hover, focus), with the core (selected, or its FALLBACK pad hot), or, for the cut facet,
+   with the core's CUT pad. Live (the card selected): the accent, heavier. */
+:global(.react-flow__node:hover) .ground,
+:global(.react-flow__node:focus-within) .ground,
+:global(.react-flow[data-core-lit]) .ground,
+:global(.react-flow[data-core-cut-lit]) .ground[data-cut],
+.ground[data-live] {
+  color: var(--lx-accent);
+}
+
+.ground[data-live] {
+  --ground-mark: calc(var(--lx-stroke-heavy) * max(1, 0.5 / var(--ground-zoom)));
+  font-weight: 600;
+}
+
+@media (forced-colors: active) {
+  .ground,
+  .ground[data-ground="none"] {
+    color: CanvasText;
+  }
+
+  :global(.react-flow__node:hover) .ground,
+  :global(.react-flow__node:focus-within) .ground,
+  :global(.react-flow[data-core-lit]) .ground,
+  :global(.react-flow[data-core-cut-lit]) .ground[data-cut],
+  .ground[data-live] {
+    color: Highlight;
+  }
+}

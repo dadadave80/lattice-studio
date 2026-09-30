@@ -4,8 +4,10 @@ import { cx } from "@/ui/shared/cx";
 import { useStore, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import { memo, useEffect, useMemo, useRef } from "react";
 import { cardAnalysis, cardView, describeCard, sameCardAnalysis, wordNeighbours, type CardAnalysis } from "./card-model";
+import { CardGround } from "./CardGround";
 import { CardHandles } from "./CardHandles";
 import { CardMarks } from "./CardMarks";
+import { CardStamp } from "./CardStamp";
 import styles from "./FacetCard.module.css";
 import { useInitMark } from "./init-mark";
 import { MoreButton } from "./MoreButton";
@@ -26,7 +28,9 @@ function sameNode(a: NodeProps<FacetNode>, b: NodeProps<FacetNode>): boolean {
 /**
  * A placed facet on the sheet (IR L103-L105, spec L745, L824-L825): header (name, source path, init badge,
  * chips), pin rows with "+ n more" or Collapse, footer (its storage), a border for its state, and handles for
- * traces and ties. Below 40% zoom it draws compact: the header plus a tick strip.
+ * traces and ties. Below 40% zoom it draws compact: the header plus a tick strip. Outside its box, and outside
+ * what React Flow measures, hang the ground glyph (the selectors routed to the diamond) and, while the core is
+ * selected, the cut-plan stamp.
  *
  * Props are React Flow's: only `id` (the facet name) is read. Everything else comes from the stores through
  * narrow selectors, so an edit re-renders only the cards it touches. The focusable wrapper, its role, name and
@@ -139,6 +143,8 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
         )}
       </div>
       <CardMarks selected={selected} />
+      <CardGround routed={view.routed} exported={view.exported} cut={view.cut} side={view.pins} compact={compact} live={selected} />
+      <CardStamp name={name} />
       <CardHandles rows={rowSelectors} side={view.pins} compact={compact} metrics={layoutMetrics} />
     </div>
   );

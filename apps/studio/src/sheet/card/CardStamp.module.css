@@ -1,0 +1,39 @@
+/*
+ * The cut-plan stamp above a card's top-left corner while the core is selected: "02" in the accent, "NOT CUT" in the
+ * muted ink. Outside the card's box, no pointer, screen-sized down to 50% zoom like the ground glyph. Tokens only.
+ */
+.stamp {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  box-sizing: border-box;
+  margin-block-end: 2px;
+  padding: 0 var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-accent);
+  background: var(--lx-panel);
+  color: var(--lx-accent);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: scale(calc(1 / max(var(--lx-sheet-zoom, 1), 0.5)));
+  transform-origin: 0 100%;
+  pointer-events: none;
+}
+
+.stamp[data-not-cut] {
+  border-color: var(--lx-border);
+  color: var(--lx-text-muted);
+}
+
+@media (forced-colors: active) {
+  .stamp,
+  .stamp[data-not-cut] {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+}

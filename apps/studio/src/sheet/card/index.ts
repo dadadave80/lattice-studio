@@ -12,6 +12,9 @@ export type { FacetNode } from "./node";
 export { provideInitMark, useInitMark } from "./init-mark";
 export type { InitMark } from "./init-mark";
 export {
-  cardAnalysis, cardView, describeCard, pinView, sameCardAnalysis, visibleRows,
+  cardAnalysis, cardView, describeCard, groundCount, groundState, pinView, routedSentence, sameCardAnalysis, visibleRows,
 } from "./card-model";
-export type { CardAnalysis, CardBorder, CardView, PinState, PinView, TooltipCopy } from "./card-model";
+export type { CardAnalysis, CardBorder, CardView, GroundState, PinState, PinView, TooltipCopy } from "./card-model";
+export { CardGround } from "./CardGround";
+export { CardStamp } from "./CardStamp";
+export { planIndex, stampText } from "./plan-index";
