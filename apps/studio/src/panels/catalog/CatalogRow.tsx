@@ -25,22 +25,27 @@ export function AreaRow({ label, onSheet }: AreaRowProps) {
 export type FacetRowProps = {
   facet: Facet;
   placed: boolean;
+  /** One of the core's facets: in every diamond, never a card. */
+  core?: boolean;
   availability?: FacetAvailability | undefined;
   chainName?: string | null | undefined;
 };
 
 /**
  * A facet row's two-line content (IR L82, current-catalog-row.png): name and selector count (or "On sheet"
- * once placed); namespace, unavailability on the selected chain, and the verified mark, each shown only when
- * known (spec L832: chain-dependent marks are unknown, never a false negative, until a chain is checked).
+ * once placed, or the Core chip for the core's facets); namespace, unavailability on the selected chain, and
+ * the verified mark, each shown only when known (spec L832: chain-dependent marks are unknown, never a false
+ * negative, until a chain is checked).
  */
-export function FacetRow({ facet, placed, availability, chainName }: FacetRowProps) {
+export function FacetRow({ facet, placed, core = false, availability, chainName }: FacetRowProps) {
   const namespace = facet.storage ? `erc7201:${facet.storage.id}` : null;
   return (
-    <span className={cx(styles.rowContent, placed && styles.ghost)}>
+    <span className={cx(styles.rowContent, placed && !core && styles.ghost)}>
       <span className={styles.line}>
         <span className={styles.name}>{facet.name}</span>
-        {placed ? (
+        {core ? (
+          <span className={styles.chip}>Core</span>
+        ) : placed ? (
           <span className={styles.badge}>On sheet</span>
         ) : (
           <span className={styles.muted}>{plural(facet.selectors.length, "selector")}</span>

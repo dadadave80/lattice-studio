@@ -28,8 +28,13 @@ const diamondCut = makeFacet({
   area: "diamond",
   selectors: ["diamondCut((address,uint8,bytes4[])[],address,bytes)"],
 });
+const loupe = makeFacet({
+  name: "DiamondLoupeFacet",
+  area: "diamond",
+  selectors: ["facets()", "facetFunctionSelectors(address)", "facetAddresses()", "facetAddress(bytes4)"],
+});
 
-const catalog = makeCatalog({ facets: [erc20, erc4626, accessControl, diamondCut] });
+const catalog = makeCatalog({ facets: [erc20, erc4626, accessControl, diamondCut, loupe] });
 
 describe("facetMatchesQuery", () => {
   test("an empty query matches everything", () => {
@@ -71,12 +76,21 @@ describe("facetMatchesQuery", () => {
 describe("buildCatalogNodes", () => {
   test("groups matches into area folders, sorted, with facets sorted inside them", () => {
     const { nodes, matchCount, matchedAreaIds } = buildCatalogNodes(catalog, "");
-    expect(matchCount).toBe(4);
+    expect(matchCount).toBe(5);
     expect(nodes.map((n) => n.id)).toEqual([areaNodeId("access"), areaNodeId("diamond"), areaNodeId("tokens")]);
     expect(nodes.map((n) => n.label)).toEqual([AREA_LABELS.access, AREA_LABELS.diamond, AREA_LABELS.tokens]);
     const tokens = nodes.find((n) => n.id === areaNodeId("tokens"));
     expect(tokens?.children?.map((c) => c.id)).toEqual(["ERC20", "ERC4626"]);
     expect(matchedAreaIds.sort()).toEqual([areaNodeId("access"), areaNodeId("diamond"), areaNodeId("tokens")].sort());
+  });
+
+  test("a core facet's row is disabled with the reason; the others aren't", () => {
+    const { nodes } = buildCatalogNodes(catalog, "");
+    const diamond = nodes.find((n) => n.id === areaNodeId("diamond"));
+    expect(diamond?.children).toEqual([
+      { id: "DiamondCutFacet", label: "DiamondCutFacet" },
+      { id: "DiamondLoupeFacet", label: "DiamondLoupeFacet", disabledReason: "Part of every diamond's core." },
+    ]);
   });
 
   test("a query narrows the tree to matching facets and their areas only", () => {
@@ -114,6 +128,10 @@ describe("placedCountByArea", () => {
     expect(counts.get("tokens")).toBe(1);
     expect(counts.get("access")).toBe(1);
     expect(counts.get("diamond")).toBeUndefined();
+  });
+
+  test("the core's facets count for their area: they're in the recipe", () => {
+    expect(placedCountByArea(catalog, new Set(["DiamondLoupeFacet", "ERC20"])).get("diamond")).toBe(1);
   });
 });
 
