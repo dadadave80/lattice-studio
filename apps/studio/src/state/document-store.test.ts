@@ -253,6 +253,16 @@ describe("load", () => {
     expect(bufferedServices().log.at(-1)?.text).toBe("Took over editing: undo history starts here.");
   });
 
+  test("nothing from the old sheet stays selected: the cards and the core alike", () => {
+    session.set({ selection: ["A"] });
+    doc.load(makeProject({ id: "other", name: "Other" }));
+    expect(session.get().selection).toEqual([]);
+    session.set({ selection: [], coreSelected: true });
+    expect(session.get().coreSelected).toBe(true);
+    doc.load(makeProject({ id: "third", name: "Third" }));
+    expect(session.get()).toMatchObject({ selection: [], coreSelected: false });
+  });
+
   test("every change bumps lastChange.revision", () => {
     const seen: number[] = [];
     const stop = doc.subscribe((s) => {

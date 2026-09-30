@@ -14,7 +14,7 @@
  * session never enter history.
  */
 import type { EditResult, Hex, Project, Recipe } from "@lattice-studio/core";
-import { lines } from "@lattice-studio/core";
+import { CORE_FACETS, lines } from "@lattice-studio/core";
 import { createStore, type StoreApi } from "zustand/vanilla";
 import {
   announce, DEFAULT_SETTINGS, log, now, session, type DocumentActions, type DocumentChange, type DocumentState,
@@ -64,7 +64,10 @@ export function isUnpinned(recipe: Recipe): boolean {
   return recipe.catalog.tag === "" || /^0x(?:0{64})?$/.test(recipe.catalog.hash);
 }
 
-/** An empty project, as the app starts before a project opens. */
+/**
+ * An empty project, as the app starts before a project opens: core only (the loupe and ERC-165 facets, nothing
+ * placed), with the empty step plan that keeps the automatic introspection step, as K2's untitled project.
+ */
 export function untitledProject(): Project {
   return {
     id: "untitled",
@@ -72,10 +75,10 @@ export function untitledProject(): Project {
     recipe: {
       schemaVersion: 1,
       catalog: { tag: "", hash: UNPINNED_HASH },
-      facets: [],
+      facets: [...CORE_FACETS],
       owners: {},
       exclude: [],
-      init: { kind: "none" },
+      init: { kind: "steps", steps: [] },
     },
     layout: {},
     deploy: { path: DEFAULT_SETTINGS.defaultPath, entropy: `0x${"00".repeat(11)}`, scope: "every-chain" },
@@ -296,6 +299,9 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
       burst = null;
       silently({ tracked: pick(project), selection: [], label: null });
       history.getState().clear();
+      // Nothing from the old sheet stays selected, the core included: the session's `set` drops `coreSelected`
+      // on any selection write, so this one write clears both.
+      selection.set([]);
       publish(project, "load", reason ?? `Opened ${project.name}`);
       if (reason) log({ tag: "Note", text: reason });
     },
