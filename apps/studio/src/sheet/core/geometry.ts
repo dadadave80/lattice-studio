@@ -35,11 +35,6 @@ export function gutterX(rect: Rect, side: PinSide): number {
   return side === "right" ? rect.x + rect.width + GUTTER : rect.x - GUTTER;
 }
 
-/** A sheet point on screen. */
-export function toScreenPoint(point: Point, [x, y, zoom]: Transform): Point {
-  return { x: point.x * zoom + x, y: point.y * zoom + y };
-}
-
 /**
  * Where a card's routed rows leave it: each drawn row's middle, as `CardHandles` places its handle, measured from
  * the card's top in sheet units. A compact card draws no rows, so it gets no stubs.
@@ -65,11 +60,13 @@ export type TraceInput = {
 };
 
 export type TracePaths = {
-  /** The wire: glyph, gutter, rail, pad. */
+  /** The wire, in screen px: glyph, gutter, rail, pad. */
   line: string;
-  /** The stubs and the gutter run above the glyph's lead; empty without stubs. */
+  /** The card's top-left corner on screen: the stubs and joints are drawn from it, so a drag only moves them. */
+  origin: Point;
+  /** The stubs and the gutter run above the glyph's lead, from `origin`; empty without stubs. */
   stubs: string;
-  /** Where each stub meets the gutter, in screen px. */
+  /** Where each stub meets the gutter, from `origin`. */
   joints: Point[];
 };
 
@@ -78,19 +75,25 @@ function px(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/** The trace's paths for one card. */
+/**
+ * The trace's paths for one card. The wire runs to the screen-space rail and pad, so it changes whenever the card
+ * moves; the stubs and joints keep their shape and only follow the card, so they're given from the card's corner
+ * and change with its size, pins, rows and the zoom only.
+ */
 export function tracePaths({ rect, side, transform, railY, pad, stubs }: TraceInput): TracePaths {
-  const [tx, , zoom] = transform;
-  const anchor = toScreenPoint(glyphAnchor(rect, side), transform);
-  const lead = anchor.y + GLYPH_LEAD * glyphScale(zoom);
-  const gutter = gutterX(rect, side) * zoom + tx;
-  const line = `M${px(anchor.x)} ${px(lead)}H${px(gutter)}V${px(railY)}H${px(pad.x)}V${px(pad.y)}`;
-  const ys = stubs.map((offset) => (rect.y + offset) * zoom + transform[1]);
-  const joints = ys.map((y) => ({ x: gutter, y }));
+  const [tx, ty, zoom] = transform;
+  const origin = { x: px(rect.x * zoom + tx), y: px(rect.y * zoom + ty) };
+  // The card at its own origin, so the anchor and the gutter come out relative to its corner.
+  const local = { x: 0, y: 0, width: rect.width, height: rect.height };
+  const anchor = glyphAnchor(local, side);
+  const edge = anchor.x * zoom;
+  const lead = anchor.y * zoom + GLYPH_LEAD * glyphScale(zoom);
+  const gutter = gutterX(local, side) * zoom;
+  const line = `M${px(origin.x + edge)} ${px(origin.y + lead)}H${px(origin.x + gutter)}V${px(railY)}H${px(pad.x)}V${px(pad.y)}`;
+  const ys = stubs.map((offset) => offset * zoom);
+  const joints = ys.map((y) => ({ x: px(gutter), y: px(y) }));
   const top = ys.length ? Math.min(...ys) : null;
   const stubPath =
-    top === null
-      ? ""
-      : `M${px(gutter)} ${px(top)}V${px(lead)}${ys.map((y) => `M${px(anchor.x)} ${px(y)}H${px(gutter)}`).join("")}`;
-  return { line, stubs: stubPath, joints };
+    top === null ? "" : `M${px(gutter)} ${px(top)}V${px(lead)}${ys.map((y) => `M${px(edge)} ${px(y)}H${px(gutter)}`).join("")}`;
+  return { line, origin, stubs: stubPath, joints };
 }

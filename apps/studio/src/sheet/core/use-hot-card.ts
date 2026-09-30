@@ -14,8 +14,15 @@ export function useHoveredCard(root: HTMLElement | null): string | null {
   const [hovered, setHovered] = useState<string | null>(null);
   useEffect(() => {
     if (!root) return undefined;
-    const over = (event: PointerEvent) => setHovered(cardOf(event.target));
-    const leave = () => setHovered(null);
+    // Moving over a card's rows fires `pointerover` at every one: only a change of card reaches React.
+    let current: string | null = null;
+    const show = (next: string | null) => {
+      if (next === current) return;
+      current = next;
+      setHovered(next);
+    };
+    const over = (event: PointerEvent) => show(cardOf(event.target));
+    const leave = () => show(null);
     root.addEventListener("pointerover", over);
     root.addEventListener("pointerleave", leave);
     return () => {

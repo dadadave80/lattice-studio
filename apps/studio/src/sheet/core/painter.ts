@@ -1,9 +1,10 @@
 /**
- * Draws the traces React decided to show. React mounts one `<g>` per traced card (a wire path, a stub path and a
- * junction dot per routed row); this writes their geometry, in screen px, from the card's rect in the document ×
- * React Flow's transform and the core cell's pads: one pass per animation frame, however many moves, pans or
- * zooms asked for it, each card's `d` rewritten only when its inputs changed. With no trace to draw it listens
- * to nothing.
+ * Draws the traces React decided to show. React mounts one `<g>` per traced card: the wire, then a group of the
+ * stubs and a junction dot per routed row. This writes their geometry, in screen px, from the card's rect in the
+ * document × React Flow's transform and the core cell's pads: one pass per animation frame, however many moves,
+ * pans or zooms asked for it. A card that only moved rewrites two attributes (the wire's `d` and the group's
+ * `transform`); its stubs are redrawn only when its size, pins, rows or the zoom change. With no trace to draw it
+ * listens to nothing.
  */
 import type { Layout, Point, Sizes } from "@lattice-studio/core";
 import { JOINT_RADIUS, tracePaths, type PinSide, type Transform } from "./geometry";
@@ -47,15 +48,34 @@ export type Painter = {
   dispose(): void;
 };
 
+/** What each `<g>` was last given, so an unchanged attribute is never written again. */
+type Painted = { line: string; origin: string; shape: string };
+
 function sideOf(layout: Layout, name: string): PinSide {
   return layout[name]?.pins === "right" ? "right" : "left";
+}
+
+/** The trace's parts, as React mounts them: `<path>` (the wire), then `<g>` holding a `<path>` and the dots. */
+function partsOf(element: SVGGElement): { line: SVGPathElement; group: SVGGElement; stubs: SVGPathElement; joints: Element[] } | null {
+  const [line, group] = element.children;
+  if (!(line instanceof SVGPathElement) || !(group instanceof SVGGElement)) return null;
+  const [stubs, ...joints] = group.children;
+  if (!(stubs instanceof SVGPathElement)) return null;
+  return { line, group, stubs, joints };
 }
 
 export function createPainter(inputs: PainterInputs): Painter {
   let targets: readonly TraceTarget[] = [];
   let frame = 0;
   let listening: (() => void)[] = [];
-  const painted = new WeakMap<SVGGElement, string>();
+  const painted = new WeakMap<SVGGElement, Painted>();
+
+  const clear = (element: SVGGElement) => {
+    const parts = partsOf(element);
+    parts?.line.removeAttribute("d");
+    parts?.stubs.removeAttribute("d");
+    painted.delete(element);
+  };
 
   const paint = () => {
     frame = 0;
@@ -66,33 +86,32 @@ export function createPainter(inputs: PainterInputs): Painter {
     for (const target of targets) {
       const entry = layout[target.name];
       const size = sizes[target.name];
-      const pad = pads === null ? null : target.to === "cut" ? (pads.cut ?? pads.fallback) : pads.fallback;
-      const [line, stubs, ...joints] = target.element.children;
-      if (!entry || !size || !pad || !pads || !(line instanceof SVGPathElement) || !(stubs instanceof SVGPathElement)) {
-        if (line instanceof SVGPathElement) line.removeAttribute("d");
-        if (stubs instanceof SVGPathElement) stubs.removeAttribute("d");
-        painted.delete(target.element);
+      const parts = partsOf(target.element);
+      if (!entry || !size || !pads || !parts) {
+        clear(target.element);
         continue;
       }
+      const pad = target.to === "cut" ? (pads.cut ?? pads.fallback) : pads.fallback;
       const side = sideOf(layout, target.name);
-      const key = [
-        entry.x, entry.y, size.width, size.height, side, transform[0], transform[1], transform[2], pad.x, pad.y, pads.railY,
-        target.stubs.join(","),
-      ].join("|");
-      if (painted.get(target.element) === key) continue;
-      painted.set(target.element, key);
       const rect = { x: entry.x, y: entry.y, width: size.width, height: size.height };
       const paths = tracePaths({ rect, side, transform, railY: pads.railY, pad, stubs: target.stubs });
-      line.setAttribute("d", paths.line);
-      if (paths.stubs) stubs.setAttribute("d", paths.stubs);
-      else stubs.removeAttribute("d");
-      joints.forEach((joint, index) => {
-        const at = paths.joints[index];
-        if (!(joint instanceof SVGCircleElement) || !at) return;
-        joint.setAttribute("cx", String(at.x));
-        joint.setAttribute("cy", String(at.y));
-        joint.setAttribute("r", String(JOINT_RADIUS));
-      });
+      const was = painted.get(target.element);
+      const origin = `translate(${paths.origin.x} ${paths.origin.y})`;
+      const shape = `${size.width}|${size.height}|${side}|${transform[2]}|${target.stubs.join(",")}|${parts.joints.length}`;
+      if (was?.line !== paths.line) parts.line.setAttribute("d", paths.line);
+      if (was?.origin !== origin) parts.group.setAttribute("transform", origin);
+      if (was?.shape !== shape) {
+        if (paths.stubs) parts.stubs.setAttribute("d", paths.stubs);
+        else parts.stubs.removeAttribute("d");
+        parts.joints.forEach((joint, index) => {
+          const at = paths.joints[index];
+          if (!at) return;
+          joint.setAttribute("cx", String(at.x));
+          joint.setAttribute("cy", String(at.y));
+          joint.setAttribute("r", String(JOINT_RADIUS));
+        });
+      }
+      painted.set(target.element, { line: paths.line, origin, shape });
     }
   };
 

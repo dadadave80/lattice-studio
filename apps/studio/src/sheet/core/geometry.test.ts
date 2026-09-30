@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { Hex4 } from "@lattice-studio/core";
 import { layoutMetrics } from "@/contracts/layout-metrics";
-import { GLYPH_LEAD, GUTTER, glyphAnchor, glyphScale, gutterX, stubOffsets, toScreenPoint, tracePaths } from "./geometry";
+import { GLYPH_LEAD, GUTTER, glyphAnchor, glyphScale, gutterX, stubOffsets, tracePaths } from "./geometry";
 
 const rect = { x: 100, y: 200, width: 232, height: 148 };
 
@@ -19,10 +19,6 @@ test("the glyph keeps its screen size down to 50% zoom, then shrinks with the sh
   expect(glyphScale(0.25)).toBe(0.5);
 });
 
-test("a sheet point maps through the transform", () => {
-  expect(toScreenPoint({ x: 10, y: 20 }, [5, 7, 2])).toEqual({ x: 25, y: 47 });
-});
-
 test("stubs sit at the routed rows' middles, as the card places its handles; a compact card has none", () => {
   const rows: Hex4[] = ["0x00000001", "0x00000002", "0x00000003"];
   const routed = new Set<Hex4>(["0x00000001", "0x00000003"]);
@@ -38,6 +34,7 @@ test("the trace leaves the glyph, runs the gutter to the rail, the rail to the p
   const paths = tracePaths({ rect, side: "right", transform: [10, 20, 1], railY: 600, pad: { x: 900, y: 612 }, stubs: [] });
   // Anchor (332, 348) on screen is (342, 368); the lead is 4.5 px below it; the gutter is at x 352 + 10.
   expect(paths.line).toBe(`M342 ${368 + GLYPH_LEAD}H362V600H900V612`);
+  expect(paths.origin).toEqual({ x: 110, y: 220 });
   expect(paths.stubs).toBe("");
   expect(paths.joints).toEqual([]);
 });
@@ -47,8 +44,21 @@ test("at 50% zoom the geometry halves with the sheet but the lead keeps its scre
   expect(paths.line).toBe(`M50 ${174 + GLYPH_LEAD}H40V300H400V312`);
 });
 
-test("a live trace adds a stub from each routed row into the gutter, joined by a run down to the lead", () => {
+test("a live trace adds a stub from each routed row into the gutter, joined by a run down to the lead, from the card's corner", () => {
   const paths = tracePaths({ rect, side: "left", transform: [0, 0, 1], railY: 600, pad: { x: 400, y: 612 }, stubs: [66, 106] });
-  expect(paths.stubs).toBe(`M80 266V${348 + GLYPH_LEAD}M100 266H80M100 306H80`);
-  expect(paths.joints).toEqual([{ x: 80, y: 266 }, { x: 80, y: 306 }]);
+  expect(paths.origin).toEqual({ x: 100, y: 200 });
+  expect(paths.stubs).toBe(`M-20 66V${148 + GLYPH_LEAD}M0 66H-20M0 106H-20`);
+  expect(paths.joints).toEqual([{ x: -20, y: 66 }, { x: -20, y: 106 }]);
+});
+
+test("a moved card moves the wire and the origin; its stubs keep their shape", () => {
+  const base = { side: "right" as const, railY: 600, pad: { x: 900, y: 612 }, stubs: [66] };
+  const here = tracePaths({ ...base, rect, transform: [0, 0, 1] });
+  const there = tracePaths({ ...base, rect: { ...rect, x: rect.x + 40, y: rect.y + 16 }, transform: [0, 0, 1] });
+  expect(there.line).not.toBe(here.line);
+  expect(there.origin).toEqual({ x: here.origin.x + 40, y: here.origin.y + 16 });
+  expect(there.stubs).toBe(here.stubs);
+  expect(there.joints).toEqual(here.joints);
+  // The right side's stubs run out from the card's right edge to the gutter beyond it.
+  expect(here.stubs).toBe(`M252 66V${148 + GLYPH_LEAD}M232 66H252`);
 });

@@ -78,9 +78,13 @@ export function CoreCell({ status, selected, empty, hot, onHot, tones, onPads }:
   const fallbackPad = useRef<HTMLSpanElement>(null);
   const cutPad = useRef<HTMLSpanElement>(null);
   const published = useRef<Pads | null>(null);
+  const lift = useRef<string | null>(null);
+  const titleWidth = title?.width ?? null;
 
-  // The pads' points and the rail, after every layout that can move them; and whether Back to content would sit
-  // under the cell (D16): then it lifts by the cell's height through a CSS variable on the sheet.
+  // The pads' points and the rail, whenever something can move them: the cell's or the sheet's size (observed),
+  // the title block's width (the cell's margin), a fold. And whether Back to content would sit under the cell
+  // (D16): then it lifts by the cell's height through a CSS variable on the sheet. Both are written only when
+  // they change: the variable is inherited, so writing it restyles the whole sheet.
   useLayoutEffect(() => {
     const el = cell.current;
     if (!root || !el) return undefined;
@@ -99,8 +103,11 @@ export function CoreCell({ status, selected, empty, hot, onHot, tones, onPads }:
         onPads(next);
       }
       const under = own.left - box.left < box.width / 2 + BACK_TO_CONTENT_HALF;
-      if (under) root.style.setProperty(CORE_LIFT_VAR, `${Math.ceil(own.height) + GAP}px`);
-      else root.style.removeProperty(CORE_LIFT_VAR);
+      const want = under ? `${Math.ceil(own.height) + GAP}px` : null;
+      if (want === lift.current) return;
+      lift.current = want;
+      if (want === null) root.style.removeProperty(CORE_LIFT_VAR);
+      else root.style.setProperty(CORE_LIFT_VAR, want);
     };
     // A margin set in this commit can take a frame or two to move the panel (Chromium lays the new inline
     // margin out late, and the first frames read the old place): measure again on each of the next few frames.
@@ -121,11 +128,12 @@ export function CoreCell({ status, selected, empty, hot, onHot, tones, onPads }:
       if (frame !== 0) cancelAnimationFrame(frame);
       sizes.disconnect();
     };
-  });
+  }, [root, onPads, titleWidth, collapsed, empty]);
 
   useLayoutEffect(
     () => () => {
       root?.style.removeProperty(CORE_LIFT_VAR);
+      lift.current = null;
       published.current = null;
       onPads(null);
     },

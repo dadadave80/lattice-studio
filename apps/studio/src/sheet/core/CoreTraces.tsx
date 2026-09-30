@@ -18,14 +18,38 @@ export type TraceSpec = {
   stubs: readonly number[];
 };
 
+let lastLayout: Layout | null = null;
+let lastKey = "";
+
+/** Whether two layouts place the same cards with the same pins and expanded flags, wherever they sit. */
+function sameShape(a: Layout, b: Layout): boolean {
+  let count = 0;
+  for (const name in b) {
+    const was = a[name];
+    const now = b[name];
+    if (!was || !now || was.pins !== now.pins || (was.expanded === true) !== (now.expanded === true)) return false;
+    count += 1;
+  }
+  for (const name in a) {
+    if (a[name]) count -= 1;
+  }
+  return count === 0;
+}
+
 /**
  * Sizes change with a card's pins or expanded flag (and the catalog and analysis), never with its position, so
- * a drag frame reuses the last ones: the memo is keyed on this shape, not on the layout object.
+ * a drag frame reuses the last ones: the memo is keyed on this shape, not on the layout object. A drag frame
+ * moves cards only, so the last key is handed back without building a string.
  */
 export function shapeKey(layout: Layout): string {
-  return Object.entries(layout)
-    .map(([name, entry]) => `${name}:${entry.pins}:${entry.expanded === true ? 1 : 0}`)
-    .join("|");
+  if (layout === lastLayout) return lastKey;
+  if (lastLayout === null || !sameShape(lastLayout, layout)) {
+    lastKey = Object.entries(layout)
+      .map(([name, entry]) => `${name}:${entry.pins}:${entry.expanded === true ? 1 : 0}`)
+      .join("|");
+  }
+  lastLayout = layout;
+  return lastKey;
 }
 
 /** The layout `shapeKey` describes, every card at the origin: all `cardSizes` reads. */
@@ -102,10 +126,12 @@ export function CoreTraces({ traces, pads }: { traces: readonly TraceSpec[]; pad
           data-to={trace.to}
         >
           <path />
-          <path />
-          {trace.stubs.map((offset) => (
-            <circle key={offset} className={styles.joint} />
-          ))}
+          <g>
+            <path />
+            {trace.stubs.map((offset) => (
+              <circle key={offset} className={styles.joint} />
+            ))}
+          </g>
         </g>
       ))}
     </svg>
