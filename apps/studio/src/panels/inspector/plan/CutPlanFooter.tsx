@@ -44,11 +44,12 @@ export function CutPlanFooter() {
               <span className={styles.index}>{row.index}</span>
               <span className={styles.action}>ADD</span>
               <span className={styles.name}>{row.facet}</span>
-              {row.fixed ? <span className={styles.tag}>fixed</span> : null}
               <span className={styles.address} title={row.address}>
                 {formatAddress(row.address)}
               </span>
               <span className={styles.count}>{row.count}</span>
+              {/* After the count, so the core's names keep the first line's full width in a narrow inspector. */}
+              {row.fixed ? <span className={styles.tag}>fixed</span> : null}
               {row.contested ? (
                 <span className={styles.mark}>
                   <span aria-hidden="true">⟂</span>

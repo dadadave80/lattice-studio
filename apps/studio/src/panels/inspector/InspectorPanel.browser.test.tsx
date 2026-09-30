@@ -340,8 +340,8 @@ describe("cut plan footer", () => {
     // Text matchers take strings here: a RegExp from the test's realm doesn't survive into the matcher.
     const axelar = fixtureCatalog().facets.find((f) => f.name === "AxelarGatewayAdapter")?.release.address;
     if (!axelar) throw new Error("The fixture catalog lost AxelarGatewayAdapter.");
-    expect(items.nth(0).element().textContent).toMatch(/^\[00\]ADDDiamondLoupeFacetfixed0x.+4\/4 selectors$/);
-    expect(items.nth(1).element().textContent).toMatch(/^\[01\]ADDERC165Facetfixed0x.+1\/1 selector$/);
+    expect(items.nth(0).element().textContent).toMatch(/^\[00\]ADDDiamondLoupeFacet0x.+4\/4 selectorsfixed$/);
+    expect(items.nth(1).element().textContent).toMatch(/^\[01\]ADDERC165Facet0x.+1\/1 selectorfixed$/);
     expect(items.nth(2).element().textContent).toBe(`[02]ADDAxelarGatewayAdapter${formatAddress(axelar)}7/9 selectors⟂contested`);
     expect(items.nth(3).element().textContent).toMatch(/^\[03\]ADDHyperlaneGatewayAdapter0x.+10\/12 selectors⟂contested$/);
     expect(cuts.element().querySelectorAll("[data-fixed]")).toHaveLength(2);
@@ -379,8 +379,8 @@ describe("cut plan footer", () => {
     const cuts = page.getByRole("list", { name: "Cuts in order" });
     await expect.element(cuts).toBeVisible();
     expect(cuts.getByRole("listitem").elements().map((item) => item.textContent)).toEqual([
-      expect.stringMatching(/^\[00\]ADDDiamondLoupeFacetfixed/),
-      expect.stringMatching(/^\[01\]ADDERC165Facetfixed/),
+      expect.stringMatching(/^\[00\]ADDDiamondLoupeFacet0x/),
+      expect.stringMatching(/^\[01\]ADDERC165Facet0x/),
     ]);
     await expect.element(page.getByText("2 · core first")).toBeVisible();
     const button = page.getByRole("button", { name: "Copy plan as JSON" });
