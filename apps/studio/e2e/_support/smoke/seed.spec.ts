@@ -2,7 +2,7 @@
  * Seeding: an empty first visit, a recipe, 30 cards with collisions, a project file's From file records, a share
  * link and settings, each checked against what the shell shows.
  */
-import { decodeShareLink, parseProjectFile } from "@lattice-studio/core";
+import { CORE_FACETS, decodeShareLink, parseProjectFile } from "@lattice-studio/core";
 import type { Page } from "@playwright/test";
 import { catalog } from "../catalog.ts";
 import { expect, test } from "../fixtures.ts";
@@ -15,7 +15,10 @@ import {
   DB_NAME, QUIET_URL, SEEDED_DB_VERSION, SETTINGS_KEY, openEmpty, seedProject, seedSettings, storeProject,
 } from "../seed.ts";
 
-/** The catalog's "n on sheet" counts, summed over its area folders: how many cards the sheet holds. */
+/**
+ * The catalog's "n on sheet" counts, summed over its area folders: how many facets the recipe holds, the core's
+ * two (DiamondLoupeFacet, ERC165Facet, in the Diamond area) included.
+ */
 async function cardsOnSheet(page: Page): Promise<number> {
   const counts = await region(page, "Left pane").getByText(/^\d+ on sheet$/).allTextContents();
   return counts.reduce((sum, text) => sum + Number.parseInt(text, 10), 0);
@@ -85,10 +88,12 @@ test.describe("seeding @smoke", () => {
     expect(await databaseLayout(page)).toEqual(byApp);
   });
 
-  test("empty: a first visit opens Untitled with nothing on the sheet", async ({ page }) => {
+  test("empty: a first visit opens Untitled with no cards on the sheet", async ({ page }) => {
     await openEmpty(page);
     await expect(region(page, "Title bar").getByRole("button", { name: "Untitled", exact: true })).toBeVisible();
-    expect(await cardsOnSheet(page)).toBe(0);
+    await expect(region(page, "Sheet").getByRole("group", { name: / \d+ selectors?/ })).toHaveCount(0);
+    // The catalog counts nothing but the core: its two facets once the untitled recipe carries them, none before.
+    expect(await cardsOnSheet(page)).toBeLessThanOrEqual(CORE_FACETS.length);
   });
 
   test("a recipe opens as the last project, editable", async ({ page }) => {

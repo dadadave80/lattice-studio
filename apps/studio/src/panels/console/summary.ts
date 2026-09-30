@@ -8,12 +8,13 @@
  *    logged (Deploy, Verify or Error), empty until the first one ("Deploy lines stream in").
  * 3. The deploy's outcome for the recipe on the sheet: Proposed, Live, Mismatch. Once the sheet differs from
  *    the recipe the deploy was reviewed with, the outcome no longer describes it and the rows below apply.
- * 4. Empty sheet.
+ * 4. Core only: no cards on the sheet (the core itself is always there).
  * 5. Problems: "No problems", "2 blockers", "2 blockers · 1 warning"; the accent while blockers remain.
  */
 import type { Address, Hex } from "@lattice-studio/core";
 import { formatAddress, formatProblemSummary } from "@lattice-studio/core";
 import type { DeployPhase, DeployState } from "@/contracts";
+import { CORE_ONLY } from "../core-copy";
 
 export type SummaryKind = "offline" | "deploying" | "proposed" | "live" | "mismatch" | "empty" | "clear" | "problems";
 
@@ -25,6 +26,7 @@ export type Summary = {
 };
 
 export type SummaryInput = {
+  /** Cards on the sheet: the core's facets don't count. */
   facets: number;
   blockers: number;
   warnings: number;
@@ -38,7 +40,7 @@ export type SummaryInput = {
 };
 
 export const OFFLINE_SUMMARY = "Offline. Composing works; deploy needs a connection.";
-export const EMPTY_SUMMARY = "Empty sheet";
+export const EMPTY_SUMMARY = CORE_ONLY;
 export const MISMATCH_SUMMARY = "Deployed, but doesn't match the sheet";
 export const LIVE_SUMMARY = "Live";
 

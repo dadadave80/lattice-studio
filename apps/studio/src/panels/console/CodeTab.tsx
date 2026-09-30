@@ -1,3 +1,4 @@
+import { isCoreOnly } from "@lattice-studio/core";
 import { useAnalysis, useCatalog, useDocument, useSettings } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { usePlatform } from "@/ui/shared/platform";
@@ -22,7 +23,8 @@ export const NOT_READY = "The file isn't ready yet";
  * file has no header of its own (spec L509, L515; ruling R6).
  */
 export function CodeTab({ kind }: CodeTabProps) {
-  const facets = useDocument((s) => s.project.recipe.facets.length);
+  // Cards only: a core-only sheet has nothing to generate a script for.
+  const empty = useDocument((s) => isCoreOnly(s.project.recipe));
   const catalog = useCatalog();
   const blockers = useAnalysis((a) => blockerCount(a));
   const recipeHash = useAnalysis((a) => a.recipeHash);
@@ -32,7 +34,7 @@ export function CodeTab({ kind }: CodeTabProps) {
   const { file, error, changed } = useExportFile(kind);
 
   if (!catalog) return <p className={styles.empty}>{CATALOG_NOT_LOADED}.</p>;
-  if (facets === 0) return <p className={styles.empty}>{PLACE_FACETS_TO_GENERATE}</p>;
+  if (empty) return <p className={styles.empty}>{PLACE_FACETS_TO_GENERATE}</p>;
 
   const blocked = kind === "script" && blockers > 0;
   const blockedReason = blocked ? resolveToExport(blockers, nextProblemKey({ keymap, singleKeys, platform })) : null;

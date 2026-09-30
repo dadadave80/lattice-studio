@@ -3,7 +3,7 @@
  * Test-only; no app code imports it.
  */
 import type { Catalog, ExportFile, Hex4, Project } from "@lattice-studio/core";
-import { blankDiamond, loadTemplate } from "@lattice-studio/core";
+import { blankDiamond, CORE_FACETS, loadTemplate } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
 import { vi } from "vitest";
 import { command, type Command } from "@/contracts";
@@ -34,10 +34,10 @@ export function collisionProject(): Project {
   });
 }
 
-/** An empty sheet. */
+/** A core-only sheet: no cards, the core's two facets. */
 export function emptyProject(): Project {
   const blank = blankDiamond(catalog());
-  return makeProject({ id: "p-empty", name: "Untitled", recipe: { ...blank, facets: [] } });
+  return makeProject({ id: "p-empty", name: "Untitled", recipe: { ...blank, facets: [...CORE_FACETS] } });
 }
 
 /** Every file the console would have saved in this test. */

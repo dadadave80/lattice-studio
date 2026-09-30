@@ -32,10 +32,10 @@ async function renderConsole(project = erc20Project()) {
 }
 
 describe("console summary, one state per row of the table (spec L376-L389)", () => {
-  test("Empty: Empty sheet", async () => {
+  test("No cards, only the core: Core only", async () => {
     analysisWith([]);
     await renderConsole(emptyProject());
-    await expectSummary("Empty sheet", false);
+    await expectSummary("Core only", false);
   });
 
   test("Composing, no problems: No problems", async () => {

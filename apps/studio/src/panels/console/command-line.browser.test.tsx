@@ -58,7 +58,7 @@ describe("command line (IR L137)", () => {
     await renderConsole();
     await run("help");
     const verbs = listVerbs().map((v) => v.verb);
-    for (const verb of ["clear", "help", "find", "problems", "export", "place", "route"]) expect(verbs).toContain(verb);
+    for (const verb of ["clear", "help", "find", "problems", "export", "place", "route", "core"]) expect(verbs).toContain(verb);
     await logged(`Commands: ${verbs.join(", ")}. Type help <verb> for one.`);
     // Every verb the registry has answers help with its forms.
     for (const v of listVerbs()) {
@@ -114,6 +114,38 @@ describe("command line (IR L137)", () => {
     await logged("Nothing on the sheet matches ‘nothing here’.");
     await run("find");
     await logged("Name what to find: find <text or 0x…>");
+  });
+
+  test("find on the core alone selects the core and says so; a core facet never enters the selection", async () => {
+    const located = recordLocate();
+    await renderConsole();
+    session.set({ selection: ["ERC20"] });
+    await run("find loupe");
+    await logged("Found 1 facet matching ‘loupe’. Selected the core.");
+    await vi.waitFor(() => expect(session.get().coreSelected).toBe(true));
+    expect(session.get().selection).toEqual([]);
+    expect(located).toEqual([]);
+  });
+
+  test("remove on a core facet is refused with the reason", async () => {
+    // `facet.remove` as A registers it: the core's facets are refused (pinned here, so the test doesn't depend on A).
+    overrideCommands([
+      command<{ facets: string[] }>({
+        id: "facet.remove", title: () => "Remove", category: "Build",
+        console: {
+          verb: "remove", aliases: ["rm"], syntax: "remove <facet>",
+          parse: (argv) => (argv.length === 0 ? { ok: false, error: "Name a facet to remove: remove <facet>" } : { ok: true, value: { facets: argv } }),
+        },
+        enabled: (_ctx, { facets }) => (facets.includes("DiamondLoupeFacet")
+          ? { ok: false, reason: "DiamondLoupeFacet is the diamond's core and stays." }
+          : { ok: true }),
+        run: () => undefined,
+      }),
+    ]);
+    await renderConsole();
+    await run("remove DiamondLoupeFacet");
+    await logged("DiamondLoupeFacet is the diamond's core and stays.");
+    expect(doc.get().recipe.facets).toContain("DiamondLoupeFacet");
   });
 
   test("clear empties the log, and Ctrl L does on macOS", async () => {
