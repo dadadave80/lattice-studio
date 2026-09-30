@@ -1,4 +1,4 @@
-import { plural } from "@lattice-studio/core";
+import { isCoreFacet, plural, type Catalog, type Project } from "@lattice-studio/core";
 import { useRef, useState } from "react";
 import {
   closeDialog, runCommand, useAnalysis, useCatalog, useDocument, useSession, type DialogComponentProps,
@@ -11,9 +11,19 @@ import { removalBlocker, requiredFacets } from "./remove-facets";
 import { useChainService, useReadiness } from "./use-review";
 
 const TITLE = "Remove facets";
+/** Why a core facet's row can't be ticked: it isn't a card, and the diamond doesn't exist without it. */
+export const CORE_LOCK = "Part of every diamond's core.";
 const TICK_FIRST = "Tick the facets to remove";
 const NO_ESTIMATE = "No gas estimate yet: sorted by selectors cut.";
 const NO_LOCKS: ReadonlyMap<string, string> = new Map();
+
+/** The core's facets first (their rows stay for the gas picture), then the facets a blocker requires. */
+function lockedFacets(project: Project, catalog: Catalog | null, names: readonly string[]): ReadonlyMap<string, string> {
+  const locked = new Map<string, string>(names.filter(isCoreFacet).map((name) => [name, CORE_LOCK]));
+  if (!catalog) return locked.size ? locked : NO_LOCKS;
+  for (const [name, reason] of requiredFacets(project, catalog, names.filter((name) => !isCoreFacet(name)))) locked.set(name, reason);
+  return locked;
+}
 
 /** A check's message for plain text (a tooltip, a line): its code spans lose their backticks. */
 function plain(text: string): string {
@@ -46,7 +56,7 @@ export function RemoveFacetsDialog({ entry, top }: DialogComponentProps<"remove-
   // Without an estimate, a share of the selector count sorts by selectors cut, ties in plan order.
   const selectors = plan.reduce((sum, e) => sum + e.selectors.length, 0);
   const rows = gasByFacet(plan, estimate ?? BigInt(selectors));
-  const locked = catalog ? requiredFacets(project, catalog, plan.map((e) => e.facet)) : NO_LOCKS;
+  const locked = lockedFacets(project, catalog, plan.map((e) => e.facet));
   const chosen = rows.filter((r) => ticked.includes(r.facet) && !locked.has(r.facet)).map((r) => r.facet);
   const combined = catalog && chosen.length > 0 ? removalBlocker(project, catalog, chosen) : null;
 
