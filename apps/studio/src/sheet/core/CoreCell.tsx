@@ -40,6 +40,9 @@ export type CoreCellProps = {
 const CORE_KEYS = { [KEY_CONTEXT_ATTRIBUTE]: "global" };
 /** The gap between the cell and the title block, in px (a grid step). */
 const GAP = 8;
+/** The cell's width (`core.module.css` .cell) and the panels' distance from the sheet's edge (space-4). */
+const CELL_WIDTH = 290;
+const EDGE = 16;
 /** Half the width Back to content is allowed before it counts as under the cell (D16). */
 const BACK_TO_CONTENT_HALF = 100;
 /** How many frames the cell keeps re-measuring after a render for its position to settle. */
@@ -74,6 +77,7 @@ function samePads(a: Pads | null, b: Pads | null): boolean {
  */
 export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onPads }: CoreCellProps) {
   const root = useStore((s) => s.domNode);
+  const sheetWidth = useStore((s) => s.width);
   const title = useTitleBlockSize();
   const collapsed = useSession((s) => s.panes.core.collapsed);
   const cell = useRef<HTMLDivElement>(null);
@@ -142,9 +146,14 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
     [root, onPads],
   );
 
-  const style: CSSProperties | undefined = title
-    ? { marginInlineEnd: `calc(var(--lx-space-4) + ${title.width + GAP}px)` }
-    : undefined;
+  // Beside the title block while both fit across the sheet; above it when they don't (the title block's strip
+  // form at narrow widths spans the sheet, and a cell pushed past its left edge would sit off-screen).
+  const beside = !title || sheetWidth <= 0 || title.width + GAP + CELL_WIDTH + 2 * EDGE <= sheetWidth;
+  const style: CSSProperties | undefined = !title
+    ? undefined
+    : beside
+      ? { marginInlineEnd: `calc(var(--lx-space-4) + ${title.width + GAP}px)` }
+      : { marginBlockEnd: `calc(var(--lx-space-4) + ${title.height + GAP}px)` };
 
   // What the pads show (a trace ending on them, the pointer on them) is said on the cell's own element, so a card
   // hovered on the sheet changes one attribute here and never re-renders the toolbar's buttons (`CellRows`).
