@@ -116,6 +116,11 @@ describe("buildPlan", () => {
     const plan = buildPlan(recipe, fixture.value, routing);
     expect(plan.entries).toHaveLength(14);
     expect(plan.omitted).toEqual([]);
+    // The core's entries first, in CORE_FACETS order; the rest in catalog order.
+    expect(plan.entries.slice(0, 2).map((e) => e.facet)).toEqual(["DiamondLoupeFacet", "ERC165Facet"]);
+    const index = new Map(fixture.value.facets.map((f, at) => [f.name, at]));
+    const rest = plan.entries.slice(2).map((e) => index.get(e.facet) ?? -1);
+    expect(rest).toEqual([...rest].sort((a, b) => a - b));
     const routed = Object.values(routing).filter((r) => r.owner !== undefined).length;
     expect(plan.entries.reduce((n, e) => n + e.selectors.length, 0)).toBe(routed);
     // ERC20 gives transfer (0xa9059cbb) away to GovernedVault: its Add doesn't carry it.

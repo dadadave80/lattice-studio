@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import { layoutSizes } from "../../../tokens/dist/tokens";
-import { analyze, cardSize, contestedSelectors, tidy, type Analysis, type Catalog, type Layout, type LayoutMetrics, type Rect } from "../../src";
+import { analyze, cardSize, contestedSelectors, isCoreFacet, tidy, type Analysis, type Catalog, type Layout, type LayoutMetrics, type Rect } from "../../src";
 import { checkProperty, overlappingPairs, projectArb, propertyCatalogs } from "../../src/testing";
 
 const catalogs = propertyCatalogs();
@@ -33,7 +33,8 @@ for (const catalog of catalogs) {
         fc.property(projectArb(catalog, { maxFacets: 30 }), (project) => {
           const analysis = analyze(project.recipe, catalog, ctx);
           const layout = tidy(project, catalog, analysis, metrics);
-          expect(Object.keys(layout).sort()).toEqual([...new Set(project.recipe.facets)].sort());
+          // One card per placed facet; the core (always in the recipe) is never a card.
+          expect(Object.keys(layout).sort()).toEqual([...new Set(project.recipe.facets)].filter((name) => !isCoreFacet(name)).sort());
           for (const [name, entry] of Object.entries(layout)) {
             expect([name, entry.pins, entry.expanded]).toEqual([name, project.layout[name]?.pins, project.layout[name]?.expanded]);
             expect(Number.isFinite(entry.x) && Number.isFinite(entry.y)).toBe(true);

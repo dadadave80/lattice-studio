@@ -33,6 +33,27 @@ function expectRecipeKept(result: EditResult, before: Project): void {
   expect(recipeHash(result.project.recipe, catalog)).toBe(recipeHash(before.recipe, catalog));
 }
 
+describe("the core", () => {
+  test("setCardPosition refuses a core facet: it has no card", () => {
+    const withCore = { ...base, recipe: { ...base.recipe, facets: [...base.recipe.facets, "DiamondLoupeFacet", "ERC165Facet"] } };
+    expectNoOp(setCardPosition(withCore, "DiamondLoupeFacet", { x: 8, y: 8 }), withCore, "DiamondLoupeFacet is the diamond's core and has no card.");
+    expectNoOp(setCardPosition(withCore, "ERC165Facet", { x: Number.NaN, y: 8 }), withCore, "ERC165Facet is the diamond's core and has no card.");
+    expect(Object.keys(withCore.layout)).not.toContain("DiamondLoupeFacet");
+  });
+
+  test("applyLayout drops the core's entries: alone they change nothing, beside others they're left out", () => {
+    const stale = { ...base.layout, DiamondLoupeFacet: { x: 999, y: 999, pins: "right" as const }, ERC165Facet: { x: 0, y: 0, pins: "left" as const, expanded: true as const } };
+    expectNoOp(applyLayout(base, stale), base, "Nothing moved: the sheet already has this layout.");
+    const moved = { ...stale, ERC20: { x: 1600, y: 0, pins: "right" as const } };
+    untouched(base, (p) => applyLayout(p, moved));
+    const result = applyLayout(base, moved);
+    const after = expectChanged(result, base, "Arranged ERC20");
+    expect(Object.keys(after.layout).sort()).toEqual(Object.keys(base.layout).sort());
+    expect(after.layout.ERC20).toEqual({ x: 1600, y: 0, pins: "right" });
+    expectRecipeKept(result, base);
+  });
+});
+
 describe("renameProject", () => {
   test("renames, trimmed", () => {
     const result = renameProject(base, "  Vault two ");

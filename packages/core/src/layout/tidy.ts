@@ -1,3 +1,5 @@
+import { isCoreFacet } from "../diamond/core";
+import { withoutCore } from "../diamond/repair";
 import type { TidyFn } from "../model/api";
 import type { Catalog, Facet } from "../model/catalog";
 import type { Hex4 } from "../model/hex";
@@ -117,14 +119,15 @@ function tidySizes(
  * analysis, never on where the cards were. With `selection`, only those cards on the sheet are arranged the
  * same way, centered on their current bounding box's center, and the block then slides to the nearest free
  * spot so it lands on no other card. Pins and expanded flags are kept; a placed facet with no layout entry
- * gets one with pins on the right.
+ * gets one with pins on the right. The core's facets never get one: they aren't cards.
  */
 export const tidy: TidyFn = (project, catalog, analysis, metrics, selection) => {
-  const { layout } = project;
+  // The core is never on the sheet: its facets get no card, and a stale entry for one is dropped.
+  const layout = withoutCore(project.layout);
   const facets = new Map(catalog.facets.map((f) => [f.name, f]));
   const contested = contestedByFacet(collisions(analysis));
 
-  const all = [...new Set([...project.recipe.facets, ...Object.keys(layout)])].sort(catalogOrder(catalog));
+  const all = [...new Set([...project.recipe.facets, ...Object.keys(layout)])].filter((n) => !isCoreFacet(n)).sort(catalogOrder(catalog));
   const picked = selection === undefined ? null : new Set(selection);
   const chosen = picked ? all.filter((n) => layout[n] !== undefined && picked.has(n)) : all;
   if (chosen.length === 0) return picked ? { ...layout } : layout;

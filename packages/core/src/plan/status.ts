@@ -1,3 +1,4 @@
+import { isCoreFacet } from "../diamond/core";
 import { formatCount, formatStamp, plural } from "../format/format";
 import type { ProjectStatusFn, RecipeStatsFn } from "../model/api";
 import type { RecipeStats } from "../model/analysis";
@@ -93,9 +94,10 @@ export const projectStatus: ProjectStatusFn = (project, deployments, chainId, re
 };
 
 /**
- * "14 facets · 120 selectors" and, per placed facet, "12/17 selectors" (routed/exported, spec L685). Placed
+ * "12 facets · 120 selectors" and, per placed facet, "12/17 selectors" (routed/exported, spec L685). Placed
  * facets are the ones the routing names as contenders plus the plan's, in catalog order; routed counts come
- * from the routing's owners, exported counts from the catalog.
+ * from the routing's owners, exported counts from the catalog. `facets` counts the cards (the core's two left
+ * out, decision D18); `selectors` and `perFacet` count the core's too, so an empty sheet reads "0 facets · 5 selectors".
  */
 export const recipeStats: RecipeStatsFn = (analysis, catalog) => {
   const placed = new Set<string>(analysis.plan.map((entry) => entry.facet));
@@ -123,10 +125,11 @@ export const recipeStats: RecipeStatsFn = (analysis, catalog) => {
     perFacet[name] = { routed: count, exported, text: formatCount(count, exported) };
   }
 
+  const cards = names.filter((name) => !isCoreFacet(name)).length;
   return {
-    facets: names.length,
+    facets: cards,
     selectors,
-    text: `${plural(names.length, "facet")} · ${plural(selectors, "selector")}`,
+    text: `${plural(cards, "facet")} · ${plural(selectors, "selector")}`,
     perFacet,
   };
 };

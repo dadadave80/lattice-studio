@@ -7,8 +7,10 @@ import type { Layout, LayoutMetrics, Sizes } from "../model/layout";
 import type { Project } from "../model/project";
 import { makeCatalog, makeFacet, makeProject, makeRecipe } from "../testing/builders";
 import { sel } from "../testing/ids";
+import { placeNotes } from "./notes";
 import { collisions, contestedByFacet } from "./rows";
 import { cardSize } from "./size";
+import { contentBounds, freeSlot, pushBelow } from "./slots";
 import { analysisWith, buildSheet, facetWith, overlapping, type SheetSpec } from "./testkit";
 import { tidy } from "./tidy";
 
@@ -85,6 +87,29 @@ describe("tidy", () => {
   test("an empty sheet stays empty", () => {
     const project = projectOn(catalog, []);
     expect(tidy(project, catalog, analysisWith(), metrics)).toBe(project.layout);
+  });
+
+  test("the core is never a card: no entry for it, and a stale one goes, whole sheet and selection alike", () => {
+    const withCore = makeCatalog({ facets: [...catalog.facets, facetWith("DiamondLoupeFacet", 4, 600), facetWith("ERC165Facet", 1, 700)] });
+    const stale: Layout = { ...scattered, DiamondLoupeFacet: { x: 0, y: 0, pins: "right" }, ERC165Facet: { x: 8, y: 8, pins: "left", expanded: true } };
+    const project = projectOn(withCore, [...names, "DiamondLoupeFacet", "ERC165Facet"], stale);
+    const whole = tidy(project, withCore, analysisWith(), metrics);
+    expect(Object.keys(whole).sort()).toEqual([...names].sort());
+    expect(whole).toEqual(tidy(projectOn(withCore, names, scattered), withCore, analysisWith(), metrics));
+    const some = tidy(project, withCore, analysisWith(), metrics, ["Token", "DiamondLoupeFacet"]);
+    expect(Object.keys(some).sort()).toEqual([...names].sort());
+    expect(Object.keys(tidy(project, withCore, analysisWith(), metrics, ["ERC165Facet"])).sort()).toEqual([...names].sort());
+    // A core-only recipe is an empty sheet.
+    const empty = projectOn(withCore, ["DiamondLoupeFacet", "ERC165Facet"]);
+    expect(tidy(empty, withCore, analysisWith(), metrics)).toBe(empty.layout);
+    // Everything downstream reads a tidied layout, which holds cards only: nothing here sees or emits a core entry.
+    const sizes = sizesFor(whole, withCore, analysisWith());
+    expect(Object.keys(sizes).sort()).toEqual([...names].sort());
+    expect(Object.keys(pushBelow(whole, sizes, "Token", 100, metrics)).sort()).toEqual([...names].sort());
+    expect(contentBounds(whole, sizes)).not.toBeNull();
+    expect(Number.isFinite(freeSlot(whole, sizes, { x: 96, y: 96 }, { width: metrics.cardWidth, height: 100 }, metrics).x)).toBe(true);
+    const notes = placeNotes({ layout: whole, sizes, traces: [], notes: [{ id: "n", size: { width: 160, height: 40 }, facets: ["Token"] }], metrics });
+    expect(notes.map((note) => note.id)).toEqual(["n"]);
   });
 
   test("a convention (DEP-02) doesn't make a provider: only hard requirements set bands", () => {

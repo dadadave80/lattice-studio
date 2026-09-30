@@ -5,6 +5,8 @@
  */
 import { canonicalJson } from "../canonical/json";
 import { normalizeRecipe } from "../canonical/normalize";
+import { CORE_SELECTORS, isCoreFacet } from "../diamond/core";
+import { withCore, withoutCore } from "../diamond/repair";
 import { formatAddress, formatDuration, formatSelector, plural } from "../format/format";
 import { joinAnd, joinOr } from "../format/text";
 import type {
@@ -20,6 +22,16 @@ import { done, isFinitePoint, noOp, notOnSheet, unique } from "./shared";
 
 /** Pins of a newly placed card: on the right, as C9's `tidy` gives new cards. */
 const DEFAULT_PINS = "right";
+
+/** Why a core facet can't be placed: it's in every diamond already, never as a card (the name as the caller gave it). */
+function coreSentence(name: string): string {
+  return `${name} is part of every diamond's core.`;
+}
+
+/** Why a core facet can't be removed. */
+function coreStays(name: string): string {
+  return `${name} is the diamond's core and stays.`;
+}
 
 /** `exportSelectors()`: never in a facet's list (spec L162), so its signature is known here (SEL-04). */
 const EXPORT_SELECTORS: Hex4 = "0x0ef22643";
@@ -143,6 +155,7 @@ function routedOwners(recipe: Recipe, catalog: Catalog, selector: Hex4, facet: s
 // ── Facets ─────────────────────────────────────────────────────────────────────────────────────────────
 
 export const placeFacet: PlaceFacetFn = (project, catalog, name, at) => {
+  if (isCoreFacet(name)) return noOp(project, coreSentence(name));
   const facet = facetOf(catalog, name);
   if (facet === undefined) return noOp(project, `The catalog has no facet named ${name}.`);
   if (project.recipe.facets.includes(facet.name)) return noOp(project, `${facet.name} is already on the sheet.`);
@@ -154,8 +167,12 @@ export const placeFacet: PlaceFacetFn = (project, catalog, name, at) => {
 };
 
 export const removeFacets: RemoveFacetsFn = (project, catalog, names) => {
-  const asked = unique(names);
-  if (asked.length === 0) return noOp(project, "Select a facet to remove.");
+  const all = unique(names);
+  if (all.length === 0) return noOp(project, "Select a facet to remove.");
+  // The core never leaves: alone it's a no-op that says so; beside other names the rest go, and the label says so.
+  const core = all.filter(isCoreFacet);
+  const asked = all.filter((name) => !isCoreFacet(name));
+  if (asked.length === 0) return noOp(project, coreStays(core[0] ?? ""));
   const { recipe } = project;
   const removed = asked.filter((name) => recipe.facets.includes(name));
   if (removed.length === 0) return noOp(project, notOnSheet(asked));
@@ -192,7 +209,8 @@ export const removeFacets: RemoveFacetsFn = (project, catalog, names) => {
   for (const name of removed) delete layout[name];
 
   const next: Recipe = { ...recipe, facets: remaining, owners, exclude, init };
-  return done(withRecipe(followPaths(project, move), catalog, next, { layout }), `Removed ${joinAnd(removed)}`);
+  const kept = core.length > 0 ? ` (${coreStays(core[0] ?? "").replace(/\.$/, "")})` : "";
+  return done(withRecipe(followPaths(project, move), catalog, next, { layout }), `Removed ${joinAnd(removed)}${kept}`);
 };
 
 /** The init without steps (or the bundle) whose spec is in `specs`, and how provenance and labels move to match. */
@@ -247,6 +265,8 @@ export const excludeSelector: ExcludeSelectorFn = (project, catalog, selector) =
   const sel = toLowerHex(selector);
   const { recipe } = project;
   const label = selectorLabel(catalog, sel);
+  // The core's five (the loupe's four and supportsInterface) are what makes it a Lattice diamond.
+  if (CORE_SELECTORS.includes(sel)) return noOp(project, `${label} is part of the diamond's core and can't be left out.`);
   if (recipe.exclude.includes(sel)) return noOp(project, `${label} is already out.`);
   if (exportersOf(recipe, catalog, sel).length === 0) return noOp(project, `No facet on the sheet exports ${label}.`);
   // One encoding (spec L285): an excluded selector has no owner; bringing it back chooses again.
@@ -273,15 +293,17 @@ export const includeSelector: IncludeSelectorFn = (project, catalog, selector, f
 // ── Whole recipe ───────────────────────────────────────────────────────────────────────────────────────
 
 export const loadRecipe: LoadRecipeFn = (project, catalog, recipe, layout) => {
-  const next = normalizeRecipe(recipe, catalog);
+  // The core comes with every recipe (put back if the recipe lost it) and never has a card.
+  const next = normalizeRecipe(withCore(recipe, catalog), catalog);
+  const cards = withoutCore(layout);
   const title = recipe.name ?? recipe.template?.name;
   const sameRecipe = canonicalJson(next) === canonicalJson(normalizeRecipe(project.recipe, catalog));
-  if (sameRecipe && sameLayout(project.layout, layout)) {
+  if (sameRecipe && sameLayout(project.layout, cards)) {
     return noOp(project, `The sheet already holds ${title ?? "this recipe"}.`);
   }
   const copy: Project["layout"] = {};
-  for (const name of Object.keys(layout)) {
-    const entry = layout[name];
+  for (const name of Object.keys(cards)) {
+    const entry = cards[name];
     if (entry !== undefined) copy[name] = { ...entry };
   }
   // Provenance and labels are keyed by the old recipe's argument paths; none of them describe the new one.

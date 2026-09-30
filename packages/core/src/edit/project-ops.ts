@@ -2,6 +2,8 @@
  * Project ops (spec L471-L487): the name, card positions, pins, expansion and predicted addresses. None of them
  * touches the recipe, so the recipe object (and its hash) is the same one after every op here.
  */
+import { isCoreFacet } from "../diamond/core";
+import { withoutCore } from "../diamond/repair";
 import { formatAddress, plural } from "../format/format";
 import type {
   ApplyLayoutFn, FlipPinsFn, MoveCardsFn, RecordPredictionFn, RenameProjectFn, SetCardPositionFn, SetExpandedFn,
@@ -54,6 +56,7 @@ export const moveCards: MoveCardsFn = (project, facets, by) => {
 };
 
 export const setCardPosition: SetCardPositionFn = (project, facet, at) => {
+  if (isCoreFacet(facet)) return noOp(project, `${facet} is the diamond's core and has no card.`);
   if (!isFinitePoint(at)) return noOp(project, `${facet} didn't move: the position isn't a number.`);
   const entry = project.layout[facet];
   if (entry === undefined && !project.recipe.facets.includes(facet)) return noOp(project, notOnSheet([facet]));
@@ -100,16 +103,18 @@ function sameEntry(a: CardLayout, b: CardLayout): boolean {
 }
 
 export const applyLayout: ApplyLayoutFn = (project, layout) => {
-  const bad = Object.keys(layout).find((name) => {
-    const entry = layout[name];
+  // The core has no card: an entry for it is dropped, whoever computed the layout.
+  const cards = withoutCore(layout);
+  const bad = Object.keys(cards).find((name) => {
+    const entry = cards[name];
     return entry !== undefined && !isFinitePoint(entry);
   });
   if (bad !== undefined) return noOp(project, `The layout wasn't applied: ${bad}'s position isn't a number.`);
-  const changed = changedCards(project.layout, layout);
+  const changed = changedCards(project.layout, cards);
   if (changed.length === 0) return noOp(project, "Nothing moved: the sheet already has this layout.");
   const copy: Layout = {};
-  for (const name of Object.keys(layout)) {
-    const entry = layout[name];
+  for (const name of Object.keys(cards)) {
+    const entry = cards[name];
     if (entry !== undefined) copy[name] = { ...entry };
   }
   return done(withLayout(project, copy), `Arranged ${cardsLabel(changed)}`);

@@ -62,7 +62,7 @@ describe("analyze", () => {
     expect(resolved.routing[S.supportsAttribute]).toEqual({ owner: "HyperlaneGatewayAdapter", contenders: ADAPTERS, via: "chosen" });
   });
 
-  test.skipIf(noInit)("GovernedVault template: no SEL-01, the script's routing, a 14-facet plan and its stats", () => {
+  test.skipIf(noInit)("GovernedVault template: no SEL-01, the script's routing, a 14-entry plan and its stats (12 cards)", () => {
     const analysis = analyze(template("GovernedVault"), catalog());
     expect(analysis.problems.filter((p) => p.code === "SEL-01" || p.code === "SEM-01")).toEqual([]);
     for (const s of [S.transfer, S.transferFrom, S.deposit, S.mint, S.withdraw, S.redeem, S.castVoteBySig]) {
@@ -73,7 +73,8 @@ describe("analyze", () => {
     for (const s of [S.name, S.clock, S.CLOCK_MODE]) {
       expect([s, analysis.routing[s]?.owner, analysis.routing[s]?.via]).toEqual([s, "GovernedVault", "chosen"]);
     }
-    expect(analysis.stats).toEqual({ facets: 14, routed: 120, exported: 143, excluded: 0, namespaces: 11 });
+    // `facets` counts the cards: the core's two are left out (D18); the plan still has every one of the 14.
+    expect(analysis.stats).toEqual({ facets: 12, routed: 120, exported: 143, excluded: 0, namespaces: 11 });
     expect(analysis.plan.length).toBe(14);
     expect(analysis.plan.reduce((sum, entry) => sum + entry.selectors.length, 0)).toBe(120);
     expect(analysis.plan.find((entry) => entry.facet === "ERC20")?.selectors).not.toContain(S.transfer);
@@ -86,7 +87,7 @@ describe("analyze", () => {
     expect(analysis.problems.filter((p) => p.code === "SEL-01")).toEqual([]);
     expect(analysis.problems.filter((p) => p.code === "SEL-03").map((p) => p.id)).toEqual(["SEL-03:ERC20Pausable"]);
     expect(analysis.plan.map((entry) => entry.facet)).not.toContain("ERC20Pausable");
-    expect(analysis.stats.facets).toBe(15);
+    expect(analysis.stats.facets).toBe(13);
   });
 
   test.skipIf(fixture === null)("an imported owner outside a seam's anyOf: SEM-01 on that owner while the selector routes via the seam", () => {
