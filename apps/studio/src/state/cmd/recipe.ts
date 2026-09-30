@@ -4,7 +4,8 @@
  */
 import type { Analysis, Catalog, Layout, LineDraft, Recipe, Result } from "@lattice-studio/core";
 import {
-  analyze, blankDiamond, isNotImplemented, lines, loadRecipe, loadTemplate, recipeStats, setImmutable, templateList, tidy,
+  analyze, blankDiamond, isCoreOnly, isNotImplemented, lines, loadRecipe, loadTemplate, recipeStats, setImmutable,
+  templateList, tidy,
 } from "@lattice-studio/core";
 import {
   command, createProject, emptyAnalysis, isPlaceholder, layoutMetrics, log, runCommand, type CommandArgsOf,
@@ -107,7 +108,7 @@ export const loadCommand = command<LoadArgs>({
       sayNote(loaded.error);
       return;
     }
-    if (ctx.project.recipe.facets.length === 0) {
+    if (isCoreOnly(ctx.project.recipe)) {
       // An empty sheet: the recipe loads in place (spec L408).
       replaceInPlace(loaded.value, catalog);
       return;

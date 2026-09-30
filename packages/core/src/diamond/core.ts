@@ -1,12 +1,14 @@
 import { LOUPE_SELECTORS, SUPPORTS_INTERFACE_SELECTOR } from "../checks/core";
 import { planInit } from "../init/plan";
-import type { CoreStatusFn, IsCoreFacetFn } from "../model/api";
+import type { CoreStatusFn, IsCoreFacetFn, IsCoreOnlyFn } from "../model/api";
 import type { Catalog } from "../model/catalog";
 import { CORE_FACETS } from "../model/diamond";
 import type { Hex4 } from "../model/hex";
 import type { Recipe } from "../model/recipe";
 
 export const isCoreFacet: IsCoreFacetFn = (name) => (CORE_FACETS as readonly string[]).includes(name);
+
+export const isCoreOnly: IsCoreOnlyFn = (recipe) => recipe.facets.every(isCoreFacet);
 
 /** The ids DiamondIntrospectionInit registers: IERC165 and IDiamondLoupe always, IDiamondCut with an upgrade mechanism. */
 const INTERFACES: readonly { id: Hex4; name: string; upgradeable?: true }[] = [
@@ -41,7 +43,7 @@ export const coreStatus: CoreStatusFn = (recipe, catalog, analysis) => {
         ? INTERFACES.filter((entry) => !entry.upgradeable || upgradeable).map(({ id, name }) => ({ id, name }))
         : [],
     },
-    cut: { facet: cut[0] ?? null, conflict: cut.length > 1, immutable: recipe.immutable === true },
+    cut: { facet: cut[0] ?? null, rivals: cut.slice(1), conflict: cut.length > 1, immutable: recipe.immutable === true },
     init: planInit(recipe, catalog).steps.map((step) => step.spec),
     plan: {
       fixed: analysis.plan.filter((entry) => isCoreFacet(entry.facet)),

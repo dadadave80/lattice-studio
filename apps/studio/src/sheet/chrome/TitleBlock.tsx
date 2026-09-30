@@ -1,5 +1,5 @@
 import type { Address, ProjectStatus } from "@lattice-studio/core";
-import { formatAddress, formatProblemSummary, recipeStats } from "@lattice-studio/core";
+import { formatAddress, formatProblemSummary, isCoreOnly, recipeStats } from "@lattice-studio/core";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   chainService, commandRef, env, now, useAnalysis, useCatalog, useDeployState, useDocument, useOnline, useSession,
@@ -156,7 +156,7 @@ function AddressView({ line, short }: { line: AddressLine; short?: boolean }) {
 /** Everything the title block shows, in one place, so each form draws the same facts. */
 function useTitleBlockFacts() {
   const name = useDocument((s) => s.project.name);
-  const empty = useDocument((s) => s.project.recipe.facets.length === 0);
+  const empty = useDocument((s) => isCoreOnly(s.project.recipe));
   const { status, chainName } = useProjectStatus();
   const phase = useDeployState((s) => s.phase);
   const deployChain = useDeployState((s) => s.chainId);

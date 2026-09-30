@@ -13,8 +13,11 @@ export type CoreStatus = {
   loupe: { selectors: Hex4[]; covered: Hex4[] };
   /** `covered`: supportsInterface routes. `interfaceIds`: what the init registers, IERC165 first. */
   erc165: { covered: boolean; interfaceIds: { id: Hex4; name: string }[] };
-  /** The placed cut facet (family "upgrade"); `conflict` when two are placed; `immutable` when the recipe says so. */
-  cut: { facet: string | null; conflict: boolean; immutable: boolean };
+  /**
+   * The placed cut facet (family "upgrade") and any rivals placed beside it (`conflict` when there are any);
+   * `immutable` when the recipe says so.
+   */
+  cut: { facet: string | null; rivals: string[]; conflict: boolean; immutable: boolean };
   /** Init step names in call order, the automatic introspection step included. */
   init: string[];
   /** The cut plan: the core's entries, then the rest. */

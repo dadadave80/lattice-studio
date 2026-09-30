@@ -5,6 +5,7 @@
  * `actions.ts`, behind the console body's boundary.
  */
 import type { Analysis, Platform, Problem } from "@lattice-studio/core";
+import { isCoreOnly } from "@lattice-studio/core";
 import { listBindings, type BindingId, type CommandContext, type Enablement, type SessionState, type SettingsState } from "@/contracts";
 import { firstKeys, keyLabel } from "@/ui/keys/key-labels";
 import { liveSpecs } from "@/ui/keys/use-aria-key-shortcuts";
@@ -44,7 +45,7 @@ export function alwaysExportable(ctx: Pick<CommandContext, "catalog">): Enableme
 /** The Foundry script and the Safe batch: facets placed and no blockers (spec L513, L517). */
 export function deployableExport(ctx: Pick<CommandContext, "catalog" | "project" | "analysis" | "settings">): Enablement {
   if (!ctx.catalog) return { ok: false, reason: CATALOG_NOT_LOADED };
-  if (ctx.project.recipe.facets.length === 0) return { ok: false, reason: PLACE_FACETS_FIRST };
+  if (isCoreOnly(ctx.project.recipe)) return { ok: false, reason: PLACE_FACETS_FIRST };
   const blockers = blockerCount(ctx.analysis);
   if (blockers > 0) {
     const reason = resolveToExport(blockers, nextProblemKey(currentKeyView(ctx.settings)));

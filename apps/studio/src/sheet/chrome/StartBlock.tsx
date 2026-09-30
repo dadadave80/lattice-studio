@@ -1,4 +1,4 @@
-import { templateList } from "@lattice-studio/core";
+import { isCoreOnly, templateList } from "@lattice-studio/core";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { focusSheet } from "@/a11y/focus";
 import { commandRef, runCommand, useCatalog, useCommandState, useDocument } from "@/contracts";
@@ -71,7 +71,7 @@ function useKeepFocusOnSheet(empty: boolean): void {
  * for the catalog: until the catalog loads it offers v1's three recipes, each saying why it can't load yet.
  */
 export function StartBlock() {
-  const empty = useDocument((s) => s.project.recipe.facets.length === 0);
+  const empty = useDocument((s) => isCoreOnly(s.project.recipe));
   const catalog = useCatalog();
   const platform = usePlatform();
   const recipes = useMemo((): readonly string[] => {

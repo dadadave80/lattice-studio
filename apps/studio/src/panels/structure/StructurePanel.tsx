@@ -1,5 +1,5 @@
 import type { Catalog, CommandRef, InitPlan, Recipe } from "@lattice-studio/core";
-import { isNotImplemented, planInit } from "@lattice-studio/core";
+import { isCoreOnly, isNotImplemented, planInit } from "@lattice-studio/core";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { commandState, runCommand, session, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
 import { isContextMenuKey, Tree, type TreeItemProps, type TreeNode } from "@/ui";
@@ -188,7 +188,7 @@ export function StructurePanel() {
 
   return (
     <div ref={container} className={styles.panel}>
-      {recipe.facets.length === 0 ? <p className={styles.empty}>No facets yet</p> : null}
+      {isCoreOnly(recipe) ? <p className={styles.empty}>No facets yet</p> : null}
       <Tree
         label="Structure"
         className={styles.tree}

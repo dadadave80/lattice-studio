@@ -4,7 +4,7 @@
  * narrate no problems; each says what it did.
  */
 import type { EditResult, Project } from "@lattice-studio/core";
-import { applyLayout, flipPins, lines, plural, pushBelow, setExpanded, tidy } from "@lattice-studio/core";
+import { applyLayout, flipPins, isCoreOnly, lines, plural, pushBelow, setExpanded, tidy } from "@lattice-studio/core";
 import { command, doc, isPlaceholder, layoutMetrics, runCommand, type CommandArgsOf, type CommandContext } from "@/contracts";
 import { cardSizes, sizeOf } from "./geometry";
 import { disabled, edit, guard, isString, notOnSheet, OK } from "./shared";
@@ -109,7 +109,7 @@ export const tidyCommand = command({
   enabled(ctx) {
     const blocked = guard(ctx);
     if (blocked) return blocked;
-    if (ctx.project.recipe.facets.length === 0 && Object.keys(ctx.project.layout).length === 0) return disabled("Place facets first");
+    if (isCoreOnly(ctx.project.recipe) && Object.keys(ctx.project.layout).length === 0) return disabled("Place facets first");
     return OK;
   },
   run(ctx) {

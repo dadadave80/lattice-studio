@@ -5,11 +5,16 @@
  * Errors name the file, the path and the reason (spec L501); unknown fields are kept and named (spec L289).
  */
 import {
-  argProvenance, formatParseIssue, importFile, plural, type Catalog, type ParseIssue,
+  argProvenance, formatParseIssue, importFile, isCoreFacet, plural, type Catalog, type ParseIssue,
 } from "@lattice-studio/core";
 import { createProject, getCatalog } from "@/contracts";
 import { persistence } from "@/persist";
 import { reportOpenFailure, resetForProjectSwitch, sayNote } from "./cmd/shared";
+
+/** Facets on the sheet: the recipe without the core. */
+function cardCount(recipe: { facets: string[] }): number {
+  return recipe.facets.filter((name) => !isCoreFacet(name)).length;
+}
 
 function stem(filename: string): string {
   const base = filename.replace(/\.(lattice\.json|json)$/i, "");
@@ -58,7 +63,7 @@ export async function openImportedFile(filename: string, text: string): Promise<
     }
     resetForProjectSwitch();
     unknownFieldsLine(unknownFields);
-    openedLine(imported.value.project.name, imported.value.project.recipe.facets.length);
+    openedLine(imported.value.project.name, cardCount(imported.value.project.recipe));
     if (imported.value.skipped > 0) {
       const n = imported.value.skipped;
       sayNote(
@@ -77,5 +82,5 @@ export async function openImportedFile(filename: string, text: string): Promise<
   }
   resetForProjectSwitch();
   unknownFieldsLine(unknownFields);
-  openedLine(created.value.name, created.value.recipe.facets.length);
+  openedLine(created.value.name, cardCount(created.value.recipe));
 }

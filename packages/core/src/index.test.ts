@@ -11,7 +11,7 @@ describe("public API", () => {
       const kind = name === "lines" ? "object" : "function";
       expect([name, typeof exported[name]]).toEqual([name, kind]);
     }
-    expect(Object.keys(API_OWNERS).length).toBe(92);
+    expect(Object.keys(API_OWNERS).length).toBe(93);
   });
 
   test("registries, schemas and runChecks are exported; test helpers are not", () => {

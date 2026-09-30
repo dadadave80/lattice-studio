@@ -1,3 +1,4 @@
+import { isCoreOnly } from "@lattice-studio/core";
 import type { InspectorViewProps } from "@/contracts";
 import { useDocument } from "@/contracts";
 import { ViewHeader } from "../../shared/ViewHeader";
@@ -16,7 +17,7 @@ import { UnknownFields } from "./UnknownFields";
  */
 export function DiamondView({ view }: InspectorViewProps<"diamond">) {
   const name = useDocument((s) => s.project.name);
-  const empty = useDocument((s) => s.project.recipe.facets.length === 0);
+  const empty = useDocument((s) => isCoreOnly(s.project.recipe));
   return (
     <div className={styles.view} data-view="diamond">
       <ViewHeader title={name} kind="Assembly" />

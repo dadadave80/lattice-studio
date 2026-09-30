@@ -5,7 +5,7 @@
  * load (contracts §6, the size gate).
  */
 import {
-  exportProjectFile, lines, plural, type CommandRef, type Deployment, type Project, type Recipe,
+  exportProjectFile, isCoreFacet, lines, plural, type CommandRef, type Deployment, type Project, type Recipe,
 } from "@lattice-studio/core";
 import {
   announce, commandRef, createProject as createProjectService, getCatalog, listDeployments, log,
@@ -54,7 +54,7 @@ export async function openStoredProject(id: string): Promise<void> {
   resetForProjectSwitch();
   const now = new Date().toISOString();
   const savedAt = before ? new Date(before.savedAt).toISOString() : now; // No prior record: "saved just now".
-  const line = lines.projectOpened({ name: opened.value.name, facets: opened.value.recipe.facets.length, savedAt, now });
+  const line = lines.projectOpened({ name: opened.value.name, facets: opened.value.recipe.facets.filter((name) => !isCoreFacet(name)).length, savedAt, now });
   log(line);
   announce(line.text);
 }
