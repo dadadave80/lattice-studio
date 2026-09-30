@@ -9,7 +9,9 @@ import type { Locator, Page } from "@playwright/test";
 import { catalog } from "../_support/catalog.ts";
 import { expect, test } from "../_support/fixtures.ts";
 import { region, runConsole, runInPalette } from "../_support/keys.ts";
+import { collisionsProject, recipeProject } from "../_support/projects.ts";
 import { openEmpty, seedProject, seedSettings } from "../_support/seed.ts";
+import { CatalogPage } from "../q1a/pages/catalog-page.ts";
 import { twoWayCollision } from "../q1b/fixtures.ts";
 import { ConsolePage } from "../q1b/pages/console-page.ts";
 
@@ -47,6 +49,26 @@ async function catalogOnSheet(page: Page): Promise<number> {
 
 function sheetCards(page: Page): Locator {
   return region(page, "Sheet").getByRole("group", { name: / \d+ selectors?/ });
+}
+
+/** The core cell: an APG toolbar named "Core", docked beside the title block. */
+function cell(page: Page): Locator {
+  return region(page, "Sheet").getByRole("toolbar", { name: "Core", exact: true });
+}
+
+/** A card's ground glyph: "9 ⏚", "7/9 ⏚", "0/3 ✕". */
+function ground(page: Page, facet: string): Locator {
+  return region(page, "Sheet").locator(`.react-flow__node[data-id="${facet}"] [data-ground]`);
+}
+
+function traces(page: Page): Locator {
+  return page.locator("[data-core-traces] [data-trace]");
+}
+
+async function box(locator: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
+  const found = await locator.boundingBox();
+  if (!found) throw new Error("No box.");
+  return found;
 }
 
 test.describe("The pinned diamond core", () => {
@@ -118,6 +140,77 @@ test.describe("The pinned diamond core", () => {
     await log.run("core");
     await expect(log.line(new RegExp(`Core: fallback ${coreSelectors()} routed · loupe 4/4 · ERC-165 IDiamondLoupe · cut none`))).toBeVisible();
     await expect(region(page, "Inspector").getByRole("heading", { level: 2, name: CORE_TITLE })).toBeVisible();
+  });
+
+  test("the core cell sits beside the title block on an empty sheet, covered, with its hint", async ({ page }) => {
+    await openEmpty(page);
+    const core = cell(page);
+    await expect(core.getByRole("button", { name: `Fallback ${coreSelectors()} routed` })).toBeVisible();
+    await expect(core.getByRole("button", { name: "Loupe 4/4, 4 of 4 covered" })).toBeVisible();
+    await expect(core.getByRole("button", { name: "ERC-165 socket: covered" })).toBeVisible();
+    await expect(core.getByText("Facets you place plug in here. Their selectors are the wires.")).toBeVisible();
+    const [own, title] = await Promise.all([box(core), box(region(page, "Sheet").getByRole("region", { name: "Title block" }))]);
+    expect(own.x + own.width).toBeLessThanOrEqual(title.x);
+    expect(Math.abs(own.y + own.height - (title.y + title.height))).toBeLessThanOrEqual(4);
+  });
+
+  test("a placed card wears a ground glyph with its routed count, and its live trace runs into the core", async ({ page }) => {
+    await openEmpty(page);
+    await runConsole(page, "place ERC20");
+    await expect(ground(page, "ERC20")).toHaveAttribute("data-ground", "routed");
+    await expect(ground(page, "ERC20")).toHaveAttribute("data-ground-count", String(selectorsOf("ERC20")));
+    // Placing selects the card: its trace is live and ends on the FALLBACK pad.
+    await expect(traces(page).and(page.locator('[data-trace="ERC20"]'))).toHaveAttribute("data-tone", "live");
+    await expect(page.locator('[data-trace="ERC20"]')).toHaveAttribute("data-to", "fallback");
+    await expect(cell(page).getByText("Facets you place plug in here. Their selectors are the wires.")).toHaveCount(0);
+  });
+
+  test("a recipe load flashes the new cards' traces, then lets them go", async ({ page }) => {
+    await openEmpty(page);
+    await region(page, "Sheet").getByRole("button", { name: /^ERC20 / }).click();
+    await expect(sheetCards(page)).toHaveCount(2);
+    await expect(page.locator('[data-core-traces] [data-tone="flash"]').first()).toBeAttached();
+    await expect(page.locator('[data-core-traces] [data-tone="flash"]')).toHaveCount(0, { timeout: 5000 });
+  });
+
+  test("routing a contested facet completes its glyph", async ({ page }) => {
+    await seedProject(page, { project: twoWayCollision() });
+    await expect(ground(page, "HyperlaneGatewayAdapter")).toHaveAttribute("data-ground", "partial");
+    await runConsole(page, "route HyperlaneGatewayAdapter");
+    await expect(ground(page, "HyperlaneGatewayAdapter")).toHaveAttribute("data-ground", "routed");
+    await expect(ground(page, "AxelarGatewayAdapter")).toHaveAttribute("data-ground", "partial");
+  });
+
+  test("clicking the cell selects the core: the Diamond view names it and every card shows its place in the cut", async ({ page }) => {
+    await seedProject(page, { project: recipeProject("ERC20") });
+    await expect(sheetCards(page)).toHaveCount(2);
+    await cell(page).getByRole("button", { name: "Core The diamond's fixed part" }).click();
+    await expect(region(page, "Inspector").getByRole("heading", { level: 2, name: CORE_TITLE })).toBeVisible();
+    // The core's two cuts are [00] and [01]; the cards follow in catalog order.
+    const stamps = region(page, "Sheet").locator(".react-flow__node [data-stamp]");
+    await expect(stamps).toHaveCount(2);
+    expect((await stamps.evaluateAll((els) => els.map((el) => el.getAttribute("data-stamp")))).sort()).toEqual(["02", "03"]);
+    await region(page, "Sheet").focus();
+    await page.keyboard.press("Escape");
+    await expect(stamps).toHaveCount(0);
+  });
+
+  test("a catalog row dropped on the core cell is refused: nothing is placed, and the console says why", async ({ page }) => {
+    await openEmpty(page);
+    const sheet = region(page, "Sheet");
+    await expect(sheet.locator('.react-flow[data-drop-target="ready"]')).toBeVisible();
+    const own = await box(cell(page));
+    await new CatalogPage(page).dragRowToSheet("ERC20", { x: own.x + own.width / 2, y: own.y + own.height / 2 });
+    await expect(new ConsolePage(page).line(/The core takes no cards\. Drop on the sheet\./)).toBeVisible();
+    await expect(sheetCards(page)).toHaveCount(0);
+  });
+
+  test("tidy and Fit move the cards, never the core cell", async ({ page }) => {
+    await seedProject(page, { project: collisionsProject(12) });
+    const before = await box(cell(page));
+    await runConsole(page, "tidy");
+    await region(page, "Sheet").getByRole("toolbar", { name: "Sheet tools" }).getByRole("button", { name: "Fit" }).click();
+    await expect.poll(async () => JSON.stringify(await box(cell(page)))).toBe(JSON.stringify(before));
   });
 
   for (const theme of ["dark", "light"] as const) {
