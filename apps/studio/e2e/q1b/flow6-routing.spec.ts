@@ -3,15 +3,15 @@
  * "Left pane" (Structure's selector node), "Console drawer"). Every scenario is built from the real catalog
  * (`fixtures.ts`):
  *
- * - `blankConvention()`'s ERC165Facet exports exactly one selector, `supportsInterface(bytes4)` 0x01ffc9a7: the
- *   exclude/include round trip and SEL-03 ("cuts nothing"). Excluding it also raises CORE-05, a bonus, unrelated
+ * - `blankConvention()`'s Receive exports exactly one selector, `receive()` 0x00000000: the
+ *   exclude/include round trip and SEL-03 ("cuts nothing"). Excluding it also raises CORE-04, a bonus, unrelated
  *   problem this file only checks the presence of.
  * - `twoWayCollision()`'s AxelarGatewayAdapter/HyperlaneGatewayAdapter pair (same as Flow 4): routing one of
  *   their two contested selectors by hand, directly through its pin, not through the collision note.
  * - `seamRecipe()`'s GovernedVault + ERC20Pausable: a live seam over `transfer`, which offers no Route action at
  *   all (spec L441), tested here through the pin's context menu (Flow 4 already covers the tooltip).
  *
- * Console line text (`Left …`, `Brought … back…`, the Note/Resolved lines for SEL-03 and CORE-05) is derived
+ * Console line text (`Left …`, `Brought … back…`, the Note/Resolved lines for SEL-03 and CORE-04) is derived
  * from `recipe-ops.ts` and `narrate.ts`/`problem.ts` reading (see the WP-Q1b report) and re-verified live before
  * being asserted here.
  */
@@ -23,10 +23,10 @@ import { SheetPage } from "./pages/sheet-page.ts";
 import { StructurePage } from "./pages/structure-page.ts";
 import { blankConvention, twoWayCollision, seamRecipe } from "./fixtures.ts";
 
-const SUPPORTS_INTERFACE = "supportsInterface(bytes4)";
-const SUPPORTS_INTERFACE_HEX = "0x01ffc9a7";
-const SEL03_MESSAGE = "ERC165Facet cuts nothing: its only selector is excluded. Remove it.";
-const CORE05_MESSAGE = "supportsInterface() won't exist; wallets and explorers can't detect interfaces.";
+const RECEIVE = "receive()";
+const RECEIVE_HEX = "0x00000000";
+const SEL03_MESSAGE = "Receive cuts nothing: its only selector is excluded. Remove it.";
+const CORE04_MESSAGE = "Plain ETH sent to this diamond will revert.";
 
 test.describe("Flow 6: route or exclude a selector by hand", () => {
   test("toggling a routed selector off and back on @smoke", async ({ page }) => {
@@ -34,24 +34,24 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     const sheet = new SheetPage(page);
     await sheet.fit();
     const console_ = new ConsolePage(page);
-    const pin = sheet.pinLike("ERC165Facet", new RegExp(`${SUPPORTS_INTERFACE.replace(/[().]/g, "\\$&")} ${SUPPORTS_INTERFACE_HEX},`));
+    const pin = sheet.pinLike("Receive", new RegExp(`${RECEIVE.replace(/[().]/g, "\\$&")} ${RECEIVE_HEX},`));
 
-    await expect(sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, routes here`)).toBeVisible();
-    await expect(pin).toHaveAccessibleDescription(`${SUPPORTS_INTERFACE}: routes here. Click to leave it out of the diamond.`);
+    await expect(sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`)).toBeVisible();
+    await expect(pin).toHaveAccessibleDescription(`${RECEIVE}: routes here. Click to leave it out of the diamond.`);
 
     await pin.click();
 
-    await expect(sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, not in the diamond`)).toBeVisible();
+    await expect(sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, not in the diamond`)).toBeVisible();
     await expect(pin).toHaveAccessibleDescription("Not in the diamond. Click to route here.");
-    await expect(console_.line(`Left ${SUPPORTS_INTERFACE.replace("(bytes4)", "")} · ${SUPPORTS_INTERFACE_HEX} out of the diamond`)).toBeVisible();
+    await expect(console_.line(`Left ${RECEIVE.replace("()", "")} · ${RECEIVE_HEX} out of the diamond`)).toBeVisible();
     await expect(console_.line(`Note ${SEL03_MESSAGE}`)).toBeVisible();
-    await expect(console_.line(new RegExp(CORE05_MESSAGE.replace(/[().]/g, "\\$&")))).toBeVisible();
+    await expect(console_.line(new RegExp(CORE04_MESSAGE.replace(/[().]/g, "\\$&")))).toBeVisible();
 
     await pin.click();
 
-    await expect(sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, routes here`)).toBeVisible();
-    await expect(console_.line("Resolved: ERC165Facet cuts nothing: its only selector is excluded.")).toBeVisible();
-    await expect(console_.line(`Resolved: ${CORE05_MESSAGE}`)).toBeVisible();
+    await expect(sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`)).toBeVisible();
+    await expect(console_.line("Resolved: Receive cuts nothing: its only selector is excluded.")).toBeVisible();
+    await expect(console_.line(`Resolved: ${CORE04_MESSAGE}`)).toBeVisible();
   });
 
   test("excluding the last routed selector raises SEL-03 as a warning", async ({ page }) => {
@@ -60,7 +60,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     await sheet.fit();
     const structure = new StructurePage(page);
 
-    await sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, routes here`).click();
+    await sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`).click();
 
     await structure.open();
     await expect(structure.problem(`Warning: ${SEL03_MESSAGE}`)).toBeVisible();
@@ -119,7 +119,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     await seedProject(page, { project: blankConvention() });
     const sheet = new SheetPage(page);
     await sheet.fit();
-    const pin = sheet.pinLike("ERC165Facet", new RegExp(`${SUPPORTS_INTERFACE.replace(/[().]/g, "\\$&")} ${SUPPORTS_INTERFACE_HEX},`));
+    const pin = sheet.pinLike("Receive", new RegExp(`${RECEIVE.replace(/[().]/g, "\\$&")} ${RECEIVE_HEX},`));
 
     await pin.click({ button: "right" });
     const menu = page.getByRole("menu");
@@ -131,7 +131,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     await expect(menu).toHaveCount(0);
 
     await pin.click();
-    await expect(sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, not in the diamond`)).toBeVisible();
+    await expect(sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, not in the diamond`)).toBeVisible();
 
     await pin.click({ button: "right" });
     await expect(menu).toBeVisible();
@@ -145,29 +145,29 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     test("Structure tree: expand a facet, arrow to its selector, Space toggles it", async ({ page }) => {
       await seedProject(page, { project: blankConvention() });
       const sheet = new SheetPage(page);
-      await expect(sheet.card("ERC165Facet")).toBeVisible();
+      await expect(sheet.card("Receive")).toBeVisible();
       const structure = new StructurePage(page);
       await structure.open();
 
-      const facetNode = structure.facet("ERC165Facet");
+      const facetNode = structure.facet("Receive");
       await facetNode.click();
       await page.keyboard.press("ArrowRight");
-      const selectorNode = structure.selector(`${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, routes here`);
+      const selectorNode = structure.selector(`${RECEIVE} ${RECEIVE_HEX}, routes here`);
       await expect(selectorNode).toBeVisible();
       await selectorNode.focus();
       await page.keyboard.press(" ");
 
       await expect(
-        structure.selector(`${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, not in the diamond`),
+        structure.selector(`${RECEIVE} ${RECEIVE_HEX}, not in the diamond`),
       ).toBeVisible();
       await expect(
-        sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, not in the diamond`),
+        sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, not in the diamond`),
       ).toBeVisible();
 
       // Space again brings it back (same row, new state, new accessible name).
-      await structure.selector(`${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, not in the diamond`).focus();
+      await structure.selector(`${RECEIVE} ${RECEIVE_HEX}, not in the diamond`).focus();
       await page.keyboard.press(" ");
-      await expect(structure.selector(`${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, routes here`)).toBeVisible();
+      await expect(structure.selector(`${RECEIVE} ${RECEIVE_HEX}, routes here`)).toBeVisible();
     });
 
     test("console verbs: exclude, include and route, entirely from the command line", async ({ page }) => {
@@ -176,18 +176,18 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
       await sheet.fit();
       const console_ = new ConsolePage(page);
 
-      await console_.run("exclude supportsinterface");
+      await console_.run("exclude receive");
       await expect(
-        sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, not in the diamond`),
+        sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, not in the diamond`),
       ).toBeVisible();
-      await expect(console_.line(`Left supportsInterface · ${SUPPORTS_INTERFACE_HEX} out of the diamond.`)).toBeVisible();
+      await expect(console_.line(`Left receive · ${RECEIVE_HEX} out of the diamond.`)).toBeVisible();
 
-      await console_.run("include supportsinterface");
+      await console_.run("include receive");
       await expect(
-        sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, routes here`),
+        sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`),
       ).toBeVisible();
       await expect(
-        console_.line(`Brought supportsInterface · ${SUPPORTS_INTERFACE_HEX} back into the diamond.`),
+        console_.line(`Brought receive · ${RECEIVE_HEX} back into the diamond.`),
       ).toBeVisible();
     });
 
@@ -216,13 +216,13 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
       await expectTier(page, "narrow");
       await sheet.fit();
 
-      await sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, routes here`).click();
+      await sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`).click();
 
       const expandConsole = page.getByRole("button", { name: "Expand console" });
       if (await expandConsole.isVisible()) await expandConsole.click();
-      await expect(console_.line(`Left supportsInterface · ${SUPPORTS_INTERFACE_HEX} out of the diamond.`)).toBeVisible();
+      await expect(console_.line(`Left receive · ${RECEIVE_HEX} out of the diamond.`)).toBeVisible();
       await expect(
-        sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, not in the diamond`),
+        sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, not in the diamond`),
       ).toBeVisible();
     });
   });
@@ -238,13 +238,13 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
 
       await page.getByRole("tab", { name: "Sheet" }).click();
       await sheet.fit();
-      await sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, routes here`).click();
+      await sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`).click();
       await expect(
-        sheet.pinLike("ERC165Facet", `${SUPPORTS_INTERFACE} ${SUPPORTS_INTERFACE_HEX}, not in the diamond`),
+        sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, not in the diamond`),
       ).toBeVisible();
 
       await page.getByRole("tab", { name: "Console" }).click();
-      await expect(console_.line(`Left supportsInterface · ${SUPPORTS_INTERFACE_HEX} out of the diamond.`)).toBeVisible();
+      await expect(console_.line(`Left receive · ${RECEIVE_HEX} out of the diamond.`)).toBeVisible();
     });
   });
 });

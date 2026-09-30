@@ -2,7 +2,7 @@
  * Seeding: an empty first visit, a recipe, 30 cards with collisions, a project file's From file records, a share
  * link and settings, each checked against what the shell shows.
  */
-import { CORE_FACETS, decodeShareLink, parseProjectFile } from "@lattice-studio/core";
+import { CORE_FACETS, decodeShareLink, isCoreFacet, parseProjectFile, type Project } from "@lattice-studio/core";
 import type { Page } from "@playwright/test";
 import { catalog } from "../catalog.ts";
 import { expect, test } from "../fixtures.ts";
@@ -19,9 +19,19 @@ import {
  * The catalog's "n on sheet" counts, summed over its area folders: how many facets the recipe holds, the core's
  * two (DiamondLoupeFacet, ERC165Facet, in the Diamond area) included.
  */
-async function cardsOnSheet(page: Page): Promise<number> {
+async function catalogOnSheet(page: Page): Promise<number> {
   const counts = await region(page, "Left pane").getByText(/^\d+ on sheet$/).allTextContents();
   return counts.reduce((sum, text) => sum + Number.parseInt(text, 10), 0);
+}
+
+/** The cards on the sheet: each is a group named for its selectors ("ERC20, 9 selectors"). */
+function sheetCards(page: Page) {
+  return region(page, "Sheet").getByRole("group", { name: / \d+ selectors?/ });
+}
+
+/** A project's cards: its recipe's facets minus the core's two, which are never on the sheet. */
+function cards(project: Project): number {
+  return project.recipe.facets.filter((name) => !isCoreFacet(name)).length;
 }
 
 /** Deployment records stored for `projectId`, read back from the app's database. */
@@ -91,25 +101,28 @@ test.describe("seeding @smoke", () => {
   test("empty: a first visit opens Untitled with no cards on the sheet", async ({ page }) => {
     await openEmpty(page);
     await expect(region(page, "Title bar").getByRole("button", { name: "Untitled", exact: true })).toBeVisible();
-    await expect(region(page, "Sheet").getByRole("group", { name: / \d+ selectors?/ })).toHaveCount(0);
-    // The catalog counts nothing but the core: its two facets once the untitled recipe carries them, none before.
-    expect(await cardsOnSheet(page)).toBeLessThanOrEqual(CORE_FACETS.length);
+    await expect(sheetCards(page)).toHaveCount(0);
+    // The untitled recipe is core-only: the catalog counts the core's two facets, and no card shows.
+    await expect.poll(() => catalogOnSheet(page)).toBe(CORE_FACETS.length);
   });
 
   test("a recipe opens as the last project, editable", async ({ page }) => {
     const project = recipeProject("GovernedVault");
     await seedProject(page, { project });
     await expect(region(page, "Title bar").getByRole("button", { name: "GovernedVault", exact: true })).toBeVisible();
-    await expect.poll(() => cardsOnSheet(page)).toBe(project.recipe.facets.length);
+    await expect.poll(() => catalogOnSheet(page)).toBe(project.recipe.facets.length);
+    await expect(sheetCards(page)).toHaveCount(cards(project));
     await expect(region(page, "Title bar").getByText("Read-only")).toHaveCount(0);
   });
 
   test("30 cards with collisions", async ({ page }) => {
     const project = collisionsProject();
+    // 30 facets, two of them the core: 28 cards, so 28 layout entries and 28 on the sheet; the catalog counts 30.
     expect(project.recipe.facets).toHaveLength(30);
-    expect(Object.keys(project.layout)).toHaveLength(30);
+    expect(Object.keys(project.layout)).toHaveLength(cards(project));
     await seedProject(page, { project });
-    await expect.poll(() => cardsOnSheet(page)).toBe(30);
+    await expect.poll(() => catalogOnSheet(page)).toBe(project.recipe.facets.length);
+    await expect(sheetCards(page)).toHaveCount(cards(project));
     await expect(page).toHaveTitle(/^30 cards · \d+ blockers?/);
   });
 
