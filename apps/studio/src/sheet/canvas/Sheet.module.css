@@ -45,8 +45,9 @@
   }
 }
 
+/* Lifted by the core cell's height while it would sit under the cell (the cell sets --lx-core-lift, D16). */
 .backToContent {
-  margin-block-end: var(--lx-space-6);
+  margin-block-end: calc(var(--lx-space-6) + var(--lx-core-lift, 0px));
 }
 
 .minimap {
