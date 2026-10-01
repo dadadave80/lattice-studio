@@ -1,6 +1,6 @@
 /**
- * What the verify engine needs from the world (contracts §5.2 "chain/verify"): a fetch-shaped call for Sourcify
- * and the catalog's standard JSON, a clock for polling, and the deployment records. Plain interfaces, so
+ * What the verify engine needs from the world (contracts §5.2 "chain/verify"): a fetch-shaped call for Sourcify,
+ * Etherscan and the catalog's standard JSON, a clock for polling, and the deployment records. Plain interfaces, so
  * `engine.ts` stays free of the DOM and the network: unit tests pass fakes; `app-deps.ts` wires the real ones.
  */
 import type { Deployment, Result } from "@lattice-studio/core";
@@ -35,4 +35,8 @@ export type VerifyDeps = {
   proxyBuild(chainId: number, path: Deployment["path"]): Promise<Result<ProxyBuild, string>>;
   /** Sourcify's base URL; overridable for tests. Default `https://sourcify.dev/server`. */
   baseUrl?: string;
+  /** The Etherscan API key to verify with, or undefined when Etherscan verification isn't set up (`key.ts`). */
+  etherscanKey(): string | undefined;
+  /** Etherscan's API endpoint; overridable for tests. Default `https://api.etherscan.io/v2/api`. */
+  etherscanBaseUrl?: string;
 };

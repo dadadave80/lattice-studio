@@ -34,6 +34,14 @@ describe("settings store", () => {
     expect(second.store.getState()).toMatchObject({ wheel: "zoom", singleKeys: false, rpc: { 11155111: "https://rpc.example" }, receiptTimeout: 240 });
   });
 
+  test("an Etherscan API key round-trips trimmed, and a value that isn't a string is dropped", () => {
+    const storage = memory();
+    createSettingsStore(storage).store.setState({ etherscanApiKey: "KEY123" });
+    expect(createSettingsStore(storage).store.getState().etherscanApiKey).toBe("KEY123");
+    expect(readSettings(JSON.stringify({ etherscanApiKey: " KEY123\n" })).etherscanApiKey).toBe("KEY123");
+    expect(readSettings(JSON.stringify({ etherscanApiKey: 5 })).etherscanApiKey).toBe("");
+  });
+
   test("ignores values of the wrong type or outside their options, field by field", () => {
     const read = readSettings(JSON.stringify({
       theme: "neon", wheel: "zoom", nudge: { small: -1, large: 32 }, minimap: "yes", keymap: { "layout.tidy": [3] },

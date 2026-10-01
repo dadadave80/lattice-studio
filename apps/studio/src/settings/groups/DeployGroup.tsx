@@ -1,8 +1,16 @@
 import type { DeployPath } from "@lattice-studio/core";
-import { useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { settings, useSettings } from "@/contracts";
-import { NumberField, RadioGroup } from "@/ui";
+import { etherscanBuildKey, etherscanKeyFrom } from "@/chain/verify/key";
+import { NumberField, RadioGroup, TextField } from "@/ui";
 import styles from "./DeployGroup.module.css";
+
+/** Saves a key typed and not yet saved; a no-op once it has been, or when nothing changed. */
+function commitTypedKey(typed: RefObject<string | null>): void {
+  const text = typed.current?.trim();
+  typed.current = null;
+  if (text !== undefined && text !== settings.get().etherscanApiKey) settings.set({ etherscanApiKey: text });
+}
 
 /** Settings → Deploy (Flow 16 L629, L778 announcements). No board yet (PA L72-L84). */
 export function DeployGroup() {
@@ -17,6 +25,18 @@ export function DeployGroup() {
     setSyncedWith(receiptTimeout);
     setTimeoutText(String(receiptTimeout));
   }
+  const etherscanApiKey = useSettings((s) => s.etherscanApiKey);
+  const [keyText, setKeyText] = useState(etherscanApiKey);
+  const [keySyncedWith, setKeySyncedWith] = useState(etherscanApiKey);
+  if (etherscanApiKey !== keySyncedWith) {
+    setKeySyncedWith(etherscanApiKey);
+    setKeyText(etherscanApiKey);
+  }
+  // Committed whole, on blur or Enter: a key saved on every keystroke would be tried against Etherscan half-typed.
+  // Escape closes Settings without a blur, so whatever was typed is saved when this unmounts too.
+  const typedKey = useRef<string | null>(null);
+  useEffect(() => () => commitTypedKey(typedKey), []);
+  const buildHasKey = etherscanKeyFrom("", etherscanBuildKey()) !== undefined;
 
   return (
     <>
@@ -46,6 +66,26 @@ export function DeployGroup() {
         }}
         step={1}
         min="1"
+      />
+      <TextField
+        label="Etherscan API key"
+        value={keyText}
+        onValueChange={(text) => {
+          typedKey.current = text;
+          setKeyText(text);
+        }}
+        onBlur={() => commitTypedKey(typedKey)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") commitTypedKey(typedKey);
+        }}
+        type="password"
+        mono
+        autoComplete="off"
+        description={
+          etherscanApiKey === "" && buildHasKey
+            ? "Leave empty to use this build's key. A key typed here stays in this browser and is sent only to Etherscan."
+            : `${etherscanApiKey === "" ? "Not set up. " : ""}Verifies a diamond on Etherscan after a deploy, alongside Sourcify. The key stays in this browser and is sent only to Etherscan.`
+        }
       />
       <div className={styles.stack}>
         <RadioGroup

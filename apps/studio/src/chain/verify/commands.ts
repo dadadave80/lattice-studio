@@ -9,7 +9,7 @@ defineCommands([
     id: "deploy.retryVerification",
     title: () => "Retry verification",
     category: "Deploy",
-    // Reached from a deployment record's own row, which shows it only when that record's verification failed.
+    // Reached from a deployment record's own row, which shows it only when Sourcify or Etherscan couldn't verify it.
     palette: false,
     enabled: () => ({ ok: true }),
     async run(_ctx, { chainId, address }) {

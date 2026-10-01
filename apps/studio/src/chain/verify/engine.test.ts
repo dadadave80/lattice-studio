@@ -2,18 +2,22 @@
  * The verify engine against recorded Sourcify v2 responses for every outcome (exact match, match, a compilation
  * error, a completed job with no match, a submit rejection, a network failure and a timeout), the write-merge
  * rule (a concurrent write to the same record keeps its own fields), retry, and the shared in-flight set that
- * keeps the watcher and a retry from submitting the same record twice.
+ * keeps the watcher and a retry from submitting the same record twice. Then the Etherscan leg beside it: every
+ * outcome, that neither verifier blocks or fails the other, and that the API key reaches nothing but the request.
  */
 import { describe, expect, test } from "bun:test";
 import type { Address, Deployment, Result } from "@lattice-studio/core";
 import { bufferedServices, clearServiceBuffers } from "@/contracts/services";
 import { retryVerification, verifyIfNeeded, verifyingNow, verifyRecord } from "./engine";
+import { etherscanOutcomes } from "./etherscan-outcomes";
 import type { ProxyBuild, VerifyDeps, VerifyFetch } from "./ports";
 import { flush, manualClock, memoryRecords, type FakeRecords, type ManualClock } from "./testing";
 
 const CHAIN_ID = 11155111;
 const ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3" as Address;
 const BASE = "https://sourcify.test";
+const ETHERSCAN = "https://etherscan.test/v2/api";
+const KEY = "TESTKEY-abc123XYZ";
 
 function confirmed(overrides: Partial<Deployment> = {}): Deployment {
   return {
@@ -58,7 +62,10 @@ function scriptedFetch(pollBodies: (() => Response)[]): { fetchImpl: VerifyFetch
 }
 
 function deps(fetchImpl: VerifyFetch, records: FakeRecords, clock: ManualClock, build: Result<ProxyBuild, string> = OK_BUILD): VerifyDeps {
-  return { fetchImpl, clock, records, baseUrl: BASE, projectId: () => "p1", proxyBuild: async () => build };
+  return {
+    fetchImpl, clock, records, baseUrl: BASE, projectId: () => "p1", proxyBuild: async () => build,
+    etherscanKey: () => undefined, etherscanBaseUrl: ETHERSCAN,
+  };
 }
 
 /** Drives `verifyRecord` to completion, advancing the manual clock between polls. */
@@ -359,5 +366,439 @@ describe("retryVerification", () => {
     expect(records.writes()).toEqual([]);
     expect(records.all()[0]?.verification).toBe("exact_match");
     expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Verify", text: "This deployment is already verified." });
+  });
+});
+
+/** The catalog's real long version: Etherscan needs the commit, which `OK_BUILD`'s short one lacks. */
+const LONG_BUILD: Result<ProxyBuild, string> = {
+  ok: true,
+  value: { stdJsonInput: { language: "Solidity" }, compilerVersion: "0.8.36+commit.8a079791" },
+};
+
+const QUEUED = (): Response => json(200, { status: "1", message: "OK", result: "guid-1" });
+const PASS = (): Response => json(200, { status: "1", message: "OK", result: "Pass - Verified" });
+const notOk = (result: string) => (): Response => json(200, { status: "0", message: "NOTOK", result });
+const SOURCIFY_MATCH = (init: RequestInit | undefined): Response =>
+  init?.method === "POST"
+    ? json(202, { verificationId: "job-1" })
+    : json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } });
+
+type Verifiers = { fetchImpl: VerifyFetch; etherscan(): string[]; sourcifyPosts(): number };
+
+/** Routes by host: Etherscan's calls step through `answers` (the last repeats); Sourcify's go to `sourcify`. */
+function verifiers(answers: (() => Response)[], sourcify: (init: RequestInit | undefined) => Response = SOURCIFY_MATCH): Verifiers {
+  const actions: string[] = [];
+  let sourcifyPosts = 0;
+  const fetchImpl: VerifyFetch = async (input, init) => {
+    if (input.startsWith(ETHERSCAN)) {
+      const answer = answers[Math.min(actions.length, answers.length - 1)];
+      actions.push(new URLSearchParams(String(init?.body)).get("action") ?? "");
+      if (!answer) throw new Error("shouldn't call Etherscan");
+      return answer();
+    }
+    if (!input.startsWith(BASE)) throw new Error(`unscripted fetch: ${input}`);
+    if (init?.method === "POST") sourcifyPosts += 1;
+    return sourcify(init);
+  };
+  return { fetchImpl, etherscan: () => [...actions], sourcifyPosts: () => sourcifyPosts };
+}
+
+function keyed(fetchImpl: VerifyFetch, records: FakeRecords, clock: ManualClock, build: Result<ProxyBuild, string> = LONG_BUILD): VerifyDeps {
+  return { ...deps(fetchImpl, records, clock, build), etherscanKey: () => KEY };
+}
+
+function fresh(): void {
+  clearServiceBuffers();
+  etherscanOutcomes.reset();
+}
+
+const texts = (): string[] => bufferedServices().log.map((l) => l.text);
+/** Enough backoff steps to clear the five-minute cap. */
+const PAST_THE_CAP: number[] = Array(14).fill(30_000);
+
+describe("the Etherscan leg", () => {
+  test("both verifiers verify, each saying so", async () => {
+    fresh();
+    const net = verifiers([QUEUED, PASS]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, [5_000]);
+    expect(records.all()[0]?.verification).toBe("exact_match");
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+    expect(texts().sort()).toEqual(["Verified on Etherscan.", "Verified on Sourcify (exact match)."]);
+    expect(net.etherscan()).toEqual(["verifysourcecode", "checkverifystatus"]);
+    expect(verifyingNow(confirmed(), "etherscan")).toBe(false);
+  });
+
+  test("already verified on submit is a success, with no poll", async () => {
+    fresh();
+    const net = verifiers([notOk("Contract source code already verified")]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, []);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+    expect(texts()).toContain("Verified on Etherscan.");
+    expect(net.etherscan()).toEqual(["verifysourcecode"]);
+  });
+
+  test("already verified on poll is a success", async () => {
+    fresh();
+    const net = verifiers([QUEUED, notOk("Already Verified")]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, [5_000]);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+  });
+
+  test("pending in queue polls again, then passes", async () => {
+    fresh();
+    const net = verifiers([QUEUED, notOk("Pending in queue"), PASS]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, [5_000, 5_000]);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+    expect(net.etherscan()).toEqual(["verifysourcecode", "checkverifystatus", "checkverifystatus"]);
+  });
+
+  test("a contract Etherscan hasn't indexed yet is submitted again after a wait", async () => {
+    fresh();
+    const net = verifiers([notOk(`Unable to locate ContractCode at ${ADDRESS}`), QUEUED, PASS]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, [5_000, 5_000]);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+    expect(net.etherscan()).toEqual(["verifysourcecode", "verifysourcecode", "checkverifystatus"]);
+  });
+
+  test("gives up on a contract Etherscan never indexes, and Sourcify's match stands", async () => {
+    fresh();
+    const net = verifiers([notOk(`Unable to locate ContractCode at ${ADDRESS}`)]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, PAST_THE_CAP);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({
+      outcome: "failed", reason: "Etherscan hasn't indexed this contract yet. Retry in a minute.", keyed: false,
+    });
+    expect(texts()).toContain("Couldn't verify on Etherscan: Etherscan hasn't indexed this contract yet. Retry in a minute.");
+    expect(records.all()[0]?.verification).toBe("exact_match");
+  });
+
+  test("gives up on a submission that never leaves the queue", async () => {
+    fresh();
+    const net = verifiers([QUEUED, notOk("Pending in queue")]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, PAST_THE_CAP);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "failed", reason: "Etherscan didn't finish in time.", keyed: false });
+  });
+
+  test("a rejected key fails Etherscan alone, marked as the key's doing", async () => {
+    fresh();
+    const net = verifiers([notOk("Invalid API Key (#err2)")]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, []);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({
+      outcome: "failed", reason: "Etherscan rejected the API key. Check it in Settings → Deploy.", keyed: true,
+    });
+    expect(texts()).toContain("Couldn't verify on Etherscan: Etherscan rejected the API key. Check it in Settings → Deploy.");
+    expect(records.all()[0]?.verification).toBe("exact_match");
+    expect(records.all()[0]?.verificationReason).toBeUndefined();
+  });
+
+  test("a chain the free plan doesn't cover says so", async () => {
+    fresh();
+    const net = verifiers([notOk("Free API access is not supported for this chain. Please upgrade your api plan.")]);
+    const records = memoryRecords([confirmed({ chainId: 84532 })]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed({ chainId: 84532 })), clock, []);
+    expect(texts()).toContain("Couldn't verify on Etherscan: Etherscan's free plan doesn't cover this chain.");
+    expect(records.all()[0]?.verification).toBe("exact_match");
+  });
+
+  test("Sourcify failing doesn't stop Etherscan verifying", async () => {
+    fresh();
+    const net = verifiers([QUEUED, PASS], (init) =>
+      init?.method === "POST" ? json(400, { error: { message: "compilerVersion is not a valid version." } }) : json(500, {}),
+    );
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, [5_000]);
+    expect(records.all()[0]?.verification).toBe("failed");
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+    expect(texts().sort()).toEqual(["Couldn't verify: compilerVersion is not a valid version.", "Verified on Etherscan."]);
+  });
+
+  test("with no key, Etherscan is never called and nothing is said about it", async () => {
+    fresh();
+    const net = verifiers([]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(deps(net.fetchImpl, records, clock, LONG_BUILD), confirmed()), clock, []);
+    expect(net.etherscan()).toEqual([]);
+    expect(etherscanOutcomes.get(confirmed())).toBeUndefined();
+    expect(texts()).toEqual(["Verified on Sourcify (exact match)."]);
+  });
+
+  test("never calls anyone for Anvil, and only Sourcify's line says so", async () => {
+    fresh();
+    const fetchImpl: VerifyFetch = async () => {
+      throw new Error("shouldn't call anyone");
+    };
+    const records = memoryRecords([confirmed({ chainId: 31337 })]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(fetchImpl, records, clock), confirmed({ chainId: 31337 })), clock, []);
+    expect(texts()).toEqual(["Couldn't verify: Sourcify doesn't verify contracts on Anvil."]);
+    expect(etherscanOutcomes.get(confirmed({ chainId: 31337 }))).toBeUndefined();
+  });
+
+  test("a catalog without the compiler's commit fails Etherscan before any call, and Sourcify goes on", async () => {
+    fresh();
+    const net = verifiers([]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock, OK_BUILD), confirmed()), clock, []);
+    expect(net.etherscan()).toEqual([]);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({
+      outcome: "failed", reason: "This catalog doesn't carry the full compiler version Etherscan needs.", keyed: false,
+    });
+    expect(records.all()[0]?.verification).toBe("exact_match");
+  });
+
+  test("a dispose mid-poll stops the calls and keeps no outcome, so the next watcher starts again", async () => {
+    fresh();
+    const net = verifiers([QUEUED, notOk("Pending in queue")]);
+    const records = memoryRecords([confirmed({ verification: "exact_match" })]);
+    const clock = manualClock();
+    const controller = new AbortController();
+    const promise = verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed({ verification: "exact_match" }), controller.signal);
+    await flush();
+    expect(net.etherscan()).toEqual(["verifysourcecode"]);
+    controller.abort();
+    clock.advance(5_000);
+    await flush();
+    await promise;
+    expect(net.etherscan()).toEqual(["verifysourcecode"]);
+    expect(etherscanOutcomes.get(confirmed())).toBeUndefined();
+    expect(texts()).toEqual([]);
+  });
+
+  test("a record that moved off confirmed keeps no outcome, and nothing is said", async () => {
+    fresh();
+    const net = verifiers([notOk("Contract source code already verified")]);
+    const records = memoryRecords([confirmed({ status: "mismatch", verification: "exact_match" })]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed({ verification: "exact_match" })), clock, []);
+    expect(etherscanOutcomes.get(confirmed())).toBeUndefined();
+    expect(texts()).toEqual([]);
+  });
+
+  test("a request that never reaches Etherscan is kept as transient, so it's tried again unasked", async () => {
+    fresh();
+    const fetchImpl: VerifyFetch = async (input, init) => {
+      if (input.startsWith(ETHERSCAN)) throw new Error("offline");
+      return SOURCIFY_MATCH(init);
+    };
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(fetchImpl, records, clock), confirmed()), clock, []);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({
+      outcome: "failed", reason: "Couldn't reach Etherscan.", keyed: false, transient: true,
+    });
+    expect(texts()).toContain("Couldn't verify on Etherscan: Couldn't reach Etherscan.");
+    expect(records.all()[0]?.verification).toBe("exact_match");
+  });
+
+  test("the proxy's build not loading is kept as transient too, with no call", async () => {
+    fresh();
+    const net = verifiers([]);
+    const records = memoryRecords([confirmed({ verification: "exact_match" })]);
+    const clock = manualClock();
+    const build: Result<ProxyBuild, string> = { ok: false, error: "The catalog hasn't loaded." };
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock, build), confirmed({ verification: "exact_match" })), clock, []);
+    expect(net.etherscan()).toEqual([]);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({
+      outcome: "failed", reason: "The catalog hasn't loaded.", keyed: false, transient: true,
+    });
+  });
+
+  test("a busy Etherscan (429, then 503 on the poll) is waited out, not failed", async () => {
+    fresh();
+    const net = verifiers([() => json(429, {}), QUEUED, () => json(503, {}), PASS]);
+    const records = memoryRecords([confirmed({ verification: "exact_match" })]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed({ verification: "exact_match" })), clock, [5_000, 5_000, 10_000]);
+    expect(net.etherscan()).toEqual(["verifysourcecode", "verifysourcecode", "checkverifystatus", "checkverifystatus"]);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+  });
+
+  test("an Etherscan job that throws for a record that moved on keeps no outcome, and nothing is said", async () => {
+    fresh();
+    const broken = { get ok(): boolean { throw new Error("boom"); }, status: 200 } as Response;
+    const fetchImpl: VerifyFetch = async () => broken;
+    const records = memoryRecords([confirmed({ status: "mismatch", verification: "exact_match" })]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(fetchImpl, records, clock), confirmed({ verification: "exact_match" })), clock, []);
+    expect(etherscanOutcomes.get(confirmed())).toBeUndefined();
+    expect(texts()).toEqual([]);
+  });
+
+  test("an Etherscan job that throws fails with fixed words, and Sourcify still verifies", async () => {
+    fresh();
+    const broken = { get ok(): boolean { throw new Error(`boom apikey=${KEY}`); } } as Response;
+    const fetchImpl: VerifyFetch = async (input, init) => (input.startsWith(ETHERSCAN) ? broken : SOURCIFY_MATCH(init));
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(fetchImpl, records, clock), confirmed()), clock, []);
+    expect(records.all()[0]?.verification).toBe("exact_match");
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "failed", reason: "Etherscan verification stopped unexpectedly.", keyed: false });
+    expect(texts().sort()).toEqual(["Couldn't verify on Etherscan: Etherscan verification stopped unexpectedly.", "Verified on Sourcify (exact match)."]);
+  });
+
+  test("a Sourcify job that throws doesn't stop Etherscan settling", async () => {
+    fresh();
+    const net = verifiers([QUEUED, PASS]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    // Sourcify's own client turns a thrown fetch into a failure; a build that throws on its first read only
+    // (Sourcify's leg starts first) is what makes `verifyRecord` itself reject.
+    let builds = 0;
+    const d: VerifyDeps = {
+      ...keyed(net.fetchImpl, records, clock),
+      proxyBuild: async () => {
+        builds += 1;
+        if (builds === 1) throw new Error("build blew up");
+        return LONG_BUILD;
+      },
+    };
+    const promise = verifyIfNeeded(d, confirmed());
+    const outcome = promise.then(() => "resolved", (error: unknown) => (error instanceof Error ? error.message : "rejected"));
+    await run(Promise.resolve(), clock, [5_000]);
+    expect(await outcome).toBe("build blew up");
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+    expect(verifyingNow(confirmed())).toBe(false);
+  });
+
+  test("the key reaches no console line, no stored outcome and no record, even when Etherscan echoes it", async () => {
+    fresh();
+    const net = verifiers([notOk(`Something about ${KEY} went wrong`)]);
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed()), clock, []);
+    expect(texts()).toContain("Couldn't verify on Etherscan: Etherscan answered: Something about … went wrong.");
+    expect(JSON.stringify(bufferedServices().log)).not.toContain(KEY);
+    expect(JSON.stringify(bufferedServices().announce)).not.toContain(KEY);
+    expect(JSON.stringify(etherscanOutcomes.get(confirmed()))).not.toContain(KEY);
+    expect(JSON.stringify(records.all())).not.toContain(KEY);
+  });
+
+  test("a key changed while a job ran drops the failure the old key caused, and tries the new one", async () => {
+    fresh();
+    const net = verifiers([notOk("Invalid API Key (#err2)"), notOk("Contract source code already verified")]);
+    const records = memoryRecords([confirmed({ verification: "exact_match" })]);
+    const clock = manualClock();
+    let reads = 0;
+    const d: VerifyDeps = {
+      ...keyed(net.fetchImpl, records, clock),
+      etherscanKey: () => {
+        reads += 1;
+        return reads === 1 ? "partial" : KEY;
+      },
+    };
+    await run(verifyIfNeeded(d, confirmed({ verification: "exact_match" })), clock, []);
+    expect(net.etherscan()).toEqual(["verifysourcecode", "verifysourcecode"]);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+  });
+});
+
+describe("retryVerification with Etherscan", () => {
+  const target = { chainId: CHAIN_ID, address: ADDRESS };
+
+  test("Sourcify matched, Etherscan failed: runs Etherscan again and leaves the record alone", async () => {
+    fresh();
+    const record = confirmed({ verification: "exact_match" });
+    etherscanOutcomes.set(record, { outcome: "failed", reason: "Etherscan didn't finish in time.", keyed: false });
+    const net = verifiers([QUEUED, PASS]);
+    const records = memoryRecords([record]);
+    const clock = manualClock();
+    await retryVerification(target, keyed(net.fetchImpl, records, clock));
+    await run(Promise.resolve(), clock, [5_000]);
+    expect(net.etherscan()).toEqual(["verifysourcecode", "checkverifystatus"]);
+    expect(net.sourcifyPosts()).toBe(0);
+    expect(records.writes()).toEqual([]);
+    expect(etherscanOutcomes.get(record)).toEqual({ outcome: "verified" });
+    expect(texts()).toEqual(["Verified on Etherscan."]);
+  });
+
+  test("both failed: one retry reopens both", async () => {
+    fresh();
+    const record = confirmed({ verification: "failed", verificationReason: "Sourcify didn't finish in time." });
+    etherscanOutcomes.set(record, { outcome: "failed", reason: "Etherscan didn't finish in time.", keyed: false });
+    const net = verifiers([notOk("Contract source code already verified")]);
+    const records = memoryRecords([record]);
+    const clock = manualClock();
+    await retryVerification(target, keyed(net.fetchImpl, records, clock));
+    await run(Promise.resolve(), clock, []);
+    expect(records.writes()).toEqual(["pending", "exact_match"]);
+    expect(etherscanOutcomes.get(record)).toEqual({ outcome: "verified" });
+  });
+
+  test("an Etherscan failure with no key now says it isn't set up, and keeps the failure", async () => {
+    fresh();
+    const record = confirmed({ verification: "exact_match" });
+    const failure = { outcome: "failed" as const, reason: "Etherscan rejected the API key. Check it in Settings → Deploy.", keyed: true };
+    etherscanOutcomes.set(record, failure);
+    const net = verifiers([]);
+    const records = memoryRecords([record]);
+    const clock = manualClock();
+    await retryVerification(target, deps(net.fetchImpl, records, clock, LONG_BUILD));
+    await flush();
+    expect(texts()).toEqual(["Etherscan verification isn't set up. Add an API key in Settings → Deploy."]);
+    expect(net.etherscan()).toEqual([]);
+    expect(etherscanOutcomes.get(record)).toEqual(failure);
+  });
+
+  test("verified by both is refused as already verified", async () => {
+    fresh();
+    const record = confirmed({ verification: "exact_match" });
+    etherscanOutcomes.set(record, { outcome: "verified" });
+    const net = verifiers([]);
+    const records = memoryRecords([record]);
+    const clock = manualClock();
+    await retryVerification(target, keyed(net.fetchImpl, records, clock));
+    await flush();
+    expect(texts()).toEqual(["This deployment is already verified."]);
+    expect(net.etherscan()).toEqual([]);
+  });
+
+  test("retrying Sourcify while Etherscan is still polling starts Sourcify's job at once", async () => {
+    fresh();
+    let sourcifyMatches = false;
+    const net = verifiers([QUEUED, notOk("Pending in queue")], (init) => {
+      if (init?.method === "POST") return json(202, { verificationId: "job-1" });
+      return sourcifyMatches
+        ? json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } })
+        : json(200, { isJobCompleted: true, error: { message: "Compilation failed." } });
+    });
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    const controller = new AbortController();
+    const d = keyed(net.fetchImpl, records, clock);
+    const first = verifyIfNeeded(d, confirmed(), controller.signal);
+    await flush();
+    expect(records.all()[0]?.verification).toBe("failed");
+    expect(verifyingNow(confirmed(), "etherscan")).toBe(true);
+
+    sourcifyMatches = true;
+    await retryVerification(target, d);
+    await flush();
+    expect(net.sourcifyPosts()).toBe(2);
+    expect(records.all()[0]?.verification).toBe("exact_match");
+    expect(verifyingNow(confirmed(), "etherscan")).toBe(true);
+    expect(net.etherscan().filter((a) => a === "verifysourcecode")).toHaveLength(1);
+
+    controller.abort();
+    await flush();
+    await first;
   });
 });

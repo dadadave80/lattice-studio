@@ -1,5 +1,6 @@
 /** The verify engine's dependencies in the app: the real `fetch`, a real clock, and S7a's deployment records. */
 import { doc, listDeployments, putDeployment } from "@/contracts";
+import { etherscanKey } from "./key";
 import { loadProxyBuild } from "./standard-json";
 import type { VerifyDeps } from "./ports";
 
@@ -14,5 +15,6 @@ export function appVerifyDeps(): VerifyDeps {
     records: { list: listDeployments, put: putDeployment },
     projectId: () => doc.get().id,
     proxyBuild: (chainId, path) => loadProxyBuild((input, init) => globalThis.fetch(input, init), chainId, path),
+    etherscanKey,
   };
 }

@@ -94,6 +94,7 @@ export function readSettings(raw: string | null): SettingsState {
   if (positive(s.receiptTimeout)) out.receiptTimeout = s.receiptTimeout;
   if (oneOf(s.deployAnnouncements, ["errors", "all", "none"] as const)) out.deployAnnouncements = s.deployAnnouncements;
   if (typeof s.keepLog === "boolean") out.keepLog = s.keepLog;
+  if (typeof s.etherscanApiKey === "string") out.etherscanApiKey = s.etherscanApiKey.trim();
   return out;
 }
 

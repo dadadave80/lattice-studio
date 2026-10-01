@@ -209,6 +209,8 @@ export type SettingsState = {
   deployAnnouncements: "errors" | "all" | "none";
   /** Keep the console log across reloads. */
   keepLog: boolean;
+  /** An Etherscan API key typed in Settings; empty uses the build's key. Local settings only, sent only to Etherscan. */
+  etherscanApiKey: string;
 };
 
 export const DEFAULT_SETTINGS: Readonly<SettingsState> = Object.freeze<SettingsState>({
@@ -225,6 +227,7 @@ export const DEFAULT_SETTINGS: Readonly<SettingsState> = Object.freeze<SettingsS
   receiptTimeout: 180,
   deployAnnouncements: "errors",
   keepLog: false,
+  etherscanApiKey: "",
 });
 
 // ---------------------------------------------------------------------------------------------------------

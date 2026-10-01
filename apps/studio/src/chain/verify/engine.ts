@@ -9,13 +9,19 @@
  * (S8c may be updating `tx` or `block` on the same record concurrently), and never touches a record that moved on
  * (discarded, or no longer `confirmed`): S8c's rule that a write never takes a record's verification back to
  * "pending" doesn't apply to this module, which is the one thing that does.
+ *
+ * Etherscan is a second, independent leg (`verifyOnEtherscan`): it runs beside Sourcify's whenever there's an API
+ * key, has its own in-flight entry, and keeps its outcome in `etherscan-outcomes.ts`, never on the record. Neither
+ * leg waits for, blocks or fails the other, and the record's `verification` stays Sourcify's alone.
  */
 import type { Address, Deployment, LineDraft } from "@lattice-studio/core";
 import { sameAddress } from "@lattice-studio/core";
 import { announce, log, settings } from "@/contracts";
 import { appVerifyDeps } from "./app-deps";
 import { sourcifyServes, unverifiableChainName } from "./chains";
-import { couldntVerifyLine, verifiedLine } from "./copy";
+import { couldntVerifyLine, couldntVerifyOnEtherscanLine, ETHERSCAN_NOT_SET_UP, etherscanVerifiedLine, verifiedLine } from "./copy";
+import { ETHERSCAN_BASE, etherscanCompilerVersion, pollEtherscan, scrub, submitToEtherscan } from "./etherscan";
+import { etherscanOutcomes } from "./etherscan-outcomes";
 import type { VerifyDeps } from "./ports";
 import { pollSourcify, SOURCIFY_BASE, submitToSourcify } from "./sourcify";
 
@@ -29,8 +35,17 @@ function recordKey(d: Pick<Deployment, "chainId" | "address">): string {
   return `${d.chainId}:${d.address.toLowerCase()}`;
 }
 
-/** Jobs already running, so the watcher and a retry never submit the same record twice. */
+/** Etherscan's backoff, between submissions it can't take yet and between polls; the last interval repeats. */
+const ETHERSCAN_INTERVALS_MS = [5_000, 5_000, 10_000, 15_000, 20_000, 30_000];
+
+type Leg = "sourcify" | "etherscan";
+
+/** Jobs already running, one entry per record and leg, so the watcher and a retry never submit the same one twice. */
 const inFlight = new Set<string>();
+
+function legKey(d: Pick<Deployment, "chainId" | "address">, leg: Leg): string {
+  return `${recordKey(d)}:${leg}`;
+}
 
 /** Resolves after `ms`, or at once when `signal` was already aborted, or as soon as it aborts meanwhile. */
 function wait(deps: VerifyDeps, ms: number, signal?: AbortSignal): Promise<void> {
@@ -145,9 +160,104 @@ export async function verifyRecord(deps: VerifyDeps, record: Deployment, signal?
   }
 }
 
-/** `verifyRecord`, skipping a record whose job is already running. */
-export async function verifyIfNeeded(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
-  const key = recordKey(record);
+/** Whether the record is still there and still `confirmed`: an outcome for one that moved on is dropped unsaid. */
+async function stillConfirmed(deps: VerifyDeps, target: Pick<Deployment, "projectId" | "chainId" | "address">): Promise<boolean> {
+  try {
+    return (await deps.records.list(target.projectId)).some((d) => recordKey(d) === recordKey(target) && d.status === "confirmed");
+  } catch {
+    return false;
+  }
+}
+
+async function etherscanJob(deps: VerifyDeps, record: Deployment, key: string, signal?: AbortSignal): Promise<void> {
+  const settle = async (): Promise<void> => {
+    if (!(await stillConfirmed(deps, record))) return;
+    etherscanOutcomes.set(record, { outcome: "verified" });
+    log(etherscanVerifiedLine());
+  };
+  const fail = async (failure: { reason: string; keyed?: boolean; transient?: true }): Promise<void> => {
+    if (!(await stillConfirmed(deps, record))) return;
+    // Every reason is fixed copy or already scrubbed by the client; this is the last gate before it's kept and said.
+    const reason = scrub(failure.reason, key);
+    etherscanOutcomes.set(record, {
+      outcome: "failed", reason, keyed: failure.keyed === true, ...(failure.transient ? { transient: true } : {}),
+    });
+    log(couldntVerifyOnEtherscanLine(reason));
+  };
+
+  const build = await deps.proxyBuild(record.chainId, record.path);
+  if (signal?.aborted) return;
+  // Not Etherscan's answer: the build didn't load (offline, the catalog not ready), so it's worth another try unasked.
+  if (!build.ok) return fail({ reason: build.error, transient: true });
+  const compilerVersion = etherscanCompilerVersion(build.value.compilerVersion);
+  if (compilerVersion === null) return fail({ reason: "This catalog doesn't carry the full compiler version Etherscan needs." });
+  const base = deps.etherscanBaseUrl ?? ETHERSCAN_BASE;
+  const startedAt = deps.clock.now();
+  const timedOut = (): boolean => deps.clock.now() - startedAt >= POLL_TIMEOUT_MS;
+  let waits = 0;
+  const pause = (): Promise<void> => {
+    const delay = ETHERSCAN_INTERVALS_MS[Math.min(waits, ETHERSCAN_INTERVALS_MS.length - 1)] ?? 30_000;
+    waits += 1;
+    return wait(deps, delay, signal);
+  };
+
+  let guid: string;
+  for (;;) {
+    const submitted = await submitToEtherscan(deps.fetchImpl, base, key, record.chainId, record.address, {
+      stdJsonInput: build.value.stdJsonInput,
+      compilerVersion,
+      contractName: CONTRACT_IDENTIFIER,
+    });
+    if (signal?.aborted) return;
+    if (submitted.kind === "verified") return settle();
+    if (submitted.kind === "failed") return fail(submitted);
+    if (submitted.kind === "queued") {
+      guid = submitted.guid;
+      break;
+    }
+    if (timedOut()) return fail({ reason: "Etherscan hasn't indexed this contract yet. Retry in a minute." });
+    await pause();
+    if (signal?.aborted) return;
+  }
+  for (;;) {
+    await pause();
+    if (signal?.aborted) return;
+    const verdict = await pollEtherscan(deps.fetchImpl, base, key, record.chainId, guid);
+    if (signal?.aborted) return;
+    if (verdict.kind === "verified") return settle();
+    if (verdict.kind === "failed") return fail(verdict);
+    if (timedOut()) return fail({ reason: "Etherscan didn't finish in time." });
+  }
+}
+
+/**
+ * Etherscan's leg for one record: submits the same standard JSON Sourcify gets, polls the GUID to a terminal
+ * outcome and keeps it in `etherscanOutcomes`. Never throws, whatever the job hits. Never calls `fetchImpl` for a
+ * chain no explorer serves (Anvil), or once `signal` aborts: an aborted run keeps no outcome, so the next
+ * watcher starts it again. A failure that wasn't Etherscan's answer (the request never got there, the proxy's
+ * build didn't load) is kept as `transient`, which the watcher drops when it starts and when the browser comes
+ * back online. `key` goes to Etherscan's API and nowhere else.
+ */
+export async function verifyOnEtherscan(deps: VerifyDeps, record: Deployment, key: string, signal?: AbortSignal): Promise<void> {
+  if (!sourcifyServes(record.chainId) || signal?.aborted) return;
+  try {
+    await etherscanJob(deps, record, key, signal);
+  } catch {
+    // Fixed words: whatever was thrown might quote a request.
+    try {
+      if (!(await stillConfirmed(deps, record))) return;
+      const reason = "Etherscan verification stopped unexpectedly.";
+      etherscanOutcomes.set(record, { outcome: "failed", reason, keyed: false });
+      log(couldntVerifyOnEtherscanLine(reason));
+    } catch {
+      // Nothing left to say it with.
+    }
+  }
+}
+
+async function sourcifyIfNeeded(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
+  if (record.verification !== "pending") return;
+  const key = legKey(record, "sourcify");
   if (inFlight.has(key)) return;
   inFlight.add(key);
   try {
@@ -157,12 +267,44 @@ export async function verifyIfNeeded(deps: VerifyDeps, record: Deployment, signa
   }
 }
 
-/** @internal Tests: whether a job for this record is running now. */
-export function verifyingNow(target: Pick<Deployment, "chainId" | "address">): boolean {
-  return inFlight.has(recordKey(target));
+async function etherscanIfNeeded(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
+  const leg = legKey(record, "etherscan");
+  if (inFlight.has(leg)) return;
+  inFlight.add(leg);
+  try {
+    for (;;) {
+      const key = deps.etherscanKey();
+      if (key === undefined || etherscanOutcomes.get(record) !== undefined) return;
+      await verifyOnEtherscan(deps, record, key, signal);
+      if (signal?.aborted || deps.etherscanKey() === key) return;
+      // The key changed while this job ran: a failure the old key caused says nothing about the new one.
+      const outcome = etherscanOutcomes.get(record);
+      if (outcome?.outcome !== "failed" || !outcome.keyed) return;
+      etherscanOutcomes.clear(record);
+    }
+  } finally {
+    inFlight.delete(leg);
+  }
 }
 
-/** Retry verification (contracts §5.3 `deploy.retryVerification`): reopens a failed record for another job. */
+/**
+ * Runs whichever legs the record still needs, skipping one whose job is already running: Sourcify's while
+ * `verification` is "pending", Etherscan's while there's a key and no outcome yet. Each leg settles on its own.
+ */
+export async function verifyIfNeeded(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
+  const [sourcify] = await Promise.allSettled([sourcifyIfNeeded(deps, record, signal), etherscanIfNeeded(deps, record, signal)]);
+  if (sourcify.status === "rejected") throw sourcify.reason;
+}
+
+/** @internal Tests: whether a job for this record is running now. */
+export function verifyingNow(target: Pick<Deployment, "chainId" | "address">, leg: Leg = "sourcify"): boolean {
+  return inFlight.has(legKey(target, leg));
+}
+
+/**
+ * Retry verification (contracts §5.3 `deploy.retryVerification`): reopens whichever verifier failed for another
+ * job. Sourcify's and Etherscan's are decided separately, and it refuses only when neither has anything to do.
+ */
 export async function retryVerification(target: { chainId: number; address: Address }, deps: VerifyDeps = appVerifyDeps()): Promise<void> {
   const found = (await deps.records.list(deps.projectId())).find((d) => d.chainId === target.chainId && sameAddress(d.address, target.address));
   // Plain refusals (contracts §5.3): a "Verify" line, like the deploy machine's own "Deploy" notes, so the
@@ -178,20 +320,29 @@ export async function retryVerification(target: { chainId: number; address: Addr
   // Only a settled failure is retried: a "pending" record is already verifying (or already resumed the
   // watcher's own job), and a matched one is already verified. Neither the deploy machine's own phase ("live"
   // for either) nor a second job on the same record would follow taking this back to "pending".
-  if (found.verification !== "failed") {
-    log({
-      tag: "Verify",
-      text: found.verification === "pending" ? "This deployment is already being verified." : "This deployment is already verified.",
-    });
+  const retrySourcify = found.verification === "failed";
+  const outcome = etherscanOutcomes.get(found);
+  const etherscanRunning = inFlight.has(legKey(found, "etherscan"));
+  const etherscanOpen = sourcifyServes(found.chainId) && outcome?.outcome !== "verified" && !etherscanRunning;
+  const retryEtherscan = etherscanOpen && deps.etherscanKey() !== undefined;
+  if (!retrySourcify && !retryEtherscan) {
+    let text = "This deployment is already verified.";
+    if (found.verification === "pending" || etherscanRunning) text = "This deployment is already being verified.";
+    else if (etherscanOpen && outcome !== undefined) text = ETHERSCAN_NOT_SET_UP;
+    log({ tag: "Verify", text });
     return;
   }
-  const { verificationReason: _staleReason, ...rest } = found;
-  const pending: Deployment = { ...rest, verification: "pending" };
-  try {
-    await deps.records.put(pending);
-  } catch (error) {
-    log({ tag: "Verify", text: `Couldn't start verification again: ${error instanceof Error ? error.message : String(error)}` });
-    return;
+  let next = found;
+  if (retrySourcify) {
+    const { verificationReason: _staleReason, ...rest } = found;
+    next = { ...rest, verification: "pending" };
+    try {
+      await deps.records.put(next);
+    } catch (error) {
+      log({ tag: "Verify", text: `Couldn't start verification again: ${error instanceof Error ? error.message : String(error)}` });
+      return;
+    }
   }
-  void verifyIfNeeded(deps, pending);
+  if (retryEtherscan) etherscanOutcomes.clear(found);
+  void verifyIfNeeded(deps, next);
 }

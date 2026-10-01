@@ -27,6 +27,8 @@ export type TextFieldProps = {
   required?: boolean;
   readOnly?: boolean;
   placeholder?: string;
+  /** "password" masks a secret (an API key) on screen. Defaults to "text". */
+  type?: "text" | "password";
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   autoComplete?: string;
   /** Defaults to off for `mono` fields, on otherwise. */
@@ -63,7 +65,7 @@ export type TextFieldProps = {
  */
 export function TextField({
   label, value, defaultValue, onValueChange, description, error, mono = false, required = false, readOnly = false,
-  placeholder, inputMode, autoComplete, spellCheck, disabledReason, trailing, onKeyDown, onBlur, autoFocus = false,
+  placeholder, type, inputMode, autoComplete, spellCheck, disabledReason, trailing, onKeyDown, onBlur, autoFocus = false,
   keyShortcuts, inputRef, id, name, className,
 }: TextFieldProps) {
   const generatedId = useId();
@@ -85,6 +87,7 @@ export function TextField({
       {...(describedBy ? { "aria-describedby": describedBy } : {})}
       {...(error ? { "aria-invalid": true } : {})}
       {...(placeholder ? { placeholder } : {})}
+      {...(type ? { type } : {})}
       {...(inputMode ? { inputMode } : {})}
       {...(autoComplete ? { autoComplete } : {})}
       {...(name ? { name } : {})}

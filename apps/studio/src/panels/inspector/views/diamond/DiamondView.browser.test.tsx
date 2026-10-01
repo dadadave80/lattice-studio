@@ -3,7 +3,8 @@ import { analyze, CORE_FACETS, formatAddress, formatTime, loadTemplate, NotImple
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
-import { command, provideServices, putDeployment, session } from "@/contracts";
+import { etherscanOutcomes } from "@/chain/verify/etherscan-outcomes";
+import { command, provideServices, putDeployment, session, settings } from "@/contracts";
 import { BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
 import {
   bufferedServices, fakeChainService, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio,
@@ -496,6 +497,40 @@ describe("DiamondView: deployments", () => {
       expect(writes).toHaveBeenCalledWith(`FOUNDRY_PROFILE=ci forge verify-contract ${address("e4")} src/Lattice.sol:Lattice --verifier sourcify --chain ${SEPOLIA}`),
     );
     await vi.waitFor(() => expect(bufferedServices().toast.at(-1)?.text).toBe("Copied verify command"));
+  });
+
+  test("Etherscan's outcome shows under Sourcify's, and its failure offers Retry verification alone", async () => {
+    const reverify = spyOn("deploy.retryVerification");
+    const id = "deploy-etherscan";
+    const verified = record(id, { address: address("f1"), at: "2026-09-21T00:00:00.000Z" });
+    const failed = record(id, { address: address("f2"), at: "2026-09-20T00:00:00.000Z" });
+    const REASON = "Etherscan's free plan doesn't cover this chain.";
+    etherscanOutcomes.set(verified, { outcome: "verified" });
+    etherscanOutcomes.set(failed, { outcome: "failed", reason: REASON, keyed: true });
+    await putDeployment(verified);
+    await putDeployment(failed);
+    await renderWithStudio(view, { project: makeProject({ id }), chain: true });
+
+    await expect.element(page.getByText("Verified on Etherscan")).toBeVisible();
+    await expect.element(page.getByText("Couldn't verify on Etherscan")).toBeVisible();
+    await expect.element(page.getByText(REASON)).toBeVisible();
+    // Sourcify matched both, so the forge command (Sourcify's) isn't offered; Retry is, on the failed row only.
+    await expect.element(page.getByRole("button", { name: "Copy verify command" })).not.toBeInTheDocument();
+    const retry = page.getByRole("button", { name: "Retry verification" });
+    expect(retry.elements()).toHaveLength(1);
+    await retry.click();
+    expect(argsOf(reverify)).toEqual({ chainId: SEPOLIA, address: address("f2") });
+  });
+
+  test("with a key and no outcome yet a record reads Verifying on Etherscan; without a key it says nothing", async () => {
+    const id = "deploy-etherscan-key";
+    await putDeployment(record(id, { address: address("f3") }));
+    await renderWithStudio(view, { project: makeProject({ id }), chain: true });
+    await expect.element(page.getByText("Verified (exact match)")).toBeVisible();
+    await expect.element(page.getByText(/Etherscan/)).not.toBeInTheDocument();
+
+    settings.set({ etherscanApiKey: "test-key" });
+    await expect.element(page.getByText("Verifying on Etherscan")).toBeVisible();
   });
 
   test("a pending or verified record offers no reason and no Copy verify command", async () => {

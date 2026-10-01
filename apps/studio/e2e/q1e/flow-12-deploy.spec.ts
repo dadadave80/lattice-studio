@@ -249,7 +249,7 @@ test.describe("Flow 12. Deploy", () => {
       await expect(log.line("Deploy", `Deployed at ${shortAddress(record.address)} in block ${grouped(receipt.blockNumber)}. Matches the sheet.`)).toBeVisible();
       // Verify: S8d never calls Sourcify for Anvil, and says so (spec L577-L579).
       await expect(log.line("Verify", "Couldn't verify: Sourcify doesn't verify contracts on Anvil.")).toBeVisible();
-      expect(blockedRequests.filter((url) => url.includes("sourcify"))).toEqual([]);
+      expect(blockedRequests.filter((url) => url.includes("sourcify") || url.includes("etherscan"))).toEqual([]);
 
       await expect(block.stamp("Live · Anvil · r1")).toBeVisible();
       await expect(bar.chip("Live · Anvil · r1")).toBeVisible();

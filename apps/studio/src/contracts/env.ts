@@ -22,10 +22,17 @@ export const env: {
   readonly hashRouting: boolean;
   /** `VITE_WALLETCONNECT_PROJECT_ID`: WalletConnect Cloud's public project id; unset, "Other wallets (QR)" says it isn't set up (CCR from FX34). */
   readonly walletConnectProjectId: string | undefined;
+  /**
+   * `VITE_ETHERSCAN_API_KEY`: this build's default Etherscan API key, for verifying a diamond after a deploy.
+   * It's inlined into the bundle, so anyone can read it: a free-tier key, never a paid one. A key typed in
+   * Settings wins over it. Read it through `chain/verify/key.ts`, which is the one place that resolves the two.
+   */
+  readonly etherscanApiKey: string | undefined;
 } = {
   e2e: isE2EFlag(import.meta.env.VITE_STUDIO_E2E),
   dev: import.meta.env.DEV === true,
   test: import.meta.env.MODE === "test",
   hashRouting: import.meta.env.MODE === "ipfs",
   walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || undefined,
+  etherscanApiKey: import.meta.env.VITE_ETHERSCAN_API_KEY || undefined,
 };
