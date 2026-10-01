@@ -4,6 +4,8 @@
  */
 import type { Arg, AuthorityRow, Catalog, Deployment, Hex, InitPlan, Recipe } from "@lattice-studio/core";
 import { formatAddress, isAddress, plural } from "@lattice-studio/core";
+import { sourcifyServes } from "@/chain/verify/chains";
+import type { EtherscanOutcome } from "@/chain/verify/etherscan-outcomes";
 
 function isRef(arg: Arg): arg is { $ref: "self" | "deployer" } {
   return typeof arg === "object" && !Array.isArray(arg) && "$ref" in arg;
@@ -85,6 +87,27 @@ export function verificationWord(verification: Deployment["verification"], onlin
  */
 export function verificationFailureReason(record: Deployment, online: boolean): string | undefined {
   return online && record.verification === "failed" ? record.verificationReason : undefined;
+}
+
+/**
+ * Etherscan's line under Sourcify's, for a confirmed record of our own: its outcome, or Verifying while there's a
+ * key and no outcome yet. Null when there's nothing to say: offline, no key, or a chain no explorer serves.
+ */
+export function etherscanWord(
+  record: Pick<Deployment, "status" | "fromFile" | "chainId">, outcome: EtherscanOutcome | undefined, online: boolean, keySet: boolean,
+): string | null {
+  if (!online || record.status !== "confirmed" || record.fromFile === true) return null;
+  if (outcome?.outcome === "verified") return "Verified on Etherscan";
+  if (outcome?.outcome === "failed") return "Couldn't verify on Etherscan";
+  return keySet && sourcifyServes(record.chainId) ? "Verifying on Etherscan" : null;
+}
+
+/** Why Etherscan couldn't verify, shown exactly when `etherscanWord` says it couldn't. */
+export function etherscanFailureReason(
+  record: Pick<Deployment, "status" | "fromFile">, outcome: EtherscanOutcome | undefined, online: boolean,
+): string | undefined {
+  if (!online || record.status !== "confirmed" || record.fromFile === true) return undefined;
+  return outcome?.outcome === "failed" ? outcome.reason : undefined;
 }
 
 export type DeploymentGroup = { chainId: number; records: Deployment[] };

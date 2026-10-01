@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Address, Deployment, Hex } from "@lattice-studio/core";
 import { formatAddress } from "@lattice-studio/core";
-import { groupDeployments, holderText, statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
+import {
+  etherscanFailureReason, etherscanWord, groupDeployments, holderText, statusWord, verificationFailureReason, verificationWord,
+} from "./diamond-words";
 
 const CURRENT: Hex = `0x${"ab".repeat(32)}`;
 
@@ -79,5 +81,28 @@ describe("diamond-words", () => {
     expect(
       verificationFailureReason(record({ verification: "failed", verificationReason: "Sourcify didn't finish in time." }), false),
     ).toBeUndefined();
+  });
+
+  test("Etherscan's word: its outcome, Verifying only with a key, and nothing when there's nothing to say", () => {
+    const failed = { outcome: "failed" as const, reason: "Etherscan didn't finish in time.", keyed: false };
+    const own = record({ chainId: 11155111 });
+    expect(etherscanWord(own, { outcome: "verified" }, true, false)).toBe("Verified on Etherscan");
+    expect(etherscanWord(own, failed, true, false)).toBe("Couldn't verify on Etherscan");
+    expect(etherscanWord(own, undefined, true, true)).toBe("Verifying on Etherscan");
+    // No key and no outcome: the row says nothing, so a Studio without a key reads as it always did.
+    expect(etherscanWord(own, undefined, true, false)).toBeNull();
+    // Offline nothing stored can be confirmed (ruling R7); Anvil is never submitted; only our own confirmed records are.
+    expect(etherscanWord(own, { outcome: "verified" }, false, true)).toBeNull();
+    expect(etherscanWord(record({ chainId: 31337 }), undefined, true, true)).toBeNull();
+    expect(etherscanWord(record({ chainId: 11155111, status: "pending" }), undefined, true, true)).toBeNull();
+    expect(etherscanWord(record({ chainId: 11155111, fromFile: true }), undefined, true, true)).toBeNull();
+  });
+
+  test("Etherscan's failure reason: only for a failure, and only online", () => {
+    const failed = { outcome: "failed" as const, reason: "Etherscan didn't finish in time.", keyed: false };
+    expect(etherscanFailureReason(record({}), failed, true)).toBe("Etherscan didn't finish in time.");
+    expect(etherscanFailureReason(record({}), failed, false)).toBeUndefined();
+    expect(etherscanFailureReason(record({}), { outcome: "verified" }, true)).toBeUndefined();
+    expect(etherscanFailureReason(record({}), undefined, true)).toBeUndefined();
   });
 });
