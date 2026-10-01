@@ -35,7 +35,7 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
       # vite build and preview, Playwright and Lighthouse CI run under Node.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: bun install --frozen-lockfile
