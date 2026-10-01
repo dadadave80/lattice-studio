@@ -191,7 +191,7 @@ jobs:
       # nothing published without David (spec "Privacy").
       - name: Preview and audit
         run: bun x lhci autorun --config=scripts/ci/lighthouserc.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lighthouse-report
