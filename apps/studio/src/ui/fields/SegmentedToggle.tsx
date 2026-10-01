@@ -1,6 +1,8 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useId, useState } from "react";
+import { Icon } from "../icons/Icon";
+import type { IconName } from "../icons/icon-paths";
 import { cx } from "../shared/cx";
 import { Tooltip } from "../tooltip/Tooltip";
 import fix from "./SegmentedToggle.module.css";
@@ -10,6 +12,8 @@ export type SegmentedOption<V extends string = string> = {
   value: V;
   /** Sentence-case text; it is the option's accessible name ("Light", "Dark"). */
   label: string;
+  /** Shown instead of the word; the label stays the accessible name and shows in a tooltip. */
+  icon?: IconName | undefined;
 };
 
 export type SegmentedToggleProps<V extends string = string> = {
@@ -66,16 +70,30 @@ export function SegmentedToggle<V extends string = string>({
         }}
         className={cx(styles.segmented, className)}
       >
-        {options.map((option) => (
-          <Toggle
-            key={option.value}
-            value={option.value}
-            {...described}
-            className={cx(styles.segment, styles.pressedMark, fix.pressedFix)}
-          >
-            {option.label}
-          </Toggle>
-        ))}
+        {options.map((option) =>
+          option.icon ? (
+            // The option's own tooltip stays shut while the group's reason has the floor.
+            <Tooltip key={option.value} content={option.label} disabled={Boolean(disabledReason)}>
+              <Toggle
+                value={option.value}
+                aria-label={option.label}
+                {...described}
+                className={cx(styles.segment, styles.pressedMark, fix.pressedFix)}
+              >
+                <Icon name={option.icon} />
+              </Toggle>
+            </Tooltip>
+          ) : (
+            <Toggle
+              key={option.value}
+              value={option.value}
+              {...described}
+              className={cx(styles.segment, styles.pressedMark, fix.pressedFix)}
+            >
+              {option.label}
+            </Toggle>
+          ),
+        )}
         {disabledReason ? (
           <span id={reasonId} hidden>
             {disabledReason}

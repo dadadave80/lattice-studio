@@ -61,6 +61,12 @@ export const ICON_PATHS = {
   error: ["M8 3h8l5 5v8l-5 5H8l-5-5V8z", "M9 9l6 6", "M15 9l-6 6"],
   help: ["M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18z", "M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14", "M12 17.5h.01"],
   theme: ["M12 3a9 9 0 1 0 0 18z", "M12 3a9 9 0 1 1 0 18"],
+  sun: [
+    "M12 8a4 4 0 1 0 0 8 4 4 0 1 0 0-8z",
+    "M12 2v2", "M12 20v2", "M2 12h2", "M20 12h2",
+    "M5 5l1.5 1.5", "M17.5 17.5L19 19", "M19 5l-1.5 1.5", "M6.5 17.5L5 19",
+  ],
+  moon: ["M20 14.5A8.5 8.5 0 1 1 9.5 4a7.43 7.43 0 0 0 10.5 10.5z"],
 } as const satisfies Record<string, readonly string[]>;
 
 export type IconName = keyof typeof ICON_PATHS;

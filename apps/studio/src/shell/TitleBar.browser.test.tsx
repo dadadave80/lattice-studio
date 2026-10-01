@@ -244,12 +244,38 @@ describe("the other controls", () => {
   test("the theme switch names Light and Dark, in that order, and confirms a switch", async () => {
     await renderWithStudio(<Shell />, { theme: "dark" });
     const theme = bar().getByRole("group", { name: "Theme" });
-    expect(theme.getByRole("button").elements().map((b) => b.textContent)).toEqual(["Light", "Dark"]);
+    expect(theme.getByRole("button").elements().map((b) => b.getAttribute("aria-label"))).toEqual(["Light", "Dark"]);
     await expect.element(theme.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
     await theme.getByRole("button", { name: "Light" }).click();
     await expect.poll(() => settings.get().theme).toBe("light");
     expect(bufferedServices().log.at(-1)?.text).toBe("Theme: Light.");
     await expect.element(theme.getByRole("button", { name: "Light" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("the theme switch shows a sun and a moon, and keeps the names Light and Dark", async () => {
+    await renderWithStudio(<Shell />, { theme: "dark" });
+    const theme = bar().getByRole("group", { name: "Theme" });
+    const light = theme.getByRole("button", { name: "Light", exact: true });
+    const dark = theme.getByRole("button", { name: "Dark", exact: true });
+    await expect.element(light).toBeVisible();
+    await expect.element(dark).toBeVisible();
+    const options = theme.getByRole("button").elements();
+    expect(options.map((b) => b.textContent)).toEqual(["", ""]);
+    expect(options.map((b) => b.querySelector("svg")?.getAttribute("data-icon"))).toEqual(["sun", "moon"]);
+    expect(options.map((b) => b.querySelector("svg")?.getAttribute("aria-hidden"))).toEqual(["true", "true"]);
+    for (const option of options) {
+      const rect = option.getBoundingClientRect();
+      expect(rect.width).toBeGreaterThanOrEqual(24);
+      expect(rect.height).toBeGreaterThanOrEqual(24);
+    }
+    expect(getComputedStyle(dark.element()).backgroundSize).toBe("100% 2px");
+    await light.hover();
+    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent).toBe("Light");
+    dark.element().focus();
+    await userEvent.keyboard("{ArrowLeft}");
+    await expect.element(light).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(light).toHaveAttribute("aria-pressed", "true");
   });
 
   test("the save status shows its details on click", async () => {

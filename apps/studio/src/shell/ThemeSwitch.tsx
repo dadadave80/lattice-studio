@@ -4,8 +4,8 @@ import { useMediaQuery } from "@/a11y";
 import { SegmentedToggle } from "@/ui/fields/SegmentedToggle";
 
 const OPTIONS = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
+  { value: "light", label: "Light", icon: "sun" },
+  { value: "dark", label: "Dark", icon: "moon" },
 ] as const;
 
 /** The Light / Dark switch (IR L71): runs `theme.set`; not an undo step. "System" shows the theme it resolves to. */
