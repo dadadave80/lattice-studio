@@ -28,7 +28,7 @@ jobs:
       # The catalog hash published with the release (§16 audit #7, spec L855): each manifest package gets its
       # own tag, so a release of either carries the committed catalog's hash in its notes.
       - if: steps.release.outputs['packages/cli--release_created'] == 'true' || steps.release.outputs['apps/studio--release_created'] == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - if: steps.release.outputs['packages/cli--release_created'] == 'true' || steps.release.outputs['apps/studio--release_created'] == 'true'
         uses: oven-sh/setup-bun@v2
         with:
