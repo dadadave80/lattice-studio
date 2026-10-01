@@ -79,6 +79,14 @@ The id goes in the `VITE_WALLETCONNECT_PROJECT_ID` build-time environment variab
 
 **Config follow-up, once an id is set:** with `VITE_WALLETCONNECT_PROJECT_ID` set, the build's `codeSplitting` app group currently pulls `viem`, `ox` and `noble` into the entry chunk instead of the lazy chain module, adding about 79 KB gz to first load, and the WalletConnect SDK's own chunks miss the build's `NO_BUDGET_PATTERN` allowance. Both need a build-config change (chunking rule and budget pattern) before the id is set for real; until then the size budget check would fail on set. Not yet filed as its own work package — raise it against `apps/studio/vite.config.ts` and `scripts/ci/size-logic.ts` once David supplies an id.
 
+## Contract verification
+
+After a deploy Studio verifies the diamond on Sourcify, which needs no key, and on Etherscan (API V2, one key for every chain), which does. The build's default key goes in the `VITE_ETHERSCAN_API_KEY` build-time environment variable, read by `apps/studio/src/contracts/env.ts` as `env.etherscanApiKey`; a key typed in Settings → Deploy overrides it for that browser. Without either, Studio verifies on Sourcify alone.
+
+The variable is inlined into the bundle and readable by anyone, so it must be a dedicated free-tier key, never a paid one (see `SECURITY.md`). Set it in the Vercel project's environment (Production and Preview), never in a GitHub workflow: CI uploads build artifacts.
+
+**Needs David:** create an Etherscan API key and set it as `VITE_ETHERSCAN_API_KEY` in Vercel. Etherscan lists Base Sepolia as a paid-tier chain; with a free key, verification there may answer "Etherscan's free plan doesn't cover this chain." while Sepolia and Sourcify go on working.
+
 ## Real-device performance check
 
 The performance budgets (`docs/architecture.md`'s size, LCP and drag figures; spec "Performance and reliability") are measured in CI on a 4×-throttled headless Chromium, which the spec calls a stand-in: "must be re-checked on a real low-end phone before they are frozen."

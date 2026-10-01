@@ -33,7 +33,11 @@ Lattice Studio's checks run inside the same bundle that a compromised build woul
 
 ## Privacy
 
-No analytics and no error reporting unless enabled by the person using Studio. Share links live in the URL fragment, which a server never sees. RPC providers see the addresses Studio reads; Sourcify receives the sources it verifies, which are public anyway.
+No analytics and no error reporting unless enabled by the person using Studio. Share links live in the URL fragment, which a server never sees. RPC providers see the addresses Studio reads; Sourcify and Etherscan receive the sources they verify, which are public anyway.
+
+### The Etherscan API key
+
+Studio verifies a diamond on Etherscan with an API key from one of two places. A build can carry a default in `VITE_ETHERSCAN_API_KEY`: Vite inlines it into the static bundle, so anyone can read it. Treat it as public: use a dedicated free-tier key, expect it to be rate-limited or used by others, and rotate it at will. A key typed in Settings → Deploy wins over the build's, stays in this browser's local storage (it survives "Clear data", which clears projects and records), and is never written to a project file, a share link, an export, a deployment record or the console. Either key is sent only to `api.etherscan.io`, in the request body. With neither, Etherscan verification stays off and Sourcify's is unaffected.
 
 ## Reporting a problem
 

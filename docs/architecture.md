@@ -14,6 +14,7 @@ flowchart LR
   W --> D[("Arachnid's proxy<br/>shared contracts")]
   W --> N[("LatticeFactory<br/>diamonds; CreateX if chosen")]
   W --> S["Sourcify API v2"]
+  W --> E["Etherscan API v2"]
 ```
 
 ## Packages
@@ -35,7 +36,7 @@ flowchart LR
 | `panels` | Catalog tree, Structure tree, inspector, console drawer with Log, Script, and Recipe JSON tabs |
 | `commands` | One registry feeding the palette, console verbs, shortcuts, and menus; the remappable keymap |
 | `state` | Document store (undoable, persisted), session store (selection, tool, per-project viewport), settings store |
-| `chain` | Lazy boundary: wagmi config, readiness probes, the deploy state machine, receipt and Safe tracking, Sourcify verification |
+| `chain` | Lazy boundary: wagmi config, readiness probes, the deploy state machine, receipt and Safe tracking, Sourcify and Etherscan verification |
 | `persist` | IndexedDB projects and deployment records in separate stores, file open and save, share links, multi-tab coordination |
 | `a11y` | Status announcer, focus management, reduced-motion and forced-colors handling |
 
@@ -44,7 +45,7 @@ flowchart LR
 1. **Open.** The shell paints from static HTML. The catalog index loads from the service worker's cache, the project from IndexedDB, then the analysis and the sheet's nodes and edges are derived from both.
 2. **Edit.** A command writes the document store as one undo step. The analysis re-runs, memoized by recipe hash. The console narrates only the difference between the old and new analysis. Persistence writes 750 ms after the last edit, and immediately when the tab hides, closes, or hands over its edit lock.
 3. **Export.** Core exporters run on the recipe and catalog directly; nothing about an export depends on what's currently rendered on the sheet. A code view's syntax highlighter loads only when that view opens.
-4. **Deploy.** The chain module loads (its own lazy bundle). It probes the chain, snapshots the recipe hash, builds the transaction through `core`, simulates it, asks the wallet to sign, tracks the receipt, checks the result against the plan, verifies the source on Sourcify, and writes a deployment record to its own store.
+4. **Deploy.** The chain module loads (its own lazy bundle). It probes the chain, snapshots the recipe hash, builds the transaction through `core`, simulates it, asks the wallet to sign, tracks the receipt, checks the result against the plan, verifies the source on Sourcify and, with an API key, on Etherscan, and writes a deployment record to its own store.
 
 ## Why a catalog, and why it's generated
 

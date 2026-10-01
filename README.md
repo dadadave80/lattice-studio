@@ -63,6 +63,7 @@ flowchart LR
   W --> D[("Arachnid's proxy<br/>shared contracts")]
   W --> N[("LatticeFactory<br/>diamonds; CreateX if chosen")]
   W --> S["Sourcify API v2"]
+  W --> E["Etherscan API v2"]
 ```
 
 | Package | Holds |
