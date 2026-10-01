@@ -6,7 +6,7 @@
  */
 import { describe, expect, test, vi } from "vitest";
 import type { Address, Deployment } from "@lattice-studio/core";
-import { commandRef, listDeployments, putDeployment, runCommand, settings } from "@/contracts";
+import { commandRef, getCatalogStatus, listDeployments, putDeployment, runCommand, setCatalogStatus, settings } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
 import { onCleanup, seedStudio } from "../../../test/harness";
 import { appVerifyDeps } from "./app-deps";
@@ -145,6 +145,60 @@ describe("the verify watcher and Etherscan", () => {
     // A settings change that isn't the key starts nothing new.
     settings.set({ minimap: false });
     await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(etherscan.calls()).toEqual(["verifysourcecode"]);
+  });
+
+  test("waits for the catalog: nothing is submitted or stored while it loads, and it starts once it's ready", async () => {
+    const { project } = seedStudio();
+    const etherscan = fakeEtherscan(() => jsonResponse(200, { status: "0", message: "NOTOK", result: "Contract source code already verified" }));
+    const record = confirmedRecord(project.id, { verification: "exact_match" });
+    await putDeployment(record);
+    settings.set({ etherscanApiKey: "test-key" });
+    const ready = getCatalogStatus();
+    setCatalogStatus({ status: "loading" });
+    onCleanup(() => setCatalogStatus(ready));
+    const stop = startVerifying(depsWithLongCompiler());
+    onCleanup(stop);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(etherscan.calls()).toEqual([]);
+    expect(etherscanOutcomes.get(record)).toBeUndefined();
+
+    setCatalogStatus(ready);
+    await vi.waitFor(() => expect(etherscanOutcomes.get(record)).toEqual({ outcome: "verified" }));
+    expect(etherscan.calls()).toEqual(["verifysourcecode"]);
+  });
+
+  test("a request that never reached Etherscan is tried again when the browser comes back online", async () => {
+    const { project } = seedStudio();
+    let reachable = false;
+    const etherscan = fakeEtherscan(() => {
+      if (!reachable) throw new TypeError("Failed to fetch");
+      return jsonResponse(200, { status: "0", message: "NOTOK", result: "Contract source code already verified" });
+    });
+    const record = confirmedRecord(project.id, { verification: "exact_match" });
+    await putDeployment(record);
+    settings.set({ etherscanApiKey: "test-key" });
+    const stop = startVerifying(depsWithLongCompiler());
+    onCleanup(stop);
+    await vi.waitFor(() => expect(etherscanOutcomes.get(record)).toMatchObject({ outcome: "failed", reason: "Couldn't reach Etherscan." }));
+
+    reachable = true;
+    window.dispatchEvent(new Event("online"));
+    await vi.waitFor(() => expect(etherscanOutcomes.get(record)).toEqual({ outcome: "verified" }));
+    expect(etherscan.calls()).toEqual(["verifysourcecode", "verifysourcecode"]);
+  });
+
+  test("a failure left from a session that never reached Etherscan is tried again when the watcher starts", async () => {
+    const { project } = seedStudio();
+    const etherscan = fakeEtherscan(() => jsonResponse(200, { status: "0", message: "NOTOK", result: "Contract source code already verified" }));
+    const record = confirmedRecord(project.id, { verification: "exact_match" });
+    await putDeployment(record);
+    settings.set({ etherscanApiKey: "test-key" });
+    etherscanOutcomes.set(record, { outcome: "failed", reason: "Couldn't reach Etherscan.", keyed: false, transient: true });
+    const stop = startVerifying(depsWithLongCompiler());
+    onCleanup(stop);
+    await vi.waitFor(() => expect(etherscanOutcomes.get(record)).toEqual({ outcome: "verified" }));
     expect(etherscan.calls()).toEqual(["verifysourcecode"]);
   });
 

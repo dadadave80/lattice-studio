@@ -10,8 +10,12 @@ import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
 import { env } from "@/contracts";
 
-/** `keyed`: the API key or its plan caused the failure, so it's dropped when the key changes. */
-export type EtherscanOutcome = { outcome: "verified" } | { outcome: "failed"; reason: string; keyed: boolean };
+/**
+ * `keyed`: the API key or its plan caused the failure, so it's dropped when the key changes. `transient`: the
+ * request never got an answer (offline, the proxy's build didn't load), so it's dropped when the watcher starts
+ * or the browser comes back online.
+ */
+export type EtherscanOutcome = { outcome: "verified" } | { outcome: "failed"; reason: string; keyed: boolean; transient?: true };
 
 type Target = Pick<Deployment, "chainId" | "address">;
 type Outcomes = Record<string, EtherscanOutcome>;
@@ -44,10 +48,10 @@ export function readOutcomes(raw: string | null): Outcomes {
   if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return out;
   for (const [key, value] of Object.entries(stored)) {
     if (!/^\d+:0x[0-9a-f]{40}$/.test(key) || typeof value !== "object" || value === null) continue;
-    const entry = value as { outcome?: unknown; reason?: unknown; keyed?: unknown };
+    const entry = value as { outcome?: unknown; reason?: unknown; keyed?: unknown; transient?: unknown };
     if (entry.outcome === "verified") out[key] = { outcome: "verified" };
     else if (entry.outcome === "failed" && typeof entry.reason === "string") {
-      out[key] = { outcome: "failed", reason: entry.reason, keyed: entry.keyed === true };
+      out[key] = { outcome: "failed", reason: entry.reason, keyed: entry.keyed === true, ...(entry.transient === true ? { transient: true } : {}) };
     }
   }
   return out;
@@ -86,6 +90,11 @@ export const etherscanOutcomes = {
   /** Forgets every failure the key caused: a new key is worth another try. */
   clearKeyed(): void {
     const kept = Object.entries(store.getState()).filter(([, o]) => !(o.outcome === "failed" && o.keyed));
+    store.setState(Object.fromEntries(kept), true);
+  },
+  /** Forgets every failure that was never Etherscan's answer, so the next job tries those again. */
+  clearTransient(): void {
+    const kept = Object.entries(store.getState()).filter(([, o]) => !(o.outcome === "failed" && o.transient));
     store.setState(Object.fromEntries(kept), true);
   },
   /** @internal Tests: back to empty. */

@@ -593,6 +593,56 @@ describe("the Etherscan leg", () => {
     expect(texts()).toEqual([]);
   });
 
+  test("a request that never reaches Etherscan is kept as transient, so it's tried again unasked", async () => {
+    fresh();
+    const fetchImpl: VerifyFetch = async (input, init) => {
+      if (input.startsWith(ETHERSCAN)) throw new Error("offline");
+      return SOURCIFY_MATCH(init);
+    };
+    const records = memoryRecords([confirmed()]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(fetchImpl, records, clock), confirmed()), clock, []);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({
+      outcome: "failed", reason: "Couldn't reach Etherscan.", keyed: false, transient: true,
+    });
+    expect(texts()).toContain("Couldn't verify on Etherscan: Couldn't reach Etherscan.");
+    expect(records.all()[0]?.verification).toBe("exact_match");
+  });
+
+  test("the proxy's build not loading is kept as transient too, with no call", async () => {
+    fresh();
+    const net = verifiers([]);
+    const records = memoryRecords([confirmed({ verification: "exact_match" })]);
+    const clock = manualClock();
+    const build: Result<ProxyBuild, string> = { ok: false, error: "The catalog hasn't loaded." };
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock, build), confirmed({ verification: "exact_match" })), clock, []);
+    expect(net.etherscan()).toEqual([]);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({
+      outcome: "failed", reason: "The catalog hasn't loaded.", keyed: false, transient: true,
+    });
+  });
+
+  test("a busy Etherscan (429, then 503 on the poll) is waited out, not failed", async () => {
+    fresh();
+    const net = verifiers([() => json(429, {}), QUEUED, () => json(503, {}), PASS]);
+    const records = memoryRecords([confirmed({ verification: "exact_match" })]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), confirmed({ verification: "exact_match" })), clock, [5_000, 5_000, 10_000]);
+    expect(net.etherscan()).toEqual(["verifysourcecode", "verifysourcecode", "checkverifystatus", "checkverifystatus"]);
+    expect(etherscanOutcomes.get(confirmed())).toEqual({ outcome: "verified" });
+  });
+
+  test("an Etherscan job that throws for a record that moved on keeps no outcome, and nothing is said", async () => {
+    fresh();
+    const broken = { get ok(): boolean { throw new Error("boom"); }, status: 200 } as Response;
+    const fetchImpl: VerifyFetch = async () => broken;
+    const records = memoryRecords([confirmed({ status: "mismatch", verification: "exact_match" })]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(fetchImpl, records, clock), confirmed({ verification: "exact_match" })), clock, []);
+    expect(etherscanOutcomes.get(confirmed())).toBeUndefined();
+    expect(texts()).toEqual([]);
+  });
+
   test("an Etherscan job that throws fails with fixed words, and Sourcify still verifies", async () => {
     fresh();
     const broken = { get ok(): boolean { throw new Error(`boom apikey=${KEY}`); } } as Response;

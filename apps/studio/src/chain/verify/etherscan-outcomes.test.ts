@@ -23,6 +23,15 @@ describe("etherscanOutcomes", () => {
     expect(etherscanOutcomes.get(A)).toBeUndefined();
     expect(etherscanOutcomes.get(B)).toEqual({ outcome: "failed", reason: "Etherscan didn't finish in time.", keyed: false });
   });
+
+  test("clearTransient forgets only the failures Etherscan never answered", () => {
+    etherscanOutcomes.reset();
+    etherscanOutcomes.set(A, { outcome: "failed", reason: "Couldn't reach Etherscan.", keyed: false, transient: true });
+    etherscanOutcomes.set(B, { outcome: "failed", reason: "Etherscan didn't finish in time.", keyed: false });
+    etherscanOutcomes.clearTransient();
+    expect(etherscanOutcomes.get(A)).toBeUndefined();
+    expect(etherscanOutcomes.get(B)).toEqual({ outcome: "failed", reason: "Etherscan didn't finish in time.", keyed: false });
+  });
 });
 
 describe("readOutcomes", () => {
@@ -34,7 +43,9 @@ describe("readOutcomes", () => {
       "nonsense": { outcome: "verified" },
       [`1:${A.address.toLowerCase()}`]: { outcome: "failed" },
       [`2:${A.address.toLowerCase()}`]: "verified",
+      [`3:${A.address.toLowerCase()}`]: { outcome: "failed", reason: "Couldn't reach Etherscan.", keyed: false, transient: true },
     }))).toEqual({
+      [`3:${A.address.toLowerCase()}`]: { outcome: "failed", reason: "Couldn't reach Etherscan.", keyed: false, transient: true },
       [key]: { outcome: "failed", reason: "Why.", keyed: true },
       [`84532:${A.address.toLowerCase()}`]: { outcome: "verified" },
     });

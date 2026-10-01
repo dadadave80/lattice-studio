@@ -175,17 +175,20 @@ async function etherscanJob(deps: VerifyDeps, record: Deployment, key: string, s
     etherscanOutcomes.set(record, { outcome: "verified" });
     log(etherscanVerifiedLine());
   };
-  const fail = async (failure: { reason: string; keyed?: boolean }): Promise<void> => {
+  const fail = async (failure: { reason: string; keyed?: boolean; transient?: true }): Promise<void> => {
     if (!(await stillConfirmed(deps, record))) return;
     // Every reason is fixed copy or already scrubbed by the client; this is the last gate before it's kept and said.
     const reason = scrub(failure.reason, key);
-    etherscanOutcomes.set(record, { outcome: "failed", reason, keyed: failure.keyed === true });
+    etherscanOutcomes.set(record, {
+      outcome: "failed", reason, keyed: failure.keyed === true, ...(failure.transient ? { transient: true } : {}),
+    });
     log(couldntVerifyOnEtherscanLine(reason));
   };
 
   const build = await deps.proxyBuild(record.chainId, record.path);
   if (signal?.aborted) return;
-  if (!build.ok) return fail({ reason: build.error });
+  // Not Etherscan's answer: the build didn't load (offline, the catalog not ready), so it's worth another try unasked.
+  if (!build.ok) return fail({ reason: build.error, transient: true });
   const compilerVersion = etherscanCompilerVersion(build.value.compilerVersion);
   if (compilerVersion === null) return fail({ reason: "This catalog doesn't carry the full compiler version Etherscan needs." });
   const base = deps.etherscanBaseUrl ?? ETHERSCAN_BASE;
@@ -231,7 +234,9 @@ async function etherscanJob(deps: VerifyDeps, record: Deployment, key: string, s
  * Etherscan's leg for one record: submits the same standard JSON Sourcify gets, polls the GUID to a terminal
  * outcome and keeps it in `etherscanOutcomes`. Never throws, whatever the job hits. Never calls `fetchImpl` for a
  * chain no explorer serves (Anvil), or once `signal` aborts: an aborted run keeps no outcome, so the next
- * watcher starts it again. `key` goes to Etherscan's API and nowhere else.
+ * watcher starts it again. A failure that wasn't Etherscan's answer (the request never got there, the proxy's
+ * build didn't load) is kept as `transient`, which the watcher drops when it starts and when the browser comes
+ * back online. `key` goes to Etherscan's API and nowhere else.
  */
 export async function verifyOnEtherscan(deps: VerifyDeps, record: Deployment, key: string, signal?: AbortSignal): Promise<void> {
   if (!sourcifyServes(record.chainId) || signal?.aborted) return;
@@ -240,6 +245,7 @@ export async function verifyOnEtherscan(deps: VerifyDeps, record: Deployment, ke
   } catch {
     // Fixed words: whatever was thrown might quote a request.
     try {
+      if (!(await stillConfirmed(deps, record))) return;
       const reason = "Etherscan verification stopped unexpectedly.";
       etherscanOutcomes.set(record, { outcome: "failed", reason, keyed: false });
       log(couldntVerifyOnEtherscanLine(reason));
