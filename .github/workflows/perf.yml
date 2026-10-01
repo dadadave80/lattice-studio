@@ -47,7 +47,7 @@ jobs:
       # The full Chromium: the benchmarks use Playwright's `chromium` channel, and Lighthouse CI drives the same binary.
       - run: bun x playwright install --with-deps chromium
       - run: bun scripts/perf/run.ts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: perf-results
