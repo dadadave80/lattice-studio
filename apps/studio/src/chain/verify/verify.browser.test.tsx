@@ -6,9 +6,12 @@
  */
 import { describe, expect, test, vi } from "vitest";
 import type { Address, Deployment } from "@lattice-studio/core";
-import { commandRef, listDeployments, putDeployment, runCommand } from "@/contracts";
+import { commandRef, listDeployments, putDeployment, runCommand, settings } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
 import { onCleanup, seedStudio } from "../../../test/harness";
+import { appVerifyDeps } from "./app-deps";
+import { ETHERSCAN_BASE } from "./etherscan";
+import { etherscanOutcomes } from "./etherscan-outcomes";
 import { SOURCIFY_BASE } from "./sourcify";
 import { startVerifying } from "./watcher";
 
@@ -78,6 +81,92 @@ describe("the verify watcher", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     const [record] = await listDeployments(project.id);
     expect(record?.verification).toBe("pending");
+  });
+});
+
+/** Fakes Etherscan's API too, and counts its calls: no test may reach the real one, key or no key. */
+function fakeEtherscan(respond: (fields: URLSearchParams) => Response): { calls(): string[] } {
+  const calls: string[] = [];
+  const original = globalThis.fetch.bind(globalThis);
+  const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url.startsWith(ETHERSCAN_BASE)) {
+      const fields = new URLSearchParams(String(init?.body));
+      calls.push(fields.get("action") ?? "");
+      return respond(fields);
+    }
+    if (url.startsWith(SOURCIFY_BASE)) throw new Error("shouldn't call Sourcify");
+    return original(input, init);
+  });
+  onCleanup(() => spy.mockRestore());
+  return { calls: () => [...calls] };
+}
+
+/**
+ * The app's own wiring (the key from Settings, the real records), with the proxy's build swapped for one carrying
+ * the compiler's commit as the real catalog does: the fixture catalog has only the short version.
+ */
+function depsWithLongCompiler(): ReturnType<typeof appVerifyDeps> {
+  return {
+    ...appVerifyDeps(),
+    proxyBuild: async () => ({ ok: true, value: { stdJsonInput: { language: "Solidity" }, compilerVersion: "0.8.36+commit.8a079791" } }),
+  };
+}
+
+describe("the verify watcher and Etherscan", () => {
+  test("a key saved in Settings verifies a diamond Sourcify already matched; other settings changes don't", async () => {
+    const { project } = seedStudio();
+    const sent: (string | null)[] = [];
+    const etherscan = fakeEtherscan((fields) => {
+      sent.push(fields.get("apikey"));
+      return jsonResponse(200, { status: "0", message: "NOTOK", result: "Contract source code already verified" });
+    });
+    const record = confirmedRecord(project.id, { verification: "exact_match" });
+    await putDeployment(record);
+    const stop = startVerifying(depsWithLongCompiler());
+    onCleanup(stop);
+
+    // No key yet: nothing is sent, whatever else changes in Settings.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    settings.set({ minimap: true });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(etherscan.calls()).toEqual([]);
+    expect(etherscanOutcomes.get(record)).toBeUndefined();
+
+    settings.set({ etherscanApiKey: "test-key" });
+    await vi.waitFor(() => expect(etherscanOutcomes.get(record)).toEqual({ outcome: "verified" }));
+    expect(etherscan.calls()).toEqual(["verifysourcecode"]);
+    expect(sent).toEqual(["test-key"]);
+    expect(bufferedServices().log.map((l) => l.text)).toContain("Verified on Etherscan.");
+    const [stored] = await listDeployments(project.id);
+    expect(stored?.verification).toBe("exact_match");
+    expect(JSON.stringify([stored, bufferedServices().log])).not.toContain("test-key");
+
+    // A settings change that isn't the key starts nothing new.
+    settings.set({ minimap: false });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(etherscan.calls()).toEqual(["verifysourcecode"]);
+  });
+
+  test("a new key drops what the old key failed at and tries again", async () => {
+    const { project } = seedStudio();
+    const etherscan = fakeEtherscan((fields) =>
+      jsonResponse(200, {
+        status: "0",
+        message: "NOTOK",
+        result: fields.get("apikey") === "good-key" ? "Contract source code already verified" : "Invalid API Key (#err2)",
+      }),
+    );
+    const record = confirmedRecord(project.id, { verification: "exact_match" });
+    await putDeployment(record);
+    settings.set({ etherscanApiKey: "bad-key" });
+    const stop = startVerifying(depsWithLongCompiler());
+    onCleanup(stop);
+    await vi.waitFor(() => expect(etherscanOutcomes.get(record)).toMatchObject({ outcome: "failed", keyed: true }));
+
+    settings.set({ etherscanApiKey: "good-key" });
+    await vi.waitFor(() => expect(etherscanOutcomes.get(record)).toEqual({ outcome: "verified" }));
+    expect(etherscan.calls()).toEqual(["verifysourcecode", "verifysourcecode"]);
   });
 });
 
