@@ -1,5 +1,19 @@
 import { describe, expect, test } from "bun:test";
-import { etherscanKeyFrom } from "./key";
+import { etherscanBuildKey, etherscanKeyFrom } from "./key";
+
+describe("etherscanBuildKey", () => {
+  const flags = { test: false, e2e: false, etherscanApiKey: "builds" };
+
+  test("is the build's variable in an ordinary build", () => {
+    expect(etherscanBuildKey(flags)).toBe("builds");
+    expect(etherscanBuildKey({ ...flags, etherscanApiKey: undefined })).toBeUndefined();
+  });
+
+  test("is ignored under Vitest and in the end-to-end build", () => {
+    expect(etherscanBuildKey({ ...flags, test: true })).toBeUndefined();
+    expect(etherscanBuildKey({ ...flags, e2e: true })).toBeUndefined();
+  });
+});
 
 describe("etherscanKeyFrom", () => {
   test("the Settings value wins over the build's", () => {

@@ -2,7 +2,7 @@ import type { Deployment, Hex } from "@lattice-studio/core";
 import { formatAddress, formatTime } from "@lattice-studio/core";
 import { forgeVerifyCommand } from "@/chain/verify/copy";
 import { useEtherscanOutcome } from "@/chain/verify/etherscan-outcomes";
-import { etherscanKeyFrom } from "@/chain/verify/key";
+import { etherscanBuildKey, etherscanKeyFrom } from "@/chain/verify/key";
 import { commandRef, now, useSettings } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { CommandButton } from "@/ui/buttons/CommandButton";
@@ -38,7 +38,7 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, cha
   const time = formatTime(record.at, new Date(now()).toISOString());
   const failureReason = verificationFailureReason(record, online);
   const etherscanOutcome = useEtherscanOutcome(record);
-  const etherscanKeySet = etherscanKeyFrom(useSettings((s) => s.etherscanApiKey)) !== undefined;
+  const etherscanKeySet = etherscanKeyFrom(useSettings((s) => s.etherscanApiKey), etherscanBuildKey()) !== undefined;
   const etherscan = etherscanWord(record, etherscanOutcome, online, etherscanKeySet);
   const etherscanReason = etherscanFailureReason(record, etherscanOutcome, online);
   const sourcifyFailed = record.verification === "failed";

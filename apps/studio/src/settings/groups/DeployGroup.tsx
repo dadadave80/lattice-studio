@@ -1,7 +1,7 @@
 import type { DeployPath } from "@lattice-studio/core";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { settings, useSettings } from "@/contracts";
-import { etherscanKeyFrom } from "@/chain/verify/key";
+import { etherscanBuildKey, etherscanKeyFrom } from "@/chain/verify/key";
 import { NumberField, RadioGroup, TextField } from "@/ui";
 import styles from "./DeployGroup.module.css";
 
@@ -36,7 +36,7 @@ export function DeployGroup() {
   // Escape closes Settings without a blur, so whatever was typed is saved when this unmounts too.
   const typedKey = useRef<string | null>(null);
   useEffect(() => () => commitTypedKey(typedKey), []);
-  const buildHasKey = etherscanKeyFrom("") !== undefined;
+  const buildHasKey = etherscanKeyFrom("", etherscanBuildKey()) !== undefined;
 
   return (
     <>
@@ -78,6 +78,7 @@ export function DeployGroup() {
         onKeyDown={(event) => {
           if (event.key === "Enter") commitTypedKey(typedKey);
         }}
+        type="password"
         mono
         autoComplete="off"
         description={

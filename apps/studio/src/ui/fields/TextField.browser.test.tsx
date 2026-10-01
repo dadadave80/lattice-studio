@@ -54,6 +54,17 @@ describe("TextField", () => {
     expect(getComputedStyle(name).fontFamily).toContain("Inter");
   });
 
+  test("a password type masks the value; the default is plain text", async () => {
+    await renderWithStudio(
+      <>
+        <TextField label="API key" type="password" defaultValue="secret" />
+        <TextField label="Name" defaultValue="plain" />
+      </>,
+    );
+    await expect.element(page.getByLabelText("API key")).toHaveAttribute("type", "password");
+    await expect.element(page.getByRole("textbox", { name: "Name" })).toHaveValue("plain");
+  });
+
   test("description and error are wired; an error sets aria-invalid and shows the error icon", async () => {
     await renderWithStudio(
       <TextField
