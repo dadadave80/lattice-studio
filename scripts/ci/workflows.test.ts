@@ -152,7 +152,7 @@ describe("update-screenshots.yml (§17 audit #79, spec L937: the missing chromiu
   });
 
   test("uploads the regenerated baselines as an artifact instead of committing them", () => {
-    const upload = job?.steps?.find((s) => s.uses === "actions/upload-artifact@v4");
+    const upload = job?.steps?.find((s) => typeof s.uses === "string" && s.uses.startsWith("actions/upload-artifact@"));
     expect(upload).toBeDefined();
     const withOpts = (upload as { with?: { path?: string } } | undefined)?.with;
     expect(withOpts?.path).toContain("chromium-linux");
