@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lattice Studio · Pitch</title>
+  <meta name="description" content="Compose, check, export and deploy EIP-2535 diamonds from the Lattice library. No backend, no accounts.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/pitch/pitch.css">
+</head>
+<body>
+<main>
+
+  <section class="slide cover" aria-labelledby="s1">
+    <p class="label">EAG Global Buildathon · Track 4 · Open-source tooling</p>
+    <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 1.5 L22.5 12 L12 22.5 L1.5 12 Z"/>
+      <path d="M12 6.5 L17.5 12 L12 17.5 L6.5 12 Z"/>
+      <path d="M12 1.5 L12 6.5 M22.5 12 L17.5 12 M12 22.5 L12 17.5 M1.5 12 L6.5 12"/>
+    </svg>
+    <h1 id="s1">Lattice Studio</h1>
+    <p class="lede">Compose, check, export and deploy EIP-2535 diamonds from the Lattice library. No backend, no accounts.</p>
+    <p class="links">
+      <a class="button" href="/">Open the app</a>
+      <a href="https://github.com/dadadave80/lattice-studio">github.com/dadadave80/lattice-studio</a>
+    </p>
+    <p class="count">01 / 08</p>
+  </section>
+
+  <section class="slide" aria-labelledby="s2">
+    <p class="label">The problem</p>
+    <h2 id="s2">A diamond's mistakes show up at deploy time, or in the audit</h2>
+    <ul class="grid four">
+      <li><h3>Selector collisions</h3><p>Two facets claim the same function. One silently wins.</p></li>
+      <li><h3>Init order</h3><p>An init runs before the module it depends on is set up.</p></li>
+      <li><h3>Storage overlap</h3><p>Two facets write to the same namespace.</p></li>
+      <li><h3>Authority</h3><p>Nobody, or the wrong key, ends up able to upgrade.</p></li>
+    </ul>
+    <p class="note">Each is cheap to fix while composing and expensive once the diamond is live.</p>
+    <p class="count">02 / 08</p>
+  </section>
+
+  <section class="slide split" aria-labelledby="s3">
+    <div>
+      <p class="label">What it does</p>
+      <h2 id="s3">Every check runs on every edit</h2>
+      <ul class="plain">
+        <li>Place facets from the Lattice catalog on a sheet: 100 facets, 85 inits, 84 recipe templates.</li>
+        <li>Nine families of checks rerun on each change, in about 2 ms for a 30-facet diamond.</li>
+        <li>Each finding names its fix and writes a console line.</li>
+        <li>Keyboard-only throughout, down to a 375 px phone layout.</li>
+      </ul>
+    </div>
+    <picture>
+      <source srcset="/pitch/sheet-dark.png" media="(prefers-color-scheme: dark)">
+      <img src="/pitch/sheet-light.png" width="1440" height="900" loading="lazy" alt="The Studio sheet with a twelve-facet GovernedVault recipe, the catalog on the left and the inspector on the right.">
+    </picture>
+    <p class="count">03 / 08</p>
+  </section>
+
+  <section class="slide" aria-labelledby="s4">
+    <p class="label">One core, three surfaces</p>
+    <h2 id="s4">The app, the CLI and CI cannot disagree</h2>
+    <ul class="grid three">
+      <li><h3>App</h3><p>The sheet, the review dialog and a one-transaction deploy through LatticeFactory or CreateX.</p></li>
+      <li><h3>CLI</h3><p><code>lattice-studio check recipe.json --json</code>, with stable exit codes for pipelines.</p></li>
+      <li><h3>Coding agents</h3><p>An agent brief export hands a recipe and its findings to an agent, which runs the same analysis.</p></li>
+    </ul>
+    <p class="note">Exports: Foundry script, agent brief, recipe JSON, Safe Transaction Builder batch, share link.</p>
+    <p class="count">04 / 08</p>
+  </section>
+
+  <section class="slide split" aria-labelledby="s5">
+    <div>
+      <p class="label">Proof</p>
+      <h2 id="s5">Deployed on Sepolia from the live app</h2>
+      <dl>
+        <dt>Diamond</dt>
+        <dd><a href="https://sepolia.etherscan.io/address/0xF70f3E9D2183B4e829DB615E08551bafcE6C9755"><code>0xF70f3E9D2183B4e829DB615E08551bafcE6C9755</code></a></dd>
+        <dt>LatticeFactory</dt>
+        <dd><a href="https://sepolia.etherscan.io/address/0xc192cEa531C8FFb3cBE69A98f4795757E4A2c7be"><code>0xc192cEa531C8FFb3cBE69A98f4795757E4A2c7be</code></a></dd>
+        <dt>Transaction</dt>
+        <dd><a href="https://sepolia.etherscan.io/tx/0xc3464766712590e02e70444a0835c46dfd8db1c02cabbbd94aea440dddade969"><code>0xc3464766…dddade969</code></a></dd>
+        <dt>Sourcify</dt>
+        <dd><a href="https://repo.sourcify.dev/11155111/0xF70f3E9D2183B4e829DB615E08551bafcE6C9755">Exact match</a></dd>
+      </dl>
+      <p class="note">The on-chain loupe returns the plan's five facets, in the plan's order.</p>
+    </div>
+    <img src="/pitch/deployed.png" width="1600" height="1007" loading="lazy" alt="Studio showing the ERC20 project live on Sepolia, with the console line Verified on Sourcify (exact match).">
+    <p class="count">05 / 08</p>
+  </section>
+
+  <section class="slide" aria-labelledby="s6">
+    <p class="label">How it's built</p>
+    <h2 id="s6">A pure core, a generated catalog, and tests at every layer</h2>
+    <ul class="grid four stats">
+      <li><p class="stat">3,500</p><p>unit tests</p></li>
+      <li><p class="stat">1,644</p><p>component tests in a real browser</p></li>
+      <li><p class="stat">481</p><p>end-to-end flows</p></li>
+      <li><p class="stat">955</p><p>commits, September 23 to October 1</p></li>
+    </ul>
+    <p class="note">Bun monorepo. The core has no DOM, network, clock or randomness. The catalog is generated from a pinned Lattice checkout. React and React Flow for the sheet; viem and wagmi in a lazily loaded chain module, the only code that talks to a network. Golden tests run against Lattice's own deploy scripts.</p>
+    <p class="count">06 / 08</p>
+  </section>
+
+  <section class="slide" aria-labelledby="s7">
+    <p class="label">Status</p>
+    <h2 id="s7">What's real, and what isn't yet</h2>
+    <ul class="grid two">
+      <li><h3>Real today</h3><p>Compose, check, export and deploy new Lattice diamonds on Sepolia and Base Sepolia. Works offline after the first load. Nothing leaves your machine until you deploy.</p></li>
+      <li><h3>Provisional</h3><p>The catalog is built from Lattice's <code>dev</code> branch at <code>f4a32c8</code>, not a tagged release. Mainnet is off. The CLI is not on npm yet.</p></li>
+    </ul>
+    <p class="note">Lattice, the facet library, is my earlier open-source work and predates the event. Studio was built inside the hackathon window, with coding agents under my direction.</p>
+    <p class="count">07 / 08</p>
+  </section>
+
+  <section class="slide" aria-labelledby="s8">
+    <p class="label">Next</p>
+    <h2 id="s8">Beyond the hackathon</h2>
+    <ul class="plain">
+      <li>Upgrades of live diamonds.</li>
+      <li>Smart-account recipes, once Lattice ships its AccountFactory.</li>
+      <li>A re-pin to the tagged Lattice 0.4.0 release, which clears the provisional mark.</li>
+      <li>The CLI on npm.</li>
+    </ul>
+    <p class="links">
+      <a class="button" href="/">Open the app</a>
+      <a href="https://github.com/dadadave80/lattice-studio">Studio on GitHub</a>
+      <a href="https://github.com/dadadave80/lattice">Lattice on GitHub</a>
+    </p>
+    <p class="note">David Dada · built from Nigeria</p>
+    <p class="count">08 / 08</p>
+  </section>
+
+</main>
+</body>
+</html>

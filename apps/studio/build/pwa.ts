@@ -135,7 +135,9 @@ export function pwaPlugins(env: ConfigEnv, options: PwaOptions = {}): PluginOpti
       ],
       dontCacheBustURLsMatching: /(?:^|\/)assets\//,
       navigateFallback: "index.html",
-      navigateFallbackDenylist: [/\/catalog\//, /\/schema\//, /\/assets\//],
+      // The pitch page is its own static document: never precached, never answered with the app.
+      globIgnores: ["pitch/**"],
+      navigateFallbackDenylist: [/\/catalog\//, /\/schema\//, /\/assets\//, /^\/pitch(?:\/|$)/],
       runtimeCaching: [
         {
           urlPattern: CATALOG_SHARDS,

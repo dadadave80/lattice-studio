@@ -6,7 +6,7 @@ v1 composes and deploys new plain `Lattice` diamonds on testnets. Upgrading a li
 
 ## Status
 
-- Live app: <https://lattice-studio-topaz.vercel.app>
+- Live app: <https://lattice-studio-topaz.vercel.app> · pitch deck: <https://lattice-studio-topaz.vercel.app/pitch>
 - Built September 23–30, 2026 for the EAG Global Buildathon. [Lattice](https://github.com/dadadave80/lattice), the facet library Studio composes from, is David Dada's earlier open-source work and predates the event.
 - v1 composes new Lattice diamonds and deploys them on Sepolia and Base Sepolia. Mainnet is off.
 - The catalog is provisional: it's built from Lattice's `dev` branch at `f4a32c8`, not a tagged release (see [Rebuilding and verifying the catalog](#rebuilding-and-verifying-the-catalog)).
