@@ -62,6 +62,15 @@ describe("DeployGroup", () => {
     expect(seen.filter((key) => key !== "ABC123" && key !== "XYZ789")).toEqual([]);
   });
 
+  test("a key typed and not yet saved is saved when the group unmounts (Escape closes Settings without a blur)", async () => {
+    const rendered = await renderWithStudio(<DeployGroup />);
+    await page.getByRole("textbox", { name: "Etherscan API key" }).click();
+    await userEvent.keyboard("PASTED-KEY");
+    expect(settings.get().etherscanApiKey).toBe("");
+    await rendered.unmount();
+    expect(settings.get().etherscanApiKey).toBe("PASTED-KEY");
+  });
+
   test("clearing the Etherscan API key removes it, and the help says it isn't set up", async () => {
     await renderWithStudio(<DeployGroup />, { settings: { etherscanApiKey: "ABC123" } });
     const field = page.getByRole("textbox", { name: "Etherscan API key" });
