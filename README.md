@@ -113,6 +113,6 @@ bun packages/cli/src/main.ts plan docs/examples/erc20.recipe.json
 - [`docs/release.md`](docs/release.md) — versioning, hosting, and the steps David runs to ship a release
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — branches, commits, and the pull request checklist
 - [`SECURITY.md`](SECURITY.md) — the threat model, what the in-app checks can and can't prove, and how to report a problem
-- [`AGENTS.md`](AGENTS.md) — how the parallel, agent-built repo is organized (for anyone extending it the same way)
+- [`AGENTS.md`](AGENTS.md) — the rules for people and coding agents working in this repo, and how it was built
 
 Licensed under the [MIT License](LICENSE).
