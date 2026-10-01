@@ -7,6 +7,8 @@ import { createContext, useContext } from "react";
 import type {
   ChainInfo, ChainReadiness, ChainService, DeployController, DeployState, WalletAccount, WalletConnector,
 } from "@/contracts";
+import { env } from "@/contracts";
+import { findKnownChain } from "@/chain/infra/chains";
 import type { Prediction } from "@/state";
 import type { SectionId } from "./copy";
 import { fundsShort, sectionOf } from "./model";
@@ -56,9 +58,10 @@ export function problemsIn(review: Pick<Review, "analysis">, section: SectionId)
   return review.analysis.problems.filter((p) => sectionOf(p.code) === section);
 }
 
-/** The selected chain's native currency: every chain Studio deploys to in v1 pays in ETH (S8a's chain table). */
-export function currencyOf(_review: Pick<Review, "chainId">): { symbol: string; decimals: number } {
-  return { symbol: "ETH", decimals: 18 };
+/** The selected chain's native currency from S8a's chain table (HSK on HSKChain Testnet); ETH before a chain is chosen. */
+export function currencyOf(review: Pick<Review, "chainId">): { symbol: string; decimals: number } {
+  const currency = review.chainId === null ? undefined : findKnownChain(review.chainId, env.e2e)?.nativeCurrency;
+  return currency ? { symbol: currency.symbol, decimals: currency.decimals } : { symbol: "ETH", decimals: 18 };
 }
 
 /** Flow 14's "Needs about 0.012 ETH; this account has 0.004." for the connected account, or null. */

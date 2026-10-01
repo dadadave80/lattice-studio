@@ -21,8 +21,8 @@ export type FeeQuote = {
 
 export type FeeReader = (chainId: number, tx: TxRequest, gas: bigint) => Promise<Result<FeeQuote, string>>;
 
-/** OP Stack chains, whose GasPriceOracle charges an L1 data fee (Optimism, Base and their Sepolia testnets). */
-export const OP_STACK_CHAINS: ReadonlySet<number> = new Set([10, 8453, 11155420, 84532]);
+/** OP Stack chains, whose GasPriceOracle charges an L1 data fee (Optimism, Base, their Sepolia testnets and HSKChain Testnet). */
+export const OP_STACK_CHAINS: ReadonlySet<number> = new Set([10, 133, 8453, 11155420, 84532]);
 
 const GAS_PRICE_ORACLE = "0x420000000000000000000000000000000000000F";
 const ORACLE_ABI = parseAbi(["function getL1Fee(bytes _data) view returns (uint256)"]);

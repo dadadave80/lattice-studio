@@ -85,7 +85,7 @@ After a deploy Studio verifies the diamond on Sourcify, which needs no key, and 
 
 The variable is inlined into the bundle and readable by anyone, so it must be a dedicated free-tier key, never a paid one (see `SECURITY.md`). Set it in the Vercel project's environment (Production and Preview), never in a GitHub workflow: CI uploads build artifacts.
 
-**Needs David:** create an Etherscan API key and set it as `VITE_ETHERSCAN_API_KEY` in Vercel. Etherscan lists Base Sepolia as a paid-tier chain; with a free key, verification there may answer "Etherscan's free plan doesn't cover this chain." while Sepolia and Sourcify go on working.
+**Needs David:** create an Etherscan API key and set it as `VITE_ETHERSCAN_API_KEY` in Vercel. Etherscan lists Base Sepolia as a paid-tier chain; with a free key, verification there may answer "Etherscan's free plan doesn't cover this chain." while Sepolia and Sourcify go on working. Etherscan API V2 doesn't serve HashKey Chain testnet (chain 133; its explorer is Blockscout), so Studio never asks Etherscan about a diamond there and verifies it on Sourcify alone.
 
 ## Real-device performance check
 

@@ -11,7 +11,7 @@
 import type { Deployment } from "@lattice-studio/core";
 import { doc, getCatalogStatus, listDeployments, settings, subscribeCatalog, subscribeDeployments } from "@/contracts";
 import { appVerifyDeps } from "./app-deps";
-import { sourcifyServes } from "./chains";
+import { etherscanServes } from "./chains";
 import { verifyIfNeeded } from "./engine";
 import { etherscanOutcomes } from "./etherscan-outcomes";
 import type { VerifyDeps } from "./ports";
@@ -22,7 +22,7 @@ function eligible(records: readonly Deployment[], etherscanSetUp: boolean): Depl
     (d) =>
       d.status === "confirmed" &&
       d.fromFile !== true &&
-      (d.verification === "pending" || (etherscanSetUp && sourcifyServes(d.chainId) && etherscanOutcomes.get(d) === undefined)),
+      (d.verification === "pending" || (etherscanSetUp && etherscanServes(d.chainId) && etherscanOutcomes.get(d) === undefined)),
   );
 }
 

@@ -12,6 +12,8 @@ describe("NetworksGroup (spec D13: Settings never loads the chain runtime by its
     await renderWithStudio(<NetworksGroup loader={loader} />);
     await expect.element(page.getByText("Sepolia RPC override")).toBeVisible();
     await expect.element(page.getByText("Base Sepolia RPC override")).toBeVisible();
+    await expect.element(page.getByText("HSKChain Testnet RPC override")).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Check HSKChain Testnet" })).toBeVisible();
     await expect.element(page.getByRole("button", { name: "Check Sepolia" })).toBeVisible();
     await expect.element(page.getByText("Ready")).not.toBeInTheDocument();
     await expect.element(page.getByText("Custom chains arrive in v1.1.")).toBeVisible();

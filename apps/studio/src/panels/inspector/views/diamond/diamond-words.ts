@@ -4,7 +4,7 @@
  */
 import type { Arg, AuthorityRow, Catalog, Deployment, Hex, InitPlan, Recipe } from "@lattice-studio/core";
 import { formatAddress, isAddress, plural } from "@lattice-studio/core";
-import { sourcifyServes } from "@/chain/verify/chains";
+import { etherscanServes } from "@/chain/verify/chains";
 import type { EtherscanOutcome } from "@/chain/verify/etherscan-outcomes";
 
 function isRef(arg: Arg): arg is { $ref: "self" | "deployer" } {
@@ -91,7 +91,7 @@ export function verificationFailureReason(record: Deployment, online: boolean): 
 
 /**
  * Etherscan's line under Sourcify's, for a confirmed record of our own: its outcome, or Verifying while there's a
- * key and no outcome yet. Null when there's nothing to say: offline, no key, or a chain no explorer serves.
+ * key and no outcome yet. Null when there's nothing to say: offline, no key, or a chain Etherscan doesn't serve.
  */
 export function etherscanWord(
   record: Pick<Deployment, "status" | "fromFile" | "chainId">, outcome: EtherscanOutcome | undefined, online: boolean, keySet: boolean,
@@ -99,7 +99,7 @@ export function etherscanWord(
   if (!online || record.status !== "confirmed" || record.fromFile === true) return null;
   if (outcome?.outcome === "verified") return "Verified on Etherscan";
   if (outcome?.outcome === "failed") return "Couldn't verify on Etherscan";
-  return keySet && sourcifyServes(record.chainId) ? "Verifying on Etherscan" : null;
+  return keySet && etherscanServes(record.chainId) ? "Verifying on Etherscan" : null;
 }
 
 /** Why Etherscan couldn't verify, shown exactly when `etherscanWord` says it couldn't. */

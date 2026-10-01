@@ -2,7 +2,7 @@
 import { describe, expect, test } from "bun:test";
 import { lintCopy } from "@lattice-studio/core";
 import { catalogDeployBlock } from ".";
-import { chainFromText, pickerChains } from "./chains";
+import { chainFromText, chainInfo, HASHKEY_TESTNET, pickerChains, publicRpcUrls, rpcUrls } from "./chains";
 import {
   CANCELED_IN_WALLET, CHAIN_CHECKS_NEED_CONNECTION, checking, couldntRead, LOADING_WALLET_SUPPORT, needsFunds, NO_WALLET,
   rpcNotAnswering, walletOn,
@@ -33,10 +33,28 @@ describe("Flow 14", () => {
 
 describe("chains", () => {
   test("v1 testnets in the picker; Anvil only in end-to-end builds", () => {
-    expect(pickerChains(false).map((c) => c.id)).toEqual([11155111, 84532]);
-    expect(pickerChains(true).map((c) => c.id)).toEqual([11155111, 84532, 31337]);
+    expect(pickerChains(false).map((c) => c.id)).toEqual([11155111, 84532, 133]);
+    expect(pickerChains(true).map((c) => c.id)).toEqual([11155111, 84532, 133, 31337]);
     expect(chainFromText("anvil", false)).toBeUndefined();
     expect(chainFromText("anvil", true)?.id).toBe(31337);
+  });
+
+  test("HSKChain Testnet: chain 133, HSK, its own RPC, explorer and faucet, ENS through Sepolia", () => {
+    expect(chainInfo(HASHKEY_TESTNET)).toEqual({
+      id: 133,
+      name: "HSKChain Testnet",
+      testnet: true,
+      explorer: "https://testnet-explorer.hskchain.net",
+      faucet: "https://faucet.hskchain.net/faucet",
+    });
+    expect(HASHKEY_TESTNET.nativeCurrency).toEqual({ name: "HashKey EcoPoints", symbol: "HSK", decimals: 18 });
+    expect(HASHKEY_TESTNET.ensChainId).toBe(11155111);
+    expect(HASHKEY_TESTNET.gasCap).toBeUndefined();
+    expect(rpcUrls(HASHKEY_TESTNET, undefined)).toEqual(["https://testnet.hsk.xyz"]);
+    expect(publicRpcUrls(HASHKEY_TESTNET, "https://rpc.example/key")).toEqual(["https://testnet.hsk.xyz"]);
+    expect(chainFromText("133", false)).toBe(HASHKEY_TESTNET);
+    expect(chainFromText("hskchain-testnet", false)).toBe(HASHKEY_TESTNET);
+    expect(chainFromText("HSKChain Testnet", false)).toBe(HASHKEY_TESTNET);
   });
 
   test("`chain <id>`: a picker chain by its number, nothing for one Studio doesn't list (IR L155)", () => {

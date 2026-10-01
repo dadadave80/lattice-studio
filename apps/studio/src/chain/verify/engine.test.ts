@@ -552,6 +552,24 @@ describe("the Etherscan leg", () => {
     expect(etherscanOutcomes.get(confirmed({ chainId: 31337 }))).toBeUndefined();
   });
 
+  test("on a chain Etherscan doesn't serve, Sourcify verifies and Etherscan is never asked or mentioned", async () => {
+    fresh();
+    const net = verifiers([]);
+    const hashkey = confirmed({ chainId: 133 });
+    const records = memoryRecords([hashkey]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), hashkey), clock, []);
+    expect(net.etherscan()).toEqual([]);
+    expect(etherscanOutcomes.get(hashkey)).toBeUndefined();
+    expect(texts()).toEqual(["Verified on Sourcify (exact match)."]);
+    expect(records.all()[0]?.verification).toBe("exact_match");
+    // Retry has nothing left to do there, with a key or without one, and never says Etherscan isn't set up.
+    await retryVerification({ chainId: 133, address: ADDRESS }, keyed(net.fetchImpl, records, clock));
+    await retryVerification({ chainId: 133, address: ADDRESS }, deps(net.fetchImpl, records, clock, LONG_BUILD));
+    expect(net.etherscan()).toEqual([]);
+    expect(texts().slice(1)).toEqual(["This deployment is already verified.", "This deployment is already verified."]);
+  });
+
   test("a catalog without the compiler's commit fails Etherscan before any call, and Sourcify goes on", async () => {
     fresh();
     const net = verifiers([]);

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Catalog, ChainState, Hex, PlanEntry, Problem } from "@lattice-studio/core";
 import { loadFixtureCatalog } from "@lattice-studio/core/testing";
 import { CHOOSE_A_CHAIN, CONNECT_A_WALLET } from "@/chain/infra/copy";
+import { currencyOf } from "./review-data";
 import { CHANGED_SINCE_REVIEW, DEPLOY_NEEDS_CONNECTION, SAFE_SIGNS_BY_BATCH, SIMULATING, TYPE_THE_NAME } from "./copy";
 import {
   CONTROLLER_NOT_BUILT, ackProblems, cantSimulate, changedSinceReview, cutRows, fundsShort, gasByFacet, grouped, magnitude,
@@ -282,5 +283,14 @@ describe("the review's marks after a change or a sign (spec L562, L574, L601)", 
     expect(note({ phase: "review", error: "Sepolia's public RPC isn't answering." })).toBeNull();
     expect(note({ phase: "failed", error: canceled, simulation: { ok: true } })).toBeNull();
     expect(note({ phase: "ready", simulation: { ok: true } })).toBeNull();
+  });
+});
+
+describe("the review's currency", () => {
+  test("is the selected chain's: HSK on HSKChain Testnet, ETH on the Sepolias and before a chain is chosen", () => {
+    expect(currencyOf({ chainId: 133 })).toEqual({ symbol: "HSK", decimals: 18 });
+    expect(currencyOf({ chainId: 11155111 })).toEqual({ symbol: "ETH", decimals: 18 });
+    expect(currencyOf({ chainId: 84532 })).toEqual({ symbol: "ETH", decimals: 18 });
+    expect(currencyOf({ chainId: null })).toEqual({ symbol: "ETH", decimals: 18 });
   });
 });

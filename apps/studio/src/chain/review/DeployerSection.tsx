@@ -79,7 +79,7 @@ export function DeployerSection() {
               <>
                 {" "}
                 <a className={styles.link} href={chainInfo.faucet} target="_blank" rel="noreferrer">
-                  Get test ETH from a faucet
+                  {`Get test ${currency.symbol} from a faucet`}
                 </a>
               </>
             ) : null}

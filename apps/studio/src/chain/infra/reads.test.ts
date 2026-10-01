@@ -4,7 +4,7 @@ import type { Address } from "@lattice-studio/core";
 import { custom, HttpRequestError } from "viem";
 import { getBlockNumber } from "viem/actions";
 import { accountBalance, accountKind, isDelegation } from "./account";
-import { ANVIL, BASE_SEPOLIA, ETHEREUM, isRpcUrl, knownChains, publicRpcUrls, readUrls, rpcUrls, SEPOLIA } from "./chains";
+import { ANVIL, BASE_SEPOLIA, ETHEREUM, HASHKEY_TESTNET, isRpcUrl, knownChains, publicRpcUrls, readUrls, rpcUrls, SEPOLIA } from "./chains";
 import { chainTransport, createClients, httpTransport, RANK, viemChain } from "./clients";
 import { ensCoinType, resolveName, reverseName } from "./ens";
 import { probeChain } from "./probe";
@@ -210,14 +210,18 @@ describe("fallback transport", () => {
     expect(viemChain(SEPOLIA, []).contracts?.ensUniversalResolver).toBeDefined();
     expect(viemChain(BASE_SEPOLIA, []).contracts?.ensUniversalResolver).toBeUndefined();
     expect(viemChain(BASE_SEPOLIA, []).rpcUrls.default.http).toEqual([BASE_SEPOLIA.rpc.default]);
+    const hashkey = viemChain(HASHKEY_TESTNET, []);
+    expect(hashkey).toMatchObject({ id: 133, name: "HSKChain Testnet", testnet: true, nativeCurrency: { symbol: "HSK", decimals: 18 } });
+    expect(hashkey.blockExplorers?.default.url).toBe("https://testnet-explorer.hskchain.net");
+    expect(hashkey.contracts?.ensUniversalResolver).toBeUndefined();
   });
 });
 
 describe("end-to-end builds read every chain through local Anvil", () => {
   const NODE = "http://127.0.0.1:20043";
-  const PUBLIC = [SEPOLIA, BASE_SEPOLIA, ETHEREUM].flatMap((spec) => [spec.rpc.default, spec.rpc.extra ?? ""]).filter(Boolean);
+  const PUBLIC = [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, ETHEREUM].flatMap((spec) => [spec.rpc.default, spec.rpc.extra ?? ""]).filter(Boolean);
 
-  test("no chain Studio can read uses a public Sepolia, Base Sepolia or Ethereum URL", () => {
+  test("no chain Studio can read uses a public Sepolia, Base Sepolia, HSKChain Testnet or Ethereum URL", () => {
     const clients = createClients({ e2e: true, overrides: { [ANVIL.id]: NODE }, transport: () => custom({ request: async () => "0x1" }) });
     for (const spec of knownChains(true)) {
       const urls = clients.urls(spec);

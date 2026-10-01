@@ -17,6 +17,17 @@ export function sourcifyServes(chainId: number): boolean {
   return !(chainId in NEVER_VERIFY);
 }
 
+/**
+ * Chains Sourcify serves and Etherscan's API V2 doesn't (`https://api.etherscan.io/v2/chainlist`): HSKChain
+ * Testnet's explorer is Blockscout.
+ */
+const NOT_ON_ETHERSCAN: ReadonlySet<number> = new Set([133]);
+
+/** Whether Etherscan's API V2 could verify a contract on `chainId`. Where it can't, Etherscan is never asked. */
+export function etherscanServes(chainId: number): boolean {
+  return sourcifyServes(chainId) && !NOT_ON_ETHERSCAN.has(chainId);
+}
+
 /** "Anvil", or "this chain" for an id this module doesn't name. */
 export function unverifiableChainName(chainId: number): string {
   return NEVER_VERIFY[chainId] ?? "this chain";

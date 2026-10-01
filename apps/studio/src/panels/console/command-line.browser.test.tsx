@@ -260,6 +260,6 @@ describe("console verbs for exports", () => {
     await run("export safe 0x1234 sepolia");
     await logged("0x1234 isn't an address. Enter the Safe's full address.");
     await run(`export safe ${safe} mars`);
-    await logged("mars isn't a chain Studio deploys to. Name one: sepolia, base-sepolia.");
+    await logged("mars isn't a chain Studio deploys to. Name one: sepolia, base-sepolia, hskchain-testnet.");
   });
 });

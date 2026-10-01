@@ -18,7 +18,7 @@ import type { Address, Deployment, LineDraft } from "@lattice-studio/core";
 import { sameAddress } from "@lattice-studio/core";
 import { announce, log, settings } from "@/contracts";
 import { appVerifyDeps } from "./app-deps";
-import { sourcifyServes, unverifiableChainName } from "./chains";
+import { etherscanServes, sourcifyServes, unverifiableChainName } from "./chains";
 import { couldntVerifyLine, couldntVerifyOnEtherscanLine, ETHERSCAN_NOT_SET_UP, etherscanVerifiedLine, verifiedLine } from "./copy";
 import { ETHERSCAN_BASE, etherscanCompilerVersion, pollEtherscan, scrub, submitToEtherscan } from "./etherscan";
 import { etherscanOutcomes } from "./etherscan-outcomes";
@@ -233,13 +233,13 @@ async function etherscanJob(deps: VerifyDeps, record: Deployment, key: string, s
 /**
  * Etherscan's leg for one record: submits the same standard JSON Sourcify gets, polls the GUID to a terminal
  * outcome and keeps it in `etherscanOutcomes`. Never throws, whatever the job hits. Never calls `fetchImpl` for a
- * chain no explorer serves (Anvil), or once `signal` aborts: an aborted run keeps no outcome, so the next
+ * chain Etherscan doesn't serve (Anvil, HSKChain Testnet), or once `signal` aborts: an aborted run keeps no outcome, so the next
  * watcher starts it again. A failure that wasn't Etherscan's answer (the request never got there, the proxy's
  * build didn't load) is kept as `transient`, which the watcher drops when it starts and when the browser comes
  * back online. `key` goes to Etherscan's API and nowhere else.
  */
 export async function verifyOnEtherscan(deps: VerifyDeps, record: Deployment, key: string, signal?: AbortSignal): Promise<void> {
-  if (!sourcifyServes(record.chainId) || signal?.aborted) return;
+  if (!etherscanServes(record.chainId) || signal?.aborted) return;
   try {
     await etherscanJob(deps, record, key, signal);
   } catch {
@@ -323,7 +323,7 @@ export async function retryVerification(target: { chainId: number; address: Addr
   const retrySourcify = found.verification === "failed";
   const outcome = etherscanOutcomes.get(found);
   const etherscanRunning = inFlight.has(legKey(found, "etherscan"));
-  const etherscanOpen = sourcifyServes(found.chainId) && outcome?.outcome !== "verified" && !etherscanRunning;
+  const etherscanOpen = etherscanServes(found.chainId) && outcome?.outcome !== "verified" && !etherscanRunning;
   const retryEtherscan = etherscanOpen && deps.etherscanKey() !== undefined;
   if (!retrySourcify && !retryEtherscan) {
     let text = "This deployment is already verified.";

@@ -49,9 +49,14 @@ export const CHOOSE_A_CHAIN = "Choose a chain first.";
 /** `wallet.switchNetwork` with no wallet connected. */
 export const CONNECT_A_WALLET = "Connect a wallet first.";
 
+/** "Sepolia, Base Sepolia or HSKChain Testnet". */
+export function orList(names: readonly string[]): string {
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names.at(-1) ?? ""}` : (names[0] ?? "");
+}
+
 /** A chain the picker doesn't list. */
 export function unsupportedChain(text: string, names: readonly string[]): string {
-  return `Studio doesn't deploy to ${text}. Choose ${names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names.at(-1) ?? ""}` : (names[0] ?? "")}.`;
+  return `Studio doesn't deploy to ${text}. Choose ${orList(names)}.`;
 }
 
 /** ENS isn't available on a chain with no ENS deployment (Anvil). */

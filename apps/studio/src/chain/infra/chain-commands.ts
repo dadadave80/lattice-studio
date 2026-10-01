@@ -9,7 +9,7 @@ import {
   type Enablement,
 } from "@/contracts";
 import { chainFromText, chainName, findChain, pickerChains } from "./chains";
-import { CHAIN_CHECKS_NEED_CONNECTION, CHOOSE_A_CHAIN, CONNECT_A_WALLET, unsupportedChain, walletOn } from "./copy";
+import { CHAIN_CHECKS_NEED_CONNECTION, CHOOSE_A_CHAIN, CONNECT_A_WALLET, orList, unsupportedChain, walletOn } from "./copy";
 
 type SelectArgs = CommandArgsOf<"chain.select">;
 /** `wallet.connect` takes an optional connector id (a CCR adds the row to `CommandArgsMap`). */
@@ -39,7 +39,7 @@ export const selectChainCommand = command<SelectArgs>({
     syntax: "chain <name or id>",
     parse(argv) {
       const text = argv.join(" ").trim();
-      if (text === "") return { ok: false, error: `chain takes a chain: ${names().join(" or ")}.` };
+      if (text === "") return { ok: false, error: `chain takes a chain: ${orList(names())}.` };
       const chain = chainFromText(text, env.e2e);
       return chain ? { ok: true, value: { chainId: chain.id } } : { ok: false, error: unsupportedChain(text, names()) };
     },

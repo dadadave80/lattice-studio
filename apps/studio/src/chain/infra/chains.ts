@@ -47,6 +47,21 @@ export const BASE_SEPOLIA: ChainSpec = {
 };
 
 /**
+ * HashKey Chain's testnet, an OP Stack L2 over Sepolia; its docs name it "HSKChain Testnet". The explorer is
+ * Blockscout. The docs list one public RPC.
+ */
+export const HASHKEY_TESTNET: ChainSpec = {
+  id: 133,
+  name: "HSKChain Testnet",
+  testnet: true,
+  explorer: "https://testnet-explorer.hskchain.net",
+  faucet: "https://faucet.hskchain.net/faucet",
+  rpc: { default: "https://testnet.hsk.xyz" },
+  ensChainId: 11155111,
+  nativeCurrency: { name: "HashKey EcoPoints", symbol: "HSK", decimals: 18 },
+};
+
+/**
  * Local Anvil, only in end-to-end builds (contracts §5.5). Its shared-contract addresses equal every other
  * chain's. Tests point it at their own node through Settings → Networks (`settings.rpc[31337]`).
  */
@@ -73,7 +88,7 @@ export const ETHEREUM: ChainSpec = {
 
 /** The picker's chains, in display order; Anvil last and only when `e2e`. */
 export function pickerChains(e2e: boolean): readonly ChainSpec[] {
-  return e2e ? [SEPOLIA, BASE_SEPOLIA, ANVIL] : [SEPOLIA, BASE_SEPOLIA];
+  return e2e ? [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, ANVIL] : [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET];
 }
 
 /** Every chain the module can read: the picker's, plus the ENS-only chains. */
@@ -98,7 +113,7 @@ export function chainName(chainId: number, e2e: boolean): string {
 
 /**
  * The picker chain a console argument names: its id, or its name ignoring case and spaces
- * ("sepolia", "Base Sepolia", "basesepolia", "84532").
+ * ("sepolia", "Base Sepolia", "basesepolia", "hskchain-testnet", "84532").
  */
 export function chainFromText(text: string, e2e: boolean): ChainSpec | undefined {
   const trimmed = text.trim();
@@ -151,7 +166,7 @@ export function rpcUrls(spec: ChainSpec, override: string | undefined): string[]
 /**
  * The URLs Studio reads `spec` through: `rpcUrls` with the person's override for that chain. An end-to-end build
  * reads every chain through local Anvil instead (its override, then its default), so a test never reaches a public
- * Sepolia, Base Sepolia or Ethereum RPC; the Anvil node stands in for whichever chain is selected.
+ * Sepolia, Base Sepolia, HSKChain Testnet or Ethereum RPC; the Anvil node stands in for whichever chain is selected.
  */
 export function readUrls(spec: ChainSpec, overrides: Readonly<Record<number, string>>, e2e: boolean): string[] {
   if (e2e && spec.id !== ANVIL.id) return rpcUrls(ANVIL, overrides[ANVIL.id]);
