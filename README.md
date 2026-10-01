@@ -4,6 +4,14 @@ Lattice Studio is a static, local-first web app that composes [EIP-2535](https:/
 
 v1 composes and deploys new plain `Lattice` diamonds on testnets. Upgrading a live diamond is v2.
 
+## Status
+
+- Built September 23–30, 2026 for the EAG Global Buildathon. [Lattice](https://github.com/dadadave80/lattice), the facet library Studio composes from, is David Dada's earlier open-source work and predates the event.
+- v1 composes new Lattice diamonds and deploys them on Sepolia and Base Sepolia. Mainnet is off.
+- The catalog is provisional: it's built from Lattice's `dev` branch at `f4a32c8`, not a tagged release (see [Rebuilding and verifying the catalog](#rebuilding-and-verifying-the-catalog)).
+- The repository was built with coding agents under David's direction; [`AGENTS.md`](AGENTS.md) describes how.
+- CI's `browser` job fails until the Linux screenshot baselines are generated: every committed baseline was made on macOS (see [`docs/release.md`](docs/release.md), "Linux screenshot baselines").
+
 ## Quickstart
 
 ```sh
