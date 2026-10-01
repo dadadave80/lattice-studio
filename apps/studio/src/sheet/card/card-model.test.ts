@@ -4,8 +4,8 @@ import { analyze, cardSize, contestedSelectors } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe } from "@lattice-studio/core/testing";
 import { layoutMetrics } from "@/contracts/layout-metrics";
 import {
-  cardAnalysis, cardBorder, cardView, describeCard, footerText, pinView, sameCardAnalysis, visibleRows, wordNeighbours,
-  type CardAnalysis, type CardView, type PinView,
+  cardAnalysis, cardBorder, cardView, describeCard, footerText, groundCount, groundState, pinView, routedSentence,
+  sameCardAnalysis, visibleRows, wordNeighbours, type CardAnalysis, type CardView, type PinView,
 } from "./card-model";
 
 const loaded = loadFixtureCatalog();
@@ -301,14 +301,22 @@ describe("accessible name and description (spec L745-L746)", () => {
     expect(view("ERC20", recipeOf(["ERC20", "ERC4626"])).name).toBe("ERC20, 9 selectors, 1 served by another facet");
   });
 
-  test("the description names collisions and needs in words, then the selection", () => {
+  test("the description names collisions and needs in words, the selectors routed to the diamond, then the selection", () => {
     const axelar = view("AxelarGatewayAdapter", gallery);
+    expect(axelar.routed).toBe(7);
+    expect(axelar.exported).toBe(9);
     expect(describeCard(axelar, false)).toBe(
-      "Collides with HyperlaneGatewayAdapter on sendMessage and supportsAttribute; 2 blockers; 1 warning. Not selected.",
+      "Collides with HyperlaneGatewayAdapter on sendMessage and supportsAttribute; 2 blockers; 1 warning. 7 of 9 selectors routed to the diamond. Not selected.",
     );
-    expect(describeCard(view("VaultCore", gallery), true)).toBe(
-      "Needs ERC4626, which isn't on the sheet; 2 blockers; 1 warning. Selected.",
+    const vault = view("VaultCore", gallery);
+    expect(describeCard(vault, true)).toBe(
+      `Needs ERC4626, which isn't on the sheet; 2 blockers; 1 warning. ${routedSentence(vault.routed, vault.exported)} Selected.`,
     );
+  });
+
+  test("the routed sentence counts one selector in the singular", () => {
+    expect(routedSentence(1, 1)).toBe("1 of 1 selector routed to the diamond.");
+    expect(routedSentence(0, 3)).toBe("0 of 3 selectors routed to the diamond.");
   });
 
   test("a met dependency reads 'needs' on one card and 'needed by' on the other", () => {
@@ -335,8 +343,27 @@ describe("accessible name and description (spec L745-L746)", () => {
     expect(words(x)).toMatch(/^Needs A[;.]/);
   });
 
-  test("a card with nothing to say states only the selection", () => {
-    expect(describeCard({ connections: "" }, false)).toBe("Not selected.");
+  test("a card with nothing to say states its routed selectors and the selection", () => {
+    expect(describeCard({ connections: "", routed: 3, exported: 3 }, false)).toBe("3 of 3 selectors routed to the diamond. Not selected.");
+  });
+});
+
+describe("the ground glyph", () => {
+  test("counts every export routed here as one number, otherwise routed over exported", () => {
+    expect(groundCount(9, 9)).toBe("9");
+    expect(groundCount(7, 9)).toBe("7/9");
+    expect(groundCount(0, 3)).toBe("0/3");
+    expect(groundState(9, 9)).toBe("routed");
+    expect(groundState(7, 9)).toBe("partial");
+    expect(groundState(0, 3)).toBe("none");
+  });
+
+  test("the view carries the routed count, the exports and whether the facet is the cut", () => {
+    const erc20 = view("ERC20", gallery);
+    expect(erc20.exported).toBe(9);
+    expect(erc20.routed).toBe(erc20.all.filter((p) => p.here).length);
+    expect(erc20.cut).toBe(false);
+    expect(view("SafeDiamondCut", recipeOf(["SafeDiamondCut"])).cut).toBe(true);
   });
 });
 

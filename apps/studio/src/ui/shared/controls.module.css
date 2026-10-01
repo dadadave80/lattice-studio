@@ -6,8 +6,12 @@
  * Focus rings come from global.css (:focus-visible, 2 px border-focus, offset 2 px); never remove them.
  */
 
-/* Every pointer target is at least 24 x 24 CSS px (spec L770, WCAG 2.5.8). */
-.target {
+/*
+ * Every pointer target is at least 24 x 24 CSS px (spec L770, WCAG 2.5.8). A floor, so it carries no specificity:
+ * the build copies this rule into every lazy chunk that composes it, and a copy loaded after Button's own sheet
+ * would otherwise win on order alone and shrink a 32 px button to 24 px.
+ */
+:where(.target) {
   min-inline-size: var(--lx-space-6);
   min-block-size: var(--lx-space-6);
 }

@@ -197,8 +197,12 @@ describe("plan", () => {
     expect(code).toBe(0);
     const { analysis } = coreRead(erc20, BUILT);
     const lines = stdout.split("\n");
-    expect(lines[1]).toBe("Cut plan · 4 facets · 15 selectors");
-    expect(lines[2]).toMatch(/^\[00\] ADD ERC20 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} · 9\/9 selectors · 0\.2\.0$/);
+    // Facets count the cards (ERC20 and Receive; the core's two aren't cards), selectors count the core's five too.
+    expect(lines[1]).toBe("Cut plan · the core and 2 facets · 15 selectors");
+    // The core's entries lead the plan, then the rest in catalog order.
+    expect(lines[2]).toMatch(/^\[00\] ADD DiamondLoupeFacet 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} · 4\/4 selectors · \d+\.\d+\.\d+$/);
+    expect(lines[3]).toMatch(/^\[01\] ADD ERC165Facet 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} · 1\/1 selector · \d+\.\d+\.\d+$/);
+    expect(lines[4]).toMatch(/^\[02\] ADD ERC20 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} · 9\/9 selectors · 0\.2\.0$/);
     expect(lines.filter((line) => line.startsWith("["))).toHaveLength(analysis.plan.length);
     expect(stdout).toContain("Init: calls MultiInit");
   });

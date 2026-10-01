@@ -45,8 +45,28 @@
   justify-content: flex-start;
 }
 
-.brand {
+/*
+ * The brand wears `text`, not `quiet`'s muted ink. The class is doubled so the rule outranks Button.module.css
+ * whichever order the two sheets load in (a single class lost to `.quiet` and the bar showed the brand muted).
+ */
+.brand.brand {
   color: var(--lx-text);
+}
+
+/*
+ * Compact (under 1024 px, the name hidden): the glyph and the mark read as one, padded like an icon button, which
+ * leaves a 320 px bar the room its name, save status and chip need.
+ */
+.brand.compact {
+  gap: var(--lx-space-1);
+  padding-inline: var(--lx-space-1);
+}
+
+/* The mark and the name read as one unit, at the lockup's own mark-to-word ratio (space-1 beside a 20 px mark). */
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-1);
 }
 
 .toggles {

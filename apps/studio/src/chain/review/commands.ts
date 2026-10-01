@@ -8,7 +8,7 @@
  * (`command-runs.ts`), and the review itself is a lazy dialog (spec L822).
  */
 import type { CommandRef, Problem } from "@lattice-studio/core";
-import { isAddress } from "@lattice-studio/core";
+import { isAddress, isCoreOnly } from "@lattice-studio/core";
 import { command, defineCommands, env, type CommandArgsOf, type CommandContext, type Enablement } from "@/contracts";
 import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra/chains";
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
@@ -102,7 +102,7 @@ const open = command<CommandArgsOf<"deploy.open">>({
     // Spec L378: an empty sheet says so. Checks still fire on zero facets (CORE-01 among them), but the Empty
     // state's own words are more specific than a blocker count, and this keeps the palette, ⌘Enter and the
     // title block agreeing on them (S4d's CCR 3).
-    if (ctx.project.recipe.facets.length === 0) return no(PLACE_FACETS_FIRST);
+    if (isCoreOnly(ctx.project.recipe)) return no(PLACE_FACETS_FIRST);
     const count = blockers(ctx).length;
     // ⌘/Ctrl+Enter jumps to the first blocker instead (spec L561); every other way in is disabled with the reason.
     if (count > 0 && ctx.source !== "keys") return no(resolveBlockers(ctx, count), { id: "problem.next" });
@@ -123,7 +123,7 @@ const again = command({
     const block = openBlock(ctx);
     if (block) return no(block);
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
-    if (ctx.project.recipe.facets.length === 0) return no(PLACE_FACETS_FIRST);
+    if (isCoreOnly(ctx.project.recipe)) return no(PLACE_FACETS_FIRST);
     // After a confirmed deploy, Deploy again… draws a new salt before the review opens (spec L286, L584), so the
     // current salt's address being taken (NET-05: the live diamond itself) doesn't hold it back. With nothing
     // confirmed the salt stays, so NET-05 counts, as it does for Deploy….
@@ -201,7 +201,7 @@ const removeFacets = command({
     const locked = readOnly(ctx);
     if (locked) return locked;
     if (!ctx.catalog) return no(CATALOG_LOADING);
-    if (ctx.analysis.plan.length === 0) return no("No facets are cut yet");
+    if (isCoreOnly(ctx.project.recipe)) return no("No facets are cut yet");
     return OK;
   },
   run: async (ctx) => (await runs()).runRemoveFacets(ctx),

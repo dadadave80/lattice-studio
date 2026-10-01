@@ -1,5 +1,6 @@
 import { canonicalJson, normalizeRecipe, recipeHash } from "../canonical";
 import { runChecks } from "../checks";
+import { isCoreFacet } from "../diamond/core";
 import { collectRefs, encodeInit } from "../init/encode";
 import { planInit } from "../init/plan";
 import type { Analysis, AnalysisContext, PlanEntry, Routing } from "../model/analysis";
@@ -82,9 +83,10 @@ function initTarget(plan: InitPlan, catalog: Catalog): Address | undefined {
 }
 
 /**
- * `facets` placed (known to the catalog), `routed` selectors with an owner, `exported` selectors counted per
- * facet (GovernedVault: 120 routed of 143), `excluded` exported selectors left out, `namespaces` the distinct
- * ERC-7201 namespaces the placed facets own.
+ * `facets` the cards: placed facets the catalog knows, the core's two left out (decision D18, so an empty sheet
+ * reads 0 facets); `routed` selectors with an owner, `exported` selectors counted per facet and `excluded`
+ * exported selectors left out, each counting the core's five (an empty sheet reads 5 routed, never 0);
+ * `namespaces` the distinct ERC-7201 namespaces the placed facets own. GovernedVault: 12 facets, 120 routed of 143.
  */
 function statsOf(recipe: Recipe, catalog: Catalog, routing: Routing): Analysis["stats"] {
   const view = recipeView(recipe, catalog);
@@ -93,7 +95,7 @@ function statsOf(recipe: Recipe, catalog: Catalog, routing: Routing): Analysis["
     0,
   );
   return {
-    facets: view.placed.length,
+    facets: view.placed.filter((facet) => !isCoreFacet(facet.name)).length,
     routed: Object.values(routing).filter((route) => route.owner !== undefined).length,
     exported,
     excluded: [...view.contenders.keys()].filter((selector) => view.exclude.has(selector)).length,

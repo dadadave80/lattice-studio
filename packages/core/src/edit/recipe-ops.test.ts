@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { recipeHash } from "../canonical/hash";
 import { normalizeRecipe } from "../canonical/normalize";
+import { isCoreFacet } from "../diamond/core";
 import type { EditResult, Project } from "../model/project";
 import type { Recipe } from "../model/recipe";
 import { loadFixtureCatalog } from "../testing/fixtures";
-import { makeProject } from "../testing/builders";
+import { makeCatalog, makeFacet, makeProject, makeRecipe } from "../testing/builders";
 import {
   addInitStep, clearOwner, excludeSelector, includeSelector, loadRecipe, moveInitStep, placeFacet, removeFacets,
   removeInitStep, routeSelector, setImmutable, setInitArg,
@@ -27,6 +28,75 @@ function untouched<T>(project: Project, op: (p: Project) => T): T {
   expect(project).toEqual(snapshot);
   return result;
 }
+
+describe("the core", () => {
+  // The testkit catalog plus the core: DiamondLoupeFacet and ERC165Facet after Receive, in catalog order.
+  const LOUPE = ["facets()", "facetFunctionSelectors(address)", "facetAddresses()", "facetAddress(bytes4)"];
+  const core = makeCatalog({
+    ...catalog,
+    facets: [...catalog.facets, makeFacet({ name: "DiamondLoupeFacet", selectors: LOUPE }), makeFacet({ name: "ERC165Facet", selectors: ["supportsInterface(bytes4)"] })],
+  });
+
+  /** A project on `core` holding `facets`, with a card for each one that isn't the core's. */
+  function on(facets: string[], extra: Partial<Recipe> = {}): Project {
+    const layout: Project["layout"] = {};
+    facets.filter((name) => !isCoreFacet(name)).forEach((name, index) => {
+      layout[name] = { x: index * 320, y: 0, pins: "right" };
+    });
+    return makeProject({ recipe: makeRecipe({ facets, ...extra }, core), layout });
+  }
+
+  test("placing a core facet is a no-op that says it's in every diamond, the name as given, before any catalog lookup", () => {
+    const before = on(["ERC20", "DiamondLoupeFacet", "ERC165Facet"]);
+    expectNoOp(untouched(before, (p) => placeFacet(p, core, "DiamondLoupeFacet", { x: 0, y: 0 })), before, "DiamondLoupeFacet is part of every diamond's core.");
+    expectNoOp(placeFacet(before, core, "ERC165Facet", { x: 0, y: 0 }), before, "ERC165Facet is part of every diamond's core.");
+    // Even on a catalog that doesn't list them, and even when the recipe lacks them.
+    const bare = projectWith({ facets: ["ERC20"] });
+    expectNoOp(placeFacet(bare, catalog, "ERC165Facet", { x: 0, y: 0 }), bare, "ERC165Facet is part of every diamond's core.");
+  });
+
+  test("removing only core facets is a no-op that names the first; a mixed list removes the rest and says so", () => {
+    const before = on(["ERC20", "Receive", "DiamondLoupeFacet", "ERC165Facet"]);
+    expectNoOp(untouched(before, (p) => removeFacets(p, core, ["DiamondLoupeFacet"])), before, "DiamondLoupeFacet is the diamond's core and stays.");
+    expectNoOp(removeFacets(before, core, ["ERC165Facet", "DiamondLoupeFacet"]), before, "ERC165Facet is the diamond's core and stays.");
+    const result = untouched(before, (p) => removeFacets(p, core, ["DiamondLoupeFacet", "ERC20", "ERC165Facet"]));
+    const after = expectChanged(result, before, "Removed ERC20 (DiamondLoupeFacet is the diamond's core and stays)");
+    expect(after.recipe.facets).toEqual(["Receive", "DiamondLoupeFacet", "ERC165Facet"]);
+    expect(Object.keys(after.layout)).toEqual(["Receive"]);
+  });
+
+  test("the core's five selectors can't be left out, whatever else is placed", () => {
+    const before = on(["ERC20", "DiamondLoupeFacet", "ERC165Facet"]);
+    const refusals = [
+      ["0x7a0ed627", "facets"], ["0xadfca15e", "facetFunctionSelectors"], ["0x52ef6b2c", "facetAddresses"], ["0xcdffacc6", "facetAddress"],
+      ["0x01ffc9a7", "supportsInterface"],
+    ] as const;
+    for (const [selector, name] of refusals) {
+      expectNoOp(untouched(before, (p) => excludeSelector(p, core, selector)), before, `\`${name} · ${selector}\` is part of the diamond's core and can't be left out.`);
+    }
+    // Uppercase hex is the same selector.
+    expectNoOp(excludeSelector(before, core, "0x7A0ED627"), before, "`facets · 0x7a0ed627` is part of the diamond's core and can't be left out.");
+    // Other selectors still go.
+    expect(excludeSelector(before, core, SEL.transfer).changed).toBe(true);
+  });
+
+  test("loadRecipe puts the core back in catalog order and copies the layout without the core's cards", () => {
+    const before = on(["DiamondLoupeFacet", "ERC165Facet"]);
+    const recipe = makeRecipe({ name: "Token", facets: ["Receive", "ERC20"] }, core);
+    const layout: Project["layout"] = {
+      ERC20: { x: 0, y: 0, pins: "right" },
+      DiamondLoupeFacet: { x: 320, y: 0, pins: "left" },
+      Receive: { x: 640, y: 0, pins: "right", expanded: true },
+      ERC165Facet: { x: 960, y: 0, pins: "right" },
+    };
+    const result = untouched(before, (p) => loadRecipe(p, core, recipe, layout));
+    const after = expectChanged(result, before, "Loaded Token");
+    expect(after.recipe.facets).toEqual(["ERC20", "Receive", "DiamondLoupeFacet", "ERC165Facet"]);
+    expect(after.layout).toEqual({ ERC20: { x: 0, y: 0, pins: "right" }, Receive: { x: 640, y: 0, pins: "right", expanded: true } });
+    // Loading the same again, stale core cards and all, changes nothing.
+    expectNoOp(loadRecipe(after, core, recipe, layout), after, "The sheet already holds Token.");
+  });
+});
 
 describe("placeFacet", () => {
   test("adds the facet in catalog order and its card at the given point", () => {

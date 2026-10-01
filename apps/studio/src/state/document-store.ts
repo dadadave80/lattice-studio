@@ -14,7 +14,7 @@
  * session never enter history.
  */
 import type { EditResult, Hex, Project, Recipe } from "@lattice-studio/core";
-import { lines } from "@lattice-studio/core";
+import { CORE_FACETS, lines, withoutCore } from "@lattice-studio/core";
 import { createStore, type StoreApi } from "zustand/vanilla";
 import {
   announce, DEFAULT_SETTINGS, log, now, session, type DocumentActions, type DocumentChange, type DocumentState,
@@ -64,7 +64,10 @@ export function isUnpinned(recipe: Recipe): boolean {
   return recipe.catalog.tag === "" || /^0x(?:0{64})?$/.test(recipe.catalog.hash);
 }
 
-/** An empty project, as the app starts before a project opens. */
+/**
+ * An empty project, as the app starts before a project opens: core only (the loupe and ERC-165 facets, nothing
+ * placed), with the empty step plan that keeps the automatic introspection step, as K2's untitled project.
+ */
 export function untitledProject(): Project {
   return {
     id: "untitled",
@@ -72,10 +75,10 @@ export function untitledProject(): Project {
     recipe: {
       schemaVersion: 1,
       catalog: { tag: "", hash: UNPINNED_HASH },
-      facets: [],
+      facets: [...CORE_FACETS],
       owners: {},
       exclude: [],
-      init: { kind: "none" },
+      init: { kind: "steps", steps: [] },
     },
     layout: {},
     deploy: { path: DEFAULT_SETTINGS.defaultPath, entropy: `0x${"00".repeat(11)}`, scope: "every-chain" },
@@ -291,11 +294,17 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
       store.setState({ project, lastChange: change("record", label) });
       return { ...result, project };
     },
-    load(project, reason) {
+    load(loaded, reason) {
+      // The core is never a card: whatever path a project took here, its layout holds no entry for the core.
+      const layout = withoutCore(loaded.layout);
+      const project = layout === loaded.layout ? loaded : { ...loaded, layout };
       drag = null;
       burst = null;
       silently({ tracked: pick(project), selection: [], label: null });
       history.getState().clear();
+      // A new document starts with the core deselected. The card selection is the project switch's to reset
+      // (projects/cmd/shared.ts), as before; the history filter drops names that aren't on the new sheet.
+      if (session.get().coreSelected) session.set({ coreSelected: false });
       publish(project, "load", reason ?? `Opened ${project.name}`);
       if (reason) log({ tag: "Note", text: reason });
     },

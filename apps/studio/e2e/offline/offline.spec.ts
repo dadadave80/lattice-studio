@@ -10,6 +10,7 @@
  * `stayOnline` would hide the offline state from the page. The CSP guard still runs: what the worker serves from
  * its cache must carry the same policy the host sent.
  */
+import { isCoreFacet } from "@lattice-studio/core";
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect, test } from "../_support/fixtures.ts";
 import { region } from "../_support/keys.ts";
@@ -75,9 +76,11 @@ async function place(page: Page, facet: string): Promise<void> {
 
 /**
  * Waits until autosave (750 ms after the last edit, `src/persist/persistence.ts`) has stored the last project with
- * exactly `facets` on it, so a reload lands there (spec L401) instead of racing the write.
+ * exactly `facets` as its cards (the core's two facets are in every stored recipe and aren't counted), so a
+ * reload lands there (spec L401) instead of racing the write.
  */
 async function waitForAutosave(page: Page, facets: readonly string[]): Promise<void> {
+  const cards = async (): Promise<string[]> => (await stored()).filter((name) => !isCoreFacet(name));
   const stored = () =>
     page.evaluate(
       async ({ dbName, lastKey }) => {
@@ -103,7 +106,7 @@ async function waitForAutosave(page: Page, facets: readonly string[]): Promise<v
       },
       { dbName: DB_NAME, lastKey: META.lastProject },
     );
-  await expect.poll(stored, { message: `autosave stores the project with [${facets.join(", ")}]` }).toEqual(facets);
+  await expect.poll(cards, { message: `autosave stores the project with [${facets.join(", ")}]` }).toEqual(facets);
 }
 
 /** Without the File System Access API, saving a file is a browser download (Firefox and Safari's path). */

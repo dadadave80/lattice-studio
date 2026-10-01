@@ -28,7 +28,7 @@
  */
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import { exportProjectFile, formatParseIssue, importFile, plural, type Recipe } from "@lattice-studio/core";
+import { exportProjectFile, formatParseIssue, importFile, isCoreFacet, plural, type Recipe } from "@lattice-studio/core";
 import { expect, test } from "../_support/fixtures.ts";
 import { catalog } from "../_support/catalog.ts";
 import { deploymentFor, filePayload, projectFile, recipeProject } from "../_support/projects.ts";
@@ -47,6 +47,11 @@ import {
 } from "./pages/projects-dialog.ts";
 import { clickCancel, clickSave, expectSaveCopyDialog, fileName, fileNameField, saveCopyDialog, submitWithEnter } from "./pages/save-copy-dialog.ts";
 import { appMenuItem, expectSaveStatus, openAppMenu, saveStatusButton, titleBar } from "./pages/shell.ts";
+
+/** The opened line counts cards: the recipe's facets without the core's two. */
+function cards(recipe: Pick<Recipe, "facets">): number {
+  return recipe.facets.filter((name) => !isCoreFacet(name)).length;
+}
 
 const SAFARI_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15";
@@ -319,7 +324,7 @@ test.describe("Flow 10 step 4: Open (spec L501)", () => {
     (await chooser).setFiles(filePayload(file));
 
     await expectProject(page, "MenuOpenedVault");
-    await expectLogLine(page, `Opened MenuOpenedVault · ${plural(project.recipe.facets.length, "facet")}.`);
+    await expectLogLine(page, `Opened MenuOpenedVault · ${plural(cards(project.recipe), "facet")}.`);
   });
 
   test("Ctrl/Cmd+O opens a .lattice.json project file, whose deployment record is marked From file", async ({ page }) => {
@@ -333,7 +338,7 @@ test.describe("Flow 10 step 4: Open (spec L501)", () => {
     (await chooser).setFiles(filePayload(file));
 
     await expectProject(page, "OpenedVault");
-    await expectLogLine(page, `Opened OpenedVault · ${plural(project.recipe.facets.length, "facet")}.`);
+    await expectLogLine(page, `Opened OpenedVault · ${plural(cards(project.recipe), "facet")}.`);
 
     await runInPalette(page, "Show deployments");
     const row = region(page, "Inspector").locator(`[data-record="${deployment.chainId}:${deployment.address}"]`);
@@ -351,7 +356,7 @@ test.describe("Flow 10 step 4: Open (spec L501)", () => {
     await dropFileOnWindow(page, { filename: "dropped-recipe.json", text: JSON.stringify(recipe) });
 
     await expectProject(page, "ERC20");
-    await expectLogLine(page, `Opened ERC20 · ${plural(recipe.facets.length, "facet")}.`);
+    await expectLogLine(page, `Opened ERC20 · ${plural(cards(recipe), "facet")}.`);
   });
 
   test("a bad file's error names the file and the reason (importFile/formatParseIssue against the real catalog)", async ({

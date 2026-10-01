@@ -3,7 +3,7 @@
  * plain-text report that Copy details puts on the clipboard. Pure: no React, no stores.
  */
 import type { Address, Catalog, Hex, Hex4, PlanComparison, PlanEntry } from "@lattice-studio/core";
-import { formatSelector, plural } from "@lattice-studio/core";
+import { formatSelector, isCoreFacet, plural } from "@lattice-studio/core";
 
 /** A selector's signature from the catalog, when any facet exports it. */
 export type SignatureOf = (hex: Hex4) => string | undefined;
@@ -26,14 +26,15 @@ export function denseSelector(hex: Hex4, signatureOf: SignatureOf): string {
   return signature === undefined ? hex : formatSelector({ hex, signature }, "dense").replaceAll("`", "");
 }
 
-/** "14 facets, 120 selectors": the plan's size. */
-export function planSize(plan: readonly Pick<PlanEntry, "selectors">[]): string {
+/** "the core and 12 facets, 120 selectors": the plan's size, the core's two Adds named rather than counted. */
+export function planSize(plan: readonly Pick<PlanEntry, "facet" | "selectors">[]): string {
   const selectors = plan.reduce((sum, entry) => sum + entry.selectors.length, 0);
-  return `${plural(plan.length, "facet")}, ${plural(selectors, "selector")}`;
+  const cards = plan.filter((entry) => !isCoreFacet(entry.facet)).length;
+  return `the core and ${plural(cards, "facet")}, ${plural(selectors, "selector")}`;
 }
 
-/** The verdict (spec L576): "Diamond matches the sheet: 14 facets, 120 selectors." or the mismatch line. */
-export function verdict(comparison: Pick<PlanComparison, "matches">, plan: readonly Pick<PlanEntry, "selectors">[]): string {
+/** The verdict (spec L576): "Diamond matches the sheet: the core and 12 facets, 120 selectors." or the mismatch line. */
+export function verdict(comparison: Pick<PlanComparison, "matches">, plan: readonly Pick<PlanEntry, "facet" | "selectors">[]): string {
   return comparison.matches ? `Diamond matches the sheet: ${planSize(plan)}.` : "Deployed, but doesn't match the sheet";
 }
 

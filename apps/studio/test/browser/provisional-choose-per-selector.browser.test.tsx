@@ -37,6 +37,9 @@ describe.each(["dark", "light"] as const)("provisional: Choose per selector, two
     await expect.element(dialog.getByText("supportsAttribute(bytes4)")).toBeVisible();
     await expect.element(dialog.getByRole("button", { name: "Apply owners" })).toHaveAttribute("aria-disabled", "true");
     await document.fonts.ready;
+    // The footer's buttons at their full height: shooting before the button styles apply drew them 8 px short.
+    const cancel = dialog.getByRole("button", { name: "Cancel" });
+    await expect.poll(() => getComputedStyle(cancel.element()).minBlockSize).toBe("32px");
     await expect.element(page.elementLocator(dialog.element() as HTMLElement)).toMatchScreenshot(`provisional-choose-per-selector-${theme}`);
   });
 });

@@ -6,6 +6,7 @@
  * it under its banner.
  */
 import type { ExportFile } from "@lattice-studio/core";
+import { isCoreOnly } from "@lattice-studio/core";
 import { useEffect, useState } from "react";
 import { doc, useAnalysis, useCatalog, useDocument } from "@/contracts";
 import { recipeFile, scriptFile } from "./actions";
@@ -31,7 +32,7 @@ export function useExportFile(kind: CodeKind): ExportView {
   const catalog = useCatalog();
   const analysis = useAnalysis();
   const [view, setView] = useState<ExportView>(NOTHING);
-  const empty = recipe.facets.length === 0;
+  const empty = isCoreOnly(recipe);
 
   useEffect(() => {
     if (!catalog || empty) return;

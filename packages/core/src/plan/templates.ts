@@ -1,4 +1,5 @@
 import { normalizeRecipe } from "../canonical/normalize";
+import { isCoreFacet } from "../diamond/core";
 import type { BlankDiamondFn, LoadTemplateFn, TemplateListFn } from "../model/api";
 import type { Catalog, RecipeTemplate, TemplateItem } from "../model/catalog";
 import type { Arg, Recipe } from "../model/recipe";
@@ -57,7 +58,7 @@ function refusalFor(template: RecipeTemplate): string | undefined {
 /**
  * Every Lattice recipe in catalog order, for Browse all recipes (spec L407): v1 recipes on the plain Lattice
  * proxy load; the rest carry the note that says when they arrive and, for account recipes, that they need
- * their own factory (R20).
+ * their own factory (R20). `facets` counts the recipe's cards, the core's two left out (decision D18).
  */
 export const templateList: TemplateListFn = (catalog) =>
   catalog.recipes.map((template): TemplateItem => {
@@ -67,7 +68,7 @@ export const templateList: TemplateListFn = (catalog) =>
       proxy: template.proxy,
       phase: template.phase,
       loadable: isLoadable(template),
-      facets: new Set(template.recipe.facets).size,
+      facets: new Set(template.recipe.facets.filter((name) => !isCoreFacet(name))).size,
     };
     const note = noteFor(template);
     if (note !== undefined) item.note = note;

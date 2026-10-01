@@ -1,9 +1,17 @@
 import { describe, expect, test } from "bun:test";
+import { analyze } from "../analysis";
+import { withCore } from "../diamond/repair";
+import { exportRecipeJson } from "../export/docs/recipe-json";
 import { lintCopy } from "../format/copy-lint";
+import type { Catalog } from "../model/catalog";
+import { CORE_FACETS } from "../model/diamond";
 import type { ParseIssue, ParseOptions } from "../model/io";
 import type { Deployment } from "../model/project";
+import type { Recipe } from "../model/recipe";
 import type { Result } from "../model/result";
-import { makeProject } from "../testing";
+import { blankDiamond, loadTemplate, templateList } from "../plan";
+import { decodeShareLink, encodeShareLink, importFile } from "../share";
+import { loadFixtureCatalog, makeCatalog, makeFacet, makeProject, makeRecipe } from "../testing";
 import { recipeHash } from "./hash";
 import { canonicalJson } from "./json";
 import { normalizeRecipe } from "./normalize";
@@ -73,7 +81,10 @@ describe("parseRecipe", () => {
   });
 
   test("a recipe opens with the same value and hash whether or not its catalog is bundled", () => {
+    // On a catalog with both core facets, a recipe carrying both: the core repair changes nothing either way.
+    const full = makeCatalog({ ...catalog, facets: [...catalog.facets, makeFacet({ name: "ERC165Facet", area: "diamond", selectors: ["supportsInterface(bytes4)"] })] });
     const recipe = stepsRecipe({
+      facets: ["DiamondLoupeFacet", "ERC165Facet", "AccessControl", "ERC20", "ERC20Votes"],
       init: {
         kind: "steps",
         steps: [
@@ -82,22 +93,22 @@ describe("parseRecipe", () => {
         ],
       },
     });
-    const normalized = normalizeRecipe(recipe, catalog);
+    const normalized = normalizeRecipe(recipe, full);
     const { init } = normalized;
     expect(init.kind === "steps" && init.steps[1]?.args).toEqual({
       label: "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01",
       code: `0x${"ab".repeat(20)}`,
       keeper: ADMIN,
     });
-    const bundled = parseRecipe(fromText(normalized), file);
+    const bundled = parseRecipe(fromText(normalized), { ...file, catalogs: [full] });
     const unbundled = parseRecipe(fromText(normalized), { catalogs: [], source: "link" });
     expect(bundled.ok && unbundled.ok).toBe(true);
     if (!bundled.ok || !unbundled.ok) return;
     expect(unbundled.value.catalog).toBeNull();
     expect(unbundled.value.value).toEqual(normalized);
     expect(bundled.value.value).toEqual(normalized);
-    expect(recipeHash(unbundled.value.value)).toBe(recipeHash(recipe, catalog));
-    expect(recipeHash(bundled.value.value)).toBe(recipeHash(recipe, catalog));
+    expect(recipeHash(unbundled.value.value)).toBe(recipeHash(recipe, full));
+    expect(recipeHash(bundled.value.value)).toBe(recipeHash(recipe, full));
   });
 
   test("owner keys that differ only in case must agree on the facet", () => {
@@ -169,13 +180,14 @@ describe("parseRecipe", () => {
     expect(parseRecipe(json, file).ok).toBe(true);
   });
 
-  test("a catalog this build doesn't bundle: no name checks, catalog null, facets in input order", () => {
+  test("a catalog this build doesn't bundle: no name checks, catalog null, facets in input order, the missing core appended", () => {
     const json = fromText(stepsRecipe({ catalog: { tag: "v0.4.1", hash: `0x${"cd".repeat(32)}` }, facets: ["ERC20X", "DiamondLoupeFacet"] }));
     const result = parseRecipe(json, file);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.catalog).toBeNull();
-    expect(result.value.value.facets).toEqual(["ERC20X", "DiamondLoupeFacet"]);
+    // Without a catalog there's no order to insert by, so the core facet the recipe lacks goes last.
+    expect(result.value.value.facets).toEqual(["ERC20X", "DiamondLoupeFacet", "ERC165Facet"]);
     const { init } = result.value.value;
     expect(init.kind === "steps" && init.steps[1]?.args["supply"]).toBe(MAX_UINT256);
   });
@@ -405,5 +417,78 @@ describe("lone surrogates", () => {
     expect(result.value.value.init.kind === "steps" && result.value.value.init.steps[1]?.args["name"]).toBe("🎉Vault");
     expect(() => recipeHash(result.value.value)).not.toThrow();
     expect(() => canonicalJson(result.value.value)).not.toThrow();
+  });
+});
+
+describe("the core repair", () => {
+  const fixture = loadFixtureCatalog();
+  const on: Catalog = fixture.ok ? fixture.value : catalog;
+  const opts: ParseOptions = { catalogs: [on], source: "file", filename: "recipe.json" };
+  const ctx = { known: [], unconfirmed: [] };
+
+  /** A recipe on the fixture catalog, as a file holds it; the empty step plan keeps the automatic introspection step. */
+  function fileOf(recipe: Partial<Recipe>): unknown {
+    return fromText(makeRecipe({ init: { kind: "steps", steps: [] }, ...recipe }, on));
+  }
+
+  test.skipIf(!fixture.ok)("a recipe missing the core gains it in catalog order, and CORE-01 and CORE-05 don't fire", () => {
+    const result = parseRecipe(fileOf({ facets: ["Receive", "ERC20"] }), opts);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.value.facets).toEqual(["ERC20", "Receive", "DiamondLoupeFacet", "ERC165Facet"]);
+    const codes = analyze(result.value.value, on, ctx).problems.map((p) => p.code);
+    expect(codes.filter((code) => code === "CORE-01" || code === "CORE-05")).toEqual([]);
+  });
+
+  test.skipIf(!fixture.ok)("each core facet alone gets the other back beside it", () => {
+    for (const kept of CORE_FACETS) {
+      const result = parseRecipe(fileOf({ facets: [kept, "ERC20"] }), opts);
+      expect(result.ok && result.value.value.facets).toEqual(["ERC20", "DiamondLoupeFacet", "ERC165Facet"]);
+    }
+  });
+
+  test.skipIf(!fixture.ok)("a project's layout loses the core's entries, as a stored project and as a project file", () => {
+    const project = makeProject({
+      recipe: makeRecipe({ facets: ["ERC20", ...CORE_FACETS], init: { kind: "steps", steps: [] } }, on),
+      layout: {
+        ERC20: { x: 0, y: 0, pins: "right" },
+        DiamondLoupeFacet: { x: 400, y: 0, pins: "right" },
+        ERC165Facet: { x: 800, y: 0, pins: "left", expanded: true },
+      },
+    });
+    const stored = parseProject(fromText(project), { catalogs: [on], source: "db" });
+    expect(stored.ok && stored.value.value.layout).toEqual({ ERC20: { x: 0, y: 0, pins: "right" } });
+    const asFile = parseProjectFile(fromText({ project, deployments: [] }), opts);
+    expect(asFile.ok && asFile.value.value.project.layout).toEqual({ ERC20: { x: 0, y: 0, pins: "right" } });
+    // Autosave reads projects back with no catalogs at all (persist/records.ts): the same repair, appended.
+    const unbundled = parseProject(fromText({ ...project, recipe: { ...project.recipe, facets: ["ERC20"] } }), { catalogs: [], source: "db" });
+    expect(unbundled.ok && unbundled.value.value.recipe.facets).toEqual(["ERC20", "DiamondLoupeFacet", "ERC165Facet"]);
+    expect(unbundled.ok && Object.keys(unbundled.value.value.layout)).toEqual(["ERC20"]);
+  });
+
+  test.skipIf(!fixture.ok)("every loadable template and the Blank diamond already carry the core: the repair is the identity, so their hashes don't move", () => {
+    const names = templateList(on).filter((item) => item.loadable).map((item) => item.name);
+    expect(names.length).toBeGreaterThan(0);
+    const recipes = names.map((name) => {
+      const loaded = loadTemplate(on, name);
+      if (!loaded.ok) throw new Error(loaded.error);
+      return loaded.value;
+    });
+    recipes.push(blankDiamond(on));
+    for (const recipe of recipes) {
+      expect(withCore(recipe, on)).toBe(recipe);
+      const parsed = parseRecipe(fromText(recipe), opts);
+      expect(parsed.ok && parsed.value.value).toEqual(recipe);
+      expect(parsed.ok && recipeHash(parsed.value.value)).toBe(recipeHash(recipe, on));
+    }
+  });
+
+  test.skipIf(!fixture.ok)("a share link and an imported file both come back with the core", () => {
+    const recipe = makeRecipe({ facets: ["ERC20"], init: { kind: "steps", steps: [] } }, on);
+    const link = decodeShareLink(encodeShareLink(recipe).fragment, [on]);
+    expect(link.ok && link.value.recipe.facets).toEqual(["ERC20", "DiamondLoupeFacet", "ERC165Facet"]);
+    const exported = exportRecipeJson(recipe, on);
+    const imported = importFile(exported.text, exported.filename, [on]);
+    expect(imported.ok && imported.value.kind === "recipe" && imported.value.recipe.facets).toEqual(["ERC20", "DiamondLoupeFacet", "ERC165Facet"]);
   });
 });

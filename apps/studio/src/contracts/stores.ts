@@ -7,6 +7,7 @@
  * its stores (at module evaluation, or by a mounted component) follows the replacement: listeners are
  * called once with the new store's state and keep receiving its changes.
  */
+import { CORE_FACETS } from "@lattice-studio/core";
 import type {
   Address, Anchor, DeployPath, EditResult, Hex, Layout, ProblemCode, Project,
 } from "@lattice-studio/core";
@@ -119,6 +120,8 @@ export type InspectorView =
 export type SessionState = {
   /** Selected facet names. */
   selection: string[];
+  /** The core (the pinned diamond) is selected. Any card selection, Esc, clearing the selection or opening a project clears it. Not in history. */
+  coreSelected: boolean;
   /** What keyboard focus is on, as an anchor (a card, a pin, a problem's note). */
   focus: Anchor | null;
   tool: Tool;
@@ -142,6 +145,8 @@ export type SessionState = {
     drawer: "left" | "inspector" | null;
     /** Under 768 px: the pane the switcher shows. */
     narrow: NarrowPane;
+    /** The core cell at the bottom of the sheet, folded to one line. */
+    core: { collapsed: boolean };
   };
   /** Open dialogs, bottom first. */
   dialogs: DialogEntry[];
@@ -157,6 +162,7 @@ export type SessionState = {
 export function initialSession(): SessionState {
   return {
     selection: [],
+    coreSelected: false,
     focus: null,
     tool: "select",
     modes: { initOrder: false, moveTo: false, rows: null },
@@ -167,6 +173,7 @@ export function initialSession(): SessionState {
       console: { open: true, size: 124, tab: "log", maximized: false },
       drawer: null,
       narrow: "sheet",
+      core: { collapsed: false },
     },
     dialogs: [],
     chainId: null,
@@ -230,10 +237,12 @@ function untitledProject(): Project {
     recipe: {
       schemaVersion: 1,
       catalog: { tag: "", hash: `0x${"00".repeat(32)}` },
-      facets: [],
+      // Core only: the loupe and ERC-165 facets, nothing placed. The empty step plan keeps the automatic
+      // introspection step (recipe-ops' ruling), so even a bare diamond registers its ERC-165 flags.
+      facets: [...CORE_FACETS],
       owners: {},
       exclude: [],
-      init: { kind: "none" },
+      init: { kind: "steps", steps: [] },
     },
     layout: {} satisfies Layout,
     deploy: { path: DEFAULT_SETTINGS.defaultPath, entropy: `0x${"00".repeat(11)}`, scope: "every-chain" },
@@ -417,9 +426,15 @@ export const history: {
   subscribe: (listener) => relays.document.api.subscribe(listener),
 };
 
+/** Any write to the card selection deselects the core, unless the patch says otherwise (`core.select`). */
+function clearingCore(patch: Partial<SessionState>): Partial<SessionState> {
+  return "selection" in patch && !("coreSelected" in patch) ? { ...patch, coreSelected: false } : patch;
+}
+
 export const session: StoreAccess<SessionState> = {
   get: () => relays.session.api.getState(),
-  set: (patch) => relays.session.api.setState(patch),
+  set: (patch) =>
+    relays.session.api.setState(typeof patch === "function" ? (s) => clearingCore(patch(s)) : clearingCore(patch)),
   subscribe: (listener) => relays.session.api.subscribe(listener),
 };
 

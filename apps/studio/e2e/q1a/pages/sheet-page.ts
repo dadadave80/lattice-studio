@@ -31,7 +31,7 @@ export class SheetPage {
   }
 
   get blankDiamondButton(): Locator {
-    return this.root.getByRole("button", { name: "Blank diamond (core only)" });
+    return this.root.getByRole("button", { name: "Blank diamond", exact: true });
   }
 
   /** One of v1's recipe cards ("GovernedVault", "ERC20", "SafeDiamondCut"), spec L405. */

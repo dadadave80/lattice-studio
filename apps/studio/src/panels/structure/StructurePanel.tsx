@@ -1,14 +1,16 @@
 import type { Catalog, CommandRef, InitPlan, Recipe } from "@lattice-studio/core";
-import { isNotImplemented, planInit } from "@lattice-studio/core";
+import { isCoreOnly, isNotImplemented, planInit } from "@lattice-studio/core";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { commandState, runCommand, session, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
 import { isContextMenuKey, Tree, type TreeItemProps, type TreeNode } from "@/ui";
-import { activate, facetsToRemove, locate, moveStep, pressSpace, say, selectForMenu } from "./actions";
+import { CORE_ONLY } from "../core-copy";
+import { activate, facetsToRemove, isCoreMeta, locate, moveStep, pressSpace, say, selectCore, selectForMenu } from "./actions";
+import { CoreMenu } from "./CoreMenu";
 import { FacetMenu } from "./FacetMenu";
 import { ProblemMenu } from "./ProblemMenu";
 import { SelectorMenu } from "./SelectorMenu";
 import {
-  buildStructure, facetId, facetOfId, focusAfterRemove, INIT_ID, PROBLEMS_ID, type StructureMeta,
+  buildStructure, CORE_ID, facetId, facetOfId, focusAfterRemove, INIT_ID, isCoreId, PROBLEMS_ID, type StructureMeta,
 } from "./structure-model";
 import { StructureItem } from "./StructureItem";
 import styles from "./StructurePanel.module.css";
@@ -28,21 +30,23 @@ function sameList(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((value, i) => value === b[i]);
 }
 
-const DEFAULT_EXPANDED = [PROBLEMS_ID, INIT_ID];
+const DEFAULT_EXPANDED = [CORE_ID, PROBLEMS_ID, INIT_ID];
 
 /**
- * The Structure tab (spec L747, IR L90-L97): the sheet's accessible twin, as an APG tree of the placed facets
- * and their selectors, the problems and the init plan. Selection is the session's, so it syncs both ways with
- * the sheet; every action runs a command, so what can't run says why.
+ * The Structure tab (spec L747, IR L90-L97): the sheet's accessible twin, as an APG tree of the core, the placed
+ * facets and their selectors, the problems and the init plan. Selection is the session's, so it syncs both ways
+ * with the sheet (the Core group shows selected while the core is); every action runs a command, so what can't
+ * run says why.
  */
 export function StructurePanel() {
   const recipe = useDocument((s) => s.project.recipe);
   const catalog = useCatalog();
   const analysis = useAnalysis();
   const selection = useSession((s) => s.selection);
+  const coreSelected = useSession((s) => s.coreSelected);
   const plan = useMemo(() => initPlan(recipe, catalog), [recipe, catalog]);
   const structure = useMemo(() => buildStructure({ recipe, catalog, analysis, plan }), [recipe, catalog, analysis, plan]);
-  const selected = useMemo(() => selection.map(facetId), [selection]);
+  const selected = useMemo(() => [...(coreSelected ? [CORE_ID] : []), ...selection.map(facetId)], [selection, coreSelected]);
   const [expanded, setExpanded] = useState<string[]>(DEFAULT_EXPANDED);
   const [focused, setFocused] = useState<string | null>(null);
   const container = useRef<HTMLDivElement>(null);
@@ -51,15 +55,20 @@ export function StructurePanel() {
   const idBase = useId();
   const describedBy = useCallback((facet: string) => `${idBase}-${facet}-description`, [idBase]);
 
-  // Selected on the sheet: the facet takes the tree's Tab stop, unless someone is working in the tree.
+  // Selected on the sheet: the facet (or the core) takes the tree's Tab stop, unless someone is working in the tree.
   useEffect(() => {
-    const last = selection.at(-1);
+    const last = coreSelected ? CORE_ID : selection.at(-1);
     if (last === undefined) return;
     if (container.current?.contains(document.activeElement)) return;
-    setFocused(facetId(last));
-  }, [selection]);
+    setFocused(coreSelected ? CORE_ID : facetId(last));
+  }, [selection, coreSelected]);
 
   const onSelectedChange = (next: string[]) => {
+    // A core row selected on its own (a click, or Space) selects the core; in a range with cards it's skipped.
+    if (next.length > 0 && next.every(isCoreId)) {
+      selectCore("keys");
+      return;
+    }
     const facets = next.flatMap((id) => {
       const facet = facetOfId(id);
       return facet === null ? [] : [facet];
@@ -100,9 +109,10 @@ export function StructurePanel() {
   const remove = (meta: StructureMeta) => {
     const facets = facetsToRemove(meta, session.get().selection);
     const ref: CommandRef = { id: "facet.remove", args: { facets } };
+    // The core stays: `facet.remove` refuses and says why, so the focused row isn't leaving.
     const own = meta.kind === "facet" || meta.kind === "selector" ? meta.facet : null;
     // The focused row is leaving: focus goes to the next facet, else the previous one (spec L755).
-    if (own !== null && facets.includes(own) && commandState(ref, "keys").ok) {
+    if (own !== null && !isCoreMeta(meta) && facets.includes(own) && commandState(ref, "keys").ok) {
       const next = focusAfterRemove(structure.facets, new Set(facets.map(facetId)), facetId(own));
       if (next !== null) setFocused(next);
     }
@@ -145,6 +155,10 @@ export function StructurePanel() {
           if (isContextMenuKey(event)) selectForMenu(meta.facet);
         };
         break;
+      case "coreFacet":
+        props["aria-label"] = meta.label;
+        if (meta.description) props["aria-describedby"] = describedBy(meta.facet);
+        break;
       case "selector":
         props["aria-label"] = meta.view.label;
         props["data-state"] = meta.view.state;
@@ -158,6 +172,11 @@ export function StructurePanel() {
   const itemMenu = (node: TreeNode) => {
     const meta = structure.meta.get(node.id);
     switch (meta?.kind) {
+      case "core":
+      case "fallback":
+        return <CoreMenu />;
+      case "coreFacet":
+        return <CoreMenu facet={meta.facet} />;
       case "facet": {
         const contested = catalog?.facets
           .find((f) => f.name === meta.facet)
@@ -188,7 +207,7 @@ export function StructurePanel() {
 
   return (
     <div ref={container} className={styles.panel}>
-      {recipe.facets.length === 0 ? <p className={styles.empty}>No facets yet</p> : null}
+      {isCoreOnly(recipe) ? <p className={styles.empty}>{CORE_ONLY}</p> : null}
       <Tree
         label="Structure"
         className={styles.tree}
@@ -209,7 +228,8 @@ export function StructurePanel() {
         renderItem={(node) => {
           const meta = structure.meta.get(node.id);
           if (!meta) return node.label;
-          return <StructureItem meta={meta} descriptionId={meta.kind === "facet" ? describedBy(meta.facet) : undefined} />;
+          const facet = meta.kind === "facet" || meta.kind === "coreFacet" ? meta.facet : undefined;
+          return <StructureItem meta={meta} descriptionId={facet === undefined ? undefined : describedBy(facet)} />;
         }}
       />
     </div>

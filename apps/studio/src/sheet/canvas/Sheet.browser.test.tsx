@@ -1,3 +1,4 @@
+import { isCoreFacet } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
@@ -662,7 +663,8 @@ describe("locate, Back to content, minimap, auto-pan", () => {
 
   test("at 200%, every card auto-pan lands clear of the real tool strip, zoom readout and title block (2.4.11)", async () => {
     const catalog = fixtureCatalog();
-    const facets = catalog.facets.map((f) => f.name);
+    // Every facet but the core's two, which are never cards.
+    const facets = catalog.facets.map((f) => f.name).filter((name) => !isCoreFacet(name));
     const project = cardProject(catalog, facets, { columns: 5, rowPitch: 500, expanded: facets });
     await renderSheet({ project });
     await expect.poll(() => document.querySelector('[data-chrome="zoom-readout"]'), { timeout: 5000 }).not.toBeNull();
@@ -684,7 +686,10 @@ describe("locate, Back to content, minimap, auto-pan", () => {
       // only a card that fits is held to full clearance.
       const fits = card.height <= sheetBox.height - 48 && card.width <= sheetBox.width - 48;
       if (!fits) continue;
-      const floats = [...document.querySelectorAll(".react-flow__panel")].map((el) => el.getBoundingClientRect());
+      // The three floats this case is about. The core cell fills the bottom's middle too: a card as tall as the
+      // sheet can clear it only by squeezing between the zoom readout and the cell, where a wide card can't go, so
+      // the cell stands under spec L771's exception here; `CoreCell.browser.test.tsx` holds a card that fits clear of it.
+      const floats = [...document.querySelectorAll('.react-flow__panel:not([data-chrome="core-cell"])')].map((el) => el.getBoundingClientRect());
       const covered = floats.reduce((sum, f) => sum + overlapArea(card, f), 0);
       expect(covered, `${name}'s focused card lands under floating UI: ${JSON.stringify(card)}`).toBe(0);
     }

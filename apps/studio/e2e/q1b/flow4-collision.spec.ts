@@ -10,7 +10,7 @@
  * the pinned catalog, not a gap in the flow, so it's called out here rather than asserted against silently.
  */
 import { expect, test } from "../_support/fixtures.ts";
-import { runInPalette } from "../_support/keys.ts";
+import { region, runInPalette } from "../_support/keys.ts";
 import { seedProject } from "../_support/seed.ts";
 import { expectTier, viewportAt } from "../_support/viewports.ts";
 import { ChoosePerSelectorDialogPage } from "./pages/choose-per-selector-dialog.ts";
@@ -323,6 +323,10 @@ test.describe("Flow 4: resolve a collision", () => {
       await expectTier(page, "narrow");
 
       const note = await sheet.revealNote(COLLISION_CAPTION); // notes stay on the sheet at every width (IR "Sheet")
+      // F8's selection opens the Inspector drawer over the sheet's right side at this width, where the note can
+      // land; close it, as a pointer user would, before reaching for the note's buttons.
+      const inspectorToggle = region(page, "Title bar").getByRole("button", { name: "Inspector", exact: true });
+      if (await page.getByRole("region", { name: "Inspector", exact: true }).isVisible()) await inspectorToggle.click();
       await sheet.routeButton(note, "HyperlaneGatewayAdapter").click();
 
       // F8's own selection change opens the inspector overlay at this width, which (one drawer at a time)

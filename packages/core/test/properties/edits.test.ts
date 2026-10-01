@@ -7,8 +7,9 @@
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import {
-  analyze, clearOwner, excludeSelector, exportRecipeJson, flipPins, importFile, includeSelector, moveCards, placeFacet, recipeHash,
-  removeFacets, renameProject, routeSelector, setExpanded, setImmutable, type Catalog, type EditResult, type Hex4, type Project,
+  analyze, clearOwner, CORE_FACETS, excludeSelector, exportRecipeJson, flipPins, importFile, includeSelector, isCoreFacet, moveCards,
+  placeFacet, recipeHash, removeFacets, renameProject, routeSelector, setExpanded, setImmutable, type Catalog, type EditResult, type Hex4,
+  type Project,
 } from "../../src";
 import { checkProperty, contendersOf, hostileString, makeProject, makeRecipe, propertyCatalogs } from "../../src/testing";
 
@@ -139,7 +140,8 @@ for (const catalog of catalogs) {
       const outcome = checkProperty(
         `${catalog.lattice.tag}: edit sequences`,
         fc.property(fc.array(opArb, { minLength: 1, maxLength: 25 }), (ops) => {
-          let project = makeProject({ recipe: makeRecipe({}, catalog) });
+          // An empty sheet is a core-only recipe (as the untitled project is), with the empty step plan that keeps the automatic introspection step.
+          let project = makeProject({ recipe: makeRecipe({ facets: [...CORE_FACETS], init: { kind: "steps", steps: [] } }, catalog) });
           for (const op of ops) {
             const result = apply(project, catalog, op);
             if (result === undefined) continue;
@@ -161,8 +163,10 @@ for (const catalog of catalogs) {
               if (Object.values(before.owners).some((owner) => gone.includes(owner))) ownersRemoved++;
             }
             project = result.project;
+            // Every card has a layout entry and the core (always in the recipe) never has one.
             const placed = new Set(project.recipe.facets);
-            expect(Object.keys(project.layout).sort()).toEqual([...placed].sort());
+            expect(CORE_FACETS.every((name) => placed.has(name))).toBe(true);
+            expect(Object.keys(project.layout).sort()).toEqual([...placed].filter((name) => !isCoreFacet(name)).sort());
             const contenders = contendersOf(catalog, project.recipe.facets);
             for (const [selector, owner] of Object.entries(project.recipe.owners)) {
               expect([selector, contenders.get(selector as Hex4)?.includes(owner)]).toEqual([selector, true]);

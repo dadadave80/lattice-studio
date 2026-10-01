@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Catalog, LayoutMetrics, Project, Recipe } from "@lattice-studio/core";
-import { analyze, loadTemplate, planMechanismChange } from "@lattice-studio/core";
+import { analyze, isCoreFacet, loadTemplate, planMechanismChange } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeProject } from "@lattice-studio/core/testing";
 import { layoutSizes } from "@lattice-studio/tokens";
 import { applyMechanismOp, confirmAddressOp, remapLabels, remapProvenance, setAddressOp } from "./ops";
@@ -54,7 +54,7 @@ describe("applying Flow 17", () => {
     expect(result.summary).toBe("Use AccessControlDiamondCut");
     expect(next.recipe.facets).toContain("AccessControlDiamondCut");
     expect(next.recipe.facets).not.toContain("SafeDiamondCut");
-    expect(Object.keys(next.layout).sort()).toEqual([...next.recipe.facets].sort());
+    expect(Object.keys(next.layout).sort()).toEqual(next.recipe.facets.filter((name) => !isCoreFacet(name)).sort());
     // The newcomer took the old member's place, or the nearest free slot to it.
     const old = project.layout.SafeDiamondCut;
     const placed = next.layout.AccessControlDiamondCut;
@@ -123,7 +123,7 @@ describe("applying Flow 17", () => {
     const next = applyMechanismOp(change.value.next, catalog, metrics, "Use SafeDiamondCut")(project).project;
     const spots = Object.values(next.layout).map((p) => `${p.x},${p.y}`);
     expect(new Set(spots).size).toBe(spots.length);
-    expect(Object.keys(next.layout).sort()).toEqual([...next.recipe.facets].sort());
+    expect(Object.keys(next.layout).sort()).toEqual(next.recipe.facets.filter((name) => !isCoreFacet(name)).sort());
   });
 });
 

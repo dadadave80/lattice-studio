@@ -41,6 +41,17 @@ describe("catalog preview", () => {
     expect(place.mock.calls[0]?.[1]).toEqual({ facet: "ERC4626" });
   });
 
+  test("a core facet's Place on sheet is disabled with the reason: it's in every diamond already", async () => {
+    const place = spy("facet.place");
+    await renderWithStudio(<PreviewView view={{ kind: "preview", facet: "ERC165Facet" }} />, { project: project([], "preview-core") });
+    await expect.element(page.getByRole("heading", { level: 2, name: "ERC165Facet" })).toBeVisible();
+    const button = page.getByRole("button", { name: "Place on sheet" });
+    await expect.element(button).toHaveAttribute("aria-disabled", "true");
+    await expect.element(button).toHaveAccessibleDescription("Part of every diamond's core.");
+    button.element().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(place).not.toHaveBeenCalled();
+  });
+
   test("availability waits for a chain to be chosen", async () => {
     await renderWithStudio(<PreviewView view={{ kind: "preview", facet: "ERC20" }} />, { project: project([], "preview-nochain") });
     await expect.element(page.getByText("Choose a chain to see availability.")).toBeVisible();

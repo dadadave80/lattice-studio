@@ -4,6 +4,7 @@ export * from "./catalog";
 export * from "./chain";
 export * from "./commands";
 export * from "./console";
+export * from "./diamond";
 export * from "./hex";
 export * from "./init";
 export * from "./io";

@@ -95,6 +95,16 @@ describe("doc.subscribe", () => {
 });
 
 describe("subscriptions survive provideStores", () => {
+
+  test("a card selection deselects the core; core.select's own patch keeps it", () => {
+    session.set({ coreSelected: true });
+    session.set({ selection: ["ERC20"] });
+    expect(session.get().coreSelected).toBe(false);
+    session.set({ selection: [], coreSelected: true });
+    expect(session.get().coreSelected).toBe(true);
+    session.set(() => ({ selection: [] }));
+    expect(session.get().coreSelected).toBe(false);
+  });
   test("a listener attached to the minimal stores follows S1's stores", () => {
     const docNames: string[] = [];
     const chains: (number | null)[] = [];

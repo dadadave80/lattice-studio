@@ -50,7 +50,8 @@ describe("templateList", () => {
     if (!fixture.ok) return;
     const items = templateList(fixture.value);
     expect(items.filter((i) => i.loadable).map((i) => i.name)).toEqual(["GovernedVault", "ERC20", "SafeDiamondCut"]);
-    expect(items.find((i) => i.name === "GovernedVault")?.facets).toBe(14);
+    // Cards, not facets: GovernedVault places 14 facets, two of them the core (D18).
+    expect(items.find((i) => i.name === "GovernedVault")?.facets).toBe(12);
     expect(items.filter((i) => !i.loadable).map((i) => i.note)).toEqual([
       "Arrives in v1.1 · Needs its own factory (AccountFactory)",
       "Arrives in v1.1 · Needs its own factory (AccountFactory6900)",

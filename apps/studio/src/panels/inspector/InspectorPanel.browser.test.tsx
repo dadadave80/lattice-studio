@@ -1,5 +1,5 @@
 import type { Deployment, Project, Recipe } from "@lattice-studio/core";
-import { analyze, formatAddress, loadTemplate } from "@lattice-studio/core";
+import { analyze, CORE_FACETS, formatAddress, loadTemplate } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
@@ -16,8 +16,9 @@ afterEach(() => {
   clearInspectorFocus();
 });
 
+/** A project with the core (every recipe has it) and `facets` as its cards. */
 function project(facets: string[], id = "inspector-frame"): Project {
-  return makeProject({ id, name: "Frame test", recipe: makeRecipe({ facets }, fixtureCatalog()) });
+  return makeProject({ id, name: "Frame test", recipe: makeRecipe({ facets: [...CORE_FACETS, ...facets] }, fixtureCatalog()) });
 }
 
 /** GovernedVault plus ERC20Pausable, whose two selectors are seams GovernedVault already serves: it cuts nothing. */
@@ -131,6 +132,29 @@ describe("following the selection", () => {
     session.set({ selection: ["Receive"] });
     expect(inspectorView()).toEqual({ kind: "init" });
   });
+
+  test("selecting the core shows the Diamond view as the core, and a routed view gives way to it", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]), session: { selection: ["ERC20"] } });
+    await viewShown("facet");
+    await runCommand(commandRef("core.select"), "palette");
+    expect(session.get().selection).toEqual([]);
+    expect(session.get().coreSelected).toBe(true);
+    await viewShown("diamond");
+    await expect.element(page.getByRole("heading", { level: 2, name: "Core · the diamond's fixed part" })).toBeVisible();
+    await expect.element(page.getByRole("region", { name: "Core" })).toBeVisible();
+    // A view a command routed here gives way when the core is selected on its own.
+    setView({ kind: "preview", facet: "Governor" });
+    await viewShown("preview");
+    session.set({ coreSelected: false });
+    session.set({ coreSelected: true });
+    expect(inspectorView()).toBeNull();
+    await viewShown("diamond");
+    // The Init plan stays.
+    setView({ kind: "init" });
+    session.set({ coreSelected: false });
+    session.set({ coreSelected: true });
+    expect(inspectorView()).toEqual({ kind: "init" });
+  });
 });
 
 describe("commands", () => {
@@ -154,6 +178,19 @@ describe("commands", () => {
     const outcome = await runCommand(commandRef("inspector.show", { facet: "Governor" }), "console");
     expect(outcome.ok).toBe(false);
     expect(bufferedServices().log.at(-1)?.text).toBe("Governor isn't on the sheet.");
+  });
+
+  test("inspector.show on a core facet opens its Facet view without selecting it: the core is never a card", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project(["ERC20"]), session: { selection: ["ERC20"] } });
+    await runCommand(commandRef("inspector.show", { facet: "DiamondLoupeFacet" }), "menu");
+    expect(session.get().selection).toEqual(["ERC20"]);
+    expect(inspectorView()).toEqual({ kind: "facet", facet: "DiamondLoupeFacet" });
+    await viewShown("facet");
+    await expect.element(page.getByRole("heading", { level: 2, name: "DiamondLoupeFacet" })).toHaveFocus();
+    await expect.element(page.getByText("Core facet", { exact: true })).toBeVisible();
+    await runCommand(commandRef("inspector.focusSelectors", { facet: "ERC165Facet" }), "api");
+    expect(session.get().selection).toEqual(["ERC20"]);
+    expect(inspectorView()).toEqual({ kind: "facet", facet: "ERC165Facet", focus: "selectors" });
   });
 
   test("inspector.show without a facet opens the pane on the current view", async () => {
@@ -243,7 +280,8 @@ describe("keeping focus when an action inside replaces the view", () => {
     expect(document.querySelector('[data-view="facet"]')?.getAttribute("data-facet")).toBe("Receive");
     const remove = page.getByRole("button", { name: "Remove", exact: true });
     await remove.click();
-    await vi.waitFor(() => expect(doc.get().recipe.facets).toEqual(["ERC20"]));
+    // The edit normalizes the recipe to catalog order: what stays is ERC20 and the core.
+    await vi.waitFor(() => expect([...doc.get().recipe.facets].sort()).toEqual([...CORE_FACETS, "ERC20"].sort()));
     await vi.waitFor(() => expect(document.activeElement?.hasAttribute("data-inspector-heading")).toBe(true), { timeout: 5000 });
   });
 
@@ -293,21 +331,24 @@ describe("remounting only for another view", () => {
 });
 
 describe("cut plan footer", () => {
-  test("lists [00] ADD name, address and routed/total, with ⟂ while contested", async () => {
+  test("lists the core first, tagged fixed, then [02] ADD name, address and routed/total, with ⟂ while contested", async () => {
     await renderWithStudio(<InspectorPanel />, { project: project(["HyperlaneGatewayAdapter", "AxelarGatewayAdapter"]) });
     const cuts = page.getByRole("list", { name: "Cuts in order" });
     await expect.element(cuts).toBeVisible();
     const items = cuts.getByRole("listitem");
-    expect(items.elements().length).toBe(2);
+    expect(items.elements().length).toBe(4);
     // Text matchers take strings here: a RegExp from the test's realm doesn't survive into the matcher.
     const axelar = fixtureCatalog().facets.find((f) => f.name === "AxelarGatewayAdapter")?.release.address;
     if (!axelar) throw new Error("The fixture catalog lost AxelarGatewayAdapter.");
-    expect(items.nth(0).element().textContent).toBe(`[00]ADDAxelarGatewayAdapter${formatAddress(axelar)}7/9 selectors⟂contested`);
-    expect(items.nth(1).element().textContent).toMatch(/^\[01\]ADDHyperlaneGatewayAdapter0x.+10\/12 selectors⟂contested$/);
-    await expect.element(page.getByText("2 · cut order")).toBeVisible();
+    expect(items.nth(0).element().textContent).toMatch(/^\[00\]ADDDiamondLoupeFacet0x.+4\/4 selectorsfixed$/);
+    expect(items.nth(1).element().textContent).toMatch(/^\[01\]ADDERC165Facet0x.+1\/1 selectorfixed$/);
+    expect(items.nth(2).element().textContent).toBe(`[02]ADDAxelarGatewayAdapter${formatAddress(axelar)}7/9 selectors⟂contested`);
+    expect(items.nth(3).element().textContent).toMatch(/^\[03\]ADDHyperlaneGatewayAdapter0x.+10\/12 selectors⟂contested$/);
+    expect(cuts.element().querySelectorAll("[data-fixed]")).toHaveLength(2);
+    await expect.element(page.getByText("4 · core first")).toBeVisible();
   });
 
-  test("Copy plan as JSON copies the FacetCuts and says so", async () => {
+  test("Copy plan as JSON copies the FacetCuts, the core first, and says so", async () => {
     const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
     const p = project(["ERC20"]);
     await renderWithStudio(<InspectorPanel />, { project: p });
@@ -316,7 +357,7 @@ describe("cut plan footer", () => {
     const json = JSON.parse(String(writes.mock.calls[0]?.[0])) as { recipeHash: string; facetCuts: { facet: string }[] };
     const catalog = fixtureCatalog();
     expect(json.recipeHash).toBe(analyze(p.recipe, catalog).recipeHash);
-    expect(json.facetCuts.map((cut) => cut.facet)).toEqual(["ERC20"]);
+    expect(json.facetCuts.map((cut) => cut.facet)).toEqual(["DiamondLoupeFacet", "ERC165Facet", "ERC20"]);
     expect(bufferedServices().toast.at(-1)?.text).toBe("Copied plan");
   });
 
@@ -332,12 +373,31 @@ describe("cut plan footer", () => {
     expect(json.omitted).toEqual(["ERC20Pausable"]);
   });
 
-  test("an empty sheet has no plan to copy, and says why", async () => {
+  test("a core-only sheet cuts the core's two rows, and Copy plan as JSON copies them", async () => {
+    const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
     await renderWithStudio(<InspectorPanel />, { project: project([]) });
-    await expect.element(page.getByText("No cuts yet. Place facets to plan the cut.")).toBeVisible();
+    const cuts = page.getByRole("list", { name: "Cuts in order" });
+    await expect.element(cuts).toBeVisible();
+    expect(cuts.getByRole("listitem").elements().map((item) => item.textContent)).toEqual([
+      expect.stringMatching(/^\[00\]ADDDiamondLoupeFacet0x/),
+      expect.stringMatching(/^\[01\]ADDERC165Facet0x/),
+    ]);
+    await expect.element(page.getByText("2 · core first")).toBeVisible();
+    const button = page.getByRole("button", { name: "Copy plan as JSON" });
+    await expect.element(button).not.toHaveAttribute("aria-disabled");
+    await button.click();
+    await vi.waitFor(() => expect(writes).toHaveBeenCalledTimes(1));
+    const json = JSON.parse(String(writes.mock.calls[0]?.[0])) as { facetCuts: { facet: string }[]; omitted: string[] };
+    expect(json.facetCuts.map((cut) => cut.facet)).toEqual([...CORE_FACETS]);
+    expect(json.omitted).toEqual([]);
+  });
+
+  test("while the catalog loads, Copy plan as JSON says so", async () => {
+    await renderWithStudio(<InspectorPanel />, { project: project([]), catalog: null });
+    await expect.element(page.getByText("Loading the catalog…").first()).toBeVisible();
     const button = page.getByRole("button", { name: /Copy plan as JSON/ });
     await expect.element(button).toHaveAttribute("aria-disabled", "true");
-    await expect.element(button).toHaveAccessibleDescription("Place facets first");
+    await expect.element(button).toHaveAccessibleDescription("The catalog hasn't loaded yet · Wait for it to finish");
   });
 
   test("the address block reads the prediction's reason until there is one", async () => {
@@ -425,6 +485,6 @@ describe("narrow windows", () => {
   test("with nothing missing there is no Fill in bar", async () => {
     await renderWithStudio(<InspectorPanel />, { project: project(["Receive"]) });
     expect(document.querySelector("[data-narrow-fill-in]")).toBeNull();
-    expect(doc.get().recipe.facets).toEqual(["Receive"]);
+    expect(doc.get().recipe.facets).toEqual([...CORE_FACETS, "Receive"]);
   });
 });

@@ -1,4 +1,4 @@
-import { formatCount, recipeStats, toChecksum } from "@lattice-studio/core";
+import { formatCount, isCoreFacet, plural, toChecksum } from "@lattice-studio/core";
 import { useState } from "react";
 import type { SectionStatus } from "./copy";
 import { cutRows, problemStatus, worse, type CutRow } from "./model";
@@ -19,8 +19,14 @@ function checkText(row: CutRow, chainName: string): string {
   return "Not read yet";
 }
 
+/** "The core and 12 facets · 120 selectors": the core's two Adds lead every cut, so they're named, not counted. */
+function cutSize(plan: readonly { facet: string; selectors: readonly unknown[] }[]): string {
+  const selectors = plan.reduce((sum, entry) => sum + entry.selectors.length, 0);
+  return `The core and ${plural(plan.filter((entry) => !isCoreFacet(entry.facet)).length, "facet")} · ${plural(selectors, "selector")}`;
+}
+
 /**
- * What gets cut (spec L566, L855): "14 facets · 120 selectors", expandable to each facet with its pinned version,
+ * What gets cut (spec L566, L855): "The core and 12 facets · 120 selectors", expandable to each facet with its pinned version,
  * its release address in full, its selector count, the chain's codehash check and where the expected codehash comes
  * from (LatticeRegistry where it lists the version, else the catalog tag). A differing codehash blocks (NET-04).
  */
@@ -44,7 +50,7 @@ export function CutSection() {
         <p className={styles.muted}>Place facets to cut.</p>
       ) : (
         <details className={styles.disclosure} open={open} onToggle={(event) => setChosen(event.currentTarget.open)}>
-          <summary>{recipeStats(analysis, catalog).text}</summary>
+          <summary>{cutSize(analysis.plan)}</summary>
           <table className={styles.table} aria-label="Facets to cut">
             <thead>
               <tr>

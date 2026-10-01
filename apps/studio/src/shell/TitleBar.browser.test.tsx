@@ -163,6 +163,73 @@ describe("the App menu", () => {
     await userEvent.keyboard("{Escape}");
     await expect.element(page.getByRole("menu", { name: "App menu" })).not.toBeInTheDocument();
   });
+
+  test("the brand button reads ≡, the mark, then the name; the mark takes the button's ink, `text`, in both themes", async () => {
+    await renderWithStudio(<Shell />, { theme: "light" });
+    const brand = bar().getByRole("button", { name: "Lattice Studio", exact: true });
+    await expect.element(brand).toBeVisible();
+    const button = brand.element() as HTMLElement;
+    const glyph = button.querySelector("svg[data-icon='menu']") as SVGSVGElement;
+    const mark = button.querySelector("svg[data-logomark]") as SVGSVGElement;
+    expect(glyph).not.toBeNull();
+    expect(mark).not.toBeNull();
+    expect(mark.getAttribute("aria-hidden")).toBe("true");
+    expect(mark.querySelectorAll("path").length).toBe(3);
+    expect(mark.getBoundingClientRect().width).toBe(20);
+    expect(glyph.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(mark.nextSibling?.textContent).toBe("Lattice Studio");
+    // A probe in `text`, so the check follows the token and not a literal color.
+    const probe = document.createElement("span");
+    probe.style.color = "var(--lx-text)";
+    document.body.append(probe);
+    onCleanup(() => probe.remove());
+    const inks = () => ({
+      stroke: getComputedStyle(mark).stroke, color: getComputedStyle(button).color, text: getComputedStyle(probe).color,
+    });
+    const light = inks();
+    expect(light.stroke).toBe(light.color);
+    expect(light.color).toBe(light.text);
+    document.documentElement.dataset.theme = "dark";
+    // The button's color transitions (120 ms); wait for it to land on the dark ink before comparing.
+    await expect.poll(() => inks().color).toBe(inks().text);
+    const dark = inks();
+    expect(dark.stroke).toBe(dark.color);
+    expect(dark.color).not.toBe(light.color);
+  });
+
+  test("the brand button opens the menu by click and by keyboard", async () => {
+    await renderWithStudio(<Shell />);
+    const brand = bar().getByRole("button", { name: "Lattice Studio", exact: true });
+    const menu = () => page.getByRole("menu", { name: "App menu" });
+    await brand.click();
+    await expect.element(menu()).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(menu()).not.toBeInTheDocument();
+    (brand.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(menu()).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(menu()).not.toBeInTheDocument();
+  });
+
+  test("the compact tier keeps the mark and the name, and the hidden name adds no width", async () => {
+    await page.viewport(1000, 900);
+    try {
+      await renderWithStudio(<Shell />);
+      await expect.poll(() => document.querySelector("[data-layout]")?.getAttribute("data-layout")).toBe("narrow");
+      const brand = bar().getByRole("button", { name: "Lattice Studio", exact: true });
+      await expect.element(brand).toBeVisible();
+      const mark = (brand.element() as HTMLElement).querySelector("svg[data-logomark]") as SVGSVGElement;
+      expect(mark.getBoundingClientRect().width).toBe(20);
+      const wordmark = mark.parentElement as HTMLElement;
+      const hidden = wordmark.querySelector("span") as HTMLElement;
+      expect(hidden.textContent).toBe("Lattice Studio");
+      expect(hidden.getBoundingClientRect().width).toBeLessThanOrEqual(1);
+      expect(wordmark.getBoundingClientRect().width).toBe(20);
+    } finally {
+      await page.viewport(1440, 900);
+    }
+  });
 });
 
 describe("the other controls", () => {

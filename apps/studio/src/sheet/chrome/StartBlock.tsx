@@ -1,4 +1,4 @@
-import { templateList } from "@lattice-studio/core";
+import { isCoreOnly, templateList } from "@lattice-studio/core";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { focusSheet } from "@/a11y/focus";
 import { commandRef, runCommand, useCatalog, useCommandState, useDocument } from "@/contracts";
@@ -63,7 +63,8 @@ function useKeepFocusOnSheet(empty: boolean): void {
 
 /**
  * Start a diamond (spec L378, IR L108, Flows 1-2): on an empty sheet, in the card grid's place. Blank diamond
- * (core only), v1's three recipe cards, Browse all recipes, the hint and the tour line. Every choice runs a
+ * (the core, Receive, AccessControl and its cut), v1's three recipe cards, Browse all recipes, the hint and the tour
+ * line. Every choice runs a
  * command: `recipe.load` loads in place on an empty sheet and as a new project otherwise (spec L408), so the
  * block never decides that itself. A recipe this catalog can't load isn't offered.
  *
@@ -71,7 +72,7 @@ function useKeepFocusOnSheet(empty: boolean): void {
  * for the catalog: until the catalog loads it offers v1's three recipes, each saying why it can't load yet.
  */
 export function StartBlock() {
-  const empty = useDocument((s) => s.project.recipe.facets.length === 0);
+  const empty = useDocument((s) => isCoreOnly(s.project.recipe));
   const catalog = useCatalog();
   const platform = usePlatform();
   const recipes = useMemo((): readonly string[] => {

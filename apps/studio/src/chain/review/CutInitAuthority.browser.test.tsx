@@ -1,5 +1,5 @@
 import type { Address, Arg, Project } from "@lattice-studio/core";
-import { formatCount, recipeStats, toChecksum } from "@lattice-studio/core";
+import { formatCount, toChecksum } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
 import { getAnalysis } from "@/contracts";
 import { resetInitUi, setEnsLabel } from "@/panels/init/init-ui-store";
@@ -35,7 +35,8 @@ describe("What gets cut", () => {
   test("summarizes the cut and expands to each facet with its version, full address and LatticeRegistry", async () => {
     const { dialog } = await renderReview({ project: templateProject("ERC20") });
     const cut = section("What gets cut");
-    const text = recipeStats(getAnalysis(), deployableCatalog()).text;
+    // The core's two Adds are named, not counted: ERC20's template cuts ERC20 and Receive beside them.
+    const text = "The core and 2 facets · 15 selectors";
     await expect.element(cut.getByText(text)).toBeVisible();
     await expect.element(cut.getByText("Ready", { exact: true })).toBeVisible();
     await cut.getByText(text).click();
@@ -56,7 +57,7 @@ describe("What gets cut", () => {
     const chain = chainWith({ state: { [SEPOLIA]: { registry: { records: {} } } } });
     await renderReview({ project: templateProject("ERC20"), chain });
     const cut = section("What gets cut");
-    await cut.getByText(recipeStats(getAnalysis(), deployableCatalog()).text).click();
+    await cut.getByText("The core and 2 facets · 15 selectors").click();
     const row = cut.getByRole("row").filter({ hasText: "ERC20 " }).first();
     await expect.element(row.getByText("catalog v0.4.0")).toBeVisible();
   });

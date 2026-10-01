@@ -3,12 +3,12 @@
  * namespace, with the keyboard, a double-click or a drag (Flow 3 routes 1-2).
  */
 import type { Facet } from "@lattice-studio/core";
-import { plural } from "@lattice-studio/core";
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { isCoreFacet, plural } from "@lattice-studio/core";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { hasCachedIndex, retryCatalog } from "@/catalog";
 import {
-  announce, chainService, isPlaceholder, runCommand, session, startCatalogDrag, useCatalogStatus, useDocument, useOnline,
-  useSession, type ChainInfo, type ChainReadiness,
+  announce, chainService, commandRef, isPlaceholder, log, runCommand, session, startCatalogDrag, useCatalogStatus,
+  useDocument, useOnline, useSession, type ChainInfo, type ChainReadiness,
 } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { Checkbox } from "@/ui/fields/Checkbox";
@@ -20,6 +20,7 @@ import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
 import { MenuItem } from "@/ui/overlays/MenuItem";
 import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
 import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
+import { CORE_FACET_REASON } from "../core-copy";
 import { AreaRow, FacetRow } from "./CatalogRow";
 import { areaOfNodeId, buildCatalogNodes, chainAvailability, isAreaNodeId, placedCountByArea } from "./catalog-tree";
 import { registerSearchFocus } from "./search-focus";
@@ -38,6 +39,12 @@ const CHOOSE_A_CHAIN = "Choose a chain first.";
 
 function githubUrl(commit: string, facet: Facet): string {
   return `${LATTICE_REPO}/blob/${commit}/${facet.source}`;
+}
+
+/** Says why a key or a double-click on a core facet's row placed nothing: in the console and the status region. */
+function say(text: string): void {
+  log({ tag: "Note", text });
+  announce(text);
 }
 
 /**
@@ -175,6 +182,8 @@ export function CatalogPanel() {
   /** A placed facet selected here selects its card, as the Structure tree does; anything else stays local. */
   const onSelectedChange = (next: string[]) => {
     const id = next.at(-1);
+    // A core facet's row is disabled, so the tree never selects it; it's never a card either way.
+    if (id !== undefined && isCoreFacet(id)) return;
     if (id !== undefined && placedSet.has(id)) {
       setLocal(null);
       const current = session.get().selection;
@@ -186,6 +195,11 @@ export function CatalogPanel() {
 
   const onItemClick = (node: TreeNode) => {
     if (isAreaNodeId(node.id)) return;
+    // A core facet's row: a click selects the core (the row itself is disabled, so it never places or selects).
+    if (isCoreFacet(node.id)) {
+      void runCommand(commandRef("core.select"), "button");
+      return;
+    }
     if (placedSet.has(node.id)) {
       session.set({ selection: [node.id] });
       if (!isPlaceholder("sheet.locate")) void runCommand({ id: "sheet.locate", args: { facet: node.id } }, "api");
@@ -195,12 +209,22 @@ export function CatalogPanel() {
   };
 
   const onActivate = (node: TreeNode) => {
-    if (isAreaNodeId(node.id)) return;
+    if (isAreaNodeId(node.id) || isCoreFacet(node.id)) return;
     void runCommand({ id: "facet.place", args: { facet: node.id } }, "button");
   };
 
+  // The tree never activates a disabled row, so Enter on a core facet's row would place nothing in silence: say why.
+  const onItemKeyDown = (event: KeyboardEvent<HTMLElement>, node: TreeNode) => {
+    if (event.key !== "Enter" || !isCoreFacet(node.id) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    event.preventDefault();
+    say(CORE_FACET_REASON);
+  };
+
   const itemProps = (node: TreeNode): TreeItemProps => {
-    if (isAreaNodeId(node.id) || placedSet.has(node.id)) return {};
+    if (isAreaNodeId(node.id)) return {};
+    // No drag either: the tree ignores a double-click on a disabled row, so the row says why itself.
+    if (isCoreFacet(node.id)) return { onDoubleClick: () => say(CORE_FACET_REASON) };
+    if (placedSet.has(node.id)) return {};
     return {
       // Vertical swipes still scroll the list; a sideways touch drag reaches the sheet (spec L417).
       className: styles.draggable,
@@ -219,7 +243,13 @@ export function CatalogPanel() {
     const facet = facetByName.get(node.id);
     if (!facet) return node.label;
     return (
-      <FacetRow facet={facet} placed={placedSet.has(node.id)} availability={availability?.get(node.id)} chainName={chainName} />
+      <FacetRow
+        facet={facet}
+        placed={placedSet.has(node.id)}
+        core={isCoreFacet(node.id)}
+        availability={availability?.get(node.id)}
+        chainName={chainName}
+      />
     );
   };
 
@@ -229,7 +259,14 @@ export function CatalogPanel() {
     if (!facet || !catalog) return null;
     return (
       <>
-        <MenuCommandItem command={{ id: "facet.place", args: { facet: node.id } }} label="Place" />
+        {isCoreFacet(node.id) ? (
+          <>
+            <MenuItem label="Place" onSelect={() => undefined} disabledReason={CORE_FACET_REASON} />
+            <MenuCommandItem command={commandRef("core.select")} />
+          </>
+        ) : (
+          <MenuCommandItem command={{ id: "facet.place", args: { facet: node.id } }} label="Place" />
+        )}
         <MenuCommandItem command={{ id: "catalog.preview", args: { facet: node.id } }} label="Preview" />
         <MenuSeparator />
         <MenuItem
@@ -294,6 +331,7 @@ export function CatalogPanel() {
           selected={selected}
           onSelectedChange={onSelectedChange}
           onActivate={onActivate}
+          onItemKeyDown={onItemKeyDown}
           onItemClick={onItemClick}
           itemProps={itemProps}
           itemMenu={itemMenu}

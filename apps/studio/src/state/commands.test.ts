@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Catalog, CommandId, CommandRef, ConsoleLine, Hex4, Project } from "@lattice-studio/core";
-import { analyze, blankDiamond, cardSize, contestedSelectors, loadTemplate, tidy } from "@lattice-studio/core";
+import { analyze, blankDiamond, cardSize, contestedSelectors, CORE_FACETS, isCoreFacet, loadTemplate, tidy } from "@lattice-studio/core";
 import { makeCatalog, makeFacet, makeProject, makeRecipe, sel } from "@lattice-studio/core/testing";
 import {
   command, commandState, defineCommands, doc, getAnalysis, getCommand, layoutMetrics, runCommand, session, setCatalogStatus,
@@ -46,7 +46,7 @@ function withFacets(facets: string[], extra: Partial<Project> = {}): Project {
  * Stands in for S4b's `sheet.zoomFit` or `sheet.locate` (a placeholder under `bun test`) and records each run's
  * arguments. The kit's `dispose()` puts the placeholder back.
  */
-function fakeSheetCommand(id: "sheet.zoomFit" | "sheet.locate"): CommandArgs[] {
+function fakeSheetCommand(id: "sheet.zoomFit" | "sheet.locate" | "core.select"): CommandArgs[] {
   const runs: CommandArgs[] = [];
   defineCommands([command<CommandArgs>({
     id, title: () => id, category: "Sheet", enabled: () => ({ ok: true }), run: (_ctx, args) => void runs.push(args),
@@ -126,10 +126,24 @@ describe("facet.place", () => {
     const lines = await run("facet.place", { facet: "ERC20" });
     expect(lines[0]).toBe("Placed ERC20 · 9 selectors · erc7201:lattice.storage.ERC20");
     expect(lines.length).toBeGreaterThan(1);
-    expect(doc.get().recipe.facets).toEqual(["ERC20"]);
+    // The core is in every recipe; ERC20 is the one card.
+    expect(doc.get().recipe.facets).toEqual(["ERC20", ...CORE_FACETS]);
     expect(session.get().selection).toEqual(["ERC20"]);
     expect(doc.state().undoLabel).toBe("Placed ERC20");
     expect(bufferedServices().announce.at(-1)?.[0]).toBe(lines[0]);
+  });
+
+  test("a core facet: says it's in every diamond's core, selects the core, changes nothing", async () => {
+    start();
+    const selects = fakeSheetCommand("core.select");
+    const lines = await run("facet.place", { facet: "DiamondLoupeFacet" });
+    expect(lines).toEqual(["DiamondLoupeFacet is part of every diamond's core."]);
+    expect(selects).toHaveLength(1);
+    expect(doc.get().recipe.facets).toEqual([...CORE_FACETS]);
+    expect(doc.get().layout).toEqual({});
+    expect(doc.state().canUndo).toBe(false);
+    expect(bufferedServices().announce.at(-1)?.[0]).toBe("DiamondLoupeFacet is part of every diamond's core.");
+    expect(await run("facet.place", { facet: "ERC165Facet" })).toEqual(["ERC165Facet is part of every diamond's core."]);
   });
 
   test("already placed: selects it and says so", async () => {
@@ -212,14 +226,15 @@ describe("facet.place", () => {
     start();
     await settle();
     const before = JSON.stringify(doc.get());
-    const names = kit.catalog.facets.slice(0, 30).map((f) => f.name);
+    const names = kit.catalog.facets.map((f) => f.name).filter((name) => !isCoreFacet(name)).slice(0, 30);
+    const cards = (): number => doc.get().recipe.facets.filter((name) => !isCoreFacet(name)).length;
     for (const facet of names) await run("facet.place", { facet });
-    expect(doc.get().recipe.facets).toHaveLength(30);
+    expect(cards()).toBe(30);
     for (let i = 0; i < 30; i++) await run("history.undo");
     expect(JSON.stringify(doc.get())).toBe(before);
     expect(doc.state().canUndo).toBe(false);
     for (let i = 0; i < 30; i++) await run("history.redo");
-    expect(doc.get().recipe.facets).toHaveLength(30);
+    expect(cards()).toBe(30);
   });
 
   test("a new card is sized from the recipe after placement, so it can't grow over the card below (spec L425, L479)", async () => {
@@ -278,6 +293,21 @@ describe("facet.remove", () => {
     expect(reason("facet.remove", { facets: [] })).toBe("Select a facet to remove");
     expect(await run("facet.remove", { facets: ["ERC20"] })).toEqual(["ERC20 isn't on the sheet."]);
     expect(getCommand("facet.remove").console?.parse(["erc4626"])).toEqual({ ok: true, value: { facets: ["ERC4626"] } });
+  });
+
+  test("the core stays: disabled when every name is the core's; a mixed list removes the cards and skips the core", async () => {
+    start(withFacets(["ERC20", "Receive", ...CORE_FACETS]));
+    expect(reason("facet.remove", { facets: ["DiamondLoupeFacet"] })).toBe("DiamondLoupeFacet is the diamond's core and stays");
+    expect(reason("facet.remove", { facets: ["ERC165Facet", "DiamondLoupeFacet"] })).toBe("ERC165Facet is the diamond's core and stays");
+    expect(reason("facet.remove", { facets: ["ERC165Facet", "ERC4626"] })).toBe("ERC4626 isn't on the sheet.");
+    session.set({ selection: ["ERC20"] });
+    const lines = await run("facet.remove", { facets: ["DiamondLoupeFacet", "ERC20"] });
+    expect(lines[0]).toBe("Removed ERC20.");
+    expect(doc.state().undoLabel).toBe("Removed ERC20 (DiamondLoupeFacet is the diamond's core and stays)");
+    expect(doc.get().recipe.facets).toEqual(["Receive", ...CORE_FACETS]);
+    // One card went, so no toast; it leaves the selection.
+    expect(bufferedServices().toast).toEqual([]);
+    expect(session.get().selection).toEqual([]);
   });
 });
 
@@ -367,20 +397,21 @@ describe("recipes", () => {
     start();
     const id = doc.get().id;
     const lines = await run("recipe.load", { name: "GovernedVault" });
-    expect(lines).toEqual(["Loaded GovernedVault · 14 facets · 120 selectors · from script/base/defi/DeployGovernedVault.s.sol."]);
+    // 14 facets in the recipe, 12 of them cards: the line and the layout count cards (D18), the recipe keeps all 14.
+    expect(lines).toEqual(["Loaded GovernedVault · 12 facets · 120 selectors · from script/base/defi/DeployGovernedVault.s.sol."]);
     expect(doc.get().id).toBe(id);
     expect(doc.get().recipe.facets).toHaveLength(14);
-    expect(Object.keys(doc.get().layout)).toHaveLength(14);
+    expect(Object.keys(doc.get().layout)).toHaveLength(12);
     expect(doc.state().undoLabel).toBe("Loaded GovernedVault");
     await run("history.undo");
-    expect(doc.get().recipe.facets).toEqual([]);
+    expect(doc.get().recipe.facets).toEqual([...CORE_FACETS]);
   });
 
   test("a recipe load brings a tidied layout, and the view fits (spec L409)", async () => {
     start();
     const fits = fakeSheetCommand("sheet.zoomFit");
     await run("recipe.load", { name: "GovernedVault" });
-    expect(Object.keys(doc.get().layout)).toHaveLength(14);
+    expect(Object.keys(doc.get().layout)).toHaveLength(12);
     expect(doc.get().layout).toEqual(tidiedFromScratch());
     expect(fits).toHaveLength(1);
 
@@ -418,7 +449,8 @@ describe("recipes", () => {
 
   test("the Blank diamond loads by name; recipes that don't load in v1 say why", async () => {
     start();
-    expect(await run("recipe.load", { name: "Blank diamond" })).toEqual([expect.stringMatching(/^Loaded Blank diamond · 5 facets · \d+ selectors\.$/)]);
+    // Five facets, three of them cards (Receive, AccessControl, AccessControlDiamondCut).
+    expect(await run("recipe.load", { name: "Blank diamond" })).toEqual([expect.stringMatching(/^Loaded Blank diamond · 3 facets · \d+ selectors\.$/)]);
     expect(doc.get().recipe).toEqual(blankDiamond(kit.catalog));
     expect(reason("recipe.load", { name: "Account" })).toBe("Account arrives in v1.1 and needs its own factory (AccountFactory).");
     expect(reason("recipe.load", { name: "Nope" })).toBe("‘Nope’ isn't a recipe in Lattice fixture.");

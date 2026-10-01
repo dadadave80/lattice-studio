@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ConsoleLine, Problem } from "@lattice-studio/core";
+import { CORE_FACETS } from "@lattice-studio/core";
 import { loadFixtureCatalog } from "@lattice-studio/core/testing";
 import { scriptChainIds } from "./chains";
 import { filterEntries, isFiltering, matchesQuery, parseQuery, showingText } from "./filter";
-import { findOnSheet, findSummary, firstAnchor, foundFacets } from "./find";
+import { findOnSheet, findSummary, firstAnchor, foundCore, foundFacets } from "./find";
 import { changedLines } from "./line-diff";
 import {
   appendLine, clearLog, flushLogPersistence, LOG_CAP, LOG_STORAGE_KEY, logEntries, resetConsoleLog, restoreLog, setKeepLog,
@@ -217,6 +218,30 @@ describe("find", () => {
     expect(firstAnchor(none)).toBeNull();
     expect(findSummary(none, placed)).toBe("Nothing on the sheet matches ‘zzz’.");
   });
+
+  test("a match on the core alone selects the core: nothing enters the selection", () => {
+    const withCore = [...placed, ...CORE_FACETS];
+    const loupe = findOnSheet("loupe", withCore, catalog.value);
+    expect(loupe.facets).toEqual(["DiamondLoupeFacet"]);
+    expect(foundFacets(loupe, withCore)).toEqual([]);
+    expect(foundCore(loupe)).toBe(true);
+    expect(firstAnchor(loupe)).toEqual({ kind: "facet", facet: "DiamondLoupeFacet" });
+    expect(findSummary(loupe, withCore)).toBe("Found 1 facet matching ‘loupe’. Selected the core.");
+    const supports = findOnSheet("0x01ffc9a7", withCore, catalog.value);
+    expect(firstAnchor(supports)).toEqual({ kind: "selector", selector: "0x01ffc9a7", facet: "ERC165Facet" });
+    expect(findSummary(supports, withCore)).toBe("Found 1 pin matching ‘0x01ffc9a7’: `supportsInterface · 0x01ffc9a7` on ERC165Facet. Selected the core.");
+  });
+
+  test("a match on cards and the core selects and locates the cards; the core is counted, never selected", () => {
+    // The two token facets: an adapter's pin matches "erc" too, which isn't the point here.
+    const withCore = ["ERC20", "ERC4626", ...CORE_FACETS];
+    const erc = findOnSheet("erc", withCore, catalog.value);
+    expect(erc.facets).toEqual(["ERC20", "ERC4626", "ERC165Facet"]);
+    expect(foundFacets(erc, withCore)).toEqual(["ERC20", "ERC4626"]);
+    expect(foundCore(erc)).toBe(true);
+    expect(firstAnchor(erc)).toEqual({ kind: "facet", facet: "ERC20" });
+    expect(findSummary(erc, withCore)).toMatch(/^Found 3 facets.* matching ‘erc’.*\. Selected ERC20 and ERC4626\.$/);
+  });
 });
 
 describe("problems", () => {
@@ -249,6 +274,8 @@ describe("summary (spec L376-L389)", () => {
   const safe = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F" as const;
 
   test("one state per row of the table", () => {
+    // No cards on the sheet: the core is always there, so the sheet is never empty, only core-only.
+    expect(EMPTY_SUMMARY).toBe("Core only");
     expect(consoleSummary({ ...base, facets: 0 })).toEqual({ kind: "empty", text: EMPTY_SUMMARY, accent: false });
     expect(consoleSummary(base)).toEqual({ kind: "clear", text: "No problems", accent: false });
     expect(consoleSummary({ ...base, blockers: 2 })).toEqual({ kind: "problems", text: "2 blockers", accent: true });

@@ -2,6 +2,7 @@
  * PA L77: "Seam pins, the SEM-01 note, and the Move to… crosshair" has no board. Three small scenes, built from
  * the design system and the nearest drawn boards (the facet card, the collision note, and the sheet's tools).
  */
+import { withCore } from "@lattice-studio/core";
 import { beforeAll, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
 import { CardSheet } from "@/sheet/card/testing/CardSheet";
@@ -66,7 +67,9 @@ describe.each(["dark", "light"] as const)("provisional: the SEM-01 note (%s)", (
 describe("provisional: the Move to… crosshair (dark)", () => {
   test("M starts it; the crosshair and its ghost show over the sheet", async () => {
     const ID = "provisional-move-to";
-    const project = sheetProject(4, { id: ID });
+    // The recipe carries the core, as every project does once parsed; the core is never a card.
+    const cards = sheetProject(4, { id: ID });
+    const project = { ...cards, recipe: withCore(cards.recipe, catalog) };
     await renderInteractSheet({ project, session: { viewports: { [ID]: { x: 60, y: 80, zoom: 1 } } } });
     const [a] = project.recipe.facets as [string];
     session.set({ selection: [a] });

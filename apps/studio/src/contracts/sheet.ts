@@ -6,7 +6,7 @@
  *   marquee and Move to… ghost): components S4b renders as children of `<ReactFlow>`, in `order`, so they
  *   can use React Flow's hooks. `order` is DOM order and so Tab order (spec L752: tool strip, notes, title
  *   block): 1 Start block, 2 tool strip and zoom readout, 10 notes, 20 interaction overlays, 28 init-order
- *   chip and legend, 30 title block. `ViewportPortal` content lands before every `Panel` in the DOM whatever
+ *   chip and legend, 30 title block, 32 core cell (its traces draw in their own SVG at z 3). `ViewportPortal` content lands before every `Panel` in the DOM whatever
  *   its order, so the notes are a plain layer that follows the viewport, not a portal.
  * - **Node and edge types** (S4a's facet card, S4c's traces and ties): registered at module evaluation;
  *   S4b reads `sheetNodeTypes()` and `sheetEdgeTypes()` once, at its own module scope, after `discover`

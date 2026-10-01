@@ -1,3 +1,4 @@
+import { CORE_FACETS } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
@@ -121,14 +122,75 @@ describe("Catalog tree keys and activation", () => {
 
   test("Enter on an already-placed facet locates it instead of placing it again", async () => {
     const catalog = fixtureCatalog();
-    const project = makeProject({ recipe: makeRecipe({ facets: ["ERC20"] }, catalog) });
+    const project = makeProject({ recipe: makeRecipe({ facets: [...CORE_FACETS, "ERC20"] }, catalog) });
     await renderWithStudio(<CatalogPanel />, { project });
     await typeQuery("erc20");
     await expect.poll(() => row("ERC20")).not.toBeNull();
     await clickRow("ERC20");
     await userEvent.keyboard("{Enter}");
-    expect(doc.get().recipe.facets).toEqual(["ERC20"]);
+    expect(doc.get().recipe.facets).toEqual([...CORE_FACETS, "ERC20"]);
     expect(bufferedServices().log.some((l) => l.text === "ERC20 is already on the sheet.")).toBe(true);
+  });
+});
+
+describe("Catalog core rows (DiamondLoupeFacet, ERC165Facet)", () => {
+  const project = () => makeProject({ recipe: makeRecipe({ facets: [...CORE_FACETS, "ERC20"] }, fixtureCatalog()) });
+  const REASON = "Part of every diamond's core.";
+
+  test("a core facet's row is disabled with the reason and wears the Core chip", async () => {
+    await renderWithStudio(<CatalogPanel />, { project: project() });
+    await typeQuery("loupe");
+    await expect.poll(() => row("DiamondLoupeFacet")).not.toBeNull();
+    const loupe = row("DiamondLoupeFacet");
+    expect(loupe?.getAttribute("aria-disabled")).toBe("true");
+    await expect.element(page.getByRole("treeitem", { name: /^DiamondLoupeFacet/ })).toHaveAccessibleDescription(REASON);
+    expect(loupe?.textContent).toContain("Core");
+    expect(loupe?.textContent).not.toContain("On sheet");
+  });
+
+  test("Enter and a double-click place nothing and say why; no drag starts", async () => {
+    await renderWithStudio(<CatalogPanel />, { project: project() });
+    await typeQuery("erc165");
+    await expect.poll(() => row("ERC165Facet")).not.toBeNull();
+    const target = row("ERC165Facet");
+    if (!target) throw new Error("ERC165Facet row not found");
+    target.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(bufferedServices().log.at(-1)?.text).toBe(REASON);
+    expect(bufferedServices().announce.at(-1)?.[0]).toBe(REASON);
+    target.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    expect(bufferedServices().log.filter((l) => l.text === REASON)).toHaveLength(2);
+    const drags: (CatalogDrag | null)[] = [];
+    onCleanup(subscribeCatalogDrag((drag) => drags.push(drag)));
+    target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 13, clientX: 10, clientY: 10, button: 0 }));
+    expect(drags).toEqual([]);
+    expect(doc.get().recipe.facets).toEqual([...CORE_FACETS, "ERC20"]);
+    expect(session.get().selection).toEqual([]);
+  });
+
+  test("a click selects the core, never the row", async () => {
+    await renderWithStudio(<CatalogPanel />, { project: project(), session: { selection: ["ERC20"] } });
+    await typeQuery("loupe");
+    await expect.poll(() => row("DiamondLoupeFacet")).not.toBeNull();
+    row("DiamondLoupeFacet")?.click();
+    await expect.poll(() => session.get().coreSelected).toBe(true);
+    expect(session.get().selection).toEqual([]);
+    expect(row("DiamondLoupeFacet")?.getAttribute("aria-selected")).toBe("false");
+    expect(bufferedServices().announce.at(-1)?.[0]).toBe("Selected the core.");
+  });
+
+  test("its menu: Place disabled with the reason, Select the core, Preview and Open source on GitHub", async () => {
+    await renderWithStudio(<CatalogPanel />, { project: project() });
+    await typeQuery("loupe");
+    await expect.poll(() => row("DiamondLoupeFacet")).not.toBeNull();
+    row("DiamondLoupeFacet")?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    const place = page.getByRole("menuitem", { name: "Place" });
+    await expect.element(place).toHaveAttribute("aria-disabled", "true");
+    await expect.element(place).toHaveAccessibleDescription(REASON);
+    await expect.element(page.getByRole("menuitem", { name: "Preview" })).toBeVisible();
+    await expect.element(page.getByRole("menuitem", { name: "Open source on GitHub" })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Select the core" }).click();
+    await expect.poll(() => session.get().coreSelected).toBe(true);
   });
 });
 
@@ -402,12 +464,13 @@ describe("Catalog coach mark (spec L400)", () => {
 });
 
 describe("Catalog areas", () => {
-  test("an area folder shows how many of its facets are on the sheet", async () => {
+  test("an area folder shows how many of its facets are on the sheet; the Diamond area counts the core's", async () => {
     const catalog = fixtureCatalog();
-    const project = makeProject({ recipe: makeRecipe({ facets: ["ERC20"] }, catalog) });
+    const project = makeProject({ recipe: makeRecipe({ facets: [...CORE_FACETS, "ERC20"] }, catalog) });
     await renderWithStudio(<CatalogPanel />, { project });
     await expect.poll(() => row(areaNodeId("tokens"))?.textContent).toContain("1 on sheet");
     await expect.poll(() => row(areaNodeId("access"))?.textContent).toContain("0 on sheet");
+    await expect.poll(() => row(areaNodeId("diamond"))?.textContent).toContain("2 on sheet");
   });
 });
 

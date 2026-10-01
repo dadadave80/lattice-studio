@@ -71,6 +71,12 @@ export type CardView = {
   name: string;
   /** Connections and problems in words, without the selection state (see `describeCard`). */
   connections: string;
+  /** Selectors routed to this card: what its ground glyph counts and its trace carries. */
+  routed: number;
+  /** Selectors the facet exports. */
+  exported: number;
+  /** The diamond's cut facet (family "upgrade"): its glyph says so and its trace ends on the core's CUT pad. */
+  cut: boolean;
 };
 
 /** The part of the analysis one card reads: a card re-renders only when this changes (spec L825). */
@@ -336,10 +342,32 @@ export function cardConnections(args: {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
 }
 
-/** The description the card's group carries: connections, then the selection state (spec L745). */
-export function describeCard(view: Pick<CardView, "connections">, selected: boolean): string {
+/** "7 of 9 selectors routed to the diamond.": what the ground glyph says, in words. */
+export function routedSentence(routed: number, exported: number): string {
+  return `${routed} of ${exported} ${exported === 1 ? "selector" : "selectors"} routed to the diamond.`;
+}
+
+/**
+ * The description the card's group carries: connections, the selectors routed to the diamond, then the selection
+ * state, last, so a check on the selection can anchor on the end (spec L745).
+ */
+export function describeCard(view: Pick<CardView, "connections" | "routed" | "exported">, selected: boolean): string {
   const selection = selected ? "Selected." : "Not selected.";
-  return view.connections ? `${view.connections} ${selection}` : selection;
+  const routed = routedSentence(view.routed, view.exported);
+  return view.connections ? `${view.connections} ${routed} ${selection}` : `${routed} ${selection}`;
+}
+
+/** The glyph's count: "9" when every export is routed here, "7/9" when some go elsewhere, "0/3" when none do. */
+export function groundCount(routed: number, exported: number): string {
+  return routed === exported ? String(routed) : `${routed}/${exported}`;
+}
+
+/** The glyph's state: every export routed here, some, or none (a dashed stem ending in ✕, and never a trace). */
+export type GroundState = "routed" | "partial" | "none";
+
+export function groundState(routed: number, exported: number): GroundState {
+  if (routed === 0) return "none";
+  return routed === exported ? "routed" : "partial";
 }
 
 /**
@@ -406,6 +434,9 @@ export function cardView(input: CardInputs): CardView {
     count: formatCount(routedHere, all.length),
     name: cardName(facet.name, all),
     connections: cardConnections({ facet, catalog, placed, slice, all, chips }),
+    routed: routedHere,
+    exported: all.length,
+    cut: facet.family === "upgrade",
   };
 }
 

@@ -13,7 +13,8 @@ export const NO_ADDRESS = "—";
 export const OFFLINE_MARK = "offline";
 /** Spec L378, IR L108: the Start block. */
 export const START_A_DIAMOND = "Start a diamond";
-export const BLANK_DIAMOND_LABEL = "Blank diamond (core only)";
+/** Every diamond has the core; the Blank diamond adds Receive, AccessControl and AccessControlDiamondCut. */
+export const BLANK_DIAMOND_LABEL = "Blank diamond";
 export const BROWSE_ALL_RECIPES = "Browse all recipes";
 /** Spec L378: the hint under the Start block; the keys follow the platform. */
 export function startHint(paletteKeys: string): string {

@@ -10,6 +10,7 @@ import {
   formatCutIndex,
   formatParseIssue,
   formatProblemSummary,
+  isCoreFacet,
   type Problem,
   plural,
   type Recipe,
@@ -87,10 +88,17 @@ function initName(catalog: Catalog, target: string): string | undefined {
   return catalog.inits.find((init) => init.release?.address.toLowerCase() === lower)?.contract;
 }
 
+/** "the core and 12 facets · 120 selectors"; "the core alone · 5 selectors" with nothing placed. */
+function cutSize(analysis: Analysis): string {
+  const cards = analysis.plan.filter((entry) => !isCoreFacet(entry.facet)).length;
+  const selectors = plural(analysis.plan.reduce((sum, entry) => sum + entry.selectors.length, 0), "selector");
+  return cards === 0 ? `the core alone · ${selectors}` : `the core and ${plural(cards, "facet")} · ${selectors}`;
+}
+
 /** `plan`'s human output: the pinned footer's rows ("[00] ADD name, address, routed/total selectors", IR L125). */
 export function planLines(recipe: Recipe, catalog: Catalog, analysis: Analysis, fallbackName: string): string[] {
   const stats = recipeStats(analysis, catalog);
-  const lines = [headerLine(recipe, catalog, analysis, fallbackName), `Cut plan · ${stats.text}`];
+  const lines = [headerLine(recipe, catalog, analysis, fallbackName), `Cut plan · ${cutSize(analysis)}`];
   analysis.plan.forEach((entry, index) => {
     const count = stats.perFacet[entry.facet]?.text ?? plural(entry.selectors.length, "selector");
     lines.push(`${formatCutIndex(index)} ADD ${entry.facet} ${formatAddress(entry.address)} · ${count} · ${entry.version}`);

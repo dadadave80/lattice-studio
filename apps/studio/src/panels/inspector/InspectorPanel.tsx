@@ -18,11 +18,12 @@ const joinIds = (ids: readonly string[]): string => ids.join("\n");
 export function InspectorPanel() {
   const view = useSession((s) => s.panes.inspector.view);
   const selection = useSession((s) => s.selection);
+  const coreSelected = useSession((s) => s.coreSelected);
   const placed = useDocument((s) => s.project.recipe.facets);
   const problemIds = useAnalysis((a) => joinIds(a.problems.map((p) => p.id)));
   const resolved = useMemo(
-    () => resolveView({ view, selection, placed, problems: problemIds === "" ? [] : problemIds.split("\n") }),
-    [view, selection, placed, problemIds],
+    () => resolveView({ view, selection, placed, problems: problemIds === "" ? [] : problemIds.split("\n"), coreSelected }),
+    [view, selection, placed, problemIds, coreSelected],
   );
   const key = viewKey(resolved);
   const body = useRef<HTMLDivElement>(null);

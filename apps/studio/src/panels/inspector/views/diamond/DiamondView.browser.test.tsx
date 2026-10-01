@@ -1,9 +1,10 @@
 import type { Address, CommandId, Deployment, Hex, Project, Recipe } from "@lattice-studio/core";
-import { analyze, formatAddress, formatTime, loadTemplate, NotImplemented } from "@lattice-studio/core";
-import { makeProject } from "@lattice-studio/core/testing";
+import { analyze, CORE_FACETS, formatAddress, formatTime, loadTemplate, NotImplemented } from "@lattice-studio/core";
+import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
-import { command, provideServices, putDeployment } from "@/contracts";
+import { command, provideServices, putDeployment, session } from "@/contracts";
+import { BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
 import {
   bufferedServices, fakeChainService, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio,
 } from "../../../../../test/harness";
@@ -62,17 +63,38 @@ function goOffline(): void {
 
 const view = <DiamondView view={{ kind: "diamond" }} />;
 
-describe("DiamondView: an empty sheet", () => {
-  test("says No facets yet and offers the starting points", async () => {
+/** A core-only project: the core's two facets, no cards. */
+function coreOnly(id: string, name = "My diamond"): Project {
+  return makeProject({ id, name, recipe: makeRecipe({ facets: [...CORE_FACETS] }, fixtureCatalog()) });
+}
+
+describe("DiamondView: a core-only sheet", () => {
+  test("shows the core's rows, says Core only and offers the starting points", async () => {
     const load = spyOn("recipe.load");
     const browse = spyOn("recipe.browse");
-    await renderWithStudio(view, { project: makeProject({ id: "empty-1", name: "My diamond" }) });
+    await renderWithStudio(view, { project: coreOnly("empty-1") });
 
     await expect.element(page.getByRole("heading", { name: "My diamond" })).toBeVisible();
     await expect.element(page.getByText("Assembly")).toBeVisible();
-    await expect.element(page.getByText("No facets yet")).toBeVisible();
+    await expect.element(page.getByText("Core only")).toBeVisible();
 
-    await page.getByRole("button", { name: "Blank diamond (core only)" }).click();
+    // The Core section comes first: the fallback's counts, the loupe's four selectors, ERC-165 and the cut.
+    const core = page.getByRole("region", { name: "Core" });
+    await expect.element(core.getByText("5 routed · 5 exported · 0 excluded")).toBeVisible();
+    await expect.element(core.getByText("4/4", { exact: true })).toBeVisible();
+    const loupe = core.getByRole("list", { name: "Loupe selectors" });
+    expect(loupe.getByRole("listitem").elements().map((item) => item.textContent)).toEqual([
+      "facets() · 0x7a0ed627",
+      "facetFunctionSelectors(address) · 0xadfca15e",
+      "facetAddresses() · 0x52ef6b2c",
+      "facetAddress(bytes4) · 0xcdffacc6",
+    ]);
+    await expect.element(core.getByText("None registered")).toBeVisible();
+    await expect.element(core.getByText("Empty · no upgrade mechanism")).toBeVisible();
+    const headings = [...document.querySelectorAll('[data-view="diamond"] h3')].map((h) => h.textContent);
+    expect(headings[0]).toBe("Core");
+
+    await page.getByRole("button", { name: BLANK_DIAMOND_LABEL }).click();
     expect(argsOf(load)).toEqual({ name: "Blank diamond" });
     await page.getByRole("button", { name: "GovernedVault" }).click();
     expect(load.mock.calls[1]?.[1]).toEqual({ name: "GovernedVault" });
@@ -87,6 +109,34 @@ describe("DiamondView: an empty sheet", () => {
     await expect.element(page.getByText("Choose a chain to check readiness.")).toBeVisible();
     await expect.element(page.getByText("Recipe hash")).not.toBeInTheDocument();
   });
+
+  test("while the core is selected, the title reads Core · the diamond's fixed part", async () => {
+    await renderWithStudio(view, { project: coreOnly("empty-core-selected") });
+    // After the project loads: a load starts with the core deselected.
+    session.set({ selection: [], coreSelected: true });
+    await expect.element(page.getByRole("heading", { level: 2, name: "Core · the diamond's fixed part" })).toBeVisible();
+    await expect.element(page.getByText("Assembly")).toBeVisible();
+    expect(page.getByRole("heading", { level: 2, name: "My diamond" }).elements()).toHaveLength(0);
+  });
+
+  test("with cards: the Core section leads the Summary, and reads the cut facet with its mechanism", async () => {
+    const recipe = template("SafeDiamondCut");
+    await renderWithStudio(view, { project: makeProject({ id: "core-rows", recipe }) });
+    const core = page.getByRole("region", { name: "Core" });
+    await expect.element(core.getByText("29 routed · 29 exported · 0 excluded")).toBeVisible();
+    await expect.element(core.getByText("SafeDiamondCut · Safe")).toBeVisible();
+    // SafeDiamondCutInit registers the interfaces itself: the loupe's and the cut's.
+    await expect.element(core.getByText("2 interfaces")).toBeVisible();
+    const interfaces = core.getByRole("list", { name: "Registered interfaces" });
+    expect(interfaces.getByRole("listitem").elements().map((item) => item.textContent)).toEqual([
+      "IDiamondLoupe · 0x48e2b093",
+      "IDiamondCut · 0x1f931c1c",
+    ]);
+    const headings = [...document.querySelectorAll('[data-view="diamond"] h3')].map((h) => h.textContent);
+    expect(headings[0]).toBe("Core");
+    // The counts show once: the Summary no longer repeats them.
+    expect(page.getByRole("region", { name: "Summary" }).getByText("29 routed · 29 exported · 0 excluded").elements()).toHaveLength(0);
+  });
 });
 
 describe("DiamondView: summary, actions and authority", () => {
@@ -97,8 +147,10 @@ describe("DiamondView: summary, actions and authority", () => {
 
     await expect.element(rows.getByText(hashOf(recipe))).toBeVisible();
     await expect.element(rows.getByText("fixture", { exact: true })).toBeVisible();
-    await expect.element(rows.getByText("14", { exact: true })).toBeVisible();
-    await expect.element(rows.getByText("120 routed · 143 exported · 0 excluded")).toBeVisible();
+    // 12 cards: the core's two facets aside. The selector counts are the Core section's Fallback row, once.
+    await expect.element(rows.getByText("12", { exact: true })).toBeVisible();
+    expect(rows.getByText("120 routed · 143 exported · 0 excluded").elements()).toHaveLength(0);
+    await expect.element(page.getByText("120 routed · 143 exported · 0 excluded")).toBeVisible();
     await expect.element(rows.getByText("1 blocker · 1 warning")).toBeVisible();
     await expect.element(rows.getByText("11 namespaces · disjoint")).toBeVisible();
     await expect.element(rows.getByText("lattice.storage.GovernedVault")).toBeVisible();

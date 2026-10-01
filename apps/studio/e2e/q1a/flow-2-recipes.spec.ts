@@ -25,7 +25,7 @@ import { ConsolePage } from "./pages/console-page.ts";
 import { ProjectsPage } from "./pages/projects-page.ts";
 import { SheetPage } from "./pages/sheet-page.ts";
 
-/** "Loaded GovernedVault · 14 facets · 120 selectors · from script/base/defi/DeployGovernedVault.s.sol." (L410). */
+/** "Loaded GovernedVault · 12 facets · 120 selectors · from script/base/defi/DeployGovernedVault.s.sol." (L410): cards, the core aside. */
 function loadedLine(name: string): string {
   const built = catalog();
   const loaded = loadTemplate(built, name);

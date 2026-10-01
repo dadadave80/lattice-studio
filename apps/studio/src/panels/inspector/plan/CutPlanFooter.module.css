@@ -70,6 +70,14 @@
   color: var(--lx-text-muted);
 }
 
+/* The core's entries: cut first, never removed. */
+.tag {
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-faint);
+}
+
 .contested,
 .contested .index,
 .contested .action,

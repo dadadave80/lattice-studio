@@ -4,8 +4,10 @@
  * probed `ChainState` (spec L832: unknown until a chain has been checked). No DOM, no React.
  */
 import type { Area, Catalog, ChainState, Facet } from "@lattice-studio/core";
+import { isCoreFacet } from "@lattice-studio/core";
 import type { ChainReadiness } from "@/contracts";
 import type { TreeNode } from "@/ui/nav";
+import { CORE_FACET_REASON } from "../core-copy";
 
 /** `TreeNode.id` prefix for an area folder, so a folder id can never collide with a facet name. */
 const AREA_PREFIX = "area:";
@@ -67,7 +69,9 @@ export type CatalogTreeResult = {
 /**
  * Groups the catalog's facets into area folders, filtered by `query` and, when given, `include` (the
  * "Available on {chain}" filter). Areas and facets are sorted alphabetically by display name so a person
- * scanning or typing ahead finds them predictably; the catalog's own (source) order isn't preserved.
+ * scanning or typing ahead finds them predictably; the catalog's own (source) order isn't preserved. The core's
+ * facets (DiamondLoupeFacet, ERC165Facet) are in every diamond already, so their rows are disabled with the
+ * reason: focusable and readable, never placed, dragged or selected.
  */
 export function buildCatalogNodes(catalog: Catalog, query: string, include?: (facet: Facet) => boolean): CatalogTreeResult {
   const byArea = new Map<Area, Facet[]>();
@@ -86,7 +90,7 @@ export function buildCatalogNodes(catalog: Catalog, query: string, include?: (fa
     label: AREA_LABELS[area],
     children: [...(byArea.get(area) ?? [])]
       .sort((a, b) => a.name.localeCompare(b.name, "en"))
-      .map((facet) => ({ id: facet.name, label: facet.name })),
+      .map((facet) => (isCoreFacet(facet.name) ? { id: facet.name, label: facet.name, disabledReason: CORE_FACET_REASON } : { id: facet.name, label: facet.name })),
   }));
   return { nodes, matchCount, matchedAreaIds: areas.map(areaNodeId) };
 }

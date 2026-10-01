@@ -3,7 +3,7 @@
  * the save-and-reopen round trip through the File System Access API, dropping a bad file, delete with
  * Undo, and the unknown-fields line (spec L289).
  */
-import { lines, toChecksum, type Deployment } from "@lattice-studio/core";
+import { CORE_FACETS, lines, toChecksum, type Deployment } from "@lattice-studio/core";
 import { makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test } from "vitest";
 import {
@@ -73,7 +73,7 @@ describe("project.new", () => {
     expect(result.ok).toBe(true);
 
     expect(doc.get().id).not.toBe(oldId);
-    expect(doc.get().recipe.facets).toEqual([]);
+    expect(doc.get().recipe.facets).toEqual([...CORE_FACETS]);
     expect(session.get().selection).toEqual([]);
     expect(session.get().focus).toBeNull();
     expect(session.get().modes).toEqual({ initOrder: false, moveTo: false, rows: null });

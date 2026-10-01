@@ -1,5 +1,5 @@
 import type { ExportFile, Problem } from "@lattice-studio/core";
-import { exportBrief, exportFoundry, exportRecipeJson, exportSafeBatch, loadTemplate } from "@lattice-studio/core";
+import { CORE_FACETS, exportBrief, exportFoundry, exportRecipeJson, exportSafeBatch, loadTemplate } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
@@ -253,9 +253,9 @@ describe("Export menu (spec L509-L518, IR L132)", () => {
 });
 
 describe("Script and Recipe JSON tabs (IR L135-L136)", () => {
-  test("an empty sheet says how to get a script", async () => {
+  test("a core-only sheet says how to get a script", async () => {
     const empty = erc20Project();
-    await renderConsole({ ...empty, recipe: { ...empty.recipe, facets: [] } });
+    await renderConsole({ ...empty, recipe: { ...empty.recipe, facets: [...CORE_FACETS] } });
     await userEvent.click(page.getByRole("tab", { name: "Script" }));
     await expect.element(page.getByText("Place facets to generate a script.")).toBeVisible();
   });
@@ -346,9 +346,9 @@ describe("safeExportable: the Safe batch waits for the review's acknowledgements
       .toEqual({ ok: false, reason: "Tick the acknowledgement first" });
   });
 
-  test("deployableExport's own gates still apply first: no facets, then blockers", () => {
+  test("deployableExport's own gates still apply first: no cards (core only), then blockers", () => {
     const empty = { ...analysis, problems: [] };
-    const noFacets = { ...project, recipe: { ...project.recipe, facets: [] } };
+    const noFacets = { ...project, recipe: { ...project.recipe, facets: [...CORE_FACETS] } };
     expect(safeExportable({ catalog: fixture, settings: DEFAULT_SETTINGS, project: noFacets, analysis: empty, session: initialSession() }))
       .toEqual({ ok: false, reason: "Place facets first" });
   });

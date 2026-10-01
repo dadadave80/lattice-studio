@@ -6,6 +6,7 @@
  */
 import fc from "fast-check";
 import type { Catalog, InitParam, InitSpec } from "../model/catalog";
+import { CORE_FACETS } from "../model/diamond";
 import { toChecksum, type Address, type Hex, type Hex4 } from "../model/hex";
 import type { Layout } from "../model/layout";
 import type { Deployment, Project } from "../model/project";
@@ -144,22 +145,34 @@ export function contendersOf(catalog: Catalog, facets: readonly string[]): Map<H
   return out;
 }
 
-/** A sheet's facets in the order someone placed them: a random pick, or a template's with a few changes. */
+/** The core's facets the catalog has: every generated recipe carries them, as every parsed one does. */
+function coreOf(catalog: Catalog): string[] {
+  const names = new Set(catalog.facets.map((facet) => facet.name));
+  return CORE_FACETS.filter((name) => names.has(name));
+}
+
+/**
+ * A sheet's facets in the order someone placed them: a random pick, or a template's with a few changes. The
+ * core's facets are always among them (the recipe repair puts them back on every parse), somewhere in the list.
+ */
 export function facetsArb(catalog: Catalog, maxFacets = 12): fc.Arbitrary<string[]> {
-  const names = catalog.facets.map((facet) => facet.name);
-  const random = fc.shuffledSubarray(names, { minLength: 0, maxLength: Math.min(maxFacets, names.length) });
+  const core = coreOf(catalog);
+  const names = catalog.facets.map((facet) => facet.name).filter((name) => !core.includes(name));
+  const shuffled = (list: readonly string[]): fc.Arbitrary<string[]> =>
+    fc.shuffledSubarray([...list], { minLength: list.length, maxLength: list.length });
+  const withCore = (cards: fc.Arbitrary<string[]>): fc.Arbitrary<string[]> => cards.chain((list) => shuffled([...new Set([...list, ...core])]));
+  const random = withCore(fc.shuffledSubarray(names, { minLength: 0, maxLength: Math.min(maxFacets, names.length) }));
   const templates = catalog.recipes.map((template) => template.recipe.facets.filter((name) => names.includes(name)));
   if (templates.length === 0) return random;
   const fromTemplate = fc.constantFrom(...templates).chain((base) =>
-    fc
-      .tuple(
-        fc.subarray(base, { minLength: Math.max(0, base.length - 2) }),
-        fc.shuffledSubarray(names, { maxLength: Math.min(3, names.length) }),
-      )
-      .chain(([kept, extra]) => {
-        const all = [...new Set([...kept, ...extra])];
-        return fc.shuffledSubarray(all, { minLength: all.length, maxLength: all.length });
-      }),
+    withCore(
+      fc
+        .tuple(
+          fc.subarray(base, { minLength: Math.max(0, base.length - 2) }),
+          fc.shuffledSubarray(names, { maxLength: Math.min(3, names.length) }),
+        )
+        .map(([kept, extra]) => [...new Set([...kept, ...extra])]),
+    ),
   );
   return fc.oneof(random, fromTemplate);
 }
@@ -230,15 +243,19 @@ export function layoutArb(facets: readonly string[]): fc.Arbitrary<Layout> {
   return fc.tuple(...facets.map(() => card)).map((cards) => Object.fromEntries(facets.map((name, i) => [name, cards[i]])) as Layout);
 }
 
-/** A project around a generated recipe: hostile name, layout for every placed facet, deploy settings, predictions. */
+/**
+ * A project around a generated recipe: hostile name, a layout entry for every card (never for the core, which
+ * isn't on the sheet), deploy settings, predictions.
+ */
 export function projectArb(catalog: Catalog, options: RecipeArbOptions = {}): fc.Arbitrary<Project> {
   const names = options.names ?? hostileWellFormedString();
+  const core: readonly string[] = CORE_FACETS;
   return recipeArb(catalog, options).chain((recipe) =>
     fc
       .record({
         id: fc.uuid(),
         name: names,
-        layout: layoutArb([...new Set(recipe.facets)]),
+        layout: layoutArb([...new Set(recipe.facets)].filter((name) => !core.includes(name))),
         path: fc.constantFrom("factory" as const, "createx" as const),
         entropy: hexBytes(11),
         scope: fc.constantFrom("every-chain" as const, "this-chain" as const),

@@ -5,7 +5,7 @@
  * load (contracts §6, the size gate).
  */
 import {
-  exportProjectFile, lines, plural, type CommandRef, type Deployment, type Project, type Recipe,
+  CORE_FACETS, exportProjectFile, isCoreFacet, lines, plural, type CommandRef, type Deployment, type Project, type Recipe,
 } from "@lattice-studio/core";
 import {
   announce, commandRef, createProject as createProjectService, getCatalog, listDeployments, log,
@@ -23,10 +23,11 @@ function emptyRecipe(): Recipe {
   return {
     schemaVersion: 1,
     catalog: catalog ? { tag: catalog.lattice.tag, hash: catalog.hash } : { tag: "", hash: `0x${"00".repeat(32)}` },
-    facets: [],
+    // Core only: nothing placed. The empty step plan keeps the automatic introspection step.
+    facets: [...CORE_FACETS],
     owners: {},
     exclude: [],
-    init: { kind: "none" },
+    init: { kind: "steps", steps: [] },
   };
 }
 
@@ -54,7 +55,7 @@ export async function openStoredProject(id: string): Promise<void> {
   resetForProjectSwitch();
   const now = new Date().toISOString();
   const savedAt = before ? new Date(before.savedAt).toISOString() : now; // No prior record: "saved just now".
-  const line = lines.projectOpened({ name: opened.value.name, facets: opened.value.recipe.facets.length, savedAt, now });
+  const line = lines.projectOpened({ name: opened.value.name, facets: opened.value.recipe.facets.filter((name) => !isCoreFacet(name)).length, savedAt, now });
   log(line);
   announce(line.text);
 }

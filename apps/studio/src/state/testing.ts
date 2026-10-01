@@ -3,6 +3,7 @@
  * and S1's commands registered, all undone by `dispose()`. Settings stay in memory. Never imported by the app.
  */
 import type { Catalog, ConsoleLine, Project } from "@lattice-studio/core";
+import { CORE_FACETS } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { defineCommands, doc, provideServices, setCatalogStatus } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
@@ -44,7 +45,9 @@ export function setupKit(options: KitOptions = {}): Kit {
   const disposeClock = provideServices({ now: () => clock.now });
   const catalog = options.catalog === undefined ? fixture() : options.catalog;
   if (catalog) setCatalogStatus({ status: "ready", id: catalog.lattice.tag, catalog, manifest: null });
-  doc.load(options.project ?? makeProject({ recipe: makeRecipe({}, catalog ?? undefined) }));
+  // An empty sheet is a core-only recipe with the empty step plan, as the app's untitled project is.
+  const empty = makeRecipe({ facets: [...CORE_FACETS], init: { kind: "steps", steps: [] } }, catalog ?? undefined);
+  doc.load(options.project ?? makeProject({ recipe: empty }));
   let from = bufferedServices().log.length;
   const state = createStudioState({ storage: null, ...options });
   const uninstall = installStudioState(state);

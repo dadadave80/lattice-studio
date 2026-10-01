@@ -2,6 +2,7 @@ import type { CommandRef } from "@lattice-studio/core";
 import { useEffect } from "react";
 import { commandRef } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
+import { Logomark } from "@/ui/icons/Logomark";
 import { Menu } from "@/ui/overlays/Menu";
 import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
 import { MenuItem } from "@/ui/overlays/MenuItem";
@@ -28,7 +29,7 @@ const HELP_ITEMS: readonly (readonly [label: string, ref: CommandRef])[] = [
   ["About", commandRef("about.open")],
 ];
 
-/** The App menu: the product name opens it; `app.menu` opens it too. */
+/** The App menu: the brand button (≡, the mark, the product name) opens it; `app.menu` opens it too. */
 export function AppMenu({ compact }: { compact: boolean }) {
   const open = useAppMenuOpen();
   useEffect(() => retainAppMenu(), []);
@@ -38,8 +39,11 @@ export function AppMenu({ compact }: { compact: boolean }) {
       open={open}
       onOpenChange={setAppMenuOpen}
       trigger={
-        <Button variant="quiet" icon="menu" size={compact ? "small" : "medium"} className={cx(styles.brand)}>
-          {compact ? <VisuallyHidden>Lattice Studio</VisuallyHidden> : "Lattice Studio"}
+        <Button variant="quiet" icon="menu" size={compact ? "small" : "medium"} className={cx(styles.brand, compact && styles.compact)}>
+          <span className={styles.wordmark}>
+            <Logomark />
+            {compact ? <VisuallyHidden>Lattice Studio</VisuallyHidden> : "Lattice Studio"}
+          </span>
         </Button>
       }
     >

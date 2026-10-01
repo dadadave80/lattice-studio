@@ -2,6 +2,7 @@
  * S13's commands (contracts §5.3): Share, Confirm addresses…, Take over editing and Migrate to 0.4.1…. The entry
  * chunk holds only these registrations; the codec, the dialogs and the confirm view load on use.
  */
+import { isCoreOnly } from "@lattice-studio/core";
 import {
   command, defineCommands, doc, getCatalogStatus, log, openDialog, session, type CommandArgsOf, type CommandContext,
   type Enablement,
@@ -27,7 +28,7 @@ const share = command({
   category: "Session",
   palette: true,
   // Share doesn't edit the document, so a read-only project can still be shared.
-  enabled: (ctx) => (ctx.project.recipe.facets.length === 0 ? disabled(PLACE_FACETS_FIRST) : OK),
+  enabled: (ctx) => (isCoreOnly(ctx.project.recipe) ? disabled(PLACE_FACETS_FIRST) : OK),
   async run(ctx) {
     const { copyShareLink } = await import("./share-link");
     await copyShareLink(ctx.project);

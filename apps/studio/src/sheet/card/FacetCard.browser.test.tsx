@@ -60,7 +60,7 @@ describe("accessible name and description (spec L745-L746)", () => {
     await expect
       .element(page.getByRole("group", { name: "AxelarGatewayAdapter, 9 selectors, 2 contested" }))
       .toHaveAccessibleDescription(
-        "Collides with HyperlaneGatewayAdapter on sendMessage and supportsAttribute; 2 blockers; 1 warning. Not selected.",
+        "Collides with HyperlaneGatewayAdapter on sendMessage and supportsAttribute; 2 blockers; 1 warning. 7 of 9 selectors routed to the diamond. Not selected.",
       );
   });
 

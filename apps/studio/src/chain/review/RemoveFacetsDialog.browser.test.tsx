@@ -43,7 +43,7 @@ function isOpen(): boolean {
 describe("Remove facets (NET-06, IR L177)", () => {
   test("lists the plan's facets by their share of the gas, focus on the checklist", async () => {
     const dialog = await open();
-    await expect.poll(() => names(dialog)).toEqual(["ERC20", "DiamondLoupeFacet", "Receive", "ERC165Facet"]);
+    await expect.poll(() => names(dialog)).toEqual(["ERC20", "DiamondLoupeFacet", "ERC165Facet", "Receive"]);
     await expect.element(dialog.getByRole("checkbox", { name: "ERC20" })).toHaveFocus();
     await expect.element(dialog.getByRole("checkbox", { name: "ERC20" })).toHaveAccessibleDescription("9 selectors · about 12M gas");
     await expect.element(dialog.getByRole("checkbox", { name: "DiamondLoupeFacet" })).toHaveAccessibleDescription(/^4 selectors · about 5.3M gas/);
@@ -51,12 +51,13 @@ describe("Remove facets (NET-06, IR L177)", () => {
     await expect.element(dialog.getByRole("status")).toHaveTextContent("About 20M gas of Sepolia's 16.8M per-transaction cap. Still over the cap.");
   });
 
-  test("locks a required facet with the reason, and it can't be ticked", async () => {
+  test("locks the core's facets with the reason, and they can't be ticked", async () => {
     const dialog = await open();
     const loupe = dialog.getByRole("checkbox", { name: "DiamondLoupeFacet" });
-    const reason = "The loupe is incomplete: facets() is missing. Every Lattice diamond needs all four.";
+    const reason = "Part of every diamond's core.";
     await expect.element(loupe).toHaveAttribute("aria-disabled", "true");
-    await expect.element(loupe).toHaveAccessibleDescription(/The loupe is incomplete: facets\(\) is missing/);
+    await expect.element(loupe).toHaveAccessibleDescription(/Part of every diamond's core\./);
+    await expect.element(dialog.getByRole("checkbox", { name: "ERC165Facet" })).toHaveAttribute("aria-disabled", "true");
     // Written under the row for everyone, besides the tooltip and the description.
     await expect.poll(() => dialog.getByText(reason).elements().some((el) => el.checkVisibility())).toBe(true);
     await loupe.click({ force: true });
@@ -85,7 +86,7 @@ describe("Remove facets (NET-06, IR L177)", () => {
     await dialog.getByRole("checkbox", { name: "Receive" }).click();
     const one = dialog.getByRole("button", { name: "Remove 1 facet" });
     await expect.element(one).not.toHaveAttribute("aria-disabled");
-    await dialog.getByRole("checkbox", { name: "ERC165Facet" }).click();
+    await dialog.getByRole("checkbox", { name: "ERC20" }).click();
     await expect.element(dialog.getByRole("button", { name: "Remove 2 facets" })).toBeVisible();
   });
 
@@ -130,7 +131,7 @@ describe("Remove facets (NET-06, IR L177)", () => {
 
   test("without an estimate it sorts by selectors cut and says so", async () => {
     const dialog = await open({ estimate: false });
-    await expect.poll(() => names(dialog)).toEqual(["ERC20", "DiamondLoupeFacet", "Receive", "ERC165Facet"]);
+    await expect.poll(() => names(dialog)).toEqual(["ERC20", "DiamondLoupeFacet", "ERC165Facet", "Receive"]);
     await expect.element(dialog.getByRole("checkbox", { name: "ERC20" })).toHaveAccessibleDescription("9 selectors");
     await expect.element(dialog.getByRole("status")).toHaveTextContent("No gas estimate yet: sorted by selectors cut.");
   });

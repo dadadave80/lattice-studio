@@ -112,7 +112,7 @@ export function tokenWithAdmin(admin: string = ADMIN): Recipe {
   return makeRecipe(
     {
       name: "Token",
-      facets: ["ERC20", "AccessControl", "DiamondLoupeFacet"],
+      facets: ["ERC20", "AccessControl", "DiamondLoupeFacet", "ERC165Facet"],
       exclude: ["0x095ea7b3"],
       init: {
         kind: "steps",
@@ -130,7 +130,7 @@ export function tokenWithAdmin(admin: string = ADMIN): Recipe {
 export function safeCut(): Recipe {
   return makeRecipe(
     {
-      facets: ["DiamondLoupeFacet", "SafeDiamondCut"],
+      facets: ["DiamondLoupeFacet", "ERC165Facet", "SafeDiamondCut"],
       init: { kind: "steps", steps: [{ spec: "SafeDiamondCutInit", args: { admin: { $ref: "self" }, safe: SAFE } }] },
       immutable: true,
     },
@@ -145,7 +145,7 @@ export const templatedCatalog: Catalog = {
     makeTemplate({ name: "GovernedVault", recipe: governedVault() }),
     makeTemplate({ name: "Token", recipe: tokenWithAdmin() }),
     makeTemplate({ name: "SafeDiamondCut", recipe: safeCut() }),
-    makeTemplate({ name: "Blank", recipe: makeRecipe({ facets: ["DiamondLoupeFacet"] }, catalog) }),
+    makeTemplate({ name: "Blank", recipe: makeRecipe({ facets: ["DiamondLoupeFacet", "ERC165Facet"] }, catalog) }),
   ],
 };
 

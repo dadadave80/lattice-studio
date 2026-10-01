@@ -3,7 +3,7 @@
  * selectors to it (`route <facet>`, IR L144).
  */
 import type { EditResult, Hex4, Project } from "@lattice-studio/core";
-import { lines, placeFacet, plural, removeFacets, routeSelector } from "@lattice-studio/core";
+import { isCoreFacet, lines, placeFacet, plural, removeFacets, routeSelector } from "@lattice-studio/core";
 import {
   command, isPlaceholder, runCommand, session, toast, type CommandArgsOf, type CommandContext,
 } from "@/contracts";
@@ -51,6 +51,12 @@ export const placeCommand = command<PlaceArgs>({
     const catalog = ctx.catalog;
     const detail = catalog ? facetOf(catalog, facet) : undefined;
     if (!catalog || !detail) return;
+    if (isCoreFacet(facet)) {
+      // The core is in every diamond, never as a card: say so and select the core instead (S4b's `core.select`).
+      sayNote(`${facet} is part of every diamond's core.`);
+      if (!isPlaceholder("core.select")) void runCommand({ id: "core.select" }, "api");
+      return;
+    }
     if (isPlaced(ctx.project, facet)) {
       // Already placed: select and locate it (spec L427).
       locate(facet);
@@ -87,13 +93,16 @@ export const removeCommand = command<RemoveArgs>({
     if (blocked) return blocked;
     const facets = Array.isArray(args.facets) ? args.facets.filter(isString) : [];
     if (facets.length === 0) return disabled("Select a facet to remove");
-    if (!facets.some((name) => isPlaced(ctx.project, name))) return disabled(notOnSheet(facets));
+    // The core never leaves the diamond (the op says the same when asked).
+    const cards = facets.filter((name) => !isCoreFacet(name));
+    if (cards.length === 0) return disabled(`${facets[0] ?? ""} is the diamond's core and stays`);
+    if (!cards.some((name) => isPlaced(ctx.project, name))) return disabled(notOnSheet(cards));
     return OK;
   },
   run(ctx, { facets }) {
     const catalog = ctx.catalog;
     if (!catalog) return;
-    const removed = [...new Set(facets)].filter((name) => isPlaced(ctx.project, name));
+    const removed = [...new Set(facets)].filter((name) => !isCoreFacet(name) && isPlaced(ctx.project, name));
     const result = edit((p) => removeFacets(p, catalog, facets), { say: () => [lines.removed({ facets: removed })] });
     if (!result.changed) return;
     const selection = session.get().selection.filter((name) => !removed.includes(name));

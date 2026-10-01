@@ -2,7 +2,7 @@
  * Persistence against the browser's real IndexedDB, Web Locks and BroadcastChannel. Each test has its own
  * database (`testPersistence`); two instances on one database play two tabs.
  */
-import { toChecksum, type Catalog, type Deployment, type Project, type Recipe } from "@lattice-studio/core";
+import { CORE_FACETS, toChecksum, type Catalog, type Deployment, type Project, type Recipe } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { openDB } from "idb";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -72,7 +72,8 @@ function deployment(projectId: string, n: number, extra: Partial<Deployment> = {
   };
 }
 
-const recipe: Recipe = makeRecipe();
+// Core only, as every stored project is once C1 reads it (a recipe without the core gains it on the way in).
+const recipe: Recipe = makeRecipe({ facets: [...CORE_FACETS] });
 
 /** Another tab on the same database: it boots on its own untitled document, then opens `project`. */
 async function otherTab(

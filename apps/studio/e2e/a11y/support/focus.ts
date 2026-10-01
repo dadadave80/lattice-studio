@@ -114,6 +114,8 @@ function sheetParts(page: Page): [string, Locator][] {
   const sheet = region(page, "Sheet");
   return [
     ["title block", sheet.getByRole("region", { name: "Title block" })],
+    // The pinned diamond core: one Tab stop after the title block (layer order 32).
+    ["core", sheet.getByRole("toolbar", { name: "Core", exact: true })],
     ["tool strip", sheet.getByRole("toolbar", { name: "Sheet tools" }).or(sheet.getByRole("button", { name: /^Zoom \d+%$/ }))],
     ["note", sheet.getByRole("note")],
     ["card", sheet.getByRole("group", { name: / \d+ selectors?/ })],

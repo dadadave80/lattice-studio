@@ -8,7 +8,7 @@ const SECTION_5_3: Record<string, string> = {
   S1: "facet.place, facet.remove, facet.routeContested, selector.route, selector.clearOwner, selector.exclude, selector.include, recipe.load, recipe.replace, recipe.keepImmutable, init.setArg, init.addStep, init.removeStep, init.moveStep, init.reorderAuto, layout.flipPins, layout.toggleExpand, layout.tidy, layout.tidySelection, ack.set, history.undo, history.redo, project.rename",
   S2: "ui.escape, shortcuts.open",
   S3: "app.menu, pane.toggle, pane.show",
-  S4b: "tool.select, tool.hand, sheet.zoomIn, sheet.zoomOut, sheet.zoom100, sheet.zoomFit, sheet.zoomSelection, sheet.zoomTo, sheet.locate, sheet.backToContent, sheet.minimapToggle",
+  S4b: "tool.select, tool.hand, sheet.zoomIn, sheet.zoomOut, sheet.zoom100, sheet.zoomFit, sheet.zoomSelection, sheet.zoomTo, sheet.locate, sheet.backToContent, sheet.minimapToggle, core.select",
   S4e: "sheet.selectAll, sheet.clearSelection, sheet.moveTo, sheet.nudge, sheet.focusDirection, sheet.focusFirst, sheet.focusLast, sheet.enterRows, sheet.addFacetHere, facet.removeSelected, selector.copy, selector.copySignature, selector.showOwner",
   S4c: "problem.next, problem.prev, problem.focus, collision.choosePerSelector, collision.resolve",
   S4d: "initOrder.toggle, recipe.browse",
@@ -35,8 +35,8 @@ const expectedOwners = Object.fromEntries(
 
 describe("COMMAND_OWNERS", () => {
   test("covers every id in contracts §5.3 with its owner, and nothing else", () => {
-    expect(COMMAND_IDS.length).toBe(132);
-    expect(Object.keys(expectedOwners).length).toBe(132);
+    expect(COMMAND_IDS.length).toBe(133);
+    expect(Object.keys(expectedOwners).length).toBe(133);
     expect({ ...COMMAND_OWNERS } as Record<string, string>).toEqual(expectedOwners);
   });
 

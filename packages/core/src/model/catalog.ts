@@ -245,5 +245,6 @@ export type TemplateItem = {
   loadable: boolean;
   /** Why it doesn't load: "Arrives in v1.1", plus the account recipes' own-factory note (R20). */
   note?: string;
+  /** Cards: the recipe's facets without the core's two. */
   facets: number;
 };

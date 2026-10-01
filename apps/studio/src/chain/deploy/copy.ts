@@ -73,10 +73,10 @@ export function simulatedWithCall(block: string): string {
   return `Simulated at block ${block} with eth_call: succeeded.`;
 }
 
-/** The Simulation section's summary (Flow 12 step 2). */
+/** The Simulation section's summary (Flow 12 step 2). `facets`: the cut's cards, the core aside. */
 export function simulationSummary(args: { block: string; address: Address; facets: number; selectors: number; events?: number }): string {
   const events = args.events === undefined ? "" : `, ${plural(args.events, "event")}`;
-  return `Simulated at block ${args.block}: diamond at ${formatAddress(args.address)} with ${plural(args.facets, "facet")}, ${plural(args.selectors, "selector")}${events}.`;
+  return `Simulated at block ${args.block}: diamond at ${formatAddress(args.address)} with the core and ${plural(args.facets, "facet")}, ${plural(args.selectors, "selector")}${events}.`;
 }
 
 /** Discard proposal. */

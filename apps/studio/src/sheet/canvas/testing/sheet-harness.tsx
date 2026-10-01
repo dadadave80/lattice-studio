@@ -2,7 +2,7 @@
  * Helpers for the canvas's browser tests (never imported by the app): the sheet in a fixed-size region, the
  * live transform as React Flow draws it, and synthetic wheel, mouse and key input.
  */
-import type { Project } from "@lattice-studio/core";
+import { CORE_FACETS, type Project } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { expect } from "vitest";
 import { doc, session, type Viewport } from "@/contracts";
@@ -22,9 +22,9 @@ export function sheetProject(count: number, options: { id?: string; columns?: nu
   return options.id ? { ...project, id: options.id } : project;
 }
 
-/** A project with no cards. */
+/** A project with no cards: core only, as every new project starts. */
 export function emptyProject(id: string): Project {
-  return makeProject({ id, recipe: makeRecipe({}, fixtureCatalog()) });
+  return makeProject({ id, recipe: makeRecipe({ facets: [...CORE_FACETS] }, fixtureCatalog()) });
 }
 
 /**

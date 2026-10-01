@@ -18,6 +18,10 @@ export type Analysis = {
   plan: PlanEntry[];
   /** `data` once a deploy context resolves every ref. */
   init: { target: Address; data?: Hex; refs: ("self" | "deployer")[] } | null;
+  /**
+   * `facets` counts cards: the recipe's facets without the core (DiamondLoupeFacet, ERC165Facet). `routed`,
+   * `exported` and `excluded` count selectors and include the core's five, so a core-only recipe routes 5.
+   */
   stats: { facets: number; routed: number; exported: number; excluded: number; namespaces: number };
 };
 
@@ -107,11 +111,11 @@ export type CheckName = "sel" | "sem" | "core" | "dep" | "sto" | "init" | "auth"
 /** C2 `analyze` options. `checks` replaces the registry's checks, so tests can inject fakes. */
 export type AnalyzeOptions = { checks?: readonly Check[] };
 
-/** C5a `recipeStats`: "14 facets · 120 selectors" and per-facet "12/17 selectors" (spec L685). */
+/** C5a `recipeStats`: "12 facets · 120 selectors" (cards; selectors include the core's five) and per-facet "12/17 selectors" (spec L685). */
 export type RecipeStats = {
   facets: number;
   selectors: number;
-  /** "14 facets · 120 selectors". */
+  /** "12 facets · 120 selectors". */
   text: string;
   perFacet: Record<string, { routed: number; exported: number; text: string }>;
 };

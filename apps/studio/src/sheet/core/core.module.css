@@ -1,0 +1,344 @@
+/*
+ * The core cell (the diamond's fixed part, a title-block cell beside the title block) and the traces cards draw
+ * into it. The cell is screen space: 290 × 100 px at rest, one line collapsed. Its rows are an APG toolbar; the
+ * FALLBACK and CUT pads are where traces end. Traces are one SVG over the sheet's ground and under its cards
+ * (z 3, under React Flow's renderer at 4): 1.5 px ink on hover or focus, 2 px accent live, accent while a placed
+ * card flashes in. Tokens only; forced colors keep every line in CanvasText and light it in Highlight.
+ */
+
+/* ---- Traces ------------------------------------------------------------------------------------------- */
+
+.traces {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  inline-size: 100%;
+  block-size: 100%;
+  max-inline-size: none;
+  overflow: visible;
+  pointer-events: none;
+  /* Its own compositor layer: a wire that appears, moves or goes repaints this layer, not the sheet's ground. */
+  will-change: transform;
+}
+
+.trace path {
+  fill: none;
+  stroke: var(--lx-text);
+  stroke-width: max(var(--lx-stroke-hair), 1.5px);
+  stroke-linejoin: miter;
+  stroke-linecap: butt;
+}
+
+.trace[data-tone="live"] path {
+  stroke: var(--lx-accent);
+  stroke-width: var(--lx-stroke-heavy);
+}
+
+/* A card just placed: the accent wire into the core, held, then gone (the layer drops it after 1.6 s). */
+.trace[data-tone="flash"] path {
+  stroke: var(--lx-accent);
+}
+
+.trace[data-tone="flash"] {
+  animation: core-flash 1600ms ease-out forwards;
+}
+
+@keyframes core-flash {
+  0%,
+  55% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+:global(html[data-motion="reduce"]) .trace[data-tone="flash"] {
+  animation: none;
+}
+
+/* Where a routed row's stub joins the trace: a schematic junction dot. */
+.joint {
+  fill: var(--lx-accent);
+  stroke: none;
+}
+
+/* ---- The cell ----------------------------------------------------------------------------------------- */
+
+.panel {
+  margin: var(--lx-space-4);
+}
+
+.cell {
+  --cell-mark: max(var(--lx-stroke-hair), 1.5px);
+  position: relative;
+  box-sizing: border-box;
+  inline-size: 290px;
+  border: var(--lx-stroke-hair) solid var(--lx-border-strong);
+  background: var(--lx-panel);
+  color: var(--lx-text);
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+}
+
+.cell[data-collapsed] {
+  inline-size: auto;
+}
+
+/* Selected: the accent frame a selected card has. */
+.cell[data-selected] {
+  border-color: var(--lx-accent);
+  outline: var(--cell-mark) solid var(--lx-accent);
+  outline-offset: calc(-1 * var(--lx-stroke-hair));
+}
+
+/* The toolbar's own strip (a frame, a radius, padding) gives way: the rows stack inside the cell's frame. */
+.cell .rows {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.cell[data-collapsed] .rows {
+  flex-direction: row;
+  align-items: center;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.line + .line,
+.line + .hint {
+  border-block-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.cell[data-collapsed] .line + .line {
+  border-block-start: 0;
+  border-inline-start: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.row {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--lx-space-2);
+  box-sizing: border-box;
+  min-inline-size: 0;
+  min-block-size: var(--lx-space-6);
+  margin: 0;
+  padding: 0 var(--lx-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--lx-text);
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--lx-raised);
+}
+
+.row:focus-visible {
+  outline: var(--lx-stroke-heavy) solid var(--lx-border-focus);
+  outline-offset: calc(-1 * var(--lx-stroke-heavy));
+}
+
+/* The header: the diamond's button, then the collapse chevron. */
+.header {
+  padding-inline-end: var(--lx-space-1);
+}
+
+/* The chevron: a 24 px square (the small icon button), so the header stays one row high. */
+.cell .chevron {
+  inline-size: var(--lx-space-6);
+  min-inline-size: var(--lx-space-6);
+  block-size: var(--lx-space-6);
+  min-block-size: var(--lx-space-6);
+}
+
+.key {
+  flex: none;
+  font: var(--lx-font-label);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+/* The pressed diamond, and the pad row under the pointer or focus (the cell says which, `data-hot`). */
+.row[aria-pressed="true"] .key,
+.cell[data-hot="fallback"] .row[data-pad-row="fallback"] .key,
+.cell[data-hot="cut"] .row[data-pad-row="cut"] .key {
+  color: var(--lx-accent);
+}
+
+.tagline,
+.value {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagline {
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+}
+
+/* The values read as the title block's facts do: the body face, the numbers tabular. */
+.value {
+  font: var(--lx-font-body-sm);
+  letter-spacing: var(--lx-tracking-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.cell[data-collapsed] .tagline {
+  display: none;
+}
+
+/* The cut row on a conflict (two cut facets placed): hatched, as a contested row is. */
+.conflict {
+  background: var(--lx-hatch);
+}
+
+.conflict .value {
+  color: var(--lx-accent);
+  font-weight: 600;
+}
+
+/* The cut row says which variant and which mechanism: a long pair wraps rather than hiding the mechanism. */
+.row[data-cut] .value {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.cell[data-collapsed] .row[data-cut] .value {
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--lx-text-muted);
+}
+
+/* A pad: a square pin (a round jack in the dark theme), filled when something is plugged in. FALLBACK's and
+   CUT's are where traces land: ink while a soft trace ends on them, the accent while a live one does. */
+.pads {
+  display: inline-flex;
+  flex: none;
+  gap: 3px;
+}
+
+.pad {
+  flex: none;
+  box-sizing: border-box;
+  inline-size: 9px;
+  block-size: 9px;
+  border: var(--cell-mark) solid var(--lx-text-muted);
+  background: var(--lx-panel);
+  forced-color-adjust: none;
+}
+
+.pad[data-on] {
+  border-color: var(--lx-text);
+  background: var(--lx-text);
+}
+
+/* A trace ends on the pad: ink for a soft one, the accent for a live one (the cell says which, per pad). */
+.cell[data-fallback-tone="soft"] .pad[data-pad="fallback"],
+.cell[data-cut-tone="soft"] .pad[data-pad="cut"] {
+  border-color: var(--lx-text);
+  background: var(--lx-text);
+  outline: var(--lx-stroke-hair) solid var(--lx-text);
+  outline-offset: var(--lx-stroke-hair);
+}
+
+.cell[data-fallback-tone="live"] .pad[data-pad="fallback"],
+.cell[data-cut-tone="live"] .pad[data-pad="cut"] {
+  border-color: var(--lx-accent);
+  background: var(--lx-accent);
+  outline: var(--lx-stroke-hair) solid var(--lx-accent);
+  outline-offset: var(--lx-stroke-hair);
+}
+
+:global(:root[data-theme="dark"]) .pad {
+  border-radius: 50%;
+}
+
+/* The empty sheet's row: where the cards will plug in. */
+.hint {
+  margin: 0;
+  padding: var(--lx-space-1) var(--lx-space-2);
+  font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-code-sm);
+  color: var(--lx-text-muted);
+}
+
+@media (forced-colors: active) {
+  .trace path {
+    stroke: CanvasText;
+  }
+
+  .trace[data-tone="live"] path,
+  .trace[data-tone="flash"] path {
+    stroke: Highlight;
+  }
+
+  .joint {
+    fill: Highlight;
+  }
+
+  .cell {
+    border-color: CanvasText;
+  }
+
+  .cell[data-selected] {
+    border-color: Highlight;
+    outline-color: Highlight;
+  }
+
+  .pad {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+
+  .pad[data-on],
+  .cell[data-fallback-tone="soft"] .pad[data-pad="fallback"],
+  .cell[data-cut-tone="soft"] .pad[data-pad="cut"] {
+    border-color: CanvasText;
+    background: CanvasText;
+    outline-color: CanvasText;
+  }
+
+  .cell[data-fallback-tone="live"] .pad[data-pad="fallback"],
+  .cell[data-cut-tone="live"] .pad[data-pad="cut"] {
+    border-color: Highlight;
+    background: Highlight;
+    outline-color: Highlight;
+  }
+
+  .row[aria-pressed="true"] .key,
+  .cell[data-hot="fallback"] .row[data-pad-row="fallback"] .key,
+  .cell[data-hot="cut"] .row[data-pad-row="cut"] .key,
+  .conflict .value {
+    color: Highlight;
+  }
+
+  .conflict {
+    forced-color-adjust: none;
+    background: var(--lx-hatch);
+    color: CanvasText;
+  }
+}

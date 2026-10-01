@@ -89,7 +89,7 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
     test("Deploy is disabled with \"Deploy needs a connection\" and ⌘/Ctrl+Enter only announces it, keyboard only @smoke", async ({ page, context }) => {
       await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
       const block = new TitleBlock(page);
-      await expect(block.root).toContainText("14 facets · 120 selectors");
+      await expect(block.root).toContainText("12 facets · 120 selectors");
       await runConsoleLine(page, "chain anvil");
       await context.setOffline(true);
       // Spec L385 and L561 write it without a period.
@@ -283,7 +283,7 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
 
   test("Studio updated while this tab needed a new piece of it: \"Save and reload\" gets it back", async ({ page }) => {
     await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
-    await expect(new TitleBlock(page).root).toContainText("14 facets · 120 selectors");
+    await expect(new TitleBlock(page).root).toContainText("12 facets · 120 selectors");
     // The deploy review's chunk is gone from the server, as after a release.
     const gone = (route: import("@playwright/test").Route) => route.abort();
     await page.route("**/assets/**", gone);

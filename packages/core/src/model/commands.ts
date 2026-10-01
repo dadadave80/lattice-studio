@@ -49,6 +49,7 @@ const OWNERS = {
   "sheet.locate": "S4b",
   "sheet.backToContent": "S4b",
   "sheet.minimapToggle": "S4b",
+  "core.select": "S4b",
   // S4e
   "sheet.selectAll": "S4e",
   "sheet.clearSelection": "S4e",

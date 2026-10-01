@@ -1,8 +1,10 @@
 import { templateList } from "@lattice-studio/core";
 import { useMemo } from "react";
 import { commandRef, useCatalog } from "@/contracts";
+import { BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
 import { BLANK_DIAMOND } from "@/state";
 import { CommandButton } from "@/ui";
+import { CORE_ONLY } from "../../../core-copy";
 import sheet from "../../shared/sheet.module.css";
 import styles from "./diamond.module.css";
 
@@ -10,8 +12,8 @@ import styles from "./diamond.module.css";
 export const STARTING_RECIPES = ["GovernedVault", "ERC20", "SafeDiamondCut"] as const;
 
 /**
- * The empty sheet's starting points (spec L378): Blank diamond (core only), the three recipes and Browse all
- * recipes. A recipe this catalog can't load isn't offered.
+ * The core-only sheet's starting points (spec L378): Blank diamond, the three recipes and Browse all recipes.
+ * A recipe this catalog can't load isn't offered.
  */
 export function StartingPoints() {
   const catalog = useCatalog();
@@ -22,10 +24,10 @@ export function StartingPoints() {
   }, [catalog]);
   return (
     <section className={sheet.section} aria-label="Start a diamond">
-      <p className={sheet.text}>No facets yet</p>
+      <p className={sheet.text}>{CORE_ONLY}</p>
       <div className={styles.starts}>
         <CommandButton command={commandRef("recipe.load", { name: BLANK_DIAMOND })} block>
-          Blank diamond (core only)
+          {BLANK_DIAMOND_LABEL}
         </CommandButton>
         {recipes.map((name) => (
           <CommandButton key={name} command={commandRef("recipe.load", { name })} block>

@@ -5,6 +5,7 @@
  */
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import type { Catalog, Project } from "@lattice-studio/core";
+import { CORE_FACETS } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import type { ThemeId } from "@lattice-studio/tokens";
 import type { ReactNode } from "react";
@@ -42,7 +43,8 @@ export function seedStudio(options: StudioOptions = {}): { project: Project; cat
   setCatalogStatus(
     catalog ? { status: "ready", id: catalog.lattice.tag, catalog, manifest: null } : { status: "loading" },
   );
-  const project = options.project ?? makeProject({ recipe: makeRecipe({}, catalog ?? undefined) });
+  // Core only, as the app's untitled project: the loupe and ERC-165 facets, nothing placed.
+  const project = options.project ?? makeProject({ recipe: makeRecipe({ facets: [...CORE_FACETS] }, catalog ?? undefined) });
   doc.load(project);
   document.documentElement.dataset.theme = theme;
   applyMotion(settings.get().reduceMotion);

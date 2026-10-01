@@ -499,6 +499,26 @@ describe("storage, seams and release", () => {
   });
 });
 
+describe("a core facet", () => {
+  test("reads Core facet with the core's line, offers Select the core only, and no Remove", async () => {
+    const select = spy("core.select", "Select the core");
+    await renderWithStudio(<FacetView view={{ kind: "facet", facet: "DiamondLoupeFacet" }} />, {
+      project: project({ facets: ["DiamondLoupeFacet", "ERC165Facet", "ERC20"] }, "facet-core"),
+    });
+    await shown("DiamondLoupeFacet");
+    await expect.element(page.getByText("Core facet", { exact: true })).toBeVisible();
+    await expect.element(page.getByText("Part of every diamond's core. It's cut first and stays.")).toBeVisible();
+    // Its sheet still reads like a facet's: four selectors, all cut.
+    expect(specValue("Selectors")).toBe("4 exported · 0 excluded · 4 cut");
+    expect(specValue("Cut")).toBe("ADD · 4/4 selectors");
+    for (const name of ["Flip pins", "Locate", "Move to…", "Remove"]) {
+      expect(page.getByRole("button", { name, exact: true }).elements()).toHaveLength(0);
+    }
+    await page.getByRole("button", { name: "Select the core" }).click();
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("actions", () => {
   test("Flip pins, Locate, Move to… and Remove dispatch for this facet", async () => {
     const flip = spy("layout.flipPins", "Flip pins");

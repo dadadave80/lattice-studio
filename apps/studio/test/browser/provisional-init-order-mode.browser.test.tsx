@@ -12,7 +12,7 @@
  * test.tsx`'s "a bundle shows its fixed order" test for that state instead.)
  */
 import type { Recipe } from "@lattice-studio/core";
-import { loadTemplate } from "@lattice-studio/core";
+import { isCoreFacet, loadTemplate, withCore } from "@lattice-studio/core";
 import { afterEach, beforeAll, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { doc, runCommand, session } from "@/contracts";
@@ -42,7 +42,8 @@ function stepsProject() {
     if (!template.value.facets.includes(name)) throw new Error(`${name} isn't a real GovernedVault facet.`);
   }
   const project = cardProject(catalog, SUBSET, { columns: 3, rowPitch: 320 });
-  return { ...project, recipe: { ...project.recipe, init: STEPS } };
+  // The recipe carries the core, as every project does once parsed; the core is never a card.
+  return { ...project, recipe: { ...withCore(project.recipe, catalog), init: STEPS } };
 }
 
 function card(facet: string): HTMLElement {
@@ -97,7 +98,8 @@ describe.each(["dark", "light"] as const)("provisional: init order mode (%s)", (
     const legend = page.getByRole("region", { name: "Init order" });
     await expect.element(legend).toBeVisible();
     await expect.element(legend.getByText("Drag a badge to reorder")).toBeVisible();
-    expect(doc.get().recipe.facets).toEqual(SUBSET);
+    // The recipe's cards are the subset; the core's two facets ride along, never as cards.
+    expect(doc.get().recipe.facets.filter((name) => !isCoreFacet(name))).toEqual(SUBSET);
     // The DEP-02 note ("needs ERC4626") settles into its final position a frame or two after the edges do;
     // wait until it holds still before shooting, or its label can land a pixel off between runs.
     const noteRect = () => document.querySelector('[role="note"]')?.getBoundingClientRect();

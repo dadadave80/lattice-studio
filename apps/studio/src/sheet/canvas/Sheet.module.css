@@ -45,8 +45,12 @@
   }
 }
 
-.backToContent {
-  margin-block-end: var(--lx-space-6);
+/*
+ * Lifted by the core cell's height while it would sit under the cell (the cell sets --lx-core-lift, D16). Two
+ * classes, so it outranks React Flow's own `.react-flow__panel { margin: 15px }` whichever sheet loads last.
+ */
+.backToContent:global(.react-flow__panel) {
+  margin-block-end: calc(var(--lx-space-6) + var(--lx-core-lift, 0px));
 }
 
 .minimap {

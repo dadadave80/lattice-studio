@@ -75,7 +75,7 @@ export const lines: LinesApi = {
 
   reviewOpened: ({ chain, path, facets }) => ({
     tag: "Deploy",
-    text: `Review: ${chain} · ${pathLabel(path)} · ${plural(facets, "facet")}.`,
+    text: `Review: ${chain} · ${pathLabel(path)} · the core and ${plural(facets, "facet")}.`,
   }),
 
   simulated: ({ block, events }) => ({

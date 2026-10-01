@@ -56,7 +56,7 @@ describe("ComparisonView", () => {
     await renderWithStudio(view(), { project: project("compare-match"), chain });
     await expect.element(page.getByRole("heading", { name: "Compare with the sheet" })).toBeVisible();
     await expect.element(page.getByText("Mismatch", { exact: true })).toBeVisible();
-    await expect.element(page.getByText("Diamond matches the sheet: 14 facets, 120 selectors.")).toBeVisible();
+    await expect.element(page.getByText("Diamond matches the sheet: the core and 12 facets, 120 selectors.")).toBeVisible();
     await expect.element(page.getByText("Sepolia", { exact: true })).toBeVisible();
     await expect.element(page.getByText(DIAMOND, { exact: true })).toBeVisible();
     const planColumn = page.getByRole("region", { name: "Plan" });
@@ -107,7 +107,7 @@ describe("ComparisonView", () => {
     expect(readFacetsCalls(chain)).toBe(1);
     chain.setDown(SEPOLIA, false);
     await page.getByRole("button", { name: "Retry" }).click();
-    await expect.element(page.getByText("Diamond matches the sheet: 14 facets, 120 selectors.")).toBeVisible();
+    await expect.element(page.getByText("Diamond matches the sheet: the core and 12 facets, 120 selectors.")).toBeVisible();
     expect(readFacetsCalls(chain)).toBe(2);
   });
 

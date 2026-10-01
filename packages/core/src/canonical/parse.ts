@@ -1,3 +1,4 @@
+import { withCore, withoutCore } from "../diamond/repair";
 import type { ParseProjectFileFn, ParseProjectFn, ParseRecipeFn } from "../model/api";
 import type { Catalog } from "../model/catalog";
 import { toChecksum, toLowerHex, type Hex } from "../model/hex";
@@ -97,10 +98,12 @@ function checksum(value: Hex): Hex {
   return toChecksum(value.toLowerCase());
 }
 
+/** The core is never on the sheet: a layout entry for one of its facets is dropped, whatever wrote it. */
 function normalizeProject(project: Project, recipe: Recipe): Project {
   return {
     ...project,
     recipe,
+    layout: withoutCore(project.layout),
     deploy: { ...project.deploy, entropy: toLowerHex(project.deploy.entropy) },
     predicted: project.predicted.map((entry) => ({ ...entry, address: checksum(entry.address) })),
   };
@@ -156,7 +159,12 @@ type Shape<T> = {
 
 /**
  * Refuse a `"__proto__"` key, then a lone surrogate; migrate, validate, check names against the pinned catalog,
- * normalize. The key check runs first, before anything copies the input. Never throws.
+ * put the core back, normalize. The key check runs first, before anything copies the input. Never throws.
+ *
+ * The core repair (`withCore`) runs after the name check and before normalization: a recipe that lost
+ * DiamondLoupeFacet or ERC165Facet gets them back (in catalog order with the catalog, appended without it), so
+ * CORE-01 and CORE-05 can't fire for a missing core facet on anything that came through here. `migrate` is left
+ * alone: this isn't a schema change.
  */
 function parseAs<T>(shape: Shape<T>, json: unknown, opts: ParseOptions): Result<Parsed<T>, ParseIssue[]> {
   const protoPath = findProtoKey(json);
@@ -177,7 +185,7 @@ function parseAs<T>(shape: Shape<T>, json: unknown, opts: ParseOptions): Result<
   ];
   if (issues.length > 0) return err(issues);
   const parsed: Parsed<T> = {
-    value: shape.normalize(validated.value.value, normalizeWith(recipe, catalog)),
+    value: shape.normalize(validated.value.value, normalizeWith(withCore(recipe, catalog), catalog)),
     unknownFields: validated.value.unknownFields,
     catalog,
   };

@@ -2,7 +2,7 @@
  * Ruling R6: Save a copy states the recipe hash, catalog tag and Studio version; the `.lattice.json` body
  * stays exactly what core writes.
  */
-import { recipeHash } from "@lattice-studio/core";
+import { CORE_FACETS, recipeHash } from "@lattice-studio/core";
 import { makeRecipe } from "@lattice-studio/core/testing";
 import { expect, test } from "vitest";
 import { createProject, openDialog, setCatalogStatus } from "@/contracts";
@@ -20,7 +20,8 @@ function ready(): void {
 
 test("states the recipe hash, catalog tag and Studio version", async () => {
   ready();
-  const created = await createProject(makeRecipe({}, catalog), "Vault");
+  // Core only, like the harness's own project, so the dialog's hash is this recipe's.
+  const created = await createProject(makeRecipe({ facets: [...CORE_FACETS] }, catalog), "Vault");
   if (!created.ok) throw new Error(created.error);
   const hash = recipeHash(created.value.recipe, catalog);
 

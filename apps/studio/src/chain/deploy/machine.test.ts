@@ -118,8 +118,8 @@ describe("review and simulation", () => {
     expect(s.phase).toBe("ready");
     expect(s.simulation?.ok).toBe(true);
     expect(s.simulation?.block).toBe(9_123_456);
-    expect(s.simulation?.summary).toMatch(/^Simulated at block 9,123,456: diamond at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} with 4 facets, \d+ selectors, 7 events\.$/);
-    expect(h.said.texts()).toContain("Review: Sepolia · LatticeFactory · 4 facets.");
+    expect(s.simulation?.summary).toMatch(/^Simulated at block 9,123,456: diamond at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} with the core and 2 facets, \d+ selectors, 7 events\.$/);
+    expect(h.said.texts()).toContain("Review: Sepolia · LatticeFactory · the core and 2 facets.");
     expect(h.said.texts()).toContain("Simulated at block 9,123,456: succeeded, 7 events.");
     expect(h.port.calls.find((c) => c.method === "noteEstimate")?.args).toEqual([SEPOLIA_ID, 3_000_000n]);
   });

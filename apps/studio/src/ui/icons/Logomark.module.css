@@ -1,0 +1,4 @@
+/* The mark keeps its box in a flex row (a button, a heading); its line and its ink are the SVG's own. */
+.mark {
+  flex: none;
+}
