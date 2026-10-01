@@ -1,5 +1,7 @@
 # Contributing
 
+This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). Taking part means upholding it.
+
 ## Setup
 
 ```sh

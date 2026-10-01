@@ -223,6 +223,7 @@ The aim is one place where a contract system is designed, reviewed and shipped, 
 - [`docs/architecture.md`](docs/architecture.md): how a recipe becomes a plan, an export and a deploy
 - [`docs/release.md`](docs/release.md): versioning, hosting, and the steps David runs to ship a release
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): branches, commits, and the pull request checklist
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md): the Contributor Covenant, and where to report a conduct problem
 - [`SECURITY.md`](SECURITY.md): the threat model, what the in-app checks can and can't prove, and how to report a problem
 - [`AGENTS.md`](AGENTS.md): the rules for people and coding agents working in this repo, and how it was built
 - [Lattice](https://github.com/dadadave80/lattice): the facet library Studio composes from, David Dada's earlier open-source work
