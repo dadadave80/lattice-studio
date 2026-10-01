@@ -48,8 +48,8 @@ export function DataGroup() {
         </div>
       ) : null}
       <p className={styles.note}>
-        RPC providers see the addresses Studio reads, and Sourcify receives the sources it verifies, which are
-        public anyway.
+        RPC providers see the addresses Studio reads, and Sourcify and Etherscan receive the sources they verify,
+        which are public anyway.
       </p>
       <div className={styles.actions}>
         <CommandButton command={commandRef("data.exportAll")} />

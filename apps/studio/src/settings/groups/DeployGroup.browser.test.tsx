@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { settings } from "@/contracts";
-import { renderWithStudio } from "../../../test/harness";
+import { onCleanup, renderWithStudio } from "../../../test/harness";
 import { DeployGroup } from "./DeployGroup";
 
 describe("DeployGroup", () => {
@@ -41,5 +41,45 @@ describe("DeployGroup", () => {
     await renderWithStudio(<DeployGroup />);
     await page.getByRole("radio", { name: "Nothing" }).click();
     expect(settings.get().deployAnnouncements).toBe("none");
+  });
+
+  test("an Etherscan API key is saved whole, on blur or Enter, never while it's being typed", async () => {
+    await renderWithStudio(<DeployGroup />);
+    const seen: string[] = [];
+    onCleanup(settings.subscribe((state) => void seen.push(state.etherscanApiKey)));
+    const field = page.getByRole("textbox", { name: "Etherscan API key" });
+    await field.click();
+    await userEvent.keyboard("ABC123");
+    expect(settings.get().etherscanApiKey).toBe("");
+    expect(seen).toEqual([]);
+    await userEvent.keyboard("{Enter}");
+    expect(settings.get().etherscanApiKey).toBe("ABC123");
+
+    await field.fill(" XYZ789 ");
+    expect(settings.get().etherscanApiKey).toBe("ABC123");
+    await page.getByRole("radio", { name: "Nothing" }).click();
+    expect(settings.get().etherscanApiKey).toBe("XYZ789");
+    expect(seen.filter((key) => key !== "ABC123" && key !== "XYZ789")).toEqual([]);
+  });
+
+  test("clearing the Etherscan API key removes it, and the help says it isn't set up", async () => {
+    await renderWithStudio(<DeployGroup />, { settings: { etherscanApiKey: "ABC123" } });
+    const field = page.getByRole("textbox", { name: "Etherscan API key" });
+    await expect.element(field).toHaveValue("ABC123");
+    await expect.element(field).toHaveAccessibleDescription(
+      "Verifies a diamond on Etherscan after a deploy, alongside Sourcify. The key stays in this browser and is sent only to Etherscan.",
+    );
+    await field.fill("");
+    await userEvent.keyboard("{Enter}");
+    expect(settings.get().etherscanApiKey).toBe("");
+    await expect.element(field).toHaveAccessibleDescription(
+      "Not set up. Verifies a diamond on Etherscan after a deploy, alongside Sourcify. The key stays in this browser and is sent only to Etherscan.",
+    );
+  });
+
+  test("resyncs the Etherscan API key field when the setting changes elsewhere", async () => {
+    await renderWithStudio(<DeployGroup />);
+    settings.set({ etherscanApiKey: "FROM-ELSEWHERE" });
+    await expect.element(page.getByRole("textbox", { name: "Etherscan API key" })).toHaveValue("FROM-ELSEWHERE");
   });
 });
