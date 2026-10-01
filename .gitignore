@@ -35,3 +35,6 @@ golden/out/
 golden/cache/
 e2e-chain/out/
 e2e-chain/cache/
+
+# Vercel CLI link
+.vercel
