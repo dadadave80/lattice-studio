@@ -34,6 +34,7 @@
 
 html {
   scroll-snap-type: y proximity;
+  scroll-padding-bottom: 56px;
   scroll-behavior: smooth;
 }
 
@@ -60,18 +61,12 @@ body {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.label, .count, dt {
+.label, dt, .deck-nav {
   margin: 0;
   font: 600 12px/16px var(--mono);
   letter-spacing: .106em;
   text-transform: uppercase;
   color: var(--faint);
-}
-
-.count {
-  position: absolute;
-  right: max(24px, 8vw);
-  bottom: 32px;
 }
 
 h1, h2, h3, p, ul, dl, dd { margin: 0; }
@@ -208,15 +203,63 @@ a:focus-visible {
   text-decoration: none;
 }
 
+.deck-nav {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px max(16px, 4vw);
+  background: var(--ground);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.deck-nav .home { display: flex; margin-right: auto; padding: 6px; }
+.deck-nav .mark { width: 24px; height: 24px; }
+
+.deck-nav ol {
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deck-nav ol a, .deck-nav button {
+  display: grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--faint);
+  font: inherit;
+  letter-spacing: 0;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.deck-nav button { border-color: var(--border); color: var(--text); }
+.deck-nav button:disabled { opacity: .35; cursor: default; }
+.deck-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.deck-nav ol a:hover { color: var(--text); }
+
+.deck-nav ol a[aria-current="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 @media (max-width: 900px) {
   body { font-size: 16px; }
-  .slide { padding: 56px 20px 72px; }
-  .count { right: 20px; bottom: 24px; }
+  .slide { padding: 56px 20px 88px; }
   .split { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .three, .four { --columns: 2; }
 }
 
 @media (max-width: 520px) {
+  .deck-nav ol a:not([aria-current="true"]) { display: none; }
   .two, .three, .four { --columns: 1; }
   dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   dd { margin-bottom: 10px; }
