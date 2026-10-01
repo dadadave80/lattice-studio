@@ -5,7 +5,8 @@
  *
  * The API key goes in the form body only, never in the URL, and never into anything this module returns: a
  * network failure and a bad response get fixed words, known answers get house words, and any other server text
- * has the key cut out of it before it becomes a reason.
+ * has the key cut out of it before it becomes a reason. A redirect is refused, so the body never follows one to
+ * another host.
  *
  * Both calls are form-encoded POSTs with no custom header, so the browser sends them without a preflight.
  * Etherscan answers errors as HTTP 200 with `{ status: "0", result: "<why>" }`.
@@ -17,8 +18,11 @@ export const ETHERSCAN_BASE = "https://api.etherscan.io/v2/api";
 
 export type EtherscanSubmission = { stdJsonInput: unknown; compilerVersion: string; contractName: string };
 
-/** A failure's `keyed` is true when the key or its plan caused it, so a changed key is worth another try. */
-export type EtherscanFailure = { kind: "failed"; reason: string; keyed: boolean };
+/**
+ * A failure's `keyed` is true when the key or its plan caused it, so a changed key is worth another try.
+ * `transient` marks one Etherscan never answered (the request didn't get there), so it's tried again unasked.
+ */
+export type EtherscanFailure = { kind: "failed"; reason: string; keyed: boolean; transient?: true };
 
 export type EtherscanSubmitted =
   | { kind: "queued"; guid: string }
@@ -46,9 +50,10 @@ function sourceCode(stdJsonInput: unknown): string {
   return JSON.stringify({ ...stdJsonInput, settings: kept });
 }
 
-/** `text` with every occurrence of `key` cut out. */
+/** `text` with every occurrence of `key` cut out, in any letter case. */
 export function scrub(text: string, key: string): string {
-  return key === "" ? text : text.split(key).join("…");
+  if (key === "") return text;
+  return text.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "…");
 }
 
 function failureFor(result: string, key: string): EtherscanFailure {
@@ -68,7 +73,8 @@ function failureFor(result: string, key: string): EtherscanFailure {
   return { kind: "failed", reason: `Etherscan answered: ${scrub(result, key).slice(0, 200)}`, keyed: false };
 }
 
-type Answer = { status: string; result: string } | EtherscanFailure;
+/** `busy`: a 429 or a 5xx, which says Etherscan can't take the call now, not that the verification failed. */
+type Answer = { status: string; result: string } | { kind: "busy" } | EtherscanFailure;
 
 async function post(fetchImpl: VerifyFetch, baseUrl: string, chainId: number, fields: Record<string, string>): Promise<Answer> {
   let response: Response;
@@ -77,10 +83,12 @@ async function post(fetchImpl: VerifyFetch, baseUrl: string, chainId: number, fi
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(fields).toString(),
+      redirect: "error",
     });
   } catch {
-    return { kind: "failed", reason: "Couldn't reach Etherscan.", keyed: false };
+    return { kind: "failed", reason: "Couldn't reach Etherscan.", keyed: false, transient: true };
   }
+  if (response.status === 429 || response.status >= 500) return { kind: "busy" };
   if (!response.ok) return { kind: "failed", reason: `Etherscan answered ${response.status}.`, keyed: false };
   let json: unknown;
   try {
@@ -106,11 +114,11 @@ export async function submitToEtherscan(
     contractname: body.contractName,
     compilerversion: body.compilerVersion,
   });
-  if ("kind" in answer) return answer;
+  if ("kind" in answer) return answer.kind === "busy" ? { kind: "wait" } : answer;
   const text = answer.result.toLowerCase();
   if (text.includes("already verified")) return { kind: "verified" };
   if (answer.status === "1" && answer.result !== "") return { kind: "queued", guid: answer.result };
-  if (text.startsWith("unable to locate contractcode") || text.startsWith("max rate limit reached")) return { kind: "wait" };
+  if (text.startsWith("unable to locate contractcode") || text.includes("rate limit reached")) return { kind: "wait" };
   return failureFor(answer.result, key);
 }
 
@@ -119,12 +127,12 @@ export async function pollEtherscan(
   fetchImpl: VerifyFetch, baseUrl: string, key: string, chainId: number, guid: string,
 ): Promise<EtherscanVerdict> {
   const answer = await post(fetchImpl, baseUrl, chainId, { apikey: key, module: "contract", action: "checkverifystatus", guid });
-  if ("kind" in answer) return answer;
+  if ("kind" in answer) return answer.kind === "busy" ? { kind: "pending" } : answer;
   const text = answer.result.toLowerCase();
   if (text.startsWith("pass - verified") || text.includes("already verified")) return { kind: "verified" };
   if (
     text.startsWith("pending in queue") || text.startsWith("error: contract does not exist") ||
-    text.startsWith("max rate limit reached")
+    text.includes("rate limit reached")
   ) {
     return { kind: "pending" };
   }

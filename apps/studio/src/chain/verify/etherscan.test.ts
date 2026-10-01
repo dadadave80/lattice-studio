@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { Address } from "@lattice-studio/core";
-import { etherscanCompilerVersion, pollEtherscan, submitToEtherscan } from "./etherscan";
+import { etherscanCompilerVersion, pollEtherscan, scrub, submitToEtherscan } from "./etherscan";
 import type { VerifyFetch } from "./ports";
 
 const BASE = "https://etherscan.test/v2/api";
@@ -58,6 +58,7 @@ describe("submitToEtherscan", () => {
     expect(calls[0]?.url).toBe(URL_FOR_CHAIN);
     expect(calls[0]?.url).not.toContain(KEY);
     expect(calls[0]?.init?.method).toBe("POST");
+    expect(calls[0]?.init?.redirect).toBe("error");
     expect(calls[0]?.init?.headers).toEqual({ "content-type": "application/x-www-form-urlencoded" });
     expect(Object.fromEntries(new URLSearchParams(String(calls[0]?.init?.body)))).toEqual({
       apikey: KEY,
@@ -87,6 +88,12 @@ describe("submitToEtherscan", () => {
   test("a contract Etherscan hasn't indexed yet, or a rate limit, waits", async () => {
     expect(await submit(notOk(`Unable to locate ContractCode at ${ADDRESS}`))).toEqual({ kind: "wait" });
     expect(await submit(notOk("Max rate limit reached, please use API Key for higher rate limit"))).toEqual({ kind: "wait" });
+    expect(await submit(notOk("Max calls per sec rate limit reached (3/sec)"))).toEqual({ kind: "wait" });
+  });
+
+  test("a 429 or a 5xx waits: Etherscan is busy, the verification hasn't failed", async () => {
+    expect(await submit(() => json(429, {}))).toEqual({ kind: "wait" });
+    expect(await submit(() => json(502, {}))).toEqual({ kind: "wait" });
   });
 
   test("a rejected key, a plan that doesn't cover the chain and a used-up quota fail with house reasons", async () => {
@@ -113,14 +120,20 @@ describe("submitToEtherscan", () => {
     expect(long.kind === "failed" && long.reason.length).toBe("Etherscan answered: ".length + 200);
   });
 
-  test("a network failure, a non-2xx status and a body that isn't JSON get fixed words", async () => {
+  test("the key is cut out in any letter case, and its own punctuation is read literally", () => {
+    expect(scrub(`a ${KEY.toLowerCase()} b ${KEY} c`, KEY)).toBe("a … b … c");
+    expect(scrub("a.b a+b", "a.b")).toBe("… a+b");
+    expect(scrub("unchanged", "")).toBe("unchanged");
+  });
+
+  test("a network failure, a refused status and a body that isn't JSON get fixed words; only the first is worth trying again unasked", async () => {
     const offline: VerifyFetch = async () => {
       throw new Error(`fetch failed for ${URL_FOR_CHAIN}&apikey=${KEY}`);
     };
     expect(await submitToEtherscan(offline, BASE, KEY, CHAIN_ID, ADDRESS, BODY)).toEqual({
-      kind: "failed", reason: "Couldn't reach Etherscan.", keyed: false,
+      kind: "failed", reason: "Couldn't reach Etherscan.", keyed: false, transient: true,
     });
-    expect(await submit(() => json(502, {}))).toEqual({ kind: "failed", reason: "Etherscan answered 502.", keyed: false });
+    expect(await submit(() => json(403, {}))).toEqual({ kind: "failed", reason: "Etherscan answered 403.", keyed: false });
     expect(await submit(() => new Response("<html>", { status: 200 }))).toEqual({
       kind: "failed", reason: "Etherscan's response wasn't valid JSON.", keyed: false,
     });
@@ -145,6 +158,9 @@ describe("pollEtherscan", () => {
     expect(await poll(notOk("Pending in queue"))).toEqual({ kind: "pending" });
     expect(await poll(notOk("Error: contract does not exist"))).toEqual({ kind: "pending" });
     expect(await poll(notOk("Max rate limit reached"))).toEqual({ kind: "pending" });
+    expect(await poll(notOk("Max calls per sec rate limit reached (3/sec)"))).toEqual({ kind: "pending" });
+    expect(await poll(() => json(429, {}))).toEqual({ kind: "pending" });
+    expect(await poll(() => json(503, {}))).toEqual({ kind: "pending" });
     expect(await poll(() => json(200, { status: "1", message: "OK", result: "In progress" }))).toEqual({ kind: "pending" });
   });
 
@@ -160,7 +176,7 @@ describe("pollEtherscan", () => {
       throw new Error("offline");
     };
     expect(await pollEtherscan(offline, BASE, KEY, CHAIN_ID, "guid-1")).toEqual({
-      kind: "failed", reason: "Couldn't reach Etherscan.", keyed: false,
+      kind: "failed", reason: "Couldn't reach Etherscan.", keyed: false, transient: true,
     });
   });
 });
