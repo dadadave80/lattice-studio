@@ -7,7 +7,7 @@ import type {
   Address, Analysis, Arg, Catalog, EditResult, InitStep, LayoutMetrics, Point, Project, Recipe, Sizes,
 } from "@lattice-studio/core";
 import {
-  analyze, cardSize, contestedSelectors, formatAddress, freeSlot, isNotImplemented, normalizeRecipe, setInitArg,
+  analyze, cardSize, contestedSelectors, formatAddress, freeSlot, isCoreFacet, isNotImplemented, normalizeRecipe, setInitArg,
 } from "@lattice-studio/core";
 import { argAt, sameArg } from "./field-value";
 import { addressAt, sameAddress } from "./init-paths";
@@ -185,16 +185,18 @@ function analysisOf(recipe: Recipe, catalog: Catalog): Analysis | null {
 /**
  * The layout once `after`'s facets replace `before`'s: removed facets' cards go, and each newly placed facet
  * lands where a removed one stood (the first new member takes the old member's place), else beside the sheet's
- * first card, moved to the nearest free slot so nothing stacks (spec L425).
+ * first card, moved to the nearest free slot so nothing stacks (spec L425). The core is never a card: it gets no
+ * entry and loses any it had.
  */
 export function remapLayout(
   project: Project, after: Recipe, catalog: Catalog, metrics: LayoutMetrics,
 ): Project["layout"] {
-  const keep = new Set(after.facets);
+  const cards = after.facets.filter((name) => !isCoreFacet(name));
+  const keep = new Set(cards);
   const removed = project.recipe.facets.filter((name) => !keep.has(name));
   const layout: Project["layout"] = {};
   for (const [name, entry] of Object.entries(project.layout)) if (keep.has(name)) layout[name] = { ...entry };
-  const placed = after.facets.filter((name) => layout[name] === undefined);
+  const placed = cards.filter((name) => layout[name] === undefined);
   if (placed.length === 0) return layout;
 
   const analysis = analysisOf(after, catalog);
