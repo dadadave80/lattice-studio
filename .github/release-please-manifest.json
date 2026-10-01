@@ -1,4 +1,4 @@
 {
-  "packages/cli": "0.0.0",
-  "apps/studio": "0.0.0"
+  "packages/cli": "1.0.0",
+  "apps/studio": "1.0.0"
 }
