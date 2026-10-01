@@ -21,16 +21,16 @@ jobs:
     name: bun x vitest run --update (chromium, ubuntu-latest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: bun install --frozen-lockfile
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
@@ -42,7 +42,7 @@ jobs:
       - name: Regenerate every missing chromium-linux baseline
         working-directory: apps/studio
         run: bun x vitest run --update --passWithNoTests
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: chromium-linux-baselines
           path: apps/studio/**/__screenshots__/**/*-chromium-linux.png
