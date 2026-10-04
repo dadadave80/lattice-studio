@@ -3,12 +3,12 @@
   "schemaVersion": 1,
   "name": "ERC20",
   "catalog": {
-    "tag": "dev-f4a32c8",
-    "hash": "0x2ab42999bbfac307417b4265a7e9dbb8e004a8473bc9fc532b9bf33efa1d20c1"
+    "tag": "dev-6c8db45",
+    "hash": "0x98f6be2df80deca8c6b6cd6dab9feecf3f02d924b943fa354561fbb686596d14"
   },
   "template": {
     "name": "ERC20",
-    "catalogHash": "0x2ab42999bbfac307417b4265a7e9dbb8e004a8473bc9fc532b9bf33efa1d20c1"
+    "catalogHash": "0x98f6be2df80deca8c6b6cd6dab9feecf3f02d924b943fa354561fbb686596d14"
   },
   "facets": [
     "ERC20",
