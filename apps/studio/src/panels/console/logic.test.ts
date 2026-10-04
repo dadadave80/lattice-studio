@@ -297,7 +297,7 @@ describe("summary (spec L376-L389)", () => {
 
 describe("script chains", () => {
   test("the catalog's chains and Studio's, sorted; Anvil only in e2e builds", () => {
-    expect(scriptChainIds({ chains: [] }, false)).toEqual([133, 84532, 11155111]);
-    expect(scriptChainIds({ chains: [{ chainId: 10 }] }, true)).toEqual([10, 133, 31337, 84532, 11155111]);
+    expect(scriptChainIds({ chains: [] }, false)).toEqual([133, 296, 84532, 11155111]);
+    expect(scriptChainIds({ chains: [{ chainId: 10 }] }, true)).toEqual([10, 133, 296, 31337, 84532, 11155111]);
   });
 });

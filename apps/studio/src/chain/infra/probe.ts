@@ -227,7 +227,7 @@ export async function supportsSimulate(client: ChainClient): Promise<boolean> {
   }
 }
 
-/** The fixed cap where the chain has one (EIP-7825), else the latest block's gasLimit. */
+/** The fixed cap where the chain has one (EIP-7825, Hedera's relay), else the latest block's gasLimit. */
 export async function readGasCap(client: ChainClient, fixed: bigint | undefined): Promise<bigint> {
   if (fixed !== undefined) return fixed;
   const block = await getBlock(client, { blockTag: "latest" });

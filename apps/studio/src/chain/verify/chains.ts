@@ -19,9 +19,9 @@ export function sourcifyServes(chainId: number): boolean {
 
 /**
  * Chains Sourcify serves and Etherscan's API V2 doesn't (`https://api.etherscan.io/v2/chainlist`): HSKChain
- * Testnet's explorer is Blockscout.
+ * Testnet's explorer is Blockscout, and Hedera Testnet's is HashScan.
  */
-const NOT_ON_ETHERSCAN: ReadonlySet<number> = new Set([133]);
+const NOT_ON_ETHERSCAN: ReadonlySet<number> = new Set([133, 296]);
 
 /** Whether Etherscan's API V2 could verify a contract on `chainId`. Where it can't, Etherscan is never asked. */
 export function etherscanServes(chainId: number): boolean {

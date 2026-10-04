@@ -2,9 +2,9 @@
  * Read-only readiness probes for `--chain` (spec L842, L921): one viem public client, JSON-RPC batched, no
  * wallet, no transaction. It fills the parts of `ChainState` the NET checks read: Arachnid's proxy, CreateX on
  * that path, Multicall3, every shared contract the recipe needs, whether the predicted address already has code,
- * `eth_simulateV1` support, the block gas limit as the per-transaction cap, and the code at every literal
- * address in the init (AUTH-01's single-key check and INIT-01's chain rules). Registry records aren't read, so
- * NET-08 stays quiet (a probe that wasn't made claims nothing).
+ * `eth_simulateV1` support, the per-transaction gas cap (the chain's fixed one, else the block gas limit), and the
+ * code at every literal address in the init (AUTH-01's single-key check and INIT-01's chain rules). Registry
+ * records aren't read, so NET-08 stays quiet (a probe that wasn't made claims nothing).
  */
 import {
   type Address,
@@ -30,6 +30,13 @@ type ViemChain = { id: number; name: string; rpcUrls: { default: { http: readonl
 const KNOWN_CHAINS: ViemChain[] = Object.values(viemChains as Record<string, unknown>).filter(
   (value): value is ViemChain => typeof value === "object" && value !== null && typeof (value as { id?: unknown }).id === "number" && typeof (value as { name?: unknown }).name === "string",
 );
+
+/**
+ * Per-transaction gas caps a chain fixes below its blocks' gasLimit, as Studio's chain table has them: EIP-7825's
+ * 16,777,216 on Ethereum and Sepolia, and 15,000,000 on Hedera Testnet, whose JSON-RPC relay rejects a transaction
+ * above that (-32005 GAS_LIMIT_TOO_HIGH) while its blocks report a gasLimit of 150,000,000.
+ */
+const FIXED_GAS_CAPS: Readonly<Record<number, bigint>> = { 1: 16_777_216n, 11155111: 16_777_216n, 296: 15_000_000n };
 
 /** Preferred names where several viem chains share an id (31337 is Anvil, Hardhat and Foundry). */
 const PREFERRED: Record<number, string> = { 31337: "Anvil", 1: "Ethereum" };
@@ -180,14 +187,15 @@ export async function probeChain(args: ProbeArgs): Promise<{ ok: true; value: Pr
     const code = (address: Address): Promise<Hex | undefined> => client.getCode({ address });
     const shared = sharedToProbe(recipe, catalog, chainId);
     const holders = [...new Set([...initAddresses(recipe), deployer.toLowerCase()])];
-    const [arachnid, createx, multicall3, predictedCode, sharedCodes, holderCodes, block, simulate] = await Promise.all([
+    const fixedCap = FIXED_GAS_CAPS[chainId];
+    const [arachnid, createx, multicall3, predictedCode, sharedCodes, holderCodes, gasCap, simulate] = await Promise.all([
       code(ARACHNID_PROXY),
       path === "createx" ? code(CREATEX) : Promise.resolve(undefined),
       code(MULTICALL3),
       code(predicted),
       Promise.all([...shared.values()].map((address) => code(address))),
       Promise.all(holders.map((address) => code(toChecksum(address)))),
-      client.getBlock(),
+      fixedCap ?? client.getBlock().then((block) => block.gasLimit),
       supportsSimulate(client),
     ]);
     const names = [...shared.keys()];
@@ -201,7 +209,7 @@ export async function probeChain(args: ProbeArgs): Promise<{ ok: true; value: Pr
       multicall3: codehashOf(multicall3),
       shared: Object.fromEntries(names.map((key, i) => [key, codehashOf(sharedCodes[i])])),
       simulate,
-      gasCap: block.gasLimit.toString(),
+      gasCap: gasCap.toString(),
       codeAt: Object.fromEntries(holders.map((address, i) => [address, holderCodes[i] ?? "0x"])),
       predictedHasCode: (predictedCode ?? "0x") !== "0x",
     };
