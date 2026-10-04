@@ -581,7 +581,7 @@ describe("Catalog row menu", () => {
     await expect.element(page.getByRole("menuitem", { name: "Preview" })).toBeVisible();
     await page.getByRole("menuitem", { name: "Open source on GitHub" }).click();
     expect(openSpy).toHaveBeenCalledWith(
-      "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/tokens/ERC4626/ERC4626.sol",
+      "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/ERC4626/ERC4626.sol",
       "_blank",
       "noopener,noreferrer",
     );
