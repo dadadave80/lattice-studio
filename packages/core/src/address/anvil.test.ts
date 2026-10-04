@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { concat, encodeAbiParameters, encodeFunctionData, getAddress, keccak256, parseAbi, slice } from "viem";
 import type { Address, Hex } from "../model/hex";
-import fixture from "./fixtures/lattice-f4a32c8.json";
+import fixture from "./fixtures/lattice-6c8db45.json";
 import {
   ARACHNID_PROXY, ARACHNID_PROXY_CODEHASH, arachnidAddress, buildSalt, CREATEX, createxPredict,
   FACTORY_PREDICT_SELECTOR, factoryPredict, sharedSalt,
