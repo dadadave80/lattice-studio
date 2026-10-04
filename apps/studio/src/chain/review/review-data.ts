@@ -58,7 +58,10 @@ export function problemsIn(review: Pick<Review, "analysis">, section: SectionId)
   return review.analysis.problems.filter((p) => sectionOf(p.code) === section);
 }
 
-/** The selected chain's native currency from S8a's chain table (HSK on HSKChain Testnet); ETH before a chain is chosen. */
+/**
+ * The selected chain's native currency from S8a's chain table (HSK on HSKChain Testnet, HBAR on Hedera Testnet); ETH
+ * before a chain is chosen.
+ */
 export function currencyOf(review: Pick<Review, "chainId">): { symbol: string; decimals: number } {
   const currency = review.chainId === null ? undefined : findKnownChain(review.chainId, env.e2e)?.nativeCurrency;
   return currency ? { symbol: currency.symbol, decimals: currency.decimals } : { symbol: "ETH", decimals: 18 };

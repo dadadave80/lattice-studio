@@ -233,10 +233,10 @@ async function etherscanJob(deps: VerifyDeps, record: Deployment, key: string, s
 /**
  * Etherscan's leg for one record: submits the same standard JSON Sourcify gets, polls the GUID to a terminal
  * outcome and keeps it in `etherscanOutcomes`. Never throws, whatever the job hits. Never calls `fetchImpl` for a
- * chain Etherscan doesn't serve (Anvil, HSKChain Testnet), or once `signal` aborts: an aborted run keeps no outcome, so the next
- * watcher starts it again. A failure that wasn't Etherscan's answer (the request never got there, the proxy's
- * build didn't load) is kept as `transient`, which the watcher drops when it starts and when the browser comes
- * back online. `key` goes to Etherscan's API and nowhere else.
+ * chain Etherscan doesn't serve (Anvil, HSKChain Testnet, Hedera Testnet), or once `signal` aborts: an aborted run
+ * keeps no outcome, so the next watcher starts it again. A failure that wasn't Etherscan's answer (the request never
+ * got there, the proxy's build didn't load) is kept as `transient`, which the watcher drops when it starts and when
+ * the browser comes back online. `key` goes to Etherscan's API and nowhere else.
  */
 export async function verifyOnEtherscan(deps: VerifyDeps, record: Deployment, key: string, signal?: AbortSignal): Promise<void> {
   if (!etherscanServes(record.chainId) || signal?.aborted) return;

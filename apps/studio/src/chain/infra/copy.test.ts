@@ -2,7 +2,7 @@
 import { describe, expect, test } from "bun:test";
 import { lintCopy } from "@lattice-studio/core";
 import { catalogDeployBlock } from ".";
-import { chainFromText, chainInfo, HASHKEY_TESTNET, pickerChains, publicRpcUrls, rpcUrls } from "./chains";
+import { chainFromText, chainInfo, HASHKEY_TESTNET, HEDERA_TESTNET, pickerChains, publicRpcUrls, rpcUrls } from "./chains";
 import {
   CANCELED_IN_WALLET, CHAIN_CHECKS_NEED_CONNECTION, checking, couldntRead, LOADING_WALLET_SUPPORT, needsFunds, NO_WALLET,
   rpcNotAnswering, walletOn,
@@ -33,8 +33,8 @@ describe("Flow 14", () => {
 
 describe("chains", () => {
   test("v1 testnets in the picker; Anvil only in end-to-end builds", () => {
-    expect(pickerChains(false).map((c) => c.id)).toEqual([11155111, 84532, 133]);
-    expect(pickerChains(true).map((c) => c.id)).toEqual([11155111, 84532, 133, 31337]);
+    expect(pickerChains(false).map((c) => c.id)).toEqual([11155111, 84532, 133, 296]);
+    expect(pickerChains(true).map((c) => c.id)).toEqual([11155111, 84532, 133, 296, 31337]);
     expect(chainFromText("anvil", false)).toBeUndefined();
     expect(chainFromText("anvil", true)?.id).toBe(31337);
   });
@@ -57,13 +57,31 @@ describe("chains", () => {
     expect(chainFromText("HSKChain Testnet", false)).toBe(HASHKEY_TESTNET);
   });
 
+  test("Hedera Testnet: chain 296, HBAR in weibars, Hashio's 15M per-transaction cap, HashScan, ENS through Sepolia", () => {
+    expect(chainInfo(HEDERA_TESTNET)).toEqual({
+      id: 296,
+      name: "Hedera Testnet",
+      testnet: true,
+      explorer: "https://hashscan.io/testnet",
+      faucet: "https://portal.hedera.com/faucet",
+    });
+    expect(HEDERA_TESTNET.nativeCurrency).toEqual({ name: "HBAR", symbol: "HBAR", decimals: 18 });
+    expect(HEDERA_TESTNET.ensChainId).toBe(11155111);
+    expect(HEDERA_TESTNET.gasCap).toBe(15_000_000n);
+    expect(rpcUrls(HEDERA_TESTNET, undefined)).toEqual(["https://testnet.hashio.io/api"]);
+    expect(publicRpcUrls(HEDERA_TESTNET, "https://rpc.example/key")).toEqual(["https://testnet.hashio.io/api"]);
+    expect(chainFromText("296", false)).toBe(HEDERA_TESTNET);
+    expect(chainFromText("hedera-testnet", false)).toBe(HEDERA_TESTNET);
+    expect(chainFromText("Hedera Testnet", false)).toBe(HEDERA_TESTNET);
+  });
+
   test("`chain <id>`: a picker chain by its number, nothing for one Studio doesn't list (IR L155)", () => {
     expect(chainFromText("11155111", false)?.name).toBe("Sepolia");
     expect(chainFromText(" 84532 ", false)?.name).toBe("Base Sepolia");
     expect(chainFromText("31337", false)).toBeUndefined();
     expect(chainFromText("31337", true)?.name).toBe("Anvil");
-    // Ethereum is read for ENS only; it isn't a chain to deploy to.
-    for (const unknown of ["1", "5", "10", "0", "999999999"]) expect(chainFromText(unknown, true)).toBeUndefined();
+    // Ethereum is read for ENS only; it isn't a chain to deploy to. Nor is Hedera Mainnet (295): mainnets are off.
+    for (const unknown of ["1", "5", "10", "295", "0", "999999999"]) expect(chainFromText(unknown, true)).toBeUndefined();
   });
 
   test("a fixture catalog can't deploy (contracts §4)", () => {

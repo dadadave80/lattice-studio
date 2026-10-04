@@ -94,9 +94,11 @@ describe("diamond-words", () => {
     // Offline nothing stored can be confirmed (ruling R7); Anvil is never submitted; only our own confirmed records are.
     expect(etherscanWord(own, { outcome: "verified" }, false, true)).toBeNull();
     expect(etherscanWord(record({ chainId: 31337 }), undefined, true, true)).toBeNull();
-    // Etherscan doesn't serve HSKChain Testnet: no line there, with a key or without one.
+    // Etherscan doesn't serve HSKChain Testnet or Hedera Testnet: no line there, with a key or without one.
     expect(etherscanWord(record({ chainId: 133 }), undefined, true, true)).toBeNull();
     expect(etherscanWord(record({ chainId: 133 }), undefined, true, false)).toBeNull();
+    expect(etherscanWord(record({ chainId: 296 }), undefined, true, true)).toBeNull();
+    expect(etherscanWord(record({ chainId: 296 }), undefined, true, false)).toBeNull();
     expect(etherscanWord(record({ chainId: 11155111, status: "pending" }), undefined, true, true)).toBeNull();
     expect(etherscanWord(record({ chainId: 11155111, fromFile: true }), undefined, true, true)).toBeNull();
   });
