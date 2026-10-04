@@ -33,11 +33,11 @@ export type InventoryEntry = {
   path: string;
 };
 
-/** `FacetInventory.inventory()`: the 100 (name, path) pairs, in inventory order. */
+/** `FacetInventory.inventory()`: its (name, path) pairs, in inventory order, whatever the inventory's size. */
 export function readInventory(dir: string): InventoryEntry[] {
   const text = readSource(dir, INVENTORY_PATH);
-  const [namesPart, pathsPart] = text.split("string[100] memory p");
-  if (namesPart === undefined || pathsPart === undefined) throw new Error(`${INVENTORY_PATH}: unexpected layout`);
+  const [namesPart, pathsPart, ...rest] = text.split(/string\[\d+\] memory p\b/);
+  if (namesPart === undefined || pathsPart === undefined || rest.length > 0) throw new Error(`${INVENTORY_PATH}: unexpected layout`);
   const names = [...namesPart.matchAll(/^\s+"([A-Za-z0-9]+)",?$/gm)].map((m) => m[1] ?? "");
   const paths = [...pathsPart.matchAll(/^\s+"([^":]+):([A-Za-z0-9]+)",?$/gm)].map((m) => ({ file: m[1] ?? "", name: m[2] ?? "" }));
   if (names.length !== paths.length) throw new Error(`${INVENTORY_PATH}: ${names.length} names but ${paths.length} paths`);

@@ -440,7 +440,7 @@ function provenance(fixture: Catalog, builds: Map<string, number>): unknown {
     note: "Where each fact in fixtures/catalog comes from. `real` facts cite Lattice at the pin; `invented` values are fake. Written by fixtures/gen/build.ts.",
     lattice: { commit: COMMIT, diamondLib: DIAMOND_LIB_COMMIT, version: VERSION, versionSource: VERSION_CITE },
     real: {
-      inventory: `${INVENTORY_PATH}#L${lineOf(dir as string, INVENTORY_PATH, "string[100] memory n")}-L${inventoryEnd()}`,
+      inventory: `${INVENTORY_PATH}#L${lineOf(dir as string, INVENTORY_PATH, `string[${inventory.length}] memory n`)}-L${inventoryEnd()}`,
       selectors: Object.fromEntries(fixture.facets.map((f) => [f.name, `${f.source}#L${builds.get(f.name)}`])),
       signatures: "The design prototype's signatures, each checked: keccak256(signature)[:4] equals the exported selector.",
       storage: "Namespaces from the prototype; slots computed with the ERC-7201 formula (R13) and found as constants in the source.",
@@ -455,7 +455,7 @@ function provenance(fixture: Catalog, builds: Map<string, number>): unknown {
       inits: INITS.map((i) => ({ name: i.name, source: cite(i.source) })),
       templates: TEMPLATES.map((t) => ({ name: t.name, cuts: cite(t.source) })),
       libraries: LIBRARIES.map((lib) => ({ name: lib.name, linkedBy: lib.linkedBy, source: cite(lib.source) })),
-      releaseSalts: "script/deploy/DeployRelease.s.sol (facet salt L238, registry L94, factory L97)",
+      releaseSalts: releaseSaltsCite(),
     },
     invented: [
       "lattice.tag (`fixture`, `fixture-next`)",
@@ -473,10 +473,20 @@ function provenance(fixture: Catalog, builds: Map<string, number>): unknown {
   };
 }
 
-/** The line that closes the inventory's path array (`];` after `string[100] memory p`). */
+/** Where DeployRelease spells out the facet, registry and factory salts. */
+function releaseSaltsCite(): string {
+  const path = "script/deploy/DeployRelease.s.sol";
+  const at = (needle: string): number => lineOf(dir as string, path, needle);
+  const facet = at('salt = keccak256(abi.encodePacked("lattice.", name, ".", version));');
+  const registry = at('REGISTRY_SALT = keccak256("lattice.LatticeRegistry");');
+  const factory = at('FACTORY_SALT = keccak256("lattice.LatticeFactory");');
+  return `${path} (facet salt L${facet}, registry L${registry}, factory L${factory})`;
+}
+
+/** The line that closes the inventory's path array (`];` after `string[<size>] memory p`). */
 function inventoryEnd(): number {
   const lines = readSource(dir as string, INVENTORY_PATH).split("\n");
-  const p = lines.findIndex((l) => l.includes("string[100] memory p"));
+  const p = lines.findIndex((l) => l.includes(`string[${inventory.length}] memory p`));
   return lines.findIndex((l, i) => i > p && l.trim() === "];") + 1;
 }
 
