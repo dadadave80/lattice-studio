@@ -2,7 +2,7 @@
  * What the lint checks the real overlay against, read from a Lattice checkout at the pin (tests and authoring
  * only; `bun run catalog` passes CG1's and CG4's own results).
  *
- * - Facets: the fixture catalog's 100 facets (names, areas and selectors, which K3 checks against the source),
+ * - Facets: the fixture catalog's 105 facets (names, areas and selectors, which K3 checks against the source),
  *   with each summary from the contract's NatSpec: solc's metadata when the checkout is built, else the source.
  * - Inits: every init contract in `src/**` and diamond-lib's initializers (DiamondInit excluded, which Lattice
  *   can't use), one per usable external function (EIP-7702-only ones left out); params with types, components and `@param` docs from the build.

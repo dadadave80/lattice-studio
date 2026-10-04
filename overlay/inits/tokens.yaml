@@ -157,6 +157,17 @@ ERC7802Init:
       role: CROSSCHAIN_BRIDGE_ROLE
       source: src/tokens/ERC7802/ERC7802Init.sol#L27-L27
 
+HTSAdapterInit:
+  kind: step
+  source: src/tokens/hedera/HTSAdapterInit.sol#L18-L23
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/hedera/HTSAdapterInit.sol#L19-L19
+
 MarketplaceZoneInit:
   kind: step
   source: src/tokens/MarketplaceZoneInit.sol#L15-L18

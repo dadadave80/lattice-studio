@@ -1,13 +1,13 @@
 {
   "note": "Where each fact in fixtures/catalog comes from. `real` facts cite Lattice at the pin; `invented` values are fake. Written by fixtures/gen/build.ts.",
   "lattice": {
-    "commit": "f4a32c8330934d39bcfdffff87d35a04b7fa6a79",
+    "commit": "6c8db45aa46986af2edb6a0d8fb02a4a92faef01",
     "diamondLib": "393435fbd01a85f9626cd62f436cdebf90ecdfdf",
     "version": "0.2.0",
     "versionSource": "src/LatticeVersion.sol#L22"
   },
   "real": {
-    "inventory": "script/lib/FacetInventory.sol#L20-L228",
+    "inventory": "script/lib/FacetInventory.sol#L20-L238",
     "selectors": {
       "AcrossBridgeAdapter": "src/crosschain/across/AcrossBridgeAdapter.sol#L51",
       "AxelarGatewayAdapter": "src/crosschain/axelar/AxelarGatewayAdapter.sol#L88",
@@ -40,6 +40,9 @@
       "DIAAdapter": "src/oracles/dia/DIAAdapter.sol#L61",
       "GelatoAutomateAdapter": "src/oracles/gelato/GelatoAutomateAdapter.sol#L60",
       "GelatoVRFAdapter": "src/oracles/gelato/GelatoVRFAdapter.sol#L53",
+      "HederaExchangeRateAdapter": "src/oracles/hedera/HederaExchangeRateAdapter.sol#L42",
+      "HederaPrngAdapter": "src/oracles/hedera/HederaPrngAdapter.sol#L30",
+      "HSSAdapter": "src/oracles/hedera/HSSAdapter.sol#L71",
       "PythAdapter": "src/oracles/pyth/PythAdapter.sol#L93",
       "PythEntropyAdapter": "src/oracles/pyth/PythEntropyAdapter.sol#L65",
       "RedStoneAdapter": "src/oracles/redstone/RedStoneAdapter.sol#L67",
@@ -58,8 +61,9 @@
       "ERC4626": "src/tokens/ERC4626/ERC4626.sol#L143",
       "ERC721": "src/tokens/ERC721/ERC721.sol#L90",
       "ERC7802": "src/tokens/ERC7802/ERC7802.sol#L32",
+      "HTSAdapter": "src/tokens/hedera/HTSAdapter.sol#L122",
       "MarketplaceZone": "src/tokens/MarketplaceZone.sol#L74",
-      "AccountSigner": "src/accounts/erc7579/AccountSigner.sol#L62",
+      "AccountSigner": "src/accounts/erc7579/AccountSigner.sol#L69",
       "ERC1271Signature": "src/accounts/ERC1271Signature.sol#L28",
       "ERC4337Validation": "src/accounts/ERC4337Validation.sol#L45",
       "ERC6900AccountView": "src/accounts/erc6900/ERC6900AccountView.sol#L45",
@@ -68,6 +72,7 @@
       "ERC6900Signature": "src/accounts/erc6900/ERC6900Signature.sol#L28",
       "ERC6900Validation": "src/accounts/erc6900/ERC6900Validation.sol#L33",
       "ERC7821Executor": "src/accounts/erc7579/ERC7821Executor.sol#L35",
+      "HASSignatureVerifier": "src/accounts/hedera/HASSignatureVerifier.sol#L43",
       "ConstantProduct": "src/amm/ConstantProduct.sol#L128",
       "AggregatorExecAdapter": "src/defi/AggregatorExecAdapter.sol#L48",
       "GovernedVault": "src/defi/GovernedVault.sol#L138",
@@ -525,7 +530,7 @@
         "source": "lib/zk-kit/lean-imt/InternalLeanIMT.sol#L4-L4"
       }
     ],
-    "releaseSalts": "script/deploy/DeployRelease.s.sol (facet salt L238, registry L94, factory L97)"
+    "releaseSalts": "script/deploy/DeployRelease.s.sol (facet salt L244, registry L100, factory L103)"
   },
   "invented": [
     "lattice.tag (`fixture`, `fixture-next`)",

@@ -1,0 +1,63 @@
+{
+  "name": "HASSignatureVerifier",
+  "abi": [
+    {
+      "name": "isAuthorized",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        },
+        {
+          "type": "bytes",
+          "name": "message"
+        },
+        {
+          "type": "bytes",
+          "name": "signatureMap"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool",
+          "name": "authorized"
+        }
+      ]
+    },
+    {
+      "name": "isAuthorizedRaw",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "account"
+        },
+        {
+          "type": "bytes32",
+          "name": "messageHash"
+        },
+        {
+          "type": "bytes",
+          "name": "signature"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool",
+          "name": "authorized"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet exposing HIP-632 native Hedera account signature verification (ED25519 + ECDSA, key lists via the protobuf path) as two never-reverting views.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/accounts/hedera/HASSignatureVerifier.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/accounts/hedera/HASSignatureVerifier.sol"
+  }
+}

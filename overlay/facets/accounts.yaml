@@ -64,3 +64,9 @@ ERC6900Validation:
 
 ERC7821Executor:
   requires: []
+
+HASSignatureVerifier:
+  requires: []
+  init:
+    name: HASSignatureVerifierInit
+    source: src/accounts/hedera/HASSignatureVerifierInit.sol#L11-L13

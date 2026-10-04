@@ -1,0 +1,46 @@
+{
+  "name": "HederaPrngAdapter",
+  "abi": [
+    {
+      "name": "drawInRange",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "uint32",
+          "name": "lo"
+        },
+        {
+          "type": "uint32",
+          "name": "hi"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32",
+          "name": "number"
+        }
+      ]
+    },
+    {
+      "name": "drawSeed",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32",
+          "name": "seed"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet exposing Hedera's PRNG system contract (0x169) as synchronous randomness.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/hedera/HederaPrngAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/hedera/HederaPrngAdapter.sol"
+  }
+}

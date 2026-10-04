@@ -26,7 +26,7 @@ describe("renderWithStudio", () => {
     await renderWithStudio(<Probe />, { settings: { wheel: "zoom" }, session: { chainId: 84532 }, theme: "light" });
     await expect.element(page.getByText("Untitled · fixture · zoom · 84532")).toBeVisible();
     expect(getCatalog()).toBe(fixtureCatalog());
-    expect(getCatalog()?.facets.length).toBe(100);
+    expect(getCatalog()?.facets.length).toBe(105);
     expect(document.documentElement.dataset.theme).toBe("light");
   });
 

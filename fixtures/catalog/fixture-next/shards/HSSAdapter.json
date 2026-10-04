@@ -1,0 +1,148 @@
+{
+  "name": "HSSAdapter",
+  "abi": [
+    {
+      "name": "authorizeSchedule",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "scheduleAddress"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "completeSelfCall",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "jobId"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "deleteSchedule",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "scheduleAddress"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "hasScheduleCapacity",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "expirySecond"
+        },
+        {
+          "type": "uint256",
+          "name": "gasLimit"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "scheduleCall",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "uint256",
+          "name": "expirySecond"
+        },
+        {
+          "type": "uint256",
+          "name": "gasLimit"
+        },
+        {
+          "type": "uint64",
+          "name": "value"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "scheduleAddress"
+        }
+      ]
+    },
+    {
+      "name": "scheduleOf",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "jobId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "scheduleAddress"
+        }
+      ]
+    },
+    {
+      "name": "scheduleSelfCall",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "jobId"
+        },
+        {
+          "type": "uint256",
+          "name": "expirySecond"
+        },
+        {
+          "type": "uint256",
+          "name": "gasLimit"
+        },
+        {
+          "type": "bytes",
+          "name": "data"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "scheduleAddress"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet for Hedera Schedule Service automation: scheduled (self-)calls paid by the diamond, plus contract-key signatures on native scheduled transactions.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/hedera/HSSAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/hedera/HSSAdapter.sol"
+  }
+}

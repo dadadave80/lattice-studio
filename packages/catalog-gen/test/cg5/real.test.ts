@@ -33,7 +33,7 @@ const V1_INITS = [
 ];
 
 describe("overlay/", () => {
-  test("every one of the 100 facets has an entry", () => {
+  test("every one of the 105 facets has an entry", () => {
     expect(Object.keys(overlay.facets).sort()).toEqual(fixture.facets.map((f) => f.name).sort());
   });
 
