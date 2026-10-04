@@ -61,10 +61,10 @@ const EXPLAINED_TOUCHES_DIFFERENCES: Record<string, { missing: string[]; extra: 
 
 const title = "against the pinned Lattice's real source";
 describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason})`, () => {
-  test("the registry has exactly the 90 pinned annotations, all verified, one waived", async () => {
+  test("the registry has exactly the 92 pinned annotations, all verified, one waived", async () => {
     const scan = await scanLatticeStorage(LATTICE);
     if (!scan.ok) throw new Error(scan.error);
-    expect(scan.value.registry.size).toBe(90);
+    expect(scan.value.registry.size).toBe(92);
     expect(scan.value.mismatches).toEqual([]);
     expect(scan.value.duplicateIds).toEqual([]);
     expect(scan.value.unverified).toEqual([]);

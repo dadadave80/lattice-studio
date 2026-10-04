@@ -249,7 +249,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
       ["AccountInit6900", [{ name: "entryPoint_", type: "address" }]],
     ]);
     const stateless = statelessInitContracts(inits).map((c) => c.contract);
-    expect(stateless).toHaveLength(82);
+    expect(stateless).toHaveLength(87);
     expect(stateless).not.toContain("AccountInit");
     expect(stateless).toContain("DiamondIntrospectionInit");
   });
@@ -302,7 +302,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     );
     const covered = new Set(fixture.map((s) => s.name));
     expect(merged.withoutOverlay).toEqual(inits.map((f) => f.spec.name).filter((n) => !covered.has(n)));
-    expect(merged.withoutOverlay).toHaveLength(68);
+    expect(merged.withoutOverlay).toHaveLength(73);
     expect(merged.withoutOverlay).not.toContain("AccountInit");
   });
 });
