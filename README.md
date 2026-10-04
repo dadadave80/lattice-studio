@@ -83,8 +83,8 @@ The analysis is one pure-TypeScript package. The app, the CLI and the tests all 
 
 ```console
 $ bun packages/cli/src/main.ts check docs/examples/erc20.recipe.json
-Provisional catalog: Lattice 0.2.0 at dev f4a32c8; v1 targets 0.4.0
-ERC20 · recipe 0x2bbd90227eb2f4de2d758f5a620ae2a30da5ce4019493652eaaf825c4bea1ddb · Lattice dev-f4a32c8
+Provisional catalog: Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0
+ERC20 · recipe 0xcb6a754d2dbc9870e692bb17a71e5db35dcc0a3aaaf3abe76b17aef27b89d909 · Lattice dev-6c8db45
 2 facets · 15 selectors
 1 warning
   Warning  INIT-05  2 fields still use example values, including name (Example Token) and symbol (EXT).
@@ -203,7 +203,7 @@ Studio is at v1: it composes new Lattice diamonds and deploys them on testnets. 
 
 - **Testnets only.** Sepolia, Base Sepolia and HashKey Chain testnet (chain 133, "HSKChain Testnet" in the picker). Mainnet is off in v1; Lattice and CreateX are both unaudited.
 - **HashKey Chain testnet is new.** It was added on October 2, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX isn't deployed there, so only the LatticeFactory path works, and verification runs on Sourcify alone (Etherscan doesn't serve the chain).
-- **The catalog is provisional.** It's built from Lattice's `dev` branch at commit `f4a32c8` (Lattice `VERSION` 0.2.0), not yet a tagged release. v1 targets Lattice `v0.4.0`, released through Arachnid's deployment proxy; every shared-contract address in the catalog changes at that re-pin. `check`, `plan` and the app all print "Provisional catalog" while this is true. [`docs/release.md`](docs/release.md) has what re-pinning involves.
+- **The catalog is provisional.** It's built from Lattice commit `6c8db45` (Lattice `VERSION` 0.2.0, tag `hedera-template-pin-6c8db45` on the `feat/hedera-system-contract-modules` branch), not yet a tagged release. It adds Lattice's Hedera facets (`HTSAdapter`, `HSSAdapter`, `HederaExchangeRateAdapter`, `HederaPrngAdapter` and `HASSignatureVerifier`) to the 100 of `dev-f4a32c8`, which stays in the manifest so recipes made against it still open. v1 targets Lattice `v0.4.0`, released through Arachnid's deployment proxy; every shared-contract address in the catalog changes at that re-pin. `check`, `plan` and the app all print "Provisional catalog" while this is true. [`docs/release.md`](docs/release.md) has what re-pinning involves.
 - **New diamonds only.** Upgrading a live diamond is v2.
 - **The CLI isn't on npm yet.** Run it from a checkout.
 - **CI is red for known reasons, none of which fail locally.** The `browser` job has no Linux screenshot baselines yet (every committed one was made on macOS), the Foundry jobs (`golden`, `chain`, `catalog-drift`) fail building the pinned Lattice checkout on the runner, and a `Performance` benchmark misses its budget there. [`docs/release.md`](docs/release.md) has the steps.
