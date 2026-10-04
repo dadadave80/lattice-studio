@@ -3,7 +3,7 @@
  * about each chain, read from `deployments/<chainid>/release-<version>.json` in the checkout when present. None
  * exist at the pin, so the catalog's `chains` is empty there.
  *
- * `DeployRelease._writeManifest` (`script/deploy/DeployRelease.s.sol#L286-L315` at the pin) writes the version,
+ * `DeployRelease._writeManifest` (`script/deploy/DeployRelease.s.sol#L292-L321` at the pin) writes the version,
  * the chain id, CreateX, the registry, the factory, the registry's owner, a timestamp and one entry per facet
  * (name, address, codehash, selectors hash, salt). It records no build commit, no codehash for the factory, no
  * standard JSON and no proxy init-code hash, and `ChainRelease.factory` needs all four. So a chain whose factory

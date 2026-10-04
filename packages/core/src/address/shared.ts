@@ -16,7 +16,7 @@ export const ARACHNID_PROXY: Address = "0x4e59b44847b379578588920cA78FbF26c0B495
 export const ARACHNID_PROXY_CODEHASH: Hex = "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989";
 
 /**
- * Shared contracts whose salt carries no version. Mirrors `DeployRelease.s.sol` L93-L97 at the pin:
+ * Shared contracts whose salt carries no version. Mirrors `DeployRelease.s.sol` L99-L103 at the pin:
  * `REGISTRY_SALT = keccak256("lattice.LatticeRegistry")`, `FACTORY_SALT = keccak256("lattice.LatticeFactory")`.
  */
 const VERSIONLESS = new Set(["LatticeRegistry", "LatticeFactory"]);

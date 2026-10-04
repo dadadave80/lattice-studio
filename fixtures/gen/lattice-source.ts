@@ -44,7 +44,7 @@ export function readInventory(dir: string): InventoryEntry[] {
   return names.map((name, i) => {
     const p = paths[i];
     if (!p || p.name !== name) throw new Error(`${INVENTORY_PATH}: entry ${i} is ${name} but its path names ${p?.name}`);
-    // diamond-lib's facets are listed by artifact basename (FacetInventory.sol L224-L229).
+    // diamond-lib's facets are listed by artifact basename (FacetInventory.sol L234-L237).
     const path = p.file.startsWith("src/") ? p.file : `lib/diamond-lib/src/facets/${p.file}`;
     return { name, path };
   });

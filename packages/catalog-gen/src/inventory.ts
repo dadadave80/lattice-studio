@@ -30,7 +30,7 @@ export type InventoryEntry = {
   artifact: string;
   /** The source file part of `artifact`: "src/tokens/ERC20/ERC20.sol", or a bare basename for diamond-lib's four. */
   file: string;
-  /** True for the diamond-lib entries written as basenames (`FacetInventory.sol:224-227`). */
+  /** True for the diamond-lib entries written as basenames (`FacetInventory.sol:234-237`). */
   basename: boolean;
 };
 

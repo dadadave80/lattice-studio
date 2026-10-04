@@ -4,12 +4,12 @@
  * address through Arachnid's deterministic deployment proxy follow from core's `sharedSalt` and
  * `arachnidAddress`. `release.ts` does the half that needs a Lattice build and an Anvil.
  *
- * Rules at the pin (Lattice dev f4a32c8, `VERSION` "0.2.0"; every address here is provisional until the 0.4.0
+ * Rules at the pin (Lattice 6c8db45, `VERSION` "0.2.0"; every address here is provisional until the 0.4.0
  * re-pin, HANDOFF D2):
  * - Version: `LatticeVersion.VERSION`, read from `src/LatticeVersion.sol`, never hardcoded.
  * - Salts: `sharedSalt(name, version)`, `keccak256("lattice.<Name>.<version>")`; LatticeRegistry and
- *   LatticeFactory are versionless (`DeployRelease.s.sol` L93-L97).
- * - Constructor arguments, as the canonical build passes them (`DeployRelease.s.sol` L155-L165):
+ *   LatticeFactory are versionless (`DeployRelease.s.sol` L99-L103).
+ * - Constructor arguments, as the canonical build passes them (`DeployRelease.s.sol` L161-L171):
  *   `LatticeRegistry(initialOwner)` with the placeholder owner below, and `LatticeFactory(registry, 0, 0)`,
  *   the registry's predicted address and no ENS reverse registrar. Any other contract whose ABI has constructor
  *   inputs is per-deployment and gets no release data.

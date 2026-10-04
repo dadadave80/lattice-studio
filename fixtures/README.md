@@ -32,12 +32,12 @@ resolves it to `path#Lx-Ly`, so a citation that stops matching the source fails 
 
 ## What is real
 
-At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), `LatticeVersion.VERSION` =
+At Lattice `6c8db45aa46986af2edb6a0d8fb02a4a92faef01` (diamond-lib `393435fb`), `LatticeVersion.VERSION` =
 `0.2.0` (`src/LatticeVersion.sol#L22`). `provenance.json` has the full list; the main sources:
 
 | Fact | Source at the pin |
 | --- | --- |
-| The 100 facets, in order, and their source paths | `script/lib/FacetInventory.sol#L20-L228` |
+| The 105 facets, in order, and their source paths | `script/lib/FacetInventory.sol#L20-L238` |
 | Each facet's selectors, in order | its `exportSelectors()` body (packed `hex"…"`, or `this.f.selector` for diamond-lib's four) |
 | Signatures | the prototype's, each checked: `keccak256(signature)[:4]` equals the exported selector |
 | ABI mutability, parameter names, elementary outputs | the facet's own `function` declaration |
@@ -55,7 +55,7 @@ At Lattice `f4a32c8330934d39bcfdffff87d35a04b7fa6a79` (diamond-lib `393435fb`), 
 | InitSpec signatures, parameter names and docs, `initializes` | each init contract's `init` body (see `provenance.json`) |
 | GovernedVaultInit's struct and sequence | `src/defi/GovernedVaultInit.sol#L20-L30`, `#L44-L87` |
 | GovernedVault examples | `script/base/defi/GrantExample.s.sol#L26` |
-| Salt, address and slot formulas | `script/deploy/DeployRelease.s.sol#L94-L97`, `#L238`; ERC-7201 |
+| Salt, address and slot formulas | `script/deploy/DeployRelease.s.sol#L100-L103`, `#L244`; ERC-7201 |
 
 ## What is invented
 

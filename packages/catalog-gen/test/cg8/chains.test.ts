@@ -1,6 +1,6 @@
 /**
  * Chain releases from Lattice's per-chain manifests (`DeployRelease._writeManifest`, `script/deploy/
- * DeployRelease.s.sol#L286-L315` at the pin), against synthetic manifests: none exist at the pin.
+ * DeployRelease.s.sol#L292-L321` at the pin), against synthetic manifests: none exist at the pin.
  */
 import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";

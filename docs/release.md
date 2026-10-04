@@ -65,7 +65,7 @@ Every `toMatchScreenshot` baseline committed today is `*-chromium-darwin.png`: m
 
 ## Re-pinning to a tagged Lattice release
 
-The catalog in `catalog/` is currently built from Lattice's `dev` branch, not a tagged release, and every shared-contract address in it will change once it's rebuilt from a real tag — see `docs/architecture.md` and `README.md`'s "Rebuilding and verifying the catalog".
+The catalog in `catalog/` is currently built from Lattice commit `6c8db45` (tag `hedera-template-pin-6c8db45`), not a tagged release, and every shared-contract address in it will change once it's rebuilt from a real tag — see `docs/architecture.md` and `README.md`'s "Rebuilding and verifying the catalog".
 
 **Needs David:** once Lattice `v0.4.0` is tagged and released through Arachnid's proxy, update the pinned submodule commit and run `bun run catalog` to rebuild. That rebuild is what clears the "Provisional catalog" notice the app and CLI print today. `docs/examples/erc20.recipe.json` is pinned to the current catalog's hash, so regenerate it from the rebuilt catalog's ERC20 template at the same time, or `lattice-studio check` on that example starts exiting 3 (catalog mismatch).
 
