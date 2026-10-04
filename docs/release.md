@@ -6,7 +6,7 @@ This describes how a change becomes a release: versioning, CI, hosting, and the 
 
 [`release-please`](https://github.com/googleapis/release-please) reads conventional commits and keeps two packages' versions and changelogs in step with them (`.github/workflows/release-please.yml`, configured in `.github/release-please-config.json` and `.github/release-please-manifest.json`): `packages/cli`, the one thing this project ships to a registry, and `apps/studio`, versioned so every export it writes (a Foundry script's header, an agent brief, a Safe batch) carries a real version instead of the placeholder `0.0.0` its `package.json` starts at. On every push to `main`, release-please opens or updates a pull request per package proposing its next version from the commits that touch it since its last release; merging a pull request bumps that package's `package.json`, writes its changelog, and tags its release. The other packages (`core`, `catalog-gen`, `tokens`) aren't independently versioned.
 
-**Needs David:** the workflow only runs once the repository has a `main` branch on GitHub (see below).
+**Needs David:** the workflow runs on every push to `main`, but it fails with "GitHub Actions is not permitted to create or approve pull requests" until the repository allows it (Settings → Actions → General → Workflow permissions), so no version has been cut yet. Its proposed release waits on the `release-please--branches--main` branch.
 
 ## Hosting
 
@@ -40,11 +40,10 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 
 ## CI
 
-`.github/workflows/` is written and ready but not running: `ci.yml` (the pull request gate: typecheck, lint, unit, browser, e2e, golden, chain, catalog drift, size, Lighthouse), `fork.yml` (the Sepolia fork suite), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only), `release-please.yml`, `publish-cli.yml`, and `update-screenshots.yml` (manual, `workflow_dispatch` only: regenerates the missing `chromium-linux` screenshot baselines as a downloadable artifact — see "Linux screenshot baselines" below).
+`.github/workflows/` runs on GitHub: `ci.yml` (the pull request gate: typecheck, lint, unit, browser, e2e, golden, chain, catalog drift, size, Lighthouse), `fork.yml` (the Sepolia fork suite), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only), `release-please.yml`, `publish-cli.yml`, and `update-screenshots.yml` (manual, `workflow_dispatch` only: regenerates the missing `chromium-linux` screenshot baselines as a downloadable artifact — see "Linux screenshot baselines" below).
 
 **Needs David:**
 
-- Create the GitHub repository and push. None of these workflows run before that.
 - Add the `SEPOLIA_RPC_URL` repository secret. Without it, `fork.yml`'s gate job checks for the secret, finds it missing, and stops there — the pull request gate's own `chain` job still runs against a local Anvil node either way, so this only adds the fork suite, it doesn't block anything by its absence.
 - Add the `NPM_TOKEN` repository secret, scoped to publish `lattice-studio` with provenance. Needed before `publish-cli.yml` can run at all.
 - Install solc 0.8.36 (Lattice's pin) before the `golden`, `chain`, and `catalog-drift` jobs run, so `forge build` inside the pinned Lattice checkout has it available.

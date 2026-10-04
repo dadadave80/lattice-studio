@@ -9,7 +9,7 @@
 Compose a contract system from facets, catch every mistake on the edit that makes it,<br />
 and ship it as a Foundry script, a Safe batch or one verified transaction.
 
-[**Open the app**](https://lattice-studio-topaz.vercel.app) · [Watch the demo](https://youtu.be/Fzei4h-vTQg) · [Architecture](docs/architecture.md) · [Security model](SECURITY.md) · [CLI](packages/cli/README.md)
+[**Open the app**](https://lattice-studio-git-feat-hedera-david-dadas-projects.vercel.app) · [Watch the demo](https://youtu.be/Fzei4h-vTQg) · [Architecture](docs/architecture.md) · [Security model](SECURITY.md) · [CLI](packages/cli/README.md)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-16150f?style=flat-square)](LICENSE)
 [![EIP-2535 diamonds](https://img.shields.io/badge/EIP--2535-diamonds-1f4fe0?style=flat-square)](https://eips.ethereum.org/EIPS/eip-2535)
@@ -85,7 +85,7 @@ cast call 0xFDd6e099fF4b48a9179443A9D846AfA816997e23 "facetAddresses()(address[]
 
 ## Quickstart
 
-Use the [hosted app](https://lattice-studio-topaz.vercel.app), or run it yourself with [Bun](https://bun.sh):
+Use the [hosted app](https://lattice-studio-git-feat-hedera-david-dadas-projects.vercel.app), or run it yourself with [Bun](https://bun.sh):
 
 ```sh
 git clone https://github.com/dadadave80/lattice-studio.git
