@@ -25,7 +25,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
       if (!generated.ok) throw new Error(generated.error);
       const report = await compareWithCommitted(CATALOG_DIR, generated.value);
       expect(formatVerifyReport(report)).toBe(`Catalog ${generated.value.id} matches the rebuild byte for byte · hash ${report.hash}.`);
-      expect(generated.value.assembled.catalog.provisional).toBe("Lattice 0.2.0 at dev f4a32c8; v1 targets 0.4.0");
+      expect(generated.value.assembled.catalog.provisional).toBe("Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0");
       expect(generated.value.summary.join("\n")).toContain("Overlay lint: 0 errors");
     },
     BUILD_TIMEOUT_MS,

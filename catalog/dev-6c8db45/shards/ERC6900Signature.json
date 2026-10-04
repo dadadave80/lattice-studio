@@ -1,0 +1,82 @@
+{
+  "name": "ERC6900Signature",
+  "abi": [
+    {
+      "type": "function",
+      "name": "isValidSignature",
+      "inputs": [
+        {
+          "name": "hash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "signature",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "InvalidShortString",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NonCanonicalEncoding",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SegmentOutOfOrder",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SignatureValidationInvalid",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "entityId",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ValidationSignatureSegmentMissing",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x1626ba7e": {
+        "notice": "ERC-1271 contract-signature validation, ERC-7739-bound to this account's domain."
+      }
+    },
+    "notice": "ERC-6900 ERC-1271 signature-validation facet: `isValidSignature` routes to the validation module named by the signature prefix, after binding the digest to this account's domain via ERC-7739. Part of the ERC-6900 account blueprint (an alternative to the ERC-7579 `ERC1271Signature` facet); the two are never cut into the same account.",
+    "dev": "Stateless delegator — logic lives in {ERC6900SignatureLib}; it reads the registries owned by {ERC6900ModuleManagerLib} and composes {ERC7739Lib}/{EIP712Lib}."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/erc6900/ERC6900Signature.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/accounts/erc6900/ERC6900Signature.sol"
+  }
+}

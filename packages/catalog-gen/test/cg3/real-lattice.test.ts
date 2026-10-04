@@ -76,7 +76,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
   test("every facet's storage and touches, cross-checked against K3's fixture catalog", async () => {
     const inventory = await readInventory(LATTICE);
     if (!inventory.ok) throw new Error(inventory.error);
-    expect(inventory.value).toHaveLength(100);
+    expect(inventory.value).toHaveLength(105);
 
     const facets = await Promise.all(
       inventory.value.map(async (e) => ({ name: e.name, sourcePath: await resolveSourcePath(e) })),
@@ -90,7 +90,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
 
     const fixturePath = join(REPO_ROOT, "fixtures", "catalog", "fixture", "index.json");
     const fixture = (await Bun.file(fixturePath).json()) as FixtureCatalog;
-    expect(fixture.facets).toHaveLength(100);
+    expect(fixture.facets).toHaveLength(105);
 
     const unexplainedDiffs: string[] = [];
     for (const f of fixture.facets) {

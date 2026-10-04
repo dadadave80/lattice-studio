@@ -174,12 +174,12 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     fixture = await fixtureInits();
   }, BUILD_TIMEOUT_MS);
 
-  test("84 init contracts give 85 specs, sorted by name; every internal call was followed", () => {
-    expect(new Set(inits.map((f) => f.spec.contract)).size).toBe(84);
-    expect(inits).toHaveLength(85);
+  test("89 init contracts give 90 specs, sorted by name; every internal call was followed", () => {
+    expect(new Set(inits.map((f) => f.spec.contract)).size).toBe(89);
+    expect(inits).toHaveLength(90);
     const names = inits.map((f) => f.spec.name);
     expect(names).toEqual([...names].sort());
-    expect(new Set(names).size).toBe(85);
+    expect(new Set(names).size).toBe(90);
     expect(notes).toEqual([]);
     // Calls into other code, which aren't init code: pinned so a new one gets looked at.
     expect(externalCalls).toEqual([

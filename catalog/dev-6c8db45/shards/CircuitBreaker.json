@@ -1,0 +1,293 @@
+{
+  "name": "CircuitBreaker",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getCumulative",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "cumulative",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "windowStart",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getThreshold",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "threshold",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "windowSeconds",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isTripped",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "recordObservation",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "reset",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setThreshold",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "threshold",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "windowSeconds",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "CircuitBreakerReset",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "CircuitBreakerThresholdSet",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "threshold",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "windowSeconds",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "CircuitBreakerTripped",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "threshold",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CircuitBreakerInvalidThreshold",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "CircuitBreakerInvalidWindow",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "CircuitBreakerNotConfigured",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CircuitBreakerTrippedError",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x7e633690": {
+        "notice": "Returns the current cumulative value and window start time for `key`.",
+        "params": {
+          "key": "The circuit breaker key to query."
+        }
+      },
+      "0x42acf119": {
+        "notice": "Returns the configured threshold and window for `key`.",
+        "params": {
+          "key": "The circuit breaker key to query."
+        }
+      },
+      "0xcaac05fa": {
+        "notice": "Returns whether the circuit breaker for `key` is currently tripped.",
+        "params": {
+          "key": "The circuit breaker key to query."
+        }
+      },
+      "0xef13ca9d": {
+        "notice": "Records an observation for `key`, rolling the window if necessary.",
+        "dev": "Requires DEFAULT_ADMIN_ROLE. If `block.timestamp >= windowStart + windowSeconds`, the window resets before accumulating. If the new cumulative value meets or exceeds the threshold the circuit trips and emits `CircuitBreakerTripped`. Reverts with `CircuitBreakerNotConfigured` if the key has not been set up. Reverts with `CircuitBreakerTrippedError` if the circuit is already tripped; call `reset()` to clear the tripped state before recording further observations.",
+        "params": {
+          "key": "The circuit breaker key.",
+          "value": "The value to add to the current window's cumulative."
+        }
+      },
+      "0xed3c7d40": {
+        "notice": "Resets the tripped state and cumulative for `key`.",
+        "dev": "Requires DEFAULT_ADMIN_ROLE. Reverts with `CircuitBreakerNotConfigured` if the key has not been configured yet (windowSeconds == 0). Note: the `tripped` flag is sticky — it is NOT automatically cleared when the rolling window expires. An explicit `reset()` or `setThreshold()` call is required to untrip the circuit. This is intentional so that operational incidents are never silently resolved without a human action. Emits `CircuitBreakerReset`.",
+        "params": {
+          "key": "The circuit breaker key to reset."
+        }
+      },
+      "0x802ec864": {
+        "notice": "Configures or updates the threshold and rolling window for `key`.",
+        "dev": "Requires DEFAULT_ADMIN_ROLE. Resets cumulative and tripped state. Reverts with `CircuitBreakerInvalidThreshold` if `threshold == 0`. Reverts with `CircuitBreakerInvalidWindow` if `windowSeconds == 0`.",
+        "params": {
+          "key": "The circuit breaker key to configure.",
+          "threshold": "The trip threshold value (must be > 0).",
+          "windowSeconds": "The rolling window duration in seconds (must be > 0)."
+        }
+      }
+    },
+    "notice": "Thin Diamond facet that exposes multi-key threshold-based circuit breaking.",
+    "dev": "All logic lives in {CircuitBreakerLib}. This contract is stateless and forwards every call to the library. Inherit this in your Diamond facet to add circuit-breaking."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/security/CircuitBreaker.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/security/CircuitBreaker.sol"
+  }
+}

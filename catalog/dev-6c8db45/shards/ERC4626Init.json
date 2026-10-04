@@ -1,0 +1,51 @@
+{
+  "name": "ERC4626Init",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "asset_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "decimalsOffset_",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x3bf73798": {
+        "notice": "Seeds the ERC-20 share metadata and the ERC-4626 vault parameters.",
+        "params": {
+          "asset_": "The underlying ERC-20 asset the vault holds.",
+          "decimalsOffset_": "Virtual-share decimals offset for inflation-attack mitigation (usually 0).",
+          "name_": "The vault share token name.",
+          "symbol_": "The vault share token symbol."
+        }
+      }
+    },
+    "notice": "One-shot initializer for an ERC-4626 tokenized-vault diamond. The vault's shares ARE an ERC-20 token, so this seeds BOTH modules in a single initializing window: `__ERC20_init` (share name/symbol) then `__ERC4626_init` (underlying asset + virtual-share decimals offset, which also registers IERC4626 via ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window — it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open. Companion to the {ERC20Init} pattern — a first-class production deploy artifact shared by `run --broadcast` and the facet tests."
+  },
+  "source": {
+    "path": "src/tokens/ERC4626/ERC4626Init.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/ERC4626/ERC4626Init.sol"
+  }
+}

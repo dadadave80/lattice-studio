@@ -1,0 +1,321 @@
+{
+  "name": "PythEntropyAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "entropyCallback",
+      "inputs": [
+        {
+          "name": "sequence",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "provider",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "randomNumber",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getConfig",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IPythEntropyAdapter.EntropyConfig",
+          "components": [
+            {
+              "name": "entropy",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "provider",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getFee",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getUserKey",
+      "inputs": [
+        {
+          "name": "sequenceNumber",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "requestRandomNumber",
+      "inputs": [
+        {
+          "name": "userKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "userRandomNumber",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sequenceNumber",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "setConfig",
+      "inputs": [
+        {
+          "name": "config",
+          "type": "tuple",
+          "internalType": "struct IPythEntropyAdapter.EntropyConfig",
+          "components": [
+            {
+              "name": "entropy",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "provider",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "EntropyConfigSet",
+      "inputs": [
+        {
+          "name": "entropy",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "provider",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RandomNumberFulfilled",
+      "inputs": [
+        {
+          "name": "sequenceNumber",
+          "type": "uint64",
+          "indexed": true,
+          "internalType": "uint64"
+        },
+        {
+          "name": "userKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "randomNumber",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RandomNumberRequested",
+      "inputs": [
+        {
+          "name": "sequenceNumber",
+          "type": "uint64",
+          "indexed": true,
+          "internalType": "uint64"
+        },
+        {
+          "name": "userKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EntropyInsufficientFee",
+      "inputs": [
+        {
+          "name": "provided",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "required",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EntropyInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EntropyInvalidUserKey",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EntropyNotConfigured",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EntropyOnlyEntropy",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EntropyRefundFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EntropyRequestNotFound",
+      "inputs": [
+        {
+          "name": "sequenceNumber",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x24185135": {
+        "notice": "Called by the Entropy contract to deliver a random number.",
+        "dev": "Verifies the caller is the configured Entropy contract, looks up the user key, clears the pending entry, and emits `RandomNumberFulfilled`. Consumer facets should override this to consume the randomness.",
+        "params": {
+          "provider": "The provider that fulfilled the request.",
+          "randomNumber": "The delivered random number.",
+          "sequence": "The Entropy-assigned sequence number."
+        }
+      },
+      "0xc3f909d4": {
+        "notice": "Returns the current Entropy configuration."
+      },
+      "0xced72f87": {
+        "notice": "Returns the fee (in wei) required for one request under the current config."
+      },
+      "0x65b56cd4": {
+        "notice": "Returns the user key associated with a pending request.",
+        "params": {
+          "sequenceNumber": "The Entropy-assigned sequence number."
+        }
+      },
+      "0x8738559f": {
+        "notice": "Requests a random number, caller-funded with excess refunded.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE` and send `msg.value >= getFee()`.",
+        "params": {
+          "userKey": "Arbitrary key the caller wants associated with this request.",
+          "userRandomNumber": "The caller's commitment to its half of the randomness."
+        }
+      },
+      "0x861fb568": {
+        "notice": "Sets or replaces the Entropy configuration.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. Reverts `EntropyInvalidConfig` if entropy is zero.",
+        "params": {
+          "config": "The new configuration."
+        }
+      }
+    },
+    "notice": "Diamond facet for Pyth Entropy on-demand (commit/reveal) randomness.",
+    "dev": "Stateless delegator — all logic and storage live in PythEntropyAdapterLib. This facet handles the request/track layer only. Consumer facets that inherit this contract should override `entropyCallback` to act on delivered randomness after calling `super.entropyCallback`."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/pyth/PythEntropyAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/pyth/PythEntropyAdapter.sol"
+  }
+}

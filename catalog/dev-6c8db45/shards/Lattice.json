@@ -1,0 +1,230 @@
+{
+  "name": "Lattice",
+  "abi": [
+    {
+      "type": "function",
+      "name": "initialize",
+      "inputs": [
+        {
+          "name": "_facetCuts",
+          "type": "tuple[]",
+          "internalType": "struct FacetCut[]",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "_init",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_calldata",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "event",
+      "name": "DiamondCut",
+      "inputs": [
+        {
+          "name": "diamondCut",
+          "type": "tuple[]",
+          "indexed": false,
+          "internalType": "struct FacetCut[]",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "init",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "CannotAddFunctionToDiamondThatAlreadyExists",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotAddSelectorsToZeroAddress",
+      "inputs": [
+        {
+          "name": "selectors",
+          "type": "bytes4[]",
+          "internalType": "bytes4[]"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotAddThisAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "CannotRemoveFunctionThatDoesNotExist",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotRemoveImmutableFunction",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CannotReplaceFunctionWithTheSameFunctionFromTheSameFacet",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "FunctionDoesNotExist",
+      "inputs": [
+        {
+          "name": "functionSelector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InitializeDiamondCutReverted",
+      "inputs": [
+        {
+          "name": "initAddress",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NoBytecodeAtAddress",
+      "inputs": [
+        {
+          "name": "contractAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NoSelectorsGivenToAdd",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NoSelectorsProvidedForFacetCut",
+      "inputs": [
+        {
+          "name": "facetAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RemoveFacetAddressMustBeZeroAddress",
+      "inputs": [
+        {
+          "name": "facetAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x341bedc6": {
+        "notice": "Apply the initial facet cut and run the init delegatecall — callable ONCE.",
+        "params": {
+          "_calldata": "The delegatecall payload for `_init`.",
+          "_facetCuts": "The initial facet cuts to install.",
+          "_init": "The initializer contract delegatecalled after the cut (or address(0))."
+        }
+      }
+    },
+    "notice": "Lattice's concrete diamond: the initializer-guarded preset over diamond-lib's abstract fallback-only {Diamond} base (upstream v0.3.0 made the base abstract and dropped `initialize`/`receive`; this contract restores the guarded `initialize`, Lattice-owned). Bare-ETH acceptance is deliberately NOT restored here — cut the {Receive} facet under the zero selector instead (every Lattice recipe does); a diamond without it rejects plain sends. Must be created and initialized in ONE transaction — {LatticeFactory} does this, and every script recipe deploys through it. {initialize} is first-caller-wins, so a proxy initialized in a later transaction can be taken over in between. All later upgrades go through whichever cut facet the initial cut installed.",
+    "dev": "`initialize` is guarded by the `initializer` modifier from the {Initializable} mixin over the vendored {InitializableLib} — a nested initializer invoked inside a constructor finalizes exactly once. Kept `virtual` — account presets override it (e.g. {Account7702Diamond} disables it in favor of signature-gated onboarding)."
+  },
+  "source": {
+    "path": "src/Lattice.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/Lattice.sol"
+  }
+}

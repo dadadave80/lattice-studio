@@ -1,0 +1,31 @@
+{
+  "name": "ERC721Init",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol_",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for a base ERC-721 diamond — seeds name/symbol (and registers IERC721 + IERC721Metadata via ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; the `__ERC721_init` guard passes because the window is already open). Mirrors the {ERC20Init} pattern — a first-class production deploy artifact shared by `run --broadcast` and the facet tests."
+  },
+  "source": {
+    "path": "src/tokens/ERC721/ERC721Init.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/ERC721/ERC721Init.sol"
+  }
+}

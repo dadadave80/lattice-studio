@@ -1,0 +1,405 @@
+{
+  "name": "L1ToL2CrossDomainMessengerGatewayAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "counterpartAdapter",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "counterpartChainId",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "messenger",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "minGasLimit",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "receiveCrossChainMessage",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "sendMessage",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "attributes",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "setCounterpart",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "adapter",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setMinGasLimit",
+      "inputs": [
+        {
+          "name": "newMinGasLimit",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "supportsAttribute",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "event",
+      "name": "CounterpartConfigured",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "adapter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MessageSent",
+      "inputs": [
+        {
+          "name": "sendId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "sender",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "recipient",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "payload",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "attributes",
+          "type": "bytes[]",
+          "indexed": false,
+          "internalType": "bytes[]"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MinGasLimitConfigured",
+      "inputs": [
+        {
+          "name": "minGasLimit",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidCounterpartAdapter",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidMinGasLimit",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidOriginGateway",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "MessageAlreadyExecuted",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NotMessenger",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RecipientExecutionFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "UnexpectedValue",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnknownDestinationChain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedAttribute",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "WrongDestinationChain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x423d4bee": {
+        "notice": "The configured counterpart gateway adapter on the paired domain (0 = unset)."
+      },
+      "0xb8b5b334": {
+        "notice": "The configured counterpart (paired-domain) chain id (0 = unset)."
+      },
+      "0x3cb747bf": {
+        "notice": "The fixed OP Stack L2 `CrossDomainMessenger` predeploy this adapter sends to / accepts deliveries from (`0x4200000000000000000000000000000000000007`)."
+      },
+      "0x5aeb4d77": {
+        "notice": "The `minGasLimit` the messenger relays outbound messages with."
+      },
+      "0x610683bc": {
+        "notice": "Inbound delivery callback the messenger invokes on THIS adapter during relay. Authenticates the messenger + the authenticated counterpart sender against the configured counterpart adapter, de-dups, then hands off to the ERC-7930 `recipient` via the `IERC7786Recipient` handshake.",
+        "params": {
+          "nonce": "The source-minted monotonic nonce; `(counterpartChainId, nonce)` forms the globally-unique delivery id.",
+          "payload": "The opaque message payload delivered to the recipient.",
+          "recipient": "The ERC-7930 recipient interoperable address (must target THIS chain).",
+          "sender": "The ERC-7930 sender interoperable address (origin chain + caller)."
+        }
+      },
+      "0xcdfe7f5c": {
+        "dev": "Endpoint for creating a new message. If the message requires further (gateway specific) processing before it can be sent to the destination chain, then a non-zero `sendId` must be returned. Otherwise, the message MUST be sent and this function must return 0. * MUST emit a {MessageSent} event. If any of the `attributes` is not supported, this function SHOULD revert with an {UnsupportedAttribute} error. Other errors SHOULD revert with errors not specified in ERC-7786."
+      },
+      "0xddcba0e7": {
+        "notice": "Configures the fixed counterpart (paired-domain chainId + sibling adapter). Rejects a zero adapter. Admin only."
+      },
+      "0xe6ca35d4": {
+        "notice": "Configures the relay `minGasLimit`. Admin only."
+      },
+      "0xdc680a0f": {
+        "dev": "Getter to check whether an attribute is supported or not."
+      }
+    },
+    "notice": "ERC-7786 cross-chain gateway facet over the canonical OP Stack L1<->L2 `CrossDomainMessenger` predeploy. `sendMessage` dispatches a message via the messenger (no fee); `receiveCrossChainMessage` is the messenger-invoked delivery callback on the destination adapter. Carries deposits (L1->L2) and withdrawals (L2->L1); direction-agnostic (identical adapter on both domains).",
+    "dev": "Stateless delegator — logic/storage live in {L1ToL2CrossDomainMessengerGatewayAdapterLib}. A canonical L1<->L2 pair has exactly ONE other domain, so the trusted remote is a SINGLE fixed counterpart `(counterpartChainId, counterpartAdapter)` (NOT a `chainId => remote` map). INVERTED INBOUND AUTH: the messenger CALLs `receiveCrossChainMessage` as the `_target` during relay, so `msg.sender` is the L2 messenger predeploy — the counterpart gateway is authenticated out-of-band via `xDomainMessageSender`, not from `msg.sender`."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/crosschain/optimism/L1ToL2CrossDomainMessengerGatewayAdapter.sol"
+  }
+}

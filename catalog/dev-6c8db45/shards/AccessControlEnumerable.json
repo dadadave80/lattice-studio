@@ -1,0 +1,320 @@
+{
+  "name": "AccessControlEnumerable",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getRoleAdmin",
+      "inputs": [
+        {
+          "name": "_role",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getRoleMember",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "index",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getRoleMemberCount",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getRoleMembers",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "grantRole",
+      "inputs": [
+        {
+          "name": "_role",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "_account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "hasRole",
+      "inputs": [
+        {
+          "name": "_role",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "_account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "renounceRole",
+      "inputs": [
+        {
+          "name": "_role",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "_callerConfirmation",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "revokeRole",
+      "inputs": [
+        {
+          "name": "_role",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "_account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleAdminChanged",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "previousAdminRole",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "newAdminRole",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleRevoked",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlBadConfirmation",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x248a9ca3": {
+        "notice": "Retrieves the admin role that controls access to a specific role.",
+        "params": {
+          "role": "The role identifier to query."
+        }
+      },
+      "0x9010d07c": {
+        "notice": "Returns the `index`-th address holding `role`.",
+        "dev": "Reverts (Solidity array OOB) if `index >= getRoleMemberCount(role)`."
+      },
+      "0xca15c873": {
+        "notice": "Returns the number of addresses holding `role`."
+      },
+      "0xa3246ad3": {
+        "notice": "Returns all addresses holding `role`. Gas-heavy for large sets."
+      },
+      "0x2f2ff15d": {
+        "notice": "Grants a role to an account.",
+        "dev": "Emits a {RoleGranted} event if the account didn't already hold the role. Requirements: - the caller must have the admin role for the target role.",
+        "params": {
+          "account": "The account address to grant the role to.",
+          "role": "The role identifier to grant."
+        }
+      },
+      "0x91d14854": {
+        "notice": "Checks whether an account has been granted a specific role.",
+        "params": {
+          "account": "The account address to check.",
+          "role": "The role identifier to verify."
+        }
+      },
+      "0x36568abe": {
+        "notice": "Renounces a role from the calling account.",
+        "dev": "Allows accounts to lose privileges if compromised (e.g., misplaced keys or compromised devices). Emits a {RoleRevoked} event if the caller currently holds the role. Requirements: - the caller's actual address must match the callerConfirmation parameter for security.",
+        "params": {
+          "callerConfirmation": "The caller's address as a confirmation parameter.",
+          "role": "The role identifier to renounce."
+        }
+      },
+      "0xd547741f": {
+        "notice": "Revokes a role from an account.",
+        "dev": "Emits a {RoleRevoked} event if the account currently holds the role. Requirements: - the caller must have the admin role for the target role.",
+        "params": {
+          "account": "The account address to revoke the role from.",
+          "role": "The role identifier to revoke."
+        }
+      }
+    },
+    "notice": "Diamond facet exposing AccessControl + per-role address enumeration."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/access/AccessControlEnumerable.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/access/AccessControlEnumerable.sol"
+  }
+}

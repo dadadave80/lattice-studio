@@ -1,0 +1,102 @@
+{
+  "name": "HederaPrngAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "drawInRange",
+      "inputs": [
+        {
+          "name": "lo",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "hi",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "number",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "drawSeed",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "seed",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "HederaSeedDrawn",
+      "inputs": [
+        {
+          "name": "seed",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "requester",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "HederaPrngCallFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HederaPrngInvalidRange",
+      "inputs": [
+        {
+          "name": "lo",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "hi",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xc2f9516d": {
+        "notice": "Draws a seed and reduces it to a number in `[lo, hi)`."
+      },
+      "0x4c7dde2f": {
+        "notice": "Draws a fresh 32-byte seed."
+      }
+    },
+    "notice": "Diamond facet exposing Hedera's PRNG system contract (0x169) as synchronous randomness.",
+    "dev": "Stateless delegator over HederaPrngAdapterLib. Only meaningful on Hedera."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/hedera/HederaPrngAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/hedera/HederaPrngAdapter.sol"
+  }
+}

@@ -1,6 +1,13 @@
 {
-  "default": "dev-f4a32c8",
+  "default": "dev-6c8db45",
   "catalogs": [
+    {
+      "id": "dev-6c8db45",
+      "tag": "dev-6c8db45",
+      "commit": "6c8db45aa46986af2edb6a0d8fb02a4a92faef01",
+      "hash": "0x98f6be2df80deca8c6b6cd6dab9feecf3f02d924b943fa354561fbb686596d14",
+      "path": "dev-6c8db45/index.json"
+    },
     {
       "id": "dev-f4a32c8",
       "tag": "dev-f4a32c8",

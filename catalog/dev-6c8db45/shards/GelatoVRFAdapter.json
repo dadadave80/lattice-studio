@@ -1,0 +1,267 @@
+{
+  "name": "GelatoVRFAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "fulfillRandomness",
+      "inputs": [
+        {
+          "name": "randomness",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "dataWithRound",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getOperator",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getUserKey",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "requestRandomness",
+      "inputs": [
+        {
+          "name": "userKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setOperator",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "GelatoVRFOperatorSet",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RandomnessFulfilled",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "userKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "randomness",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RandomnessRequested",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "userKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "round",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RequestedRandomness",
+      "inputs": [
+        {
+          "name": "round",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GelatoVRFInvalidOperator",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "GelatoVRFInvalidUserKey",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "GelatoVRFNotConfigured",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "GelatoVRFOnlyOperator",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GelatoVRFRequestNotFound",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xb3f6b99a": {
+        "notice": "Called by the dedicated operator to deliver randomness.",
+        "dev": "Verifies the caller is the configured operator, decodes the request, domain-separates the randomness, clears the pending entry, and emits `RandomnessFulfilled`. Consumer facets should override this to consume the randomness.",
+        "params": {
+          "dataWithRound": "The opaque payload originally emitted in `RequestedRandomness`.",
+          "randomness": "The drand-derived randomness for the requested round."
+        }
+      },
+      "0xe7f43c68": {
+        "notice": "Returns the configured dedicated operator."
+      },
+      "0xdd1e2651": {
+        "notice": "Returns the user key associated with a pending request.",
+        "params": {
+          "requestId": "The adapter-assigned request ID."
+        }
+      },
+      "0x5e3b709f": {
+        "notice": "Requests randomness from Gelato VRF.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. Emits `RequestedRandomness` for the operator.",
+        "params": {
+          "userKey": "Arbitrary key the caller wants associated with this request."
+        }
+      },
+      "0xb3ab15fb": {
+        "notice": "Sets or replaces the dedicated operator.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. Reverts `GelatoVRFInvalidOperator` if zero.",
+        "params": {
+          "operator": "The new dedicated operator."
+        }
+      }
+    },
+    "notice": "Diamond facet for Gelato VRF (drand-backed) randomness — no on-chain fee.",
+    "dev": "Stateless delegator — all logic and storage live in GelatoVRFAdapterLib. This facet handles the request/track layer only. Consumer facets that inherit this contract should override `fulfillRandomness` to act on delivered randomness after calling `super.fulfillRandomness`."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/gelato/GelatoVRFAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/gelato/GelatoVRFAdapter.sol"
+  }
+}

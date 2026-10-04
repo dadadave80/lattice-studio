@@ -1,0 +1,83 @@
+{
+  "name": "HASSignatureVerifier",
+  "abi": [
+    {
+      "type": "function",
+      "name": "isAuthorized",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "message",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "signatureMap",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "authorized",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isAuthorizedRaw",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "messageHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "signature",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "authorized",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xb2526367": {
+        "notice": "True if the protobuf `signatureMap` satisfies `account`'s full key structure (key lists and threshold keys included) over the raw `message`."
+      },
+      "0x249024ac": {
+        "notice": "True if `signature` (65 bytes ECDSA or 64 bytes ED25519) is valid over `messageHash` for the simple key of Hedera `account` (an EVM alias or long-zero `0x000…<accountNum>` address)."
+      }
+    },
+    "notice": "Diamond facet exposing HIP-632 native Hedera account signature verification (ED25519 + ECDSA, key lists via the protobuf path) as two never-reverting views.",
+    "dev": "Stateless delegator over HASSignatureVerifierLib. Only meaningful on Hedera."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/hedera/HASSignatureVerifier.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/accounts/hedera/HASSignatureVerifier.sol"
+  }
+}

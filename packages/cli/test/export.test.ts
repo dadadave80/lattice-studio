@@ -12,7 +12,7 @@ import { BUILT, coreRead, ENTROPY, makeProject, REPO_ROOT, runCli, SAFE, spawnCl
 const dir = tempDir();
 const erc20 = writeRecipe(dir, template(BUILT, "ERC20"), BUILT, "erc20.json");
 const vault = writeRecipe(dir, template(BUILT, "GovernedVault"), BUILT, "vault.json");
-const PROXY_CODE = readFileSync(join(REPO_ROOT, "catalog", "dev-f4a32c8", BUILT.proxy.creationCode.path), "utf8").trim() as `0x${string}`;
+const PROXY_CODE = readFileSync(join(REPO_ROOT, "catalog", "dev-6c8db45", BUILT.proxy.creationCode.path), "utf8").trim() as `0x${string}`;
 
 /** The project the CLI makes from a recipe and the command line's salt. */
 function cliProject(path: Project["deploy"]["path"] = "factory"): Project {

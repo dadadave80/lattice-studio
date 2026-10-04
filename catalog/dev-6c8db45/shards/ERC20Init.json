@@ -1,0 +1,31 @@
+{
+  "name": "ERC20Init",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol_",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for a base ERC-20 diamond — seeds name/symbol (and registers IERC20 via ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; the `__ERC20_init` guard passes because the window is already open). Companion to the {AccountInit} pattern — a first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20Init.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/ERC20/ERC20Init.sol"
+  }
+}

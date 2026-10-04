@@ -1,0 +1,24 @@
+{
+  "name": "HederaExchangeRateAdapterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe1c7392a": {
+        "notice": "Runs the exchange-rate module initializer. MUST be invoked via the diamond's `initialize` `_init` delegatecall."
+      }
+    },
+    "notice": "One-shot initializer for an exchange-rate diamond — registers the IHederaExchangeRateAdapter interface (ERC-165) and nothing else: the module is stateless (the network itself keeps the rate fresh, so there is no feed address, no admin and no staleness window to seed). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer)."
+  },
+  "source": {
+    "path": "src/oracles/hedera/HederaExchangeRateAdapterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/hedera/HederaExchangeRateAdapterInit.sol"
+  }
+}

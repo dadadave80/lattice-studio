@@ -78,19 +78,19 @@ describe("the committed index", () => {
   });
 
   test("records the pin, Foundry 1.8.3, solc 0.8.36 and its long version, and is provisional at 0.2.0", () => {
-    expect(index.lattice).toEqual({ tag: manifest.default, commit: "f4a32c8330934d39bcfdffff87d35a04b7fa6a79" });
+    expect(index.lattice).toEqual({ tag: manifest.default, commit: "6c8db45aa46986af2edb6a0d8fb02a4a92faef01" });
     expect(index.toolchain.foundry).toBe("1.8.3");
     expect(index.toolchain.solc).toBe("0.8.36");
     // FX20: the catalog also carries solc's full version, which Sourcify's v2 API needs to resolve the compiler.
     expect(index.toolchain.solcLong).toMatch(/^0\.8\.36\+commit\.[0-9a-f]{8}$/);
-    expect(index.provisional).toBe("Lattice 0.2.0 at dev f4a32c8; v1 targets 0.4.0");
+    expect(index.provisional).toBe("Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0");
     expect(index.registryOwner).toBe(REGISTRY_OWNER_PLACEHOLDER);
     expect(index.chains).toEqual([]);
   });
 
-  test("100 facets, every init, 84 templates with v1 first, R19's 11 seams and PoseidonT3", () => {
-    expect(index.facets).toHaveLength(100);
-    expect(index.recipes).toHaveLength(84);
+  test("105 facets, every init, 85 templates with v1 first, R19's 11 seams and PoseidonT3", () => {
+    expect(index.facets).toHaveLength(105);
+    expect(index.recipes).toHaveLength(85);
     expect(index.recipes.slice(0, 3).map((r) => r.name)).toEqual(["GovernedVault", "ERC20", "SafeDiamondCut"]);
     for (const r of index.recipes) expect(r.recipe.catalog.tag).toBe(index.lattice.tag);
     expect(index.seams).toHaveLength(11);

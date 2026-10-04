@@ -52,10 +52,10 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     await anvil?.stop();
   });
 
-  test("the inventory has 100 facets, and the catalog has exactly those, in order", async () => {
+  test("the inventory has 105 facets, and the catalog has exactly those, in order", async () => {
     const inventory = await readInventory(LATTICE);
     if (!inventory.ok) throw new Error(inventory.error);
-    expect(inventory.value).toHaveLength(100);
+    expect(inventory.value).toHaveLength(105);
     expect(facts.map((f) => f.name)).toEqual(inventory.value.map((e) => e.name));
     expect(inventory.value.filter((e) => e.basename).map((e) => e.name)).toEqual([
       "DiamondCutFacet",

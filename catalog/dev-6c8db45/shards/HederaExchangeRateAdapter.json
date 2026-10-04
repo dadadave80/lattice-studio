@@ -1,0 +1,106 @@
+{
+  "name": "HederaExchangeRateAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "hbarUsdWad",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "priceWad",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "tinybarsToTinycents",
+      "inputs": [
+        {
+          "name": "tinybars",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tinycents",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "tinycentsToTinybars",
+      "inputs": [
+        {
+          "name": "tinycents",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tinybars",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "usdCentsToWei",
+      "inputs": [
+        {
+          "name": "cents",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "weibar",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "HederaExchangeRateCallFailed",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xa26c8e04": {
+        "notice": "Current HBAR/USD rate scaled to 18 decimals (USD per 1 HBAR, WAD), matching {latestAnswer} conventions of the other oracle adapters."
+      },
+      "0x43a88229": {
+        "notice": "Converts HBAR tinybars to USD tinycents at the current network rate."
+      },
+      "0x2e3cff6a": {
+        "notice": "Converts USD tinycents to HBAR tinybars at the current network rate."
+      },
+      "0x8f66af92": {
+        "notice": "Converts whole USD cents to weibar (the `msg.value` unit) — e.g. to price a fee in USD."
+      }
+    },
+    "notice": "Diamond facet exposing Hedera's network USD/HBAR exchange rate (system contract 0x168).",
+    "dev": "Stateless delegator over HederaExchangeRateAdapterLib. Only meaningful on Hedera."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/hedera/HederaExchangeRateAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/hedera/HederaExchangeRateAdapter.sol"
+  }
+}

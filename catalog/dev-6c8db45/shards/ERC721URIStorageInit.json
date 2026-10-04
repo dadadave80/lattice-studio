@@ -1,0 +1,52 @@
+{
+  "name": "ERC721URIStorageInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-721 per-token URI storage extension (EIP-4906). Registers the ERC-4906 interface via ERC-165 and seeds the metadata admin who may call the facet's admin-gated `setTokenURI`. Composed alongside {ERC721Init} in a single initializing window via {MultiInit} (see {BaseDeploy._assembleMulti}) — it must NOT open its own pre/postInitializer; the `__ERC721URIStorage_init` / `__AccessControl_init` guards pass because the window is already open.",
+    "dev": "`setTokenURI` on the {ERC721URIStorage} facet is gated on `DEFAULT_ADMIN_ROLE`, so seeding that admin is intrinsic to deploying a usable per-token-URI token — hence AccessControl is bootstrapped here."
+  },
+  "source": {
+    "path": "src/tokens/ERC721/ERC721URIStorageInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/ERC721/ERC721URIStorageInit.sol"
+  }
+}

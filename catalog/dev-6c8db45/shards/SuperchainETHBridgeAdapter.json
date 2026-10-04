@@ -1,0 +1,118 @@
+{
+  "name": "SuperchainETHBridgeAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "bridge",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "sendETH",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "event",
+      "name": "ETHSent",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "msgHash",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "InvalidRecipient",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SameChain",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ZeroValue",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe78cea92": {
+        "notice": "The fixed `SuperchainETHBridge` predeploy this adapter forwards to (`0x4200000000000000000000000000000000000024`)."
+      },
+      "0x64a197f3": {
+        "notice": "Bridges `msg.value` native ETH to `to` on Superchain chain `chainId` via the predeploy.",
+        "params": {
+          "chainId": "The destination chain id.",
+          "to": "The recipient on the destination chain (must be non-zero)."
+        }
+      }
+    },
+    "notice": "OP Stack `SuperchainETHBridge` interop facet: `sendETH` forwards `msg.value` native ETH to the canonical predeploy (`0x…0024`) to bridge it to another Superchain chain. OUTBOUND-ONLY native-ETH interop — NOT the removed `SuperchainERC20` token bridge, and NOT an `IERC7786GatewaySource`.",
+    "dev": "Stateless delegator — logic lives in {SuperchainETHBridgeAdapterLib}. The adapter holds no ETH/state and has no admin surface (the predeploy address is a compile-time constant)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/optimism/SuperchainETHBridgeAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/crosschain/optimism/SuperchainETHBridgeAdapter.sol"
+  }
+}

@@ -1,0 +1,193 @@
+{
+  "name": "ERC6900Validation",
+  "abi": [
+    {
+      "type": "function",
+      "name": "validateUserOp",
+      "inputs": [
+        {
+          "name": "userOp",
+          "type": "tuple",
+          "internalType": "struct PackedUserOperation",
+          "components": [
+            {
+              "name": "sender",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "nonce",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "initCode",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "callData",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "accountGasLimits",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "preVerificationGas",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "gasFees",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "paymasterAndData",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "signature",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        },
+        {
+          "name": "userOpHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "missingAccountFunds",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "validationData",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "NonCanonicalEncoding",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotFromEntryPoint",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RequireUserOperationContext",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SegmentOutOfOrder",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SelfCallRecursionDepthExceeded",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "UnexpectedAggregator",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "entityId",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "aggregator",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnrecognizedFunction",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UserOpValidationInvalid",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "entityId",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ValidationFunctionMissing",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ValidationSignatureSegmentMissing",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x19822f7c": {
+        "notice": "ERC-4337 account validation. Only the configured EntryPoint may call."
+      }
+    },
+    "notice": "ERC-6900 ERC-4337 validation facet: the EntryPoint's `validateUserOp` entrypoint, routing to the validation module named by the userOp signature prefix. Part of the ERC-6900 account blueprint (an alternative to the ERC-7579 `ERC4337Validation` facet); the two are never cut into the same account. Shares the EntryPoint configured via `ERC4337ValidationLib`.",
+    "dev": "Stateless delegator — logic lives in {ERC6900ValidationLib}; it reads the registries owned by {ERC6900ModuleManagerLib} and reuses the executor's validation-applicability gate."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/erc6900/ERC6900Validation.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/accounts/erc6900/ERC6900Validation.sol"
+  }
+}

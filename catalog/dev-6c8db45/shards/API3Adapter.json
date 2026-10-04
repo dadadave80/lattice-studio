@@ -1,0 +1,262 @@
+{
+  "name": "API3Adapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "proxy",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "answerWad",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "read",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "int224",
+          "internalType": "int224"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "proxy",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "unregisterFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "FeedRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "proxy",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "FeedUnregistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "API3FeedNotRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "API3InvalidAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "value",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "API3InvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "API3StaleData",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x280aebcf": {
+        "notice": "Returns a feed's configuration.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x084d4783": {
+        "notice": "Returns the latest price for `key`, normalized to 18 decimals (WAD). Selector matches {IPriceOracleReader.latestAnswer}. Reverts on stale / future / non-positive value.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x61da1439": {
+        "notice": "Returns the validated raw dAPI value and its update timestamp, in API3's native types.",
+        "dev": "Provider-native reader (mirrors {IApi3Proxy.read}); keeps this adapter's ERC-165 id distinct from other read adapters that share the {latestAnswer} selector.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x915d3063": {
+        "notice": "Registers a dAPI feed under `key`. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "The arbitrary feed identifier.",
+          "maxStaleness": "Maximum age (seconds); must be non-zero.",
+          "proxy": "The dAPI reader proxy address (non-zero)."
+        }
+      },
+      "0x2a589908": {
+        "notice": "Removes a registered feed. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "The feed identifier to remove."
+        }
+      }
+    },
+    "notice": "Diamond facet that reads API3 dAPIs through their reader proxies with per-feed staleness configuration and WAD-normalized answers.",
+    "dev": "Stateless delegator — all logic and storage live in {API3AdapterLib}. Consumers inherit this contract and add AccessControl + an initializer."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/api3/API3Adapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/api3/API3Adapter.sol"
+  }
+}

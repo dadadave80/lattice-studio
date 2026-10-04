@@ -1,0 +1,279 @@
+{
+  "name": "RedStoneAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "adapter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "dataFeedId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getValueForDataFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "answerWad",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "adapter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "dataFeedId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "unregisterFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "FeedRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "adapter",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "dataFeedId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "FeedUnregistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RedStoneFeedNotRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RedStoneInvalidAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RedStoneInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RedStoneStaleData",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x280aebcf": {
+        "notice": "Returns a feed's configuration.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x44e02982": {
+        "notice": "Returns the validated raw RedStone value (8 decimals) and the batch update timestamp.",
+        "dev": "Provider-native reader; keeps this adapter's ERC-165 id distinct from other read adapters that share the {latestAnswer} selector.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x084d4783": {
+        "notice": "Returns the latest price for `key`, normalized to 18 decimals (WAD). Selector matches {IPriceOracleReader.latestAnswer}. Reverts on stale / future / zero / overflowing value.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x9b50b20b": {
+        "notice": "Registers a RedStone feed under `key`. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "adapter": "The RedStone PriceFeedsAdapter contract (non-zero).",
+          "dataFeedId": "The RedStone data-feed id.",
+          "key": "The arbitrary feed identifier.",
+          "maxStaleness": "Maximum age (seconds); must be non-zero."
+        }
+      },
+      "0x2a589908": {
+        "notice": "Removes a registered feed. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "The feed identifier to remove."
+        }
+      }
+    },
+    "notice": "Diamond facet that reads RedStone Push price feeds from their on-chain PriceFeedsAdapter with per-feed staleness configuration and WAD-normalized answers.",
+    "dev": "Stateless delegator — all logic and storage live in {RedStoneAdapterLib}. Consumers inherit this contract and add AccessControl + an initializer."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/redstone/RedStoneAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/redstone/RedStoneAdapter.sol"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "name": "LayerZeroGatewayAdapterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "endpoint",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf09a4016": {
+        "notice": "Runs the access-control + LayerZero-adapter module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+          "endpoint": "The LayerZero v2 EndpointV2 the adapter dispatches `send` to and accepts `lzReceive` from."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a LayerZero gateway-adapter diamond — seeds AccessControl so the eid, peer and destination setters are admin-gated, and wires the LayerZero v2 EndpointV2 (registering the ERC-7786 gateway-source interface via ERC-165). The adapter is its own OApp; `setDelegate` is NOT called here (only needed to reconfigure LayerZero libs later). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to the {CCIPGatewayAdapterInit} pattern — a first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/crosschain/layerzero/LayerZeroGatewayAdapterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/crosschain/layerzero/LayerZeroGatewayAdapterInit.sol"
+  }
+}

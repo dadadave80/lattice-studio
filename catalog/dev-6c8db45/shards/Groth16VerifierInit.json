@@ -1,0 +1,24 @@
+{
+  "name": "Groth16VerifierInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe1c7392a": {
+        "notice": "Runs the Groth16 verifier module initializer. MUST be invoked via the diamond's `initialize` `_init` delegatecall."
+      }
+    },
+    "notice": "One-shot initializer for a Groth16 verifier diamond — registers the IGroth16Verifier interface (ERC-165). The verifier is a stateless, permissionless primitive (anyone may verify a proof), so there is NO AccessControl in the recipe. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; the `__Groth16Verifier_init` guard passes because the window is already open)."
+  },
+  "source": {
+    "path": "src/privacy/Groth16VerifierInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/privacy/Groth16VerifierInit.sol"
+  }
+}

@@ -1,0 +1,234 @@
+{
+  "name": "ChainlinkAutomationAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "checkUpkeep",
+      "inputs": [
+        {
+          "name": "checkData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "upkeepNeeded",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "performData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getCounter",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getForwarder",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getInterval",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getLastTimeStamp",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "performUpkeep",
+      "inputs": [
+        {
+          "name": "performData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setConfig",
+      "inputs": [
+        {
+          "name": "forwarder",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "interval",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "ChainlinkAutomationConfigSet",
+      "inputs": [
+        {
+          "name": "forwarder",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "interval",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "UpkeepPerformed",
+      "inputs": [
+        {
+          "name": "counter",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ChainlinkAutomationConditionNotMet",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ChainlinkAutomationInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ChainlinkAutomationNotConfigured",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ChainlinkAutomationOnlyForwarder",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x6e04ff0d": {
+        "notice": "Reports whether the upkeep should run.",
+        "dev": "Returns `true` once `interval` seconds have elapsed since the last upkeep. `performData` echoes `checkData`.",
+        "params": {
+          "checkData": "Arbitrary data configured on the upkeep."
+        }
+      },
+      "0x8ada066e": {
+        "notice": "Returns the number of upkeeps performed."
+      },
+      "0xa0042526": {
+        "notice": "Returns the configured Automation forwarder."
+      },
+      "0x91ad27b4": {
+        "notice": "Returns the configured upkeep interval (seconds)."
+      },
+      "0xc1c244e8": {
+        "notice": "Returns the timestamp of the last performed upkeep."
+      },
+      "0x4585e33b": {
+        "notice": "Performs the upkeep. Gated to the configured forwarder.",
+        "dev": "Re-validates that `interval` seconds have elapsed (reverts `ChainlinkAutomationConditionNotMet` otherwise), advances the counter, resets the timer, and emits `UpkeepPerformed`.",
+        "params": {
+          "performData": "The data returned by `checkUpkeep` (unused by the reference upkeep)."
+        }
+      },
+      "0xc6195d36": {
+        "notice": "Sets or replaces the Automation configuration and resets the upkeep timer.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. Reverts `ChainlinkAutomationInvalidConfig` on a zero forwarder or zero interval.",
+        "params": {
+          "forwarder": "The Automation forwarder allowed to call `performUpkeep`.",
+          "interval": "The minimum seconds between upkeeps."
+        }
+      }
+    },
+    "notice": "Diamond facet for the consumer side of Chainlink Automation (keepers) with a canonical time-interval upkeep.",
+    "dev": "Stateless delegator — all logic and storage live in ChainlinkAutomationAdapterLib. DECISION (recorded): this ships the consumer-side compatible facet only. The optional AutomationRegistrar/AutomationRegistry on-chain registration + LINK-funding surface is a separate concern and intentionally left as a future follow-up — no registrar/registry management is performed here."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/chainlink/ChainlinkAutomationAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/chainlink/ChainlinkAutomationAdapter.sol"
+  }
+}

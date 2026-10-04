@@ -1,0 +1,338 @@
+{
+  "name": "TWAPOracle",
+  "abi": [
+    {
+      "type": "function",
+      "name": "consult",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "windowSeconds",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "price0Twap",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "price1Twap",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getLatestObservation",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct ITWAPOracle.Observation",
+          "components": [
+            {
+              "name": "timestamp",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "price0Cumulative",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "price1Cumulative",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPair",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pair",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "recordObservation",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "registerPair",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "pair",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "unregisterPair",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "ObservationRecorded",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        },
+        {
+          "name": "price0Cumulative",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "price1Cumulative",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PairRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "pair",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PairUnregistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TWAPElapsedZero",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TWAPInsufficientHistory",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TWAPPairNotRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TWAPStaleObservation",
+      "inputs": [
+        {
+          "name": "newestTimestamp",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "currentTimestamp",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TWAPWindowTooLarge",
+      "inputs": [
+        {
+          "name": "requested",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "oldest",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TWAPZeroWindow",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x47473b00": {
+        "notice": "Computes the TWAP over the last `windowSeconds` for a registered pair.",
+        "dev": "Selects the oldest observation that is at least `windowSeconds` old and computes `(cumulativeNow - cumulativeOld) / (timestampNow - timestampOld)`.",
+        "params": {
+          "key": "The pair identifier.",
+          "windowSeconds": "The desired TWAP window in seconds."
+        }
+      },
+      "0x43542636": {
+        "notice": "Returns the most recently recorded observation for a pair.",
+        "params": {
+          "key": "The pair identifier."
+        }
+      },
+      "0xb8e5303d": {
+        "notice": "Returns the address of the Uniswap V2 pair registered under `key`.",
+        "params": {
+          "key": "The pair identifier."
+        }
+      },
+      "0x06bd6d1e": {
+        "notice": "Records a new cumulative price observation for the pair.",
+        "dev": "Open to any caller to allow permissionless oracle maintenance.",
+        "params": {
+          "key": "The pair identifier."
+        }
+      },
+      "0x64b7e622": {
+        "notice": "Registers a Uniswap V2 pair under the given key and records an initial observation.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "Arbitrary identifier for this pair.",
+          "pair": "Address of the IUniswapV2Pair contract."
+        }
+      },
+      "0x0f464dd7": {
+        "notice": "Removes a registered pair and all its stored observations.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "The pair identifier to remove."
+        }
+      }
+    },
+    "notice": "Diamond facet for a Uniswap V2-style time-weighted average price oracle.",
+    "dev": "Stateless delegator — all logic and storage live in TWAPOracleLib. Consumers inherit this contract and add AccessControl + an initializer."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/uniswap/TWAPOracle.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/uniswap/TWAPOracle.sol"
+  }
+}

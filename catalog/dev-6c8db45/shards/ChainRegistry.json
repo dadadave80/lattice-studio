@@ -1,0 +1,1589 @@
+{
+  "name": "ChainRegistry",
+  "abi": [
+    {
+      "type": "function",
+      "name": "addEvmChain",
+      "inputs": [
+        {
+          "name": "cfg",
+          "type": "tuple",
+          "internalType": "struct IChainRegistry.AddEvmChainConfig",
+          "components": [
+            {
+              "name": "chainId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "ccip",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.CcipSection",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "selector",
+                  "type": "uint64",
+                  "internalType": "uint64"
+                },
+                {
+                  "name": "remoteGateway",
+                  "type": "address",
+                  "internalType": "address"
+                },
+                {
+                  "name": "gasLimit",
+                  "type": "uint256",
+                  "internalType": "uint256"
+                },
+                {
+                  "name": "allowOutOfOrderExecution",
+                  "type": "bool",
+                  "internalType": "bool"
+                }
+              ]
+            },
+            {
+              "name": "layerZero",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.LayerZeroSection",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "eid",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                },
+                {
+                  "name": "peer",
+                  "type": "bytes32",
+                  "internalType": "bytes32"
+                },
+                {
+                  "name": "gas",
+                  "type": "uint128",
+                  "internalType": "uint128"
+                },
+                {
+                  "name": "msgValue",
+                  "type": "uint128",
+                  "internalType": "uint128"
+                }
+              ]
+            },
+            {
+              "name": "wormhole",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.WormholeSection",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "wormholeId",
+                  "type": "uint16",
+                  "internalType": "uint16"
+                },
+                {
+                  "name": "remote",
+                  "type": "address",
+                  "internalType": "address"
+                }
+              ]
+            },
+            {
+              "name": "axelar",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.AxelarSection",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "axelarName",
+                  "type": "string",
+                  "internalType": "string"
+                },
+                {
+                  "name": "remote7930",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "chain7930",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                }
+              ]
+            },
+            {
+              "name": "zeta",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.ZetaSection",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "remoteApp",
+                  "type": "address",
+                  "internalType": "address"
+                }
+              ]
+            },
+            {
+              "name": "opL2ToL2",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.OpL2ToL2Section",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "remoteAdapter",
+                  "type": "address",
+                  "internalType": "address"
+                }
+              ]
+            },
+            {
+              "name": "cctp",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.CctpSection",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "domain",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                },
+                {
+                  "name": "maxFee",
+                  "type": "uint256",
+                  "internalType": "uint256"
+                },
+                {
+                  "name": "minFinalityThreshold",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                },
+                {
+                  "name": "destinationCaller",
+                  "type": "bytes32",
+                  "internalType": "bytes32"
+                }
+              ]
+            },
+            {
+              "name": "hyperlane",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.HyperlaneSection",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "domain",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                },
+                {
+                  "name": "remote",
+                  "type": "bytes32",
+                  "internalType": "bytes32"
+                },
+                {
+                  "name": "gasLimit",
+                  "type": "uint256",
+                  "internalType": "uint256"
+                }
+              ]
+            },
+            {
+              "name": "stargate",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.StargateSection",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "eid",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                }
+              ]
+            },
+            {
+              "name": "hyperbridge",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.HyperbridgeSection",
+              "components": [
+                {
+                  "name": "enabled",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "remoteModule",
+                  "type": "bytes",
+                  "internalType": "bytes"
+                },
+                {
+                  "name": "timeout",
+                  "type": "uint64",
+                  "internalType": "uint64"
+                }
+              ]
+            },
+            {
+              "name": "coverage",
+              "type": "tuple",
+              "internalType": "struct IChainRegistry.CoverageSection",
+              "components": [
+                {
+                  "name": "gateways",
+                  "type": "address[]",
+                  "internalType": "address[]"
+                },
+                {
+                  "name": "hubRouted",
+                  "type": "bool[]",
+                  "internalType": "bool[]"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "chainInfoOf",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "chainType",
+          "type": "bytes2",
+          "internalType": "bytes2"
+        },
+        {
+          "name": "chainReference",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "evmChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "chainKeyEvm",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "chainKeyOf",
+      "inputs": [
+        {
+          "name": "chainType",
+          "type": "bytes2",
+          "internalType": "bytes2"
+        },
+        {
+          "name": "chainReference",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "coverageOf",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "directCoverageOf",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "gatewaysOf",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isRegistered",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "nativeIdsOf",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IChainRegistry.NativeIds",
+          "components": [
+            {
+              "name": "ccipSelector",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "lzEid",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "wormholeId",
+              "type": "uint16",
+              "internalType": "uint16"
+            },
+            {
+              "name": "cctpDomain",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "axelarName",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "hyperlaneDomain",
+              "type": "uint32",
+              "internalType": "uint32"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerChain",
+      "inputs": [
+        {
+          "name": "chainType",
+          "type": "bytes2",
+          "internalType": "bytes2"
+        },
+        {
+          "name": "chainReference",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "evmChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setGatewayCoverage",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "gateway",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "covered",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "hubRouted",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setNativeIds",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "ids",
+          "type": "tuple",
+          "internalType": "struct IChainRegistry.NativeIds",
+          "components": [
+            {
+              "name": "ccipSelector",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "lzEid",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "wormholeId",
+              "type": "uint16",
+              "internalType": "uint16"
+            },
+            {
+              "name": "cctpDomain",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "axelarName",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "hyperlaneDomain",
+              "type": "uint32",
+              "internalType": "uint32"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "ChainAdded",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ChainRegistered",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "chainType",
+          "type": "bytes2",
+          "indexed": false,
+          "internalType": "bytes2"
+        },
+        {
+          "name": "chainReference",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "evmChainId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ConfiguredDestination",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "gasLimit",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "allowOutOfOrderExecution",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ConfiguredDestination",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "gasLimit",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ConfiguredDestination",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "gas",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
+        },
+        {
+          "name": "msgValue",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ConfiguredDestinationTimeout",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "timeout",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ConfiguredDomain",
+      "inputs": [
+        {
+          "name": "domain",
+          "type": "uint32",
+          "indexed": true,
+          "internalType": "uint32"
+        },
+        {
+          "name": "maxFee",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "minFinalityThreshold",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        },
+        {
+          "name": "destinationCaller",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredChainDomain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "domain",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredChainEquivalence",
+      "inputs": [
+        {
+          "name": "chain",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "axelar",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredChainEquivalence",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "wormhole",
+          "type": "uint16",
+          "indexed": false,
+          "internalType": "uint16"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredChainSelector",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "selector",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredDomain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "domain",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredEid",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "eid",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredEid",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "eid",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredPeer",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "peer",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemote",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "remote",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemote",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "remoteApp",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemoteAdapter",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "remoteAdapter",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemoteGateway",
+      "inputs": [
+        {
+          "name": "remote",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemoteGateway",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "remote",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemoteGateway",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "remote",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredRemoteModule",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredStateMachine",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "stateMachineId",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SetGatewayCoverage",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "gateway",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "covered",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        },
+        {
+          "name": "hubRouted",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SetNativeIds",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "ids",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct IChainRegistry.NativeIds",
+          "components": [
+            {
+              "name": "ccipSelector",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "lzEid",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "wormholeId",
+              "type": "uint16",
+              "internalType": "uint16"
+            },
+            {
+              "name": "cctpDomain",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "axelarName",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "hyperlaneDomain",
+              "type": "uint32",
+              "internalType": "uint32"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CCTPChainAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CCTPDomainAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "domain",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "ownerChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CCTPDomainNotRegistered",
+      "inputs": [
+        {
+          "name": "domain",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CCTPZeroChainId",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ChainEquivalenceAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chain",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ChainEquivalenceAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryAxelarChainMismatch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryAxelarRemoteMismatch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryCoverageLengthMismatch",
+      "inputs": [
+        {
+          "name": "gateways",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "hubRouted",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryEmptyChainReference",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryEvmChainIdOnNonEvmChain",
+      "inputs": [
+        {
+          "name": "evmChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryNonCanonicalEvmReference",
+      "inputs": [
+        {
+          "name": "chainReference",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "evmChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryNotRegistered",
+      "inputs": [
+        {
+          "name": "chainKey",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryStargateEidMismatch",
+      "inputs": [
+        {
+          "name": "lzEid",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "stargateEid",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ChainRegistryZeroGateway",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ChainSelectorAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EidAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeEmptyRemoteModule",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeStateMachineAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "stateMachineId",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperbridgeZeroChainId",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HyperlaneDomainAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "domain",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HyperlaneZeroDomain",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HyperlaneZeroRemote",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressEmptyReferenceAndAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidRemote",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidRemoteAdapter",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PeerAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RemoteAdapterAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RemoteAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RemoteGatewayAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chain",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RemoteGatewayAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RemoteGatewayAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SafeCastOverflowedUintDowncast",
+      "inputs": [
+        {
+          "name": "bits",
+          "type": "uint8",
+          "internalType": "uint8"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateEidAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "eid",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateZeroChainId",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StargateZeroEid",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xdae1aa2e": {
+        "notice": "ONE structured admin action that adds an EVM chain everywhere: registers the chain identity (eip-155 + canonical minimal big-endian reference), records the native ids declared by the enabled sections, then fans the per-adapter config out into every ENABLED gateway adapter's own ERC-7201 storage via direct internal lib calls (msg.sender stays the admin — never external self-calls), and finally records the coverage entries. Admin only.",
+        "dev": "Reverts {ChainRegistryAlreadyRegistered} if the chain identity already exists. Sections for adapter facets the diamond does not host must be left disabled (see {AddEvmChainConfig})."
+      },
+      "0x6a419425": {
+        "notice": "The registered ERC-7930 identity of `chainKey` (`evmChainId` is 0 for non-EVM chains)."
+      },
+      "0x585f36e8": {
+        "notice": "The chain key of an EVM chain: eip-155 chainType (0x0000) + the canonical minimal big-endian chain reference (exactly the `InteroperableAddress.formatEvmV1` encoding — no leading zeros)."
+      },
+      "0xa0f8fb2f": {
+        "notice": "The chain key of any ERC-7930 chain identity: `keccak256(abi.encodePacked(chainType, chainReference))`."
+      },
+      "0xeede78f6": {
+        "notice": "The total number of gateways covering `chainKey` (direct + hub-routed)."
+      },
+      "0xbcf041b6": {
+        "notice": "The number of gateways covering `chainKey` DIRECTLY (hub-routed coverage never counts).",
+        "dev": "O(n) over the coverage set — admin-bounded small (one entry per local gateway adapter)."
+      },
+      "0xa61e0052": {
+        "notice": "The gateway adapters recorded as covering `chainKey` (direct AND hub-routed)."
+      },
+      "0x27258b22": {
+        "notice": "Whether `chainKey` is a registered chain identity."
+      },
+      "0x281a6e02": {
+        "notice": "The informational native bridge-ecosystem ids of `chainKey`."
+      },
+      "0x6f4cb737": {
+        "notice": "Registers a chain identity (EVM or non-EVM). Admin only. Reverts {ChainRegistryAlreadyRegistered} on re-register — chain identities are permanent in v1.",
+        "params": {
+          "chainReference": "The ERC-7930 chain reference (for EVM chains use the canonical minimal big-endian chainId encoding, or use {addEvmChain} which builds it).",
+          "chainType": "The ERC-7930 chain type (0x0000 = eip-155).",
+          "evmChainId": "The EVM chainId (informational; 0 for non-EVM chains)."
+        }
+      },
+      "0x6688921d": {
+        "notice": "Records (or clears) `gateway`'s coverage of a registered chain. Admin only.",
+        "params": {
+          "chainKey": "The registered chain key.",
+          "covered": "True to record coverage, false to remove it.",
+          "gateway": "The local gateway adapter (non-zero).",
+          "hubRouted": "True when the gateway reaches the chain only via an intermediate hub (e.g. the ZetaChain ZEVM hub) — hub-routed coverage never counts toward {directCoverageOf}."
+        }
+      },
+      "0xa9b2394a": {
+        "notice": "Sets the informational native ids of a registered chain. Admin only."
+      }
+    },
+    "notice": "Chain-registry facet: a generic registry of chain identities keyed by the ERC-7930 chain key, per-chain native bridge-ecosystem ids, gateway coverage awareness (direct vs hub-routed), and {addEvmChain} — the one-action admin fan-out that adds an EVM chain across every enabled gateway adapter in a single structured call.",
+    "dev": "Stateless delegator — logic/storage live in {ChainRegistryLib}. FAN-OUT COUPLING: this facet compiles in the admin write paths of all ten adapter libs (CCIP, LayerZero, Wormhole, Axelar, ZetaChain, OP L2-to-L2, CCTP, Hyperlane, Stargate, Hyperbridge) as INTERNAL calls only. A diamond that cuts ChainRegistry without some adapter facet still works — the libs write to ERC-7201 slots that simply go unread until that facet is cut; leaving a section for an un-hosted adapter disabled is the admin's responsibility (see {IChainRegistry.AddEvmChainConfig})."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/ChainRegistry.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/crosschain/ChainRegistry.sol"
+  }
+}
