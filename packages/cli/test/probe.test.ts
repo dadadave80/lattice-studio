@@ -7,13 +7,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildSalt, CREATEX, factoryPredict, type Problem, toChecksum } from "@lattice-studio/core";
 import { custom, keccak256 } from "viem";
-import { chooseRpc, readingNote, scrub, sharedToProbe } from "../src/probe";
+import { chainName, chooseRpc, probeChain, readingNote, scrub, sharedToProbe } from "../src/probe";
 import { ANVIL_0, BUILT, coreRead, ENTROPY, REPO_ROOT, runCli, SAFE, spawnCli, tempDir, template, writeRecipe } from "./support";
 
 const dir = tempDir();
 const erc20 = writeRecipe(dir, template(BUILT, "ERC20"), BUILT, "erc20.json");
 
 type Handler = (method: string, params: unknown[]) => unknown;
+
+/** The latest block every fake chain answers with: a 30M gasLimit. */
+const BLOCK = { number: "0x10", hash: `0x${"11".repeat(32)}`, parentHash: `0x${"22".repeat(32)}`, timestamp: "0x1", gasLimit: "0x1c9c380", gasUsed: "0x0", transactions: [] };
 
 /** A provider for chain `chainId` whose `eth_getCode` answers from `code` (default: no code anywhere). */
 function provider(chainId: number, code: Record<string, string> = {}, extra: Handler = () => undefined) {
@@ -30,7 +33,7 @@ function provider(chainId: number, code: Record<string, string> = {}, extra: Han
         case "eth_getCode":
           return code[String(args[0]).toLowerCase()] ?? "0x";
         case "eth_getBlockByNumber":
-          return { number: "0x10", hash: `0x${"11".repeat(32)}`, parentHash: `0x${"22".repeat(32)}`, timestamp: "0x1", gasLimit: "0x1c9c380", gasUsed: "0x0", transactions: [] };
+          return BLOCK;
         case "eth_simulateV1":
           throw new Error("the method eth_simulateV1 does not exist");
         default:
@@ -122,6 +125,28 @@ describe("readiness probes", () => {
     expect(chooseRpc("http://x", "http://y", 1)?.source).toBe("flag");
     expect(scrub("HTTP request failed.\nURL: https://eth.example/v3/KEY\nDetails", "https://eth.example/v3/KEY")).toBe("HTTP request failed.");
     expect(scrub("failed at https://eth.example/v3/KEY now", "https://eth.example/v3/KEY")).toBe("failed at the RPC now.");
+  });
+
+  test("the per-transaction gas cap: fixed where the chain has one, else the latest block's gasLimit", async () => {
+    const { recipe } = coreRead(erc20, BUILT);
+    const gasCap = async (chainId: number, gasLimit: bigint): Promise<string | undefined> => {
+      const block: Handler = (method) => (method === "eth_getBlockByNumber" ? { ...BLOCK, gasLimit: `0x${gasLimit.toString(16)}` } : undefined);
+      const probed = await probeChain({
+        chainId, transport: provider(chainId, {}, block).transport(), catalog: BUILT, recipe, path: "factory", predicted: SAFE, deployer: ANVIL_0,
+        now: () => 0, rpc: { source: "flag", url: "http://rpc.invalid" },
+      });
+      if (!probed.ok) throw new Error(probed.error);
+      return probed.value.state.gasCap;
+    };
+    // Hedera Testnet's relay rejects more than 15M per transaction (-32005 GAS_LIMIT_TOO_HIGH) while its blocks report 150M.
+    expect(await gasCap(296, 150_000_000n)).toBe("15000000");
+    // EIP-7825 on Ethereum and Sepolia, whatever their blocks allow.
+    expect(await gasCap(11155111, 60_000_000n)).toBe("16777216");
+    expect(await gasCap(1, 60_000_000n)).toBe("16777216");
+    expect(await gasCap(84532, 60_000_000n)).toBe("60000000");
+    // viem knows the chain, so --chain 296 needs no --rpc.
+    expect(chainName(296)).toBe("Hedera Testnet");
+    expect(chooseRpc(undefined, undefined, 296)).toEqual({ source: "public", url: "https://testnet.hashio.io/api" });
   });
 
   test("probes that ran: readiness online in --json", async () => {
