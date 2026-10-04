@@ -37,7 +37,7 @@ Studio moves them to the moment you make them, and it gives the same answer ever
 
 | | |
 | --- | --- |
-| **Compose** | 100 facets and 84 recipe templates from Lattice (tokens, governance, access control, DeFi, oracles, crosschain and more) on a sheet where every selector shows the facet that answers it. |
+| **Compose** | 105 facets and 85 recipe templates from Lattice (tokens, governance, access control, DeFi, oracles, crosschain, Hedera and more) on a sheet where every selector shows the facet that answers it. |
 | **Check** | Nine families of checks on every edit: selectors, semantics, the diamond's core, dependencies, storage, inits, authority, links and network. About 2 ms for a 30-facet diamond. Every finding has a rule id (`SEL-01`, `INIT-05`, `LINK-01`) and names its fix. |
 | **Export** | A standalone Foundry script, an agent brief, a `recipe.json` with its schema, a Safe Transaction Builder batch, a project file, or a share link that lives in the URL fragment, which a server never sees. |
 | **Deploy** | One transaction through LatticeFactory or CreateX. Studio predicts the address, checks each shared contract's codehash against the catalog before you sign, compares the on-chain loupe with the plan afterwards, and verifies the source on Sourcify and, with an API key, on Etherscan. |
