@@ -1,6 +1,7 @@
 /**
  * Menus and tooltips load in their own chunk after the first paint (Q19, `ui/popups/load.ts`). Until it arrives a
- * menu is its trigger alone; when it does, the triggers are re-created, and the one that had focus keeps it.
+ * menu is its trigger alone, and a press on it opens the menu once the chunk is here; when it arrives the triggers
+ * are re-created, and the one that had focus keeps it.
  */
 import { expect, test } from "../_support/fixtures.ts";
 
@@ -25,5 +26,22 @@ test("the App menu's trigger is there before the popups chunk, and keeps focus w
   await expect(page.locator("[data-base-ui-tooltip-trigger]").first()).toBeAttached();
   await expect(trigger).toBeFocused();
   await page.keyboard.press("Enter");
+  await expect(page.getByRole("menu", { name: "App menu" })).toBeVisible();
+});
+
+test("a press on the App menu's trigger before the popups chunk opens the menu when it arrives", async ({ page }) => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\/assets\/popups-[^/]+\.js$/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Lattice Studio" }).click();
+  await expect(page.getByRole("menu", { name: "App menu" })).toHaveCount(0);
+  release();
   await expect(page.getByRole("menu", { name: "App menu" })).toBeVisible();
 });

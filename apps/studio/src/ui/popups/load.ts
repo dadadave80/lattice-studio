@@ -15,7 +15,8 @@ let popups: Popups | null = null;
 let loading: Promise<Popups> | null = null;
 const listeners = new Set<() => void>();
 
-const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]";
+/** What can hold focus, leaving out Base UI's focus guards (hidden spans its portals add around a popup). */
+const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]:not([data-base-ui-focus-guard])";
 
 function arrive(kit: Popups): void {
   const active = document.activeElement;
@@ -25,7 +26,9 @@ function arrive(kit: Popups): void {
     popups = kit;
     for (const listener of Array.from(listeners)) listener();
   });
-  if (at >= 0 && active && !active.isConnected) {
+  // Only when focus went with its element: a menu opened early has taken it into its popup.
+  const lost = document.activeElement === null || document.activeElement === document.body;
+  if (at >= 0 && active && !active.isConnected && lost) {
     document.querySelectorAll<HTMLElement>(FOCUSABLE)[at]?.focus({ preventScroll: true });
   }
 }
