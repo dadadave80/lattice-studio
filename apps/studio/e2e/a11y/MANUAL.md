@@ -78,7 +78,7 @@ Start: **Collisions**, with focus still on the console's command line, where the
    Expect: Home focuses AxelarGatewayAdapter; hear "Selected AxelarGatewayAdapter.", then "Selected 3 cards." then "Removed AxelarGatewayAdapter, ZetaChainGatewayAdapter and CCIPGatewayAdapter." (in the sheet's reading order). A toast, "Removed 3 facets" with **Undo**, appears. Focus stays on the sheet: a toast never takes focus.
 5. Within 10 seconds, press F6 until you reach Notifications.
    Expect: after the Console comes "Notifications", then F6 goes on to "Title bar". ⇧F6 from the Title bar comes back to "Notifications", then "Console".
-6. From Notifications, press Tab twice, wait 15 seconds, then press Enter.
+6. Press F6 to go back to Notifications (the toast waits while focus is there), then press Tab twice, wait 15 seconds, and press Enter.
    Expect: the first Tab reaches the toast, "Removed 3 facets"; the second reaches **Undo**. The toast stays while focus is in it. Enter restores all three cards, says "Undid: Removed …" with the same list, and moves focus to a restored card on the sheet.
 7. Press F6 five times, around the cycle and back to the Sheet.
    Expect: "Inspector", "Console", "Title bar", "Left pane", "Sheet": no Notifications stop now that no toast shows. Focus is back on the restored card.
