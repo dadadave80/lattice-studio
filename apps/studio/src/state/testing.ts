@@ -9,7 +9,11 @@ import { defineCommands, doc, provideServices, setCatalogStatus } from "@/contra
 import { bufferedServices } from "@/contracts/services";
 import { isolateContracts } from "@/contracts/test-support";
 import { S1_COMMANDS } from "./cmd";
+import { loadRuns } from "./cmd/lazy";
 import { createStudioState, installStudioState, type StudioState, type StudioStateOptions } from "./runtime";
+
+// The commands' bodies up front, as the app has them by the time anyone edits, so a run acts at once.
+await loadRuns();
 
 let cached: Catalog | null = null;
 
