@@ -45,7 +45,7 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 **Needs David:**
 
 - Create the GitHub repository and push. None of these workflows run before that.
-- Add the `SEPOLIA_RPC_URL` repository secret. Without it, `fork.yml`'s gate job checks for the secret, finds it missing, and stops there — the pull request gate's own `chain` job still runs against a local Anvil node either way, so this only adds the fork suite, it doesn't block anything by its absence.
+- Add the `SEPOLIA_RPC_URL` repository secret. `fork.yml` runs without it: the fork suite forks a recent finalized Sepolia block from the first public RPC that serves it and uses the secret only when every public one fails, so the secret is a fallback, not a gate. The pull request gate's own `chain` job runs against a local Anvil node either way.
 - Add the `NPM_TOKEN` repository secret, scoped to publish `lattice-studio` with provenance. Needed before `publish-cli.yml` can run at all.
 - Install solc 0.8.36 (Lattice's pin) before the `golden`, `chain`, and `catalog-drift` jobs run, so `forge build` inside the pinned Lattice checkout has it available.
 
@@ -100,7 +100,7 @@ v1 ships only once every gate below passes (spec "Phasing", cut line for "v1: co
 | Gate | Command or owner |
 | --- | --- |
 | Golden tests pass for all three recipes and shared-contract addresses | `bun run golden` |
-| Every exported script deploys on an Anvil fork once the shared contracts are in it | `bun run test:chain` (local Anvil); `fork.yml`'s Sepolia fork suite once **Needs David** adds `SEPOLIA_RPC_URL` |
+| Every exported script deploys on an Anvil fork once the shared contracts are in it | `bun run test:chain` (local Anvil); `fork.yml`'s Sepolia fork suite (`SEPOLIA_FORK=1 bun run test:chain`, public RPCs, `SEPOLIA_RPC_URL` as the fallback) |
 | A first-time user deploys and verifies on Sepolia in under 5 minutes, moderated | **Needs David**: run the timed script in `MANUAL.md` once it exists (pending Q25's permission decision) |
 | First-load JavaScript budget met | `bun scripts/ci/size.ts --build`, plus the real-device check above; **Needs David** to choose among Q19's budget options while the interim 370 KB gate holds |
 | LCP and drag-cost budgets met | `bun scripts/perf/run.ts` (or the `perf.yml` job); LCP and drag stay report-only until an open first-load decision is made; `scripts/perf/report.ts`'s `REPORT_ONLY` names both, and when it lands their entries drop and Lighthouse's assert moves from `warn` to `error` |

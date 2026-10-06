@@ -1,7 +1,13 @@
 /**
- * The optional Sepolia fork suite (spec L934-L935 Fork row; decision D8): a local Anvil node forking Sepolia at a
- * pinned block, where CreateX, Multicall3 and Arachnid's proxy are the chain's own. Runs only when SEPOLIA_RPC_URL
- * is set, and never prints it; every transaction goes to the local fork, never to Sepolia.
+ * The opt-in Sepolia fork suite (spec L934-L935 Fork row; decisions D8 and Q7): a local Anvil node forking Sepolia
+ * at a recent finalized block, where CreateX, Multicall3 and Arachnid's proxy are the chain's own. Runs when
+ * SEPOLIA_FORK=1 (fork.yml sets it). The block comes from the first public Sepolia RPC that serves it
+ * (harness/sepolia.ts), with SEPOLIA_RPC_URL as the fallback only when they all fail; the log names the block and
+ * the endpoint's host, never the secret. Every transaction goes to the local fork, never to Sepolia.
+ *
+ * Nothing here depends on the block: the deployer account is reset to a funded account with no code (on Sepolia
+ * it carries an EIP-7702 delegation), shared contracts are deployed only where missing, and every salt mixes in
+ * the fork block, so no diamond lands on an address something already holds.
  *
  * On the fork: the missing shared contracts deploy through Arachnid's proxy (batched through Sepolia's Multicall3),
  * the deploy calldata core builds lands through LatticeFactory and through CreateX with a loupe that matches the
@@ -14,32 +20,38 @@ import { builtCatalog, proxyCreationCode, revertDetails } from "./harness/catalo
 import { PORT, SKIP_REASON, anvilPort } from "./harness/env";
 import { ForgeProject } from "./harness/forge";
 import { compareLoupe, loupeSummary } from "./harness/loupe";
-import { ALICE, send, startNode, type Node } from "./harness/node";
+import { ALICE, send, type Node } from "./harness/node";
 import { neededByV1, prepareChain } from "./harness/prepare";
 import { PATHS, coreDeploy, entropyFor, fixture, predict, v1Recipes } from "./harness/recipes";
 import { ResultTable } from "./harness/report";
+import { SEPOLIA, forkSources, startSepoliaFork } from "./harness/sepolia";
 import { GAS_CAP, chainState } from "./harness/shared";
 import { CREATEX_CODEHASH, MULTICALL3_CODEHASH } from "./harness/vendor";
 
-/** Sepolia block the fork pins (2026-09-23), so every run sees the same chain. */
-const SEPOLIA_FORK_BLOCK = 11_765_000n;
-const SEPOLIA = 11155111;
+/** What the deployer account holds on the fork, whatever it holds on Sepolia: 10,000 ether and no code. */
+const DEPLOYER_BALANCE = `0x${(10_000n * 10n ** 18n).toString(16)}`;
 
 // From the environment only (never a file): it may carry a provider key.
-const FORK_URL = process.env["SEPOLIA_RPC_URL"] || undefined;
-const FORK_SKIP = SKIP_REASON ?? (FORK_URL === undefined ? "SEPOLIA_RPC_URL isn't set (decision D8: the fork suite is optional)" : undefined);
+const SECRET_URL = process.env["SEPOLIA_RPC_URL"] || undefined;
+const FORK_SKIP = SKIP_REASON ?? (process.env["SEPOLIA_FORK"] !== "1" ? "SEPOLIA_FORK isn't 1 (decision D8: the fork suite is opt-in; fork.yml sets it)" : undefined);
 if (FORK_SKIP !== undefined) console.log(`Sepolia fork: skipped, ${FORK_SKIP}.`);
 
-describe.skipIf(FORK_SKIP !== undefined)(`Sepolia fork at block ${SEPOLIA_FORK_BLOCK}`, () => {
+describe.skipIf(FORK_SKIP !== undefined)("Sepolia fork at a recent finalized block", () => {
   const { catalog } = builtCatalog();
-  const table = new ResultTable(`Sepolia fork at block ${SEPOLIA_FORK_BLOCK}`);
+  let table = new ResultTable("Sepolia fork");
   let node: Node;
+  let block = 0n;
   let project: ForgeProject;
 
   beforeAll(async () => {
-    node = await startNode({ port: anvilPort(PORT.fork), forkUrl: FORK_URL ?? "", forkBlockNumber: SEPOLIA_FORK_BLOCK });
+    const fork = await startSepoliaFork(anvilPort(PORT.fork), forkSources(SECRET_URL));
+    node = fork.node;
+    block = fork.block;
+    table = new ResultTable(`Sepolia fork at block ${fork.block} from ${fork.label}`);
+    await node.rpc("anvil_setCode", [ALICE, "0x"]);
+    await node.rpc("anvil_setBalance", [ALICE, DEPLOYER_BALANCE]);
     project = new ForgeProject(catalog.toolchain.solc);
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     table.print();
@@ -69,12 +81,12 @@ describe.skipIf(FORK_SKIP !== undefined)(`Sepolia fork at block ${SEPOLIA_FORK_B
     for (const path of PATHS) {
       test(`${name} through ${path}: core's calldata and the exported script both land, loupe matches the plan`, async () => {
         await table.run(name, path, async () => {
-          const viemCase = fixture(catalog, name, path, entropyFor(`fork:viem:${name}:${path}`));
+          const viemCase = fixture(catalog, name, path, entropyFor(`fork:${block}:viem:${name}:${path}`));
           const deploy = coreDeploy(viemCase, ALICE, SEPOLIA);
           await send(node, { from: ALICE, to: deploy.tx.to, data: deploy.tx.data, gas: GAS_CAP });
           expect((await compareLoupe(node, deploy.address, viemCase.analysis.plan)).matches).toBe(true);
 
-          const scriptCase = fixture(catalog, name, path, entropyFor(`fork:script:${name}:${path}`));
+          const scriptCase = fixture(catalog, name, path, entropyFor(`fork:${block}:script:${name}:${path}`));
           scriptCase.project.name = `${name} Fork ${path === "factory" ? "Factory" : "CreateX"}`;
           const out = exportFoundry({
             project: scriptCase.project,
@@ -97,7 +109,7 @@ describe.skipIf(FORK_SKIP !== undefined)(`Sepolia fork at block ${SEPOLIA_FORK_B
   }
 
   test("a CreateX-wrapped init revert decodes to the module and error", async () => {
-    const f = fixture(catalog, "SafeDiamondCut", "createx", entropyFor("fork:threshold"), { minThreshold: "3" }, { allowBlockers: true });
+    const f = fixture(catalog, "SafeDiamondCut", "createx", entropyFor(`fork:${block}:threshold`), { minThreshold: "3" }, { allowBlockers: true });
     const deploy = coreDeploy(f, ALICE, SEPOLIA);
     const preview = await node.call({ from: ALICE, to: deploy.tx.to, data: deploy.tx.data, gas: GAS_CAP });
     expect(preview.ok).toBe(false);

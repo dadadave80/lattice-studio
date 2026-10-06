@@ -126,15 +126,29 @@ describe("nightly.yml (§17 audit #40, spec L914: scheduled, report-only)", () =
   });
 });
 
-describe("fork.yml (§17 audit #76, spec L935: the pinned block is the harness's, not a stale workflow env)", () => {
+describe("fork.yml (§17 audit #76, spec L935, Q7: the fork block is the harness's, and the secret is only a fallback)", () => {
   const text = readFileSync(join(workflowsDir, "fork.yml"), "utf8");
   const doc = Bun.YAML.parse(text) as WorkflowLike;
+  const jobs = Object.values(doc.jobs ?? {}) as (JobLike & { if?: unknown; needs?: unknown })[];
+  const chainStep = jobs.flatMap((job) => job.steps ?? []).find((s) => typeof s.run === "string" && s.run.includes("bun run test:chain"));
 
-  test("declares no FORK_BLOCK env: e2e-chain/fork.chain.test.ts pins its own fork block and never reads one from the environment", () => {
+  test("declares no FORK_BLOCK env: the harness picks a recent finalized block and never reads one from the environment", () => {
     expect(doc.env?.["FORK_BLOCK"]).toBeUndefined();
-    for (const job of Object.values(doc.jobs ?? {})) {
+    for (const job of jobs) {
       for (const step of job.steps ?? []) expect((step.env ?? {})["FORK_BLOCK"]).toBeUndefined();
     }
+  });
+
+  test("runs without the SEPOLIA_RPC_URL secret: no job is gated on it", () => {
+    for (const job of jobs) {
+      expect(job.if).toBeUndefined();
+      expect(job.needs).toBeUndefined();
+    }
+  });
+
+  test("opts the fork suite in and passes the secret through for the harness's fallback", () => {
+    expect(chainStep?.env?.["SEPOLIA_FORK"]).toBe("1");
+    expect(chainStep?.env?.["SEPOLIA_RPC_URL"]).toBe("${{ secrets.SEPOLIA_RPC_URL }}");
   });
 });
 
