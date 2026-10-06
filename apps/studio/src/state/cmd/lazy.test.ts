@@ -11,7 +11,8 @@ afterEach(() => {
 test("a command run before its body has loaded waits for it, then does what it says and says it", async () => {
   kit = setupKit();
   // A fresh copy of the loader, with no bodies loaded yet (the kit loads the app's copy up front).
-  const { lazyRun } = (await import(`./lazy.ts?unloaded`)) as typeof import("./lazy");
+  const fresh = "./lazy.ts?unloaded";
+  const { lazyRun } = (await import(fresh)) as typeof import("./lazy");
   const ref = commandRef("facet.place", { facet: "ERC20" });
   const pending = lazyRun("place")(commandContext("api", ref), { facet: "ERC20" });
   expect(pending).toBeInstanceOf(Promise);
