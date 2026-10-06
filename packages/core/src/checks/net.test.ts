@@ -77,7 +77,8 @@ const recipe = makeRecipe({
 const NEEDED = ["DiamondLoupeFacet", "ERC20", "MultiInit", "ERC20Init", "DiamondIntrospectionInit"];
 
 const SEPOLIA = 11155111;
-const deploy: DeployContext = { chainId: SEPOLIA, path: "factory", from: addr(0xf00d), salt: `${addr(0xf00d).toLowerCase()}00${"11".repeat(11)}` as Hex };
+/** A deploy context once a wallet has connected. */
+const deploy: Required<DeployContext> = { chainId: SEPOLIA, path: "factory", from: addr(0xf00d), salt: `${addr(0xf00d).toLowerCase()}00${"11".repeat(11)}` as Hex };
 
 function release(name: string) {
   if (name === "LatticeRegistry") return catalog.registry;
@@ -145,6 +146,41 @@ describe("when NET checks run (spec L302)", () => {
     expect(run(broken, { deploy: undefined })).toEqual([]);
     expect(run({ ...broken, online: false })).toEqual([]);
     expect(run({ ...broken, chainId: 1 })).toEqual([]);
+  });
+});
+
+describe("before a wallet connects (spec L301, Q23)", () => {
+  /** The chain and path alone: no signing account, so no salt. */
+  const unsigned: DeployContext = { chainId: SEPOLIA, path: "factory" };
+  const erc20 = facetOf("ERC20");
+
+  /** Every NET problem but NET-01 (CreateX path only) at once, and code at the predicted address. */
+  function troubled(): ChainState {
+    let chain = readyChain({ deployer: { present: false }, simulate: false, gasEstimate: "17200000", predictedHasCode: true });
+    chain = withShared(chain, "ERC20Init", { present: false });
+    chain = withShared(chain, "ERC20", { present: true, codehash: hex(0xdead) });
+    const records = { ...chain.registry?.records, [`DiamondLoupeFacet@${facetOf("DiamondLoupeFacet").release.version}`]: null };
+    return { ...chain, registry: { records } };
+  }
+
+  test("the chain and path are enough for every check but NET-05", () => {
+    const codes = run(troubled(), { deploy: unsigned }).map((p) => p.code);
+    expect(codes).toEqual(["NET-02", "NET-03", "NET-04", "NET-06", "NET-07", "NET-08"]);
+    expect(only(run(readyChain({ createx: { present: false } }), { deploy: { ...unsigned, path: "createx" } }), "NET-01").params).toMatchObject({ case: "missing" });
+  });
+
+  test("NET-05 waits for the account and salt, even when a probe says the address has code", () => {
+    expect(run(troubled(), { deploy: unsigned }).some((p) => p.code === "NET-05")).toBe(false);
+    expect(run(readyChain({ predictedHasCode: true }), { deploy: { ...unsigned, from: deploy.from } })).toEqual([]);
+    expect(run(readyChain({ predictedHasCode: true }), { deploy: { ...unsigned, salt: deploy.salt } })).toEqual([]);
+  });
+
+  test("once a wallet connects the same chain adds NET-05, at the account's prediction", () => {
+    const after = run(troubled(), { deploy });
+    expect(after.map((p) => p.code)).toEqual(["NET-02", "NET-03", "NET-04", "NET-05", "NET-06", "NET-07", "NET-08"]);
+    const address = factoryPredict({ factory: catalog.factory.address, proxyInitCodeHash: catalog.proxy.initCodeHash, from: deploy.from, salt: deploy.salt });
+    expect(only(after, "NET-05").params).toEqual({ chain: "Sepolia", path: "factory", address });
+    expect(only(after, "NET-04").params).toMatchObject({ name: "ERC20", address: erc20.release.address });
   });
 });
 
