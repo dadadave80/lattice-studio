@@ -2,8 +2,9 @@
  * The PWA and SRI plugins (spec L828-L837, L862). vite-plugin-pwa with `registerType: 'prompt'` (auto-update
  * can lose unsaved work) and no injected registration: `src/pwa/` registers the worker itself, because an
  * injected inline script would need its own CSP hash. The precache holds the shell, the catalog manifest and
- * indexes, the recipe schema, the icons and every first-party chunk except ELK and WalletConnect (see
- * `precache.ts`). Catalog detail shards and creation code go into a cache-first runtime cache.
+ * indexes with the recipes and init docs they leave out (Q15), the recipe schema, the icons and every first-party
+ * chunk except ELK and WalletConnect (see `precache.ts`). Catalog detail shards and creation code go into a
+ * cache-first runtime cache.
  *
  * vite-plugin-sri-gen adds `integrity` to the entry, its CSS and modulepreload links, and lists every chunk's
  * integrity in an import map, which the CSP allows by hash (`csp.ts`). Its dynamic-chunk preloads stay off:
@@ -32,6 +33,8 @@ export const PRECACHE_GLOBS = [
   "**/*.{js,css,html,woff2,svg,png,ico}",
   "catalog/manifest.json",
   "catalog/*/index.json",
+  "catalog/*/recipes.json",
+  "catalog/*/init-docs.json",
   "schema/*.json",
 ];
 

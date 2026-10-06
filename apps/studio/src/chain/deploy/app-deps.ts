@@ -8,6 +8,7 @@ import {
   announce, chainService, deleteDeployment, doc, env, getAnalysis, getCatalog, hideBanner, isOnline, listDeployments, loadCreationCode, loadFacetDetail, log, now,
   putDeployment, session, settings, showBanner, subscribeAnalysis, subscribeCatalog, subscribeDeployments, subscribeOnline,
 } from "@/contracts";
+import { catalogWithRecipes } from "@/catalog/parts";
 import { prediction } from "@/state";
 import { chainName } from "../infra/chains";
 import type { DeployDeps, DeployInputs } from "./ports";
@@ -60,7 +61,7 @@ export function appDeployDeps(): DeployDeps {
     inputs: inputs(),
     chain: () => import("./app-port").then((m) => m.appPort()),
     records: { list: listDeployments, put: putDeployment, delete: deleteDeployment, subscribe: subscribeDeployments },
-    files: { detail: loadFacetDetail, code: loadCreationCode },
+    files: { detail: loadFacetDetail, code: loadCreationCode, recipes: catalogWithRecipes },
     say: { log, announce, showBanner, hideBanner },
     settings: () => {
       const s = settings.get();

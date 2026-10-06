@@ -518,6 +518,7 @@ export function deployHarness(options: { catalog: Catalog; project: Project; cha
           const found = code.get(name);
           return found ? { ok: true, value: found } : { ok: false, error: `${name} has no creation code in this catalog.` };
         },
+        recipes: async (catalog) => ({ ok: true, value: catalog }),
       },
       say: {
         log: (line) => void said.lines.push(line),

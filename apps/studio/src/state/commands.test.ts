@@ -6,6 +6,7 @@ import {
   command, commandState, defineCommands, doc, getAnalysis, getCommand, layoutMetrics, runCommand, session, setCatalogStatus,
   type CommandArgs, type CommandSource,
 } from "@/contracts";
+import { shardedCatalog, shardFetch } from "@/catalog/test-support";
 import { bufferedServices } from "@/contracts/services";
 import { S1_COMMANDS } from "./cmd";
 import { resolveField } from "./cmd/init";
@@ -445,6 +446,46 @@ describe("recipes", () => {
     expect(doc.get().recipe.template?.name).toBe("SafeDiamondCut");
     await run("history.undo");
     expect(doc.get().recipe.facets).toEqual(["ERC20"]);
+  });
+
+  test("a catalog that keeps recipes in recipes.json (Q15) loads the file first, once, and loads the same recipe", async () => {
+    const { catalog, files } = shardedCatalog(fixture());
+    const served = shardFetch(files);
+    const original = globalThis.fetch;
+    globalThis.fetch = served.fetch;
+    try {
+      start(undefined, catalog);
+      // Whether a recipe loads never waits on the file.
+      expect(reason("recipe.load", { name: "GovernedVault" })).toBeNull();
+      expect(served.urls).toEqual([]);
+      const lines = await run("recipe.load", { name: "GovernedVault" });
+      expect(lines).toEqual(["Loaded GovernedVault · 12 facets · 120 selectors · from script/base/defi/DeployGovernedVault.s.sol."]);
+      const want = loadTemplate(fixture(), "GovernedVault");
+      expect(want.ok && doc.get().recipe).toEqual(want.ok ? want.value : false);
+      await run("recipe.replace", { name: "SafeDiamondCut" });
+      expect(doc.get().recipe.template?.name).toBe("SafeDiamondCut");
+      expect(served.urls).toEqual(["/catalog/fixture/recipes.json"]);
+      // The Blank diamond isn't in the file, so it never waits on it.
+      globalThis.fetch = shardFetch(files, { status: 503 }).fetch;
+      await run("recipe.replace", { name: "Blank diamond" });
+      expect(doc.get().recipe.template).toBeUndefined();
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("a recipes.json that doesn't load says why, and the sheet stays as it was", async () => {
+    const { catalog, files } = shardedCatalog(fixture());
+    const original = globalThis.fetch;
+    globalThis.fetch = shardFetch(files, { status: 404 }).fetch;
+    try {
+      start(undefined, catalog);
+      const before = doc.get();
+      expect(await run("recipe.load", { name: "ERC20" })).toEqual(["Couldn't load the recipes. recipes.json answered 404."]);
+      expect(doc.get()).toBe(before);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 
   test("the Blank diamond loads by name; recipes that don't load in v1 say why", async () => {

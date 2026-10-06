@@ -16,6 +16,8 @@ import { expect, test } from "../_support/fixtures.ts";
 import { region } from "../_support/keys.ts";
 import { recipeProject, shareLink } from "../_support/projects.ts";
 import { DB_NAME, META, openEmpty } from "../_support/seed.ts";
+import { expectInitPlanOpen } from "../q1c/pages/init-plan-page.ts";
+import { runInPalette } from "../q1c/pages/palette-page.ts";
 
 test.use({ serviceWorkers: "allow" });
 
@@ -169,6 +171,23 @@ test.describe("Offline (spec L830-L832)", () => {
 
     // Composing still works: a facet whose shard never warmed places from the precached catalog index.
     await place(page, "ERC20Burnable");
+  });
+
+  test("offline, a recipe loads and its init fields show their help: the files the index leaves out are precached (Q15)", async ({ page, context }) => {
+    await openControlled(page);
+    await goOffline(context, page);
+    await page.reload();
+    await expect(region(page, "Sheet").getByRole("toolbar", { name: "Sheet tools" })).toBeVisible();
+
+    // Neither file was asked for online: the recipe comes from recipes.json, the help from init-docs.json.
+    const line = region(page, "Console").getByRole("textbox", { name: "Command line" });
+    await line.fill("recipe erc20");
+    await line.press("Enter");
+    await expect(region(page, "Sheet").getByRole("group", { name: /^ERC20(,|$)/ })).toBeVisible();
+    await runInPalette(page, "Open init plan");
+    const plan = await expectInitPlanOpen(page);
+    await expect.poll(() => plan.fieldDescription("Name")).toContain("Token name.");
+    expect(await networkAnswers(page), "still offline").toBe(false);
   });
 
   test("offline, exports, saving a file and opening a share link all work; Deploy says why it can't", async ({ page, context }) => {
