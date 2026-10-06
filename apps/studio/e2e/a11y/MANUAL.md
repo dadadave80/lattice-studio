@@ -51,8 +51,8 @@ Start: **ERC20**. Reload the page and don't touch it with the mouse.
    Expect, in order: the tool strip's **Select** button (one stop for the whole strip), the zoom readout ("Zoom" and the percentage), the title block's **Collapse title block**, **Chain and path: Choose a chain · LatticeFactory** and **Deploy…**, then the core cell, "Core The diamond's fixed part". The next Tab leaves the sheet for the "Resize inspector" splitter. Focus never gets stuck in the sheet.
 4. Press ⇧Tab until you're back on the card.
    Expect: the same stops in reverse.
-5. Tab to the core cell again. Press ↓ five times, then Home.
-   Expect: focus walks the cell's rows: "Collapse the core cell", "Fallback 15 routed", "Loupe 4/4, 4 of 4 covered", "ERC-165, covered", "Cut Empty · immutable", and wraps to "Core The diamond's fixed part". Home goes back to the first row.
+5. Tab to the core cell again. Press ↓ six times, then Home.
+   Expect: focus walks the cell's rows: "Collapse the core cell", "Fallback 15 routed", "Loupe 4/4, 4 of 4 covered", "ERC-165, covered", "Cut Empty · immutable", and the sixth ↓ wraps to "Core The diamond's fixed part". Home goes back to the first row.
 6. Press Space.
    Expect: hear "Selected the core." The inspector's heading reads "Core · the diamond's fixed part".
 7. Press ↓ to "Collapse the core cell" and press Enter, then Enter again.
@@ -98,7 +98,7 @@ Start: **ERC20**, with focus on the Sheet region, where the start state leaves i
 2. Type `erc4626`.
    Expect: hear "1 match." The catalog tree shows Tokens with ERC4626 under it.
 3. Press Tab until you reach the tree, then ↓.
-   Expect: Tab passes the **Available on chain** checkbox, which reads as unavailable with "Choose a chain first.", and lands on "Tokens". ↓ moves to the ERC4626 row, which reads "ERC4626 17 selectors erc7201:lattice.storage.ERC4626".
+   Expect: Tab passes the **Available on chain** checkbox, which reads as unavailable with "Choose a chain first.", and lands on "Tokens", which says "1 on sheet" for ERC20. ↓ moves to the ERC4626 row, which reads "ERC4626 17 selectors erc7201:lattice.storage.ERC4626".
 4. Press Enter.
    Expect: hear "Placed ERC4626 · 17 selectors · erc7201:lattice.storage.ERC4626". The row now reads "On sheet" and keeps focus. On the sheet, ERC4626 appears in free space; ERC20 and Receive haven't moved, and nothing says "Tidied".
 5. Press Mod+Z.
@@ -133,11 +133,11 @@ Start: **Collisions**. F6 to the Sheet.
 6. Press Mod+Z.
    Expect: hear "Undid: Moved AxelarGatewayAdapter." The card goes back to where it started.
 7. Press ⇧F10 on the card.
-   Expect: a menu "AxelarGatewayAdapter actions" with **Open in inspector**, **Locate**, **Move to…**, **Flip pins**, **Route contested selectors here** and **Remove**. Choose **Move to…**: the same "Moving …" announcement as step 2. Esc cancels.
+   Expect: a menu "AxelarGatewayAdapter actions" with **Open in inspector**, **Locate**, **Move to…**, **Flip pins**, **Expand**, **Route contested selectors here** and **Remove**. Choose **Move to…**: the same "Moving …" announcement as step 2. Esc cancels.
 8. With a pointer: right-click a card, choose **Move to…**, move the pointer and click once on empty sheet.
    Expect: the card moves with one click and no drag.
-9. In the Left pane, move to the **Structure** tab with → and press Enter, Tab into the tree, and press ⇧F10 on a facet row.
-   Expect: the same facet menu, **Move to…** included. Choosing it says "Moving …" as in step 2 and focus goes back to the tree row. → still moves the ghost ("Moving AxelarGatewayAdapter, beside …"), and Enter drops the card and moves focus to it on the sheet.
+9. F6 to the Left pane and Tab to the **Catalog** tab. Press → to **Structure** (hear "Showing Structure.") and Enter, then Tab twice into the tree (the first stop is the tab panel), and press ⇧F10 on the AxelarGatewayAdapter row.
+   Expect: the same facet menu as step 7, **Move to…** included, without **Expand**, which only a card's menu has. Choosing it says "Moving …" as in step 2 and focus goes back to the tree row. → still moves the ghost ("Moving AxelarGatewayAdapter, beside …"), and Enter drops the card and moves focus to it on the sheet.
 
 Pass when a card can be moved with the keyboard alone and with single clicks alone, and every stop is spoken in words.
 
@@ -181,9 +181,9 @@ Start: **Collisions**. F6 to the Sheet, press Home, then Mod+→ to select the m
 5. Press Mod+A, then Backspace.
    Expect: every card goes; focus moves to the Sheet region. Mod+Z brings them back and focuses a restored card.
 6. Press Mod+A, then T. Then press Home, then F.
-   Expect: focus stays on the card it was on. Tidy says "Tidied 3 facets." (or "Nothing moved: the sheet already has this layout." when the cards are already tidy); Flip says "Flipped pins on" and the card's name.
+   Expect: focus stays on the card it was on. Two cards are left after step 4, so Tidy says "Tidied 2 facets." (or "Nothing moved: the sheet already has this layout." when they're already tidy); Flip says "Flipped pins on" and the card's name.
 7. Open a new **Empty** project, F6 to the Title bar, and Tab to **Undo**, then **Redo**.
-   Expect: a new project starts with no history. Undo reads as unavailable with the reason "Nothing to undo", and Redo with "Nothing to redo". Both still take focus. Mod+Z says "Nothing to undo."
+   Expect: a new project starts with no history. Undo reads as unavailable with the reason "Nothing to undo", and Redo with "Nothing to redo". Both still take focus. Mod+Z says "Nothing to undo".
 
 Pass when focus always lands on a card that exists, or on the sheet when none does, and never on the page body.
 
@@ -207,13 +207,13 @@ Start: **Collisions**. F6 to the Sheet, which lands on the Sheet region, and pre
    Expect: nothing happens and nothing is said. The Hand tool stays off, no dialog opens.
 7. Press Home, →, Mod+A, F8 and F6.
    Expect: these still work, because they aren't single keys.
-8. Tab to the tool strip and listen to the **Hand** button.
+8. Tab to the tool strip, which is one stop and lands on **Select**, and press ↓ to the **Hand** button.
    Expect: the reader no longer announces a shortcut for it (`aria-keyshortcuts` is gone).
 9. Mod+K, type `Show keyboard shortcuts`, Enter.
    Expect: the dialog says "Single-key shortcuts are off. Settings → Keyboard turns them on." and lists no single-key rows.
 10. Back in Settings → Keyboard, Tab to the **Change…** button on the Tidy row and press Enter, then Esc.
     Expect: the same button reads "Press a key, or Esc to cancel" while it listens; Esc cancels and focus stays on **Change…**. Repeat with Backspace instead of Esc: the row reads "No shortcut". Then **Reset all shortcuts** restores it.
-11. Turn **Single-key shortcuts** back on. In the catalog **Search** field, the console's **Filter the log** field and the **Command line**, type `h?i`.
+11. Turn **Single-key shortcuts** back on. In the catalog **Search** field (press /), the console's **Filter the log** field (⇧Tab back from the **Command line**) and the **Command line**, type `h?i`.
     Expect: each field takes the text; no tool changes, no dialog opens.
 
 Pass when no single key fires while they're off or while typing, and every modified key still works.
@@ -227,22 +227,22 @@ Start: **Collisions**. F6 to the Sheet, which lands on the Sheet region, and pre
 1. Press Mod+K.
    Expect: the palette opens with focus in "Search commands, facets and recipes". A Suggested group comes first (for a collision: **Keep …**, **Route to …**, **Next problem**).
 2. Press ↓ a few times.
-   Expect: the reader names each row with its category and shortcut. Rows that can't run say why after a dot, for example "Move the selection to… · Select a card first".
+   Expect: the reader names each row with its category and shortcut. Rows that can't run say why after a dot, for example "Tidy selection · Select two or more cards".
 3. Type `go to`.
    Expect: **Go to console**, **Go to inspector**, **Go to left pane**, **Go to sheet** and **Go to title bar**. Choose **Go to inspector** with Enter: the palette closes and focus is in the Inspector.
 4. Press Mod+K, type `tidy`, press Enter.
-   Expect: the palette closes and Studio says what Tidy did, for example "Nothing moved: the sheet already has this layout."
+   Expect: the palette closes and Studio says what Tidy did, for example "Tidied 3 facets.", or "Nothing moved: the sheet already has this layout." when the cards are already tidy.
 5. Press Mod+K, then Esc.
    Expect: the palette closes and focus returns where it was.
 6. Open Settings through the palette and press Mod+K and ?.
    Expect: neither opens anything over the dialog. Esc closes Settings and focus returns to where the palette was opened, the AxelarGatewayAdapter card.
 7. F6 to the Title bar, Tab to **Lattice Studio** and press Enter.
    Expect: the app menu opens with focus inside it; ↑ and ↓ move between items, Esc closes it and focus returns to **Lattice Studio**.
-8. F6 to the Console, Tab to **Export** and press Enter.
+8. F6 to the Console, which returns to the **Command line**, then ⇧Tab to **Export** and press Enter.
    Expect: the "Export" menu opens; Esc returns focus to **Export**.
 9. In the Console, Tab to the **Command line** and run `help`.
    Expect: hear "Commands: chain, deploy, clear, help, find, problems, export, new, theme, zoom, fit, init, core, next, place, remove, route, exclude, include, recipe, set, tidy, undo, redo. Type help <verb> for one." ↑ brings back `help`.
-10. ⇧Tab into the log, then ↑ and ↓.
+10. ⇧Tab into the log (past **Jump to latest** when it shows), then ↑ and ↓.
     Expect: the log is a "Log" with one line per entry, each read with its tag ("Note", "Placed", "Error"…). On macOS, Ctrl+L clears it; elsewhere use **Clear the log**.
 11. On the Sheet, Tab to a "Selector collision" note's **Choose per selector…** and press Enter, then Esc. Do the same for **Browse all recipes** on an Empty sheet.
     Expect: each opens with focus inside, and Esc returns focus to the button that opened it.
