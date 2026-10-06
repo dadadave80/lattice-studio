@@ -5,6 +5,10 @@
  * that leaves the recipe as it was (a drag, a record, an undo back to an equal recipe) returns the same object
  * and re-renders nothing. The inputs are compared by identity first, so reading it in render stays cheap.
  *
+ * Core's `analyze` and `narrate` load in their own chunk (`analyzer.ts`), asked for when the engine starts: until
+ * they arrive the analysis is empty, as it is while the catalog loads, and their arrival resets narration's
+ * baseline like a new catalog does, so nothing already on the sheet is narrated as new.
+ *
  * Narration: the console reports the difference between the previous and the new analysis (C10 `narrate`).
  * It runs in a microtask after the change, or at once when a command calls `flush()`, so a command's own line
  * ("Placed ERC20 · 9 selectors · …") comes first and the new problems follow it (spec L428). Loading a project
@@ -12,11 +16,15 @@
  * A command whose effect narrates nothing (layout, a default owner moved) queues a fallback line, logged only
  * when narration had nothing to say, so no edit is ever silent.
  */
-import type { Analysis, AnalysisContext, Catalog, Hex, LineDraft, NarrateCause, Project, Recipe } from "@lattice-studio/core";
-import { analyze as coreAnalyze, canonicalJson, isNotImplemented, narrate as coreNarrate, recipeHash } from "@lattice-studio/core";
+import type {
+  analyze as coreAnalyze, Analysis, AnalysisContext, Catalog, Hex, LineDraft, NarrateCause, narrate as coreNarrate, Project,
+  Recipe,
+} from "@lattice-studio/core";
+import { canonicalJson, isNotImplemented, recipeHash } from "@lattice-studio/core";
 import {
   doc, emptyAnalysis, getCatalog, log, session, subscribeCatalog, type AnalysisProvider,
 } from "@/contracts";
+import { loadAnalyzer, loadedAnalyzer, onAnalyzerLoaded } from "./analyzer";
 import type { ChainMirror } from "./chain-mirror";
 import { buildContext } from "./context";
 import type { DeploymentsMirror } from "./deployments-mirror";
@@ -26,7 +34,7 @@ export type AnalysisEngineDeps = {
   chain: ChainMirror;
   deployments: DeploymentsMirror;
   prediction: PredictionMirror;
-  /** Core's `analyze`; tests inject fakes. */
+  /** Core's `analyze`, loaded with `analyzer.ts` unless given; tests inject fakes, or core's own to run at once. */
   analyze?: typeof coreAnalyze;
   narrate?: typeof coreNarrate;
 };
@@ -76,8 +84,8 @@ function digest(value: unknown): string {
 }
 
 export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
-  const analyze = deps.analyze ?? coreAnalyze;
-  const narrate = deps.narrate ?? coreNarrate;
+  const analyzeFn = () => deps.analyze ?? loadedAnalyzer()?.analyze;
+  const narrateFn = () => deps.narrate ?? loadedAnalyzer()?.narrate;
   let memo: Memo | null = null;
   let contextMemo: ContextMemo | null = null;
   /** Messages already logged for analysis failures, so a failing analysis logs once, not per render. */
@@ -121,6 +129,11 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
   const getAnalysis = (): Analysis => {
     const catalog = getCatalog();
     if (!catalog) return EMPTY;
+    const analyze = analyzeFn();
+    if (!analyze) {
+      void loadAnalyzer().catch(() => undefined);
+      return EMPTY;
+    }
     const { recipe } = doc.get();
     const ctx = context();
     if (memo && memo.recipe === recipe && memo.catalog === catalog && memo.context === ctx) return memo.analysis;
@@ -157,6 +170,7 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
         if (state.chainId !== previous.chainId) listener();
       }),
       subscribeCatalog(() => listener()),
+      onAnalyzerLoaded(listener),
       deps.chain.subscribe(listener),
       deps.deployments.subscribe(listener),
       deps.prediction.subscribe(listener),
@@ -201,8 +215,9 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
     if (resetting || baseline === undefined) {
       baseline = next;
     } else if (next !== baseline) {
+      const narrate = narrateFn();
       try {
-        narrated = narrate(baseline, next, why);
+        narrated = narrate ? narrate(baseline, next, why) : [];
       } catch (error) {
         if (!isNotImplemented(error)) throw error;
         fail(error);
@@ -224,6 +239,7 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
   const start = (): (() => void) => {
     if (started) return () => {};
     started = true;
+    if (!deps.analyze || !deps.narrate) void loadAnalyzer().catch(() => undefined);
     const stopPrediction = deps.prediction.start();
     const stopChain = deps.chain.start();
     const stopDeployments = deps.deployments.start();
@@ -237,6 +253,10 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
         schedule();
       }),
       subscribeCatalog(() => {
+        reset = true;
+        schedule();
+      }),
+      onAnalyzerLoaded(() => {
         reset = true;
         schedule();
       }),

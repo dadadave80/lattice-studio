@@ -3,7 +3,7 @@
  * and S1's commands registered, all undone by `dispose()`. Settings stay in memory. Never imported by the app.
  */
 import type { Catalog, ConsoleLine, Project } from "@lattice-studio/core";
-import { CORE_FACETS } from "@lattice-studio/core";
+import { analyze, CORE_FACETS, narrate } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { defineCommands, doc, provideServices, setCatalogStatus } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
@@ -34,6 +34,8 @@ export type Kit = {
 };
 
 export type KitOptions = StudioStateOptions & {
+  /** Load core's analysis from its own chunk, as the app does (`analyzer.ts`). */
+  lazyAnalysis?: boolean;
   project?: Project;
   /** Null leaves the catalog loading. */
   catalog?: Catalog | null;
@@ -49,7 +51,9 @@ export function setupKit(options: KitOptions = {}): Kit {
   const empty = makeRecipe({ facets: [...CORE_FACETS], init: { kind: "steps", steps: [] } }, catalog ?? undefined);
   doc.load(options.project ?? makeProject({ recipe: empty }));
   let from = bufferedServices().log.length;
-  const state = createStudioState({ storage: null, ...options });
+  // Core's analysis at once, rather than from its lazy chunk (`analyzer.ts`), so a test reads it right after an edit.
+  const { lazyAnalysis = false, ...rest } = options;
+  const state = createStudioState({ storage: null, ...(lazyAnalysis ? {} : { analyze, narrate }), ...rest });
   const uninstall = installStudioState(state);
   defineCommands(S1_COMMANDS);
   const lines = (): ConsoleLine[] => bufferedServices().log.slice(from);
