@@ -52,7 +52,7 @@ describe("buildStructure", () => {
     const core = nodes[0];
     expect(core?.children?.map((c) => c.id)).toEqual([FALLBACK_ID, ...CORE_FACETS.map(coreFacetId)]);
     expect(meta(m, CORE_ID, "core").label).toBe("Core");
-    expect(meta(m, FALLBACK_ID, "fallback")).toEqual({ kind: "fallback", label: "Fallback · 15 selectors routed", routed: 15 });
+    expect(meta(m, FALLBACK_ID, "fallback")).toEqual({ kind: "fallback", label: "Fallback · 15 routed", routed: 15 });
     const loupe = meta(m, coreFacetId("DiamondLoupeFacet"), "coreFacet");
     expect(loupe.label).toBe("DiamondLoupeFacet, 4 selectors");
     expect(loupe.count).toBe("4/4 selectors");

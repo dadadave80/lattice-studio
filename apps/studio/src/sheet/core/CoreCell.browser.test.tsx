@@ -46,7 +46,7 @@ describe("the cell", () => {
     expect(cellRow("Core The diamond's fixed part")).toBeTruthy();
     expect(cellRow(`Fallback ${s.fallback.routed} routed`).textContent).toContain(`${s.fallback.routed} routed`);
     expect(cellRow("Loupe 4/4, 4 of 4 covered").textContent).toContain("4/4");
-    expect(cellRow("ERC-165 socket: covered")).toBeTruthy();
+    expect(cellRow("ERC-165, covered")).toBeTruthy();
     // The mechanism by its label, as the inspector's Core section names it.
     expect(cellRow("Cut SafeDiamondCut · Safe").textContent).toContain("SafeDiamondCut · Safe");
     expect(cellRow("Collapse the core cell")).toBeTruthy();
@@ -83,7 +83,7 @@ describe("the cell", () => {
     doc.load(coreProject(["ERC20", "SafeDiamondCut", "GovernedDiamondCut"], { id: ID }));
     await expect.poll(() => cellRow(/^Cut /).getAttribute("data-cut")).toBe("conflict");
     // The first in catalog order holds the socket, whatever the placement order; the other is its rival.
-    const conflict = cellRow("Cut GovernedDiamondCut · SafeDiamondCut, both claim it");
+    const conflict = cellRow("Cut GovernedDiamondCut · conflicts with SafeDiamondCut");
     expect(getComputedStyle(conflict).backgroundImage).toContain("repeating-linear-gradient");
     doc.load(coreProject(["ERC20", "GovernedDiamondCut"], { id: ID }));
     await expect.poll(() => cellRow(/^Cut /).getAttribute("data-cut")).toBe("one");
@@ -91,7 +91,25 @@ describe("the cell", () => {
   });
 });
 
+describe("the empty sheet's hint", () => {
+  test("describes the toolbar while it shows", async () => {
+    await renderCoreSheet({ project: coreProject([], { id: ID }), ...VIEW });
+    const toolbar = page.getByRole("toolbar", { name: "Core" });
+    await expect.element(toolbar).toHaveAccessibleDescription(EMPTY_HINT);
+  });
+});
+
 describe("selecting the core", () => {
+  test("Clear the selection lets the core go, and says so", async () => {
+    await renderCoreSheet({ project: coreProject(["ERC20"], { id: ID }), ...VIEW });
+    expect(commandState({ id: "sheet.clearSelection" }).ok).toBe(false);
+    await runCommand({ id: "core.select" }, "api");
+    expect(commandState({ id: "sheet.clearSelection" }).ok).toBe(true);
+    await runCommand({ id: "sheet.clearSelection" }, "palette");
+    await expect.poll(() => session.get().coreSelected).toBe(false);
+    expect(announced().at(-1)).toBe("Deselected the core.");
+  });
+
   test("a click on the cell selects it: the card selection clears, the frame, every glyph and the stamps follow", async () => {
     const project = coreProject(["ERC20", "SafeDiamondCut", "Receive"], { id: ID, exclude: [RECEIVE] });
     await renderCoreSheet({ project, ...VIEW });
@@ -252,6 +270,19 @@ describe("the collapse", () => {
     await userEvent.click(cellRow("Expand the core cell"));
     await expect.poll(() => session.get().panes.core.collapsed).toBe(false);
     expect(cell().getBoundingClientRect().height).toBeGreaterThan(90);
+  });
+});
+
+describe("the collapse from the keyboard", () => {
+  test("Enter on the chevron folds and unfolds the cell, and focus stays on the chevron", async () => {
+    await renderCoreSheet({ project: coreProject(["ERC20"], { id: ID }), ...VIEW });
+    cellRow("Collapse the core cell").focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => session.get().panes.core.collapsed).toBe(true);
+    await expect.poll(() => document.activeElement).toBe(cellRow("Expand the core cell"));
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => session.get().panes.core.collapsed).toBe(false);
+    await expect.poll(() => document.activeElement).toBe(cellRow("Collapse the core cell"));
   });
 });
 

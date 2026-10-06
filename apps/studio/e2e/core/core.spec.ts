@@ -138,7 +138,7 @@ test.describe("The pinned diamond core", () => {
     await openEmpty(page);
     const log = new ConsolePage(page);
     await log.run("core");
-    await expect(log.line(new RegExp(`Core: fallback ${coreSelectors()} routed · loupe 4/4 · ERC-165 IDiamondLoupe · cut none`))).toBeVisible();
+    await expect(log.line(new RegExp(`Core: fallback ${coreSelectors()} routed · loupe 4/4 · ERC-165 IDiamondLoupe · cut Empty · no upgrade mechanism\\.`))).toBeVisible();
     await expect(region(page, "Inspector").getByRole("heading", { level: 2, name: CORE_TITLE })).toBeVisible();
   });
 
@@ -147,7 +147,7 @@ test.describe("The pinned diamond core", () => {
     const core = cell(page);
     await expect(core.getByRole("button", { name: `Fallback ${coreSelectors()} routed` })).toBeVisible();
     await expect(core.getByRole("button", { name: "Loupe 4/4, 4 of 4 covered" })).toBeVisible();
-    await expect(core.getByRole("button", { name: "ERC-165 socket: covered" })).toBeVisible();
+    await expect(core.getByRole("button", { name: "ERC-165, covered" })).toBeVisible();
     await expect(core.getByText("Facets you place plug in here. Their selectors are the wires.")).toBeVisible();
     const [own, title] = await Promise.all([box(core), box(region(page, "Sheet").getByRole("region", { name: "Title block" }))]);
     expect(own.x + own.width).toBeLessThanOrEqual(title.x);

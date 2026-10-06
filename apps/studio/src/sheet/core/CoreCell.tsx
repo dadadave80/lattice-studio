@@ -40,6 +40,8 @@ export type CoreCellProps = {
 const CORE_KEYS = { [KEY_CONTEXT_ATTRIBUTE]: "global" };
 /** The gap between the cell and the title block, in px (a grid step). */
 const GAP = 8;
+/** The empty sheet's hint, the toolbar's description while it shows (one cell per sheet). */
+const HINT_ID = "core-cell-hint";
 /** The cell's width (`core.module.css` .cell) and the panels' distance from the sheet's edge (space-4). */
 const CELL_WIDTH = 290;
 const EDGE = 16;
@@ -86,6 +88,7 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
   const published = useRef<Pads | null>(null);
   const lift = useRef<string | null>(null);
   const titleWidth = title?.width ?? null;
+  const titleHeight = title?.height ?? null;
 
   // The pads' points and the rail, whenever something can move them: the cell's or the sheet's size (observed),
   // the title block's width (the cell's margin), a fold. And whether Back to content would sit under the cell
@@ -103,7 +106,11 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
       };
       const own = el.getBoundingClientRect();
       const fallback = top(fallbackPad.current);
-      const next = fallback ? { fallback, cut: top(cutPad.current), railY: own.top - box.top - RAIL_GAP } : null;
+      // The rail runs above whichever is taller, the cell or the title block beside it: a card over the title
+      // block drops its trace onto the rail in open sheet, never behind the panel (the review's second blocker).
+      const titleTop = root.querySelector('[data-chrome="title-block"]')?.getBoundingClientRect().top ?? own.top;
+      const railY = Math.min(own.top, titleTop) - box.top - RAIL_GAP;
+      const next = fallback ? { fallback, cut: top(cutPad.current), railY } : null;
       if (!samePads(published.current, next)) {
         published.current = next;
         onPads(next);
@@ -134,7 +141,7 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
       if (frame !== 0) cancelAnimationFrame(frame);
       sizes.disconnect();
     };
-  }, [root, onPads, titleWidth, collapsed, empty]);
+  }, [root, onPads, titleWidth, titleHeight, collapsed, empty]);
 
   useLayoutEffect(
     () => () => {
@@ -198,6 +205,18 @@ type CellRowsProps = {
 
 /** The cell's rows, an APG toolbar: re-rendered only when what they say changes, never for a pad's tone. */
 const CellRows = memo(function CellRows({ status, mode, selected, collapsed, empty, onHot, fallbackPad, cutPad }: CellRowsProps) {
+  // Folding swaps the chevron for another button on another line: when the chevron had focus, the new one takes it.
+  const refocus = useRef(false);
+  const toggle = () => {
+    refocus.current = document.activeElement?.getAttribute("aria-label") === (collapsed ? EXPAND_CELL : COLLAPSE_CELL);
+    toggleCollapsed();
+  };
+  useLayoutEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    const label = collapsed ? EXPAND_CELL : COLLAPSE_CELL;
+    document.querySelector<HTMLElement>(`[data-chrome="core-cell"] [aria-label="${label}"]`)?.focus();
+  }, [collapsed]);
   const cut = cutRow(status, mode);
   const loupe = status.loupe;
   const padProps = (pad: Pad) => ({
@@ -208,14 +227,19 @@ const CellRows = memo(function CellRows({ status, mode, selected, collapsed, emp
     onBlur: () => onHot(null),
   });
   return (
-    <Toolbar label={CELL_LABEL} orientation={collapsed ? "horizontal" : "vertical"} className={styles.rows}>
+    <Toolbar
+      label={CELL_LABEL}
+      orientation={collapsed ? "horizontal" : "vertical"}
+      className={styles.rows}
+      describedBy={empty && !collapsed ? HINT_ID : undefined}
+    >
       <div className={cx(styles.line, styles.header)}>
         <BaseToolbar.Button className={styles.row} aria-label={diamondName()} aria-pressed={selected} onClick={select}>
           <span className={styles.key}>{CORE}</span>
           {collapsed ? null : <> <span className={styles.tagline}>{CORE_TAGLINE}</span></>}
         </BaseToolbar.Button>
         {collapsed ? null : (
-          <ToolbarButton icon="chevron-down" label={COLLAPSE_CELL} aria-expanded className={styles.chevron} onClick={toggleCollapsed} />
+          <ToolbarButton icon="chevron-down" label={COLLAPSE_CELL} aria-expanded className={styles.chevron} onClick={toggle} />
         )}
       </div>
       <div className={styles.line}>
@@ -254,10 +278,10 @@ const CellRows = memo(function CellRows({ status, mode, selected, collapsed, emp
           <span ref={cutPad} className={styles.pad} data-pad="cut" data-on={cut.state === "empty" ? undefined : ""} />
         </BaseToolbar.Button>
         {collapsed ? (
-          <ToolbarButton icon="chevron-up" label={EXPAND_CELL} aria-expanded={false} className={styles.chevron} onClick={toggleCollapsed} />
+          <ToolbarButton icon="chevron-up" label={EXPAND_CELL} aria-expanded={false} className={styles.chevron} onClick={toggle} />
         ) : null}
       </div>
-      {empty && !collapsed ? <p className={styles.hint}>{EMPTY_HINT}</p> : null}
+      {empty && !collapsed ? <p id={HINT_ID} className={styles.hint}>{EMPTY_HINT}</p> : null}
     </Toolbar>
   );
 });

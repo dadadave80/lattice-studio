@@ -57,6 +57,11 @@ function selectAll(ctx: CommandContext): void {
 }
 
 function clearSelection(): void {
+  if (session.get().coreSelected) {
+    session.set({ coreSelected: false });
+    announce("Deselected the core.", { merge: "selection" });
+    return;
+  }
   select([]);
 }
 

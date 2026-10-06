@@ -20,7 +20,8 @@ function template(name: string): Recipe {
 
 function projectWith(recipe: Recipe, provenance: Project["provenance"] = {}): Project {
   const layout: Project["layout"] = {};
-  recipe.facets.forEach((facet, i) => {
+  // Cards only: the core is in every recipe but never on the sheet.
+  recipe.facets.filter((facet) => !isCoreFacet(facet)).forEach((facet, i) => {
     layout[facet] = { x: 96 + (i % 4) * 320, y: 96 + Math.floor(i / 4) * 400, pins: "right" };
   });
   return makeProject({ recipe, layout, provenance });

@@ -9,6 +9,7 @@
  * - otherwise to its card, scrolled clear of the floating UI; with no card, the status region reads it.
  */
 import type { Anchor, Problem } from "@lattice-studio/core";
+import { isCoreFacet } from "@lattice-studio/core";
 import {
   announce, doc, getAnalysis, getCatalog, log, runCommand, session, type CommandSource,
 } from "@/contracts";
@@ -74,7 +75,8 @@ export function focusProblem(problemId: string, options: { open?: boolean; sourc
   if (options.source === "console") log({ tag: "Note", text: spoken(problem) });
   const placed = doc.get().recipe.facets;
   const note = noteOf(buildNotes(getAnalysis(), getCatalog()), problem.id);
-  const card = [...(note?.facets ?? []), ...anchorFacets(problem)].find((facet) => placed.includes(facet));
+  // A card: the core's facets are in the recipe but never on the sheet, so a problem anchored on one selects no card.
+  const card = [...(note?.facets ?? []), ...anchorFacets(problem)].find((facet) => placed.includes(facet) && !isCoreFacet(facet));
 
   session.set((s) => ({
     ...(card !== undefined ? { selection: [card] } : {}),

@@ -15,6 +15,8 @@ export const OFFLINE_MARK = "offline";
 export const START_A_DIAMOND = "Start a diamond";
 /** Every diamond has the core; the Blank diamond adds Receive, AccessControl and AccessControlDiamondCut. */
 export const BLANK_DIAMOND_LABEL = "Blank diamond";
+/** What Blank diamond adds to a sheet that already holds the core (Receive, AccessControl, AccessControlDiamondCut). */
+export const BLANK_DIAMOND_ADDS = "Adds Receive, and an admin role that can upgrade the diamond.";
 export const BROWSE_ALL_RECIPES = "Browse all recipes";
 /** Spec L378: the hint under the Start block; the keys follow the platform. */
 export function startHint(paletteKeys: string): string {

@@ -175,6 +175,12 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
     };
   };
 
+  /** The core is never a card: whatever an op or a load hands the store, its layout holds no entry for the core. */
+  const cardsOnly = (project: Project): Project => {
+    const layout = withoutCore(project.layout);
+    return layout === project.layout ? project : { ...project, layout };
+  };
+
   const publish = (project: Project, kind: DocumentChange["kind"], label: string): void => {
     store.setState({ project, ...labels(), lastChange: change(kind, label) });
   };
@@ -234,8 +240,10 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
       commit();
       burst = null;
       const result = op(store.getState().project);
-      if (result.changed) step(label, result.project, "edit");
-      return result;
+      if (!result.changed) return result;
+      const project = cardsOnly(result.project);
+      step(label, project, "edit");
+      return { ...result, project };
     },
     begin(label) {
       const reason = readOnly();
@@ -254,8 +262,10 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
       const reason = readOnly();
       if (reason !== null) return refuse(reason);
       const result = op(current);
-      if (result.changed) store.setState({ project: result.project, lastChange: change("drag", drag.label) });
-      return result;
+      if (!result.changed) return result;
+      const project = cardsOnly(result.project);
+      store.setState({ project, lastChange: change("drag", drag.label) });
+      return { ...result, project };
     },
     commit,
     cancel() {
@@ -272,16 +282,17 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
       commit();
       const result = op(store.getState().project);
       if (!result.changed) return result;
+      const project = cardsOnly(result.project);
       const at = now();
       if (burst && burst.key === key && at - burst.at <= BURST_GAP_MS && at >= burst.at) {
-        silently({ tracked: pick(result.project) });
-        store.setState({ project: result.project, lastChange: change("burst", snapshots.getState().label ?? label) });
+        silently({ tracked: pick(project) });
+        store.setState({ project, lastChange: change("burst", snapshots.getState().label ?? label) });
         burst.at = at;
       } else {
-        step(label, result.project, "burst");
+        step(label, project, "burst");
         burst = { key, at };
       }
-      return result;
+      return { ...result, project };
     },
     record(label, op) {
       const reason = readOnly();
@@ -295,9 +306,7 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
       return { ...result, project };
     },
     load(loaded, reason) {
-      // The core is never a card: whatever path a project took here, its layout holds no entry for the core.
-      const layout = withoutCore(loaded.layout);
-      const project = layout === loaded.layout ? loaded : { ...loaded, layout };
+      const project = cardsOnly(loaded);
       drag = null;
       burst = null;
       silently({ tracked: pick(project), selection: [], label: null });

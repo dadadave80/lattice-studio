@@ -3,7 +3,7 @@
  * the fixture's real inits don't have (booleans, enums, length-limited strings, plain integers).
  */
 import type { Catalog, InitSpec, Project, Recipe } from "@lattice-studio/core";
-import { loadTemplate } from "@lattice-studio/core";
+import { isCoreFacet, loadTemplate } from "@lattice-studio/core";
 import { makeProject } from "@lattice-studio/core/testing";
 import { fixtureCatalog } from "../../../test/harness/catalog";
 
@@ -22,7 +22,8 @@ export function templateRecipe(name: string, catalog: Catalog = fixtureCatalog()
 /** A project around `recipe`, each card at its own spot. */
 export function projectFor(recipe: Recipe, extra: Partial<Project> = {}): Project {
   const layout: Project["layout"] = {};
-  recipe.facets.forEach((facet, i) => {
+  // Cards only: the core is in every recipe but never on the sheet.
+  recipe.facets.filter((facet) => !isCoreFacet(facet)).forEach((facet, i) => {
     layout[facet] = { x: 96 + (i % 4) * 320, y: 96 + Math.floor(i / 4) * 480, pins: "right" };
   });
   return makeProject({ recipe, layout, ...extra });

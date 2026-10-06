@@ -29,7 +29,8 @@ export function loupeText(status: CoreStatus): string {
 export function cutRow(status: CoreStatus, mode?: string): CutRow {
   const { facet, rivals, conflict, immutable } = status.cut;
   if (facet === null) return { state: "empty", text: immutable ? "Empty · immutable" : "Empty · no upgrade mechanism", facet: null };
-  if (conflict) return { state: "conflict", text: [facet, ...rivals].join(" · "), facet, rivals };
+  // A conflict says so in words, as the inspector does: "·" would read as a variant and its mechanism.
+  if (conflict) return { state: "conflict", text: `${facet} · conflicts with ${rivals.join(", ")}`, facet, rivals };
   return { state: "one", text: `${facet} · ${mode ?? "upgradeable"}`, facet };
 }
 
@@ -53,14 +54,12 @@ export function loupeName(status: CoreStatus): string {
   return `${LOUPE} ${loupeText(status)}, ${status.loupe.covered.length} of ${status.loupe.selectors.length} covered`;
 }
 
-/** "ERC-165 socket: covered", "ERC-165 socket: not covered". */
+/** "ERC-165, covered", "ERC-165, not covered". */
 export function erc165Name(status: CoreStatus): string {
-  return `${ERC165} socket: ${status.erc165.covered ? "covered" : "not covered"}`;
+  return `${ERC165}, ${status.erc165.covered ? "covered" : "not covered"}`;
 }
 
-/** "Cut AccessControlDiamondCut · Admin role", "Cut Empty · immutable", "Cut A · B, both claim it". */
+/** "Cut AccessControlDiamondCut · Admin role", "Cut Empty · immutable", "Cut A · conflicts with B". */
 export function cutName(status: CoreStatus, mode?: string): string {
-  const row = cutRow(status, mode);
-  if (row.state === "conflict") return `${CUT} ${row.text}, ${row.rivals.length === 1 ? "both" : "all"} claim it`;
-  return `${CUT} ${row.text}`;
+  return `${CUT} ${cutRow(status, mode).text}`;
 }

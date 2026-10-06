@@ -88,7 +88,8 @@ const clearSelection = command({
   title: () => "Clear the selection",
   category: "Sheet",
   palette: true,
-  enabled: (ctx) => (ctx.session.selection.length > 0 ? OK : refuse(NOTHING_SELECTED)),
+  // The core counts: while it's selected the card selection is empty, and this still lets it go.
+  enabled: (ctx) => (ctx.session.selection.length > 0 || ctx.session.coreSelected ? OK : refuse(NOTHING_SELECTED)),
   run: run("sheet.clearSelection"),
 });
 

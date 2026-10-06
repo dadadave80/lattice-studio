@@ -1,7 +1,7 @@
 import { templateList } from "@lattice-studio/core";
 import { useMemo } from "react";
 import { commandRef, useCatalog } from "@/contracts";
-import { BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
+import { BLANK_DIAMOND_ADDS, BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
 import { BLANK_DIAMOND } from "@/state";
 import { CommandButton } from "@/ui";
 import { CORE_ONLY } from "../../../core-copy";
@@ -29,6 +29,7 @@ export function StartingPoints() {
         <CommandButton command={commandRef("recipe.load", { name: BLANK_DIAMOND })} block>
           {BLANK_DIAMOND_LABEL}
         </CommandButton>
+        <p className={sheet.text}>{BLANK_DIAMOND_ADDS}</p>
         {recipes.map((name) => (
           <CommandButton key={name} command={commandRef("recipe.load", { name })} block>
             {name}

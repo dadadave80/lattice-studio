@@ -96,6 +96,13 @@ describe("doc.subscribe", () => {
 
 describe("subscriptions survive provideStores", () => {
 
+  test("the core's facets never enter the card selection", () => {
+    session.set({ selection: ["ERC20", "DiamondLoupeFacet", "ERC165Facet"] });
+    expect(session.get().selection).toEqual(["ERC20"]);
+    session.set(() => ({ selection: ["ERC165Facet"] }));
+    expect(session.get().selection).toEqual([]);
+  });
+
   test("a card selection deselects the core; core.select's own patch keeps it", () => {
     session.set({ coreSelected: true });
     session.set({ selection: ["ERC20"] });

@@ -155,9 +155,9 @@ function initSummary(plan: InitPlan | null, recipe: Recipe): string {
   return plural(plan?.steps.length ?? init.steps.length, "step");
 }
 
-/** "Fallback · 5 selectors routed". */
+/** "Fallback · 5 routed", the core cell's words: short enough for the 240 px pane. */
 export function fallbackLabel(routed: number): string {
-  return `Fallback · ${plural(routed, "selector")} routed`;
+  return `Fallback · ${routed} routed`;
 }
 
 /** What a facet's row shares with a core facet's: the card's name, connections and count. */

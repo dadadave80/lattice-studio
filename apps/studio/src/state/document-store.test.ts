@@ -263,6 +263,23 @@ describe("load", () => {
     expect(doc.get()).toBe(clean);
   });
 
+  test("an edit that lays the core out as a card is committed without it, and says so in its result", () => {
+    doc.load(makeProject({ id: "edit-core", name: "Edit core", layout: { ERC20: { x: 0, y: 0, pins: "left" } } }));
+    const result = doc.apply("Lay out the loupe", (project) => ({
+      project: { ...project, layout: { ...project.layout, DiamondLoupeFacet: { x: 272, y: 0, pins: "left" } } },
+      changed: true,
+      summary: "Laid out the loupe",
+    }));
+    expect(Object.keys(doc.get().layout)).toEqual(["ERC20"]);
+    expect(result.project).toBe(doc.get());
+    doc.burst("Nudge", "k", (project) => ({
+      project: { ...project, layout: { ...project.layout, ERC165Facet: { x: 0, y: 272, pins: "left" } } },
+      changed: true,
+      summary: "Nudged",
+    }));
+    expect(Object.keys(doc.get().layout)).toEqual(["ERC20"]);
+  });
+
   test("a load deselects the core and leaves the card selection to the project switch", () => {
     session.set({ selection: [], coreSelected: true });
     expect(session.get().coreSelected).toBe(true);
