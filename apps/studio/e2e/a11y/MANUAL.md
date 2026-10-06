@@ -9,6 +9,7 @@ Run all twelve with the keyboard only, then again under each screen reader in th
 - **Build.** Use the release candidate's preview deployment, or `bun run build` and then `bun run preview` from this checkout, so the pass runs on what ships.
 - **Window.** A desktop browser at 1280 × 800 or larger, page zoom 100%, unless the script says otherwise.
 - **Mouse.** Leave it alone once the page has loaded, except where a step says "with a pointer".
+- **Reaching a card.** F6 into the Sheet lands on the Sheet region itself until something inside it has had focus; after that it returns to what last had focus there. From the region, Home focuses and selects the first card in reading order, End the last.
 - **Wallet.** S9 needs a browser wallet with a little Sepolia ETH. Every other script works without one.
 - **Keys.** Mod is ⌘ on macOS and Ctrl on Windows and Linux. On Mac laptops, press fn with F6 and F8, which are media keys there. The Keyboard shortcuts dialog (?) shows each key as your platform writes it.
 - **What you should hear.** Quoted text after "hear" is what Studio puts in its polite status region, so a screen reader reads it after a short pause; without a screen reader, watch that region in the browser's accessibility inspector instead. Names and roles in "Expect" are what the accessibility tree reports: your screen reader may word the role differently ("facet card" for a card, "group" in some readers).
@@ -19,7 +20,7 @@ Run all twelve with the keyboard only, then again under each screen reader in th
 Every script starts from one of these. Open the command palette with Mod+K, type "New project" and press Enter to start each one fresh.
 
 - **Empty.** A new project with nothing placed: the sheet shows the "Start a diamond" block.
-- **ERC20.** From Empty: Tab to **ERC20** in the Start a diamond block and press Enter. The sheet shows the ERC20 and Receive cards, and the core cell sits at the bottom of the sheet.
+- **ERC20.** From Empty: Tab to **ERC20** in the Start a diamond block and press Enter. The sheet shows the ERC20 and Receive cards, and the core cell sits at the bottom of the sheet. Focus is on the Sheet region itself, not on a card.
 - **Collisions.** From Empty: F6 to the Console, Tab to the command line ("Command line"), and run these one at a time:
 
   ```
@@ -28,7 +29,7 @@ Every script starts from one of these. Open the command palette with Mod+K, type
   place ccipgatewayadapter
   ```
 
-  Three cards that collide: AxelarGatewayAdapter with ZetaChainGatewayAdapter on `gateway`, `sendMessage` and `supportsAttribute`, and with CCIPGatewayAdapter on `sendMessage` and `supportsAttribute`. The collisions draw "Selector collision" notes on the sheet.
+  Three cards that collide: AxelarGatewayAdapter with ZetaChainGatewayAdapter on `gateway`, `sendMessage` and `supportsAttribute`, and with CCIPGatewayAdapter on `sendMessage` and `supportsAttribute`. The collisions draw "Selector collision" notes on the sheet. Focus stays on the command line, and nothing on the sheet has had focus yet.
 
 ### Recording a result
 
@@ -65,7 +66,7 @@ Pass when the link is first, visible on focus, lands in the sheet, and Tab leave
 
 Spec L743, L733 · IR "Keyboard" (F6) · WCAG 2.4.1, 2.1.1.
 
-Start: **Collisions**, focus anywhere.
+Start: **Collisions**, with focus still on the console's command line, where the start state leaves it.
 
 1. Press F6 six times.
    Expect: focus moves to each region in turn, and the reader names it: "Title bar", "Left pane", "Sheet", "Inspector", "Console", then "Title bar" again. Entering a region puts focus back where it last was inside it, or on the region itself.
@@ -73,16 +74,16 @@ Start: **Collisions**, focus anywhere.
    Expect: the same regions in reverse.
 3. On Windows and Linux only: repeat steps 1 and 2 with Ctrl+F6 and Ctrl+⇧F6.
    Expect: the same cycle. On macOS, Studio doesn't bind Ctrl+F6.
-4. F6 to the Sheet and press Home, so focus is on a card. Press Mod+A, then Delete.
-   Expect: hear "Selected 3 cards." then "Removed AxelarGatewayAdapter, ZetaChainGatewayAdapter and CCIPGatewayAdapter." (in the sheet's reading order). A toast, "Removed 3 facets" with **Undo**, appears. Focus stays on the sheet: a toast never takes focus.
+4. F6 to the Sheet, which lands on the Sheet region, and press Home. Then press Mod+A, then Delete.
+   Expect: Home focuses AxelarGatewayAdapter; hear "Selected AxelarGatewayAdapter.", then "Selected 3 cards." then "Removed AxelarGatewayAdapter, ZetaChainGatewayAdapter and CCIPGatewayAdapter." (in the sheet's reading order). A toast, "Removed 3 facets" with **Undo**, appears. Focus stays on the sheet: a toast never takes focus.
 5. Within 10 seconds, press F6 until you reach Notifications.
    Expect: after the Console comes "Notifications", then F6 goes on to "Title bar". ⇧F6 from the Title bar comes back to "Notifications", then "Console".
 6. From Notifications, press Tab twice, wait 15 seconds, then press Enter.
    Expect: the first Tab reaches the toast, "Removed 3 facets"; the second reaches **Undo**. The toast stays while focus is in it. Enter restores all three cards, says "Undid: Removed …" with the same list, and moves focus to a restored card on the sheet.
-7. Press F6 around the cycle once more.
-   Expect: no Notifications stop now that no toast shows.
+7. Press F6 five times, around the cycle and back to the Sheet.
+   Expect: "Inspector", "Console", "Title bar", "Left pane", "Sheet": no Notifications stop now that no toast shows. Focus is back on the restored card.
 8. Open Settings (Mod+K, "Open Settings", Enter) and press F6.
-   Expect: focus stays in the dialog; hear "A dialog is open. Close it to move between regions." Esc closes Settings.
+   Expect: focus stays in the dialog; hear "A dialog is open. Close it to move between regions." Esc closes Settings and focus returns to the card.
 
 Pass when the cycle is complete in both directions, Notifications joins it only while a toast shows, and the toast never takes focus on its own.
 
@@ -90,7 +91,7 @@ Pass when the cycle is complete in both directions, Notifications joins it only 
 
 Spec L761, L776 · Flow 3, Flow 4 · WCAG 2.1.1, 2.5.7, 4.1.3.
 
-Start: **ERC20**, with focus on the ERC20 card. Note where the two cards sit.
+Start: **ERC20**, with focus on the Sheet region, where the start state leaves it. Note where the two cards sit.
 
 1. Press /.
    Expect: focus moves to the catalog's **Search** field in the Left pane.
@@ -190,7 +191,7 @@ Pass when focus always lands on a card that exists, or on the sheet when none do
 
 Spec L753, L754, L659 · Flow 16 · IR "Keyboard" (¹) · WCAG 2.1.4.
 
-Start: **Collisions**. F6 to the Sheet and press Home to select the first card.
+Start: **Collisions**. F6 to the Sheet, which lands on the Sheet region, and press Home: focus and selection move to AxelarGatewayAdapter.
 
 1. Press H, then V.
    Expect: H turns on the Hand tool (the **Hand** button reads pressed); V turns Select back on.
@@ -221,7 +222,7 @@ Pass when no single key fires while they're off or while typing, and every modif
 
 Spec L658-L660, L778 · IR "Command palette", "Dialogs", "Context menus", "Console drawer" · WCAG 2.1.1, 2.4.3, 4.1.2.
 
-Start: **Collisions**. F6 to the Sheet and press Home to select the first card.
+Start: **Collisions**. F6 to the Sheet, which lands on the Sheet region, and press Home: focus and selection move to AxelarGatewayAdapter.
 
 1. Press Mod+K.
    Expect: the palette opens with focus in "Search commands, facets and recipes". A Suggested group comes first (for a collision: **Keep …**, **Route to …**, **Next problem**).
@@ -234,7 +235,7 @@ Start: **Collisions**. F6 to the Sheet and press Home to select the first card.
 5. Press Mod+K, then Esc.
    Expect: the palette closes and focus returns where it was.
 6. Open Settings through the palette and press Mod+K and ?.
-   Expect: neither opens anything over the dialog. Esc closes Settings and focus returns to the control that opened the palette.
+   Expect: neither opens anything over the dialog. Esc closes Settings and focus returns to where the palette was opened, the AxelarGatewayAdapter card.
 7. F6 to the Title bar, Tab to **Lattice Studio** and press Enter.
    Expect: the app menu opens with focus inside it; ↑ and ↓ move between items, Esc closes it and focus returns to **Lattice Studio**.
 8. F6 to the Console, Tab to **Export** and press Enter.
@@ -254,7 +255,7 @@ Spec L561-L574, L778, L791-L792 · Flow 7, Flow 12, Flow 14 · WCAG 3.3.4, 2.2.1
 
 Start: **ERC20**. Copy two short texts somewhere first (a token name and a symbol) so you can paste them.
 
-1. Focus the ERC20 card and press F8.
+1. Press Home to focus the ERC20 card, then F8.
    Expect: hear "Warning: 2 fields still use example values, including name (Example Token) and symbol (EXT)." The inspector shows INIT-05.
 2. F6 to the Inspector, Tab to **Review fields** and press Enter.
    Expect: the init editor opens with focus in the first field.
@@ -269,7 +270,7 @@ Start: **ERC20**. Copy two short texts somewhere first (a token name and a symbo
 7. Tab to each checkbox under Checks and press Space.
    Expect: each one reads its label and state. Ticking re-simulates; **Sign & deploy** becomes available.
 8. Press Esc, then Mod+Enter again.
-   Expect: the review closes, focus returns to where it was, and the review reopens with the ticks still there. With a pointer, a click on the scrim leaves the review open.
+   Expect: Esc closes the review and focus returns to the Title bar, on **Lattice Studio**. Mod+Enter reopens it with the ticks still there. With a pointer, a click on the scrim leaves the review open.
 9. Tab to **Sign & deploy**, press Enter, and reject the request in the wallet.
    Expect: focus stays in the review; Studio says "You canceled in your wallet." and the button now reads **Sign again**.
 10. Press **Sign again** and approve in the wallet.

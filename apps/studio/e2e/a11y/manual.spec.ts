@@ -5,10 +5,10 @@
  */
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../_support/fixtures.ts";
-import { focusRegion, region } from "../_support/keys.ts";
+import { focusRegion, focusedRegion, region } from "../_support/keys.ts";
 import { openEmpty } from "../_support/seed.ts";
 import { SheetPage } from "../q1c/pages/sheet-page.ts";
-import { pressMod, runConsole, runInPalette, tabTo, waitForSheet } from "./support/keyboard.ts";
+import { commandLine, pressMod, runConsole, runInPalette, tabTo, waitForSheet } from "./support/keyboard.ts";
 
 /** `document-store.ts`'s `BURST_GAP_MS`: presses further apart than this start a new undo step. */
 const BURST_GAP_MS = 1000;
@@ -61,6 +61,61 @@ async function offset(page: Page, sheet: SheetPage, moved: string, anchor: strin
   }
   throw new Error(`${moved} kept moving relative to ${anchor}`);
 }
+
+test.describe("start states", () => {
+  test("ERC20 leaves focus on the Sheet region, and Home moves it to the ERC20 card", async ({ page }) => {
+    await startErc20(page);
+    await expect(region(page, "Sheet")).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(new SheetPage(page).card("ERC20")).toBeFocused();
+  });
+
+  test("Collisions leaves focus on the command line, so F6 starts the cycle at the Title bar and lands on the Sheet region", async ({ page }) => {
+    await startCollisions(page);
+    await expect(commandLine(page)).toBeFocused();
+    const visited: (string | null)[] = [];
+    for (let i = 0; i < 6; i += 1) {
+      await page.keyboard.press("F6");
+      visited.push(await focusedRegion(page));
+      if (visited.length === 3) await expect(region(page, "Sheet")).toBeFocused();
+    }
+    expect(visited).toEqual(["Title bar", "Left pane", "Sheet", "Inspector", "Console", "Title bar"]);
+  });
+});
+
+test.describe("S2 · F6 and Ctrl+F6, with a toast showing", () => {
+  test("after the toast's Undo, five F6 presses come back to the restored card, and closing Settings returns there", async ({ page }) => {
+    await startCollisions(page);
+    const sheet = new SheetPage(page);
+    const [first] = COLLISIONS;
+    await focusRegion(page, "Sheet");
+    await page.keyboard.press("Home");
+    await expect(sheet.card(first)).toBeFocused();
+    await pressMod(page, "a");
+    await page.keyboard.press("Delete");
+    await focusRegion(page, "Notifications");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await expect(region(page, "Notifications").getByRole("button", { name: "Undo", exact: true })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(sheet.card(first)).toBeFocused();
+
+    const visited: (string | null)[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      await page.keyboard.press("F6");
+      visited.push(await focusedRegion(page));
+    }
+    expect(visited).toEqual(["Inspector", "Console", "Title bar", "Left pane", "Sheet"]);
+    await expect(sheet.card(first)).toBeFocused();
+
+    await runInPalette(page, "Open Settings");
+    const settings = page.getByRole("dialog", { name: "Settings", exact: true });
+    await expect(settings).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(settings).toBeHidden();
+    await expect(sheet.card(first)).toBeFocused();
+  });
+});
 
 test.describe("S5 · merged nudge announcements", () => {
   test("two bursts with a pause between are two undo steps, and the next Mod+Z undoes the last placement", async ({ page }) => {
@@ -147,12 +202,15 @@ test.describe("S7 · shortcuts switched off", () => {
 });
 
 test.describe("S9 · deploy, with paste", () => {
-  test("the review is named for the project, which the ERC20 start state leaves Untitled", async ({ page }) => {
+  test("the review is named for the project, which the ERC20 start state leaves Untitled; Esc returns to Lattice Studio", async ({ page }) => {
     await startErc20(page);
     await focusRegion(page, "Title bar");
     await pressMod(page, "Enter");
     const review = page.getByRole("dialog", { name: "Deploy Untitled", exact: true });
     await expect(review).toBeVisible({ timeout: 20_000 });
     await expect(review.getByRole("heading", { name: "Deploy Untitled" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(review).toBeHidden();
+    await expect(region(page, "Title bar").getByRole("button", { name: "Lattice Studio", exact: true })).toBeFocused();
   });
 });
