@@ -5,7 +5,8 @@
  *   real shell uses (Shell.module.css, TitleBar.module.css, panes.ts PANE_SIZES): a 40 px title bar, a 240 px
  *   left pane, a 316 px inspector and a 160 px console (36 px header + 124 px body).
  * - The empty sheet's Start block, its largest paint, is in that static markup too (Q19), where the real one
- *   lands and the same size, so LCP doesn't wait for the app.
+ *   lands and the same size, so LCP doesn't wait for the app. That holds on a phone too, where the pane
+ *   switcher's row (29 px) sits between the title bar and the sheet.
  * - Once React mounts and replaces that static markup with the real shell (`[data-region]`, S3), nothing
  *   already on screen moves: cumulative layout shift stays under 0.02.
  */
@@ -15,6 +16,7 @@ const TITLE_BAR_HEIGHT = 40;
 const LEFT_PANE_WIDTH = 240;
 const INSPECTOR_WIDTH = 316;
 const CONSOLE_HEIGHT = 160;
+const SWITCHER_HEIGHT = 29;
 const CLS_BUDGET = 0.02;
 
 test.describe("the static shell (no JavaScript)", () => {
@@ -55,6 +57,9 @@ test.describe("the static shell (no JavaScript)", () => {
 
     const shell = page.locator("[data-static-shell]");
     await expect(shell.locator(".lxs-titlebar")).toBeVisible();
+    const switcherBox = await shell.locator(".lxs-switcher").boundingBox();
+    expect(switcherBox?.y).toBeCloseTo(TITLE_BAR_HEIGHT, 0);
+    expect(switcherBox?.height).toBeCloseTo(SWITCHER_HEIGHT, 0);
     await expect(shell.locator(".lxs-pane--left")).toBeHidden();
     await expect(shell.locator(".lxs-pane--inspector")).toBeHidden();
     await expect(shell.locator(".lxs-console")).toBeHidden();
@@ -62,25 +67,39 @@ test.describe("the static shell (no JavaScript)", () => {
 });
 
 test.describe("the static Start block", () => {
-  test("shows with no JavaScript, where the real one lands and at its size", async ({ browser, baseURL, page }) => {
-    const still = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1440, height: 900 } });
-    const staticPage = await still.newPage();
-    await staticPage.goto(`${baseURL}/`);
-    const block = staticPage.locator("[data-static-shell] .lxs-start");
-    await expect(block).toBeVisible();
-    await expect(block).toContainText("Start a diamond");
-    const staticBox = await block.boundingBox();
-    await still.close();
+  // The desktop window, and the phone the mobile lab profile measures LCP on (spec L815).
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 412, height: 823 },
+  ]) {
+    test(`shows with no JavaScript, where the real one lands and at its size (${viewport.width} px)`, async ({
+      browser,
+      baseURL,
+      page,
+    }) => {
+      const still = await browser.newContext({ javaScriptEnabled: false, viewport });
+      const staticPage = await still.newPage();
+      await staticPage.goto(`${baseURL}/`);
+      const block = staticPage.locator("[data-static-shell] .lxs-start");
+      await expect(block).toBeVisible();
+      await expect(block).toContainText("Start a diamond");
+      const staticSheet = await staticPage.locator("[data-static-shell] .lxs-sheet").boundingBox();
+      const staticBox = await block.boundingBox();
+      await still.close();
 
-    // The real block, before the catalog arrives: every choice waits on it, as the static one shows.
-    await page.route("**/catalog/**", () => new Promise(() => {}));
-    await page.goto("/");
-    const real = page.locator("[data-chrome='start'] section");
-    await expect(real).toBeVisible();
-    await expect(page.locator("[data-static-shell]")).toHaveCount(0);
-    const realBox = await real.boundingBox();
-    for (const side of ["x", "y", "width", "height"] as const) expect(staticBox?.[side]).toBeCloseTo(realBox?.[side] ?? -1, 0);
-  });
+      // The real block, before the catalog arrives: every choice waits on it, as the static one shows.
+      await page.setViewportSize(viewport);
+      await page.route("**/catalog/**", () => new Promise(() => {}));
+      await page.goto("/");
+      const real = page.locator("[data-chrome='start'] section");
+      await expect(real).toBeVisible();
+      await expect(page.locator("[data-static-shell]")).toHaveCount(0);
+      const realSheet = await page.locator("[data-region='sheet']").boundingBox();
+      const realBox = await real.boundingBox();
+      for (const side of ["y", "height"] as const) expect(staticSheet?.[side]).toBeCloseTo(realSheet?.[side] ?? -1, 0);
+      for (const side of ["x", "y", "width", "height"] as const) expect(staticBox?.[side]).toBeCloseTo(realBox?.[side] ?? -1, 0);
+    });
+  }
 });
 
 test.describe("layout stability while React mounts", () => {

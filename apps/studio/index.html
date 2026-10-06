@@ -14,10 +14,11 @@
     />
     <style>
       /*
-       * Static first paint (spec L821-L826): the title bar, the pane outlines and the empty sheet's Start block
-       * below, sized to match the real shell (apps/studio/src/shell/Shell.module.css, TitleBar.module.css, panes.ts
-       * PANE_SIZES) so replacing this markup with the mounted app doesn't move anything already on screen. The
-       * build writes this style's hash into the CSP (build/csp.ts).
+       * Static first paint (spec L821-L826): the title bar, the pane switcher's row under 768 px, the pane
+       * outlines and the empty sheet's Start block below, sized to match the real shell
+       * (apps/studio/src/shell/Shell.module.css, TitleBar.module.css, panes.ts PANE_SIZES) so replacing this
+       * markup with the mounted app doesn't move anything already on screen. The build writes this style's hash
+       * into the CSP (build/csp.ts).
        *
        * Values are copied from packages/tokens/dist/tokens.css, which loads after this page's first paint, so
        * this can't reference it. If T1 changes those values, this block needs the same edit.
@@ -99,6 +100,18 @@
         background: var(--lxs-panel);
         border-block-end: var(--lxs-stroke-hair) solid var(--lxs-border-subtle);
         font: 600 13px/20px Inter, "Inter Fallback", system-ui, sans-serif;
+      }
+      /*
+       * The pane switcher's row under 768 px (PaneSwitcher.tsx, TitleBar.module.css .switcher): compact tabs
+       * (Tabs.module.css) over their hairline, an outline only, so the sheet and its Start block start where the
+       * real ones do.
+       */
+      .lxs-switcher {
+        display: none;
+        flex: none;
+        block-size: calc(var(--lxs-space-6) + var(--lxs-space-1) + var(--lxs-stroke-hair));
+        background: var(--lxs-panel);
+        border-block-end: var(--lxs-stroke-hair) solid var(--lxs-border-subtle);
       }
       .lxs-body {
         position: relative;
@@ -241,6 +254,9 @@
       }
       /* Under 768 px: one pane at a time, picked by the switcher; the console isn't one of the panes shown. */
       @media (max-width: 767px) {
+        .lxs-switcher {
+          display: block;
+        }
         .lxs-console {
           display: none;
         }
@@ -258,6 +274,7 @@
         <header class="lxs-titlebar" role="banner" aria-label="Title bar">
           <span>Lattice Studio</span>
         </header>
+        <div class="lxs-switcher"></div>
         <div class="lxs-body">
           <aside class="lxs-pane lxs-pane--left" aria-label="Left pane"></aside>
           <main class="lxs-sheet" aria-label="Sheet">
