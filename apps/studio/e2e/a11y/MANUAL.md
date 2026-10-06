@@ -261,7 +261,7 @@ Start: **ERC20**. Copy two short texts somewhere first (a token name and a symbo
 3. Select the field's text, paste the name, and press Tab. Paste the symbol in the next field and press Tab.
    Expect: paste works in each field, and leaving a changed field says "Set {field} to {value}." Address fields, such as the Safe's in **Choose an upgrade mechanism…**, also take a paste: they trim spaces, accept any case and store the address checksummed.
 4. F6 to the Title bar (Mod+Enter doesn't fire inside a text field), then press Mod+Enter.
-   Expect: the review opens as a dialog, "Deploy ERC20", with focus on its heading. Its sections are regions: Network, Deployer, Address, What gets cut, Init, Authority after deploy, Checks, Cost, Simulation.
+   Expect: the review opens as a dialog named "Deploy" and the project's name, "Deploy Untitled" on this start state, with focus on its heading. Its sections are regions: Network, Deployer, Address, What gets cut, Init, Authority after deploy, Checks, Cost, Simulation.
 5. Tab to the **Chain** combobox, choose Sepolia with the arrows and Enter.
    Expect: the Network section reads the chain; nothing in the review is timed.
 6. Tab to your wallet's button under Deployer and connect.

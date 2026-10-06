@@ -24,6 +24,15 @@ async function startEmpty(page: Page): Promise<void> {
   await waitForSheet(page);
 }
 
+/** The manual's ERC20: from Empty, Tab to ERC20 in the Start a diamond block and press Enter. */
+async function startErc20(page: Page): Promise<void> {
+  await startEmpty(page);
+  await focusRegion(page, "Sheet");
+  await tabTo(page, region(page, "Sheet").getByRole("region", { name: "Start a diamond" }).getByRole("button", { name: /^ERC20/ }));
+  await page.keyboard.press("Enter");
+  await expect(new SheetPage(page).card("ERC20")).toBeVisible();
+}
+
 const COLLISIONS = ["AxelarGatewayAdapter", "ZetaChainGatewayAdapter", "CCIPGatewayAdapter"] as const;
 
 /** The manual's Collisions: from Empty, three `place` commands in the console. */
@@ -114,5 +123,16 @@ test.describe("S6 · focus after delete and undo", () => {
     await expect(redo).toHaveAccessibleDescription("Nothing to redo");
     await pressMod(page, "z");
     await expect(spoken(page)).toContainText("Nothing to undo.");
+  });
+});
+
+test.describe("S9 · deploy, with paste", () => {
+  test("the review is named for the project, which the ERC20 start state leaves Untitled", async ({ page }) => {
+    await startErc20(page);
+    await focusRegion(page, "Title bar");
+    await pressMod(page, "Enter");
+    const review = page.getByRole("dialog", { name: "Deploy Untitled", exact: true });
+    await expect(review).toBeVisible({ timeout: 20_000 });
+    await expect(review.getByRole("heading", { name: "Deploy Untitled" })).toBeFocused();
   });
 });
