@@ -66,6 +66,42 @@ test.describe("the static shell (no JavaScript)", () => {
   });
 });
 
+type Viewport = { width: number; height: number };
+
+/** A Mac's Chrome: the real block's keyboard hint says ⌘K there (`ui/shared/platform.ts`), the static one Ctrl+K. */
+const MAC_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
+
+function placement(viewport: Viewport) {
+  test(`shows with no JavaScript, where the real one lands and at its size (${viewport.width} px)`, async ({
+    browser,
+    baseURL,
+    page,
+  }) => {
+    const still = await browser.newContext({ javaScriptEnabled: false, viewport });
+    const staticPage = await still.newPage();
+    await staticPage.goto(`${baseURL}/`);
+    const block = staticPage.locator("[data-static-shell] .lxs-start");
+    await expect(block).toBeVisible();
+    await expect(block).toContainText("Start a diamond");
+    const staticSheet = await staticPage.locator("[data-static-shell] .lxs-sheet").boundingBox();
+    const staticBox = await block.boundingBox();
+    await still.close();
+
+    // The real block, before the catalog arrives: every choice waits on it, as the static one shows.
+    await page.setViewportSize(viewport);
+    await page.route("**/catalog/**", () => new Promise(() => {}));
+    await page.goto("/");
+    const real = page.locator("[data-chrome='start'] section");
+    await expect(real).toBeVisible();
+    await expect(page.locator("[data-static-shell]")).toHaveCount(0);
+    const realSheet = await page.locator("[data-region='sheet']").boundingBox();
+    const realBox = await real.boundingBox();
+    for (const side of ["y", "height"] as const) expect(staticSheet?.[side]).toBeCloseTo(realSheet?.[side] ?? -1, 0);
+    for (const side of ["x", "y", "width", "height"] as const) expect(staticBox?.[side]).toBeCloseTo(realBox?.[side] ?? -1, 0);
+  });
+}
+
 test.describe("the static Start block", () => {
   // The desktop window, the narrow tier's lower edge, the phone the mobile lab profile measures LCP on (spec L815),
   // and a small phone.
@@ -75,34 +111,19 @@ test.describe("the static Start block", () => {
     { width: 412, height: 823 },
     { width: 375, height: 667 },
   ]) {
-    test(`shows with no JavaScript, where the real one lands and at its size (${viewport.width} px)`, async ({
-      browser,
-      baseURL,
-      page,
-    }) => {
-      const still = await browser.newContext({ javaScriptEnabled: false, viewport });
-      const staticPage = await still.newPage();
-      await staticPage.goto(`${baseURL}/`);
-      const block = staticPage.locator("[data-static-shell] .lxs-start");
-      await expect(block).toBeVisible();
-      await expect(block).toContainText("Start a diamond");
-      const staticSheet = await staticPage.locator("[data-static-shell] .lxs-sheet").boundingBox();
-      const staticBox = await block.boundingBox();
-      await still.close();
-
-      // The real block, before the catalog arrives: every choice waits on it, as the static one shows.
-      await page.setViewportSize(viewport);
-      await page.route("**/catalog/**", () => new Promise(() => {}));
-      await page.goto("/");
-      const real = page.locator("[data-chrome='start'] section");
-      await expect(real).toBeVisible();
-      await expect(page.locator("[data-static-shell]")).toHaveCount(0);
-      const realSheet = await page.locator("[data-region='sheet']").boundingBox();
-      const realBox = await real.boundingBox();
-      for (const side of ["y", "height"] as const) expect(staticSheet?.[side]).toBeCloseTo(realSheet?.[side] ?? -1, 0);
-      for (const side of ["x", "y", "width", "height"] as const) expect(staticBox?.[side]).toBeCloseTo(realBox?.[side] ?? -1, 0);
-    });
+    placement(viewport);
   }
+
+  // Where "Ctrl+K" wraps the hint to a second line and "⌘K" doesn't.
+  test.describe("on a Mac", () => {
+    test.use({ userAgent: MAC_USER_AGENT });
+    for (const viewport of [
+      { width: 375, height: 667 },
+      { width: 360, height: 740 },
+    ]) {
+      placement(viewport);
+    }
+  });
 });
 
 test.describe("layout stability while React mounts", () => {

@@ -77,6 +77,17 @@
   text-decoration: underline;
 }
 
+/*
+ * Under 380 px the keyboard hint keeps two lines' room. "Ctrl+K" wraps it there and a Mac's "⌘K" may not, and the
+ * first paint's static block (index.html), which can't know the platform, says Ctrl+K: this way a Mac's block lands
+ * where that one drew.
+ */
+@media (max-width: 379px) {
+  .keysHint {
+    min-block-size: calc(var(--lx-space-8) + var(--lx-space-2));
+  }
+}
+
 @media (forced-colors: active) {
   .start {
     border-color: CanvasText;

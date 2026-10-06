@@ -267,6 +267,15 @@
           display: none;
         }
       }
+      /*
+       * Under 380 px the keyboard hint keeps two lines' room, as the real one does (StartBlock.module.css
+       * .keysHint): "Ctrl+K" wraps it there and a Mac's "⌘K" may not, and this page can't know the platform.
+       */
+      @media (max-width: 379px) {
+        .lxs-start-keys {
+          min-block-size: calc(var(--lxs-space-8) + var(--lxs-space-2));
+        }
+      }
       @media (forced-colors: active) {
         .lxs-start {
           border-color: CanvasText;
@@ -304,7 +313,7 @@
                   </button>
                 </div>
                 <button type="button" class="lxs-start-button lxs-start-button--quiet">Browse all recipes</button>
-                <p class="lxs-start-hint">Drag from the catalog, or press Ctrl+K</p>
+                <p class="lxs-start-hint lxs-start-keys">Drag from the catalog, or press Ctrl+K</p>
                 <p class="lxs-start-hint">New here? <button type="button" class="lxs-start-tour">Take the 60-second tour</button></p>
               </section>
             </div>

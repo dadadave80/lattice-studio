@@ -143,7 +143,7 @@ export function StartBlock() {
         <CommandButton command={commandRef("recipe.browse")} variant="quiet" block>
           {BROWSE_ALL_RECIPES}
         </CommandButton>
-        <p className={styles.startHint}>{startHint(keyLabel("Mod+k", platform))}</p>
+        <p className={cx(styles.startHint, styles.keysHint)}>{startHint(keyLabel("Mod+k", platform))}</p>
         <p className={styles.startHint}>
           {TOUR_PROMPT}{" "}
           <Button

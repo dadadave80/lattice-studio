@@ -127,6 +127,18 @@ describe("critical CSS pane and tier sizes match the shell's", () => {
   });
 });
 
+describe("the static Start block's keyboard hint keeps the real one's room", () => {
+  test("two lines under the same width", () => {
+    const css = readFileSync(join(appDir, "src", "sheet", "chrome", "StartBlock.module.css"), "utf8");
+    const real = /@media \(max-width:\s*(\d+)px\)\s*\{\s*\.keysHint\s*\{\s*min-block-size:\s*calc\(var\(--lx-space-8\) \+ var\(--lx-space-2\)\);/.exec(css);
+    const still = /@media \(max-width:\s*(\d+)px\)\s*\{\s*\.lxs-start-keys\s*\{\s*min-block-size:\s*calc\(var\(--lxs-space-8\) \+ var\(--lxs-space-2\)\);/.exec(
+      indexHtml,
+    );
+    expect(real?.[1]).toBeDefined();
+    expect(still?.[1]).toBe(real?.[1]);
+  });
+});
+
 describe("the static Start block says what the real one says", () => {
   const start = /<section class="lxs-start"[\s\S]*?<\/section>/.exec(indexHtml)?.[0] ?? "";
   const texts = [...start.matchAll(/>([^<>]+)</g)].map((m) => m[1]?.trim()).filter((t): t is string => Boolean(t));
