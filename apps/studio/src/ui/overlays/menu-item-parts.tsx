@@ -1,13 +1,19 @@
 import type { KeyboardEvent, ReactNode } from "react";
+import { platform } from "../shared/platform";
 import styles from "./Menu.module.css";
 
 /**
- * Base UI takes ⌘/Ctrl+Enter on a menu item as Enter and activates it. IR L13 makes the chord Deploy… from
- * anywhere but text fields and dialogs, so the item skips its own handling of it and leaves the event alone:
- * it bubbles to the shortcut dispatcher on `window`.
+ * Base UI takes Enter with a modifier on a menu item as Enter and activates it. IR L13 makes Mod+Enter Deploy…
+ * from anywhere but text fields and dialogs, so for that chord alone (⌘+Enter on macOS, Ctrl+Enter elsewhere,
+ * no other modifier) the item skips its own handling and leaves the event alone: it bubbles to the shortcut
+ * dispatcher on `window`. Any other modifier with Enter isn't a chord the dispatcher knows, so the item runs.
  */
 export function passModEnter(event: KeyboardEvent & { preventBaseUIHandler: () => void }): void {
-  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) event.preventBaseUIHandler();
+  if (event.key !== "Enter" || event.altKey || event.shiftKey) return;
+  const mac = platform() === "mac";
+  const mod = mac ? event.metaKey : event.ctrlKey;
+  const other = mac ? event.ctrlKey : event.metaKey;
+  if (mod && !other) event.preventBaseUIHandler();
 }
 
 type MenuRowProps = {
