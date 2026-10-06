@@ -20,8 +20,8 @@ export type SizeReport = { readonly rows: SizeRow[]; readonly ok: boolean };
 /** Budgets in bytes, spec L809-L814. */
 export const BUDGETS = {
   // QUESTIONS Q19 (David, 2026-10-06): the sheet, the document commands' bodies, core's analysis engine and Base UI's
-  // popups load after the first paint. That measured 247.2 KB (249.5 with a WalletConnect project id); the gate is
-  // that plus 7.8 KB of headroom. The spec's 240 KB stays the target: core's analysis is still in the entry through
+  // popups load after the first paint. That measured 247.6 KB (250.0 with a WalletConnect project id); the gate is
+  // that plus 7.4 KB of headroom. The spec's 240 KB stays the target: core's analysis is still in the entry through
   // the contracts' default analysis provider (contracts/analysis.ts, frozen), about 14 KB.
   firstLoadJs: 255_000,
   css: 25_000,
