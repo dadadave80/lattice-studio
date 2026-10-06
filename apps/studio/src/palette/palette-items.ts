@@ -6,7 +6,7 @@
  * binding for its shortcut chip and its console syntax, so each use teaches both (spec L660).
  */
 import type { Catalog, CommandRef, Json, Problem, TemplateItem } from "@lattice-studio/core";
-import { templateList } from "@lattice-studio/core";
+import { isCoreFacet, templateList } from "@lattice-studio/core";
 import {
   bindingId, getCommand, isPlaceholder, type BindingId, type CommandCategory, type PaletteRow, type SheetPoint,
 } from "@/contracts";
@@ -27,6 +27,8 @@ export const GROUP_LABELS: Readonly<Record<GroupId, string>> = {
 
 /** A placed facet's row says so (PA bug 16: "On sheet"); placing it again selects and locates it. */
 export const ON_SHEET = "On sheet";
+/** The note on the core's own facets: in every diamond, never placed. */
+export const CORE_NOTE = "Core";
 
 /** At most this many problem fixes lead Suggested. */
 export const SUGGESTED_FIXES = 3;
@@ -195,7 +197,7 @@ function facets(catalog: Catalog | null, placed: ReadonlySet<string>, at: SheetP
       const shown = describe(ref);
       if (!shown) return null;
       return item("facets", ref, shown, {
-        ...(placed.has(facet.name) ? { note: ON_SHEET } : {}),
+        ...(isCoreFacet(facet.name) ? { note: CORE_NOTE } : placed.has(facet.name) ? { note: ON_SHEET } : {}),
         keywords: `${facet.name} ${facet.area}`,
       });
     })
@@ -228,7 +230,8 @@ export function paletteGroups(sources: PaletteSources): PaletteGroup[] {
           recent: sources.recent.map((ref) => fromRef("recent", ref, describe)).filter(present),
           commands: commands(sources.rows),
           facets: facets(sources.catalog, sources.placed, null, describe),
-          recipes: recipes(sources.catalog, sources.placed.size > 0, describe),
+          // Cards only: the core is in every recipe, so a core-only sheet is still empty.
+          recipes: recipes(sources.catalog, [...sources.placed].some((name) => !isCoreFacet(name)), describe),
         };
   return GROUP_ORDER.map((id) => ({ id, label: GROUP_LABELS[id], items: items[id] })).filter((g) => g.items.length > 0);
 }

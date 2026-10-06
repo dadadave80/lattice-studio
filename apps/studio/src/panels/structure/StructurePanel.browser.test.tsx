@@ -108,7 +108,7 @@ describe("Structure tree: the core", () => {
     await expect.element(core).toHaveAttribute("aria-expanded", "true");
     const ids = [...document.querySelectorAll<HTMLElement>("[data-tree-id]")].map((r) => r.dataset.treeId);
     expect(ids.slice(0, 4)).toEqual(["core", "core:fallback", "core:facet:DiamondLoupeFacet", "core:facet:ERC165Facet"]);
-    await expect.element(page.getByRole("treeitem", { name: "Fallback · 5 selectors routed" })).toBeVisible();
+    await expect.element(page.getByRole("treeitem", { name: "Fallback · 5 routed" })).toBeVisible();
     await expect.element(page.getByRole("treeitem", { name: "DiamondLoupeFacet, 4 selectors" })).toBeVisible();
     expect(document.querySelectorAll('[role="treeitem"][tabindex="0"]')).toHaveLength(1);
     expect(row("core").tabIndex).toBe(0);

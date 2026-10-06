@@ -3,7 +3,7 @@ import { loadFixtureCatalog } from "@lattice-studio/core/testing";
 import { describe, expect, test } from "bun:test";
 import type { PaletteRow } from "@/contracts";
 import {
-  filterGroups, ON_SHEET, paletteGroups, SUGGESTED_FIXES, type Describe, type PaletteSources,
+  CORE_NOTE, filterGroups, ON_SHEET, paletteGroups, SUGGESTED_FIXES, type Describe, type PaletteSources,
 } from "./palette-items";
 
 const loaded = loadFixtureCatalog();
@@ -103,12 +103,17 @@ describe("palette groups (IR L164, PA bug 15)", () => {
     const erc20 = facets?.items.find((i) => i.ref.args?.facet === "ERC20");
     expect(erc20).toMatchObject({ title: "Place ERC20", syntax: "place erc20", note: ON_SHEET, category: "Build" });
     expect(facets?.items.find((i) => i.ref.args?.facet === "ERC20Permit")?.note).toBeUndefined();
+    const core = paletteGroups(sources({ placed: new Set(["ERC20", "DiamondLoupeFacet"]) })).find((g) => g.id === "facets");
+    expect(core?.items.find((i) => i.ref.args?.facet === "DiamondLoupeFacet")?.note).toBe(CORE_NOTE);
   });
 
   test("Recipes: every recipe as Recipe: <name>; on a sheet with facets the v1 ones also replace it", () => {
     const empty = paletteGroups(sources()).find((g) => g.id === "recipes");
     expect(empty?.items.map((i) => i.title)).toEqual(catalog.recipes.map((r) => `Recipe: ${r.name}`));
     expect(empty?.items[0]?.syntax).toBe(`recipe ${catalog.recipes[0]?.name.toLowerCase()}`);
+    // A core-only sheet is still empty: the core is in every recipe.
+    const coreOnly = paletteGroups(sources({ placed: new Set(["DiamondLoupeFacet", "ERC165Facet"]) })).find((g) => g.id === "recipes");
+    expect(coreOnly?.items.some((i) => i.ref.id === "recipe.replace")).toBe(false);
     const busy = paletteGroups(sources({ placed: new Set(["ERC20"]) })).find((g) => g.id === "recipes");
     expect(busy?.items.filter((i) => i.ref.id === "recipe.replace").map((i) => i.title)).toEqual([
       "Replace this sheet with GovernedVault", "Replace this sheet with ERC20", "Replace this sheet with SafeDiamondCut",

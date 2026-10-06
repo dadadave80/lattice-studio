@@ -10,7 +10,7 @@ import { CommandButton } from "@/ui/buttons/CommandButton";
 import { keyLabel } from "@/ui/keys/key-labels";
 import { usePlatform } from "@/ui/shared/platform";
 import {
-  BLANK_DIAMOND_LABEL, BROWSE_ALL_RECIPES, RECIPE_BLURBS, START_A_DIAMOND, START_RECIPES, startHint, TOUR_LINK, TOUR_PROMPT,
+  BLANK_DIAMOND_ADDS, BLANK_DIAMOND_LABEL, BROWSE_ALL_RECIPES, RECIPE_BLURBS, START_A_DIAMOND, START_RECIPES, startHint, TOUR_LINK, TOUR_PROMPT,
 } from "./copy";
 import { cx } from "@/ui/shared/cx";
 import styles from "./StartBlock.module.css";
@@ -94,6 +94,7 @@ export function StartBlock() {
         <CommandButton command={commandRef("recipe.load", { name: BLANK_DIAMOND })} block>
           {BLANK_DIAMOND_LABEL}
         </CommandButton>
+        <p className={styles.startHint}>{BLANK_DIAMOND_ADDS}</p>
         {recipes.length ? (
           <div className={styles.recipeCards}>
             {recipes.map((name) => (

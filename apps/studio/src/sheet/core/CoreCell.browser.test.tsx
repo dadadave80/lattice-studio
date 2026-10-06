@@ -92,6 +92,16 @@ describe("the cell", () => {
 });
 
 describe("selecting the core", () => {
+  test("Clear the selection lets the core go, and says so", async () => {
+    await renderCoreSheet({ project: coreProject(["ERC20"], { id: ID }), ...VIEW });
+    expect(commandState({ id: "sheet.clearSelection" }).ok).toBe(false);
+    await runCommand({ id: "core.select" }, "api");
+    expect(commandState({ id: "sheet.clearSelection" }).ok).toBe(true);
+    await runCommand({ id: "sheet.clearSelection" }, "palette");
+    await expect.poll(() => session.get().coreSelected).toBe(false);
+    expect(announced().at(-1)).toBe("Deselected the core.");
+  });
+
   test("a click on the cell selects it: the card selection clears, the frame, every glyph and the stamps follow", async () => {
     const project = coreProject(["ERC20", "SafeDiamondCut", "Receive"], { id: ID, exclude: [RECEIVE] });
     await renderCoreSheet({ project, ...VIEW });
@@ -252,6 +262,19 @@ describe("the collapse", () => {
     await userEvent.click(cellRow("Expand the core cell"));
     await expect.poll(() => session.get().panes.core.collapsed).toBe(false);
     expect(cell().getBoundingClientRect().height).toBeGreaterThan(90);
+  });
+});
+
+describe("the collapse from the keyboard", () => {
+  test("Enter on the chevron folds and unfolds the cell, and focus stays on the chevron", async () => {
+    await renderCoreSheet({ project: coreProject(["ERC20"], { id: ID }), ...VIEW });
+    cellRow("Collapse the core cell").focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => session.get().panes.core.collapsed).toBe(true);
+    await expect.poll(() => document.activeElement).toBe(cellRow("Expand the core cell"));
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => session.get().panes.core.collapsed).toBe(false);
+    await expect.poll(() => document.activeElement).toBe(cellRow("Collapse the core cell"));
   });
 });
 

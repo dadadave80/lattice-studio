@@ -203,6 +203,18 @@ type CellRowsProps = {
 
 /** The cell's rows, an APG toolbar: re-rendered only when what they say changes, never for a pad's tone. */
 const CellRows = memo(function CellRows({ status, mode, selected, collapsed, empty, onHot, fallbackPad, cutPad }: CellRowsProps) {
+  // Folding swaps the chevron for another button on another line: when the chevron had focus, the new one takes it.
+  const refocus = useRef(false);
+  const toggle = () => {
+    refocus.current = document.activeElement?.getAttribute("aria-label") === (collapsed ? EXPAND_CELL : COLLAPSE_CELL);
+    toggleCollapsed();
+  };
+  useLayoutEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    const label = collapsed ? EXPAND_CELL : COLLAPSE_CELL;
+    document.querySelector<HTMLElement>(`[data-chrome="core-cell"] [aria-label="${label}"]`)?.focus();
+  }, [collapsed]);
   const cut = cutRow(status, mode);
   const loupe = status.loupe;
   const padProps = (pad: Pad) => ({
@@ -220,7 +232,7 @@ const CellRows = memo(function CellRows({ status, mode, selected, collapsed, emp
           {collapsed ? null : <> <span className={styles.tagline}>{CORE_TAGLINE}</span></>}
         </BaseToolbar.Button>
         {collapsed ? null : (
-          <ToolbarButton icon="chevron-down" label={COLLAPSE_CELL} aria-expanded className={styles.chevron} onClick={toggleCollapsed} />
+          <ToolbarButton icon="chevron-down" label={COLLAPSE_CELL} aria-expanded className={styles.chevron} onClick={toggle} />
         )}
       </div>
       <div className={styles.line}>
@@ -259,7 +271,7 @@ const CellRows = memo(function CellRows({ status, mode, selected, collapsed, emp
           <span ref={cutPad} className={styles.pad} data-pad="cut" data-on={cut.state === "empty" ? undefined : ""} />
         </BaseToolbar.Button>
         {collapsed ? (
-          <ToolbarButton icon="chevron-up" label={EXPAND_CELL} aria-expanded={false} className={styles.chevron} onClick={toggleCollapsed} />
+          <ToolbarButton icon="chevron-up" label={EXPAND_CELL} aria-expanded={false} className={styles.chevron} onClick={toggle} />
         ) : null}
       </div>
       {empty && !collapsed ? <p className={styles.hint}>{EMPTY_HINT}</p> : null}
