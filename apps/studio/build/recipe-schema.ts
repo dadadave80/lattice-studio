@@ -1,7 +1,8 @@
 /**
  * `public/schema/recipe.v1.json`: core's `recipeJsonSchema()` (C7b), served beside the app so editors can
- * autocomplete a `recipe.json` (RECIPE_SCHEMA_URL points at it once Studio has a domain). The build writes it
- * before bundling; the file is committed, and it changes only when core's schema does.
+ * autocomplete a `recipe.json`. RECIPE_SCHEMA_URL is this file on `main`, served raw by GitHub, and every exported
+ * recipe keeps that URL, so the file must never move. The build writes it before bundling; the file is committed,
+ * and it changes only when core's schema does.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";

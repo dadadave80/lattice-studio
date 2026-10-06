@@ -36,7 +36,7 @@ bun apps/studio/build/verify-headers.ts apps/studio/dist
 
 The last command, run with only the `dist` folder and no `vercel.json` path, checks the built `index.html`'s `<meta>` CSP against its own inline style and import map instead of a headers file.
 
-**Needs David:** where the built folder is pinned, and the ENS name or other stable origin the IPFS mirror is served behind, are both undecided. Until a domain is chosen, exported `recipe.json` files carry a placeholder `$schema` URL (`https://lattice-studio.invalid/schema/recipe.v1.json`); it still validates locally, it just doesn't resolve.
+**Needs David:** where the built folder is pinned, and the ENS name or other stable origin the IPFS mirror is served behind, are both undecided. Exported `recipe.json` files carry a `$schema` URL that resolves today: `https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json`, the committed schema on `main`. lattice.wtf will host the schema later; recipes exported before then keep the raw URL, so that file must stay at that path on `main` (`apps/studio/build/recipe-schema.test.ts` fails if it moves).
 
 ## CI
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://lattice-studio.invalid/schema/recipe.v1.json",
+  "$id": "https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json",
   "title": "Lattice Studio recipe",
   "type": "object",
   "properties": {
