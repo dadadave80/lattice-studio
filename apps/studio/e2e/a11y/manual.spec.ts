@@ -99,6 +99,8 @@ test.describe("S2 · F6 and Ctrl+F6, with a toast showing", () => {
     await expect(region(page, "Notifications").getByRole("button", { name: "Undo", exact: true })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(sheet.card(first)).toBeFocused();
+    // Step 7 comes after the toast has gone; it leaves with a short exit.
+    await expect(region(page, "Notifications").getByRole("dialog")).toHaveCount(0);
 
     const visited: (string | null)[] = [];
     for (let i = 0; i < 5; i += 1) {
