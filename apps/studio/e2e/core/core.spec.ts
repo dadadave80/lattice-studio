@@ -167,6 +167,8 @@ test.describe("The pinned diamond core", () => {
 
   test("a recipe load flashes the new cards' traces, then lets them go", async ({ page }) => {
     await openEmpty(page);
+    // The Start block works before the canvas has loaded (Q19); the flash is the core cell's, so wait for the cell.
+    await expect(cell(page)).toBeVisible();
     // The flash lasts 1.6 s: watch for it from before the click, so a busy machine can't poll past it.
     await page.evaluate(() => {
       const w = window as unknown as { flashSeen?: boolean };
