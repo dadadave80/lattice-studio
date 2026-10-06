@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import { analyze, comparePlan, computeRouting, type Address, type Catalog, type Hex4, type LoupeFacet, type Recipe } from "../../src";
-import { checkProperty, contendersOf, presentationArb, propertyCatalogs, recipeArb } from "../../src/testing";
+import { checkProperty, contendersOf, presentationArb, propertyCatalogs, recipeArb, templatesOf } from "../../src/testing";
 
 const catalogs = propertyCatalogs();
 const ctx = { known: [], unconfirmed: [] };
@@ -136,7 +136,7 @@ for (const catalog of catalogs) {
     // dropped owner never routes to a *different* facet on any catalog; the fixture's seam and default mix
     // still resolves every one of GovernedVault's, so that stays strict.
     test('every selector a template\'s exclusion lists say "wins" routes back to that owner (seam or default) or stays unrouted, never to another facet', () => {
-      const templates = catalog.recipes.filter((template) => Object.keys(template.recipe.owners).length > 0);
+      const templates = templatesOf(catalog).filter((template) => Object.keys(template.recipe.owners).length > 0);
       if (catalog.lattice.tag === "fixture") expect(templates.map((t) => t.name)).toContain("GovernedVault");
       if (templates.length === 0) return;
       checkProperty(

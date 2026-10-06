@@ -6,7 +6,7 @@ import { normalizeRecipe } from "../canonical/normalize";
 import { formatParseIssue } from "../canonical/parse";
 import type { Catalog } from "../model/catalog";
 import type { Recipe } from "../model/recipe";
-import { loadFixtureCatalog, makeRecipe } from "../testing";
+import { loadFixtureCatalog, makeRecipe, templatesOf } from "../testing";
 import { decodeBase64url, encodeBase64url } from "./base64url";
 import { decodeShareLink, encodeShareLink, SHARE_MAX_BYTES } from "./link";
 import { ADMIN, catalog, governedVault, SAFE, safeCut, templatedCatalog, tokenWithAdmin } from "./test-support";
@@ -76,7 +76,7 @@ describe("encodeShareLink", () => {
 });
 
 describe("round trip", () => {
-  test.each(templatedCatalog.recipes.map((template) => [template.name, template.recipe] as const))(
+  test.each(templatesOf(templatedCatalog).map((template) => [template.name, template.recipe] as const))(
     "is the identity for the %s template",
     (_name, recipe) => {
       expectRoundTrip(loaded(recipe, templatedCatalog), templatedCatalog);
@@ -91,7 +91,7 @@ describe("round trip", () => {
   });
 
   const fixture = loadFixtureCatalog();
-  const fixtureTemplates = fixture.ok ? fixture.value.recipes.map((template) => [template.name, template.recipe] as const) : [];
+  const fixtureTemplates = fixture.ok ? templatesOf(fixture.value).map((template) => [template.name, template.recipe] as const) : [];
   test("the fixture catalog loads and has a GovernedVault template", () => {
     expect(fixture.ok ? "loaded" : fixture.error).toBe("loaded");
     expect(fixtureTemplates.map(([name]) => name)).toContain("GovernedVault");

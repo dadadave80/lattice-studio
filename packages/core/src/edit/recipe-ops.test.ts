@@ -4,7 +4,7 @@ import { normalizeRecipe } from "../canonical/normalize";
 import { isCoreFacet } from "../diamond/core";
 import type { EditResult, Project } from "../model/project";
 import type { Recipe } from "../model/recipe";
-import { loadFixtureCatalog } from "../testing/fixtures";
+import { loadFixtureCatalog, recipeOf } from "../testing/fixtures";
 import { makeCatalog, makeFacet, makeProject, makeRecipe } from "../testing/builders";
 import {
   addInitStep, clearOwner, excludeSelector, includeSelector, loadRecipe, moveInitStep, placeFacet, removeFacets,
@@ -647,7 +647,7 @@ describe("with the fixture catalog", () => {
     const template = cat.recipes.find((r) => r.name === "GovernedVault");
     expect(template).toBeDefined();
     if (!template) return;
-    const loaded = loadRecipe(makeProject(), cat, template.recipe, {}).project;
+    const loaded = loadRecipe(makeProject(), cat, recipeOf(template), {}).project;
     expect(loaded.recipe.owners["0x5c19a95c"]).toBe("ERC20Votes");
 
     const refused = routeSelector(loaded, cat, "0xa9059cbb", "ERC20");
