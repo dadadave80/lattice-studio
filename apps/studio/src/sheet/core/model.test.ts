@@ -24,7 +24,7 @@ test("the cut row names the placed variant and its mode, a conflict, or the empt
     state: "one", text: "AccessControlDiamondCut · upgradeable", facet: "AccessControlDiamondCut",
   });
   expect(cutRow({ ...status, cut: { facet: "SafeDiamondCut", rivals: ["GovernedDiamondCut"], conflict: true, immutable: false } })).toEqual({
-    state: "conflict", text: "SafeDiamondCut · GovernedDiamondCut", facet: "SafeDiamondCut", rivals: ["GovernedDiamondCut"],
+    state: "conflict", text: "SafeDiamondCut · conflicts with GovernedDiamondCut", facet: "SafeDiamondCut", rivals: ["GovernedDiamondCut"],
   });
 });
 
@@ -32,14 +32,14 @@ test("the toolbar's names start with each row's visible words (WCAG 2.5.3), then
   expect(diamondName()).toBe("Core The diamond's fixed part");
   expect(fallbackName(status)).toBe("Fallback 14 routed");
   expect(loupeName(status)).toBe("Loupe 4/4, 4 of 4 covered");
-  expect(erc165Name(status)).toBe("ERC-165 socket: covered");
-  expect(erc165Name({ ...status, erc165: { covered: false, interfaceIds: [] } })).toBe("ERC-165 socket: not covered");
+  expect(erc165Name(status)).toBe("ERC-165, covered");
+  expect(erc165Name({ ...status, erc165: { covered: false, interfaceIds: [] } })).toBe("ERC-165, not covered");
   expect(cutName(status)).toBe("Cut Empty · no upgrade mechanism");
   expect(cutName({ ...status, cut: { ...status.cut, immutable: true } })).toBe("Cut Empty · immutable");
   const one = { ...status, cut: { facet: "SafeDiamondCut", rivals: [], conflict: false, immutable: false } };
   expect(cutName(one, "Safe")).toBe("Cut SafeDiamondCut · Safe");
   expect(cutName(one)).toBe("Cut SafeDiamondCut · upgradeable");
   expect(cutName({ ...status, cut: { facet: "SafeDiamondCut", rivals: ["GovernedDiamondCut"], conflict: true, immutable: false } })).toBe(
-    "Cut SafeDiamondCut · GovernedDiamondCut, both claim it",
+    "Cut SafeDiamondCut · conflicts with GovernedDiamondCut",
   );
 });

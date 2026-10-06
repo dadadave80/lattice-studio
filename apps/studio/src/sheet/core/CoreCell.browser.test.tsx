@@ -46,7 +46,7 @@ describe("the cell", () => {
     expect(cellRow("Core The diamond's fixed part")).toBeTruthy();
     expect(cellRow(`Fallback ${s.fallback.routed} routed`).textContent).toContain(`${s.fallback.routed} routed`);
     expect(cellRow("Loupe 4/4, 4 of 4 covered").textContent).toContain("4/4");
-    expect(cellRow("ERC-165 socket: covered")).toBeTruthy();
+    expect(cellRow("ERC-165, covered")).toBeTruthy();
     // The mechanism by its label, as the inspector's Core section names it.
     expect(cellRow("Cut SafeDiamondCut · Safe").textContent).toContain("SafeDiamondCut · Safe");
     expect(cellRow("Collapse the core cell")).toBeTruthy();
@@ -83,7 +83,7 @@ describe("the cell", () => {
     doc.load(coreProject(["ERC20", "SafeDiamondCut", "GovernedDiamondCut"], { id: ID }));
     await expect.poll(() => cellRow(/^Cut /).getAttribute("data-cut")).toBe("conflict");
     // The first in catalog order holds the socket, whatever the placement order; the other is its rival.
-    const conflict = cellRow("Cut GovernedDiamondCut · SafeDiamondCut, both claim it");
+    const conflict = cellRow("Cut GovernedDiamondCut · conflicts with SafeDiamondCut");
     expect(getComputedStyle(conflict).backgroundImage).toContain("repeating-linear-gradient");
     doc.load(coreProject(["ERC20", "GovernedDiamondCut"], { id: ID }));
     await expect.poll(() => cellRow(/^Cut /).getAttribute("data-cut")).toBe("one");

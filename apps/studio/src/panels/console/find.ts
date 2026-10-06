@@ -10,7 +10,7 @@
  */
 import type { Anchor, Catalog, Hex4 } from "@lattice-studio/core";
 import { formatSelector, isCoreFacet, plural } from "@lattice-studio/core";
-import { SELECTED_THE_CORE } from "@/sheet/core/commands";
+import { SELECTED_THE_CORE } from "@/sheet/core/copy";
 
 export type FoundPin = { facet: string; selector: Hex4; signature: string };
 

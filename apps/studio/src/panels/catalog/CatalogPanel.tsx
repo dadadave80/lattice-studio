@@ -213,11 +213,12 @@ export function CatalogPanel() {
     void runCommand({ id: "facet.place", args: { facet: node.id } }, "button");
   };
 
-  // The tree never activates a disabled row, so Enter on a core facet's row would place nothing in silence: say why.
+  // The tree never activates a disabled row, so Enter on a core facet's row does what a click does: it selects the
+  // core (whose readout names it), rather than placing nothing in silence.
   const onItemKeyDown = (event: KeyboardEvent<HTMLElement>, node: TreeNode) => {
     if (event.key !== "Enter" || !isCoreFacet(node.id) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     event.preventDefault();
-    say(CORE_FACET_REASON);
+    void runCommand(commandRef("core.select"), "keys");
   };
 
   const itemProps = (node: TreeNode): TreeItemProps => {

@@ -148,7 +148,7 @@ describe("Catalog core rows (DiamondLoupeFacet, ERC165Facet)", () => {
     expect(loupe?.textContent).not.toContain("On sheet");
   });
 
-  test("Enter and a double-click place nothing and say why; no drag starts", async () => {
+  test("Enter selects the core as a click does; a double-click places nothing and says why; no drag starts", async () => {
     await renderWithStudio(<CatalogPanel />, { project: project() });
     await typeQuery("erc165");
     await expect.poll(() => row("ERC165Facet")).not.toBeNull();
@@ -156,10 +156,9 @@ describe("Catalog core rows (DiamondLoupeFacet, ERC165Facet)", () => {
     if (!target) throw new Error("ERC165Facet row not found");
     target.focus();
     await userEvent.keyboard("{Enter}");
-    expect(bufferedServices().log.at(-1)?.text).toBe(REASON);
-    expect(bufferedServices().announce.at(-1)?.[0]).toBe(REASON);
+    await expect.poll(() => session.get().coreSelected).toBe(true);
     target.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
-    expect(bufferedServices().log.filter((l) => l.text === REASON)).toHaveLength(2);
+    expect(bufferedServices().log.filter((l) => l.text === REASON)).toHaveLength(1);
     const drags: (CatalogDrag | null)[] = [];
     onCleanup(subscribeCatalogDrag((drag) => drags.push(drag)));
     target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 13, clientX: 10, clientY: 10, button: 0 }));
