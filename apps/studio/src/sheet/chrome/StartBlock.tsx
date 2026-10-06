@@ -1,5 +1,5 @@
 import { isCoreOnly, templateList } from "@lattice-studio/core";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { type RefObject, useLayoutEffect, useMemo, useRef } from "react";
 import { focusSheet } from "@/a11y/focus";
 import { commandRef, doc, runCommand, useCatalog, useCommandState, useDocument } from "@/contracts";
 import { useOpenFailure } from "@/persist/current";
@@ -39,6 +39,41 @@ function RecipeCard({ name }: { name: string }) {
 function focusLost(): boolean {
   const active = document.activeElement;
   return active === null || active === document.body || !active.isConnected;
+}
+
+/** The label of the Start block control that had focus when the loading sheet's block left the page. */
+let handedOver: string | null = null;
+
+/**
+ * The loading sheet, as the canvas takes over (`Sheet.tsx`): notes which of its Start block's controls has focus,
+ * by its label, so the canvas's block can give focus back to the same control once it mounts.
+ */
+export function handOverStartFocus(within: HTMLElement): void {
+  const active = document.activeElement;
+  handedOver = active instanceof HTMLElement && within.contains(active) ? active.textContent : null;
+}
+
+/**
+ * Reads and clears the note in one call. Kept out of the hook: the React Compiler would read the module variable
+ * after clearing it there, so the canvas's block would never see the label.
+ */
+function takeHandedOver(): string | null {
+  const label = handedOver;
+  handedOver = null;
+  return label;
+}
+
+/**
+ * The canvas's block, as it mounts: the loading sheet's block, and the control that had focus in it, have just
+ * left the page, so focus goes to the same control here and the next Tab continues from it, not the page's top.
+ */
+function useTakeStartFocus(layer: RefObject<HTMLDivElement | null>): void {
+  useLayoutEffect(() => {
+    const label = takeHandedOver();
+    if (label === null || !focusLost()) return;
+    const controls = layer.current?.querySelectorAll<HTMLElement>("button") ?? [];
+    Array.from(controls).find((control) => control.textContent === label)?.focus();
+  }, [layer]);
 }
 
 /**
@@ -84,10 +119,12 @@ export function StartBlock() {
   const tour = useCommandState(TOUR, "button");
   // The sheet's open error (`OpenError.tsx`) takes the block's place while it shows (spec L696).
   const failed = useOpenFailure() !== null;
+  const layer = useRef<HTMLDivElement>(null);
   useKeepFocusOnSheet(empty);
+  useTakeStartFocus(layer);
   if (!empty || failed) return null;
   return (
-    <div className={styles.startLayer} data-chrome="start">
+    <div ref={layer} className={styles.startLayer} data-chrome="start">
       <section className={styles.start} aria-labelledby="sheet-start-title" {...FLOAT}>
         <h2 id="sheet-start-title" className={styles.startTitle}>
           {START_A_DIAMOND}
