@@ -122,6 +122,19 @@ describe("collision note (Flow 4, spec L434-L439)", () => {
     await expect.poll(() => bufferedServices().log.map((l) => l.text).join("\n")).toContain("Resolved");
   });
 
+  test("Keep names the card already on the sheet, so the newcomer is the one being decided", async () => {
+    await sheet(project([HYPERLANE]));
+    await expect.poll(() => document.querySelector("[data-sheet-layer='notes']"), { timeout: 8000 }).not.toBeNull();
+    // The layer lays out at the next frame: let it see the sheet before the newcomer arrives.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await runCommand({ id: "facet.place", args: { facet: AXELAR, at: { x: 640, y: 64 } } }, "api");
+    const el = await waitForNote("collision");
+    const buttons = [...el.querySelectorAll("button")].map((b) => b.textContent);
+    expect(buttons.slice(0, 2)).toEqual(["Keep HyperlaneGatewayAdapter", "Route to AxelarGatewayAdapter"]);
+    await page.getByRole("button", { name: "Keep HyperlaneGatewayAdapter" }).click();
+    expect(owners()).toEqual({ [SEND]: HYPERLANE, [ATTRIBUTE]: HYPERLANE });
+  });
+
   test("read-only: the choices say the reason and change nothing", async () => {
     await sheet(project([AXELAR, HYPERLANE]));
     await waitForNote("collision");
