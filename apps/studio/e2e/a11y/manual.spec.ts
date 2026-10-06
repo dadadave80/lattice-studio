@@ -5,10 +5,10 @@
  */
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../_support/fixtures.ts";
-import { focusRegion } from "../_support/keys.ts";
+import { focusRegion, region } from "../_support/keys.ts";
 import { openEmpty } from "../_support/seed.ts";
 import { SheetPage } from "../q1c/pages/sheet-page.ts";
-import { pressMod, runConsole, waitForSheet } from "./support/keyboard.ts";
+import { pressMod, runConsole, runInPalette, tabTo, waitForSheet } from "./support/keyboard.ts";
 
 /** `document-store.ts`'s `BURST_GAP_MS`: presses further apart than this start a new undo step. */
 const BURST_GAP_MS = 1000;
@@ -82,5 +82,37 @@ test.describe("S5 · merged nudge announcements", () => {
     await expect.poll(() => offset(page, sheet, moved, anchor)).toEqual(start);
     await pressMod(page, "z");
     await expect(spoken(page)).toContainText("Undid: Placed CCIPGatewayAdapter.");
+  });
+});
+
+test.describe("S6 · focus after delete and undo", () => {
+  test("Tidy and Flip run on the cards still there, and a new project starts with both history buttons unavailable", async ({ page }) => {
+    await startCollisions(page);
+    await focusRegion(page, "Sheet");
+    await page.keyboard.press("Home");
+    await pressMod(page, "a");
+    await page.keyboard.press("t");
+    await expect(spoken(page)).toContainText(/Tidied 3 facets\.|Nothing moved: the sheet already has this layout\./);
+    await page.keyboard.press("Home");
+    await page.keyboard.press("f");
+    await expect(spoken(page)).toContainText("Flipped pins on");
+    // Something to redo, so the new project has to clear it.
+    await pressMod(page, "z");
+    await expect(spoken(page)).toContainText("Undid: Flipped pins on");
+
+    await runInPalette(page, "New project");
+    await waitForSheet(page);
+    const bar = region(page, "Title bar");
+    const undo = bar.getByRole("button", { name: "Undo", exact: true });
+    const redo = bar.getByRole("button", { name: "Redo", exact: true });
+    await focusRegion(page, "Title bar");
+    await tabTo(page, undo);
+    await expect(undo).toHaveAttribute("aria-disabled", "true");
+    await expect(undo).toHaveAccessibleDescription("Nothing to undo");
+    await tabTo(page, redo);
+    await expect(redo).toHaveAttribute("aria-disabled", "true");
+    await expect(redo).toHaveAccessibleDescription("Nothing to redo");
+    await pressMod(page, "z");
+    await expect(spoken(page)).toContainText("Nothing to undo.");
   });
 });

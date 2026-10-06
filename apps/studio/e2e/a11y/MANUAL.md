@@ -179,10 +179,10 @@ Start: **Collisions**. F6 to the Sheet, press Home, then Mod+→ to select the m
    Expect: the last card in reading order goes, and focus moves to the previous card.
 5. Press Mod+A, then Backspace.
    Expect: every card goes; focus moves to the Sheet region. Mod+Z brings them back and focuses a restored card.
-6. Press Mod+Z until it says "Nothing to undo", then F6 to the Title bar and Tab to **Undo**.
-   Expect: the Undo button reads as unavailable with the reason "Nothing to undo"; Redo the same with "Nothing to redo". Both still take focus.
-7. Press Mod+A, then T. Then press Home, then F.
+6. Press Mod+A, then T. Then press Home, then F.
    Expect: focus stays on the card it was on. Tidy says "Tidied 3 facets." (or "Nothing moved: the sheet already has this layout." when the cards are already tidy); Flip says "Flipped pins on" and the card's name.
+7. Open a new **Empty** project, F6 to the Title bar, and Tab to **Undo**, then **Redo**.
+   Expect: a new project starts with no history. Undo reads as unavailable with the reason "Nothing to undo", and Redo with "Nothing to redo". Both still take focus. Mod+Z says "Nothing to undo."
 
 Pass when focus always lands on a card that exists, or on the sheet when none does, and never on the page body.
 
