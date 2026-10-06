@@ -17,7 +17,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-0T5U8qHY1/aukQl6PZ8esLjX/TgISKZWAa5JdvZkqes='; style-src 'self' 'sha256-+b5cPagytQUgtt9TTe+OwZRdRsVzRZb0wahe/3Du9Bk='; img-src 'self' data: blob: https:; font-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; connect-src 'self' https: wss:; frame-src https://verify.walletconnect.org https://secure.walletconnect.org; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'sha256-0T5U8qHY1/aukQl6PZ8esLjX/TgISKZWAa5JdvZkqes='; style-src 'self' 'sha256-2oE/pBc7vylXsI5QvCPMSGP+eiOVq83koRiQgIZcbYI='; img-src 'self' data: blob: https:; font-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; connect-src 'self' https: wss:; frame-src https://verify.walletconnect.org https://secure.walletconnect.org; frame-ancestors 'none'"
         },
         {
           "key": "Cross-Origin-Opener-Policy",
