@@ -64,6 +64,16 @@ describe("GitHub Actions workflows", () => {
         }
       });
 
+      // Q14: a tag can be moved to other code; a commit SHA can't. The trailing tag comment is what Dependabot's
+      // github-actions ecosystem reads to bump the SHA and the comment together.
+      test("every third-party Action is pinned to a full commit SHA, with its tag in a trailing comment", () => {
+        const uses = [...text.matchAll(/^\s*(?:-\s+)?uses:\s*(.+)$/gm)].map((m) => (m[1] ?? "").trim());
+        for (const line of uses) {
+          if (line.startsWith("./")) continue;
+          expect(line, file).toMatch(/^[\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
+        }
+      });
+
       // spec L864 "Frozen lockfile" (§16 audit #36): a plain `bun install` inside a workflow step must always be
       // frozen, so a rewritten bun.lock in CI can never quietly widen a dependency's version.
       test("every `bun install` step passes --frozen-lockfile", () => {
