@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          submodules: true
+          submodules: recursive
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -41,6 +41,7 @@ jobs:
         run: |
           git fetch origin dev
           git checkout --detach FETCH_HEAD
+          git submodule update --init --recursive
           echo "lattice_dev_sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Build the Lattice checkout (ci profile)
