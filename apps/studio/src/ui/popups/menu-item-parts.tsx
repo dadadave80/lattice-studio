@@ -1,5 +1,5 @@
 import type { KeyboardEvent, ReactNode } from "react";
-import styles from "./Menu.module.css";
+import styles from "../overlays/Menu.module.css";
 
 /**
  * Base UI takes ⌘/Ctrl+Enter on a menu item as Enter and activates it. IR L13 makes the chord Deploy… from

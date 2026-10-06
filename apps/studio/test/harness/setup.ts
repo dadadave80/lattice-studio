@@ -1,10 +1,10 @@
 /**
  * Vitest Browser Mode setup (vitest.config.ts `setupFiles`): the app's global styles and every module's
- * registrations, as `main.tsx` loads them, plus the canvas's parts (the app loads those with the canvas chunk;
- * here they're up front, so a test that renders React Flow on its own finds the facet card and the layers), and a
- * clean slate after each test: fakes and overrides undone, recorded output cleared, K2's in-memory deployment
- * records emptied, the deploy mirror back to idle with no controller loaded, settings and session back to their
- * defaults, and Etherscan's outcomes forgotten.
+ * registrations, as `main.tsx` loads them, plus what the app loads right after its first paint, up front: the
+ * canvas's parts (so a test that renders React Flow on its own finds the facet card and the layers) and Base UI's
+ * popups (so a menu or tooltip is the real one from its first render). After each test, a clean slate: fakes and
+ * overrides undone, recorded output cleared, K2's in-memory deployment records emptied, the deploy mirror back to
+ * idle with no controller loaded, settings and session back to their defaults, and Etherscan's outcomes forgotten.
  */
 import "@/styles/global.css";
 import "@/contracts/discover";
@@ -14,9 +14,10 @@ import { seedDeployState } from "@/contracts/deploy";
 import { clearDeploymentCache, clearMemoryDeployments, clearServiceBuffers } from "@/contracts/services";
 import { etherscanOutcomes } from "@/chain/verify/etherscan-outcomes";
 import { loadSheetParts } from "@/sheet/canvas/parts";
+import { loadPopups } from "@/ui/popups/load";
 import { runCleanups } from "./cleanup";
 
-await loadSheetParts();
+await Promise.all([loadSheetParts(), loadPopups()]);
 
 afterEach(async () => {
   await runCleanups();
