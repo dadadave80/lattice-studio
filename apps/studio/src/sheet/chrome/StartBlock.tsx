@@ -1,7 +1,7 @@
 import { isCoreOnly, templateList } from "@lattice-studio/core";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { focusSheet } from "@/a11y/focus";
-import { commandRef, runCommand, useCatalog, useCommandState, useDocument } from "@/contracts";
+import { commandRef, doc, runCommand, useCatalog, useCommandState, useDocument } from "@/contracts";
 import { useOpenFailure } from "@/persist/current";
 import { SHEET_FLOAT_ATTRIBUTE } from "@/sheet/canvas/sheet-view";
 import { BLANK_DIAMOND } from "@/state";
@@ -45,12 +45,13 @@ function focusLost(): boolean {
  * A load from the block (Enter on Blank diamond, a recipe card, Browse → Load) takes the block and the button that
  * ran it away. Focus goes to the sheet then, so the next Tab continues from the sheet, not the page's top. Checked
  * again a frame later, after a closing dialog has tried to hand focus back to the vanished Browse button. Only on
- * the empty-to-placed change: a project that opens with cards never has its focus taken.
+ * the empty-to-placed change an edit makes: a project that opens with cards (the last one, reopened while the
+ * block shows during startup) never has its focus taken.
  */
 function useKeepFocusOnSheet(empty: boolean): void {
   const was = useRef(empty);
   useLayoutEffect(() => {
-    const cleared = was.current && !empty;
+    const cleared = was.current && !empty && doc.state().lastChange?.kind !== "load";
     was.current = empty;
     if (!cleared) return;
     if (focusLost()) focusSheet();
