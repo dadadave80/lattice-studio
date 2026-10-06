@@ -117,6 +117,14 @@ describe("critical CSS pane and tier sizes match the shell's", () => {
     const max = /@media \(max-width:\s*(\d+)px\)/.exec(indexHtml)?.[1];
     expect(max && Number(max)).toBe(TIER_MIN.narrow - 1);
   });
+
+  // space-8 + space-1 is PANE_SIZES.console.header, as in the console's own rule (Shell.module.css).
+  test("the console is its header alone from TIER_MIN.narrow to TIER_MIN.mid", () => {
+    const tier = /@media \(min-width:\s*(\d+)px\) and \(max-width:\s*(\d+)px\)\s*\{\s*\.lxs-console\s*\{\s*block-size:\s*calc\(var\(--lxs-space-8\) \+ var\(--lxs-space-1\)\);/.exec(
+      indexHtml,
+    );
+    expect(tier && [Number(tier[1]), Number(tier[2])]).toEqual([TIER_MIN.narrow, TIER_MIN.mid - 1]);
+  });
 });
 
 describe("the static Start block says what the real one says", () => {
