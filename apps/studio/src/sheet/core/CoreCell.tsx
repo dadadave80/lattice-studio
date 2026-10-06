@@ -86,6 +86,7 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
   const published = useRef<Pads | null>(null);
   const lift = useRef<string | null>(null);
   const titleWidth = title?.width ?? null;
+  const titleHeight = title?.height ?? null;
 
   // The pads' points and the rail, whenever something can move them: the cell's or the sheet's size (observed),
   // the title block's width (the cell's margin), a fold. And whether Back to content would sit under the cell
@@ -103,7 +104,11 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
       };
       const own = el.getBoundingClientRect();
       const fallback = top(fallbackPad.current);
-      const next = fallback ? { fallback, cut: top(cutPad.current), railY: own.top - box.top - RAIL_GAP } : null;
+      // The rail runs above whichever is taller, the cell or the title block beside it: a card over the title
+      // block drops its trace onto the rail in open sheet, never behind the panel (the review's second blocker).
+      const titleTop = root.querySelector('[data-chrome="title-block"]')?.getBoundingClientRect().top ?? own.top;
+      const railY = Math.min(own.top, titleTop) - box.top - RAIL_GAP;
+      const next = fallback ? { fallback, cut: top(cutPad.current), railY } : null;
       if (!samePads(published.current, next)) {
         published.current = next;
         onPads(next);
@@ -134,7 +139,7 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
       if (frame !== 0) cancelAnimationFrame(frame);
       sizes.disconnect();
     };
-  }, [root, onPads, titleWidth, collapsed, empty]);
+  }, [root, onPads, titleWidth, titleHeight, collapsed, empty]);
 
   useLayoutEffect(
     () => () => {
