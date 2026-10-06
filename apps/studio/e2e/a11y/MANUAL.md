@@ -230,12 +230,13 @@ Start: **Collisions**. F6 to the Sheet, which lands on the Sheet region, and pre
    Expect: the reader names each row with its category and shortcut. Rows that can't run say why after a dot, for example "Tidy selection · Select two or more cards".
 3. Type `go to`.
    Expect: **Go to console**, **Go to inspector**, **Go to left pane**, **Go to sheet** and **Go to title bar**. Choose **Go to inspector** with Enter: the palette closes and focus is in the Inspector.
+   Known gap (2026-10-06): focus goes back to where the palette was opened, the card, instead of to the Inspector; F6 still reaches it. The other **Go to …** rows do the same. Until that's fixed this step fails on where focus goes.
 4. Press Mod+K, type `tidy`, press Enter.
    Expect: the palette closes and Studio says what Tidy did, for example "Tidied 3 facets.", or "Nothing moved: the sheet already has this layout." when the cards are already tidy.
 5. Press Mod+K, then Esc.
    Expect: the palette closes and focus returns where it was.
 6. Open Settings through the palette and press Mod+K and ?.
-   Expect: neither opens anything over the dialog. Esc closes Settings and focus returns to where the palette was opened, the AxelarGatewayAdapter card.
+   Expect: neither opens anything over the dialog. Esc closes Settings and focus returns to where it was before the palette opened: the AxelarGatewayAdapter card while step 3's known gap stands.
 7. F6 to the Title bar, Tab to **Lattice Studio** and press Enter.
    Expect: the app menu opens with focus inside it; ↑ and ↓ move between items, Esc closes it and focus returns to **Lattice Studio**.
 8. F6 to the Console, which returns to the **Command line**, then ⇧Tab to **Export** and press Enter.
@@ -243,7 +244,8 @@ Start: **Collisions**. F6 to the Sheet, which lands on the Sheet region, and pre
 9. In the Console, Tab to the **Command line** and run `help`.
    Expect: hear "Commands: chain, deploy, clear, help, find, problems, export, new, theme, zoom, fit, init, core, next, place, remove, route, exclude, include, recipe, set, tidy, undo, redo. Type help <verb> for one." ↑ brings back `help`.
 10. ⇧Tab into the log (past **Jump to latest** when it shows), then ↑ and ↓.
-    Expect: the log is a "Log" with one line per entry, each read with its tag ("Note", "Placed", "Error"…). On macOS, Ctrl+L clears it; elsewhere use **Clear the log**.
+    Expect: the log is a "Log" with one line per entry, each read with its tag ("Note", "Placed", "Error"…). On macOS, Ctrl+L clears it and focus stays in the Console; elsewhere use **Clear the log**.
+    Known gap (2026-10-06): with focus on a log line, Ctrl+L clears the log and focus falls to the page body. Until that's fixed this step fails on where focus goes.
 11. On the Sheet, Tab to a "Selector collision" note's **Choose per selector…** and press Enter, then Esc. Do the same for **Browse all recipes** on an Empty sheet.
     Expect: each opens with focus inside, and Esc returns focus to the button that opened it.
 
