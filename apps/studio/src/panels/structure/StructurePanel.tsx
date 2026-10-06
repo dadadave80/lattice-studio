@@ -10,7 +10,8 @@ import { FacetMenu } from "./FacetMenu";
 import { ProblemMenu } from "./ProblemMenu";
 import { SelectorMenu } from "./SelectorMenu";
 import {
-  buildStructure, CORE_ID, facetId, facetOfId, focusAfterRemove, INIT_ID, isCoreId, PROBLEMS_ID, type StructureMeta,
+  buildStructure, CORE_ID, facetId, facetOfId, focusAfterRemove, INIT_ID, isCoreId, PROBLEMS_ID, type Structure,
+  type StructureMeta,
 } from "./structure-model";
 import { StructureItem } from "./StructureItem";
 import styles from "./StructurePanel.module.css";
@@ -32,9 +33,16 @@ function sameList(a: readonly string[], b: readonly string[]): boolean {
 
 const DEFAULT_EXPANDED = [CORE_ID, PROBLEMS_ID, INIT_ID];
 
+/** The area group a facet's row, or one of its selectors' rows, sits in. */
+function areaOfRow(structure: Structure, id: string): string | undefined {
+  const meta = structure.meta.get(id);
+  const facet = meta?.kind === "selector" ? structure.meta.get(facetId(meta.facet)) : meta;
+  return facet?.kind === "facet" ? facet.area : undefined;
+}
+
 /**
  * The Structure tab (spec L747, IR L90-L97): the sheet's accessible twin, as an APG tree of the core, the placed
- * facets and their selectors, the problems and the init plan. Selection is the session's, so it syncs both ways
+ * facets grouped by area with their selectors, the problems and the init plan. Selection is the session's, so it syncs both ways
  * with the sheet (the Core group shows selected while the core is); every action runs a command, so what can't
  * run says why.
  */
@@ -47,8 +55,21 @@ export function StructurePanel() {
   const plan = useMemo(() => initPlan(recipe, catalog), [recipe, catalog]);
   const structure = useMemo(() => buildStructure({ recipe, catalog, analysis, plan }), [recipe, catalog, analysis, plan]);
   const selected = useMemo(() => [...(coreSelected ? [CORE_ID] : []), ...selection.map(facetId)], [selection, coreSelected]);
-  const [expanded, setExpanded] = useState<string[]>(DEFAULT_EXPANDED);
   const [focused, setFocused] = useState<string | null>(null);
+  const [open, setOpen] = useState<string[]>(DEFAULT_EXPANDED);
+  // Area groups start open, a new one included, so a placed facet is never hidden: only a group someone closed
+  // stays closed, and not while the tree's Tab stop is inside it (a facet selected on the sheet takes it).
+  const [closedAreas, setClosedAreas] = useState<string[]>([]);
+  const focusedArea = focused === null ? undefined : areaOfRow(structure, focused);
+  const expanded = useMemo(
+    () => [...open, ...structure.areas.filter((id) => !closedAreas.includes(id) || id === focusedArea)],
+    [open, closedAreas, structure.areas, focusedArea],
+  );
+  const onExpandedChange = (next: string[]) => {
+    const areas = new Set(structure.areas);
+    setOpen(next.filter((id) => !areas.has(id)));
+    setClosedAreas(structure.areas.filter((id) => !next.includes(id)));
+  };
   const container = useRef<HTMLDivElement>(null);
   /** The facet a plain click just located, so the selection change it makes doesn't locate it again. */
   const clicked = useRef<string | null>(null);
@@ -84,13 +105,13 @@ export function StructurePanel() {
   };
 
   const toggle = (id: string) => {
-    setExpanded((open) => (open.includes(id) ? open.filter((other) => other !== id) : [...open, id]));
+    onExpandedChange(expanded.includes(id) ? expanded.filter((other) => other !== id) : [...expanded, id]);
   };
 
   const onActivate = (node: TreeNode) => {
     const meta = structure.meta.get(node.id);
     if (!meta || activate(meta, "keys")) return;
-    // The Problems branch: Enter opens or closes it.
+    // An area group or the Problems branch: Enter opens or closes it.
     if (node.children?.length) toggle(node.id);
     else say("No problems.");
   };
@@ -135,7 +156,7 @@ export function StructurePanel() {
     }
     if (event.key === " ") {
       if (pressSpace(meta)) event.preventDefault();
-      else if (meta.kind === "problems") {
+      else if (meta.kind === "problems" || meta.kind === "area") {
         event.preventDefault();
         onActivate(node);
       }
@@ -213,7 +234,7 @@ export function StructurePanel() {
         className={styles.tree}
         nodes={structure.nodes}
         expanded={expanded}
-        onExpandedChange={setExpanded}
+        onExpandedChange={onExpandedChange}
         selected={selected}
         onSelectedChange={onSelectedChange}
         multiSelect
