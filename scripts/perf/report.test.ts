@@ -11,7 +11,7 @@ function size(firstLoad: number): SizeReport {
   return {
     ok: true,
     rows: [
-      { item: "First-load JavaScript", gz: firstLoad, raw: firstLoad, budget: 370_000, unit: "gz", warnOnly: false, ok: firstLoad <= 370_000 },
+      { item: "First-load JavaScript", gz: firstLoad, raw: firstLoad, budget: 255_000, unit: "gz", warnOnly: false, ok: firstLoad <= 255_000 },
       { item: "CSS", gz: 8_900, raw: 8_900, budget: 25_000, unit: "gz", warnOnly: false, ok: true },
       { item: "Catalog index", gz: 81_400, raw: 81_400, budget: 60_000, unit: "gz", warnOnly: true, ok: false },
       { item: "Lazy chunk shiki-x.js", gz: 57_800, raw: 180_000, budget: 70_000, unit: "gz", warnOnly: false, ok: true },
@@ -21,13 +21,13 @@ function size(firstLoad: number): SizeReport {
 }
 
 const composition: Composition = {
-  total: 352_400,
-  chunks: [{ name: "assets/index-a.js", gz: 352_000 }, { name: "assets/runtime-b.js", gz: 400 }],
+  total: 252_400,
+  chunks: [{ name: "assets/index-a.js", gz: 252_000 }, { name: "assets/runtime-b.js", gz: 400 }],
   groups: [{ name: "react-dom", gz: 54_000 }],
   options: [
-    { name: "Lazy-load the sheet (React Flow, d3, the card)", fx15: 65_000, gz: 68_000 },
-    { name: "Lazy analysis and the document commands", fx15: 26_000, gz: 26_500 },
-    { name: "Lazy Base UI popups", fx15: 30_000, gz: 46_900 },
+    { name: "Lazy-load the sheet (React Flow, d3, the card)", fx15: 65_000, gz: 1_000 },
+    { name: "Lazy analysis and the document commands", fx15: 26_000, gz: 14_000 },
+    { name: "Lazy Base UI popups", fx15: 30_000, gz: 2_000 },
   ],
   matchesRecord: true,
 };
@@ -78,7 +78,7 @@ const profiles: Attribution[] = [
 function inputs(over: Partial<PerfInputs> = {}): PerfInputs {
   return {
     smoke: false,
-    size: size(352_400),
+    size: size(252_400),
     composition,
     lighthouse: lighthouse(2000),
     drag: drag(150),
@@ -92,7 +92,7 @@ describe("evaluate", () => {
   test("every enforced budget met: ok, though first load is over the spec's target and the drag above its reference", () => {
     const e = evaluate(inputs());
     expect(e.ok).toBe(true);
-    expect(e.rows.find((r) => r.item === "First-load JavaScript (CI gate, interim)")?.status).toBe("ok");
+    expect(e.rows.find((r) => r.item === "First-load JavaScript (CI gate)")?.status).toBe("ok");
     const target = e.rows.find((r) => r.item === "First-load JavaScript (spec target)");
     expect(target).toMatchObject({ status: "over", enforced: false, budget: "240.0 KB gz" });
     expect(e.rows.find((r) => r.item.startsWith("Drag, added per move"))).toMatchObject({ measured: "51.6 ms", status: "above reference", enforced: false });
@@ -102,9 +102,9 @@ describe("evaluate", () => {
 
   test("the first-load fix request names each Q19 option with its measured size and what all three leave", () => {
     const fix = evaluate(inputs()).fixes[0] ?? "";
-    expect(fix).toContain("112.4 KB over spec L809's 240 KB");
-    expect(fix).toContain("Lazy-load the sheet (React Flow, d3, the card): −68.0 KB (FX15 estimated −65.0 KB)");
-    expect(fix).toContain("All three: 211.0 KB");
+    expect(fix).toContain("12.4 KB over spec L809's 240 KB (the gate, 255.0 KB, leaves 2.6 KB)");
+    expect(fix).toContain("Lazy-load the sheet (React Flow, d3, the card): −1.0 KB (FX15 estimated −65.0 KB)");
+    expect(fix).toContain("All three: 235.4 KB");
   });
 
   test("with no row report-only, LCP, INP and analysis over their budgets fail the full run, each with a fix request", () => {
@@ -156,7 +156,7 @@ describe("renderEvaluation", () => {
     expect(text).toContain("Fix requests:\n1. First load is");
     expect(text).toContain("Where the analysis time goes (100 ms busy in the profiled pass), by group:\n   55%  core/analysis");
   });
-  test("PERF_BUDGETS keep the spec's numbers and the interim gate", () => {
-    expect(PERF_BUDGETS).toMatchObject({ firstLoadTarget: 240_000, firstLoadGate: 370_000, lcpMs: 2500, inpMs: 200, analysisMs: 5 });
+  test("PERF_BUDGETS keep the spec's numbers and the gate", () => {
+    expect(PERF_BUDGETS).toMatchObject({ firstLoadTarget: 240_000, firstLoadGate: 255_000, lcpMs: 2500, inpMs: 200, analysisMs: 5 });
   });
 });

@@ -19,10 +19,11 @@ export type SizeReport = { readonly rows: SizeRow[]; readonly ok: boolean };
 
 /** Budgets in bytes, spec L809-L814. */
 export const BUDGETS = {
-  // Interim (2026-09-23, QUESTIONS Q19): the measured floor with the sheet at first paint was 328 KB after FX15 and
-  // 334 KB after S6; 370 is that floor plus an allowance for the nine work packages still to land (each may grow the
-  // entry by its command registrations only, the rest through import()). The spec's 240 KB stays the target.
-  firstLoadJs: 370_000,
+  // QUESTIONS Q19 (David, 2026-10-06): the sheet, the document commands' bodies, core's analysis engine and Base UI's
+  // popups load after the first paint. That measured 247.2 KB (249.5 with a WalletConnect project id); the gate is
+  // that plus 7.8 KB of headroom. The spec's 240 KB stays the target: core's analysis is still in the entry through
+  // the contracts' default analysis provider (contracts/analysis.ts, frozen), about 14 KB.
+  firstLoadJs: 255_000,
   css: 25_000,
   fontsTotal: 90_000,
   fontsCount: 2,
