@@ -30,8 +30,23 @@ export const BUDGETS = {
   lazyChunk: 70_000,
 } as const;
 
-/** Named chunks the spec exempts from the lazy-chunk budget (spec L814 "Loaded only on explicit action"). */
+/**
+ * Chunks the spec exempts from the lazy-chunk budget (spec L814 "Loaded only on explicit action · No budget; not
+ * precached"): by name, and every file the build leaves out of the precache (`release.json`'s `notPrecached`,
+ * decided from the module graph by apps/studio/build/precache.ts), since the WalletConnect SDK's chunks are named
+ * after their own modules ("core", "dist", "w3m-modal").
+ */
 const NO_BUDGET_PATTERN = /elk|walletconnect/i;
+
+/** `release.json`'s `notPrecached` (apps/studio/build/precache.ts `ReleaseManifest`); none when it can't be read. */
+export function notPrecachedOf(releaseJson: string): string[] {
+  try {
+    const manifest = JSON.parse(releaseJson) as { notPrecached?: unknown };
+    return Array.isArray(manifest.notPrecached) ? manifest.notPrecached.filter((p): p is string => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 const FONT_EXTENSIONS = [".woff2", ".woff", ".ttf", ".otf"];
 
@@ -81,6 +96,8 @@ export type ClassifyInput = {
   /** The default catalog's index.json, if the build copied one in (contracts §4; warn-only budget). */
   readonly catalogIndex: BuildFile | null;
   readonly gzip: GzipFn;
+  /** Files the build doesn't precache (`release.json`), paths relative to outDir: no lazy-chunk budget. */
+  readonly notPrecached?: readonly string[];
 };
 
 /** Builds the size report from a build's files. Pure: the caller reads the filesystem and gzips. */
@@ -126,11 +143,12 @@ export function classifyBuild(input: ClassifyInput): SizeReport {
     rows.push({ item: "Catalog index", gz: 0, raw: 0, budget: BUDGETS.catalogIndex, unit: "gz", warnOnly: true, ok: true });
   }
 
+  const notPrecached = new Set(input.notPrecached ?? []);
   const usedPaths = new Set([...firstLoadJsHrefs, ...firstLoadCssHrefs, input.catalogIndex?.path].filter((p): p is string => p !== undefined));
   const lazyJs = input.files.filter((f) => extname(f.path) === ".js" && !usedPaths.has(f.path));
   for (const chunk of lazyJs.sort((a, b) => a.path.localeCompare(b.path))) {
     const gz = input.gzip(chunk.bytes).byteLength;
-    const exempt = NO_BUDGET_PATTERN.test(basename(chunk.path));
+    const exempt = NO_BUDGET_PATTERN.test(basename(chunk.path)) || notPrecached.has(chunk.path);
     rows.push({
       item: `Lazy chunk ${basename(chunk.path)}${exempt ? " (no budget)" : ""}`,
       gz,

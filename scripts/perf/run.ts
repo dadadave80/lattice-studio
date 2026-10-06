@@ -17,7 +17,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { localPort } from "../../apps/studio/local-env.ts";
-import { classifyBuild, parseIndexHtml, type BuildFile, type SizeReport } from "../ci/size-logic.ts";
+import { classifyBuild, notPrecachedOf, parseIndexHtml, type BuildFile, type SizeReport } from "../ci/size-logic.ts";
 import { compose, type Composition } from "./composition.ts";
 import { summarizeLighthouse, type Lhr } from "./lighthouse.ts";
 import { attribute, type Attribution } from "./profile.ts";
@@ -82,7 +82,9 @@ function sizeStep(): { report: SizeReport; recordGz: Map<string, number> } | nul
   const entry = manifest?.catalogs?.find((c) => c.id === manifest.default);
   const indexPath = entry ? join(distDir, "catalog", entry.path) : null;
   const catalogIndex = indexPath && existsSync(indexPath) ? { path: relative(distDir, indexPath), bytes: new Uint8Array(readFileSync(indexPath)) } : null;
-  const report = classifyBuild({ indexHtml, files, catalogIndex, gzip: (b) => Bun.gzipSync(b) });
+  const release = join(distDir, "release.json");
+  const notPrecached = existsSync(release) ? notPrecachedOf(readFileSync(release, "utf8")) : [];
+  const report = classifyBuild({ indexHtml, files, catalogIndex, gzip: (b) => Bun.gzipSync(b), notPrecached });
   const { entryScripts, modulePreloads } = parseIndexHtml(indexHtml);
   const recordGz = new Map<string, number>();
   for (const href of [...entryScripts, ...modulePreloads]) {
