@@ -29,6 +29,12 @@ export function standardJsonPath(name: string): string {
   return `json/${name}.standard.json`;
 }
 
+/** `catalog/<id>/recipes.json` (Q15): every template's recipe, loaded when one is first opened. */
+export const RECIPES_PATH = "recipes.json";
+
+/** `catalog/<id>/init-docs.json` (Q15): every init parameter's help, loaded when the init editor first shows it. */
+export const INIT_DOCS_PATH = "init-docs.json";
+
 /** A written JSON file's exact bytes: two-space indent, trailing newline, UTF-8. */
 export function jsonFileBytes(value: unknown): Uint8Array {
   return new TextEncoder().encode(`${JSON.stringify(value, null, 2)}\n`);
@@ -52,13 +58,14 @@ function sortKeysDeep(value: unknown): unknown {
 }
 
 /**
- * A written JSON file's exact bytes, with every object's keys in canonical (sorted) order: two-space indent,
- * trailing newline, UTF-8. Used for `index.json` (contracts §4, orchestrator ruling 2026-09-23) so the file
- * doesn't depend on the order the catalog's input objects happened to be built in — the CI drift check
- * (`bun run catalog` then `git diff --exit-code catalog/`, spec L928) compares bytes, not just data.
+ * A written JSON file's exact bytes, with every object's keys in canonical (sorted) order: minified (Q15: the
+ * index loads before anything else), trailing newline, UTF-8. Used for `index.json` (contracts §4, orchestrator
+ * ruling 2026-09-23) so the file doesn't depend on the order the catalog's input objects happened to be built
+ * in — the CI drift check (`bun run catalog` then `git diff --exit-code catalog/`, spec L928) compares bytes,
+ * not just data.
  */
 export function sortedJsonFileBytes(value: unknown): Uint8Array {
-  return new TextEncoder().encode(`${JSON.stringify(sortKeysDeep(value), null, 2)}\n`);
+  return new TextEncoder().encode(`${JSON.stringify(sortKeysDeep(value))}\n`);
 }
 
 /** A written text file's exact bytes (creation code hex: the literal string, no added newline). */

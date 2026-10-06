@@ -24,6 +24,7 @@ import {
 import { loadOverlay } from "../../src/overlay";
 import { lintOverlay } from "../../src/overlay-lint";
 import {
+  type BuiltTemplate,
   type BuiltTemplates,
   buildSeams,
   buildTemplates,
@@ -53,7 +54,7 @@ const built: BuiltTemplates = templatesBuilt.value;
 
 /** The fixture catalog with this overlay's seams and templates in place of K3's. */
 const catalog: Catalog = { ...fixture, seams, recipes: built.templates };
-const template = (name: string): RecipeTemplate => {
+const template = (name: string): BuiltTemplate => {
   const found = built.templates.find((t) => t.name === name);
   if (found === undefined) throw new Error(`no template ${name}`);
   return found;
@@ -214,7 +215,7 @@ describe("v1 templates equal what Lattice's scripts build (golden/expected)", ()
 
   test("the v1 templates equal K3's fixture templates: name, script, proxy, phase and recipe", () => {
     for (const name of V1) {
-      expect(template(name)).toEqual(fixture.recipes.find((r) => r.name === name) as RecipeTemplate);
+      expect(template(name)).toEqual(fixture.recipes.find((r) => r.name === name) as BuiltTemplate);
     }
   });
 });
@@ -299,7 +300,7 @@ describe("v1 arguments are the overlay's examples", () => {
     }
     return out;
   }
-  const steps = (t: RecipeTemplate) =>
+  const steps = (t: BuiltTemplate) =>
     t.recipe.init.kind === "bundle" ? [{ spec: t.recipe.init.spec, args: t.recipe.init.args }] : t.recipe.init.kind === "steps" ? t.recipe.init.steps : [];
 
   test("every argument with an example equals it, and every example is filled in", async () => {

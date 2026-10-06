@@ -381,11 +381,11 @@ export function initOverlayInput(inits: Overlay["inits"]): Record<string, InitOv
   return out;
 }
 
-type ParamLike = { name: string; type: string; doc: string; components?: ParamLike[] };
+type ParamLike = { name: string; type: string; doc?: string; components?: ParamLike[] };
 
 function knownParam(p: ParamLike): KnownParam {
   const out: KnownParam = { name: p.name, type: p.type };
-  if (p.doc !== "") out.doc = p.doc;
+  if (p.doc !== undefined && p.doc !== "") out.doc = p.doc;
   if (p.components !== undefined) out.components = p.components.map(knownParam);
   return out;
 }
@@ -854,7 +854,7 @@ async function generateFrom(ctx: Context): Promise<Result<Generated, string>> {
   log("Assembling and checking the catalog…");
   let assembled: AssembledCatalog;
   try {
-    assembled = assembleCatalog(input);
+    assembled = assembleCatalog(input, { split: true });
   } catch (e) {
     return err(`Assemble: ${message(e)}`);
   }
@@ -864,7 +864,8 @@ async function generateFrom(ctx: Context): Promise<Result<Generated, string>> {
   const scripts = await scan(buildDir, `${SCRIPT_DIR}/**/*.s.sol`);
   const covered = new Set([...recipeOverlay.value.recipes.map((x) => x.script), ...Object.keys(SKIPPED_SCRIPTS)]);
   const gateIssues: ParseIssue[] = [
-    ...verifyTemplateRouting(catalog, templates.value.routing),
+    // The index keeps recipes in recipes.json (Q15); the routing gate needs them.
+    ...verifyTemplateRouting({ ...catalog, recipes: input.recipes }, templates.value.routing),
     ...checkRecipeSources(recipeOverlay.value, reader),
     ...checkScriptFacets(recipeOverlay.value, reader, scripts, new Set(facets.map((f) => f.name))),
     ...scripts.filter((p) => !covered.has(p)).map((p) => ({ file: p, path: "", message: "is a deploy script with no template and no reason to skip it." })),
@@ -948,7 +949,7 @@ export async function runCatalog(argv: readonly string[], out: (line: string) =>
     return 1;
   }
   const g = generated.value;
-  const written = await writeCatalog(args.value.outDir, g.id, g.input, { makeDefault: true });
+  const written = await writeCatalog(args.value.outDir, g.id, g.input, { makeDefault: true, split: true });
   if (!written.ok) {
     errOut(`Catalog not written. ${written.error}`);
     return 1;
