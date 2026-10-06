@@ -8,7 +8,7 @@ import { loadFixtureCatalog } from "../testing/fixtures";
 import { makeCatalog, makeFacet, makeProject, makeRecipe } from "../testing/builders";
 import {
   addInitStep, clearOwner, excludeSelector, includeSelector, loadRecipe, moveInitStep, placeFacet, removeFacets,
-  removeInitStep, routeSelector, setImmutable, setInitArg,
+  removeInitStep, routeSelector, setImmutable, setInitArg, useInitBundle,
 } from "./recipe-ops";
 import { ADDRESS, catalog, changedIssues, deepFreeze, noOpIssues, projectWith, SEL } from "./testkit";
 
@@ -540,6 +540,37 @@ describe("addInitStep", () => {
     const before = projectWith({ facets: ["Vault"] });
     const after = expectChanged(addInitStep(before, catalog, "VaultInit"), before, "Added VaultInit to the init plan");
     expect(after.recipe.init).toEqual({ kind: "bundle", spec: "VaultInit", args: {} });
+  });
+});
+
+describe("useInitBundle", () => {
+  test("replaces a steps plan with the bundle, and the replaced steps' provenance and labels go with them", () => {
+    const before = projectWith(
+      { facets: ["Vault"], init: { kind: "steps", steps: [{ spec: "OwnableInit", args: { _owner: ADDRESS } }, { spec: "ERC20Init", args: {} }] } },
+      { provenance: { "steps[0]._owner": "link" }, labels: { "steps[0]._owner": "owner.eth" } },
+    );
+    const after = expectChanged(
+      untouched(before, (p) => useInitBundle(p, catalog, "VaultInit")),
+      before,
+      "Replaced OwnableInit and ERC20Init with the VaultInit bundle",
+    );
+    expect(after.recipe.init).toEqual({ kind: "bundle", spec: "VaultInit", args: {} });
+    expect(after.provenance).toEqual({});
+    expect(after.labels).toBeUndefined();
+  });
+
+  test("on an empty plan it's added", () => {
+    const before = projectWith({ facets: ["Vault"] });
+    const after = expectChanged(useInitBundle(before, catalog, "VaultInit"), before, "Added VaultInit to the init plan");
+    expect(after.recipe.init).toEqual({ kind: "bundle", spec: "VaultInit", args: {} });
+  });
+
+  test("refuses an unknown init, a step init and the bundle already in place", () => {
+    const stepsPlan = projectWith({ init: { kind: "steps", steps: [{ spec: "ERC20Init", args: {} }] } });
+    expectNoOp(useInitBundle(stepsPlan, catalog, "Nope"), stepsPlan, "The catalog has no init named Nope.");
+    expectNoOp(useInitBundle(stepsPlan, catalog, "OwnableInit"), stepsPlan, "OwnableInit isn't a bundle. Add it as an init step instead.");
+    const bundle = projectWith({ init: { kind: "bundle", spec: "VaultInit", args: {} } });
+    expectNoOp(useInitBundle(bundle, catalog, "VaultInit"), bundle, "The init plan is already the VaultInit bundle.");
   });
 });
 
