@@ -67,10 +67,13 @@ test.describe("the static shell (no JavaScript)", () => {
 });
 
 test.describe("the static Start block", () => {
-  // The desktop window, and the phone the mobile lab profile measures LCP on (spec L815).
+  // The desktop window, the narrow tier's lower edge, the phone the mobile lab profile measures LCP on (spec L815),
+  // and a small phone.
   for (const viewport of [
     { width: 1440, height: 900 },
+    { width: 768, height: 1024 },
     { width: 412, height: 823 },
+    { width: 375, height: 667 },
   ]) {
     test(`shows with no JavaScript, where the real one lands and at its size (${viewport.width} px)`, async ({
       browser,

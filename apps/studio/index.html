@@ -15,10 +15,10 @@
     <style>
       /*
        * Static first paint (spec L821-L826): the title bar, the pane switcher's row under 768 px, the pane
-       * outlines and the empty sheet's Start block below, sized to match the real shell
-       * (apps/studio/src/shell/Shell.module.css, TitleBar.module.css, panes.ts PANE_SIZES) so replacing this
-       * markup with the mounted app doesn't move anything already on screen. The build writes this style's hash
-       * into the CSP (build/csp.ts).
+       * outlines (the console as its summary line at 768-1023 px) and the empty sheet's Start block below, sized
+       * to match the real shell (apps/studio/src/shell/Shell.module.css, TitleBar.module.css, panes.ts PANE_SIZES)
+       * so replacing this markup with the mounted app doesn't move anything already on screen. The build writes
+       * this style's hash into the CSP (build/csp.ts).
        *
        * Values are copied from packages/tokens/dist/tokens.css, which loads after this page's first paint, so
        * this can't reference it. If T1 changes those values, this block needs the same edit.
@@ -250,6 +250,12 @@
         .lxs-pane {
           display: flex;
           flex-direction: column;
+        }
+      }
+      /* 768-1023 px: the console collapses to its 36 px summary line (use-pane-follow.ts). */
+      @media (min-width: 768px) and (max-width: 1023px) {
+        .lxs-console {
+          block-size: calc(var(--lxs-space-8) + var(--lxs-space-1));
         }
       }
       /* Under 768 px: one pane at a time, picked by the switcher; the console isn't one of the panes shown. */
