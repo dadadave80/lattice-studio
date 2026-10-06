@@ -73,7 +73,7 @@ Start: **Collisions**, focus anywhere.
    Expect: the same regions in reverse.
 3. On Windows and Linux only: repeat steps 1 and 2 with Ctrl+F6 and Ctrl+⇧F6.
    Expect: the same cycle. On macOS, Studio doesn't bind Ctrl+F6.
-4. F6 to the Sheet; focus is on a card. Press Mod+A, then Delete.
+4. F6 to the Sheet and press Home, so focus is on a card. Press Mod+A, then Delete.
    Expect: hear "Selected 3 cards." then "Removed AxelarGatewayAdapter, ZetaChainGatewayAdapter and CCIPGatewayAdapter." (in the sheet's reading order). A toast, "Removed 3 facets" with **Undo**, appears. Focus stays on the sheet: a toast never takes focus.
 5. Within 10 seconds, press F6 until you reach Notifications.
    Expect: after the Console comes "Notifications", then F6 goes on to "Title bar". ⇧F6 from the Title bar comes back to "Notifications", then "Console".
@@ -190,7 +190,7 @@ Pass when focus always lands on a card that exists, or on the sheet when none do
 
 Spec L753, L754, L659 · Flow 16 · IR "Keyboard" (¹) · WCAG 2.1.4.
 
-Start: **Collisions**. F6 to the Sheet; focus is on a card.
+Start: **Collisions**. F6 to the Sheet and press Home to select the first card.
 
 1. Press H, then V.
    Expect: H turns on the Hand tool (the **Hand** button reads pressed); V turns Select back on.
@@ -221,7 +221,7 @@ Pass when no single key fires while they're off or while typing, and every modif
 
 Spec L658-L660, L778 · IR "Command palette", "Dialogs", "Context menus", "Console drawer" · WCAG 2.1.1, 2.4.3, 4.1.2.
 
-Start: **Collisions**. F6 to the Sheet; focus is on a card.
+Start: **Collisions**. F6 to the Sheet and press Home to select the first card.
 
 1. Press Mod+K.
    Expect: the palette opens with focus in "Search commands, facets and recipes". A Suggested group comes first (for a collision: **Keep …**, **Route to …**, **Next problem**).

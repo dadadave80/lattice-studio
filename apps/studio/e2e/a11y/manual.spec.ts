@@ -126,6 +126,26 @@ test.describe("S6 · focus after delete and undo", () => {
   });
 });
 
+test.describe("S7 · shortcuts switched off", () => {
+  test("F6 alone reaches the Sheet, not a card; after Home, closing Settings returns focus to the card", async ({ page }) => {
+    await startCollisions(page);
+    const sheet = new SheetPage(page);
+    const [first] = COLLISIONS;
+    // Nothing on the sheet has had focus yet, so F6 lands on the region (regions.ts `focusRegion`).
+    await focusRegion(page, "Sheet");
+    await expect(region(page, "Sheet")).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(sheet.card(first)).toBeFocused();
+
+    await runInPalette(page, "Open Settings");
+    const settings = page.getByRole("dialog", { name: "Settings", exact: true });
+    await expect(settings).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(settings).toBeHidden();
+    await expect(sheet.card(first)).toBeFocused();
+  });
+});
+
 test.describe("S9 · deploy, with paste", () => {
   test("the review is named for the project, which the ERC20 start state leaves Untitled", async ({ page }) => {
     await startErc20(page);
