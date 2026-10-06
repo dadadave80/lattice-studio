@@ -148,10 +148,10 @@ Start: **Collisions**. F6 to the Sheet, press Home to select the first card.
 
 1. Press → five times quickly.
    Expect: the card moves right by 8 px a press. You hear one message, not five, once you stop: "Moved AxelarGatewayAdapter right," and its neighbor in words, for example "beside ZetaChainGatewayAdapter".
-2. Press ⇧↑ twice quickly.
-   Expect: 32 px a press; one message, "Moved AxelarGatewayAdapter up, …".
-3. Press Mod+Z once.
-   Expect: hear "Undid: Moved AxelarGatewayAdapter." The whole run of nudges is one undo step: the card is back where step 1 started. A second Mod+Z says "Nothing to undo".
+2. Wait for step 1's message, then press ⇧↑ twice quickly.
+   Expect: 32 px a press; one message, "Moved AxelarGatewayAdapter up, …". Presses less than a second apart are one burst, whichever arrow; the pause before this step makes it a burst of its own.
+3. Press Mod+Z twice.
+   Expect: each one says "Undid: Moved AxelarGatewayAdapter." and reverses a whole burst. The first puts the card back where step 2 started, the second where step 1 started. Stop there: a third Mod+Z would undo the start state's last placement ("Undid: Placed CCIPGatewayAdapter.").
 4. Hold → for three seconds.
    Expect: a message arrives within about 1.5 seconds, while the key is still held, not only after release. Press Mod+Z to put the card back.
 5. Press Esc to clear the selection, then →.
@@ -161,7 +161,7 @@ Start: **Collisions**. F6 to the Sheet, press Home to select the first card.
 7. Press =, −, ⇧0, ⇧1 and ⇧2.
    Expect: zoom in, zoom out, 100%, Fit and Zoom to selection; the zoom readout updates. ⇧0 at 100% says "Already at 100%".
 
-Pass when every burst gives one message with positions in words, and one undo reverses it.
+Pass when every burst gives one message with positions in words, and one undo reverses each burst.
 
 ### S6 · Focus after delete and undo
 
