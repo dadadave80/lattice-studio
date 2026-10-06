@@ -8,6 +8,7 @@ import { CardGround } from "./CardGround";
 import { CardHandles } from "./CardHandles";
 import { CardMarks } from "./CardMarks";
 import { CardStamp } from "./CardStamp";
+import { planIndex, stampText } from "./plan-index";
 import styles from "./FacetCard.module.css";
 import { useInitMark } from "./init-mark";
 import { MoreButton } from "./MoreButton";
@@ -49,6 +50,9 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
   const placedKey = useDocument((s) => s.project.recipe.facets.filter((f) => near.has(f)).join(","));
   const slice = useAnalysis((a) => (facet ? cardAnalysis(a, facet) : NO_SLICE), sameCardAnalysis);
   const selected = useSession((s) => s.selection.includes(name));
+  // The stamp in words, only while the core is selected (cards at rest never read the plan).
+  const coreOn = useSession((s) => s.coreSelected);
+  const stamp = useAnalysis((a) => (coreOn ? stampText(planIndex(a.plan, name)) : undefined));
   const compact = useStore((s) => s.transform[2] < layoutMetrics.compactZoom);
   const mark = useInitMark(name);
 
@@ -112,7 +116,7 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
       style={{ width, height }}
     >
       <span id={cardNameId(name)} hidden>{view.name}</span>
-      <span id={cardDescriptionId(name)} hidden>{describeCard(view, selected)}</span>
+      <span id={cardDescriptionId(name)} hidden>{describeCard(view, selected, stamp)}</span>
       <div className={styles.paint} style={{ containIntrinsicSize: `${width}px ${height}px` }}>
         <div className={styles.header}>
           <div className={styles.titleRow}>

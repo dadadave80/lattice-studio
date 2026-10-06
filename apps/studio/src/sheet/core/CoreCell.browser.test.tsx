@@ -91,6 +91,14 @@ describe("the cell", () => {
   });
 });
 
+describe("the empty sheet's hint", () => {
+  test("describes the toolbar while it shows", async () => {
+    await renderCoreSheet({ project: coreProject([], { id: ID }), ...VIEW });
+    const toolbar = page.getByRole("toolbar", { name: "Core" });
+    await expect.element(toolbar).toHaveAccessibleDescription(EMPTY_HINT);
+  });
+});
+
 describe("selecting the core", () => {
   test("Clear the selection lets the core go, and says so", async () => {
     await renderCoreSheet({ project: coreProject(["ERC20"], { id: ID }), ...VIEW });

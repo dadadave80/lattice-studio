@@ -351,10 +351,16 @@ export function routedSentence(routed: number, exported: number): string {
  * The description the card's group carries: connections, the selectors routed to the diamond, then the selection
  * state, last, so a check on the selection can anchor on the end (spec L745).
  */
-export function describeCard(view: Pick<CardView, "connections" | "routed" | "exported">, selected: boolean): string {
+export function describeCard(
+  view: Pick<CardView, "connections" | "routed" | "exported">,
+  selected: boolean,
+  /** While the core is selected, the card's place in the cut, as its stamp shows it: "02", or "Not cut". */
+  stamp?: string,
+): string {
   const selection = selected ? "Selected." : "Not selected.";
   const routed = routedSentence(view.routed, view.exported);
-  return view.connections ? `${view.connections} ${routed} ${selection}` : `${routed} ${selection}`;
+  const cut = stamp === undefined ? "" : stamp === "Not cut" ? " Not cut." : ` Cut plan position ${stamp}.`;
+  return view.connections ? `${view.connections} ${routed}${cut} ${selection}` : `${routed}${cut} ${selection}`;
 }
 
 /** The glyph's count: "9" when every export is routed here, "7/9" when some go elsewhere, "0/3" when none do. */

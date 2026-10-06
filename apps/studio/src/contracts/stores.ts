@@ -7,7 +7,7 @@
  * its stores (at module evaluation, or by a mounted component) follows the replacement: listeners are
  * called once with the new store's state and keep receiving its changes.
  */
-import { CORE_FACETS } from "@lattice-studio/core";
+import { CORE_FACETS, isCoreFacet } from "@lattice-studio/core";
 import type {
   Address, Anchor, DeployPath, EditResult, Hex, Layout, ProblemCode, Project,
 } from "@lattice-studio/core";
@@ -429,9 +429,14 @@ export const history: {
   subscribe: (listener) => relays.document.api.subscribe(listener),
 };
 
-/** Any write to the card selection deselects the core, unless the patch says otherwise (`core.select`). */
+/**
+ * Any write to the card selection deselects the core, unless the patch says otherwise (`core.select`). The core's
+ * facets are never cards, so they never enter the selection, whoever writes it (D13).
+ */
 function clearingCore(patch: Partial<SessionState>): Partial<SessionState> {
-  return "selection" in patch && !("coreSelected" in patch) ? { ...patch, coreSelected: false } : patch;
+  if (!("selection" in patch) || patch.selection === undefined) return patch;
+  const cards = patch.selection.some(isCoreFacet) ? patch.selection.filter((name) => !isCoreFacet(name)) : patch.selection;
+  return { ...patch, selection: cards, ...("coreSelected" in patch ? {} : { coreSelected: false }) };
 }
 
 export const session: StoreAccess<SessionState> = {

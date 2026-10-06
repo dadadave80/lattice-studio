@@ -40,6 +40,8 @@ export type CoreCellProps = {
 const CORE_KEYS = { [KEY_CONTEXT_ATTRIBUTE]: "global" };
 /** The gap between the cell and the title block, in px (a grid step). */
 const GAP = 8;
+/** The empty sheet's hint, the toolbar's description while it shows (one cell per sheet). */
+const HINT_ID = "core-cell-hint";
 /** The cell's width (`core.module.css` .cell) and the panels' distance from the sheet's edge (space-4). */
 const CELL_WIDTH = 290;
 const EDGE = 16;
@@ -225,7 +227,12 @@ const CellRows = memo(function CellRows({ status, mode, selected, collapsed, emp
     onBlur: () => onHot(null),
   });
   return (
-    <Toolbar label={CELL_LABEL} orientation={collapsed ? "horizontal" : "vertical"} className={styles.rows}>
+    <Toolbar
+      label={CELL_LABEL}
+      orientation={collapsed ? "horizontal" : "vertical"}
+      className={styles.rows}
+      describedBy={empty && !collapsed ? HINT_ID : undefined}
+    >
       <div className={cx(styles.line, styles.header)}>
         <BaseToolbar.Button className={styles.row} aria-label={diamondName()} aria-pressed={selected} onClick={select}>
           <span className={styles.key}>{CORE}</span>
@@ -274,7 +281,7 @@ const CellRows = memo(function CellRows({ status, mode, selected, collapsed, emp
           <ToolbarButton icon="chevron-up" label={EXPAND_CELL} aria-expanded={false} className={styles.chevron} onClick={toggle} />
         ) : null}
       </div>
-      {empty && !collapsed ? <p className={styles.hint}>{EMPTY_HINT}</p> : null}
+      {empty && !collapsed ? <p id={HINT_ID} className={styles.hint}>{EMPTY_HINT}</p> : null}
     </Toolbar>
   );
 });

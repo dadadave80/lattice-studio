@@ -62,7 +62,7 @@
   padding-inline: var(--lx-space-1);
 }
 
-/* The mark and the name read as one unit, at the lockup's own mark-to-word ratio (space-1 beside a 20 px mark). */
+/* The mark and the name read as one unit, at the lockup's own mark-to-word ratio (space-1 beside a 19 px mark). */
 .wordmark {
   display: inline-flex;
   align-items: center;

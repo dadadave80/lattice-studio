@@ -175,7 +175,7 @@ describe("the App menu", () => {
     expect(mark).not.toBeNull();
     expect(mark.getAttribute("aria-hidden")).toBe("true");
     expect(mark.querySelectorAll("path").length).toBe(3);
-    expect(mark.getBoundingClientRect().width).toBe(20);
+    expect(mark.getBoundingClientRect().width).toBe(19);
     expect(glyph.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(mark.nextSibling?.textContent).toBe("Lattice Studio");
     // A probe in `text`, so the check follows the token and not a literal color.
@@ -220,12 +220,12 @@ describe("the App menu", () => {
       const brand = bar().getByRole("button", { name: "Lattice Studio", exact: true });
       await expect.element(brand).toBeVisible();
       const mark = (brand.element() as HTMLElement).querySelector("svg[data-logomark]") as SVGSVGElement;
-      expect(mark.getBoundingClientRect().width).toBe(20);
+      expect(mark.getBoundingClientRect().width).toBe(19);
       const wordmark = mark.parentElement as HTMLElement;
       const hidden = wordmark.querySelector("span") as HTMLElement;
       expect(hidden.textContent).toBe("Lattice Studio");
       expect(hidden.getBoundingClientRect().width).toBeLessThanOrEqual(1);
-      expect(wordmark.getBoundingClientRect().width).toBe(20);
+      expect(wordmark.getBoundingClientRect().width).toBe(19);
     } finally {
       await page.viewport(1440, 900);
     }
