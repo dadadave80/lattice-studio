@@ -19,9 +19,10 @@
 import type { Hex4, Point, Rect, Size } from "@lattice-studio/core";
 import { doc, getAnalysis, getCatalog, saveViewport, session, type Viewport } from "@/contracts";
 import { reducedMotion } from "@/a11y/preferences";
+import { RAIL_GAP } from "@/sheet/core/geometry";
 import { cardRect, cardSizes, cardsBounds } from "./geometry";
 import {
-  centerOn, clampZoom, clearOf, FIT_MAX_ZOOM, fitRect, intersects, LOCATE_ZOOM, MAX_ZOOM, toScreen, zoomAt,
+  centerOn, clampZoom, clearOf, FIT_MAX_ZOOM, fitBest, intersects, LOCATE_ZOOM, MAX_ZOOM, toScreen, zoomAt, type Insets,
 } from "./viewport-math";
 
 /** The attribute a floating element over the sheet carries, so auto-pan keeps focused cards clear of it. */
@@ -131,15 +132,57 @@ function sizes() {
   return cardSizes(doc.get().layout, getCatalog(), getAnalysis());
 }
 
+/** Screen px between a framed card and what floats beside it. */
+const FLOAT_GAP = 16;
+
+/** A float's box relative to the sheet's top-left corner, while it shows. */
+function floatBox(sheet: HTMLElement, selector: string): Rect | null {
+  const el = sheet.querySelector<HTMLElement>(selector);
+  if (!el || el.getClientRects().length === 0) return null;
+  const box = sheet.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return null;
+  return { x: r.left - box.left, y: r.top - box.top, width: r.width, height: r.height };
+}
+
 /**
- * How much of the sheet's bottom the core cell holds, in px, while it shows: Fit frames the cards above it, so
- * the cell never covers a card or a note it just framed. The title block, narrower and pre-existing, still may.
+ * The room Fit, Zoom to selection and a project's first view frame cards into (SH-02, CO-01): the sheet minus the
+ * tool strip at the left, the init order legend at the right while it shows, and at the bottom either
+ * - the band under the ground rail (the higher of the core cell's and the title block's tops), so no core trace
+ *   runs under a card, or
+ * - the core cell's band alone, with the title block's column at the right while it's full, where a trace drops
+ *   below the cards (CO-01).
+ * Two layouts; `fitBest` takes the one that frames the cards larger. Neither floats nor this leave less than half
+ * the sheet either way. Empty with no sheet mounted: the whole sheet.
  */
-function coreCellInset(): number {
+export function fitLayouts(size: Size = sheetSize()): Partial<Insets>[] {
   const sheet = mounted()?.element();
-  const cell = sheet?.querySelector<HTMLElement>('[data-chrome="core-cell"]');
-  if (!sheet || !cell || cell.getClientRects().length === 0) return 0;
-  return Math.max(0, sheet.getBoundingClientRect().bottom - cell.getBoundingClientRect().top);
+  if (!sheet) return [];
+  const strip = floatBox(sheet, '[data-chrome="tool-strip"]');
+  const legend = floatBox(sheet, '[data-chrome="init-legend"]');
+  const cell = floatBox(sheet, '[data-chrome="core-cell"]');
+  const title = floatBox(sheet, '[data-chrome="title-block"]');
+  const full = sheet.querySelector('[data-chrome="title-block"][data-form="full"]') !== null;
+  const left = Math.min(size.width / 4, strip ? strip.x + strip.width + FLOAT_GAP : 0);
+  const fromRight = (box: Rect | null) => (box ? size.width - box.x + FLOAT_GAP : 0);
+  const fromBottom = (top: number | null) => (top === null ? 0 : size.height - top + FLOAT_GAP);
+  const cap = (n: number, of: number) => Math.min(n, of / 2);
+  const legendRight = fromRight(legend);
+  const tops = [cell?.y, title?.y].filter((y): y is number => y !== undefined);
+  const railTop = tops.length ? Math.min(...tops) - RAIL_GAP : null;
+  const under = { left, right: cap(legendRight, size.width), bottom: cap(fromBottom(railTop), size.height) };
+  if (!full || !title) return [under];
+  const beside = {
+    left,
+    right: cap(Math.max(legendRight, fromRight(title)), size.width),
+    bottom: cap(fromBottom(cell ? cell.y - RAIL_GAP : null), size.height),
+  };
+  return [under, beside];
+}
+
+/** The viewport that frames `bounds` (sheet units) in the room the floats leave (`fitLayouts`). */
+export function fitInRoom(bounds: Rect, maxZoom: number, size: Size = sheetSize()): Viewport {
+  return fitBest(bounds, size, fitLayouts(size), { maxZoom });
 }
 
 /** Frames `names` (every card when omitted), up to 100% for Fit and 200% for a selection. Null when none is placed. */
@@ -147,11 +190,7 @@ export function fitCards(names?: readonly string[]): Viewport | null {
   const layout = doc.get().layout;
   const bounds = cardsBounds(layout, sizes(), names);
   if (!bounds) return null;
-  const size = sheetSize();
-  // Fit frames everything above the core cell (FIT_PADDING still pads that part on every side); a selection is
-  // centered on the whole sheet, as before.
-  const room = names ? size : { width: size.width, height: Math.max(size.height / 2, size.height - coreCellInset()) };
-  return moveViewport(fitRect(bounds, room, { maxZoom: names ? MAX_ZOOM : FIT_MAX_ZOOM }));
+  return moveViewport(fitInRoom(bounds, names ? MAX_ZOOM : FIT_MAX_ZOOM));
 }
 
 /** Zooms to `zoom` (clamped) at a screen point, the sheet's center by default. */

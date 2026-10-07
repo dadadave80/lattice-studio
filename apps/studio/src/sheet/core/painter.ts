@@ -6,7 +6,7 @@
  * `transform`); its stubs are redrawn only when its size, pins, rows or the zoom change. With no trace to draw it
  * listens to nothing.
  */
-import type { Layout, Point, Sizes } from "@lattice-studio/core";
+import type { Layout, Point, Rect, Sizes } from "@lattice-studio/core";
 import { JOINT_RADIUS, tracePaths, type PinSide, type Transform } from "./geometry";
 
 /** What the painter reads of React Flow's store: the transform, now and as it changes. */
@@ -19,14 +19,20 @@ export type TransformStore = {
 export type TraceTarget = {
   name: string;
   element: SVGGElement;
+  /** Its bridges over other cards, above the cards: `<g>` holding the casing's `<path>`, then the wire's. */
+  bridge: SVGGElement | null;
   /** Sheet units from the card's top of each stub, for a live trace; empty otherwise. */
   stubs: readonly number[];
   /** Which pad the trace ends on. */
   to: "fallback" | "cut";
 };
 
-/** Where the cell's pads sit and where the rail runs, in screen px relative to the sheet. */
-export type Pads = { fallback: Point; cut: Point | null; railY: number };
+/**
+ * Where the cell's pads sit and where the rail runs, in screen px relative to the sheet: the rail above the cell
+ * and the title block, the floor a run may drop to above the cell alone, and the title block's left edge (null
+ * without one beside the cell).
+ */
+export type Pads = { fallback: Point; cut: Point | null; railY: number; floorY: number; titleLeft: number | null };
 
 export type PainterInputs = {
   /** React Flow's store, for the transform. */
@@ -49,7 +55,19 @@ export type Painter = {
 };
 
 /** What each `<g>` was last given, so an unchanged attribute is never written again. */
-type Painted = { line: string; origin: string; shape: string };
+type Painted = { line: string; origin: string; shape: string; bridges: string };
+
+/** Writes a path's `d`, or removes it when there's nothing to draw. */
+function setPath(path: Element | undefined, d: string): void {
+  if (!(path instanceof SVGPathElement)) return;
+  if (d) path.setAttribute("d", d);
+  else path.removeAttribute("d");
+}
+
+function setBridges(bridge: SVGGElement | null, d: string): void {
+  if (!bridge) return;
+  for (const path of Array.from(bridge.children)) setPath(path, d);
+}
 
 function sideOf(layout: Layout, name: string): PinSide {
   return layout[name]?.pins === "right" ? "right" : "left";
@@ -70,11 +88,12 @@ export function createPainter(inputs: PainterInputs): Painter {
   let listening: (() => void)[] = [];
   const painted = new WeakMap<SVGGElement, Painted>();
 
-  const clear = (element: SVGGElement) => {
-    const parts = partsOf(element);
+  const clear = (target: TraceTarget) => {
+    const parts = partsOf(target.element);
     parts?.line.removeAttribute("d");
     parts?.stubs.removeAttribute("d");
-    painted.delete(element);
+    setBridges(target.bridge, "");
+    painted.delete(target.element);
   };
 
   const paint = () => {
@@ -83,18 +102,29 @@ export function createPainter(inputs: PainterInputs): Painter {
     const sizes = inputs.sizes();
     const transform = inputs.store.getState().transform;
     const pads = inputs.pads();
+    // Every card on screen: a wire drops below the ones across its run, and bridges any it still crosses.
+    const [tx, ty, zoom] = transform;
+    const cards: { name: string; rect: Rect }[] = [];
+    for (const name in layout) {
+      const at = layout[name];
+      const box = sizes[name];
+      if (at && box) cards.push({ name, rect: { x: at.x * zoom + tx, y: at.y * zoom + ty, width: box.width * zoom, height: box.height * zoom } });
+    }
     for (const target of targets) {
       const entry = layout[target.name];
       const size = sizes[target.name];
       const parts = partsOf(target.element);
       if (!entry || !size || !pads || !parts) {
-        clear(target.element);
+        clear(target);
         continue;
       }
       const pad = target.to === "cut" ? (pads.cut ?? pads.fallback) : pads.fallback;
       const side = sideOf(layout, target.name);
       const rect = { x: entry.x, y: entry.y, width: size.width, height: size.height };
-      const paths = tracePaths({ rect, side, transform, railY: pads.railY, pad, stubs: target.stubs });
+      const obstacles = cards.filter((card) => card.name !== target.name).map((card) => card.rect);
+      const paths = tracePaths({
+        rect, side, transform, railY: pads.railY, floorY: pads.floorY, titleLeft: pads.titleLeft, pad, stubs: target.stubs, obstacles,
+      });
       const was = painted.get(target.element);
       const origin = `translate(${paths.origin.x} ${paths.origin.y})`;
       const shape = `${size.width}|${size.height}|${side}|${transform[2]}|${target.stubs.join(",")}|${parts.joints.length}`;
@@ -111,7 +141,8 @@ export function createPainter(inputs: PainterInputs): Painter {
           joint.setAttribute("r", String(JOINT_RADIUS));
         });
       }
-      painted.set(target.element, { line: paths.line, origin, shape });
+      if (was?.bridges !== paths.bridges) setBridges(target.bridge, paths.bridges);
+      painted.set(target.element, { line: paths.line, origin, shape, bridges: paths.bridges });
     }
   };
 

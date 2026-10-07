@@ -51,6 +51,11 @@ const BACK_TO_CONTENT_HALF = 100;
 const SETTLE_FRAMES = 6;
 /** The CSS variable Back to content lifts by while it would sit under the cell (`Sheet.module.css`). */
 export const CORE_LIFT_VAR = "--lx-core-lift";
+/**
+ * The CSS variable holding how much of the sheet's bottom the cell and the title block take, from the higher of
+ * their tops down, in px: what the Start block and the init order legend keep clear of.
+ */
+export const CORE_BAND_VAR = "--lx-core-band";
 
 function select(): void {
   void runCommand(commandRef("core.select"), "button");
@@ -63,7 +68,7 @@ function toggleCollapsed(): void {
 function samePads(a: Pads | null, b: Pads | null): boolean {
   if (a === null || b === null) return a === b;
   return (
-    a.railY === b.railY && a.fallback.x === b.fallback.x && a.fallback.y === b.fallback.y &&
+    a.railY === b.railY && a.floorY === b.floorY && a.titleLeft === b.titleLeft && a.fallback.x === b.fallback.x && a.fallback.y === b.fallback.y &&
     (a.cut?.x ?? null) === (b.cut?.x ?? null) && (a.cut?.y ?? null) === (b.cut?.y ?? null)
   );
 }
@@ -87,6 +92,7 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
   const cutPad = useRef<HTMLSpanElement>(null);
   const published = useRef<Pads | null>(null);
   const lift = useRef<string | null>(null);
+  const band = useRef<string | null>(null);
   const titleWidth = title?.width ?? null;
   const titleHeight = title?.height ?? null;
 
@@ -108,12 +114,24 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
       const fallback = top(fallbackPad.current);
       // The rail runs above whichever is taller, the cell or the title block beside it: a card over the title
       // block drops its trace onto the rail in open sheet, never behind the panel (the review's second blocker).
-      const titleTop = root.querySelector('[data-chrome="title-block"]')?.getBoundingClientRect().top ?? own.top;
+      // A run whose x-span stays clear of the title block's column may drop below a card in its way, as far as
+      // just above the cell (`floorY`, CO-01).
+      const titleBox = root.querySelector('[data-chrome="title-block"]')?.getBoundingClientRect() ?? null;
+      const titleTop = titleBox?.top ?? own.top;
       const railY = Math.min(own.top, titleTop) - box.top - RAIL_GAP;
-      const next = fallback ? { fallback, cut: top(cutPad.current), railY } : null;
+      const floorY = own.top - box.top - RAIL_GAP;
+      const titleLeft = titleBox ? titleBox.left - box.left : null;
+      const next = fallback ? { fallback, cut: top(cutPad.current), railY, floorY, titleLeft } : null;
       if (!samePads(published.current, next)) {
         published.current = next;
         onPads(next);
+      }
+      // The band the cell and the title block hold at the sheet's bottom, from the rail down: the Start block and
+      // the init order legend end above it (SH-01, SH-03).
+      const wantBand = `${Math.ceil(box.bottom - Math.min(own.top, titleTop))}px`;
+      if (wantBand !== band.current) {
+        band.current = wantBand;
+        root.style.setProperty(CORE_BAND_VAR, wantBand);
       }
       const under = own.left - box.left < box.width / 2 + BACK_TO_CONTENT_HALF;
       const want = under ? `${Math.ceil(own.height) + GAP}px` : null;
@@ -146,7 +164,9 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
   useLayoutEffect(
     () => () => {
       root?.style.removeProperty(CORE_LIFT_VAR);
+      root?.style.removeProperty(CORE_BAND_VAR);
       lift.current = null;
+      band.current = null;
       published.current = null;
       onPads(null);
     },

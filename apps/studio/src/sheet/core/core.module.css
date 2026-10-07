@@ -58,6 +58,51 @@
   animation: none;
 }
 
+/*
+ * Bridges (CO-01): where a wire can't route around a card, the stretch over the card draws again above the cards
+ * (z 4, after React Flow's renderer, under its panels at 5), on a casing in the ground's colour, so the wire reads
+ * as crossing the card, not plugging into it.
+ */
+.bridges {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  inline-size: 100%;
+  block-size: 100%;
+  max-inline-size: none;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.bridge path {
+  fill: none;
+  stroke: var(--lx-text);
+  stroke-width: max(var(--lx-stroke-hair), 1.5px);
+  stroke-linecap: butt;
+}
+
+.bridge[data-tone="live"] path,
+.bridge[data-tone="flash"] path {
+  stroke: var(--lx-accent);
+}
+
+.bridge[data-tone="live"] path {
+  stroke-width: var(--lx-stroke-heavy);
+}
+
+.bridge path.casing {
+  stroke: var(--lx-ground);
+  stroke-width: calc(var(--lx-stroke-heavy) * 3);
+}
+
+.bridge[data-tone="flash"] {
+  animation: core-flash 1600ms ease-out forwards;
+}
+
+:global(html[data-motion="reduce"]) .bridge[data-tone="flash"] {
+  animation: none;
+}
+
 /* Where a routed row's stub joins the trace: a schematic junction dot. */
 .joint {
   fill: var(--lx-accent);
@@ -294,6 +339,19 @@
   .trace[data-tone="live"] path,
   .trace[data-tone="flash"] path {
     stroke: Highlight;
+  }
+
+  .bridge path {
+    stroke: CanvasText;
+  }
+
+  .bridge[data-tone="live"] path,
+  .bridge[data-tone="flash"] path {
+    stroke: Highlight;
+  }
+
+  .bridge path.casing {
+    stroke: Canvas;
   }
 
   .joint {

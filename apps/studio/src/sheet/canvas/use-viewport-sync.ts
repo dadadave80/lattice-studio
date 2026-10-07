@@ -3,8 +3,8 @@ import { useReactFlow, useStoreApi, type OnMove } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { doc, getAnalysis, getCatalog, loadViewport, session, useDocument, type Viewport } from "@/contracts";
 import { cardSizes, cardsBounds } from "./geometry";
-import { attachSheet, sheetSize, storeViewport } from "./sheet-view";
-import { clampViewport, FIT_MAX_ZOOM, fitRect, isViewport, sameViewport } from "./viewport-math";
+import { attachSheet, fitInRoom, sheetSize, storeViewport } from "./sheet-view";
+import { clampViewport, FIT_MAX_ZOOM, isViewport, sameViewport } from "./viewport-math";
 
 const START: Viewport = { x: 0, y: 0, zoom: 1 };
 
@@ -12,7 +12,7 @@ const START: Viewport = { x: 0, y: 0, zoom: 1 };
 function firstViewport(): Viewport {
   const layout = doc.get().layout;
   const bounds = cardsBounds(layout, cardSizes(layout, getCatalog(), getAnalysis()));
-  return bounds ? fitRect(bounds, sheetSize(), { maxZoom: FIT_MAX_ZOOM }) : START;
+  return bounds ? fitInRoom(bounds, FIT_MAX_ZOOM) : START;
 }
 
 export type ViewportSync = {

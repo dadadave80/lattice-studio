@@ -191,16 +191,20 @@ a.address {
   stroke-linejoin: round;
 }
 
+/*
+ * The legend ends above the band the title block and the core cell hold at the sheet's bottom (`--lx-core-band`,
+ * set by the cell) and scrolls within that, so no step hides behind the title block (SH-03).
+ */
 .legend {
   margin: var(--lx-space-4);
-  max-block-size: calc(100% - var(--lx-space-8));
+  max-block-size: calc(100% - var(--lx-space-8) - var(--lx-core-band, 0px));
   overflow: auto;
 }
 
 /* Under the minimap: `--minimap-bottom` is where it ends, measured from the sheet's top. */
 .legend[data-below-minimap] {
   margin-block-start: calc(var(--minimap-bottom) + var(--lx-space-4));
-  max-block-size: calc(100% - var(--minimap-bottom) - var(--lx-space-4) * 2);
+  max-block-size: calc(100% - var(--minimap-bottom) - var(--lx-space-4) * 2 - var(--lx-core-band, 0px));
 }
 
 .legend > section {
