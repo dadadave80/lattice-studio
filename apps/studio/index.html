@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
     <title>Lattice Studio</title>
+    <script>
+      // The theme before first paint, as syncTheme() will set it (contracts/theme.ts): the saved Appearance choice,
+      // System following prefers-color-scheme. `data-theme="dark"` above stays as the fallback. The build writes
+      // this script's hash into the CSP (build/csp.ts).
+      (function () {
+        var choice;
+        try {
+          choice = JSON.parse(localStorage.getItem("lattice-studio.settings.v1") || "{}").theme;
+        } catch (error) {}
+        if (choice === "shop") choice = "dark";
+        if (choice === "draft") choice = "light";
+        try {
+          if (choice !== "light" && choice !== "dark") {
+            choice = typeof matchMedia === "function" && !matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark";
+          }
+          document.documentElement.setAttribute("data-theme", choice);
+        } catch (error) {}
+      })();
+    </script>
     <link
       rel="preload"
       as="font"
