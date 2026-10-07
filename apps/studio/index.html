@@ -170,15 +170,16 @@
       /*
        * The empty sheet's Start block (spec L378, L405, L815), its largest paint, drawn here so LCP doesn't wait for
        * the app: the look of apps/studio/src/sheet/chrome/StartBlock.tsx before the catalog loads (every choice
-       * dimmed with a dashed edge). Inert: a picture until React replaces it with the working block.
+       * dimmed with a dashed edge). Inert: a picture until React replaces it with the working block. It hangs from
+       * the top, as the real one does (SH-01).
        */
       .lxs-start-layer {
         position: absolute;
         inset: 0;
         z-index: 4;
         display: grid;
-        place-items: center;
-        padding: var(--lxs-space-8) var(--lxs-space-4);
+        place-items: start center;
+        padding: var(--lxs-space-8) var(--lxs-space-4) var(--lxs-space-4);
         overflow: auto;
       }
       .lxs-start {
