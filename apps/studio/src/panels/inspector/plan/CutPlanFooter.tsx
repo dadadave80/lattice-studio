@@ -35,7 +35,9 @@ export function CutPlanFooter() {
           <CommandButton command={commandRef("plan.copyJson")} icon="copy" iconOnly size="small" />
         </span>
       </div>
-      <div className={styles.scroller} data-inspector-plan-scroller="">
+      {/* It scrolls on its own (IN-01), so it takes Tab and a name: the keyboard can reach and scroll what's below. */}
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-tabindex */}
+      <div className={styles.scroller} role="group" aria-label="Cuts and address" tabIndex={0} data-inspector-plan-scroller="">
         {rows.length === 0 ? (
           <p className={styles.empty}>{catalog ? "No cuts yet. Place facets to plan the cut." : "Loading the catalog…"}</p>
         ) : (
