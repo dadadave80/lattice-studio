@@ -461,6 +461,107 @@ describe("cut plan footer", () => {
   });
 });
 
+/** GovernedVault in a frame at the inspector's default 316 px width, `height` tall. */
+async function governedVaultAt(height: number, selection: string[] = []): Promise<HTMLElement> {
+  const loaded = loadTemplate(fixtureCatalog(), "GovernedVault");
+  if (!loaded.ok) throw new Error(loaded.error);
+  await renderWithStudio(
+    <div data-test-frame="" style={{ inlineSize: 316, blockSize: height, display: "flex", flexDirection: "column" }}>
+      <InspectorPanel />
+    </div>,
+    { project: makeProject({ id: `inspector-gv-${height}`, recipe: loaded.value }), session: { selection } },
+  );
+  const frame = document.querySelector<HTMLElement>("[data-test-frame]");
+  if (!frame) throw new Error("no frame");
+  return frame;
+}
+
+/** Text runs of `root` that wrap onto two lines: with `<wbr>` between an identifier's tokens, a mid-token break. */
+function brokenTokens(root: Element): string[] {
+  const broken: string[] = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    // Each run between spaces (and `<wbr>`s, which split text nodes) must sit on one line. Hex may break anywhere.
+    for (const word of (node.textContent ?? "").matchAll(/\S+/g)) {
+      if (/^0x[0-9a-f]+$/i.test(word[0])) continue;
+      const range = document.createRange();
+      range.setStart(node, word.index);
+      range.setEnd(node, word.index + word[0].length);
+      const tops = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)));
+      if (tops.size > 1) broken.push(word[0]);
+    }
+  }
+  return broken;
+}
+
+describe("plan footer size (IN-01)", () => {
+  test("at most 30% and 192 px; the head with Copy plan as JSON stays put and only the cuts scroll", async () => {
+    const frame = await governedVaultAt(700);
+    const footer = await vi.waitFor(() => {
+      const el = frame.querySelector<HTMLElement>("[data-inspector-plan]");
+      expect(el?.querySelectorAll("li").length).toBeGreaterThan(10);
+      return el as HTMLElement;
+    });
+    expect(footer.getBoundingClientRect().height).toBeLessThanOrEqual(Math.min(0.3 * 700, 192) + 1);
+    // The footer itself never scrolls: a second scroller under the view is what ate the inspector.
+    expect(footer.scrollHeight).toBeLessThanOrEqual(footer.clientHeight + 1);
+    const scroller = footer.querySelector<HTMLElement>("[data-inspector-plan-scroller]");
+    expect(scroller).not.toBeNull();
+    expect(scroller!.scrollHeight).toBeGreaterThan(scroller!.clientHeight);
+    expect(scroller!.clientHeight).toBeGreaterThanOrEqual(96);
+    const head = footer.querySelector("h2")?.parentElement;
+    const copy = page.getByRole("button", { name: "Copy plan as JSON" }).element();
+    expect(head?.contains(copy)).toBe(true);
+  });
+
+  test("the view keeps most of a short window", async () => {
+    const frame = await governedVaultAt(560);
+    await vi.waitFor(() => expect(frame.querySelectorAll("[data-inspector-plan] li").length).toBeGreaterThan(10));
+    const footer = frame.querySelector<HTMLElement>("[data-inspector-plan]");
+    expect(footer!.getBoundingClientRect().height).toBeLessThanOrEqual(560 * 0.3 + 1);
+  });
+});
+
+describe("identifiers and labels in a 316 px inspector (IN-03, IN-04)", () => {
+  test("namespaces wrap between tokens, never mid-word", async () => {
+    const frame = await governedVaultAt(900);
+    const list = await vi.waitFor(() => {
+      const el = frame.querySelector<HTMLElement>('ul[aria-label="Namespaces"]');
+      expect(el?.textContent).toContain("lattice.storage.");
+      return el as HTMLElement;
+    });
+    expect(brokenTokens(list)).toEqual([]);
+    // The Core section's loupe signatures too: no "facetFunctionSelectors(add / ress)".
+    const loupe = frame.querySelector('ul[aria-label="Loupe selectors"]');
+    expect(loupe?.textContent).toContain("facetFunctionSelectors(address)");
+    expect(brokenTokens(loupe!)).toEqual([]);
+  });
+
+  test("a facet's source, namespace and signatures wrap between tokens", async () => {
+    const frame = await governedVaultAt(900, ["GovernedVault"]);
+    await viewShown("facet");
+    const view = frame.querySelector<HTMLElement>('[data-view="facet"]');
+    await vi.waitFor(() => expect(view?.textContent).toContain("lattice.storage."));
+    for (const dd of view!.querySelectorAll("dd")) expect(brokenTokens(dd)).toEqual([]);
+  });
+
+  test("the label column fits its longest label, with a gap before the value", async () => {
+    const frame = await governedVaultAt(900);
+    await viewShown("diamond");
+    const labels = [...frame.querySelectorAll<HTMLElement>("dt")];
+    const namespaces = labels.find((dt) => dt.textContent === "Namespaces");
+    const hash = labels.find((dt) => dt.textContent === "Recipe hash");
+    if (!namespaces || !hash) throw new Error("labels missing");
+    const range = document.createRange();
+    range.selectNodeContents(namespaces);
+    const valueStart = namespaces.nextElementSibling!.getBoundingClientRect().left;
+    expect(valueStart - range.getBoundingClientRect().right).toBeGreaterThanOrEqual(8);
+    // One line, not "RECIPE / HASH".
+    range.selectNodeContents(hash);
+    expect(new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size).toBe(1);
+  });
+});
+
 describe("narrow windows", () => {
   test("under 768 px, Fill in sits at the top of the pane while arguments are missing", async () => {
     const init = vi.fn();

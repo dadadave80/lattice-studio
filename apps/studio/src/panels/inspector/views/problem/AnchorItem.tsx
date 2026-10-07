@@ -6,6 +6,7 @@ import sheet from "../../shared/sheet.module.css";
 import type { SignatureOf } from "../comparison/comparison-text";
 import { InlineCode } from "./InlineCode";
 import styles from "./ProblemView.module.css";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 export type AnchorItemProps = {
   anchor: Anchor;
@@ -61,7 +62,7 @@ export function AnchorItem({ anchor, signatureOf, chainName }: AnchorItemProps) 
     case "init":
       return (
         <li className={styles.anchor}>
-          <code className={sheet.mono}>{anchor.path}</code>
+          <code className={sheet.mono}>{breakIdentifier(anchor.path)}</code>
           <CommandButton size="small" command={commandRef("init.focusField", { path: anchor.path })}>
             Fill in<VisuallyHidden> {anchor.path}</VisuallyHidden>
           </CommandButton>

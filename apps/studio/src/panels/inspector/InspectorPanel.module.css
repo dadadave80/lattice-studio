@@ -12,6 +12,8 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* A control scrolled or focused into view clears the plan's edge instead of sitting cut against it. */
+  scroll-padding-block-end: var(--lx-space-4);
 }
 
 .placeholder {

@@ -1,4 +1,7 @@
-/* Board 06: the DiamondCut plan on sunken ground, then the diamond's address. */
+/*
+ * Board 06: the DiamondCut plan on sunken ground, then the diamond's address. At most 30% of the inspector
+ * and 192 px, so the view above keeps the room. The head stays pinned; the cuts and the address scroll under it.
+ */
 
 .footer {
   display: flex;
@@ -8,8 +11,37 @@
   background: var(--lx-sunken);
   border-top: var(--lx-stroke-hair) solid var(--lx-border-subtle);
   min-height: 0;
-  max-height: 45%;
+  max-height: min(30%, calc(var(--lx-space-12) * 4));
+  overflow: hidden;
+}
+
+.planHead {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-2);
+}
+
+.planHead .label,
+.planHead .aside {
+  white-space: nowrap;
+}
+
+.headEnd {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-1);
+}
+
+.scroller {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .head {
@@ -90,11 +122,6 @@
   color: var(--lx-accent);
 }
 
-.copy {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .empty {
   margin: 0;
   font: var(--lx-font-body-sm);
@@ -111,6 +138,7 @@
 }
 
 .addressBlock {
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: var(--lx-space-1);

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useAnalysis } from "@/contracts";
 import sheet from "../../shared/sheet.module.css";
 import styles from "./facet.module.css";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 export type InitFieldsProps = {
   spec: InitSpec;
@@ -31,7 +32,7 @@ export function InitFields({ spec, path }: InitFieldsProps) {
         return (
           <li key={param.name} className={sheet.item} data-field={param.name}>
             <div className={sheet.itemLine}>
-              <span className={sheet.mono}>{param.name}</span>
+              <span className={sheet.mono}>{breakIdentifier(param.name)}</span>
               <span className={sheet.muted}>{param.unit ? `${param.type} · ${param.unit}` : param.type}</span>
             </div>
             {isMissing ? <span className={styles.missing}>missing</span> : null}

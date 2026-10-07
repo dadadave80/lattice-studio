@@ -1,5 +1,6 @@
-/* The inspector's ruled spec sheet (design/boards/current-inspector.png): a 96 px label column in small caps,
-   mono values, hairline rules between rows. Every view builds on these classes. */
+/* The inspector's ruled spec sheet (design/boards/current-inspector.png): a label column in small caps, at
+   least 96 px and as wide as its longest label, mono values, hairline rules between rows. Every view builds on
+   these classes. Values break between tokens (ui/text/Identifier), never mid-word; only hex breaks anywhere. */
 
 .view {
   display: flex;
@@ -66,7 +67,7 @@
 
 .rows {
   display: grid;
-  grid-template-columns: calc(var(--lx-space-12) * 2) minmax(0, 1fr);
+  grid-template-columns: minmax(calc(var(--lx-space-12) * 2), max-content) minmax(0, 1fr);
   margin: 0;
 }
 
@@ -90,13 +91,15 @@
   letter-spacing: var(--lx-tracking-label);
   text-transform: uppercase;
   color: var(--lx-text-muted);
-  padding-right: var(--lx-space-2);
+  /* The column gap, inside the cell so the row's hairline runs unbroken. */
+  padding-right: var(--lx-space-3);
+  white-space: nowrap;
 }
 
 .value {
   margin: 0;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   font: var(--lx-font-code-sm);
   letter-spacing: var(--lx-tracking-code-sm);
   color: var(--lx-text);
@@ -119,7 +122,7 @@
 .mono {
   font: var(--lx-font-code-sm);
   letter-spacing: var(--lx-tracking-code-sm);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .accent {

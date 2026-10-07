@@ -8,6 +8,7 @@ import { SpecRows } from "../../shared/SpecRows";
 import sheet from "../../shared/sheet.module.css";
 import { initText, missingArgs, namespaceIds } from "./diamond-words";
 import styles from "./diamond.module.css";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 /** The diamond at a glance (IR L119): hash, catalog, facets, problems, namespaces and init; the Core section above has the selectors. */
 export function DiamondSummary() {
@@ -50,7 +51,7 @@ export function DiamondSummary() {
               <ul className={styles.plainList} aria-label="Namespaces">
                 {namespaces.map((id) => (
                   <li key={id} className={styles.faint}>
-                    {id}
+                    {breakIdentifier(id)}
                   </li>
                 ))}
               </ul>

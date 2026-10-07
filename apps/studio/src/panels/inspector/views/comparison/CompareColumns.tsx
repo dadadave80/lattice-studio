@@ -4,6 +4,7 @@ import { useId } from "react";
 import sheet from "../../shared/sheet.module.css";
 import { denseSelector, type SignatureOf } from "./comparison-text";
 import styles from "./ComparisonView.module.css";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 export type CompareColumnsProps = {
   plan: readonly PlanEntry[];
@@ -17,7 +18,7 @@ function selectorList(selectors: readonly Hex4[], signatureOf: SignatureOf) {
     <ul className={styles.selectors}>
       {selectors.map((hex) => (
         <li key={hex}>
-          <code className={sheet.mono}>{denseSelector(hex, signatureOf)}</code>
+          <code className={sheet.mono}>{breakIdentifier(denseSelector(hex, signatureOf))}</code>
         </li>
       ))}
     </ul>
@@ -93,7 +94,7 @@ export function CompareColumns({ plan, facets, comparison, signatureOf }: Compar
               <li key={entry.selector} className={sheet.item}>
                 <div className={styles.difference}>
                   <p className={styles.mark}>Moved</p>
-                  <code className={sheet.mono}>{denseSelector(entry.selector, signatureOf)}</code>
+                  <code className={sheet.mono}>{breakIdentifier(denseSelector(entry.selector, signatureOf))}</code>
                   <span className={sheet.muted}>
                     Planned at{" "}
                     <span className={sheet.mono} title={entry.expected}>

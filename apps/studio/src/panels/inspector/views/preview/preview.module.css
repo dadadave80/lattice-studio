@@ -26,7 +26,7 @@
   font: var(--lx-font-subheading);
   letter-spacing: var(--lx-tracking-subheading);
   color: var(--lx-text);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .facts {
@@ -54,7 +54,7 @@
   font: var(--lx-font-code-sm);
   letter-spacing: var(--lx-tracking-code-sm);
   color: var(--lx-text);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .place {

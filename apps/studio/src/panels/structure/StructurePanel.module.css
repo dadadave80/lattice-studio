@@ -23,20 +23,42 @@
   min-block-size: 0;
 }
 
+/* Names stay on one line and cut with an ellipsis (the full name is in the title), never mid-word. */
 .name {
   flex: 1 1 auto;
   min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.aside {
+/* A group's own word (Core, Problems, Init plan) never gives way to what follows it. */
+.group {
   flex: none;
+  white-space: nowrap;
+}
+
+/* Counts and summaries give way first: "GovernedVaultInit bun…", not "I / n / i / t". */
+.aside {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--lx-text-muted);
   font: var(--lx-font-code-sm);
   letter-spacing: var(--lx-tracking-code-sm);
   font-variant-numeric: tabular-nums;
 }
 
+/* A selector's name keeps its width up to 60% of the row (then cuts, whole in the title); the mark after it
+   wraps in what's left rather than squeezing the name to "depos…". */
 .code {
+  flex: none;
+  max-inline-size: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font: var(--lx-font-code-sm);
   letter-spacing: var(--lx-tracking-code-sm);
 }

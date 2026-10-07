@@ -5,6 +5,7 @@ import { Section } from "../../shared/Section";
 import sheet from "../../shared/sheet.module.css";
 import { CodeText } from "./CodeText";
 import { servedSeams, signatureOf } from "./facet-model";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 /** Seams it serves (IR L118): active seams this facet is allowed to serve, each selector with its reason. */
 export function SeamsSection({ facet, catalog }: { facet: Facet; catalog: Catalog }) {
@@ -19,7 +20,7 @@ export function SeamsSection({ facet, catalog }: { facet: Facet; catalog: Catalo
           return (
             <li key={seam.selector} className={sheet.item} data-seam={seam.selector}>
               <span className={sheet.mono}>
-                {signature === undefined ? seam.selector : <CodeText text={formatSelector({ hex: seam.selector, signature }, "full")} />}
+                {signature === undefined ? breakIdentifier(seam.selector) : <CodeText text={formatSelector({ hex: seam.selector, signature }, "full")} />}
               </span>
               <p className={sheet.muted}>Its version {seam.reason}.</p>
             </li>

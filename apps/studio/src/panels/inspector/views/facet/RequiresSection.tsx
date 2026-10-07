@@ -5,6 +5,7 @@ import { Section } from "../../shared/Section";
 import sheet from "../../shared/sheet.module.css";
 import { requirementStatus } from "./facet-model";
 import styles from "./facet.module.css";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 /**
  * Requires (IR L118, Flow 5): each requirement with its status. A missing one offers Place {option} per option
@@ -26,7 +27,7 @@ export function RequiresSection({ facet, readOnly }: { facet: Facet; readOnly: b
             return (
               <li key={key} className={cx(sheet.item, styles.requirement)} data-requirement={key}>
                 <div className={sheet.itemLine}>
-                  <span className={sheet.mono}>{requirement.anyOf.join(" or ")}</span>
+                  <span className={sheet.mono}>{breakIdentifier(requirement.anyOf.join(" or "))}</span>
                   <span className={cx(sheet.muted, status.status === "missing" && !status.convention && styles.contested)}>
                     {word}
                   </span>

@@ -105,13 +105,20 @@
 }
 
 .name {
+  flex: 0 1 auto;
+  min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* The name is what you scan for: its count gives way first ("2 sel…"), keeping its number in view. */
 .muted {
-  flex: none;
+  flex: 0 1000 auto;
+  min-inline-size: var(--lx-space-6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--lx-text-muted);
   font: var(--lx-font-body-sm);
 }
