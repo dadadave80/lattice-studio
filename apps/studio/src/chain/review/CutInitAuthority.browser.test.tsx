@@ -1,5 +1,5 @@
 import type { Address, Arg, Project } from "@lattice-studio/core";
-import { formatCount, toChecksum } from "@lattice-studio/core";
+import { formatAddress, formatCount, toChecksum } from "@lattice-studio/core";
 import { describe, expect, test } from "vitest";
 import { getAnalysis } from "@/contracts";
 import { resetInitUi, setEnsLabel } from "@/panels/init/init-ui-store";
@@ -32,7 +32,7 @@ function withLabels() {
 }
 
 describe("What gets cut", () => {
-  test("summarizes the cut and expands to each facet with its version, full address and LatticeRegistry", async () => {
+  test("summarizes the cut and expands to each facet with its version, address and LatticeRegistry", async () => {
     const { dialog } = await renderReview({ project: templateProject("ERC20") });
     const cut = section("What gets cut");
     // The core's two Adds are named, not counted: ERC20's template cuts ERC20 and Receive beside them.
@@ -43,14 +43,43 @@ describe("What gets cut", () => {
     for (const entry of getAnalysis().plan) {
       const row = cut.getByRole("row").filter({ hasText: `${entry.facet} ${entry.version}` });
       await expect.element(row.getByRole("rowheader", { name: `${entry.facet} ${entry.version}`, exact: true })).toBeVisible();
-      await expect.element(row.getByText(toChecksum(entry.address), { exact: true })).toBeVisible();
+      // The short form, the full address in its title and behind Copy.
+      const address = row.getByText(formatAddress(toChecksum(entry.address)), { exact: true });
+      await expect.element(address).toBeVisible();
+      await expect.element(address).toHaveAttribute("title", toChecksum(entry.address));
+      await expect.element(row.getByRole("button", { name: "Copy address" })).toBeVisible();
       await expect.element(row.getByText("Matches")).toBeVisible();
-      await expect.element(row.getByText("LatticeRegistry")).toBeVisible();
       // "12/17 selectors", routed of exported, as every count reads (spec L685).
       const exported = deployableCatalog().facets.find((f) => f.name === entry.facet)?.selectors.length ?? 0;
       await expect.element(row.getByText(formatCount(entry.selectors.length, exported), { exact: true })).toBeVisible();
     }
     expect(dialog.element().querySelectorAll("[data-facet]").length).toBe(getAnalysis().plan.length);
+    // Where the expected codehashes come from, said once under the table.
+    await expect.element(cut.getByText("Expected codehashes from LatticeRegistry.", { exact: true })).toBeVisible();
+  });
+
+  test("opened, the table spans the section and no cell breaks inside a word", async () => {
+    const { dialog } = await renderReview({ project: templateProject("GovernedVault") });
+    const cut = section("What gets cut");
+    await cut.getByText(/^The core and \d+ facets/).click();
+    const table = cut.getByRole("table", { name: "Facets to cut" }).element();
+    await expect.element(table).toBeVisible();
+    const sectionEl = dialog.element().querySelector<HTMLElement>('[data-section="cut"]')!;
+    const label = sectionEl.querySelector("h3")!.getBoundingClientRect();
+    // Under the label, from its left edge: the section's width, not the value column's.
+    expect(table.getBoundingClientRect().left).toBe(label.left);
+    expect(table.getBoundingClientRect().top).toBeGreaterThan(label.bottom);
+    // Partial facets go as custom cuts, so their codehashes come from the catalog: the shorter list is named.
+    await expect
+      .element(cut.getByText("Expected codehashes from LatticeRegistry, and from catalog v0.4.0 for ERC20, ERC20Votes, ERC4626, VaultCore, Governor and Votes.", { exact: true }))
+      .toBeVisible();
+    // One line each: the text's height under two of the cell's lines (the address cell's Copy stands a little taller).
+    for (const cell of table.querySelectorAll("thead th, tbody th, tbody td")) {
+      const range = document.createRange();
+      range.selectNodeContents(cell);
+      const line = Number.parseFloat(getComputedStyle(cell).lineHeight);
+      expect(range.getBoundingClientRect().height, cell.textContent ?? "").toBeLessThan(line * 2);
+    }
   });
 
   test("names the catalog tag where the registry doesn't list the version", async () => {
@@ -58,8 +87,7 @@ describe("What gets cut", () => {
     await renderReview({ project: templateProject("ERC20"), chain });
     const cut = section("What gets cut");
     await cut.getByText("The core and 2 facets · 15 selectors").click();
-    const row = cut.getByRole("row").filter({ hasText: "ERC20 " }).first();
-    await expect.element(row.getByText("catalog v0.4.0")).toBeVisible();
+    await expect.element(cut.getByText("Expected codehashes from catalog v0.4.0.", { exact: true })).toBeVisible();
   });
 
   test("marks a differing codehash and blocks deploy", async () => {
