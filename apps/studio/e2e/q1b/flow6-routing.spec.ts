@@ -95,6 +95,8 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     await seedProject(page, { project: seamRecipe() });
     const sheet = new SheetPage(page);
     await sheet.fit();
+    // Fit now leaves this recipe under the compact zoom, where pins don't draw (SH-02): zoom to the card.
+    await sheet.zoomToCard("ERC20Pausable");
     const pin = sheet.pinLike("ERC20Pausable", "transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault");
 
     // A seam pin is `aria-disabled` (no action), which is legitimate — a real right-click still opens the

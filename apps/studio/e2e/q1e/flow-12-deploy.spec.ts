@@ -163,6 +163,9 @@ test.describe("Flow 12. Deploy", () => {
       await connectOnAnvil(page);
       await runPalette(page, "Deploy missing contracts…");
       const dialog = new MissingContractsDialog(page);
+      // The dialog reads the chain as it opens and its Deploy waits on that ("Reading the chain…"): an Enter sooner
+      // is refused, so wait for it as a person would.
+      await expect(dialog.deploy(2)).not.toHaveAttribute("aria-disabled", "true");
       await activate(page, "keyboard", dialog.deploy(2));
 
       await expect(dialog.row("EmergencyStop")).toContainText("Failed");
