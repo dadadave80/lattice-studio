@@ -92,6 +92,10 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
       # Chromium for Flows 1-14 and 17; WebKit for the @smoke set only (spec "Screen readers, tier 1").
       - run: bun x playwright install --with-deps chromium webkit
+      # Anvil for the deploy flows (12-14) and the kit's smoke tests. The contracts come from catalog/, so no build.
+      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
       - run: bun run e2e
 
   golden:
