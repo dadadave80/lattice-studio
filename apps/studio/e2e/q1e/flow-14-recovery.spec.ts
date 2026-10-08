@@ -18,6 +18,7 @@ import { ALICE, safeMockCode } from "../_support/anvil.ts";
 import { focusRegion, region } from "../_support/keys.ts";
 import { recipeProject } from "../_support/projects.ts";
 import { seedProject, seedSettings } from "../_support/seed.ts";
+import { TALL_DESKTOP } from "../_support/viewports.ts";
 import { shortAddress } from "../_support/wallet.ts";
 import { deployOnAnvil, mine, pendingDeploy, predictedAddress, releaseAddress, removeShared } from "./pages/chain.ts";
 import { DeployReview, SettingsDialog, watchReactErrors } from "./pages/dialogs.ts";
@@ -37,6 +38,9 @@ function grouped(value: bigint | number): string {
 function deadRpc(): string {
   return `http://127.0.0.1:${localPort("VITEST_BROWSER_PORT")}`;
 }
+
+// The flows read the title block's full rows: a window tall enough that it starts full (David's decision on SH-01/SH-02).
+test.use({ viewport: TALL_DESKTOP });
 
 test.describe("Flow 14. Recover when something goes wrong", () => {
   test.describe("RPC down or rate-limited", () => {

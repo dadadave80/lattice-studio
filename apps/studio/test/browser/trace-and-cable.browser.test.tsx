@@ -40,9 +40,13 @@ function withCoreFacets(project: Project): Project {
   return { ...project, recipe: withCore(project.recipe, catalog) };
 }
 
-/** Waits until the title block's summary text (async on the analysis) has painted and holds still. */
+/**
+ * Waits until the title block has painted and the page holds still. Its summary ("N facets · M selectors") is gone
+ * from the frame: the 700 px sheet is short, so the block starts collapsed (David's decision on SH-01/SH-02); the
+ * traces and ties each test waits for already come from the analysis.
+ */
 async function settledScreen(): Promise<void> {
-  await expect.element(page.getByText(/^\d+ facets? · \d+ selectors?$/)).toBeVisible();
+  await expect.element(page.getByRole("region", { name: "Title block" })).toBeVisible();
   await expect.poll(() => {
     const text = document.querySelector("[data-inspector-plan], [data-region='title-block']")?.textContent ?? document.body.textContent;
     return new Promise<boolean>((resolve) =>

@@ -19,8 +19,10 @@ function paneMenus(): MouseEvent[] {
   return calls;
 }
 
-// Empty sheet: the bottom edge's left corner holds the zoom readout, its middle the core cell, its right corner the title block.
-const AT = { x: 200, y: 660 };
+// Empty sheet, between the cards and the bottom band. The 700 px tall sheet is short, so the title block starts
+// collapsed (David's decision on SH-01/SH-02): its one row spans the bottom edge from x ≈ 170, and the core cell sits
+// above its right end.
+const AT = { x: 200, y: 600 };
 
 function point(offset = { x: 0, y: 0 }) {
   const box = flowElement().getBoundingClientRect();

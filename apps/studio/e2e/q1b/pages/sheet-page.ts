@@ -97,6 +97,17 @@ export class SheetPage {
     await this.card(facet).getByText(facet, { exact: true }).click();
     await expect.poll(() => this.connectionsOf(facet), { message: `${facet} should be selected` }).toMatch(/(?:^|\s)Selected\./);
     await runInPalette(this.page, "Zoom to selection");
+    // The zoom glides in: wait until the sheet holds still, or a click aimed at a pin lands on the card under it.
+    const viewport = this.page.locator(".react-flow__viewport");
+    let last = "";
+    await expect
+      .poll(async () => {
+        const now = await viewport.evaluate((el) => getComputedStyle(el).transform);
+        const still = now === last;
+        last = now;
+        return still;
+      }, { intervals: [100] })
+      .toBe(true);
   }
 
   /**

@@ -16,7 +16,7 @@ import { catalog } from "../_support/catalog.ts";
 import { focusRegion, focusedRegion, region } from "../_support/keys.ts";
 import { recipeProject } from "../_support/projects.ts";
 import { seedProject } from "../_support/seed.ts";
-import { NARROW_WIDTHS, expectTier, tierAt, viewportAt } from "../_support/viewports.ts";
+import { NARROW_WIDTHS, TALL_DESKTOP, expectTier, tierAt, viewportAt } from "../_support/viewports.ts";
 import { MOCK_ACCOUNT, shortAddress } from "../_support/wallet.ts";
 import { executeAsSafe, mine, pendingDeploy, predictedAddress, recordFor, releaseAddress, removeShared, unstick } from "./pages/chain.ts";
 import { expect, test } from "../_support/fixtures.ts";
@@ -44,6 +44,9 @@ function proposalFor(project: ReturnType<typeof recipeProject>) {
     at: new Date().toISOString(),
   });
 }
+
+// The flows read the title block's full rows: a window tall enough that it starts full (David's decision on SH-01/SH-02).
+test.use({ viewport: TALL_DESKTOP });
 
 test.describe("Flow 12. Deploy", () => {
   test.describe("step 1: open", () => {

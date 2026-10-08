@@ -19,6 +19,7 @@
 import type { Hex4, Point, Rect, Size } from "@lattice-studio/core";
 import { doc, getAnalysis, getCatalog, saveViewport, session, type Viewport } from "@/contracts";
 import { reducedMotion } from "@/a11y/preferences";
+import { currentTier } from "@/shell/layout-tier";
 import { RAIL_GAP } from "@/sheet/core/geometry";
 import { cardRect, cardSizes, cardsBounds } from "./geometry";
 import {
@@ -178,6 +179,37 @@ export function fitLayouts(size: Size = sheetSize()): Partial<Insets>[] {
     bottom: cap(fromBottom(cell ? cell.y - RAIL_GAP : null), size.height),
   };
   return [under, beside];
+}
+
+/** How often, in ms, the first view checks whether the floats are drawn (their chunks load lazily). */
+const FLOATS_POLL_MS = 16;
+/** At most this long, in ms, the first view waits for them. */
+const FLOATS_WAIT_MS = 1500;
+/** Checks the first view waits once they are, for the core cell to take its place beside the title block. */
+const FLOATS_SETTLE_CHECKS = 2;
+
+/**
+ * Resolves once the floats Fit measures are drawn in their resting form: the title block (in the form it starts
+ * in, collapsed on a short sheet) and the core cell, which load in lazy chunks, then a couple of checks more for the
+ * cell to settle beside the block. Neither shows at the phone tier. Timers, not animation frames, so a page in the
+ * background still opens; and it resolves anyway after `FLOATS_WAIT_MS`, so a chunk that never lands can't hold
+ * the first view back.
+ */
+export function floatsDrawn(): Promise<void> {
+  return new Promise((resolve) => {
+    let left = Math.ceil(FLOATS_WAIT_MS / FLOATS_POLL_MS);
+    let settle = FLOATS_SETTLE_CHECKS;
+    const check = () => {
+      const sheet = mounted()?.element();
+      const drawn =
+        currentTier() === "phone" ||
+        (sheet?.querySelector('[data-chrome="title-block"]') && sheet.querySelector('[data-chrome="core-cell"]'));
+      if (drawn) settle--;
+      if (settle < 0 || --left <= 0) resolve();
+      else setTimeout(check, FLOATS_POLL_MS);
+    };
+    check();
+  });
 }
 
 /** The viewport that frames `bounds` (sheet units) in the room the floats leave (`fitLayouts`). */

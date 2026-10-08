@@ -133,8 +133,16 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
         band.current = wantBand;
         root.style.setProperty(CORE_BAND_VAR, wantBand);
       }
-      const under = own.left - box.left < box.width / 2 + BACK_TO_CONTENT_HALF;
-      const want = under ? `${Math.ceil(own.height) + GAP}px` : null;
+      const column = box.width / 2 + BACK_TO_CONTENT_HALF;
+      const under = own.left - box.left < column;
+      // The collapsed title block can reach across the column too (its one row is as wide as its address note, and
+      // the cell then sits above it): Back to content then clears the higher of the two.
+      const titleUnder = titleBox !== null && titleBox.left - box.left < column;
+      const want = titleUnder
+        ? `${Math.ceil(box.bottom - (under ? Math.min(own.top, titleBox.top) : titleBox.top)) - EDGE + GAP}px`
+        : under
+          ? `${Math.ceil(own.height) + GAP}px`
+          : null;
       if (want === lift.current) return;
       lift.current = want;
       if (want === null) root.style.removeProperty(CORE_LIFT_VAR);

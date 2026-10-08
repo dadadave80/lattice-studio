@@ -11,7 +11,7 @@ import { userEvent } from "vitest/browser";
 import { doc, getAnalysis } from "@/contracts";
 import { fixtureCatalog } from "../../../test/harness";
 import { panSheet } from "../canvas/sheet-view";
-import { drawn } from "../canvas/testing/sheet-harness";
+import { drawn, expandTitleBlock } from "../canvas/testing/sheet-harness";
 import { cardNode, clickCard, dragCard, press, selection } from "../interact/testing/interact-harness";
 import { GLYPH_LEAD, GUTTER, RAIL_GAP } from "./geometry";
 import { cell, coreProject, glyphOf, pad, padTone, rectIn, renderCoreSheet, traceOf, traces, wireOf } from "./testing/core-harness";
@@ -203,6 +203,8 @@ describe("a card across the run (CO-01)", () => {
     project.layout["Receive"] = { x: 200, y: 24, pins: "left" };
     project.layout["ERC4626"] = { x: 700, y: 24, pins: "left" };
     await renderCoreSheet({ project, ...VIEW });
+    // The cell beside the full title block (the short sheet starts it collapsed: David's decision on SH-01/SH-02).
+    await expandTitleBlock();
     const cellTop = rectIn(cell()).top;
     const rail = Math.min(cellTop, rectIn(titleBlock()).top) - RAIL_GAP;
     const floor = cellTop - RAIL_GAP;
