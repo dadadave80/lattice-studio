@@ -72,6 +72,14 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
       - run: bun x playwright install --with-deps chromium
       - run: bun run test:browser
+      # A screenshot with no baseline for this OS leaves the runner's own rendering under attachments/, ready to
+      # review and commit as its `-chromium-linux.png`; a mismatch leaves the actual and the diff.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: browser-test-results
+          path: apps/studio/test-results/
+          retention-days: 14
 
   e2e:
     name: End to end (Playwright)
@@ -92,6 +100,10 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
       # Chromium for Flows 1-14 and 17; WebKit for the @smoke set only (spec "Screen readers, tier 1").
       - run: bun x playwright install --with-deps chromium webkit
+      # Anvil for the deploy flows (12-14) and the kit's smoke tests. The contracts come from catalog/, so no build.
+      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
       - run: bun run e2e
 
   golden:
