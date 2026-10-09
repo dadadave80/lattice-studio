@@ -12,7 +12,7 @@ import { bufferedServices, onCleanup, renderWithStudio, type StudioOptions } fro
 import { Sheet } from "../../canvas/Sheet";
 import { cardNode, flowElement, paneElement, settled, SHEET_HEIGHT, SHEET_WIDTH } from "../../canvas/testing/sheet-harness";
 
-export { cardNode, drawnViewport, flowElement, paneElement, sheetProject, storedViewport } from "../../canvas/testing/sheet-harness";
+export { cardNode, drawn, drawnViewport, flowElement, paneElement, sheetProject, storedViewport } from "../../canvas/testing/sheet-harness";
 
 function SheetRegion() {
   const region = useRegion("sheet");
