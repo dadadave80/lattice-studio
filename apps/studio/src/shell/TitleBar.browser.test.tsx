@@ -237,7 +237,7 @@ describe("the other controls", () => {
     await renderWithStudio(<Shell />);
     await expect.element(bar().getByRole("button", { name: "Undo" })).toHaveAccessibleDescription("Nothing to undo");
     await expect.element(bar().getByRole("button", { name: /^Share/ })).toHaveAttribute("aria-disabled", "true");
-    await expect.element(bar().getByRole("button", { name: /⌘KCommand palette|⌘K Command palette/ })).toBeVisible();
+    await expect.element(bar().getByRole("button", { name: /(⌘|Ctrl\+)K ?Command palette/ })).toBeVisible();
     await expect.element(bar().getByRole("group", { name: "Theme" })).toBeVisible();
   });
 

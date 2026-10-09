@@ -144,8 +144,8 @@ describe("slug", () => {
 });
 
 describe("RECIPE_SCHEMA_URL", () => {
-  test("is the D11 placeholder", () => {
-    expect(RECIPE_SCHEMA_URL).toBe("https://lattice-studio.invalid/schema/recipe.v1.json");
+  test("is the committed schema on main, served raw by GitHub (D11)", () => {
+    expect(RECIPE_SCHEMA_URL).toBe("https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json");
   });
 });
 

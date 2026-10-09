@@ -8,6 +8,7 @@
  * `STUDIO_E2E_REUSE_BUILD=1` skips the build when that folder already holds one: handy while writing a spec,
  * never set in the merge gates.
  */
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { build, preview } from "vite";
@@ -38,6 +39,13 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   process.env.VITE_STUDIO_E2E = "1";
   // Workers inherit the runner's environment: every worker of this run shares one prepared chain.
   process.env[RUN_ID_VARIABLE] = `${process.pid}-${Date.now()}`;
+  // Without anvil every start fails like a busy port (`isPortBusyReason`), so each Anvil test would wait out its
+  // fixture's timeout: hours on CI. Say so once, up front.
+  try {
+    execFileSync("anvil", ["--version"], { stdio: "ignore" });
+  } catch {
+    throw new Error("anvil isn't on PATH. Install Foundry (foundryup) before running e2e.");
+  }
   sweep("Before the run");
 
   const reuse = localEnv("STUDIO_E2E_REUSE_BUILD") === "1" && existsSync(join(outDir, "index.html"));

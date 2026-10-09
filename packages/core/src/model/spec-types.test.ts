@@ -309,7 +309,7 @@ const shared: SharedContract = {
 const area: Area = "tokens";
 
 const recipe: M.Recipe = {
-  $schema: "https://lattice-studio.invalid/schema/recipe.v1.json",
+  $schema: "https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json",
   schemaVersion: 1,
   name: "GovernedVault",
   catalog: { tag: "v0.4.0", hash },

@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: release
-        uses: googleapis/release-please-action@v5
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: .github/release-please-config.json
           manifest-file: .github/release-please-manifest.json
@@ -28,9 +28,9 @@ jobs:
       # The catalog hash published with the release (§16 audit #7, spec L855): each manifest package gets its
       # own tag, so a release of either carries the committed catalog's hash in its notes.
       - if: steps.release.outputs['packages/cli--release_created'] == 'true' || steps.release.outputs['apps/studio--release_created'] == 'true'
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - if: steps.release.outputs['packages/cli--release_created'] == 'true' || steps.release.outputs['apps/studio--release_created'] == 'true'
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
