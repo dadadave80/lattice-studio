@@ -1,7 +1,7 @@
 // The performance results table and its fix requests (brief Q4: "a results table in the report; each miss
 // becomes a fix request naming the module and the import or render causing it"). Budgets are spec L805-L817's,
-// with the first-load gate at the orchestrator's interim 370 KB (QUESTIONS Q19) and the spec's 240 KB kept as the
-// target. Pure: run.ts gathers the inputs.
+// with the first-load gate at the measured first load plus headroom (255 KB, QUESTIONS Q19; see size-logic.ts) and the
+// spec's 240 KB kept as the target. Pure: run.ts gathers the inputs.
 import { BUDGETS, type SizeReport } from "../ci/size-logic.ts";
 import type { Composition } from "./composition.ts";
 import type { Attribution } from "./profile.ts";
@@ -11,7 +11,7 @@ import type { AnalysisResult, DragResult, LighthouseResult } from "./types.ts";
 export const PERF_BUDGETS = {
   /** Spec L809: the target. */
   firstLoadTarget: 240_000,
-  /** QUESTIONS Q19: the CI gate until David picks an option. */
+  /** QUESTIONS Q19: the CI gate, the measured first load plus headroom, until first load reaches the target. */
   firstLoadGate: BUDGETS.firstLoadJs,
   /** Spec L815. */
   lcpMs: 2500,
@@ -96,7 +96,7 @@ export function evaluate(inputs: PerfInputs, reportOnly: Readonly<Partial<Record
     rows.push({ item: "First-load JavaScript", measured: "not measured", budget: kb(PERF_BUDGETS.firstLoadGate), status: "missing", enforced: true });
   } else {
     rows.push({
-      item: "First-load JavaScript (CI gate, interim)",
+      item: "First-load JavaScript (CI gate)",
       measured: `${kb(firstLoad)} gz`,
       budget: `${kb(PERF_BUDGETS.firstLoadGate)} gz`,
       status: firstLoad <= PERF_BUDGETS.firstLoadGate ? "ok" : "over",
@@ -120,7 +120,7 @@ export function evaluate(inputs: PerfInputs, reportOnly: Readonly<Partial<Record
       const groups = c.groups.slice(0, 8).map((g) => `${g.name} ${kb(g.gz)}`).join(", ");
       fixes.push(
         `First load is ${kb(firstLoad)} gz, ${kb(firstLoad - PERF_BUDGETS.firstLoadTarget)} over spec L809's 240 KB ` +
-          `(the interim gate, 370 KB, leaves ${kb(PERF_BUDGETS.firstLoadGate - firstLoad)}). To reach 240, move out of the entry chunk: ` +
+          `(the gate, ${kb(PERF_BUDGETS.firstLoadGate)}, leaves ${kb(PERF_BUDGETS.firstLoadGate - firstLoad)}). To reach 240, move out of the entry chunk: ` +
           `${options}. All three: ${kb(firstLoad - all)}. Largest groups in first load: ${groups}.` +
           (c.matchesRecord ? "" : " (The composition build's chunks differ from the build of record's; sizes are approximate.)"),
       );

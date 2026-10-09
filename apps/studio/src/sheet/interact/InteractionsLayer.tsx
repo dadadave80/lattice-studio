@@ -8,8 +8,8 @@ const SheetOverlays = lazy(() => import("./SheetOverlays").then((m) => ({ defaul
  * S4e's layer inside `<ReactFlow>` (contracts `sheet.ts`, order 20): the marquee, Move to…'s ghost and
  * crosshair, the catalog drop ghost with its "x · y", and the context menus. Its own Suspense boundary keeps the
  * canvas showing while the chunk loads. The catalog drop target is registered here, in the shell, so a row dropped
- * after the canvas has mounted but before this chunk has loaded is still placed (`drop-target.ts`). A drop before
- * the canvas chunk itself mounts still has no target and places nothing: an open product call (Q28).
+ * after the canvas has mounted but before this chunk has loaded is still placed (`drop-target.ts`). Before the
+ * canvas itself mounts, the sheet's loading state takes the drop and says the sheet is still loading (`Sheet.tsx`).
  */
 export function InteractionsLayer() {
   useSheetDropTarget();

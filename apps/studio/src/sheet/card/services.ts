@@ -1,11 +1,8 @@
 /**
  * S4a's registrations (contracts `sheet.ts`, found by `discover.ts`): the facet card as React Flow's "facet"
- * node type, and the layer that writes the sheet's zoom for 1/zoom strokes.
+ * node type, and the layer that writes the sheet's zoom for 1/zoom strokes. Both use React Flow, so they load
+ * with the canvas (`parts.ts`), not in the entry.
  */
-import { registerNodeType, registerSheetLayer } from "@/contracts";
-import { CardZoomScale } from "./CardZoomScale";
-import { FacetCard } from "./FacetCard";
-import { FACET_NODE_TYPE } from "./node";
+import { registerSheetParts } from "@/sheet/canvas/parts";
 
-registerNodeType(FACET_NODE_TYPE, FacetCard);
-registerSheetLayer({ id: "card-zoom", order: 0, Component: CardZoomScale });
+registerSheetParts(() => import("./parts"));

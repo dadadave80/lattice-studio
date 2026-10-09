@@ -1,12 +1,13 @@
 /**
  * Selector commands: choose an owner (Flow 4, SEL-01's Keep {A} and Route to {B}), clear an owner (SEL-04,
- * SEL-05), and leave a selector out of the diamond or bring it back (Flow 6, IR L145-L146).
+ * SEL-05), and leave a selector out of the diamond or bring it back (Flow 6, IR L145-L146). What they do is in
+ * `run/selectors.ts`, loaded after the first paint.
  */
-import { clearOwner, excludeSelector, includeSelector, routeSelector } from "@lattice-studio/core";
 import { command, getCatalog, type CommandArgsOf } from "@/contracts";
+import { lazyRun } from "./lazy";
 import {
-  catalogName, disabled, edit, err, facetOf, guard, isHex4, isPlaced, isString, notOnSheet, OK, ok, parseFacet,
-  placedSelectors, resolveSelector, selectorLabel, summaryLine,
+  catalogName, disabled, err, facetOf, guard, isHex4, isPlaced, isString, notOnSheet, OK, ok, parseFacet,
+  placedSelectors, resolveSelector, selectorLabel,
 } from "./shared";
 
 type RouteArgs = CommandArgsOf<"selector.route">;
@@ -41,12 +42,7 @@ export const routeCommand = command<RouteArgs>({
     if (!isPlaced(ctx.project, args.facet)) return disabled(notOnSheet([args.facet]));
     return OK;
   },
-  run(ctx, { selector, facet }) {
-    const catalog = ctx.catalog;
-    if (!catalog) return;
-    // Settling a collision narrates "Resolved: … routes to {facet}." (spec L713); anything else says the summary.
-    edit((p) => routeSelector(p, catalog, selector, facet), { fallback: summaryLine });
-  },
+  run: lazyRun("route"),
 });
 
 export const clearOwnerCommand = command<ClearOwnerArgs>({
@@ -60,11 +56,7 @@ export const clearOwnerCommand = command<ClearOwnerArgs>({
     if (!isHex4(args.selector)) return disabled(NAME_A_SELECTOR);
     return OK;
   },
-  run(ctx, { selector }) {
-    const catalog = ctx.catalog;
-    if (!catalog) return;
-    edit((p) => clearOwner(p, catalog, selector));
-  },
+  run: lazyRun("clearOwner"),
 });
 
 /** A selector among the placed facets' selectors, as typed in the console. */
@@ -94,11 +86,7 @@ export const excludeCommand = command<ExcludeArgs>({
     if (!isHex4(args.selector)) return disabled(NAME_A_SELECTOR);
     return OK;
   },
-  run(ctx, { selector }) {
-    const catalog = ctx.catalog;
-    if (!catalog) return;
-    edit((p) => excludeSelector(p, catalog, selector));
-  },
+  run: lazyRun("exclude"),
 });
 
 export const includeCommand = command<IncludeArgs>({
@@ -128,9 +116,5 @@ export const includeCommand = command<IncludeArgs>({
     }
     return OK;
   },
-  run(ctx, { selector, facet }) {
-    const catalog = ctx.catalog;
-    if (!catalog) return;
-    edit((p) => includeSelector(p, catalog, selector, facet));
-  },
+  run: lazyRun("include"),
 });

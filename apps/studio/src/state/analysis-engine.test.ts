@@ -3,9 +3,10 @@ import type { Analysis, Hex, LineDraft, NarrateCause, Project } from "@lattice-s
 import { analyze, NotImplemented, placeFacet, recipeHash } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { doc, getAnalysis, session, setCatalogStatus, subscribeAnalysis } from "@/contracts";
+import { loadAnalyzer, loadedAnalyzer } from "./analyzer";
 import { buildContext } from "./context";
 import { NEEDS_CHAIN, NEEDS_WALLET } from "./prediction";
-import { settle, setupKit, type Kit } from "./testing";
+import { fixture as fixtureCatalog, settle, setupKit, type Kit } from "./testing";
 
 let kit: Kit | null = null;
 afterEach(() => {
@@ -60,6 +61,26 @@ describe("memoized analysis", () => {
     getAnalysis();
     await settle();
     expect(kit.texts().filter((t) => t === "Analysis not built yet · WP-C2")).toHaveLength(1);
+  });
+
+  test("core's analysis from its own chunk: empty until it arrives, then the sheet's problems, none narrated as new", async () => {
+    const project = makeProject({ recipe: makeRecipe({ facets: ["VaultCore"] }, fixtureCatalog()) });
+    kit = setupKit({ lazyAnalysis: true, project });
+    // Another test file may have loaded the chunk already; before it arrives the analysis is empty.
+    if (!loadedAnalyzer()) expect(getAnalysis().problems).toEqual([]);
+    const heard: Analysis[] = [];
+    const stop = subscribeAnalysis((a) => heard.push(a));
+    await loadAnalyzer();
+    await settle();
+    stop();
+    expect(getAnalysis().problems.map((p) => p.id)).toContain("DEP-01:VaultCore+ERC4626");
+    expect(heard.at(-1)).toBe(getAnalysis());
+    // The arrival resets narration's baseline, like a new catalog: VaultCore's missing dependency isn't news.
+    expect(kit.lines().some((l) => l.tag === "Missing")).toBe(false);
+    kit.clearLines();
+    doc.apply("Placed ERC4626", place("ERC4626", 400));
+    await settle();
+    expect(kit.texts()).toContain("Dependency met: VaultCore.");
   });
 
   test("without a catalog the analysis is empty", () => {

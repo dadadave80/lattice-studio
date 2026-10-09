@@ -5,7 +5,7 @@
 // to check. Exit 1 if a hard budget is over (the catalog index warns only).
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { type BuildFile, classifyBuild, renderReport } from "./size-logic.ts";
+import { type BuildFile, classifyBuild, notPrecachedOf, renderReport } from "./size-logic.ts";
 
 const root = join(import.meta.dir, "..", "..");
 const appDir = join(root, "apps", "studio");
@@ -19,6 +19,12 @@ function walk(dir: string): string[] {
     else out.push(p);
   }
   return out;
+}
+
+/** What the build left out of the precache (`release.json`): those chunks have no budget. */
+function readNotPrecached(dir: string): string[] {
+  const path = join(dir, "release.json");
+  return existsSync(path) ? notPrecachedOf(readFileSync(path, "utf8")) : [];
 }
 
 function readManifestDefault(catalogDir: string): string | null {
@@ -75,7 +81,7 @@ async function main(): Promise<void> {
     files.push({ path, bytes: new Uint8Array(readFileSync(abs)) });
   }
 
-  const report = classifyBuild({ indexHtml, files, catalogIndex, gzip: (b) => Bun.gzipSync(b) });
+  const report = classifyBuild({ indexHtml, files, catalogIndex, gzip: (b) => Bun.gzipSync(b), notPrecached: readNotPrecached(distDir) });
   console.log(renderReport(report));
   process.exit(report.ok ? 0 : 1);
 }

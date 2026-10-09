@@ -1,20 +1,14 @@
 /**
  * Recipe commands (Flow 2, spec L405-L411): load a recipe (in place on an empty sheet, else as a new project),
  * replace this sheet with one (one undo step), and Keep immutable (CORE-02). A template's recipe can be in the
- * catalog's `recipes.json` (Q15), so loading one waits for that file; asking whether one loads never does.
+ * catalog's `recipes.json` (Q15), so loading one waits for that file; asking whether one loads never does. What
+ * they do is in `run/recipe.ts`, loaded after the first paint.
  */
-import type { Analysis, Catalog, Layout, LineDraft, Recipe, Result } from "@lattice-studio/core";
-import {
-  analyze, blankDiamond, isCoreOnly, isNotImplemented, lines, loadRecipe, loadTemplate, recipeStats, setImmutable,
-  templateList, tidy,
-} from "@lattice-studio/core";
-import {
-  command, createProject, emptyAnalysis, isPlaceholder, layoutMetrics, log, runCommand, type CommandArgsOf,
-  type CommandContext, type Enablement,
-} from "@/contracts";
-import { catalogWithRecipes } from "@/catalog/parts";
-import { studioState } from "../runtime";
-import { CATALOG_NOT_LOADED, disabled, edit, err, guard, isString, OK, ok, sayNote, unquote } from "./shared";
+import type { Catalog, Recipe, Result } from "@lattice-studio/core";
+import { blankDiamond, loadTemplate, templateList } from "@lattice-studio/core";
+import { command, type CommandArgsOf, type CommandContext, type Enablement } from "@/contracts";
+import { lazyRun } from "./lazy";
+import { CATALOG_NOT_LOADED, disabled, err, guard, isString, OK, ok, unquote } from "./shared";
 
 type LoadArgs = CommandArgsOf<"recipe.load">;
 type ReplaceArgs = CommandArgsOf<"recipe.replace">;
@@ -24,7 +18,7 @@ export const BLANK_DIAMOND = "Blank diamond";
 
 export type LoadedRecipe = { recipe: Recipe; name: string; script?: string };
 
-function isBlank(wanted: string): boolean {
+export function isBlank(wanted: string): boolean {
   return /^blank( diamond)?$/i.test(wanted);
 }
 
@@ -40,70 +34,6 @@ export function resolveRecipe(catalog: Catalog, name: string): Result<LoadedReci
   const templateName = loaded.value.template?.name ?? wanted;
   const script = templateList(catalog).find((t) => t.name === templateName)?.script;
   return ok({ recipe: loaded.value, name: templateName, ...(script ? { script } : {}) });
-}
-
-/**
- * `resolveRecipe` for a command's run: a template's recipe loads first if the catalog keeps it in a shard. Says why
- * and returns null when the recipe, or the file that holds it, doesn't load.
- */
-async function loadRecipeNamed(catalog: Catalog, name: string): Promise<LoadedRecipe | null> {
-  let source = catalog;
-  if (!isBlank(unquote(name))) {
-    const withRecipes = await catalogWithRecipes(catalog);
-    if (!withRecipes.ok) {
-      log({ tag: "Error", text: withRecipes.error });
-      return null;
-    }
-    source = withRecipes.value;
-  }
-  const loaded = resolveRecipe(source, name);
-  if (!loaded.ok) {
-    sayNote(loaded.error);
-    return null;
-  }
-  return loaded.value;
-}
-
-function analysisOf(recipe: Recipe, catalog: Catalog): Analysis {
-  try {
-    return analyze(recipe, catalog);
-  } catch (error) {
-    if (isNotImplemented(error)) return emptyAnalysis();
-    throw error;
-  }
-}
-
-/** The recipe's cards, tidied (spec L409: "a tidied layout"). */
-function tidied(recipe: Recipe, catalog: Catalog, analysis: Analysis): Layout {
-  const project = { ...studioState().document.store.getState().project, recipe, layout: {} };
-  return tidy(project, catalog, analysis, layoutMetrics);
-}
-
-/** "Loaded GovernedVault · 14 facets · 120 selectors · from script/base/defi/DeployGovernedVault.s.sol." (L410) */
-function loadedLine(loaded: LoadedRecipe, catalog: Catalog, analysis: Analysis): LineDraft {
-  const stats = recipeStats(analysis, catalog);
-  return lines.recipeLoaded({
-    name: loaded.name, facets: stats.facets, selectors: stats.selectors, ...(loaded.script ? { script: loaded.script } : {}),
-  });
-}
-
-/** After a load the view fits (spec L409): S4b's Fit, once it's built. */
-function fitView(): void {
-  if (!isPlaceholder("sheet.zoomFit")) void runCommand({ id: "sheet.zoomFit" }, "api");
-}
-
-/** Replaces the open project's recipe and layout in place, as one undo step. */
-function replaceInPlace(loaded: LoadedRecipe, catalog: Catalog): void {
-  const analysis = analysisOf(loaded.recipe, catalog);
-  const layout = tidied(loaded.recipe, catalog, analysis);
-  // Loading resets narration's baseline (spec L304): the flush inside `edit` narrates nothing against the old sheet.
-  studioState().analysis.resetBaseline();
-  const result = edit((p) => loadRecipe(p, catalog, loaded.recipe, layout), {
-    label: `Loaded ${loaded.name}`,
-    say: () => [loadedLine(loaded, catalog, analysis)],
-    fallback: null,
-  });
-  if (result.changed) fitView();
 }
 
 function parseName(argv: string[]): Result<{ name: string }, string> {
@@ -131,29 +61,7 @@ export const loadCommand = command<LoadArgs>({
   category: "Build",
   console: { verb: "recipe", syntax: "recipe <name>", parse: parseName },
   enabled: (ctx, args) => recipeEnabled(ctx, args.name),
-  async run(ctx, { name }) {
-    const catalog = ctx.catalog;
-    if (!catalog) return;
-    const loaded = await loadRecipeNamed(catalog, name);
-    if (!loaded) return;
-    if (isCoreOnly(ctx.project.recipe)) {
-      // An empty sheet: the recipe loads in place (spec L408).
-      replaceInPlace(loaded, catalog);
-      return;
-    }
-    // A sheet with facets: a new project, and this one stays under Projects (spec L408).
-    const analysis = analysisOf(loaded.recipe, catalog);
-    const layout = tidied(loaded.recipe, catalog, analysis);
-    const created = await createProject(loaded.recipe, loaded.name, { layout });
-    if (!created.ok) {
-      log({ tag: "Error", text: created.error });
-      return;
-    }
-    const engine = studioState().analysis;
-    engine.say(loadedLine(loaded, catalog, analysis));
-    engine.flush();
-    fitView();
-  },
+  run: lazyRun("load"),
 });
 
 export const replaceCommand = command<ReplaceArgs>({
@@ -161,12 +69,7 @@ export const replaceCommand = command<ReplaceArgs>({
   title: ({ name }) => `Replace this sheet with ${name}`,
   category: "Build",
   enabled: (ctx, args) => recipeEnabled(ctx, args.name),
-  async run(ctx, { name }) {
-    const catalog = ctx.catalog;
-    if (!catalog) return;
-    const loaded = await loadRecipeNamed(catalog, name);
-    if (loaded) replaceInPlace(loaded, catalog);
-  },
+  run: lazyRun("replace"),
 });
 
 export const keepImmutableCommand = command({
@@ -177,7 +80,5 @@ export const keepImmutableCommand = command({
   enabled(ctx) {
     return guard(ctx, false) ?? OK;
   },
-  run() {
-    edit((p) => setImmutable(p, true));
-  },
+  run: lazyRun("keepImmutable"),
 });
