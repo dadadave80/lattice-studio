@@ -190,7 +190,7 @@ const FLOATS_SETTLE_CHECKS = 2;
 
 /**
  * Resolves once the floats Fit measures are drawn in their resting form: the title block (in the form it starts
- * in, collapsed on a short sheet) and the core cell, which load in lazy chunks, then a couple of checks more for the
+ * in, collapsed on a short sheet, once it has measured the sheet: `data-measured`) and the core cell, which load in lazy chunks, then a couple of checks more for the
  * cell to settle beside the block. Neither shows at the phone tier. Timers, not animation frames, so a page in the
  * background still opens; and it resolves anyway after `FLOATS_WAIT_MS`, so a chunk that never lands can't hold
  * the first view back.
@@ -203,7 +203,7 @@ export function floatsDrawn(): Promise<void> {
       const sheet = mounted()?.element();
       const drawn =
         currentTier() === "phone" ||
-        (sheet?.querySelector('[data-chrome="title-block"]') && sheet.querySelector('[data-chrome="core-cell"]'));
+        (sheet?.querySelector('[data-chrome="title-block"][data-measured]') && sheet.querySelector('[data-chrome="core-cell"]'));
       if (drawn) settle--;
       if (settle < 0 || --left <= 0) resolve();
       else setTimeout(check, FLOATS_POLL_MS);

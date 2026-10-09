@@ -386,7 +386,16 @@ export function TitleBlockContent({ form: forced }: { form?: TitleBlockForm }) {
     forced ?? (tier === "phone" ? null : tier === "narrow" ? "strip" : collapsed ? "collapsed" : "full");
   if (form === null) return null;
   return (
-    <section ref={root} id={id} className={styles.titleBlock} aria-label="Title block" data-form={form} data-chrome="title-block">
+    <section
+      ref={root}
+      id={id}
+      className={styles.titleBlock}
+      aria-label="Title block"
+      data-form={form}
+      data-chrome="title-block"
+      // Set once the sheet is measured and the form is the one the block keeps: `floatsDrawn` waits for it.
+      data-measured={known ? "" : undefined}
+    >
       {form === "full" ? <FullBlock facts={facts} toggle={{ controls: id, onToggle: () => setForm(true) }} /> : null}
       {form === "collapsed" ? <CollapsedBlock facts={facts} toggle={{ controls: id, onToggle: () => setForm(false) }} /> : null}
       {form === "strip" ? <StripBlock facts={facts} /> : null}
