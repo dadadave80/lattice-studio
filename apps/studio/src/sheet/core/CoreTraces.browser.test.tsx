@@ -6,7 +6,7 @@
  * follow a pan and a drag.
  */
 import { placeFacet } from "@lattice-studio/core";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { doc, getAnalysis } from "@/contracts";
 import { fixtureCatalog } from "../../../test/harness";
@@ -209,6 +209,7 @@ describe("following the view", () => {
     const moved = wireOf(trace);
     await dragCard("ERC4626", { x: 64, y: 40 });
     await expect.poll(() => wireOf(trace).start.x).not.toBe(moved.start.x);
-    expectWire(trace, "ERC4626", "fallback");
+    // The wire can redraw over more than one frame on a slow runner: retry until it lands.
+    await vi.waitFor(() => expectWire(trace, "ERC4626", "fallback"));
   });
 });

@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 import { doc, session } from "@/contracts";
 import { bufferedServices } from "../../../test/harness";
 import {
-  announced, cardNode, client, cardPoint, clickCard, dragCard, drawnViewport, position, releaseDrag, renderInteractSheet,
+  announced, cardNode, client, cardPoint, clickCard, dragCard, drawn, drawnViewport, position, releaseDrag, renderInteractSheet,
   selection,
   sheetProject, storedViewport, touchDragCard, touchScreen,
 } from "./testing/interact-harness";
@@ -159,9 +159,9 @@ describe("edge auto-scroll", () => {
     expect(Math.abs(grabbed.x - 996)).toBeLessThan(16);
 
     window.dispatchEvent(new MouseEvent("mouseup", { ...base, buttons: 0, clientX: sheetBox.left + 996, clientY: start.clientY }));
-    await frame();
-    const drawn = drawnViewport();
-    expect(storedViewport()?.x).toBeCloseTo(drawn.x, 0);
+    // The DOM can trail React Flow's transform by a frame on a slow runner: wait for it, then compare.
+    const view = await drawn();
+    expect(storedViewport()?.x).toBeCloseTo(view.x, 0);
     expect(doc.state().undoLabel).toBe(`Moved ${a}`);
     doc.undo();
     expect(position(a)).toEqual({ x: 24, y: 24 });

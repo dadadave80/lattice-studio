@@ -693,7 +693,8 @@ describe("locate, Back to content, minimap, auto-pan", () => {
       const covered = floats.reduce((sum, f) => sum + overlapArea(card, f), 0);
       expect(covered, `${name}'s focused card lands under floating UI: ${JSON.stringify(card)}`).toBe(0);
     }
-  });
+    // A sweep of every card: 7.6 s alone on an M-series Mac, past the 15 s default on GitHub's Ubuntu runner.
+  }, 45_000);
 
   test("a card between three floats clears the one it truly overlaps, not just every float's margin (2.4.11, FX31)", async () => {
     // The a11y e2e suite's exact case (spec L771): at 200% on a 30-card sheet, ⌘/Ctrl+↓ to DIAAdapter (5
