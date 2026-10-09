@@ -19,6 +19,7 @@ const OWNERS = {
   "recipe.keepImmutable": "S1",
   "init.setArg": "S1",
   "init.addStep": "S1",
+  "init.useBundle": "S1",
   "init.removeStep": "S1",
   "init.moveStep": "S1",
   "init.reorderAuto": "S1",

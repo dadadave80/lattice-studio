@@ -48,6 +48,13 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
         </>
       );
     }
+    case "area":
+      return (
+        <>
+          <span className={styles.name}>{meta.name}</span>
+          <span className={styles.aside}>{meta.count}</span>
+        </>
+      );
     case "problems":
       return (
         <>

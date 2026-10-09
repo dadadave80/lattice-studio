@@ -5,7 +5,7 @@ import type { ChainState } from "../model/chain";
 import type { Problem, ProblemCode } from "../model/problems";
 import type { Arg, Recipe } from "../model/recipe";
 import { autoOrder } from "../init/plan/plan";
-import { addInitStep } from "../edit/recipe-ops";
+import { addInitStep, useInitBundle } from "../edit/recipe-ops";
 import { lintCopy } from "../format/copy-lint";
 import { renderProblem } from "../narrate/problem";
 import { makeCatalog, makeFacet, makeInit, makeProject, makeRecipe } from "../testing/builders";
@@ -414,7 +414,7 @@ describe("INIT-04", () => {
     applyAddStepFixes(recipe, synthetic, problems);
   });
 
-  test("a bundle facet's init can't join a plan that already has steps: no fix `addInitStep` would refuse (K3's GovernedVaultInit shape)", () => {
+  test("a bundle facet's init can't join a plan that already has steps: Use the bundle replaces them, never an `addInitStep` it would refuse (K3's GovernedVaultInit shape)", () => {
     const synthetic = makeCatalog({
       facets: [makeFacet({ name: "AccessControl", init: "AccessControlInit" }), makeFacet({ name: "GovernedVault", init: "GovernedVaultInit" })],
       inits: [
@@ -433,16 +433,21 @@ describe("INIT-04", () => {
         code: "INIT-04",
         severity: "blocker",
         where: [{ kind: "facet", facet: "GovernedVault" }],
-        params: { module: "GovernedVault", spec: "", facet: "GovernedVault" },
+        params: { module: "GovernedVault", spec: "GovernedVaultInit", facet: "GovernedVault" },
         message: "GovernedVault has no init step, so it is never initialized.",
-        fixes: [],
+        fixes: [{ id: "init.useBundle", args: { spec: "GovernedVaultInit" } }],
       },
     ]);
     applyAddStepFixes(recipe, synthetic, problems);
-    // Demonstrates why: offering the bundle itself, as the buggy code did, is a fix `addInitStep` refuses.
+    // Why it isn't Add init step: `addInitStep` refuses a bundle onto steps, as the buggy code once offered.
     const refused = addInitStep(makeProject({ recipe }), synthetic, "GovernedVaultInit");
     expect([refused.changed, refused.summary]).toEqual([false, "GovernedVaultInit is a bundle, so it can't join other steps. Remove them first."]);
+    // The fix it offers applies, and the problem goes.
+    const used = useInitBundle(makeProject({ recipe }), synthetic, "GovernedVaultInit");
+    expect([used.changed, used.summary]).toEqual([true, "Replaced AccessControlInit with the GovernedVaultInit bundle"]);
+    expect(only(run(used.project.recipe, synthetic), "INIT-04")).toEqual([]);
   });
+
 
   test("that same bundle facet, with no steps yet, still offers its own init", () => {
     const synthetic = makeCatalog({
@@ -501,15 +506,20 @@ describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20Vo
     applyAddStepFixes(recipe, realCatalog, problems);
   });
 
-  test("Blank diamond + GovernedVault: its init is a bundle and the plan already has a step, so no fix `addInitStep` would refuse", () => {
+  test("Blank diamond + GovernedVault: its only inits are bundles and the plan already has a step, so it's offered Use the GovernedVault bundle, never an `addInitStep` it would refuse (Q28)", () => {
     const recipe = makeRecipe(
       { facets: [...BLANK_FACETS, "GovernedVault"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } },
       realCatalog,
     );
     const problems = only(run(recipe, realCatalog), "INIT-04").filter((p) => p.where.some((w) => w.kind === "facet" && w.facet === "GovernedVault"));
-    expect(problems.length).toBeGreaterThan(0);
-    for (const p of problems) expect(p.fixes.some((f) => f.args?.["spec"] === "GovernedVaultInit")).toBe(false);
+    expect(problems.map((p) => p.fixes)).toEqual([[{ id: "init.useBundle", args: { spec: "GovernedVaultInit" } }]]);
     applyAddStepFixes(recipe, realCatalog, problems);
+    // The bundle takes the plan's place, and GovernedVault is initialized.
+    const used = useInitBundle(makeProject({ recipe }), realCatalog, "GovernedVaultInit");
+    expect([used.changed, used.summary]).toEqual([true, "Replaced AccessControlInit with the GovernedVaultInit bundle"]);
+    expect(used.project.recipe.init).toEqual({ kind: "bundle", spec: "GovernedVaultInit", args: {} });
+    const after = only(run(used.project.recipe, realCatalog), "INIT-04");
+    expect(after.filter((p) => p.where.some((w) => w.kind === "facet" && w.facet === "GovernedVault"))).toEqual([]);
   });
 
   test("Blank diamond + GovernedVault names GovernedVault, not the bundle's last module Governor (spec L330, FX48)", () => {
@@ -521,7 +531,6 @@ describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20Vo
     expect(problems.map((p) => [p.id, p.params["module"], p.message])).toEqual([
       ["INIT-04:GovernedVault", "GovernedVault", "GovernedVault has no init step, so it is never initialized."],
     ]);
-    expect(problems[0]?.fixes).toEqual([]);
   });
 
   test("every catalog facet with an init: INIT-04 names the facet's own module, or the one module its step init sets up, never an unrelated one (FX48)", () => {

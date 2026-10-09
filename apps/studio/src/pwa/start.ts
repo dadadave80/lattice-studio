@@ -5,6 +5,7 @@
 import { Workbox } from "workbox-window";
 import {
   doc, getCatalogStatus, hideBanner, loadFacetDetail, log, saveStatus, showBanner, subscribeCatalog, subscribeSaveStatus,
+  type CatalogStatus,
 } from "@/contracts";
 import type { Connection } from "./connection";
 import { pwaState } from "./state";
@@ -14,6 +15,38 @@ import { warmShards } from "./warm";
 /** The worker and its scope, under the app's base (`/` on Vercel, `./` on IPFS). */
 export function serviceWorkerUrl(base: string = import.meta.env.BASE_URL): { url: string; scope: string } {
   return { url: `${base}sw.js`, scope: base };
+}
+
+/** The catalog's status as `afterCatalogLine` reads it; tests pass their own. */
+export type CatalogFeed = {
+  get: () => CatalogStatus;
+  subscribe: (listener: (status: CatalogStatus) => void) => () => void;
+};
+
+const catalogFeed: CatalogFeed = { get: getCatalogStatus, subscribe: subscribeCatalog };
+
+/**
+ * Runs `run` once the catalog line has been logged, so nothing comes before it in the console (spec L401): at
+ * once when the catalog has already loaded or failed, else when it does. The loader logs its line right after it
+ * publishes "ready", so `run` waits one microtask past the change. Returns a disposer that drops a pending run.
+ */
+export function afterCatalogLine(run: () => void, catalog: CatalogFeed = catalogFeed): () => void {
+  if (catalog.get().status !== "loading") {
+    run();
+    return () => {};
+  }
+  let live = true;
+  const stop = catalog.subscribe((status) => {
+    if (status.status === "loading") return;
+    stop();
+    queueMicrotask(() => {
+      if (live) run();
+    });
+  });
+  return () => {
+    live = false;
+    stop();
+  };
 }
 
 function registerWorker(connection: Connection): () => void {
@@ -36,9 +69,11 @@ function registerWorker(connection: Connection): () => void {
     clearInterval: (handle) => window.clearInterval(handle as number),
   });
   pwaState.setUpdates(updates);
+  let stopNote = () => {};
   workbox.register().catch((error: unknown) => {
     const reason = error instanceof Error ? error.message : String(error);
-    log({ tag: "Note", text: `Studio can't work offline in this browser: its service worker didn't register (${reason}).` });
+    const text = `Studio can't work offline in this browser: its service worker didn't register (${reason}).`;
+    stopNote = afterCatalogLine(() => log({ tag: "Note", text }));
   });
   const stopWarm = warmShards({
     facets: () => doc.get().recipe.facets,
@@ -57,6 +92,7 @@ function registerWorker(connection: Connection): () => void {
     reportFailure: connection.reportFailure,
   });
   return () => {
+    stopNote();
     stopWarm();
     updates.dispose();
     pwaState.setUpdates(null);

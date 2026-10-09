@@ -253,13 +253,16 @@ function FullBlock({ facts, toggle }: { facts: Facts; toggle: Toggle }) {
           </CommandButton>
         ) : null}
       </div>
-      <div className={styles.cell}>
-        {counts.stats ? <span data-counts="">{counts.stats}</span> : null}
-        <span data-problems="" className={counts.blockers > 0 ? styles.blockers : undefined}>
-          {counts.problems}
-        </span>
-      </div>
-      {counts.toFillCount > 0 ? (
+      {/* Counts wait for the first facet: the core alone has nothing to count yet, and its problems aren't the person's. */}
+      {empty ? null : (
+        <div className={styles.cell}>
+          {counts.stats ? <span data-counts="">{counts.stats}</span> : null}
+          <span data-problems="" className={counts.blockers > 0 ? styles.blockers : undefined}>
+            {counts.problems}
+          </span>
+        </div>
+      )}
+      {!empty && counts.toFillCount > 0 ? (
         <div className={styles.fillRow}>
           <span data-to-fill="">{toFill(counts.toFillCount)}</span>
           <CommandButton command={commandRef("init.open")} size="small">
@@ -300,8 +303,8 @@ function StripBlock({ facts }: { facts: Facts }) {
 
 /**
  * The title block (spec L362, the states table L374-L389, IR L112), without React Flow: project name, the chain
- * and path picker, the address with Copy (or why there's none), the stamp, the counts, the problems, Fill in while
- * required arguments are empty, and Deploy…. Collapsible at 1024 px and wider, where the collapsed form keeps
+ * and path picker, the address with Copy (or why there's none), the stamp, the counts and the problems once a
+ * facet is placed, Fill in while required arguments are empty, and Deploy…. Collapsible at 1024 px and wider, where the collapsed form keeps
  * the stamp, the short address and Deploy…; at 768-1023 px it's the strip (stamp and short address), because
  * Deploy… moves into the title bar. Under 768 px the title bar carries the stamp and Deploy…, so it shows none.
  */

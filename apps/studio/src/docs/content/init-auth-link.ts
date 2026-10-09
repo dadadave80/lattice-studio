@@ -52,7 +52,7 @@ export const INIT_AUTH_LINK: readonly ProblemDocEntry[] = [
       "A placed facet needs an init step and the plan doesn't provide one, or a module that must initialize in the same call as another has no init step of its own.",
     why:
       "A facet without its init step deploys with empty or zero storage: an [`AccessControlLib`](lattice:src/access/libraries/AccessControlLib.sol#71-76)-based facet needs its init to grant the first roles, and ERC20 needs its to set `name()` and `symbol()` at all. Studio checks every placed facet's init entry against the plan, and blocks a deploy that would leave one unset.",
-    fixes: ["Add the init step."],
+    fixes: ["Add the init step.", "If the facet's only init is a bundle, as GovernedVault's is, use that bundle in place of the plan's steps."],
     exampleParams: { module: "ERC20", spec: "ERC20Init", facet: "ERC20", consequence: "`name()` and `symbol()` would be empty" },
     exampleNote: "ERC20 is placed with no init step for it:",
   },

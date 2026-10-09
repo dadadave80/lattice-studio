@@ -99,11 +99,21 @@ describe("the title block, row by row (spec L362)", () => {
 });
 
 describe("the title block in each state of the states table (spec L374-L389)", () => {
-  test("Empty: address —, Deploy disabled: Place facets first", async () => {
-    useAnalysisOf({ problems: [problem("CORE-01", "blocker")] });
+  test("Empty: address —, Deploy disabled: Place facets first, and no counts until a facet is placed", async () => {
+    useAnalysisOf({ problems: [problem("CORE-01", "blocker"), problem("DEP-02", "warning")] });
     await renderBlock({ project: makeProject({ recipe: makeRecipe({}, deployableCatalog()) }) });
     await expect.element(block().getByText("—", { exact: true })).toBeVisible();
     await expectDeployDisabled("Place facets first");
+    expect(block().element().querySelector("[data-problems]")).toBeNull();
+    expect(block().element().querySelector("[data-counts]")).toBeNull();
+    expect(block().element().textContent).not.toMatch(/blocker|warning|selectors/);
+  });
+
+  test("the counts show once a facet is placed", async () => {
+    useAnalysisOf({ problems: [problem("CORE-01", "blocker"), problem("DEP-02", "warning")] });
+    await renderBlock();
+    await expect.element(block().getByText("1 blocker · 1 warning")).toBeVisible();
+    await expect.element(block().getByText("0 facets · 0 selectors")).toBeVisible();
   });
 
   test("Composing, no problems: No problems; Deploy enabled", async () => {
