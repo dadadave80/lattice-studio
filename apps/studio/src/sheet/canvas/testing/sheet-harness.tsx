@@ -32,6 +32,9 @@ export function emptyProject(id: string): Project {
  * reduced unless the test says otherwise, so viewport moves land at once.
  */
 export async function renderSheet(options: StudioOptions = {}) {
+  // The title block's and core cell's lazy chunks, loaded first: on a slow runner they can miss `floatsDrawn`'s
+  // 1.5 s wait, and the first view is then framed without them.
+  await Promise.all([import("../../chrome/layers"), import("../../core/CoreLayer")]);
   const screen = await renderWithStudio(
     <div data-region="sheet" style={{ position: "relative", width: SHEET_WIDTH, height: SHEET_HEIGHT }}>
       <Sheet />
