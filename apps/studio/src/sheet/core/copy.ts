@@ -16,3 +16,5 @@ export const COLLAPSE_CELL = "Collapse the core cell";
 export const EXPAND_CELL = "Expand the core cell";
 /** The cell's accessible name (the toolbar's label). */
 export const CELL_LABEL = "Core";
+/** What selecting the core announces, and the console's `find` says when only the core matched. */
+export const SELECTED_THE_CORE = "Selected the core.";

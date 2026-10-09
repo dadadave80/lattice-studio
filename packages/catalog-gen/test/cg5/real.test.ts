@@ -6,6 +6,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { InitParam, InitSpec } from "@lattice-studio/core";
+import { recipeOf } from "@lattice-studio/core/testing";
 import { facetOverlayFields, initOverlayFields, loadOverlay, type Overlay } from "../../src/overlay";
 import { formatIssue, formatLintSummary, type LintResult, lintOverlay } from "../../src/overlay-lint";
 import { fixtureCatalog, latticeDir, latticeFacts } from "./facts";
@@ -19,7 +20,7 @@ const dir = latticeDir();
 /** Facets and inits the v1 recipes and the Blank diamond use (spec L990), plus the automatic ERC-165 steps. */
 const V1_FACETS = [
   ...new Set([
-    ...fixture.recipes.filter((r) => r.phase === "v1").flatMap((r) => r.recipe.facets),
+    ...fixture.recipes.filter((r) => r.phase === "v1").flatMap((r) => recipeOf(r).facets),
     "AccessControlDiamondCut",
   ]),
 ].sort();
@@ -154,7 +155,7 @@ describe("agrees with K3's fixture", () => {
       const params: InitParam[] = spec.params.map((p) => {
         const o = entry?.params?.[p.name];
         const merge = (q: InitParam, ov: typeof o): InitParam => {
-          const out: InitParam = { name: q.name, type: q.type, doc: q.doc };
+          const out: InitParam = { name: q.name, type: q.type, doc: q.doc ?? "" };
           for (const k of ["unit", "rule", "example", "exampleSource", "authority", "role"] as const) {
             if (ov?.[k] !== undefined) (out as Record<string, unknown>)[k] = ov[k];
           }

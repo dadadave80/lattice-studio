@@ -14,10 +14,11 @@
     />
     <style>
       /*
-       * Static first paint (spec L821-L826): the title bar and pane outlines below, sized to match the real
-       * shell (apps/studio/src/shell/Shell.module.css, TitleBar.module.css, panes.ts PANE_SIZES) so replacing
-       * this markup with the mounted app doesn't move anything already on screen. The build writes this
-       * style's hash into the CSP (build/csp.ts).
+       * Static first paint (spec L821-L826): the title bar, the pane switcher's row under 768 px, the pane
+       * outlines (the console as its summary line at 768-1023 px) and the empty sheet's Start block below, sized
+       * to match the real shell (apps/studio/src/shell/Shell.module.css, TitleBar.module.css, panes.ts PANE_SIZES)
+       * so replacing this markup with the mounted app doesn't move anything already on screen. The build writes
+       * this style's hash into the CSP (build/csp.ts).
        *
        * Values are copied from packages/tokens/dist/tokens.css, which loads after this page's first paint, so
        * this can't reference it. If T1 changes those values, this block needs the same edit.
@@ -25,14 +26,24 @@
       :root {
         --lxs-space-1: 4px;
         --lxs-space-2: 8px;
+        --lxs-space-3: 12px;
+        --lxs-space-4: 16px;
+        --lxs-space-6: 24px;
         --lxs-space-8: 32px;
+        --lxs-space-12: 48px;
         --lxs-stroke-hair: 1px;
+        --lxs-radius: 0px;
+        --lxs-card-width: 232px;
+        --lxs-tracking-label: 0.106em;
       }
       :root[data-theme="dark"] {
         --lxs-ground: #0c0d0f;
         --lxs-panel: #131417;
         --lxs-sunken: #0a0b0d;
         --lxs-text: #e9e7e1;
+        --lxs-text-muted: #9a9da4;
+        --lxs-text-faint: #80848b;
+        --lxs-border: #6b6f77;
         --lxs-border-subtle: rgba(233, 231, 225, 0.12);
       }
       :root[data-theme="light"] {
@@ -40,6 +51,9 @@
         --lxs-panel: #f7f5ef;
         --lxs-sunken: #e7e3d8;
         --lxs-text: #16150f;
+        --lxs-text-muted: #3c3931;
+        --lxs-text-faint: #635e52;
+        --lxs-border: #3c3931;
         --lxs-border-subtle: rgba(22, 21, 15, 0.22);
       }
       .lxs-shell,
@@ -87,6 +101,18 @@
         border-block-end: var(--lxs-stroke-hair) solid var(--lxs-border-subtle);
         font: 600 13px/20px Inter, "Inter Fallback", system-ui, sans-serif;
       }
+      /*
+       * The pane switcher's row under 768 px (PaneSwitcher.tsx, TitleBar.module.css .switcher): compact tabs
+       * (Tabs.module.css) over their hairline, an outline only, so the sheet and its Start block start where the
+       * real ones do.
+       */
+      .lxs-switcher {
+        display: none;
+        flex: none;
+        block-size: calc(var(--lxs-space-6) + var(--lxs-space-1) + var(--lxs-stroke-hair));
+        background: var(--lxs-panel);
+        border-block-end: var(--lxs-stroke-hair) solid var(--lxs-border-subtle);
+      }
       .lxs-body {
         position: relative;
         display: flex;
@@ -122,6 +148,103 @@
         background: var(--lxs-sunken);
         border-block-start: var(--lxs-stroke-hair) solid var(--lxs-border-subtle);
       }
+      /*
+       * The empty sheet's Start block (spec L378, L405, L815), its largest paint, drawn here so LCP doesn't wait for
+       * the app: the look of apps/studio/src/sheet/chrome/StartBlock.tsx before the catalog loads (every choice
+       * dimmed with a dashed edge). Inert: a picture until React replaces it with the working block.
+       */
+      .lxs-start-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        display: grid;
+        place-items: center;
+        padding: var(--lxs-space-8) var(--lxs-space-4);
+        overflow: auto;
+      }
+      .lxs-start {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--lxs-space-3);
+        inline-size: min(100%, calc(var(--lxs-card-width) * 2.5));
+        padding: var(--lxs-space-6);
+        border: var(--lxs-stroke-hair) solid var(--lxs-border);
+        background: var(--lxs-panel);
+      }
+      .lxs-start-title {
+        margin: 0;
+        font: 600 12px/16px Inter, "Inter Fallback", system-ui, sans-serif;
+        letter-spacing: var(--lxs-tracking-label);
+        text-transform: uppercase;
+        color: var(--lxs-text);
+      }
+      .lxs-start-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--lxs-space-2);
+        min-inline-size: var(--lxs-space-6);
+        min-block-size: var(--lxs-space-8);
+        margin: 0;
+        padding-block: 0;
+        padding-inline: var(--lxs-space-3);
+        border: var(--lxs-stroke-hair) dashed var(--lxs-border-subtle);
+        border-radius: var(--lxs-radius);
+        background: transparent;
+        color: var(--lxs-text-faint);
+        font: 600 14px/20px Inter, "Inter Fallback", system-ui, sans-serif;
+        white-space: nowrap;
+        inline-size: 100%;
+      }
+      .lxs-start-button--quiet {
+        border-color: transparent;
+      }
+      .lxs-start-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(calc(var(--lxs-card-width) * 0.7), 1fr));
+        gap: var(--lxs-space-2);
+      }
+      .lxs-start-card {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap: var(--lxs-space-1);
+        min-block-size: var(--lxs-space-12);
+        padding: var(--lxs-space-3);
+        white-space: normal;
+        text-align: start;
+      }
+      .lxs-start-name,
+      .lxs-start-blurb {
+        font: 600 14px/20px Inter, "Inter Fallback", system-ui, sans-serif;
+        color: var(--lxs-text);
+      }
+      .lxs-start-blurb {
+        font-weight: 400;
+        color: var(--lxs-text-muted);
+      }
+      .lxs-start-hint {
+        margin: 0;
+        font: 400 13px/20px "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+        color: var(--lxs-text-muted);
+        text-align: center;
+      }
+      .lxs-start-tour {
+        display: inline-flex;
+        align-items: center;
+        min-block-size: var(--lxs-space-6);
+        margin: 0;
+        padding-block: 0;
+        padding-inline: var(--lxs-space-2);
+        border: var(--lxs-stroke-hair) solid transparent;
+        border-radius: var(--lxs-radius);
+        background: transparent;
+        color: var(--lxs-text-muted);
+        font: 600 14px/20px Inter, "Inter Fallback", system-ui, sans-serif;
+        text-decoration: underline;
+        vertical-align: middle;
+      }
       /* 1280 px and wider (spec L347-L370): the left pane and the inspector show beside the sheet. */
       @media (min-width: 1280px) {
         .lxs-pane {
@@ -129,10 +252,33 @@
           flex-direction: column;
         }
       }
+      /* 768-1023 px: the console collapses to its 36 px summary line (use-pane-follow.ts). */
+      @media (min-width: 768px) and (max-width: 1023px) {
+        .lxs-console {
+          block-size: calc(var(--lxs-space-8) + var(--lxs-space-1));
+        }
+      }
       /* Under 768 px: one pane at a time, picked by the switcher; the console isn't one of the panes shown. */
       @media (max-width: 767px) {
+        .lxs-switcher {
+          display: block;
+        }
         .lxs-console {
           display: none;
+        }
+      }
+      /*
+       * Under 380 px the keyboard hint keeps two lines' room, as the real one does (StartBlock.module.css
+       * .keysHint): "Ctrl+K" wraps it there and a Mac's "⌘K" may not, and this page can't know the platform.
+       */
+      @media (max-width: 379px) {
+        .lxs-start-keys {
+          min-block-size: calc(var(--lxs-space-8) + var(--lxs-space-2));
+        }
+      }
+      @media (forced-colors: active) {
+        .lxs-start {
+          border-color: CanvasText;
         }
       }
     </style>
@@ -143,9 +289,35 @@
         <header class="lxs-titlebar" role="banner" aria-label="Title bar">
           <span>Lattice Studio</span>
         </header>
+        <div class="lxs-switcher"></div>
         <div class="lxs-body">
           <aside class="lxs-pane lxs-pane--left" aria-label="Left pane"></aside>
-          <main class="lxs-sheet" aria-label="Sheet"></main>
+          <main class="lxs-sheet" aria-label="Sheet">
+            <div class="lxs-start-layer" inert>
+              <section class="lxs-start" aria-labelledby="lxs-start-title">
+                <h2 id="lxs-start-title" class="lxs-start-title">Start a diamond</h2>
+                <button type="button" class="lxs-start-button">Blank diamond</button>
+                <p class="lxs-start-hint">Adds Receive, and an admin role that can upgrade the diamond.</p>
+                <div class="lxs-start-cards">
+                  <button type="button" class="lxs-start-button lxs-start-card">
+                    <span class="lxs-start-name">GovernedVault</span>
+                    <span class="lxs-start-blurb">Self-governed ERC-4626 vault</span>
+                  </button>
+                  <button type="button" class="lxs-start-button lxs-start-card">
+                    <span class="lxs-start-name">ERC20</span>
+                    <span class="lxs-start-blurb">A fixed token, immutable by default</span>
+                  </button>
+                  <button type="button" class="lxs-start-button lxs-start-card">
+                    <span class="lxs-start-name">SafeDiamondCut</span>
+                    <span class="lxs-start-blurb">A diamond only your Safe can upgrade</span>
+                  </button>
+                </div>
+                <button type="button" class="lxs-start-button lxs-start-button--quiet">Browse all recipes</button>
+                <p class="lxs-start-hint lxs-start-keys">Drag from the catalog, or press Ctrl+K</p>
+                <p class="lxs-start-hint">New here? <button type="button" class="lxs-start-tour">Take the 60-second tour</button></p>
+              </section>
+            </div>
+          </main>
           <aside class="lxs-pane lxs-pane--inspector" aria-label="Inspector"></aside>
         </div>
         <footer class="lxs-console" aria-label="Console"></footer>

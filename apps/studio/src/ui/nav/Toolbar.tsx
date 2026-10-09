@@ -13,13 +13,15 @@ export type ToolbarProps = {
   /** `ToolbarButton`s, `ToolbarGroup`s and `ToolbarSeparator`s. */
   children: ReactNode;
   className?: string | undefined;
+  /** The id of text that describes the toolbar (a hint beside it). */
+  describedBy?: string | undefined;
 };
 
 /**
  * A toolbar (APG toolbar): one Tab stop; the arrows along its orientation move between controls, Home and End
  * go to the ends. Disabled buttons stay reachable and say why.
  */
-export function Toolbar({ label, orientation = "horizontal", children, className }: ToolbarProps) {
+export function Toolbar({ label, orientation = "horizontal", children, className, describedBy }: ToolbarProps) {
   // Base UI's toolbar moves with the arrows only; Home and End go to the first and last control (APG toolbar).
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Home" && event.key !== "End") return;
@@ -35,6 +37,7 @@ export function Toolbar({ label, orientation = "horizontal", children, className
     <ToolbarOrientationContext value={orientation}>
       <BaseToolbar.Root
         aria-label={label}
+        aria-describedby={describedBy}
         orientation={orientation}
         className={cx(styles.toolbar, className)}
         onKeyDown={onKeyDown}

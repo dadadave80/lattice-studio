@@ -1,7 +1,7 @@
 /**
  * Vite config for Lattice Studio (contracts §1: K2, then frozen). React 19 with React Compiler through
  * `@rolldown/plugin-babel` (spec L902), CSS Modules, the `@/` alias, the catalog served and copied at
- * `/catalog/` (contracts §4), and S11a's CSP and PWA plugins from `build/`.
+ * `/catalog/` (contracts §4), S11a's CSP and PWA plugins from `build/`, and `build/wallet-viem.ts` (Q27).
  */
 import { join } from "node:path";
 import babel from "@rolldown/plugin-babel";
@@ -9,6 +9,7 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type UserConfig } from "vite";
 import { studioCsp } from "./build/csp.ts";
 import { studioPwa } from "./build/pwa.ts";
+import { walletViem } from "./build/wallet-viem.ts";
 import { studioCatalog } from "./catalog-plugin.ts";
 import { appDir, localPort, repoRoot } from "./local-env.ts";
 import { isE2EFlag } from "./src/contracts/e2e-flag.ts";
@@ -45,6 +46,7 @@ export default defineConfig(async (configEnv): Promise<UserConfig> => {
       react(),
       await babel({ presets: [reactCompilerPreset()] }),
       studioCatalog(catalogSources),
+      walletViem(),
       ...studioCsp(configEnv),
       ...studioPwa(configEnv),
     ],
@@ -70,7 +72,19 @@ export default defineConfig(async (configEnv): Promise<UserConfig> => {
       reportCompressedSize: true,
       // Every lazy chunk that shares core, contracts or state with the entry split them into small first-load files
       // (25 of them); one group for what the entry loads at start keeps first load in two files (FX17: 342.7 → 328.7 KB).
-      rolldownOptions: { output: { codeSplitting: { groups: [{ name: "app", tags: ["$initial"] }] } } },
+      // WalletConnect's modal imports about 50 Phosphor icons one chunk each, and the entry carries every chunk's
+      // integrity hash (vite-plugin-sri-gen's runtime), so they're one chunk: with a project id set, first load grows
+      // by 2.6 KB gz instead of 6 (Q27). `walletViem` keeps the modal's `import("viem")` out of the entry.
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: "app", tags: ["$initial"] },
+              { name: "walletconnect-icons", test: /[\\/]node_modules[\\/]@phosphor-icons[\\/]/ },
+            ],
+          },
+        },
+      },
     },
   };
 });

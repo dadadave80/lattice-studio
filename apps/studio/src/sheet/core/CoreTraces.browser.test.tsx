@@ -6,7 +6,7 @@
  * follow a pan and a drag.
  */
 import { placeFacet } from "@lattice-studio/core";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { doc, getAnalysis } from "@/contracts";
 import { fixtureCatalog } from "../../../test/harness";
@@ -35,9 +35,16 @@ function expectedWire(facet: string, to: "fallback" | "cut") {
   return {
     start: { x: anchorX, y: card.bottom + GLYPH_LEAD },
     gutter: side === "right" ? card.right + GUTTER : card.left - GUTTER,
-    rail: rectIn(cell()).top - RAIL_GAP,
+    // Above the taller of the cell and the title block beside it, so no trace runs behind a panel.
+    rail: Math.min(rectIn(cell()).top, rectIn(titleBlock()).top) - RAIL_GAP,
     pad: { x: padBox.left + padBox.width / 2, y: padBox.top },
   };
+}
+
+function titleBlock(): HTMLElement {
+  const el = document.querySelector<HTMLElement>('[data-chrome="title-block"]');
+  if (!el) throw new Error("No title block.");
+  return el;
 }
 
 function close(a: number, b: number): void {
@@ -202,6 +209,7 @@ describe("following the view", () => {
     const moved = wireOf(trace);
     await dragCard("ERC4626", { x: 64, y: 40 });
     await expect.poll(() => wireOf(trace).start.x).not.toBe(moved.start.x);
-    expectWire(trace, "ERC4626", "fallback");
+    // The wire can redraw over more than one frame on a slow runner: retry until it lands.
+    await vi.waitFor(() => expectWire(trace, "ERC4626", "fallback"));
   });
 });

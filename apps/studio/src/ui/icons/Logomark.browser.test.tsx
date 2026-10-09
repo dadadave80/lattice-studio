@@ -12,7 +12,7 @@ const CUTS = [
 const mark = () => document.querySelector("svg[data-logomark]") as SVGSVGElement;
 
 describe("Logomark", () => {
-  test("draws the mark's three cuts, 1.1 units in currentColor, 20 px, hidden from assistive technology", async () => {
+  test("draws the mark's three cuts, 1.1 units in currentColor, 19 px, hidden from assistive technology", async () => {
     await renderWithStudio(<Logomark />);
     const svg = mark();
     expect(svg.getAttribute("aria-hidden")).toBe("true");
@@ -25,7 +25,7 @@ describe("Logomark", () => {
     expect(style.stroke).toBe(style.color);
     expect(style.strokeLinecap).toBe("butt");
     const box = svg.getBoundingClientRect();
-    expect([box.width, box.height]).toEqual([20, 20]);
+    expect([box.width, box.height]).toEqual([19, 19]);
   });
 
   test("follows the theme's ink", async () => {

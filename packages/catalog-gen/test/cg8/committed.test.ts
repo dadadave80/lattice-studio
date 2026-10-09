@@ -2,7 +2,8 @@
  * The committed catalog (`catalog/`), checked without a build: the manifest makes it the default, the index is
  * valid and hashes to itself, every file it references is there with the recorded size and hash (and nothing
  * else is), the provisional mark is set at the pin, shards carry errors and events and point at the right repo,
- * and every shared contract's address follows from its salt and creation code.
+ * every shared contract's address follows from its salt and creation code, and recipes and init docs sit in their
+ * own files (Q15).
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -12,12 +13,16 @@ import {
   type Catalog,
   type CatalogManifest,
   catalogHash,
+  type InitParam,
   type SharedContract,
   type ShardRef,
   sharedSalt,
+  templateFacetCount,
   validateCatalog,
   validateCatalogManifest,
   validateFacetDetail,
+  validateInitDocsShard,
+  validateRecipesShard,
 } from "@lattice-studio/core";
 import { keccak256 } from "viem";
 import { REGISTRY_OWNER_PLACEHOLDER } from "../../src/addressing";
@@ -33,6 +38,9 @@ const DIR = join(CATALOG, manifest.default);
 const indexBytes = new Uint8Array(readFileSync(join(DIR, "index.json")));
 const index = JSON.parse(new TextDecoder().decode(indexBytes)) as Catalog;
 const files = await readCatalogFiles(DIR);
+const json = (path: string | undefined): unknown => JSON.parse(new TextDecoder().decode(files.get(path ?? "")));
+const recipes = validateRecipesShard(json(index.shards?.recipes.path));
+const initDocs = validateInitDocsShard(json(index.shards?.initDocs.path));
 
 /** Every ShardRef in the index, wherever it sits. */
 function shardRefs(value: unknown, out: ShardRef[] = []): ShardRef[] {
@@ -92,7 +100,7 @@ describe("the committed index", () => {
     expect(index.facets).toHaveLength(105);
     expect(index.recipes).toHaveLength(85);
     expect(index.recipes.slice(0, 3).map((r) => r.name)).toEqual(["GovernedVault", "ERC20", "SafeDiamondCut"]);
-    for (const r of index.recipes) expect(r.recipe.catalog.tag).toBe(index.lattice.tag);
+    for (const r of index.recipes) expect(recipes.ok && recipes.value[r.name]?.catalog.tag).toBe(index.lattice.tag);
     expect(index.seams).toHaveLength(11);
     expect(index.libraries?.map((l) => l.name)).toEqual(["PoseidonT3"]);
     expect(index.inits.filter((i) => i.release === undefined).map((i) => i.name)).toEqual(["AccountInit", "AccountInit6900"]);
@@ -163,6 +171,33 @@ describe("shards", () => {
     expect(specs.map((s) => s.name)).toEqual(["DiamondIntrospectionInit.initImmutable", "DiamondIntrospectionInit.initUpgradeable"]);
     expect(specs[0]?.release).toEqual(specs[1]?.release as SharedContract);
     expect(specs[0]?.release?.detail?.path).toBe("shards/DiamondIntrospectionInit.json");
+  });
+});
+
+describe("recipes and init docs (Q15)", () => {
+  const params = (list: readonly InitParam[]): InitParam[] => list.flatMap((p) => [p, ...params(p.components ?? [])]);
+
+  test("live in recipes.json and init-docs.json, which validate, and nowhere in the index", () => {
+    expect(index.shards).toEqual({
+      recipes: expect.objectContaining({ path: "recipes.json" }),
+      initDocs: expect.objectContaining({ path: "init-docs.json" }),
+    });
+    expect(recipes.ok ? [] : recipes.error).toEqual([]);
+    expect(initDocs.ok ? [] : initDocs.error).toEqual([]);
+    expect(index.recipes.filter((r) => r.recipe !== undefined).map((r) => r.name)).toEqual([]);
+    expect(index.inits.flatMap((i) => params(i.params).filter((p) => p.doc !== undefined).map((p) => `${i.name}.${p.name}`))).toEqual([]);
+  });
+
+  test("every template has its recipe and its card count, and every init its docs", () => {
+    if (!recipes.ok || !initDocs.ok) throw new Error("a shard doesn't validate");
+    expect(Object.keys(recipes.value).sort()).toEqual(index.recipes.map((r) => r.name).sort());
+    for (const r of index.recipes) {
+      const recipe = recipes.value[r.name];
+      expect({ name: r.name, facetCount: r.facetCount }).toEqual({ name: r.name, facetCount: recipe ? templateFacetCount(recipe) : -1 });
+    }
+    expect(Object.keys(initDocs.value).sort()).toEqual(index.inits.map((i) => i.name).sort());
+    const erc20 = initDocs.value["ERC20Init"] ?? {};
+    expect(Object.keys(erc20).sort()).toEqual(["name_", "symbol_"]);
   });
 });
 

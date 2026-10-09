@@ -193,7 +193,7 @@ export function remapLayout(
 ): Project["layout"] {
   const cards = after.facets.filter((name) => !isCoreFacet(name));
   const keep = new Set(cards);
-  const removed = project.recipe.facets.filter((name) => !keep.has(name));
+  const removed = project.recipe.facets.filter((name) => !keep.has(name) && !isCoreFacet(name));
   const layout: Project["layout"] = {};
   for (const [name, entry] of Object.entries(project.layout)) if (keep.has(name)) layout[name] = { ...entry };
   const placed = cards.filter((name) => layout[name] === undefined);

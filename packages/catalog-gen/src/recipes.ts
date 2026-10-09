@@ -333,9 +333,12 @@ export function buildSeams(overlay: Pick<RecipeOverlay, "seams">, facts: RecipeF
 /** Selector → the facet that serves it after the script's cuts, keys sorted. */
 export type ScriptRouting = Record<Hex4, string>;
 
+/** A template as built here: always with its recipe, which the writer may move into a shard (Q15). */
+export type BuiltTemplate = RecipeTemplate & { recipe: Recipe };
+
 /** `buildTemplates`' result: the templates in catalog order, what each script routes, and each one's gaps. */
 export type BuiltTemplates = {
-  templates: RecipeTemplate[];
+  templates: BuiltTemplate[];
   routing: Record<string, ScriptRouting>;
   gaps: { name: string; phase: RecipeTemplate["phase"]; gaps: string }[];
 };
@@ -387,7 +390,7 @@ function buildTemplate(
   def: RecipeDef & { file: string },
   facts: RecipeFacts,
   issues: ParseIssue[],
-): { template: RecipeTemplate; routing: ScriptRouting } | undefined {
+): { template: BuiltTemplate; routing: ScriptRouting } | undefined {
   const byName = new Map(facts.facets.map((f) => [f.name, f]));
   const before = issues.length;
   const routing = new Map<Hex4, string>();
@@ -512,8 +515,12 @@ export function verifyTemplateRouting(catalog: Catalog, routing: Record<string, 
   for (const template of catalog.recipes) {
     const expected = routing[template.name];
     if (expected === undefined) continue;
-    const actual = computeRouting(template.recipe, catalog);
     const file = `overlay/recipes/${template.name}.yaml`;
+    if (template.recipe === undefined) {
+      issues.push({ file, path: "", message: "has no recipe in the catalog to route." });
+      continue;
+    }
+    const actual = computeRouting(template.recipe, catalog);
     for (const selector of new Set([...Object.keys(expected), ...Object.keys(actual)] as Hex4[])) {
       const want = expected[selector];
       const got = actual[selector]?.owner;

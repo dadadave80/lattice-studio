@@ -3,12 +3,14 @@
 // nothing to compare (no catalog/manifest.json, no expected files); a catalog that's there but broken fails.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import {
   loadTemplate,
   templateList,
   validateCatalog,
   validateCatalogManifest,
+  validateRecipesShard,
+  withRecipes,
   type Catalog,
   type Recipe,
   type RecipeTemplate,
@@ -47,8 +49,9 @@ export type GoldenSetup =
   | { ready: false; error: string };
 
 /**
- * Reads `<dir>/manifest.json`'s default catalog and validates it. Only a missing manifest counts as "not built";
- * `catalog/` is tracked, so anything else that goes wrong means the committed catalog is broken.
+ * Reads `<dir>/manifest.json`'s default catalog and validates it, with its templates' recipes from `recipes.json`
+ * when the index keeps them there (Q15). Only a missing manifest counts as "not built"; `catalog/` is tracked, so
+ * anything else that goes wrong means the committed catalog is broken.
  */
 export function readCatalog(dir: string = CATALOG_DIR): CatalogState {
   const manifestPath = join(dir, "manifest.json");
@@ -66,7 +69,14 @@ export function readCatalog(dir: string = CATALOG_DIR): CatalogState {
   if (!indexJson.ok) return { state: "broken", error: `${rel(indexPath)} ${indexJson.error}` };
   const catalog = validateCatalog(indexJson.value);
   if (!catalog.ok) return { state: "broken", error: `${rel(indexPath)}: ${issues(catalog.error)}` };
-  return { state: "ok", catalog: catalog.value };
+  const ref = catalog.value.shards?.recipes;
+  if (ref === undefined) return { state: "ok", catalog: catalog.value };
+  const recipesPath = join(dirname(indexPath), ref.path);
+  const recipesJson = readJson(recipesPath);
+  if (!recipesJson.ok) return { state: "broken", error: `${rel(recipesPath)} ${recipesJson.error}` };
+  const recipes = validateRecipesShard(recipesJson.value);
+  if (!recipes.ok) return { state: "broken", error: `${rel(recipesPath)}: ${issues(recipes.error)}` };
+  return { state: "ok", catalog: withRecipes(catalog.value, recipes.value) };
 }
 
 /** Pairs every loadable (v1) template in the catalog with its expected file in `dir`. */

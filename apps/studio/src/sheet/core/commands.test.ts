@@ -12,8 +12,8 @@ const status: CoreStatus = {
 };
 
 test("the core verb's line names the fallback count, loupe coverage, interface ids and the cut", () => {
-  expect(coreLine(status)).toBe("Core: fallback 14 routed · loupe 4/4 · ERC-165 IERC165, IDiamondLoupe · cut none");
-  expect(coreLine({ ...status, cut: { ...status.cut, immutable: true } })).toContain("· cut none, immutable");
-  expect(coreLine({ ...status, cut: { ...status.cut, facet: "AccessControlDiamondCut" } })).toContain("· cut AccessControlDiamondCut");
-  expect(coreLine({ ...status, erc165: { covered: false, interfaceIds: [] } })).toContain("· ERC-165 none ·");
+  expect(coreLine(status)).toBe("Core: fallback 14 routed · loupe 4/4 · ERC-165 IERC165, IDiamondLoupe · cut Empty · no upgrade mechanism.");
+  expect(coreLine({ ...status, cut: { ...status.cut, immutable: true } })).toContain("· cut Empty · immutable.");
+  expect(coreLine({ ...status, cut: { ...status.cut, facet: "AccessControlDiamondCut" } }, "Admin role")).toContain("· cut AccessControlDiamondCut · Admin role.");
+  expect(coreLine({ ...status, erc165: { covered: false, interfaceIds: [] } })).toContain("· ERC-165 none registered ·");
 });

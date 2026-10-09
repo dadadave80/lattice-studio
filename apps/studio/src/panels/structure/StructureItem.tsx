@@ -1,4 +1,3 @@
-import { plural } from "@lattice-studio/core";
 import { Icon, VisuallyHidden } from "@/ui";
 import { codeRuns, SEVERITY_WORD, stepTitle, type StructureMeta } from "./structure-model";
 import styles from "./StructurePanel.module.css";
@@ -23,7 +22,7 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
       return (
         <>
           <span className={styles.name}>Fallback</span>
-          <span className={styles.aside}>{`${plural(meta.routed, "selector")} routed`}</span>
+          <span className={styles.aside}>{`${meta.routed} routed`}</span>
         </>
       );
     case "facet":
@@ -49,6 +48,13 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
         </>
       );
     }
+    case "area":
+      return (
+        <>
+          <span className={styles.name}>{meta.name}</span>
+          <span className={styles.aside}>{meta.count}</span>
+        </>
+      );
     case "problems":
       return (
         <>

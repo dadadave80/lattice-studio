@@ -5,7 +5,7 @@ import type { Problem } from "../model/problems";
 import type { Recipe } from "../model/recipe";
 import { renderProblem } from "../narrate/problem";
 import { blankDiamond } from "../plan";
-import { loadFixtureCatalog, makeCatalog, makeFacet, makeInit, makeRecipe } from "../testing";
+import { loadFixtureCatalog, makeCatalog, makeFacet, makeInit, makeRecipe, recipeOf } from "../testing";
 import { checkDep } from "./dep";
 
 function input(catalog: Catalog, recipe: Partial<Recipe>): CheckInput {
@@ -298,7 +298,7 @@ describe("the fixture catalog's templates and the Blank diamond", () => {
     expect(v1.map((r) => r.name).sort()).toEqual(["ERC20", "GovernedVault", "SafeDiamondCut"]);
     // GovernedVault loads with only INIT-01 for `asset` (spec Flow 2): no DEP problem of any kind.
     for (const template of v1) {
-      expect({ name: template.name, found: checkDep(input(cat, template.recipe)).map((p) => p.id) }).toEqual({ name: template.name, found: [] });
+      expect({ name: template.name, found: checkDep(input(cat, recipeOf(template))).map((p) => p.id) }).toEqual({ name: template.name, found: [] });
     }
   });
 

@@ -1,21 +1,10 @@
-import { Menu as BaseMenu } from "@base-ui/react/menu";
-import type { ReactNode } from "react";
-import styles from "./Menu.module.css";
+import type { MenuRadioGroupProps } from "../popups/MenuRadioGroup";
+import { usePopups } from "../popups/load";
 
-export type MenuRadioGroupProps = {
-  value: string;
-  onValueChange: (value: string) => void;
-  /** The group's small-caps eyebrow; it labels the group. */
-  label?: string;
-  children: ReactNode;
-};
+export type { MenuRadioGroupProps };
 
-/** One choice among `MenuRadioItem`s ("Theme: Light, Dark"). */
-export function MenuRadioGroup({ value, onValueChange, label, children }: MenuRadioGroupProps) {
-  return (
-    <BaseMenu.RadioGroup value={value} onValueChange={(next: unknown) => onValueChange(String(next))}>
-      {label === undefined ? null : <BaseMenu.GroupLabel className={styles.groupLabel}>{label}</BaseMenu.GroupLabel>}
-      {children}
-    </BaseMenu.RadioGroup>
-  );
+/** A group of menu items that pick one value: `ui/popups/MenuRadioGroup.tsx`, drawn only in an open menu. */
+export function MenuRadioGroup(props: MenuRadioGroupProps) {
+  const popups = usePopups();
+  return popups ? <popups.MenuRadioGroup {...props} /> : null;
 }

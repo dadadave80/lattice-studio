@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { BUDGETS, type BuildFile, classifyBuild, parseIndexHtml, renderReport } from "./size-logic.ts";
+import { BUDGETS, type BuildFile, classifyBuild, notPrecachedOf, parseIndexHtml, renderReport } from "./size-logic.ts";
 
 const gzipStub = (b: Uint8Array): Uint8Array => b; // 1:1 "gzip" so tests reason in raw bytes
 
@@ -75,6 +75,20 @@ describe("classifyBuild", () => {
       gzip: gzipStub,
     });
     const lazy = report.rows.find((r) => r.item.includes("elk-worker"));
+    expect(lazy?.warnOnly).toBe(true);
+    expect(lazy?.item).toContain("no budget");
+    expect(report.ok).toBe(true);
+  });
+
+  test("a chunk the build doesn't precache (WalletConnect's SDK, whatever its name) is listed but never fails", () => {
+    const report = classifyBuild({
+      indexHtml: html,
+      files: [file("assets/entry.js", 1000), file("assets/entry.css", 100), file("assets/core-XYZ.js", 120_000)],
+      catalogIndex: null,
+      gzip: gzipStub,
+      notPrecached: ["assets/core-XYZ.js"],
+    });
+    const lazy = report.rows.find((r) => r.item.includes("core-XYZ"));
     expect(lazy?.warnOnly).toBe(true);
     expect(lazy?.item).toContain("no budget");
     expect(report.ok).toBe(true);
@@ -162,5 +176,17 @@ describe("renderReport", () => {
     expect(text).toContain("Catalog index");
     expect(text).toContain("Lazy chunks");
     expect(text).toContain("over its");
+  });
+});
+
+describe("notPrecachedOf", () => {
+  test("reads release.json's notPrecached", () => {
+    const json = JSON.stringify({ assets: ["assets/a.js", "assets/core-X.js"], notPrecached: ["assets/core-X.js"] });
+    expect(notPrecachedOf(json)).toEqual(["assets/core-X.js"]);
+  });
+
+  test("is empty when the manifest can't be read or has no list", () => {
+    expect(notPrecachedOf("not json")).toEqual([]);
+    expect(notPrecachedOf(JSON.stringify({ assets: [] }))).toEqual([]);
   });
 });

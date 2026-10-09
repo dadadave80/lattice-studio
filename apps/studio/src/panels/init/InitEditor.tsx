@@ -1,6 +1,7 @@
 import type { InitStepView } from "@lattice-studio/core";
 import { plural } from "@lattice-studio/core";
 import { useEffect, useRef } from "react";
+import { catalogWithInitDocs, useInitDocs } from "@/catalog/parts";
 import { commandRef, useCatalog, useDocument, type InspectorViewProps } from "@/contracts";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { AuthorityTable } from "./AuthorityTable";
@@ -46,13 +47,15 @@ function stepKey(steps: readonly InitStepView[], i: number): string {
 /**
  * The Init plan view (Flow 7, IR L125): the bundle's form and fixed order, or the step list with ↑/↓ and Reorder
  * steps automatically, then the Authority table. Fill in goes to the first required field that's missing.
- * Registered as the inspector's "init" view; it loads in its own chunk (spec L822).
+ * Registered as the inspector's "init" view; it loads in its own chunk (spec L822). Fields' help can be in the
+ * catalog's `init-docs.json` (Q15): the form shows without it until it loads, and says why if it can't.
  */
 export function InitEditor({ view }: InspectorViewProps<"init">) {
   const rootRef = useRef<HTMLElement>(null);
   const catalog = useCatalog();
   const recipe = useDocument((s) => s.project.recipe);
   const projectId = useDocument((s) => s.project.id);
+  const docs = useInitDocs();
 
   useEffect(() => {
     focusTarget(rootRef.current, view.focus);
@@ -67,7 +70,7 @@ export function InitEditor({ view }: InspectorViewProps<"init">) {
     );
   }
 
-  const plan = planOf(recipe, catalog);
+  const plan = planOf(recipe, docs.status === "ready" && docs.docs ? catalogWithInitDocs(catalog, docs.docs) : catalog);
   const movable = plan.kind === "steps" ? plan.steps.filter((s) => s.automatic === undefined).length : null;
   const missing = firstMissing(plan);
   const bundle = plan.kind === "bundle" ? plan.steps[0] : undefined;
@@ -89,6 +92,7 @@ export function InitEditor({ view }: InspectorViewProps<"init">) {
           {movable !== null && movable >= 2 ? <CommandButton size="small" command={commandRef("init.reorderAuto")} /> : null}
         </div>
       </header>
+      {docs.status === "error" ? <p className={styles.empty}>Couldn't load the help text. {docs.reason}</p> : null}
       {plan.kind === "none" ? <p className={styles.empty}>This recipe has no init: nothing runs when the diamond deploys.</p> : null}
       {plan.steps.length > 0 ? (
         <ol className={styles.steps} aria-label={plan.kind === "bundle" ? "Bundle" : "Steps in call order"}>

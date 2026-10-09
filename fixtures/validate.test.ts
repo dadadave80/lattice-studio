@@ -12,6 +12,7 @@ import type { Recipe } from "../packages/core/src/model/recipe.ts";
 import { ARACHNID_PROXY_CODEHASH } from "../packages/core/src/address/shared.ts";
 import { catalogHash } from "../packages/core/src/canonical/hash.ts";
 import { validateCatalogManifest } from "../packages/core/src/model/schema.ts";
+import { recipeOf, templatesOf } from "../packages/core/src/testing/fixtures.ts";
 import { loadFixtureCatalog, loadFixtureShard } from "../packages/core/src/testing/fixtures.ts";
 import { ARACHNID, create2Address, erc7201Slot, fileHash, indexHash, releaseSalt, versionlessSalt } from "./gen/formulas.ts";
 import { latticeDir, readExportSelectors, readInventory, readScriptCuts } from "./gen/lattice-source.ts";
@@ -41,7 +42,7 @@ function facetOf(catalog: Catalog, name: string): Facet {
 function template(catalog: Catalog, name: string): Recipe {
   const t = catalog.recipes.find((r) => r.name === name);
   if (!t) throw new Error(`no template ${name}`);
-  return t.recipe;
+  return recipeOf(t);
 }
 
 // ── routing, as the spec defines it (R1, R19, spec L167-L174, L302), for counting ──────────────────
@@ -276,7 +277,7 @@ describe("names and references", () => {
     test(`${id}: every template references existing facets and inits, in catalog order`, () => {
       const order = catalog.facets.map((f) => f.name);
       const inits = new Set(catalog.inits.map((i) => i.name));
-      for (const { name, recipe } of catalog.recipes) {
+      for (const { name, recipe } of templatesOf(catalog)) {
         expect(recipe.catalog.tag).toBe(id);
         const positions = recipe.facets.map((f) => order.indexOf(f));
         expect(positions.every((p) => p >= 0) ? name : `${name} names a missing facet`).toBe(name);
@@ -440,7 +441,7 @@ describe("templates", () => {
         facetOf(fixture, name).requires.filter((r) => !r.anyOf.some((a) => facets.includes(a))).map((r) => `${name}:${r.strength}:${r.anyOf.join("|")}`),
       );
     expect(unmet(BLANK)).toEqual(["AccessControlDiamondCut:convention:EmergencyStop"]);
-    for (const { name, recipe } of fixture.recipes) expect([name, unmet(recipe.facets)]).toEqual([name, []]);
+    for (const { name, recipe } of templatesOf(fixture)) expect([name, unmet(recipe.facets)]).toEqual([name, []]);
   });
 
   const goldens = existsSync(GOLDEN) ? readdirSync(GOLDEN).filter((f) => f.endsWith(".routing.json")) : [];
@@ -535,7 +536,7 @@ describe.skipIf(!lattice)("against Lattice's source at the pin", () => {
 
   test("each template's routing equals its script's cuts", () => {
     const fns: Record<string, string> = { GovernedVault: "_buildBaseCuts", ERC20: "_coreCuts", SafeDiamondCut: "buildCuts", Account: "buildCuts", Account6900: "buildCuts" };
-    for (const { name, script, recipe } of fixture.recipes) {
+    for (const { name, script, recipe } of templatesOf(fixture)) {
       const fromScript = new Map<Hex4, string>();
       for (const cut of readScriptCuts(dir, script, fns[name] ?? "buildCuts")) {
         for (const { hex } of facetOf(fixture, cut.facet).selectors) if (!cut.except.includes(hex)) fromScript.set(hex, cut.facet);

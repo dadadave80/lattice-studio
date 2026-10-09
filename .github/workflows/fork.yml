@@ -1,9 +1,9 @@
-# The Sepolia fork suite the spec wants on every PR (spec L934-L935), gated behind the `SEPOLIA_RPC_URL`
-# repository secret per D8 (HANDOFF.md §11): until David adds that secret, this workflow runs its gate job and
-# stops there, and the PR gate (ci.yml's `chain` job) stays local Anvil. Once the secret exists, this job runs
-# alongside the PR gate. Read-only against Sepolia except for the deploys the fork test suite itself makes on
-# its own forked, in-memory chain (prool/Anvil) — nothing ever reaches a real network. Not run until David
-# pushes the repo (HANDOFF.md D4).
+# The Sepolia fork suite the spec wants on every PR (spec L934-L935), alongside the PR gate (ci.yml's `chain` job,
+# which stays local Anvil). It needs no secret (Q7): the harness forks a recent finalized block from the first
+# public Sepolia RPC that serves it, and falls back to the `SEPOLIA_RPC_URL` repository secret only when every
+# public one fails; without the secret that fallback is simply skipped. Read-only against Sepolia except for the
+# deploys the fork test suite itself makes on its own forked, in-memory chain (prool/Anvil) — nothing ever reaches
+# a real network.
 name: Sepolia fork suite
 
 on:
@@ -18,37 +18,27 @@ env:
   FOUNDRY_VERSION: "v1.8.3"
 
 jobs:
-  gate:
-    name: Check for SEPOLIA_RPC_URL
-    runs-on: ubuntu-latest
-    outputs:
-      has-secret: ${{ steps.check.outputs.has-secret }}
-    steps:
-      - id: check
-        run: echo "has-secret=${{ secrets.SEPOLIA_RPC_URL != '' }}" >> "$GITHUB_OUTPUT"
-
   sepolia-fork:
     name: bun run test:chain (Sepolia fork)
-    needs: gate
-    if: needs.gate.outputs.has-secret == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: true
-      - uses: oven-sh/setup-bun@v2
+          submodules: recursive
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
         with:
           version: ${{ env.FOUNDRY_VERSION }}
       - run: bun install --frozen-lockfile
       - name: Build the pinned Lattice checkout (ci profile)
         run: FOUNDRY_PROFILE=ci forge build --root lattice
-      # This job's env is all Q6 owns: the URL and where Lattice is. The pinned fork block is the harness's own
-      # (e2e-chain/fork.chain.test.ts's SEPOLIA_FORK_BLOCK, not an environment variable) and forking, deploying
-      # missing shared contracts and forced failures are Q5's.
+      # SEPOLIA_FORK=1 opts the fork suite in (ci.yml's `chain` job leaves it out). The fork block and the endpoint
+      # are the harness's (e2e-chain/harness/sepolia.ts), not environment variables. SEPOLIA_RPC_URL is empty when
+      # the secret isn't set, and the harness then tries the public RPCs only.
       - run: bun run test:chain
         env:
           LATTICE_DIR: ${{ github.workspace }}/lattice
+          SEPOLIA_FORK: "1"
           SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}

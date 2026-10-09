@@ -345,6 +345,13 @@ describe("accessible name and description (spec L745-L746)", () => {
 
   test("a card with nothing to say states its routed selectors and the selection", () => {
     expect(describeCard({ connections: "", routed: 3, exported: 3 }, false)).toBe("3 of 3 selectors routed to the diamond. Not selected.");
+    // While the core is selected, the stamp in words, before the selection state.
+    expect(describeCard({ connections: "", routed: 3, exported: 3 }, false, "02")).toBe(
+      "3 of 3 selectors routed to the diamond. Cut plan position 02. Not selected.",
+    );
+    expect(describeCard({ connections: "", routed: 0, exported: 3 }, true, "Not cut")).toBe(
+      "0 of 3 selectors routed to the diamond. Not cut. Selected.",
+    );
   });
 });
 

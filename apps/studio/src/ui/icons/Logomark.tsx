@@ -13,7 +13,10 @@ const PATHS: readonly string[] = [
 ];
 
 export type LogomarkProps = {
-  /** The side in CSS px, kept to a whole pixel so the line stays crisp. Default 20. */
+  /**
+   * The side in CSS px, kept to a whole pixel so the line stays crisp. Default 19: at an odd size the four struts
+   * on the 24-unit centre line land in one pixel column instead of straddling two.
+   */
   size?: number;
   className?: string | undefined;
 };
@@ -23,7 +26,7 @@ export type LogomarkProps = {
  * its own (`aria-hidden`); the control or heading beside it carries the name. Not an `Icon` on purpose: the mark
  * keeps its own 1.1-unit line and butt caps, never the icon set's 1.5 restroke (design-system-rules.md "Logo").
  */
-export function Logomark({ size = 20, className }: LogomarkProps) {
+export function Logomark({ size = 19, className }: LogomarkProps) {
   const px = Math.round(size);
   return (
     <svg

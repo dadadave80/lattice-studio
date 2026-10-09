@@ -2,7 +2,7 @@
 import type { Catalog } from "../model/catalog";
 import type { Hex4 } from "../model/hex";
 import type { Recipe } from "../model/recipe";
-import { loadFixtureCatalog, makeRecipe } from "../testing";
+import { loadFixtureCatalog, makeRecipe, recipeOf } from "../testing";
 
 const loaded = loadFixtureCatalog();
 
@@ -22,7 +22,7 @@ export function catalog(): Catalog {
 export function template(name: string): Recipe {
   const found = catalog().recipes.find((r) => r.name === name);
   if (found === undefined) throw new Error(`No template ${name} in the fixture catalog`);
-  return structuredClone(found.recipe);
+  return structuredClone(recipeOf(found));
 }
 
 /** A bare recipe placing `facets` on the fixture catalog. */

@@ -5,7 +5,7 @@ import { isNotImplemented, notImplemented, NotImplemented, WP_IDS } from "./wp";
 
 /** contracts §5.3, copied row by row. */
 const SECTION_5_3: Record<string, string> = {
-  S1: "facet.place, facet.remove, facet.routeContested, selector.route, selector.clearOwner, selector.exclude, selector.include, recipe.load, recipe.replace, recipe.keepImmutable, init.setArg, init.addStep, init.removeStep, init.moveStep, init.reorderAuto, layout.flipPins, layout.toggleExpand, layout.tidy, layout.tidySelection, ack.set, history.undo, history.redo, project.rename",
+  S1: "facet.place, facet.remove, facet.routeContested, selector.route, selector.clearOwner, selector.exclude, selector.include, recipe.load, recipe.replace, recipe.keepImmutable, init.setArg, init.addStep, init.useBundle, init.removeStep, init.moveStep, init.reorderAuto, layout.flipPins, layout.toggleExpand, layout.tidy, layout.tidySelection, ack.set, history.undo, history.redo, project.rename",
   S2: "ui.escape, shortcuts.open",
   S3: "app.menu, pane.toggle, pane.show",
   S4b: "tool.select, tool.hand, sheet.zoomIn, sheet.zoomOut, sheet.zoom100, sheet.zoomFit, sheet.zoomSelection, sheet.zoomTo, sheet.locate, sheet.backToContent, sheet.minimapToggle, core.select",
@@ -35,8 +35,8 @@ const expectedOwners = Object.fromEntries(
 
 describe("COMMAND_OWNERS", () => {
   test("covers every id in contracts §5.3 with its owner, and nothing else", () => {
-    expect(COMMAND_IDS.length).toBe(133);
-    expect(Object.keys(expectedOwners).length).toBe(133);
+    expect(COMMAND_IDS.length).toBe(134);
+    expect(Object.keys(expectedOwners).length).toBe(134);
     expect({ ...COMMAND_OWNERS } as Record<string, string>).toEqual(expectedOwners);
   });
 
@@ -82,7 +82,7 @@ const FIXES: Record<ProblemCode, string[]> = {
   "INIT-01": ["init.focusField"],
   "INIT-02": ["init.reorderAuto", "init.open"],
   "INIT-03": ["init.removeStep", "init.setArg"],
-  "INIT-04": ["init.addStep"],
+  "INIT-04": ["init.addStep", "init.useBundle"],
   "INIT-05": ["init.open", "ack.set"],
   "AUTH-01": ["authority.chooseMechanism", "ack.set"],
   "AUTH-02": ["init.setArg", "init.focusField"],

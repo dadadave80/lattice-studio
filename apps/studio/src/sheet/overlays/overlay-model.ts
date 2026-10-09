@@ -13,7 +13,7 @@ import type {
 import { cardSize, contestedSelectors, isNotImplemented, placeNotes, routeTraces } from "@lattice-studio/core";
 import { layoutMetrics } from "@/contracts";
 import { edgesOf, type SheetEdge } from "./edge-data";
-import { buildNotes, type NoteModel } from "./note-model";
+import { arrivalOrder, buildNotes, type NoteModel } from "./note-model";
 
 /** Grid steps a Place fix lands to the right of the note's card (C9's gap beside a card). */
 const BESIDE_GAP_UNITS = 5;
@@ -205,15 +205,18 @@ export type OverlayModel = {
 /** The overlay's model, with its caches: one per layer. */
 export function overlayModel(): OverlayModel {
   const sizesOf = sizeCache();
-  let notesMemo: { analysis: Analysis; catalog: Catalog | null; notes: NoteModel[] } | null = null;
+  /** The sheet's facets in the order they came onto it while this layer has been up: a collision's Keep comes first. */
+  let arrived: readonly string[] = [];
+  let notesMemo: { analysis: Analysis; catalog: Catalog | null; arrived: readonly string[]; notes: NoteModel[] } | null = null;
   const notesOf = (analysis: Analysis, catalog: Catalog | null): NoteModel[] => {
-    if (notesMemo?.analysis !== analysis || notesMemo.catalog !== catalog) {
-      notesMemo = { analysis, catalog, notes: buildNotes(analysis, catalog) };
+    if (notesMemo?.analysis !== analysis || notesMemo.catalog !== catalog || notesMemo.arrived !== arrived) {
+      notesMemo = { analysis, catalog, arrived, notes: buildNotes(analysis, catalog, arrived) };
     }
     return notesMemo.notes;
   };
 
   const place = ({ layout, recipe, catalog, analysis, compact, heights }: OverlayInputs): Overlay => {
+    arrived = arrivalOrder(arrived, recipe.facets);
     const sizes = sizesOf(layout, catalog, analysis, compact);
     const traces = tracesOf(layout, sizes, recipe, catalog, analysis);
     const notes = notesOf(analysis, catalog);

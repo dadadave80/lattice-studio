@@ -173,7 +173,7 @@ Around those: a strict Content Security Policy with no `unsafe-inline` or `unsaf
 
 - **3,500+ unit tests** on the core and app logic (`bun test`).
 - **1,600+ component tests** in a real browser with screenshot baselines (Vitest Browser Mode).
-- **480+ end-to-end flows** in Playwright, with accessibility scans, forced colors and reduced motion. WCAG 2.2 AA is the target.
+- **480+ end-to-end flows** in Playwright, with accessibility scans, forced colors and reduced motion. WCAG 2.2 AA is the target, and twelve [manual keyboard scripts and a screen-reader matrix](apps/studio/e2e/a11y/MANUAL.md) cover what automation can't.
 - **Chain tests** on Anvil, and **golden tests** that hold Studio's plan against Lattice's own deploy scripts.
 - **Budgets in one command:** bundle size, schema drift, token drift and copy lint all run in `bun run check`.
 

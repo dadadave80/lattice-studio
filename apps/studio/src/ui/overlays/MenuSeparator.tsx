@@ -1,7 +1,7 @@
-import { Menu as BaseMenu } from "@base-ui/react/menu";
-import styles from "./Menu.module.css";
+import { usePopups } from "../popups/load";
 
-/** A hairline between groups of menu items. */
+/** A hairline between groups of menu items: `ui/popups/MenuSeparator.tsx`, drawn only in an open menu. */
 export function MenuSeparator() {
-  return <BaseMenu.Separator className={styles.separator} />;
+  const popups = usePopups();
+  return popups ? <popups.MenuSeparator /> : null;
 }

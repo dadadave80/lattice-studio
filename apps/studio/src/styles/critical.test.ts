@@ -2,8 +2,9 @@
  * index.html's critical CSS duplicates a few tokens and shell sizes because it has to render before
  * packages/tokens/dist/tokens.css and the real Shell load (see the comment at the top of that `<style>`
  * block). This guards the duplication: every `--lxs-*` value must equal its `--lx-*` counterpart per theme
- * (contracts §1 T1), and every hard-coded pane or tier size must equal Shell's own constants (contracts §1
- * S3: shell/panes.ts PANE_SIZES, shell/layout-tier.ts TIER_MIN).
+ * (contracts §1 T1), every hard-coded pane or tier size must equal Shell's own constants (contracts §1
+ * S3: shell/panes.ts PANE_SIZES, shell/layout-tier.ts TIER_MIN), and the static Start block must say what
+ * sheet/chrome/StartBlock.tsx says.
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -68,6 +69,13 @@ describe("critical CSS token values match tokens.css", () => {
     expectSameValue(criticalRoot, tokensRoot, "--lxs-stroke-hair", "--lx-stroke-hair");
   });
 
+  test("the Start block's space, radius, card width and label tracking", () => {
+    for (const step of [3, 4, 6, 12]) expectSameValue(criticalRoot, tokensRoot, `--lxs-space-${step}`, `--lx-space-${step}`);
+    expectSameValue(criticalRoot, tokensRoot, "--lxs-radius", "--lx-radius");
+    expectSameValue(criticalRoot, tokensRoot, "--lxs-card-width", "--lx-card-width");
+    expectSameValue(criticalRoot, tokensRoot, "--lxs-tracking-label", "--lx-tracking-label");
+  });
+
   for (const theme of ["dark", "light"] as const) {
     test(`colors, ${theme}`, () => {
       const criticalTheme = block(indexHtml, `:root[data-theme="${theme}"]`);
@@ -77,6 +85,9 @@ describe("critical CSS token values match tokens.css", () => {
       expectSameValue(criticalTheme, tokensTheme, "--lxs-sunken", "--lx-sunken");
       expectSameValue(criticalTheme, tokensTheme, "--lxs-text", "--lx-text");
       expectSameValue(criticalTheme, tokensTheme, "--lxs-border-subtle", "--lx-border-subtle");
+      expectSameValue(criticalTheme, tokensTheme, "--lxs-text-muted", "--lx-text-muted");
+      expectSameValue(criticalTheme, tokensTheme, "--lxs-text-faint", "--lx-text-faint");
+      expectSameValue(criticalTheme, tokensTheme, "--lxs-border", "--lx-border");
     });
   }
 });
@@ -105,5 +116,39 @@ describe("critical CSS pane and tier sizes match the shell's", () => {
   test("the console hides below TIER_MIN.narrow", () => {
     const max = /@media \(max-width:\s*(\d+)px\)/.exec(indexHtml)?.[1];
     expect(max && Number(max)).toBe(TIER_MIN.narrow - 1);
+  });
+
+  // space-8 + space-1 is PANE_SIZES.console.header, as in the console's own rule (Shell.module.css).
+  test("the console is its header alone from TIER_MIN.narrow to TIER_MIN.mid", () => {
+    const tier = /@media \(min-width:\s*(\d+)px\) and \(max-width:\s*(\d+)px\)\s*\{\s*\.lxs-console\s*\{\s*block-size:\s*calc\(var\(--lxs-space-8\) \+ var\(--lxs-space-1\)\);/.exec(
+      indexHtml,
+    );
+    expect(tier && [Number(tier[1]), Number(tier[2])]).toEqual([TIER_MIN.narrow, TIER_MIN.mid - 1]);
+  });
+});
+
+describe("the static Start block's keyboard hint keeps the real one's room", () => {
+  test("two lines under the same width", () => {
+    const css = readFileSync(join(appDir, "src", "sheet", "chrome", "StartBlock.module.css"), "utf8");
+    const real = /@media \(max-width:\s*(\d+)px\)\s*\{\s*\.keysHint\s*\{\s*min-block-size:\s*calc\(var\(--lx-space-8\) \+ var\(--lx-space-2\)\);/.exec(css);
+    const still = /@media \(max-width:\s*(\d+)px\)\s*\{\s*\.lxs-start-keys\s*\{\s*min-block-size:\s*calc\(var\(--lxs-space-8\) \+ var\(--lxs-space-2\)\);/.exec(
+      indexHtml,
+    );
+    expect(real?.[1]).toBeDefined();
+    expect(still?.[1]).toBe(real?.[1]);
+  });
+});
+
+describe("the static Start block says what the real one says", () => {
+  const start = /<section class="lxs-start"[\s\S]*?<\/section>/.exec(indexHtml)?.[0] ?? "";
+  const texts = [...start.matchAll(/>([^<>]+)</g)].map((m) => m[1]?.trim()).filter((t): t is string => Boolean(t));
+
+  test("the title, the choices and the hints, in the block's order", async () => {
+    const copy = await import("../sheet/chrome/copy.ts");
+    const recipes = copy.START_RECIPES.flatMap((name) => [name, copy.RECIPE_BLURBS[name] ?? ""]);
+    expect(texts).toEqual([
+      copy.START_A_DIAMOND, copy.BLANK_DIAMOND_LABEL, copy.BLANK_DIAMOND_ADDS, ...recipes, copy.BROWSE_ALL_RECIPES,
+      copy.startHint("Ctrl+K"), copy.TOUR_PROMPT, copy.TOUR_LINK,
+    ]);
   });
 });

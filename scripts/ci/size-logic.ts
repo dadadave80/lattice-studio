@@ -19,19 +19,37 @@ export type SizeReport = { readonly rows: SizeRow[]; readonly ok: boolean };
 
 /** Budgets in bytes, spec L809-L814. */
 export const BUDGETS = {
-  // Interim (2026-09-23, QUESTIONS Q19): the measured floor with the sheet at first paint was 328 KB after FX15 and
-  // 334 KB after S6; 370 is that floor plus an allowance for the nine work packages still to land (each may grow the
-  // entry by its command registrations only, the rest through import()). The spec's 240 KB stays the target.
-  firstLoadJs: 370_000,
+  // QUESTIONS Q19 (David, 2026-10-06): the sheet, the document commands' bodies, core's analysis engine and Base UI's
+  // popups load after the first paint. That measured 247.8 KB (250.2 with a WalletConnect project id); the gate is
+  // that plus 7.2 KB of headroom. The spec's 240 KB stays the target: core's analysis is still in the entry through
+  // the contracts' default analysis provider (contracts/analysis.ts, frozen), about 14 KB.
+  firstLoadJs: 255_000,
   css: 25_000,
   fontsTotal: 90_000,
   fontsCount: 2,
+  // Spec L812's target, warn-only. Accepted floor (Q15): dev-f4a32c8's index is 73,930 B gz with recipes and init
+  // docs in their own files and the index minified (81,407 B before); the rest is shared contracts' release data.
   catalogIndex: 60_000,
   lazyChunk: 70_000,
 } as const;
 
-/** Named chunks the spec exempts from the lazy-chunk budget (spec L814 "Loaded only on explicit action"). */
+/**
+ * Chunks the spec exempts from the lazy-chunk budget (spec L814 "Loaded only on explicit action · No budget; not
+ * precached"): by name, and every file the build leaves out of the precache (`release.json`'s `notPrecached`,
+ * decided from the module graph by apps/studio/build/precache.ts), since the WalletConnect SDK's chunks are named
+ * after their own modules ("core", "dist", "w3m-modal").
+ */
 const NO_BUDGET_PATTERN = /elk|walletconnect/i;
+
+/** `release.json`'s `notPrecached` (apps/studio/build/precache.ts `ReleaseManifest`); none when it can't be read. */
+export function notPrecachedOf(releaseJson: string): string[] {
+  try {
+    const manifest = JSON.parse(releaseJson) as { notPrecached?: unknown };
+    return Array.isArray(manifest.notPrecached) ? manifest.notPrecached.filter((p): p is string => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 const FONT_EXTENSIONS = [".woff2", ".woff", ".ttf", ".otf"];
 
@@ -81,6 +99,8 @@ export type ClassifyInput = {
   /** The default catalog's index.json, if the build copied one in (contracts §4; warn-only budget). */
   readonly catalogIndex: BuildFile | null;
   readonly gzip: GzipFn;
+  /** Files the build doesn't precache (`release.json`), paths relative to outDir: no lazy-chunk budget. */
+  readonly notPrecached?: readonly string[];
 };
 
 /** Builds the size report from a build's files. Pure: the caller reads the filesystem and gzips. */
@@ -126,11 +146,12 @@ export function classifyBuild(input: ClassifyInput): SizeReport {
     rows.push({ item: "Catalog index", gz: 0, raw: 0, budget: BUDGETS.catalogIndex, unit: "gz", warnOnly: true, ok: true });
   }
 
+  const notPrecached = new Set(input.notPrecached ?? []);
   const usedPaths = new Set([...firstLoadJsHrefs, ...firstLoadCssHrefs, input.catalogIndex?.path].filter((p): p is string => p !== undefined));
   const lazyJs = input.files.filter((f) => extname(f.path) === ".js" && !usedPaths.has(f.path));
   for (const chunk of lazyJs.sort((a, b) => a.path.localeCompare(b.path))) {
     const gz = input.gzip(chunk.bytes).byteLength;
-    const exempt = NO_BUDGET_PATTERN.test(basename(chunk.path));
+    const exempt = NO_BUDGET_PATTERN.test(basename(chunk.path)) || notPrecached.has(chunk.path);
     rows.push({
       item: `Lazy chunk ${basename(chunk.path)}${exempt ? " (no budget)" : ""}`,
       gz,
