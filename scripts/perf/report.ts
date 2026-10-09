@@ -40,6 +40,9 @@ export const REPORT_ONLY: Readonly<Partial<Record<BudgetKey, string>>> = {
   // Q19: FX30 cut it from ~47 to ~32 ms per move; the rest is React Flow, the canvas and shell subscriptions.
   // A reference row (spec L816 gives no budget), so it isn't enforced either way.
   drag: "Q19",
+  // David, 2026-10-09: on GitHub's runner the slowest step, Undo, measured 168-360 ms against 200 across runs of
+  // the same code, so one sample decides the job. Reported until Undo itself is made cheaper.
+  inp: "the Undo fix",
 };
 
 export type Status = "ok" | "over" | "above reference" | "warn" | "info" | "missing";
