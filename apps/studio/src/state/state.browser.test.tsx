@@ -43,6 +43,11 @@ function Address() {
   return <p>{prediction.status === "ready" ? `Address ${prediction.address}` : prediction.reason}</p>;
 }
 
+function ChainChecks() {
+  const codes = useAnalysis((a) => a.problems.filter((p) => p.code.startsWith("NET-")).map((p) => p.code).join(" "));
+  return <p>{`Chain checks: ${codes || "none"}`}</p>;
+}
+
 describe("S1 in the browser", () => {
   test("placing and undoing with buttons: one step each, re-rendered through selectors", async () => {
     await renderWithStudio(<Sheet />);
@@ -80,6 +85,19 @@ describe("S1 in the browser", () => {
     await expect.element(page.getByText(NEEDS_WALLET)).toBeVisible();
     session.set({ chainId: 11155111 });
     await expect.element(page.getByText(/^Address 0x[0-9a-fA-F]{40}$/)).toBeVisible();
+  });
+
+  test("the NET checks run once a chain is selected; NET-05 waits for the wallet", async () => {
+    const SEPOLIA = 11155111;
+    // The probe says the predicted address has code, but without an account there's no prediction to be about.
+    const chain = fakeChainService({ state: { [SEPOLIA]: { shared: { LatticeFactory: { present: false } }, predictedHasCode: true } } });
+    await renderWithStudio(<ChainChecks />, { chain });
+    await expect.element(page.getByText("Chain checks: none")).toBeVisible();
+    session.set({ chainId: SEPOLIA });
+    await chain.probe(SEPOLIA);
+    await expect.element(page.getByText("Chain checks: NET-03")).toBeVisible();
+    chain.setAccount({ address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", chainId: SEPOLIA, connector: "io.metamask" });
+    await expect.element(page.getByText("Chain checks: NET-03 NET-05")).toBeVisible();
   });
 
   test("with nothing selected, a keyboard placement lands at the center of the view", async () => {

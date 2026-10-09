@@ -36,7 +36,7 @@ bun apps/studio/build/verify-headers.ts apps/studio/dist
 
 The last command, run with only the `dist` folder and no `vercel.json` path, checks the built `index.html`'s `<meta>` CSP against its own inline style and import map instead of a headers file.
 
-**Needs David:** where the built folder is pinned, and the ENS name or other stable origin the IPFS mirror is served behind, are both undecided. Until a domain is chosen, exported `recipe.json` files carry a placeholder `$schema` URL (`https://lattice-studio.invalid/schema/recipe.v1.json`); it still validates locally, it just doesn't resolve.
+**Needs David:** where the built folder is pinned, and the ENS name or other stable origin the IPFS mirror is served behind, are both undecided. Exported `recipe.json` files carry a `$schema` URL that resolves today: `https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json`, the committed schema on `main`. lattice.wtf will host the schema later; recipes exported before then keep the raw URL, so that file must stay at that path on `main` (`apps/studio/build/recipe-schema.test.ts` fails if it moves).
 
 ## CI
 
@@ -45,7 +45,7 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 **Needs David:**
 
 - Create the GitHub repository and push. None of these workflows run before that.
-- Add the `SEPOLIA_RPC_URL` repository secret. Without it, `fork.yml`'s gate job checks for the secret, finds it missing, and stops there — the pull request gate's own `chain` job still runs against a local Anvil node either way, so this only adds the fork suite, it doesn't block anything by its absence.
+- Add the `SEPOLIA_RPC_URL` repository secret. `fork.yml` runs without it: the fork suite forks a recent finalized Sepolia block from the first public RPC that serves it and uses the secret only when every public one fails, so the secret is a fallback, not a gate. The pull request gate's own `chain` job runs against a local Anvil node either way.
 - Add the `NPM_TOKEN` repository secret, scoped to publish `lattice-studio` with provenance. Needed before `publish-cli.yml` can run at all.
 - Install solc 0.8.36 (Lattice's pin) before the `golden`, `chain`, and `catalog-drift` jobs run, so `forge build` inside the pinned Lattice checkout has it available.
 
@@ -100,11 +100,11 @@ v1 ships only once every gate below passes (spec "Phasing", cut line for "v1: co
 | Gate | Command or owner |
 | --- | --- |
 | Golden tests pass for all three recipes and shared-contract addresses | `bun run golden` |
-| Every exported script deploys on an Anvil fork once the shared contracts are in it | `bun run test:chain` (local Anvil); `fork.yml`'s Sepolia fork suite once **Needs David** adds `SEPOLIA_RPC_URL` |
+| Every exported script deploys on an Anvil fork once the shared contracts are in it | `bun run test:chain` (local Anvil); `fork.yml`'s Sepolia fork suite (`SEPOLIA_FORK=1 bun run test:chain`, public RPCs, `SEPOLIA_RPC_URL` as the fallback) |
 | A first-time user deploys and verifies on Sepolia in under 5 minutes, moderated | **Needs David**: run the timed script in `MANUAL.md` once it exists (pending Q25's permission decision) |
 | First-load JavaScript budget met | `bun scripts/ci/size.ts --build`, plus the real-device check above; **Needs David** to choose among Q19's budget options while the interim 370 KB gate holds |
 | LCP and drag-cost budgets met | `bun scripts/perf/run.ts` (or the `perf.yml` job); LCP and drag stay report-only until an open first-load decision is made; `scripts/perf/report.ts`'s `REPORT_ONLY` names both, and when it lands their entries drop and Lighthouse's assert moves from `warn` to `error` |
-| axe clean, with the manual keyboard scripts and screen readers | `bun run e2e apps/studio/e2e/a11y`; **Needs David**: the twelve manual keyboard scripts and the tier 1/2 screen-reader passes before each minor release, pending Q25 |
+| axe clean, with the manual keyboard scripts and screen readers | `bun run e2e apps/studio/e2e/a11y`; **Needs David**: the twelve manual keyboard scripts and the tier 1/2 screen-reader passes in [`apps/studio/e2e/a11y/MANUAL.md`](../apps/studio/e2e/a11y/MANUAL.md), before each minor release |
 | Type-check, lint, size, schema and copy checks | `bun run check` |
 
 Mainnet stays off in v1 regardless of the above (spec "Phasing"; "Open questions → Mainnet"); that's a separate decision for David, not a cut-line gate.

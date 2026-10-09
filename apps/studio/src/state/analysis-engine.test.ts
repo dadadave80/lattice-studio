@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { Analysis, LineDraft, NarrateCause, Project } from "@lattice-studio/core";
+import type { Analysis, Hex, LineDraft, NarrateCause, Project } from "@lattice-studio/core";
 import { analyze, NotImplemented, placeFacet, recipeHash } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
-import { doc, getAnalysis, setCatalogStatus, subscribeAnalysis } from "@/contracts";
+import { doc, getAnalysis, session, setCatalogStatus, subscribeAnalysis } from "@/contracts";
 import { buildContext } from "./context";
+import { NEEDS_CHAIN, NEEDS_WALLET } from "./prediction";
 import { settle, setupKit, type Kit } from "./testing";
 
 let kit: Kit | null = null;
@@ -142,10 +143,12 @@ describe("narration", () => {
 describe("buildContext", () => {
   const address = "0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db";
   const other = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+  const deploy: Project["deploy"] = { path: "factory", entropy: `0x${"01".repeat(11)}`, scope: "every-chain" };
 
   test("unconfirmed argument paths come from link and file provenance, in a stable order", () => {
     const ctx = buildContext({
-      project: { predicted: [], provenance: { "steps[1].admin": "file", "bundle.p.asset": "link", "steps[0].x": "confirmed" } },
+      project: { predicted: [], provenance: { "steps[1].admin": "file", "bundle.p.asset": "link", "steps[0].x": "confirmed" }, deploy },
+      chainId: null,
       prediction: { status: "none", reason: "x" },
       account: null,
       deployments: [],
@@ -159,7 +162,8 @@ describe("buildContext", () => {
 
   test("known holds earlier predictions and recorded deployments; a deployment wins over a prediction", () => {
     const ctx = buildContext({
-      project: { predicted: [{ chainId: 1, address }, { chainId: 11155111, address: other }], provenance: {} },
+      project: { predicted: [{ chainId: 1, address }, { chainId: 11155111, address: other }], provenance: {}, deploy },
+      chainId: 11155111,
       prediction: { status: "ready", address: other, chainId: 11155111, path: "factory", scope: "every-chain", from: address, salt: "0x" },
       account: { address },
       deployments: [{
@@ -171,5 +175,53 @@ describe("buildContext", () => {
     expect(ctx.known).toEqual([address]);
     expect(ctx.knownFrom).toEqual({ [address.toLowerCase()]: { source: "deployment", chainId: 84532, chain: "Base Sepolia" } });
     expect(ctx.refs).toEqual({ self: other, deployer: address });
+  });
+
+  test("a selected chain without a wallet: the chain and path only, so the NET checks run and NET-05 waits", () => {
+    const ctx = buildContext({
+      project: { predicted: [], provenance: {}, deploy: { ...deploy, path: "createx" } },
+      chainId: 11155111,
+      prediction: { status: "none", reason: NEEDS_WALLET },
+      account: null,
+      deployments: [],
+    });
+    expect(ctx.deploy).toEqual({ chainId: 11155111, path: "createx" });
+    expect(ctx.refs).toBeUndefined();
+  });
+
+  test("once a wallet connects the prediction adds the account and salt", () => {
+    const salt = `${address.toLowerCase()}00${"01".repeat(11)}` as Hex;
+    const ctx = buildContext({
+      project: { predicted: [], provenance: {}, deploy },
+      chainId: 11155111,
+      prediction: { status: "ready", address: other, chainId: 11155111, path: "factory", scope: "every-chain", from: address, salt },
+      account: { address },
+      deployments: [],
+    });
+    expect(ctx.deploy).toEqual({ chainId: 11155111, path: "factory", from: address, salt });
+    expect(ctx.refs).toEqual({ self: other, deployer: address });
+  });
+
+  test("no chain: no deploy context, whether or not a wallet is connected", () => {
+    const input = { project: { predicted: [], provenance: {}, deploy }, chainId: null, prediction: { status: "none" as const, reason: NEEDS_CHAIN }, deployments: [] };
+    expect(buildContext({ ...input, account: null }).deploy).toBeUndefined();
+    const connected = buildContext({ ...input, account: { address } });
+    expect(connected.deploy).toBeUndefined();
+    expect(connected.refs).toEqual({ deployer: address });
+  });
+});
+
+describe("the engine's context follows the chain before a wallet connects", () => {
+  test("selecting a chain or switching the path re-analyzes without an account", () => {
+    kit = setupKit();
+    expect(kit.state.analysis.context().deploy).toBeUndefined();
+    session.set({ chainId: 11155111 });
+    expect(kit.state.analysis.context().deploy).toEqual({ chainId: 11155111, path: doc.get().deploy.path });
+    const heard: Analysis[] = [];
+    const stop = subscribeAnalysis((a) => heard.push(a));
+    doc.apply("Use CreateX", (p) => ({ project: { ...p, deploy: { ...p.deploy, path: "createx" } }, changed: true, summary: "Use CreateX" }));
+    stop();
+    expect(kit.state.analysis.context().deploy).toEqual({ chainId: 11155111, path: "createx" });
+    expect(heard.length).toBeGreaterThan(0);
   });
 });

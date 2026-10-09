@@ -8,7 +8,7 @@ import { beforeAll, describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { openDialog, overrideDialog } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
-import { copyText, dismissCopyFallback } from "@/ui/copy/copy-text";
+import { copyHint, copyText, dismissCopyFallback } from "@/ui/copy/copy-text";
 import { DialogHost } from "@/ui/overlays/DialogHost";
 import { PaneSizeMenu } from "@/ui/nav/PaneSizeMenu";
 import { onCleanup, renderWithStudio } from "../harness";
@@ -44,7 +44,7 @@ describe("provisional: copy fallback", () => {
     const clipboard = { writeText: vi.fn(async () => { throw new DOMException("Write permission denied.", "NotAllowedError"); }) };
     await renderWithStudio(<Button onClick={() => void copyText("0x5FbDB2315678afecb367f032d93F642f64180aa3", { clipboard })}>Copy address</Button>);
     await page.getByRole("button", { name: "Copy address" }).click();
-    const field = page.getByRole("textbox", { name: "Press ⌘C to copy" });
+    const field = page.getByRole("textbox", { name: copyHint() });
     await expect.element(field).toHaveFocus();
     await document.fonts.ready;
     const fallback = document.querySelector<HTMLElement>("[data-copy-fallback]");

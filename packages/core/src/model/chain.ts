@@ -11,8 +11,11 @@ export type DeployPath = Project["deploy"]["path"];
 /** `Project["deploy"]["scope"]`: salt flag 0x00 (every chain) or 0x01 (this chain only). */
 export type Scope = Project["deploy"]["scope"];
 
-/** `AnalysisContext["deploy"]`: resolves references and enables the NET checks (spec L269). */
-export type DeployContext = { chainId: number; path: DeployPath; from: Address; salt: Hex };
+/**
+ * `AnalysisContext["deploy"]`: resolves references and enables the NET checks (spec L269). `from` and `salt` are
+ * there once a wallet connects; the chain and path alone are enough for every NET check but NET-05 (L301).
+ */
+export type DeployContext = { chainId: number; path: DeployPath; from?: Address; salt?: Hex };
 
 /** What a code probe found at a shared contract's address. */
 export type CodeProbe = { present: boolean; codehash?: Hex };
