@@ -102,14 +102,14 @@
   margin: 0;
   font: var(--lx-font-body-sm);
   font-weight: 600;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .signature {
   font: var(--lx-font-code-sm);
   letter-spacing: var(--lx-tracking-code-sm);
   color: var(--lx-text-muted);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .stepTools {

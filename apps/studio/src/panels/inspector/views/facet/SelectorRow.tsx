@@ -6,6 +6,7 @@ import { CommandSelectorRow } from "./CommandSelectorRow";
 import { plainCode } from "./facet-model";
 import type { PinAction, PinState } from "./pin-action";
 import styles from "./facet.module.css";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 export type SelectorRowProps = {
   selector: { hex: Hex4; signature: string };
@@ -75,7 +76,7 @@ export function SelectorRow({ selector, action, facet, readOnly, tabIndex, onFoc
   const dense = plainCode(formatSelector(selector, "dense"));
   const content = (
     <>
-      <span className={styles.signature}>{dense}</span>
+      <span className={styles.signature}>{breakIdentifier(dense)}</span>
       <span className={styles.state}>{action.label}</span>
     </>
   );

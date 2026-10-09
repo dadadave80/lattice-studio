@@ -38,6 +38,12 @@ canvas {
   max-width: 100%;
 }
 
+/* React Flow's edge layer is absolutely positioned with no width, so the clamp above made each edge svg 0 px wide
+   and Chromium clipped the traces. */
+.react-flow__edges svg {
+  max-width: none;
+}
+
 input,
 button,
 textarea,

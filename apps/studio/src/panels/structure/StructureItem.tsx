@@ -1,4 +1,5 @@
 import { Icon, VisuallyHidden } from "@/ui";
+import { breakIdentifier } from "@/ui/text/Identifier";
 import { codeRuns, SEVERITY_WORD, stepTitle, type StructureMeta } from "./structure-model";
 import styles from "./StructurePanel.module.css";
 
@@ -17,11 +18,11 @@ const STATE_WORD: Partial<Record<string, string>> = {
 export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; descriptionId?: string | undefined }) {
   switch (meta.kind) {
     case "core":
-      return <span className={styles.name}>Core</span>;
+      return <span className={styles.group}>Core</span>;
     case "fallback":
       return (
         <>
-          <span className={styles.name}>Fallback</span>
+          <span className={styles.group}>Fallback</span>
           <span className={styles.aside}>{`${meta.routed} routed`}</span>
         </>
       );
@@ -29,7 +30,9 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
     case "coreFacet":
       return (
         <>
-          <span className={styles.name}>{meta.facet}</span>
+          <span className={styles.name} title={meta.facet}>
+            {meta.facet}
+          </span>
           {meta.count ? <span className={styles.aside}>{meta.count.replace(/ selectors?$/, "")}</span> : null}
           {meta.description && descriptionId ? <VisuallyHidden id={descriptionId}>{meta.description}</VisuallyHidden> : null}
         </>
@@ -39,7 +42,9 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
       const word = STATE_WORD[view.state];
       return (
         <>
-          <span className={styles.code} data-state={view.state}>{view.name}</span>
+          <span className={styles.code} data-state={view.state} title={view.name}>
+            {view.name}
+          </span>
           <span className={styles.mark} data-state={view.state}>
             {view.state === "seam" ? <Icon name="lock" size="small" /> : null}
             {view.mark}
@@ -51,14 +56,16 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
     case "area":
       return (
         <>
-          <span className={styles.name}>{meta.name}</span>
+          <span className={styles.name} title={meta.name}>
+            {meta.name}
+          </span>
           <span className={styles.aside}>{meta.count}</span>
         </>
       );
     case "problems":
       return (
         <>
-          <span className={styles.name}>Problems</span>
+          <span className={styles.group}>Problems</span>
           <span className={styles.aside}>{meta.count}</span>
         </>
       );
@@ -68,7 +75,7 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
           <span className={styles.severity} data-severity={meta.problem.severity}>{SEVERITY_WORD[meta.problem.severity]}</span>
           <span className={styles.message}>
             {codeRuns(meta.problem.message).map((run, i) =>
-              run.code ? <code key={i} className={styles.inline}>{run.text}</code> : <span key={i}>{run.text}</span>,
+              run.code ? <code key={i} className={styles.inline}>{breakIdentifier(run.text)}</code> : <span key={i}>{run.text}</span>,
             )}
           </span>
         </span>
@@ -76,8 +83,10 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
     case "init":
       return (
         <>
-          <span className={styles.name}>Init plan</span>
-          <span className={styles.aside}>{meta.summary}</span>
+          <span className={styles.group}>Init plan</span>
+          <span className={styles.aside} title={meta.summary}>
+            {meta.summary}
+          </span>
         </>
       );
     case "step": {
@@ -85,7 +94,9 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
       return (
         <>
           <span className={styles.index}>{step.index + 1}</span>
-          <span className={styles.name}>{stepTitle(step)}</span>
+          <span className={styles.name} title={stepTitle(step)}>
+            {stepTitle(step)}
+          </span>
           {step.locked ? <Icon name="lock" size="small" className={styles.lock} /> : null}
         </>
       );
@@ -94,7 +105,9 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
       return (
         <>
           <span className={styles.index}>{meta.position + 1}</span>
-          <span className={styles.name}>{meta.module}</span>
+          <span className={styles.name} title={meta.module}>
+            {meta.module}
+          </span>
         </>
       );
   }

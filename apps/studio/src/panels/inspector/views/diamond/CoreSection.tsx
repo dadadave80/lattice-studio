@@ -1,6 +1,7 @@
 import { coreStatus, mechanismOptions } from "@lattice-studio/core";
 import { useMemo } from "react";
 import { useAnalysis, useCatalog, useDocument } from "@/contracts";
+import { breakIdentifier } from "@/ui/text/Identifier";
 import { Section } from "../../shared/Section";
 import { SpecRow } from "../../shared/SpecRow";
 import { SpecRows } from "../../shared/SpecRows";
@@ -42,7 +43,7 @@ export function CoreSection() {
             <ul className={styles.plainList} aria-label="Loupe selectors">
               {rows.loupeRows.map((row) => (
                 <li key={row.hex} className={row.covered ? styles.quiet : `${styles.quiet} ${sheet.accent}`} data-loupe={row.hex}>
-                  {`${row.signature} · ${row.hex}`}
+                  {breakIdentifier(`${row.signature} · ${row.hex}`)}
                 </li>
               ))}
             </ul>
@@ -53,7 +54,7 @@ export function CoreSection() {
               <ul className={styles.plainList} aria-label="Registered interfaces">
                 {rows.interfaces.map((entry) => (
                   <li key={entry.id} className={styles.quiet}>
-                    {`${entry.name} · ${entry.id}`}
+                    {breakIdentifier(`${entry.name} · ${entry.id}`)}
                   </li>
                 ))}
               </ul>

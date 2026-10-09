@@ -354,9 +354,22 @@ describe("zoom", () => {
     const name = Object.keys(project.layout)[3] ?? "";
     session.set({ selection: [name] });
     press("@", "Digit2", true);
+    // Framed in the room the floats leave (SH-02): inside the sheet, clear of the tool strip, title block and core cell.
+    await expect.poll(() => drawnViewport().zoom).toBeGreaterThan(1);
     await expect.poll(() => {
       const r = cardScreenRect(name);
-      return Math.abs(r.x + r.width / 2 - SHEET_WIDTH / 2) < 2 && Math.abs(r.y + r.height / 2 - SHEET_HEIGHT / 2) < 40;
+      const sheet = flowElement().getBoundingClientRect();
+      const inside = r.x >= 0 && r.y >= 0 && r.x + r.width <= SHEET_WIDTH && r.y + r.height <= SHEET_HEIGHT;
+      const floats = ['[data-chrome="tool-strip"]', '[data-chrome="title-block"]', "[data-core-cell]"].flatMap((selector) => {
+        const el = document.querySelector(selector);
+        return el ? [el.getBoundingClientRect()] : [];
+      });
+      const clear = floats.every((f) => {
+        const left = f.left - sheet.left;
+        const top = f.top - sheet.top;
+        return r.x + r.width <= left || r.x >= left + f.width || r.y + r.height <= top || r.y >= top + f.height;
+      });
+      return inside && clear;
     }).toBe(true);
   });
 

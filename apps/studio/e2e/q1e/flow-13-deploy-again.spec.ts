@@ -10,7 +10,7 @@ import { catalog } from "../_support/catalog.ts";
 import { focusRegion } from "../_support/keys.ts";
 import { deploymentFor, recipeProject } from "../_support/projects.ts";
 import { seedProject } from "../_support/seed.ts";
-import { NARROW_WIDTHS, expectTier, tierAt, viewportAt } from "../_support/viewports.ts";
+import { NARROW_WIDTHS, TALL_DESKTOP, expectTier, tierAt, viewportAt } from "../_support/viewports.ts";
 import { shortAddress } from "../_support/wallet.ts";
 import { deployOnAnvil, recordFor } from "./pages/chain.ts";
 import { DeployReview, watchReactErrors } from "./pages/dialogs.ts";
@@ -25,6 +25,9 @@ const MODES: readonly InputMode[] = ["pointer", "keyboard"];
 function shortHash(hash: string): string {
   return `${hash.slice(0, 6)}…${hash.slice(-4)}`;
 }
+
+// The flows read the title block's full rows: a window tall enough that it starts full (David's decision on SH-01/SH-02).
+test.use({ viewport: TALL_DESKTOP });
 
 test.describe("Flow 13. Deploy again after changes", () => {
   for (const mode of MODES) {

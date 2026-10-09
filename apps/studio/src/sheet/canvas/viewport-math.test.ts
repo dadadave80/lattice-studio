@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  centerOn, clampViewport, clampZoom, clearOf, fitRect, gridGap, intersects, isViewport, MAX_ZOOM, MIN_ZOOM, percent, sameViewport, toScreen,
+  centerOn, clampViewport, clampZoom, clearOf, fitBest, fitRect, gridGap, intersects, isViewport, MAX_ZOOM, MIN_ZOOM, percent, sameViewport, toScreen,
   visibleRect, zoomAt, zoomStep, ZOOM_STOPS,
 } from "./viewport-math";
 
@@ -68,6 +68,36 @@ describe("viewports", () => {
     expect(shown.x + shown.width).toBeGreaterThanOrEqual(2000);
     expect(fitRect({ x: 0, y: 0, width: 100, height: 100 }, size, { maxZoom: 1 }).zoom).toBe(1);
     expect(fitRect({ x: 0, y: 0, width: 1e6, height: 1e6 }, size).zoom).toBe(MIN_ZOOM);
+  });
+
+  test("fitRect frames into the room the floats leave, centered there (SH-02)", () => {
+    const size = { width: 1000, height: 600 };
+    const rect = { x: 0, y: 0, width: 500, height: 300 };
+    // Tool strip 70 px at the left, the title block's column 340 px at the right, the cell's band 160 px below.
+    const v = fitRect(rect, size, { padding: 48, insets: { left: 70, right: 340, bottom: 160 } });
+    const onScreen = toScreen(rect, v);
+    expect(onScreen.x).toBeGreaterThanOrEqual(70 - 0.5);
+    expect(onScreen.x + onScreen.width).toBeLessThanOrEqual(1000 - 340 + 0.5);
+    expect(onScreen.y).toBeGreaterThanOrEqual(48 - 0.5);
+    expect(onScreen.y + onScreen.height).toBeLessThanOrEqual(600 - 160 + 0.5);
+    // Without insets it's the symmetric fit, centered on the sheet.
+    const plain = fitRect(rect, size, { padding: 48 });
+    const center = toScreen(rect, plain);
+    expect(center.x + center.width / 2).toBeCloseTo(500);
+    expect(center.y + center.height / 2).toBeCloseTo(300);
+  });
+
+  test("fitBest takes whichever room frames the rect larger", () => {
+    const size = { width: 1000, height: 600 };
+    const wide = { x: 0, y: 0, width: 1600, height: 200 };
+    const beside = { right: 340, bottom: 120 };
+    const under = { bottom: 300 };
+    // A wide, short rect gains from the full width: the band under the rail.
+    expect(fitBest(wide, size, [under, beside]).zoom).toBeCloseTo(fitRect(wide, size, { insets: under }).zoom);
+    const tall = { x: 0, y: 0, width: 300, height: 900 };
+    // A tall rect gains from the full height: beside the title block.
+    expect(fitBest(tall, size, [under, beside]).zoom).toBeCloseTo(fitRect(tall, size, { insets: beside }).zoom);
+    expect(fitBest(tall, size, [])).toEqual(fitRect(tall, size));
   });
 
   test("toScreen and visibleRect agree", () => {

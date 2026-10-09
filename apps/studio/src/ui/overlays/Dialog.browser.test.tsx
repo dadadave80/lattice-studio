@@ -157,16 +157,44 @@ describe("Dialog", () => {
     expect(document.querySelector('[data-keyctx="dialog"]')).not.toBeNull();
   });
 
-  test("is full screen under 768 px wide", async () => {
-    await page.viewport(700, 800);
+  test("is a bottom sheet under 768 px wide: as tall as its content, the actions stacked full width", async () => {
+    await page.viewport(375, 812);
     onCleanup(() => page.viewport(1440, 900));
     await renderWithStudio(<Harness size="wide" />);
     await openWithKeyboard();
     const rect = page.getByRole("dialog").element().getBoundingClientRect();
     expect(rect.left).toBe(0);
-    expect(rect.top).toBe(0);
-    expect(rect.width).toBe(700);
-    expect(rect.height).toBeGreaterThanOrEqual(800);
+    expect(rect.width).toBe(375);
+    expect(rect.bottom).toBe(812);
+    expect(rect.height).toBeLessThan(812 / 2);
+    const save = page.getByRole("button", { name: "Save" }).element().getBoundingClientRect();
+    const cancel = page.getByRole("button", { name: "Cancel" }).element().getBoundingClientRect();
+    // The primary on top, each as wide as the footer's content box.
+    expect(save.bottom).toBeLessThanOrEqual(cancel.top);
+    expect(save.width).toBe(cancel.width);
+    expect(save.width).toBeGreaterThan(375 - 48);
+  });
+
+  test("a long body scrolls inside the sheet; the footer never overprints it", async () => {
+    await page.viewport(375, 812);
+    onCleanup(() => page.viewport(1440, 900));
+    await renderWithStudio(<Harness />);
+    await openWithKeyboard();
+    const dialog = page.getByRole("dialog").element();
+    const field = page.getByRole("textbox", { name: "Folder" }).element().closest("label")!;
+    field.style.display = "block";
+    field.style.blockSize = "2000px";
+    const body = field.parentElement!;
+    await expect.poll(() => body.scrollHeight).toBeGreaterThan(2000);
+    const rect = dialog.getBoundingClientRect();
+    expect(rect.top).toBeGreaterThanOrEqual(0);
+    expect(rect.bottom).toBe(812);
+    const footer = dialog.querySelector("footer")!.getBoundingClientRect();
+    expect(body.getBoundingClientRect().bottom).toBeLessThanOrEqual(footer.top);
+    expect(footer.bottom).toBeLessThanOrEqual(812);
+    // The body itself scrolls, so what's past its edge is clipped rather than drawn under the footer.
+    body.scrollTop = 100;
+    expect(body.scrollTop).toBe(100);
   });
 
   test("is 640 px wide when wide on a desktop", async () => {

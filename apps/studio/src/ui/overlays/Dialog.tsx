@@ -28,7 +28,7 @@ export type DialogProps = {
    * hidden from assistive technology). When it becomes the top again, focus goes back where it was in it.
    */
   top?: boolean;
-  /** `medium` (480 px, default) or `wide` (640 px, the deploy review). Full screen under 768 px either way. */
+  /** `medium` (480 px, default) or `wide` (640 px, the deploy review). A bottom sheet under 768 px either way. */
   size?: DialogSize;
   /** The actions, right-aligned: the primary last. */
   footer?: ReactNode;

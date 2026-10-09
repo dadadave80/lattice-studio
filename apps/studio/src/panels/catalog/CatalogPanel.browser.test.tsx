@@ -473,6 +473,27 @@ describe("Catalog areas", () => {
   });
 });
 
+describe("Catalog names at the default 240 px pane (CA-01)", () => {
+  test("ERC20Burnable, ERC20Crosschain, ERC20FlashMint and ERC20Pausable show whole; the count gives way first", async () => {
+    await renderWithStudio(
+      <div style={{ inlineSize: 240, blockSize: 900, display: "flex", flexDirection: "column" }}>
+        <CatalogPanel />
+      </div>,
+    );
+    await typeQuery("erc20");
+    for (const name of ["ERC20Burnable", "ERC20Crosschain", "ERC20FlashMint", "ERC20Pausable"]) {
+      await expect.poll(() => row(name)).not.toBeNull();
+      const label = [...row(name)!.querySelectorAll<HTMLElement>("span")].find((span) => span.textContent === name);
+      expect(label, name).toBeDefined();
+      expect(label!.scrollWidth, name).toBeLessThanOrEqual(label!.clientWidth);
+      // The count may cut to "2 sel…", but its number stays in view.
+      const count = label!.nextElementSibling as HTMLElement;
+      expect(count.textContent, `${name} count`).toMatch(/^\d+ selectors?$/);
+      expect(count.clientWidth, `${name} count`).toBeGreaterThanOrEqual(24);
+    }
+  });
+});
+
 describe("Catalog loading and error", () => {
   const placeholders = () => document.querySelector("[data-placeholder-rows]");
 

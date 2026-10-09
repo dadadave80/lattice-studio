@@ -5,13 +5,13 @@
  * nothing never draws one; a placed card's wire flashes and goes away (with reduced motion too); and the wires
  * follow a pan and a drag.
  */
-import { placeFacet } from "@lattice-studio/core";
+import { placeFacet, setCardPosition } from "@lattice-studio/core";
 import { describe, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { doc, getAnalysis } from "@/contracts";
 import { fixtureCatalog } from "../../../test/harness";
 import { panSheet } from "../canvas/sheet-view";
-import { drawn } from "../canvas/testing/sheet-harness";
+import { drawn, expandTitleBlock } from "../canvas/testing/sheet-harness";
 import { cardNode, clickCard, dragCard, press, selection } from "../interact/testing/interact-harness";
 import { GLYPH_LEAD, GUTTER, RAIL_GAP } from "./geometry";
 import { cell, coreProject, glyphOf, pad, padTone, rectIn, renderCoreSheet, traceOf, traces, wireOf } from "./testing/core-harness";
@@ -185,6 +185,65 @@ describe("placement", () => {
     if (!trace) throw new Error("No trace.");
     expect(getComputedStyle(trace).animationName).toMatch(/core-flash/);
     await expect.poll(() => traceOf("Pausable"), { timeout: 3000 }).toBeNull();
+  });
+});
+
+describe("a card across the run (CO-01)", () => {
+  function bridgeOf(facet: string): string {
+    return document.querySelector(`[data-bridge="${CSS.escape(facet)}"] path:last-child`)?.getAttribute("d") ?? "";
+  }
+
+  function moveTo(facet: string, x: number, y: number): void {
+    doc.apply("Moved", (p) => setCardPosition(p, facet, { x, y }));
+  }
+
+  test("the wire drops below a card lying across the rail, and bridges one it can't clear", async () => {
+    const project = coreProject(["ERC20", "Receive", "ERC4626"], { id: ID });
+    project.layout["ERC20"] = { x: 40, y: 24, pins: "left" };
+    project.layout["Receive"] = { x: 200, y: 24, pins: "left" };
+    project.layout["ERC4626"] = { x: 700, y: 24, pins: "left" };
+    await renderCoreSheet({ project, ...VIEW });
+    // The cell beside the full title block (the short sheet starts it collapsed: David's decision on SH-01/SH-02).
+    await expandTitleBlock();
+    const cellTop = rectIn(cell()).top;
+    const rail = Math.min(cellTop, rectIn(titleBlock()).top) - RAIL_GAP;
+    const floor = cellTop - RAIL_GAP;
+    const height = rectIn(cardNode("Receive")).height;
+    // Receive straddles the rail between ERC20's gutter and the pad, its bottom low enough to drop under above the cell.
+    const bottom = Math.min(rail + height - 8, floor - RAIL_GAP - 4);
+    expect(bottom - height).toBeLessThan(rail);
+    moveTo("Receive", 200, bottom - height);
+    await userEvent.hover(cardNode("ERC20"));
+    await expect.poll(() => traceOf("ERC20")).not.toBeNull();
+    const trace = traceOf("ERC20");
+    if (!trace) throw new Error("No trace.");
+    await expect.poll(() => trace.querySelector("path")?.getAttribute("d")).toMatch(/^M/);
+    await expect.poll(() => wireOf(trace).rail).toBeCloseTo(rectIn(cardNode("Receive")).bottom + RAIL_GAP, 0);
+    expect(bridgeOf("ERC20")).toBe("");
+
+    // A card too tall to drop under and stay above the cell: the wire keeps to the rail and bridges it.
+    moveTo("Receive", 200, 24);
+    const tall = rectIn(cardNode("ERC4626")).height;
+    expect(rail - 10 + tall + RAIL_GAP).toBeGreaterThan(floor);
+    moveTo("ERC4626", 96, rail - 10);
+    await expect.poll(() => wireOf(trace).rail).toBeCloseTo(rail, 0);
+    await expect.poll(() => bridgeOf("ERC20")).toMatch(/^M[\d.]+ [\d.]+H[\d.]+$/);
+    const crossed = rectIn(cardNode("ERC4626"));
+    const [, from, y, to] = /^M([\d.]+) ([\d.]+)H([\d.]+)$/.exec(bridgeOf("ERC20"))?.map(Number) ?? [];
+    close(y ?? NaN, rail);
+    close(from ?? NaN, crossed.left);
+    close(to ?? NaN, crossed.right);
+    // The bridge draws over the cards (React Flow's renderer, before it, at the same z), on a wider casing.
+    const bridges = document.querySelector("[data-core-bridges]");
+    const renderer = document.querySelector(".react-flow__renderer");
+    if (!bridges || !renderer) throw new Error("No bridges or renderer.");
+    expect(getComputedStyle(bridges).zIndex).toBe(getComputedStyle(renderer).zIndex);
+    expect(renderer.compareDocumentPosition(bridges) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const [casing, wire] = Array.from(document.querySelectorAll(`[data-bridge="ERC20"] path`));
+    if (!casing || !wire) throw new Error("No bridge paths.");
+    expect(casing.getAttribute("d")).toBe(bridgeOf("ERC20"));
+    expect(Number.parseFloat(getComputedStyle(casing).strokeWidth)).toBeGreaterThan(Number.parseFloat(getComputedStyle(wire).strokeWidth));
+    expect(getComputedStyle(casing).stroke).not.toBe(getComputedStyle(wire).stroke);
   });
 });
 

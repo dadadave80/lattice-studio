@@ -115,6 +115,11 @@ async function zoomTo100(page: import("@playwright/test").Page, sheet: SheetPage
   await focusRegion(page, "Sheet");
   await page.keyboard.press("Shift+Digit0");
   await expect.poll(() => sheet.zoomText()).toBe("100%");
+  // The readout rounds, so it reads 100% while the zoom still glides in (99.7% scales a 272 px offset by 0.8 px):
+  // wait for the sheet itself to land at scale 1.
+  await expect
+    .poll(() => page.locator(".react-flow__viewport").evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a))
+    .toBe(1);
 }
 
 type Offset = { dx: number; dy: number };

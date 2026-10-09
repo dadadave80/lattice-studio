@@ -6,7 +6,7 @@
  * `role="note"` named its caption ("Selector collision · 2", "Missing dependency", "Convention").
  */
 import { expect, type Locator, type Page } from "@playwright/test";
-import { region } from "../../_support/keys.ts";
+import { region, runInPalette } from "../../_support/keys.ts";
 
 export class SheetPage {
   readonly root: Locator;
@@ -85,6 +85,29 @@ export class SheetPage {
    * native scroll container). Every spec calls this once right after seeding. */
   async fit(): Promise<void> {
     await this.page.keyboard.press("Shift+1");
+  }
+
+  /**
+   * Selects `facet`'s card and runs Zoom to selection: its pin rows draw at any sheet size. Fit frames the cards
+   * in the room the floats leave (SH-02), which can put a larger recipe under 40% (`compactZoom`), where cards
+   * draw compact and show no pins.
+   */
+  async zoomToCard(facet: string): Promise<void> {
+    // Its name, not the card's center, which can sit on a pin or a note.
+    await this.card(facet).getByText(facet, { exact: true }).click();
+    await expect.poll(() => this.connectionsOf(facet), { message: `${facet} should be selected` }).toMatch(/(?:^|\s)Selected\./);
+    await runInPalette(this.page, "Zoom to selection");
+    // The zoom glides in: wait until the sheet holds still, or a click aimed at a pin lands on the card under it.
+    const viewport = this.page.locator(".react-flow__viewport");
+    let last = "";
+    await expect
+      .poll(async () => {
+        const now = await viewport.evaluate((el) => getComputedStyle(el).transform);
+        const still = now === last;
+        last = now;
+        return still;
+      }, { intervals: [100] })
+      .toBe(true);
   }
 
   /**

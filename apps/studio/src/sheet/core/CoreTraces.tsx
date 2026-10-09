@@ -71,8 +71,9 @@ export function useCardSizes(): Sizes {
 }
 
 /**
- * The traces into the core: one SVG over the sheet's ground and under its cards, no pointer. React decides
- * which `<g>` exist and how each draws (`data-tone`); `painter.ts` writes their geometry once per animation
+ * The traces into the core: one SVG over the sheet's ground and under its cards, no pointer, and a second over
+ * the cards holding only the stretches a wire can't route around a card: those bridge the card on a casing in
+ * the ground's colour (CO-01). React decides which `<g>` exist and how each draws (`data-tone`);`painter.ts` writes their geometry once per animation
  * frame from the document's layout, React Flow's transform and the cell's pads, and listens to nothing while no
  * trace shows.
  */
@@ -80,6 +81,7 @@ export function CoreTraces({ traces, pads }: { traces: readonly TraceSpec[]; pad
   const store = useStoreApi();
   const sizes = useCardSizes();
   const elements = useRef(new Map<string, SVGGElement>());
+  const bridges = useRef(new Map<string, SVGGElement>());
   const latest = useRef({ sizes, pads });
   const painter = useRef<Painter | null>(null);
 
@@ -98,7 +100,8 @@ export function CoreTraces({ traces, pads }: { traces: readonly TraceSpec[]; pad
     const targets: TraceTarget[] = [];
     for (const trace of traces) {
       const element = elements.current.get(trace.name);
-      if (element) targets.push({ name: trace.name, element, stubs: trace.stubs, to: trace.to });
+      const bridge = bridges.current.get(trace.name) ?? null;
+      if (element) targets.push({ name: trace.name, element, bridge, stubs: trace.stubs, to: trace.to });
     }
     painter.current.set(targets);
   }, [store, traces, sizes, pads]);
@@ -112,28 +115,47 @@ export function CoreTraces({ traces, pads }: { traces: readonly TraceSpec[]; pad
   );
 
   return (
-    <svg className={styles.traces} aria-hidden="true" data-core-traces="">
-      {traces.map((trace) => (
-        <g
-          key={trace.name}
-          ref={(element) => {
-            if (element) elements.current.set(trace.name, element);
-            else elements.current.delete(trace.name);
-          }}
-          className={styles.trace}
-          data-trace={trace.name}
-          data-tone={trace.tone}
-          data-to={trace.to}
-        >
-          <path />
-          <g>
+    <>
+      <svg className={styles.traces} aria-hidden="true" data-core-traces="">
+        {traces.map((trace) => (
+          <g
+            key={trace.name}
+            ref={(element) => {
+              if (element) elements.current.set(trace.name, element);
+              else elements.current.delete(trace.name);
+            }}
+            className={styles.trace}
+            data-trace={trace.name}
+            data-tone={trace.tone}
+            data-to={trace.to}
+          >
             <path />
-            {trace.stubs.map((offset) => (
-              <circle key={offset} className={styles.joint} />
-            ))}
+            <g>
+              <path />
+              {trace.stubs.map((offset) => (
+                <circle key={offset} className={styles.joint} />
+              ))}
+            </g>
           </g>
-        </g>
-      ))}
-    </svg>
+        ))}
+      </svg>
+      <svg className={styles.bridges} aria-hidden="true" data-core-bridges="">
+        {traces.map((trace) => (
+          <g
+            key={trace.name}
+            ref={(element) => {
+              if (element) bridges.current.set(trace.name, element);
+              else bridges.current.delete(trace.name);
+            }}
+            className={styles.bridge}
+            data-bridge={trace.name}
+            data-tone={trace.tone}
+          >
+            <path className={styles.casing} />
+            <path />
+          </g>
+        ))}
+      </svg>
+    </>
   );
 }

@@ -234,6 +234,8 @@ test.describe("Flow 2. Start from a recipe", () => {
     // state in isolation from any of step 1's loading routes.
     await seedProject(page, { project: recipeProject("GovernedVault") });
     const sheet = new SheetPage(page);
+    // The title block starts collapsed on this short sheet (David's decision on SH-01/SH-02); its full rows say it.
+    await sheet.expandTitleBlock();
     await expect(sheet.parametersToFill).toHaveText("1 parameter to fill");
     await expect(sheet.fillInButton).toBeVisible();
     // Nothing about the blocker forces focus onto Fill in or into the Inspector on its own.
@@ -268,6 +270,8 @@ test.describe("Flow 2. Start from a recipe", () => {
     const console_ = new ConsolePage(page);
     await expect(console_.line(loadedLine("GovernedVault"))).toBeVisible();
     const sheet = new SheetPage(page);
+    // The title block starts collapsed on this short sheet (David's decision on SH-01/SH-02); its full rows say it.
+    await sheet.expandTitleBlock();
     await expect(sheet.parametersToFill).toHaveText("1 parameter to fill");
 
     await sheet.fillInButton.focus();

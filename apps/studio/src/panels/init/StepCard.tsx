@@ -7,6 +7,7 @@ import { FieldRow } from "./FieldRow";
 import styles from "./InitEditor.module.css";
 import { MoveStepButton } from "./MoveStepButton";
 import { StepProblems } from "./StepProblems";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 /** Spec L468. */
 export const AUTOMATIC_STEP_TITLE = "Register ERC-165 interfaces (automatic)";
@@ -56,9 +57,9 @@ export function StepCard({ step, movable, projectId }: {
         <span className={styles.index}>{twoDigits(step.index + 1)}</span>
         <div className={styles.stepName}>
           <h3 id={headingId} className={styles.stepTitle} tabIndex={-1}>
-            {title}
+            {breakIdentifier(title)}
           </h3>
-          <span className={styles.signature}>{`${step.contract}.${step.fn}`}</span>
+          <span className={styles.signature}>{breakIdentifier(`${step.contract}.${step.fn}`)}</span>
         </div>
         {step.locked ? <Icon name="lock" label="Locked" /> : null}
         {canMove ? (

@@ -1,7 +1,7 @@
-import { expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import type { Hex4 } from "@lattice-studio/core";
 import { layoutMetrics } from "@/contracts/layout-metrics";
-import { GLYPH_LEAD, GUTTER, glyphAnchor, glyphScale, gutterX, stubOffsets, tracePaths } from "./geometry";
+import { crossings, GLYPH_LEAD, GUTTER, glyphAnchor, glyphScale, gutterX, RAIL_GAP, runY, stubOffsets, tracePaths } from "./geometry";
 
 const rect = { x: 100, y: 200, width: 232, height: 148 };
 
@@ -61,4 +61,43 @@ test("a moved card moves the wire and the origin; its stubs keep their shape", (
   expect(there.joints).toEqual(here.joints);
   // The right side's stubs run out from the card's right edge to the gutter beyond it.
   expect(here.stubs).toBe(`M252 66V${148 + GLYPH_LEAD}M232 66H252`);
+});
+
+describe("a card across the run (CO-01)", () => {
+  // Votes, in the review's 1440 shot: a card the rail runs straight through, between the gutter and the pad.
+  const votes = { x: 400, y: 560, width: 250, height: 80 };
+
+  test("the run keeps to the rail while nothing lies across it", () => {
+    expect(runY(362, 900, 600, 700, [], null)).toBe(600);
+    expect(runY(362, 900, 600, 700, [{ x: 400, y: 100, width: 250, height: 80 }], null)).toBe(600);
+  });
+
+  test("drops just below a card in the way, while it stays above the cell", () => {
+    expect(runY(362, 900, 600, 700, [votes], null)).toBe(640 + RAIL_GAP);
+    // And below a second card the drop meets.
+    expect(runY(362, 900, 600, 700, [votes, { x: 700, y: 620, width: 100, height: 60 }], null)).toBe(680 + RAIL_GAP);
+  });
+
+  test("stays on the rail, to be bridged, when the drop would pass the cell's top or run behind the title block", () => {
+    expect(runY(362, 900, 600, 640, [votes], null)).toBe(600);
+    expect(runY(362, 900, 600, 700, [votes], 880)).toBe(600);
+  });
+
+  test("a wire's crossings are the stretches over other cards, gutter and run alike", () => {
+    const points = [{ x: 342, y: 372 }, { x: 362, y: 372 }, { x: 362, y: 600 }, { x: 900, y: 600 }, { x: 900, y: 612 }];
+    const gutterCard = { x: 300, y: 400, width: 100, height: 50 };
+    expect(crossings(points, [])).toBe("");
+    expect(crossings(points, [votes, gutterCard])).toBe("M362 400V450M400 600H650");
+  });
+
+  test("the trace drops below the card, and bridges it where it can't", () => {
+    const transform = [10, 20, 1] as const;
+    const base = { rect, side: "right" as const, transform, railY: 600, pad: { x: 900, y: 712 }, stubs: [] };
+    const dropped = tracePaths({ ...base, floorY: 700, obstacles: [votes] });
+    expect(dropped.line).toBe(`M342 ${368 + GLYPH_LEAD}H362V${640 + RAIL_GAP}H900V712`);
+    expect(dropped.bridges).toBe("");
+    const bridged = tracePaths({ ...base, floorY: 620, obstacles: [votes] });
+    expect(bridged.line).toBe(`M342 ${368 + GLYPH_LEAD}H362V600H900V712`);
+    expect(bridged.bridges).toBe("M400 600H650");
+  });
 });

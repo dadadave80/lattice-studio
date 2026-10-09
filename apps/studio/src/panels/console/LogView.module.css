@@ -35,6 +35,20 @@
   letter-spacing: var(--lx-tracking-label);
 }
 
+/* At rest a chip is a quiet word, not a bordered button, so nine of them don't outweigh the log; a pressed
+   chip keeps the toggle's accent edge and fill, so which filters are on reads at a glance. */
+.chips .chip:not([data-pressed]) {
+  border-color: transparent;
+  color: var(--lx-text-muted);
+  font-weight: 400;
+}
+
+.chips .chip:not([data-pressed]):hover {
+  border-color: transparent;
+  background: var(--lx-raised);
+  color: var(--lx-text);
+}
+
 .filter {
   flex: 0 1 calc(var(--lx-space-12) * 5);
   min-inline-size: calc(var(--lx-space-12) * 3);

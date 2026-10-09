@@ -52,7 +52,10 @@ export type PwaOptions = {
   publicDir?: string;
 };
 
-/** The web app manifest (the app opens in the dark theme, so its ground colours the splash and title bar). */
+/**
+ * The web app manifest. `theme_color` and `background_color` take one value each, so they stay the dark ground:
+ * an installed app's splash doesn't follow a Light system. The page's own theme-color metas (`iconTags`) do.
+ */
 export function webManifest(): NonNullable<VitePWAOptions["manifest"]> {
   const ground = themeColors.dark.ground;
   return {
@@ -81,7 +84,9 @@ export function iconTags(base: string): HtmlTagDescriptor[] {
     { tag: "link", attrs: { rel: "icon", href: at("favicon.ico"), sizes: "32x32" }, injectTo: "head" },
     { tag: "link", attrs: { rel: "icon", href: at("favicon.svg"), type: "image/svg+xml" }, injectTo: "head" },
     { tag: "link", attrs: { rel: "apple-touch-icon", href: at("icons/apple-touch-icon.png") }, injectTo: "head" },
-    { tag: "meta", attrs: { name: "theme-color", content: themeColors.dark.ground }, injectTo: "head" },
+    // The browser takes the first theme-color whose media matches, so each theme names its own.
+    { tag: "meta", attrs: { name: "theme-color", media: "(prefers-color-scheme: light)", content: themeColors.light.ground }, injectTo: "head" },
+    { tag: "meta", attrs: { name: "theme-color", media: "(prefers-color-scheme: dark)", content: themeColors.dark.ground }, injectTo: "head" },
   ];
 }
 

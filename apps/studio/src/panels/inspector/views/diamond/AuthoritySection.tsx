@@ -7,6 +7,7 @@ import { Section } from "../../shared/Section";
 import sheet from "../../shared/sheet.module.css";
 import { holderText } from "./diamond-words";
 import styles from "./diamond.module.css";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 const NO_ROWS: readonly AuthorityRow[] = [];
 const IMMUTABLE = "Immutable (acknowledged)";
@@ -29,7 +30,7 @@ export function AuthoritySection() {
         {rows.map((row) => (
           <li key={`${row.role}:${row.path ?? row.via}`} className={sheet.item}>
             <div className={sheet.itemLine}>
-              <span className={sheet.mono}>{row.role}</span>
+              <span className={sheet.mono}>{breakIdentifier(row.role)}</span>
               <span className={`${sheet.text} ${styles.holder}`}>{holderOf(row)}</span>
             </div>
             <span className={styles.quiet}>{row.via}</span>

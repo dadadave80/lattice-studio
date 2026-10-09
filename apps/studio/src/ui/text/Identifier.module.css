@@ -1,0 +1,11 @@
+/*
+ * Identifiers wrap only at their <wbr> points (after ".", "/", "(", ",", "_"); a single segment longer than
+ * the line is the one case left to break where it overflows. Hex has no word boundaries and breaks anywhere.
+ */
+.identifier {
+  overflow-wrap: break-word;
+}
+
+.hex {
+  overflow-wrap: anywhere;
+}
