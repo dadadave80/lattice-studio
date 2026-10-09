@@ -92,7 +92,10 @@ function probeOf(chain: ChainState, name: string): ChainState["shared"][string] 
   return Object.hasOwn(chain.shared, name) ? chain.shared[name] : undefined;
 }
 
-function predictedAddress(catalog: Catalog, deploy: DeployContext): Address | undefined {
+/** The deploy context once a wallet has connected: the signing account and the salt built from it. */
+type SignedDeploy = DeployContext & { from: Address; salt: Hex };
+
+function predictedAddress(catalog: Catalog, deploy: SignedDeploy): Address | undefined {
   try {
     if (deploy.path === "createx") return createxPredict({ from: deploy.from, salt: deploy.salt, chainId: deploy.chainId });
     const own = catalog.chains.find((entry) => entry.chainId === deploy.chainId)?.factory;
@@ -115,8 +118,10 @@ function parseGas(value: string | undefined): bigint | undefined {
 /**
  * NET-01 to NET-08 (spec L335-L342, Flow 14): chain readiness from the selected chain's probes (`ctx.chain`) and
  * the deploy context (`ctx.deploy`). They run only when both are present, the chain is online and the probes are
- * for the deploy's chain (spec L302). Every problem's id is its chain id (`NET-03:11155111`); params carry the
- * chain's display name. A probe the chain module didn't make raises nothing.
+ * for the deploy's chain (spec L302). The deploy context needs only the chain and path: every check runs before a
+ * wallet connects except NET-05, which waits for the signing account and salt (Q23, 2026-10-06). Every problem's
+ * id is its chain id (`NET-03:11155111`); params carry the chain's display name. A probe the chain module didn't
+ * make raises nothing.
  */
 export const checkNet: Check = (input) => {
   const { catalog, ctx } = input;
@@ -179,17 +184,22 @@ export const checkNet: Check = (input) => {
     );
   }
 
-  // NET-05: the predicted address already has code (spec R8), worded per path by narrate.
-  // The problem is never dropped. The address is Studio's own prediction, else "This diamond" as S1 resolved it.
-  // When both are missing (a salt or sender too malformed to predict from, and no refs), it falls back to the
-  // deploying account whose salt is taken. The message doesn't show the address; only a fix would use it.
-  if (chain.predictedHasCode === true) {
-    const address = predictedAddress(catalog, deploy) ?? ctx.refs?.self ?? deploy.from;
-    problems.push(problem("NET-05", where, { chain: name, path: deploy.path, address }, [{ id: "deploy.newSalt" }]));
+  // NET-05: the predicted address already has code (spec R8), worded per path by narrate. It waits for a wallet:
+  // the address "depends on the deploying account" (spec L365), so without `from` and `salt` there's no address
+  // to have code, and a `predictedHasCode` probe can't be about this deploy.
+  // Once both are there the problem is never dropped. The address is Studio's own prediction, else "This diamond"
+  // as S1 resolved it. When both are missing (a salt or sender too malformed to predict from, and no refs), it
+  // falls back to the deploying account whose salt is taken. The message doesn't show the address; only a fix
+  // would use it.
+  const signed = deploy.from !== undefined && deploy.salt !== undefined ? { ...deploy, from: deploy.from, salt: deploy.salt } : undefined;
+  if (signed && chain.predictedHasCode === true) {
+    const address = predictedAddress(catalog, signed) ?? ctx.refs?.self ?? signed.from;
+    problems.push(problem("NET-05", where, { chain: name, path: signed.path, address }, [{ id: "deploy.newSalt" }]));
   }
 
   // NET-06: the estimate against the chain's per-transaction cap (spec R16, C5c's `gasShare`): a blocker over the
-  // cap, a warning from 80%.
+  // cap, a warning from 80%. The check needs no sender, but the estimate does: it comes from simulating the deploy
+  // with the signing account (S8c's `noteEstimate`), so before a wallet connects there's none and this raises nothing.
   const gas = parseGas(chain.gasEstimate);
   const cap = parseGas(chain.gasCap);
   if (gas !== undefined && cap !== undefined && cap > 0n) {
