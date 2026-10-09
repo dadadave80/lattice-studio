@@ -1,0 +1,2287 @@
+{
+  "GovernedVault": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC20Votes",
+      "ERC4626",
+      "GovernedVault",
+      "VaultCore",
+      "GovernedDiamondCut",
+      "Governor",
+      "TimelockController",
+      "Votes",
+      "EmergencyStop",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {
+      "0x01e1d114": "VaultCore",
+      "0x06fdde03": "GovernedVault",
+      "0x23b872dd": "GovernedVault",
+      "0x313ce567": "ERC4626",
+      "0x4bf5d7e9": "GovernedVault",
+      "0x5c19a95c": "ERC20Votes",
+      "0x6e553f65": "GovernedVault",
+      "0x8ff262e3": "GovernedVault",
+      "0x91ddadf4": "GovernedVault",
+      "0x94bf804d": "GovernedVault",
+      "0xa9059cbb": "GovernedVault",
+      "0xb460af94": "GovernedVault",
+      "0xba087652": "GovernedVault",
+      "0xc3cda520": "ERC20Votes"
+    },
+    "exclude": [],
+    "init": {
+      "kind": "bundle",
+      "spec": "GovernedVaultInit",
+      "args": {
+        "p": {
+          "name": "Grant vault",
+          "symbol": "gVLT",
+          "decimalsOffset": "0",
+          "minDelay": "300",
+          "votingDelay": "60",
+          "votingPeriod": "600",
+          "proposalThreshold": "0",
+          "quorumNumerator": "4"
+        }
+      }
+    }
+  },
+  "ERC20": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC20Init",
+          "args": {
+            "name_": "Example Token",
+            "symbol_": "EXT"
+          }
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "SafeDiamondCut": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "SafeDiamondCut",
+      "EmergencyStop",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "SafeDiamondCutInit",
+          "args": {
+            "admin": {
+              "$ref": "deployer"
+            },
+            "minThreshold": "2"
+          }
+        }
+      ]
+    }
+  },
+  "API3Adapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "API3Adapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "API3AdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "API3QRNGAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "API3QRNGAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "API3QRNGAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "AccessControl": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AccessControlInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "AccessControlEnumerable": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "AccessControlEnumerable",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AccessControlEnumerableInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "AccessControlTimed": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "AccessControlTimed",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AccessControlTimedInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "AccessManaged": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessManaged",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AccessManagedInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "AccessManager": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessManager",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AccessManagerInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "Account": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccountSigner",
+      "ERC1271Signature",
+      "ERC4337Validation",
+      "ERC7821Executor",
+      "AccessControl",
+      "Receive",
+      "DiamondCutFacet",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AccountInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "Account6900": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC6900AccountView",
+      "ERC6900Executor",
+      "ERC6900ModuleManager",
+      "ERC6900Signature",
+      "ERC6900Validation",
+      "AccessControl",
+      "Receive",
+      "DiamondCutFacet",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AccountInit6900",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "AcrossBridgeAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AcrossBridgeAdapter",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AcrossBridgeAdapterInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "AggregatorExecAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AggregatorExecAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AggregatorExecAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "AxelarGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AxelarGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AxelarGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "BandAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "BandAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "BandAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "BridgeERC20": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "BridgeERC20",
+      "CrosschainLink",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "BridgeERC20Init",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "BridgeERC7802": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "BridgeERC7802",
+      "CrosschainLink",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "BridgeERC7802Init",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "CCIPGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "CCIPGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "CCIPGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "CCTPBridgeAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "CCTPBridgeAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "CCTPBridgeAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ChainRegistry": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ChainRegistry",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ChainRegistryInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ChainlinkAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ChainlinkAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ChainlinkAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ChainlinkAutomationAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ChainlinkAutomationAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ChainlinkAutomationAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ChainlinkCREAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ChainlinkCREAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ChainlinkCREAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ChainlinkVRF": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ChainlinkVRF",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ChainlinkVRFInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ChronicleAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ChronicleAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ChronicleAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "CircuitBreaker": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "CircuitBreaker",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "none"
+    }
+  },
+  "CommitReveal": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "CommitReveal",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "CommitRevealInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ConstantProduct": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ConstantProduct",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ConstantProductInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "CrosschainLink": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "CrosschainLink",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "CrosschainLinkInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "CrosschainTimelockHandler": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "CrosschainLink",
+      "CrosschainTimelockHandler",
+      "AccessControlDiamondCut",
+      "TimelockController",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "CrosschainTimelockHandlerInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "DIAAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "DIAAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "DIAAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ENSResolver": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "ENSResolver",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ENSResolverInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ENSReverseClaimer": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "ENSReverseClaimer",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ENSReverseClaimerInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ENSSubnameIssuer": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "ENSSubnameIssuer",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ENSSubnameIssuerInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ERC1155": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC1155",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC1155Init",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ERC20Burnable": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC20Burnable",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC20Init",
+          "args": {}
+        },
+        {
+          "spec": "ERC20BurnableInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ERC20Capped": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC20Capped",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC20Init",
+          "args": {}
+        },
+        {
+          "spec": "ERC20CappedInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ERC20Crosschain": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "CrosschainLink",
+      "ERC20",
+      "ERC20Crosschain",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC20CrosschainInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ERC20FlashMint": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC20FlashMint",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC20Init",
+          "args": {}
+        },
+        {
+          "spec": "ERC20FlashMintInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ERC20Pausable": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC20Pausable",
+      "AccessControlDiamondCut",
+      "Pausable",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {
+      "0x23b872dd": "ERC20Pausable",
+      "0xa9059cbb": "ERC20Pausable"
+    },
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC20Init",
+          "args": {}
+        },
+        {
+          "spec": "ERC20PausableInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ERC20Permit": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC20Permit",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC20Init",
+          "args": {}
+        },
+        {
+          "spec": "ERC20PermitInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ERC20Votes": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC20Votes",
+      "AccessControlDiamondCut",
+      "Votes",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {
+      "0x23b872dd": "ERC20Votes",
+      "0x5c19a95c": "ERC20Votes",
+      "0xa9059cbb": "ERC20Votes",
+      "0xc3cda520": "ERC20Votes"
+    },
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC20Init",
+          "args": {}
+        },
+        {
+          "spec": "ERC20VotesInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ERC2981": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC2981",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC2981Init",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ERC4626": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC4626",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {
+      "0x313ce567": "ERC4626"
+    },
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC4626Init",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ERC5564Announcer": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC5564Announcer",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC5564AnnouncerInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ERC6538Registry": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC6538Registry",
+      "EIP712",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC6538RegistryInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ERC721": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC721",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC721Init",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "ERC7786OpenBridge": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC7786OpenBridge",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC7786OpenBridgeInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ERC7802": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC7802",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ERC7802Init",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "EmergencyStop": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "EmergencyStop",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "none"
+    }
+  },
+  "GelatoAutomateAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "GelatoAutomateAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "GelatoAutomateAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "GelatoVRFAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "GelatoVRFAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "GelatoVRFAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "GovernedDiamondCut": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "GovernedDiamondCut",
+      "EmergencyStop",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "GovernedDiamondCutInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "GovernedSafeDiamondCut": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "GovernedSafeDiamondCut",
+      "EmergencyStop",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "GovernedSafeDiamondCutInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "GovernedVaultENS": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC20Votes",
+      "ERC4626",
+      "GovernedVault",
+      "VaultCore",
+      "GovernedDiamondCut",
+      "Governor",
+      "TimelockController",
+      "Votes",
+      "EmergencyStop",
+      "AccessControl",
+      "ENSReverseClaimer",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {
+      "0x01e1d114": "VaultCore",
+      "0x06fdde03": "GovernedVault",
+      "0x23b872dd": "GovernedVault",
+      "0x313ce567": "ERC4626",
+      "0x4bf5d7e9": "GovernedVault",
+      "0x5c19a95c": "ERC20Votes",
+      "0x6e553f65": "GovernedVault",
+      "0x8ff262e3": "GovernedVault",
+      "0x91ddadf4": "GovernedVault",
+      "0x94bf804d": "GovernedVault",
+      "0xa9059cbb": "GovernedVault",
+      "0xb460af94": "GovernedVault",
+      "0xba087652": "GovernedVault",
+      "0xc3cda520": "ERC20Votes"
+    },
+    "exclude": [],
+    "init": {
+      "kind": "bundle",
+      "spec": "GovernedVaultENSInit",
+      "args": {}
+    }
+  },
+  "Groth16Verifier": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "Groth16Verifier",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "Groth16VerifierInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "HTSAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "HTSAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "HTSAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "HyperbridgeGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "HyperbridgeGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "HyperbridgeGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "HyperlaneGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "HyperlaneGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "HyperlaneGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "InvariantChecker": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "InvariantChecker",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "none"
+    }
+  },
+  "L1ToL2CrossDomainMessengerGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "L1ToL2CrossDomainMessengerGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "L1ToL2CrossDomainMessengerGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "L2ToL2CrossDomainMessengerGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "L2ToL2CrossDomainMessengerGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "L2ToL2CrossDomainMessengerGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "LayerZeroGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "LayerZeroGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "LayerZeroGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "MarketplaceZone": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "MarketplaceZone",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "MarketplaceZoneInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "Multicall": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Multicall",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "AccessControlInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "Pausable": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "Pausable",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "none"
+    }
+  },
+  "PlonkVerifier": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "PlonkVerifier",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "PlonkVerifierInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "PrivateVoting": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "PrivateVoting",
+      "Semaphore",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "PrivateVotingInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "PythAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "PythAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "PythAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "PythEntropyAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "PythEntropyAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "PythEntropyAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "RateLimiter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "RateLimiter",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "none"
+    }
+  },
+  "RedStoneAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "RedStoneAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "RedStoneAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "SafeHarborAdopter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "AccessControlDiamondCut",
+      "SafeHarborAdopter",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "SafeHarborAdopterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "Semaphore": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "Semaphore",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "SemaphoreInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ShieldedPool": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ShieldedPool",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ShieldedPoolInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "StargateBridgeAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "StargateBridgeAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "StargateBridgeAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "StarknetGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "StarknetGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "StarknetGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "StrategyManager": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "StrategyManager",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "StrategyManagerInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "SuperchainETHBridgeAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "SuperchainETHBridgeAdapter",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "SuperchainETHBridgeAdapterInit",
+          "args": {}
+        }
+      ]
+    },
+    "immutable": true
+  },
+  "TWAPOracle": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "TWAPOracle",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "TWAPOracleInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "TellorAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "TellorAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "TellorAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "VaultCore": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ERC20",
+      "ERC4626",
+      "VaultCore",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {
+      "0x01e1d114": "VaultCore",
+      "0x313ce567": "ERC4626",
+      "0x6e553f65": "VaultCore",
+      "0x94bf804d": "VaultCore",
+      "0xb460af94": "VaultCore",
+      "0xba087652": "VaultCore"
+    },
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "VaultCoreInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "WormholeGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "WormholeGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "WormholeGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "ZetaChainGatewayAdapter": {
+    "schemaVersion": 1,
+    "catalog": {
+      "tag": "dev-6c8db45",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "facets": [
+      "ZetaChainGatewayAdapter",
+      "AccessControlDiamondCut",
+      "AccessControl",
+      "Receive",
+      "DiamondLoupeFacet",
+      "ERC165Facet"
+    ],
+    "owners": {},
+    "exclude": [],
+    "init": {
+      "kind": "steps",
+      "steps": [
+        {
+          "spec": "ZetaChainGatewayAdapterInit",
+          "args": {}
+        }
+      ]
+    }
+  }
+}
