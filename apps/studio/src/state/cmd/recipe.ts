@@ -1,6 +1,7 @@
 /**
  * Recipe commands (Flow 2, spec L405-L411): load a recipe (in place on an empty sheet, else as a new project),
- * replace this sheet with one (one undo step), and Keep immutable (CORE-02).
+ * replace this sheet with one (one undo step), and Keep immutable (CORE-02). A template's recipe can be in the
+ * catalog's `recipes.json` (Q15), so loading one waits for that file; asking whether one loads never does.
  */
 import type { Analysis, Catalog, Layout, LineDraft, Recipe, Result } from "@lattice-studio/core";
 import {
@@ -11,6 +12,7 @@ import {
   command, createProject, emptyAnalysis, isPlaceholder, layoutMetrics, log, runCommand, type CommandArgsOf,
   type CommandContext, type Enablement,
 } from "@/contracts";
+import { catalogWithRecipes } from "@/catalog/parts";
 import { studioState } from "../runtime";
 import { CATALOG_NOT_LOADED, disabled, edit, err, guard, isString, OK, ok, sayNote, unquote } from "./shared";
 
@@ -22,15 +24,44 @@ export const BLANK_DIAMOND = "Blank diamond";
 
 export type LoadedRecipe = { recipe: Recipe; name: string; script?: string };
 
-/** The recipe `name` names, case-insensitively: the Blank diamond or a catalog template that loads in v1. */
+function isBlank(wanted: string): boolean {
+  return /^blank( diamond)?$/i.test(wanted);
+}
+
+/**
+ * The recipe `name` names, case-insensitively: the Blank diamond or a catalog template that loads in v1. A template
+ * needs `catalog` to carry its recipe (`loadRecipeNamed` makes sure it does).
+ */
 export function resolveRecipe(catalog: Catalog, name: string): Result<LoadedRecipe, string> {
   const wanted = unquote(name);
-  if (/^blank( diamond)?$/i.test(wanted)) return ok({ recipe: blankDiamond(catalog), name: BLANK_DIAMOND });
+  if (isBlank(wanted)) return ok({ recipe: blankDiamond(catalog), name: BLANK_DIAMOND });
   const loaded = loadTemplate(catalog, wanted);
   if (!loaded.ok) return loaded;
   const templateName = loaded.value.template?.name ?? wanted;
   const script = templateList(catalog).find((t) => t.name === templateName)?.script;
   return ok({ recipe: loaded.value, name: templateName, ...(script ? { script } : {}) });
+}
+
+/**
+ * `resolveRecipe` for a command's run: a template's recipe loads first if the catalog keeps it in a shard. Says why
+ * and returns null when the recipe, or the file that holds it, doesn't load.
+ */
+async function loadRecipeNamed(catalog: Catalog, name: string): Promise<LoadedRecipe | null> {
+  let source = catalog;
+  if (!isBlank(unquote(name))) {
+    const withRecipes = await catalogWithRecipes(catalog);
+    if (!withRecipes.ok) {
+      log({ tag: "Error", text: withRecipes.error });
+      return null;
+    }
+    source = withRecipes.value;
+  }
+  const loaded = resolveRecipe(source, name);
+  if (!loaded.ok) {
+    sayNote(loaded.error);
+    return null;
+  }
+  return loaded.value;
 }
 
 function analysisOf(recipe: Recipe, catalog: Catalog): Analysis {
@@ -87,7 +118,7 @@ function recipeEnabled(ctx: CommandContext, name: unknown): Enablement {
   if (!ctx.catalog) return disabled(CATALOG_NOT_LOADED);
   // Cheap for buttons and palette rows, which ask on every change: build the recipe only to learn why not.
   const wanted = unquote(name).toLowerCase();
-  if (/^blank( diamond)?$/.test(wanted)) return OK;
+  if (isBlank(wanted)) return OK;
   const item = templateList(ctx.catalog).find((t) => t.name.toLowerCase() === wanted);
   if (item?.loadable) return OK;
   const loaded = resolveRecipe(ctx.catalog, name);
@@ -103,26 +134,23 @@ export const loadCommand = command<LoadArgs>({
   async run(ctx, { name }) {
     const catalog = ctx.catalog;
     if (!catalog) return;
-    const loaded = resolveRecipe(catalog, name);
-    if (!loaded.ok) {
-      sayNote(loaded.error);
-      return;
-    }
+    const loaded = await loadRecipeNamed(catalog, name);
+    if (!loaded) return;
     if (isCoreOnly(ctx.project.recipe)) {
       // An empty sheet: the recipe loads in place (spec L408).
-      replaceInPlace(loaded.value, catalog);
+      replaceInPlace(loaded, catalog);
       return;
     }
     // A sheet with facets: a new project, and this one stays under Projects (spec L408).
-    const analysis = analysisOf(loaded.value.recipe, catalog);
-    const layout = tidied(loaded.value.recipe, catalog, analysis);
-    const created = await createProject(loaded.value.recipe, loaded.value.name, { layout });
+    const analysis = analysisOf(loaded.recipe, catalog);
+    const layout = tidied(loaded.recipe, catalog, analysis);
+    const created = await createProject(loaded.recipe, loaded.name, { layout });
     if (!created.ok) {
       log({ tag: "Error", text: created.error });
       return;
     }
     const engine = studioState().analysis;
-    engine.say(loadedLine(loaded.value, catalog, analysis));
+    engine.say(loadedLine(loaded, catalog, analysis));
     engine.flush();
     fitView();
   },
@@ -133,15 +161,11 @@ export const replaceCommand = command<ReplaceArgs>({
   title: ({ name }) => `Replace this sheet with ${name}`,
   category: "Build",
   enabled: (ctx, args) => recipeEnabled(ctx, args.name),
-  run(ctx, { name }) {
+  async run(ctx, { name }) {
     const catalog = ctx.catalog;
     if (!catalog) return;
-    const loaded = resolveRecipe(catalog, name);
-    if (!loaded.ok) {
-      sayNote(loaded.error);
-      return;
-    }
-    replaceInPlace(loaded.value, catalog);
+    const loaded = await loadRecipeNamed(catalog, name);
+    if (loaded) replaceInPlace(loaded, catalog);
   },
 });
 

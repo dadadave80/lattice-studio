@@ -121,6 +121,8 @@ export type DeployFiles = {
   detail(name: string): Promise<Result<FacetDetail, string>>;
   /** Creation code by shared-contract name, or "Lattice" for the proxy. */
   code(name: string): Promise<Result<Hex, string>>;
+  /** `catalog` with its templates' recipes, which an index can keep in `recipes.json` (Q15). */
+  recipes(catalog: Catalog): Promise<Result<Catalog, string>>;
 };
 
 export type DeploySay = {

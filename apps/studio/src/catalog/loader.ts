@@ -8,12 +8,11 @@
  * same for creation code before it builds a deploy).
  */
 import { useSyncExternalStore } from "react";
-import { keccak256 } from "viem";
 import type { CatalogLoader, CatalogStatus, FacetDetailState } from "@/contracts";
 import { getCatalogStatus, log, setCatalogStatus, subscribeCatalog } from "@/contracts";
 import type { Catalog, CatalogManifest, FacetDetail, Hex, Result, ShardRef } from "@lattice-studio/core";
 import { err, findProtoKey, isHex, lines, ok } from "@lattice-studio/core";
-import { catalogDirFor, defaultEntry, entryDir, fetchManifest, type ManifestEntry } from "./lookup";
+import { catalogDirFor, defaultEntry, entryDir, fetchManifest, fetchVerified, type ManifestEntry } from "./lookup";
 import { shardRef } from "./resolve";
 
 export const NOT_LOADED = "The catalog hasn't loaded.";
@@ -64,19 +63,8 @@ export function createCatalogLoader(): CatalogLoaderInstance {
     return catalogDirFor(id, manifest);
   }
 
-  async function fetchBytes(id: string, ref: ShardRef): Promise<Result<string, string>> {
-    let response: Response;
-    try {
-      response = await fetch(`${dirFor(id)}${ref.path}`);
-    } catch (error) {
-      return err(error instanceof Error ? error.message : String(error));
-    }
-    if (!response.ok) return err(`${ref.path} answered ${response.status}.`);
-    const buffer = new Uint8Array(await response.arrayBuffer());
-    if (keccak256(buffer).toLowerCase() !== ref.hash.toLowerCase()) {
-      return err(`${ref.path} doesn't match catalog ${id}'s hash for it. Reload the catalog.`);
-    }
-    return ok(new TextDecoder().decode(buffer));
+  function fetchBytes(id: string, ref: ShardRef): Promise<Result<string, string>> {
+    return fetchVerified(id, dirFor(id), ref);
   }
 
   async function fetchShard(name: string): Promise<Result<FacetDetail, string>> {

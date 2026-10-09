@@ -9,7 +9,7 @@ import { addInitStep, useInitBundle } from "../edit/recipe-ops";
 import { lintCopy } from "../format/copy-lint";
 import { renderProblem } from "../narrate/problem";
 import { makeCatalog, makeFacet, makeInit, makeProject, makeRecipe } from "../testing/builders";
-import { loadBuiltCatalog, loadFixtureCatalog } from "../testing/fixtures";
+import { loadBuiltCatalog, loadFixtureCatalog, recipeOf } from "../testing/fixtures";
 import { checkInit } from "./init";
 
 const fixture = loadFixtureCatalog();
@@ -25,7 +25,7 @@ const BLANK_FACETS = ["DiamondLoupeFacet", "ERC165Facet", "Receive", "AccessCont
 function template(name: string): Recipe {
   const found = catalog.recipes.find((r) => r.name === name);
   if (!found) throw new Error(`${name} isn't in the fixture catalog`);
-  return found.recipe;
+  return recipeOf(found);
 }
 
 function run(recipe: Recipe, cat: Catalog = catalog, ctx: Partial<AnalysisContext> = {}): Problem[] {
@@ -566,7 +566,7 @@ describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20Vo
     for (const name of ["GovernedVault", "GovernedVaultENS"]) {
       const found = realCatalog.recipes.find((r) => r.name === name);
       if (!found) throw new Error(`${name} isn't in the built catalog`);
-      expect(only(run(found.recipe, realCatalog), "INIT-04")).toEqual([]);
+      expect(only(run(recipeOf(found), realCatalog), "INIT-04")).toEqual([]);
     }
     const ensBundle = makeRecipe({ facets: [...BLANK_FACETS, "GovernedVault"], init: { kind: "bundle", spec: "GovernedVaultENSInit", args: {} } }, realCatalog);
     expect(only(run(ensBundle, realCatalog), "INIT-04")).toEqual([]);

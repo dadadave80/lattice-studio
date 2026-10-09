@@ -3,7 +3,7 @@ import { normalizeRecipe, recipeHash } from "../canonical";
 import { lintCopy } from "../format/copy-lint";
 import type { Hex } from "../model/hex";
 import type { Recipe } from "../model/recipe";
-import { hex, loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe, makeTemplate } from "../testing";
+import { hex, loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe, makeTemplate, recipeOf } from "../testing";
 import { BLANK_DIAMOND_FACETS, blankDiamond, loadTemplate, templateList } from "./templates";
 
 const ZERO: Hex = `0x${"0".repeat(64)}`;
@@ -127,8 +127,9 @@ describe("loadTemplate", () => {
       const template = fixture.value.recipes.find((t) => t.name === name);
       expect(recipe.catalog).toEqual({ tag: fixture.value.lattice.tag, hash: live });
       expect(recipe.template).toEqual({ name, catalogHash: live });
-      expect(recipe.facets).toEqual(template?.recipe.facets ?? []);
-      expect(recipe.init).toEqual(template?.recipe.init ?? { kind: "none" });
+      const source = template && recipeOf(template);
+      expect(recipe.facets).toEqual(source?.facets ?? []);
+      expect(recipe.init).toEqual(source?.init ?? { kind: "none" });
       expect(normalizeRecipe(recipe, fixture.value)).toEqual(recipe);
     }
     const vault = loadTemplate(fixture.value, "GovernedVault");

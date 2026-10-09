@@ -5,7 +5,12 @@
  */
 import { gzipSync } from "node:zlib";
 
-/** The spec's target (spec L812): "Catalog index ≤ 60 KB gz (target)". */
+/**
+ * The spec's target (spec L812): "Catalog index ≤ 60 KB gz (target)". Not met, and accepted (Q15): with the index
+ * minified and recipes and init docs moved to their own files, dev-f4a32c8's index measures 73,930 B gz (72.2 KB,
+ * down from 81,407 B). What's left is about 186 shared contracts' release data (salts, addresses, hashes), which
+ * stays in the index, so the report keeps warning.
+ */
 export const INDEX_GZIP_BUDGET_BYTES = 60 * 1024;
 
 /** One file's size, for the largest-shards list. */
