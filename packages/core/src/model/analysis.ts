@@ -31,8 +31,12 @@ export type Analysis = {
  * `unconfirmed` holds authority paths whose provenance is `link` or `file`.
  */
 export type AnalysisContext = {
-  /** Resolves refs; enables NET checks. */
-  deploy?: { chainId: number; path: "factory" | "createx"; from: Address; salt: Hex };
+  /**
+   * Resolves refs; enables NET checks. `from` and `salt` are optional, unlike spec L269: the NET checks run once a
+   * chain is selected (L301), before a wallet connects, and only what needs the signing account waits for it
+   * (NET-05; David's answer to Q23, 2026-10-06).
+   */
+  deploy?: { chainId: number; path: "factory" | "createx"; from?: Address; salt?: Hex };
   /** Earlier predictions and recorded deployments (AUTH-02). */
   known: Address[];
   /** Argument paths that came from a link or file (LINK-01). */
