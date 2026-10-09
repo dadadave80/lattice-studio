@@ -21,7 +21,7 @@ const ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
 /** GovernedVault's shape (spec L407-L411; `DeployGovernedVault.s.sol` at the pin): 14 facets, owners, a bundle init. */
 const governedVault: Recipe = {
-  $schema: "https://lattice-studio.invalid/schema/recipe.v1.json",
+  $schema: "https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json",
   schemaVersion: 1,
   name: "GovernedVault",
   catalog: { tag: "v0.4.0", hash: HASH },
