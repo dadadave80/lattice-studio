@@ -1,5 +1,5 @@
 {
-  "$schema": "https://lattice-studio.invalid/schema/recipe.v1.json",
+  "$schema": "https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json",
   "schemaVersion": 1,
   "name": "ERC20",
   "catalog": {

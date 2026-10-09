@@ -76,6 +76,7 @@ const VALID_ARGS: Record<string, Record<string, unknown> | undefined> = {
   "recipe.keepImmutable": undefined,
   "init.setArg": { path: "steps[0].name_", value: "Vault" },
   "init.addStep": { spec: "ERC20Init" },
+  "init.useBundle": { spec: "GovernedVaultInit" },
   "init.removeStep": { path: "steps[0]" },
   "init.moveStep": { path: "steps[1]", to: 0 },
   "init.reorderAuto": undefined,
@@ -572,6 +573,27 @@ describe("init", () => {
     expect(await run("init.removeStep", { path: "steps[4]" })).toEqual(["There's no step 5 in the init plan."]);
   });
 
+  test("INIT-04 for a facet whose only init is a bundle: Use the GovernedVault bundle replaces the steps, as one undo step (Q28)", async () => {
+    const base = fixture();
+    const catalog: Catalog = { ...base, facets: base.facets.map((f) => (f.name === "GovernedVault" ? { ...f, init: "GovernedVaultInit" } : f)) };
+    const blank = blankDiamond(catalog);
+    start(makeProject({ recipe: makeRecipe({ facets: [...blank.facets, "GovernedVault"], init: blank.init }, catalog) }), catalog);
+    await settle();
+    const before = doc.get().recipe.init;
+    expect(before).toMatchObject({ kind: "steps", steps: [{ spec: "AccessControlInit" }] });
+    const fix = getAnalysis().problems.find((p) => p.id === "INIT-04:GovernedVault")?.fixes[0];
+    expect(fix).toEqual({ id: "init.useBundle", args: { spec: "GovernedVaultInit" } });
+    expect(commandState(fix as CommandRef).title).toBe("Use the GovernedVault bundle");
+    const lines = await run("init.useBundle", { spec: "GovernedVaultInit" });
+    expect(lines[0]).toBe("Replaced AccessControlInit with the GovernedVaultInit bundle.");
+    expect(doc.get().recipe.init).toEqual({ kind: "bundle", spec: "GovernedVaultInit", args: {} });
+    expect(getAnalysis().problems.some((p) => p.id === "INIT-04:GovernedVault")).toBe(false);
+    expect(doc.state().undoLabel).toBe("Replaced AccessControlInit with the GovernedVaultInit bundle");
+    await run("history.undo");
+    expect(doc.get().recipe.init).toEqual(before);
+    expect(await run("init.useBundle", { spec: "AccessControlInit" })).toEqual(["AccessControlInit isn't a bundle. Add it as an init step instead."]);
+  });
+
   test("Reorder steps automatically satisfies every after constraint in one step", async () => {
     const base = fixture();
     const catalog: Catalog = { ...base, inits: base.inits.map((i) => (i.name === "ERC20Init" ? { ...i, after: ["AccessControl"] } : i)) };
@@ -681,6 +703,7 @@ describe("disabled reasons and no-op lines", () => {
       ["init.setArg", { value: "1" }, "Name an init field"],
       ["init.setArg", { path: "bundle.p.asset" }, "Give the field a value"],
       ["init.addStep", {}, "Name the init to add"],
+      ["init.useBundle", {}, "Name the bundle to use"],
       ["init.removeStep", {}, "Name the step to remove"],
       ["init.moveStep", { path: "bundle", to: 0 }, "Name the step to move"],
       ["init.moveStep", { path: "steps[0]" }, "Say where to move it"],

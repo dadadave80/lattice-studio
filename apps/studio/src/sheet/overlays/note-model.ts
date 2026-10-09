@@ -4,6 +4,7 @@
  *
  * - **Collision** (SEL-01): one note per contested set, the selectors a group of facets fights over together
  *   (grouped by the contender set, catalog order), never one per selector and never one per pair (PA bug 22).
+ *   Its choice lists the card already on the sheet first, so the newcomer is the one being decided.
  * - **Seam** (SEM-01), **missing dependency** (DEP-01) and **convention** (DEP-02, quieter): one note per
  *   problem, with the problem's message and fixes.
  *
@@ -29,7 +30,7 @@ export type NoteModel = {
   facets: string[];
   /** Collision: the contested selectors, in problem order. */
   selectors: NoteSelector[];
-  /** Collision: the contenders, catalog order. */
+  /** Collision: the contenders, the card already on the sheet first (`arrivalOrder`), else catalog order. */
   contenders: string[];
   /** The sentence under the caption: the problem's message, or the collision's rule. */
   text: string;
@@ -99,8 +100,33 @@ function seamFacets(problem: Problem): string[] {
   return owner !== undefined ? [owner] : anchorFacets(problem);
 }
 
-/** The notes the analysis calls for, in the order of their first problem. */
-export function buildNotes(analysis: Pick<Analysis, "problems">, catalog: Catalog | null): NoteModel[] {
+/**
+ * The sheet's facets in the order they came onto it: those already in `previous` keep their places, and the
+ * rest follow in `facets`' own (catalog) order. A facet that left and came back counts as new. Returns
+ * `previous` itself when nothing changed.
+ */
+export function arrivalOrder(previous: readonly string[], facets: readonly string[]): readonly string[] {
+  const present = new Set(facets);
+  const kept = previous.filter((facet) => present.has(facet));
+  const known = new Set(kept);
+  const next = [...kept, ...facets.filter((facet) => !known.has(facet))];
+  return next.length === previous.length && next.every((facet, i) => facet === previous[i]) ? previous : next;
+}
+
+/** `contenders` with the earlier arrivals first; a facet `arrived` doesn't name keeps its place after them. */
+function byArrival(contenders: readonly string[], arrived: readonly string[]): string[] {
+  const at = (facet: string) => {
+    const i = arrived.indexOf(facet);
+    return i < 0 ? arrived.length : i;
+  };
+  return [...contenders].sort((a, b) => at(a) - at(b));
+}
+
+/**
+ * The notes the analysis calls for, in the order of their first problem. `arrived` is the sheet's facets in
+ * the order they came onto it (`arrivalOrder`): a collision's Keep and Route follow it. Without it, catalog order.
+ */
+export function buildNotes(analysis: Pick<Analysis, "problems">, catalog: Catalog | null, arrived: readonly string[] = []): NoteModel[] {
   const notes: NoteModel[] = [];
   const sets = new Map<string, NoteModel>();
   for (const problem of analysis.problems) {
@@ -126,7 +152,7 @@ export function buildNotes(analysis: Pick<Analysis, "problems">, catalog: Catalo
           caption: collisionCaption(1),
           facets: [...contenders],
           selectors: [line],
-          contenders: [...contenders],
+          contenders: byArrival(contenders, arrived),
           text: COLLISION_RULE,
           fixes: [],
         };

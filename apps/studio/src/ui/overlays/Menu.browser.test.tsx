@@ -176,29 +176,54 @@ describe("Menu", () => {
     expect(label && getComputedStyle(label).color).not.toBe(colorOf("GrayText"));
   });
 
-  describe("⌘/Ctrl+Enter on a focused item", () => {
-    test("reaches the document-level handler and doesn't activate the item; plain Enter still does", async () => {
-      const onFoundry = vi.fn();
-      const seen: { defaultPrevented: boolean }[] = [];
-      const listen = (event: KeyboardEvent) => {
-        if (event.key === "Enter" && event.ctrlKey) seen.push({ defaultPrevented: event.defaultPrevented });
-      };
-      window.addEventListener("keydown", listen);
-      onCleanup(() => window.removeEventListener("keydown", listen));
-      await renderWithStudio(<ExportMenu onFoundry={onFoundry} />);
-      await userEvent.tab();
-      await userEvent.keyboard("{Enter}");
-      await expect.element(item("Foundry script")).toHaveFocus();
-      await userEvent.keyboard("{Control>}{Enter}{/Control}");
-      await expect.poll(() => seen.length).toBe(1);
-      expect(seen[0]?.defaultPrevented).toBe(false);
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(onFoundry).not.toHaveBeenCalled();
-      await userEvent.keyboard("{Enter}");
-      expect(onFoundry).toHaveBeenCalledTimes(1);
-    });
+  describe("Mod+Enter on a focused item: the platform's own Mod only (⌘ on macOS, Ctrl elsewhere)", () => {
+    const chords = [
+      { platform: "other", mod: "Control", other: "Meta" },
+      { platform: "mac", mod: "Meta", other: "Control" },
+    ] as const;
+
+    for (const { platform, mod, other } of chords) {
+      test(`${platform === "mac" ? "macOS" : "Windows and Linux"}: ${mod}+Enter reaches the document-level handler and doesn't activate the item; plain Enter still does`, async () => {
+        onCleanup(overridePlatform(platform));
+        const onFoundry = vi.fn();
+        const seen: { defaultPrevented: boolean }[] = [];
+        const listen = (event: KeyboardEvent) => {
+          if (event.key === "Enter" && (mod === "Meta" ? event.metaKey : event.ctrlKey)) seen.push({ defaultPrevented: event.defaultPrevented });
+        };
+        window.addEventListener("keydown", listen);
+        onCleanup(() => window.removeEventListener("keydown", listen));
+        await renderWithStudio(<ExportMenu onFoundry={onFoundry} />);
+        await userEvent.tab();
+        await userEvent.keyboard("{Enter}");
+        await expect.element(item("Foundry script")).toHaveFocus();
+        await userEvent.keyboard(`{${mod}>}{Enter}{/${mod}}`);
+        await expect.poll(() => seen.length).toBe(1);
+        expect(seen[0]?.defaultPrevented).toBe(false);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(onFoundry).not.toHaveBeenCalled();
+        await userEvent.keyboard("{Enter}");
+        expect(onFoundry).toHaveBeenCalledTimes(1);
+      });
+
+      test(`${platform === "mac" ? "macOS" : "Windows and Linux"}: ${other}+Enter and Shift+${mod}+Enter aren't the chord, so the item runs`, async () => {
+        onCleanup(overridePlatform(platform));
+        const onFoundry = vi.fn();
+        await renderWithStudio(<ExportMenu onFoundry={onFoundry} />);
+        await userEvent.tab();
+        await userEvent.keyboard("{Enter}");
+        await expect.element(item("Foundry script")).toHaveFocus();
+        await userEvent.keyboard(`{${other}>}{Enter}{/${other}}`);
+        await expect.poll(() => onFoundry.mock.calls.length).toBe(1);
+        await expect.element(trigger()).toHaveFocus();
+        await userEvent.keyboard("{Enter}");
+        await expect.element(item("Foundry script")).toHaveFocus();
+        await userEvent.keyboard(`{Shift>}{${mod}>}{Enter}{/${mod}}{/Shift}`);
+        await expect.poll(() => onFoundry.mock.calls.length).toBe(2);
+      });
+    }
 
     test("checkbox, radio and submenu items pass it on the same way", async () => {
+      onCleanup(overridePlatform("mac"));
       const seen: boolean[] = [];
       const listen = (event: KeyboardEvent) => {
         if (event.key === "Enter" && event.metaKey) seen.push(event.defaultPrevented);

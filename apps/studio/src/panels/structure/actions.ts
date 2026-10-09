@@ -69,6 +69,7 @@ export function activate(meta: StructureMeta, source: CommandSource): boolean {
       run({ id: "init.open", args: { focus: "bundle" } }, source);
       return true;
     case "problems":
+    case "area":
       return false;
   }
 }
@@ -91,6 +92,7 @@ export function pressSpace(meta: StructureMeta): boolean {
       return true;
     case "facet":
     case "problems":
+    case "area":
       return false;
     default:
       return activate(meta, "keys");

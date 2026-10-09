@@ -1,8 +1,11 @@
 /**
  * The `AnalysisContext` of the open document (spec L268-L272, contracts §3.1): what lives beside the recipe.
  *
- * - `deploy` and `refs` from the current prediction: the selected chain, the path, the connected account and
- *   the salt built from it; "This diamond" is the predicted address, "Deploying account" the account.
+ * - `deploy` from the selected chain and the project's path, so the NET checks run before a wallet connects
+ *   (spec L301, Q23). The connected account and the salt built from it join once there's a prediction; until
+ *   then NET-05 waits for them.
+ * - `refs` from the current prediction: "This diamond" is the predicted address, "Deploying account" the
+ *   account. Without a prediction, only the account, when one is connected.
  * - `known` and `knownFrom` from `project.predicted` and the project's deployment records. The current
  *   prediction is left out: AUTH-02 is about addresses this diamond had before (spec L333).
  * - `unconfirmed` and `unconfirmedFrom` from `project.provenance`: argument paths that came from a link or a
@@ -15,7 +18,9 @@ import type { WalletAccount } from "@/contracts";
 import type { Prediction } from "./prediction";
 
 export type ContextInput = {
-  project: Pick<Project, "predicted" | "provenance">;
+  project: Pick<Project, "predicted" | "provenance" | "deploy">;
+  /** The selected chain, or null. */
+  chainId: number | null;
   prediction: Prediction;
   account: Pick<WalletAccount, "address"> | null;
   deployments: readonly Deployment[];
@@ -27,14 +32,15 @@ export type ContextInput = {
 type KnownFrom = NonNullable<AnalysisContext["knownFrom"]>;
 
 export function buildContext(input: ContextInput): AnalysisContext {
-  const { project, prediction, account, deployments, chain, chainName } = input;
+  const { project, chainId, prediction, account, deployments, chain, chainName } = input;
   const ctx: AnalysisContext = { known: [], unconfirmed: [] };
 
   if (prediction.status === "ready") {
     ctx.deploy = { chainId: prediction.chainId, path: prediction.path, from: prediction.from, salt: prediction.salt };
     ctx.refs = { self: prediction.address, deployer: prediction.from };
-  } else if (account) {
-    ctx.refs = { deployer: toChecksum(account.address) };
+  } else {
+    if (chainId !== null) ctx.deploy = { chainId, path: project.deploy.path };
+    if (account) ctx.refs = { deployer: toChecksum(account.address) };
   }
 
   const current = prediction.status === "ready" ? prediction.address : null;

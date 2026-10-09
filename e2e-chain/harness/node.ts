@@ -18,6 +18,8 @@ export type NodeOptions = {
   /** Fork this RPC (read-only upstream); the fork's own transactions stay on the local node. */
   forkUrl?: string;
   forkBlockNumber?: bigint;
+  /** The fork URL is a public endpoint with no key, so its host may show in messages; otherwise it's scrubbed. */
+  forkUrlPublic?: boolean;
 };
 
 /**
@@ -65,7 +67,7 @@ export async function startNode(options: NodeOptions): Promise<Node> {
     ...(options.forkUrl === undefined ? { chainId } : { forkUrl: options.forkUrl }),
     ...(options.forkBlockNumber === undefined ? {} : { forkBlockNumber: options.forkBlockNumber }),
   });
-  if (options.forkUrl !== undefined) registerSecretUrl(options.forkUrl);
+  if (options.forkUrl !== undefined && options.forkUrlPublic !== true) registerSecretUrl(options.forkUrl);
   try {
     await instance.start();
   } catch (error) {

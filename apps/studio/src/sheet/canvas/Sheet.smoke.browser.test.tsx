@@ -8,6 +8,7 @@
 import type { NodeChange } from "@xyflow/react";
 import { Profiler, type ProfilerOnRenderCallback } from "react";
 import { expect, test } from "vitest";
+import { server } from "vitest/browser";
 import { setCardPosition } from "@lattice-studio/core";
 import { doc, provideSheetInteractions } from "@/contracts";
 import { onCleanup, renderWithStudio } from "../../../test/harness";
@@ -16,8 +17,12 @@ import { cardNode, cardScreenRect, drawn, settled, sheetProject } from "./testin
 
 /** React commit time per move, in ms (Profiler `actualDuration`, summed). */
 const MOVE_COMMIT_BUDGET_MS = 16;
-/** Main-thread time per move, dispatch to settled, in ms: the dev-build bound that catches a regression. */
-const MOVE_WALL_BUDGET_MS = 20;
+/**
+ * Main-thread time per move, dispatch to settled, in ms: the dev-build bound that catches a regression. The Macs the
+ * suite is written on stay under 20; GitHub's hosted Ubuntu runner measured 30.5 on one run (2026-10-06), so Linux
+ * gets 40, about 1.3× that single sample.
+ */
+const MOVE_WALL_BUDGET_MS = server.platform === "darwin" ? 20 : 40;
 const MOVES = 30;
 
 /** A stand-in for S4e's drag: one undo step per drag, the document updated on every move. */

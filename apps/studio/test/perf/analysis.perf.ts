@@ -91,7 +91,8 @@ test("analysis on 30 facets", async ({ page }) => {
   for (const [name, recipe] of recipes) {
     await prepare(RUNS + WARMUP);
     const out = await run(recipe, RUNS, WARMUP);
-    cases.push({ name, facets: out.facets, exported: out.exported, problems: out.problems, stats: summarize(out.times) });
+    // The recipe's facets, the core's two included: `out.facets` counts cards, 28 for the colliding recipe.
+    cases.push({ name, facets: recipe.facets.length, exported: out.exported, problems: out.problems, stats: summarize(out.times) });
   }
   const first = recipes[0]?.[1];
   const profiles: Profile[] = [];
