@@ -7,7 +7,9 @@ import {
   type ChainService, type InspectorView,
 } from "@/contracts";
 import { DialogHost } from "@/ui";
+import { shardedCatalog, shardFetch } from "@/catalog/test-support";
 import { bufferedServices, fakeChainService, renderWithStudio, type FakeChain } from "../../../test/harness";
+import { fixtureCatalog } from "../../../test/harness/catalog";
 import { ensChainChanged } from "./AddressInput";
 import { ZERO_ADDRESS } from "./field-value";
 import { resetInitUi } from "./init-ui-store";
@@ -598,6 +600,39 @@ describe("the Authority table after Flow 17 (spec L652)", () => {
     await expect.poll(() => upgradeRow(page.getByRole("table", { name: "Authority" }).element())).toContain(SAFE);
     history.undo();
     await expect.poll(() => upgradeRow(page.getByRole("table", { name: "Authority" }).element())).toBe(previous);
+  });
+});
+
+describe("help text from init-docs.json (Q15)", () => {
+  test("loads once with the editor, and every field shows its help", async () => {
+    const { catalog, files } = shardedCatalog(fixtureCatalog());
+    const served = shardFetch(files);
+    const original = window.fetch;
+    window.fetch = served.fetch;
+    try {
+      await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(templateRecipe("ERC20")), catalog });
+      await expect.element(page.getByRole("textbox", { name: "Name", exact: true })).toHaveAccessibleDescription(/Token name\./);
+      await expect.element(page.getByRole("textbox", { name: "Symbol", exact: true })).toHaveAccessibleDescription(/Token symbol\./);
+      expect(served.urls.filter((url) => url.endsWith("/init-docs.json"))).toHaveLength(1);
+    } finally {
+      window.fetch = original;
+    }
+  });
+
+  test("help that doesn't load says why, and the form still works", async () => {
+    const { catalog, files } = shardedCatalog(fixtureCatalog());
+    const original = window.fetch;
+    window.fetch = shardFetch(files, { status: 404 }).fetch;
+    try {
+      await renderWithStudio(<InitEditor view={{ kind: "init" }} />, { project: projectFor(templateRecipe("ERC20")), catalog });
+      await expect.element(page.getByText("Couldn't load the help text. init-docs.json answered 404.")).toBeVisible();
+      const name = page.getByRole("textbox", { name: "Name", exact: true });
+      await name.fill("My token");
+      await userEvent.keyboard("{Enter}");
+      await expect.poll(() => argAt(doc.get(), "steps[0].name_")).toBe("My token");
+    } finally {
+      window.fetch = original;
+    }
   });
 });
 

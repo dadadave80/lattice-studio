@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Catalog } from "../../model/catalog";
 import type { InitStep, Recipe } from "../../model/recipe";
 import { makeCatalog, makeFacet, makeInit, makeRecipe } from "../../testing/builders";
-import { loadFixtureCatalog } from "../../testing/fixtures";
+import { loadFixtureCatalog, recipeOf, templatesOf } from "../../testing/fixtures";
 import { autoOrder, planInit } from "./plan";
 
 const fixture = loadFixtureCatalog();
@@ -12,7 +12,7 @@ const catalog = fixture.value;
 function template(name: string): Recipe {
   const found = catalog.recipes.find((r) => r.name === name);
   if (!found) throw new Error(`${name} isn't in the fixture catalog`);
-  return found.recipe;
+  return recipeOf(found);
 }
 
 const DEPLOYER = { $ref: "deployer" } as const;
@@ -90,7 +90,7 @@ describe("planInit", () => {
   });
 
   test("for every fixture recipe, facet placement (R11) and `immutable` pick the same automatic step", () => {
-    for (const { name, recipe } of catalog.recipes) {
+    for (const { name, recipe } of templatesOf(catalog)) {
       if (recipe.init.kind !== "steps") continue;
       const auto = planInit(recipe, catalog).steps.find((s) => s.automatic);
       if (!auto) continue;

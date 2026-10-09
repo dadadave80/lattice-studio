@@ -4,7 +4,7 @@
  */
 
 import { placeCommand, removeCommand, routeContestedCommand } from "./facets";
-import { addStepCommand, moveStepCommand, removeStepCommand, reorderAutoCommand, setArgCommand } from "./init";
+import { addStepCommand, moveStepCommand, removeStepCommand, reorderAutoCommand, setArgCommand, useBundleCommand } from "./init";
 import { flipPinsCommand, tidyCommand, tidySelectionCommand, toggleExpandCommand } from "./layout";
 import { keepImmutableCommand, loadCommand, replaceCommand } from "./recipe";
 import { clearOwnerCommand, excludeCommand, includeCommand, routeCommand } from "./selectors";
@@ -24,6 +24,7 @@ export const S1_COMMANDS = [
   keepImmutableCommand,
   setArgCommand,
   addStepCommand,
+  useBundleCommand,
   removeStepCommand,
   moveStepCommand,
   reorderAutoCommand,

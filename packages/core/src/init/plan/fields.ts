@@ -125,7 +125,7 @@ function build(param: InitParam, path: string): FieldModel {
     label: labelFor(param.name),
     type: param.type,
     kind,
-    doc: param.doc,
+    doc: param.doc ?? "",
     required: true,
     allowZero: zeroAllowed(kind, rule, bounds),
     authority: param.authority === true,

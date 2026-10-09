@@ -11,6 +11,7 @@ import { toChecksum, type Address, type Hex, type Hex4 } from "../model/hex";
 import type { Layout } from "../model/layout";
 import type { Deployment, Project } from "../model/project";
 import type { Arg, InitStep, Recipe } from "../model/recipe";
+import { recipeOf } from "./fixtures";
 import { hostileWellFormedString } from "./hostile";
 
 /** `exportSelectors()`: never cut, never a contender (R3). */
@@ -162,7 +163,7 @@ export function facetsArb(catalog: Catalog, maxFacets = 12): fc.Arbitrary<string
     fc.shuffledSubarray([...list], { minLength: list.length, maxLength: list.length });
   const withCore = (cards: fc.Arbitrary<string[]>): fc.Arbitrary<string[]> => cards.chain((list) => shuffled([...new Set([...list, ...core])]));
   const random = withCore(fc.shuffledSubarray(names, { minLength: 0, maxLength: Math.min(maxFacets, names.length) }));
-  const templates = catalog.recipes.map((template) => template.recipe.facets.filter((name) => names.includes(name)));
+  const templates = catalog.recipes.map((template) => recipeOf(template).facets.filter((name) => names.includes(name)));
   if (templates.length === 0) return random;
   const fromTemplate = fc.constantFrom(...templates).chain((base) =>
     withCore(

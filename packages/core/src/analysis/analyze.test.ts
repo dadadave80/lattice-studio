@@ -327,6 +327,13 @@ describe("init summary (contracts §3.1, Init encoding ruling)", () => {
     }
   });
 
+  test.skipIf(noInit)("a chain without a wallet resolves no reference: the data waits for the account", () => {
+    const recipe = template("SafeDiamondCut");
+    expect(collectRefs(recipe)).toEqual(["deployer"]);
+    const unsigned: AnalysisContext = { deploy: { chainId: 31337, path: "factory" }, known: [], unconfirmed: [] };
+    expect(analyze(recipe, fresh(), unsigned).init).toEqual({ target: address("SafeDiamondCutInit") ?? "0x", refs: ["deployer"] });
+  });
+
   test.skipIf(noInit)("SafeDiamondCut's one call is direct (golden kind \"direct\"); ERC20's two calls go through MultiInit", () => {
     expect(planInit(template("SafeDiamondCut"), catalog()).steps).toHaveLength(1);
     expect(planInit(template("ERC20"), catalog()).steps).toHaveLength(2);

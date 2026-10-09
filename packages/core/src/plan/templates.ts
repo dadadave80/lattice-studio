@@ -1,9 +1,9 @@
 import { normalizeRecipe } from "../canonical/normalize";
-import { isCoreFacet } from "../diamond/core";
 import type { BlankDiamondFn, LoadTemplateFn, TemplateListFn } from "../model/api";
 import type { Catalog, RecipeTemplate, TemplateItem } from "../model/catalog";
 import type { Arg, Recipe } from "../model/recipe";
 import { err, ok } from "../model/result";
+import { templateFacetCount } from "./catalog-parts";
 
 /** The factory each account proxy deploys through in v1.1 (spec R20, L72; Phasing L958). */
 const ACCOUNT_FACTORY: Partial<Record<RecipeTemplate["proxy"], string>> = {
@@ -58,7 +58,8 @@ function refusalFor(template: RecipeTemplate): string | undefined {
 /**
  * Every Lattice recipe in catalog order, for Browse all recipes (spec L407): v1 recipes on the plain Lattice
  * proxy load; the rest carry the note that says when they arrive and, for account recipes, that they need
- * their own factory (R20). `facets` counts the recipe's cards, the core's two left out (decision D18).
+ * their own factory (R20). `facets` counts the recipe's cards, the core's two left out (decision D18); an index that
+ * keeps recipes in a shard (Q15) carries the count as `facetCount`, so the list never waits on it.
  */
 export const templateList: TemplateListFn = (catalog) =>
   catalog.recipes.map((template): TemplateItem => {
@@ -68,7 +69,7 @@ export const templateList: TemplateListFn = (catalog) =>
       proxy: template.proxy,
       phase: template.phase,
       loadable: isLoadable(template),
-      facets: new Set(template.recipe.facets.filter((name) => !isCoreFacet(name))).size,
+      facets: template.facetCount ?? (template.recipe === undefined ? 0 : templateFacetCount(template.recipe)),
     };
     const note = noteFor(template);
     if (note !== undefined) item.note = note;
@@ -115,7 +116,8 @@ function findTemplate(catalog: Catalog, name: string): RecipeTemplate | undefine
  * template's example arguments (flagged by INIT-05 until changed), copied in so nothing depends on the template
  * afterwards. The catalog stores the zero hash in the template's `catalog.hash` (it can't hold its own hash), so
  * this stamps the live `catalog.hash` into `recipe.catalog.hash` and `template.catalogHash` (contracts §3.1).
- * Refuses a recipe that isn't in the catalog or doesn't load in v1, saying why.
+ * Refuses a recipe that isn't in the catalog or doesn't load in v1, saying why. An index that keeps recipes in a
+ * shard (Q15) has to be given them first (`withRecipes`).
  */
 export const loadTemplate: LoadTemplateFn = (catalog, name) => {
   const template = findTemplate(catalog, name);
@@ -123,6 +125,7 @@ export const loadTemplate: LoadTemplateFn = (catalog, name) => {
   const refusal = refusalFor(template);
   if (refusal !== undefined) return err(refusal);
   const source = template.recipe;
+  if (source === undefined) return err(`${template.name}'s recipe hasn't loaded.`);
   const recipe: Recipe = {
     schemaVersion: 1,
     name: source.name ?? template.name,

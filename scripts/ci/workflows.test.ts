@@ -64,6 +64,16 @@ describe("GitHub Actions workflows", () => {
         }
       });
 
+      // Q14: a tag can be moved to other code; a commit SHA can't. The trailing tag comment is what Dependabot's
+      // github-actions ecosystem reads to bump the SHA and the comment together.
+      test("every third-party Action is pinned to a full commit SHA, with its tag in a trailing comment", () => {
+        const uses = [...text.matchAll(/^\s*(?:-\s+)?uses:\s*(.+)$/gm)].map((m) => (m[1] ?? "").trim());
+        for (const line of uses) {
+          if (line.startsWith("./")) continue;
+          expect(line, file).toMatch(/^[\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
+        }
+      });
+
       // spec L864 "Frozen lockfile" (§16 audit #36): a plain `bun install` inside a workflow step must always be
       // frozen, so a rewritten bun.lock in CI can never quietly widen a dependency's version.
       test("every `bun install` step passes --frozen-lockfile", () => {
@@ -126,15 +136,29 @@ describe("nightly.yml (§17 audit #40, spec L914: scheduled, report-only)", () =
   });
 });
 
-describe("fork.yml (§17 audit #76, spec L935: the pinned block is the harness's, not a stale workflow env)", () => {
+describe("fork.yml (§17 audit #76, spec L935, Q7: the fork block is the harness's, and the secret is only a fallback)", () => {
   const text = readFileSync(join(workflowsDir, "fork.yml"), "utf8");
   const doc = Bun.YAML.parse(text) as WorkflowLike;
+  const jobs = Object.values(doc.jobs ?? {}) as (JobLike & { if?: unknown; needs?: unknown })[];
+  const chainStep = jobs.flatMap((job) => job.steps ?? []).find((s) => typeof s.run === "string" && s.run.includes("bun run test:chain"));
 
-  test("declares no FORK_BLOCK env: e2e-chain/fork.chain.test.ts pins its own fork block and never reads one from the environment", () => {
+  test("declares no FORK_BLOCK env: the harness picks a recent finalized block and never reads one from the environment", () => {
     expect(doc.env?.["FORK_BLOCK"]).toBeUndefined();
-    for (const job of Object.values(doc.jobs ?? {})) {
+    for (const job of jobs) {
       for (const step of job.steps ?? []) expect((step.env ?? {})["FORK_BLOCK"]).toBeUndefined();
     }
+  });
+
+  test("runs without the SEPOLIA_RPC_URL secret: no job is gated on it", () => {
+    for (const job of jobs) {
+      expect(job.if).toBeUndefined();
+      expect(job.needs).toBeUndefined();
+    }
+  });
+
+  test("opts the fork suite in and passes the secret through for the harness's fallback", () => {
+    expect(chainStep?.env?.["SEPOLIA_FORK"]).toBe("1");
+    expect(chainStep?.env?.["SEPOLIA_RPC_URL"]).toBe("${{ secrets.SEPOLIA_RPC_URL }}");
   });
 });
 

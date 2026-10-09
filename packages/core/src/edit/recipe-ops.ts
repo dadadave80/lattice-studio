@@ -11,7 +11,7 @@ import { formatAddress, formatDuration, formatSelector, plural } from "../format
 import { joinAnd, joinOr } from "../format/text";
 import type {
   AddInitStepFn, ClearOwnerFn, ExcludeSelectorFn, IncludeSelectorFn, LoadRecipeFn, MoveInitStepFn, PlaceFacetFn,
-  RemoveFacetsFn, RemoveInitStepFn, RouteSelectorFn, SetImmutableFn, SetInitArgFn,
+  RemoveFacetsFn, RemoveInitStepFn, RouteSelectorFn, SetImmutableFn, SetInitArgFn, UseInitBundleFn,
 } from "../model/api";
 import type { Catalog, Facet, InitParam, Seam } from "../model/catalog";
 import { isAddress, toLowerHex, type Hex4 } from "../model/hex";
@@ -483,6 +483,25 @@ export const addInitStep: AddInitStepFn = (project, catalog, spec, index) => {
   const nextInit: RecipeInit = current.kind === "steps" ? { ...current, steps: nextSteps } : { kind: "steps", steps: nextSteps };
   const moved = followPaths(project, (record) => remapStepProvenance(record, (i) => (i >= at ? i + 1 : i)));
   return done(withRecipe(moved, catalog, { ...recipe, init: nextInit }), `Added ${spec} to the init plan`);
+};
+
+/**
+ * INIT-04's Use the {bundle} bundle: the plan becomes the bundle init `spec`, in place of whatever steps (or
+ * other bundle) it had, for a facet whose only inits are bundles (GovernedVault). The replaced steps' arguments,
+ * provenance and labels go with them.
+ */
+export const useInitBundle: UseInitBundleFn = (project, catalog, spec) => {
+  const init = catalog.inits.find((candidate) => candidate.name === spec);
+  if (init === undefined) return noOp(project, `The catalog has no init named ${spec}.`);
+  if (init.kind !== "bundle") return noOp(project, `${spec} isn't a bundle. Add it as an init step instead.`);
+  const { recipe } = project;
+  const current = recipe.init;
+  if (current.kind === "bundle" && current.spec === spec) return noOp(project, `The init plan is already the ${spec} bundle.`);
+  const replaced =
+    current.kind === "bundle" ? [`the ${current.spec} bundle`] : current.kind === "steps" ? current.steps.map((step) => step.spec) : [];
+  const summary = replaced.length === 0 ? `Added ${spec} to the init plan` : `Replaced ${joinAnd(replaced)} with the ${spec} bundle`;
+  const next: Recipe = { ...recipe, init: { kind: "bundle", spec, args: {} } };
+  return done(withRecipe(followPaths(project, CLEAR_PATHS), catalog, next), summary);
 };
 
 export const removeInitStep: RemoveInitStepFn = (project, catalog, path) => {

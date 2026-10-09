@@ -134,6 +134,7 @@ function rig(project: Project, options: { records?: FakeRecords; clock?: ManualC
     files: {
       detail: async (name) => ({ ok: false, error: `${name} has no ABI shard here.` }),
       code: async (name) => creationCode(catalog, name),
+      recipes: async (from) => ({ ok: true, value: from }),
     },
     say: { log: (line) => void said.push(line.text), announce: () => {}, showBanner: () => {}, hideBanner: () => {} },
     settings: () => ({ receiptTimeout: 180, deployAnnouncements: "none" }),

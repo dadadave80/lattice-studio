@@ -68,6 +68,8 @@ type Memo = {
 type ContextMemo = {
   predicted: Project["predicted"];
   provenance: Project["provenance"];
+  deploy: Project["deploy"];
+  chainId: number | null;
   prediction: unknown;
   account: unknown;
   deployments: unknown;
@@ -100,16 +102,18 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
     const chain = chainId === null ? undefined : deps.chain.chainState(chainId);
     const m = contextMemo;
     if (
-      m && m.predicted === project.predicted && m.provenance === project.provenance && m.prediction === prediction
-      && m.account === account && m.deployments === deployments && m.chain === chain
+      m && m.predicted === project.predicted && m.provenance === project.provenance && m.deploy === project.deploy
+      && m.chainId === chainId && m.prediction === prediction && m.account === account && m.deployments === deployments
+      && m.chain === chain
     ) return m.context;
     const built = buildContext({
-      project, prediction, account, deployments, chain, chainName: (id) => deps.chain.chainName(id),
+      project, chainId, prediction, account, deployments, chain, chainName: (id) => deps.chain.chainName(id),
     });
     // Equal contexts keep one identity, so the analysis memo's fast path holds.
     const next = m && digest(m.context) === digest(built) ? m.context : built;
     contextMemo = {
-      predicted: project.predicted, provenance: project.provenance, prediction, account, deployments, chain, context: next,
+      predicted: project.predicted, provenance: project.provenance, deploy: project.deploy, chainId, prediction, account,
+      deployments, chain, context: next,
     };
     return next;
   };
@@ -164,7 +168,8 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
       doc.subscribe((state, previous) => {
         const a = state.project;
         const b = previous.project;
-        if (a.recipe !== b.recipe || a.predicted !== b.predicted || a.provenance !== b.provenance) listener();
+        // The deploy path is in the context even before a wallet connects (NET-01 is CreateX's only).
+        if (a.recipe !== b.recipe || a.predicted !== b.predicted || a.provenance !== b.provenance || a.deploy !== b.deploy) listener();
       }),
       session.subscribe((state, previous) => {
         if (state.chainId !== previous.chainId) listener();

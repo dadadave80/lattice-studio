@@ -6,6 +6,7 @@ import {
   command, commandState, defineCommands, doc, getAnalysis, getCommand, layoutMetrics, runCommand, session, setCatalogStatus,
   type CommandArgs, type CommandSource,
 } from "@/contracts";
+import { shardedCatalog, shardFetch } from "@/catalog/test-support";
 import { bufferedServices } from "@/contracts/services";
 import { S1_COMMANDS } from "./cmd";
 import { resolveField } from "./cmd/init";
@@ -75,6 +76,7 @@ const VALID_ARGS: Record<string, Record<string, unknown> | undefined> = {
   "recipe.keepImmutable": undefined,
   "init.setArg": { path: "steps[0].name_", value: "Vault" },
   "init.addStep": { spec: "ERC20Init" },
+  "init.useBundle": { spec: "GovernedVaultInit" },
   "init.removeStep": { path: "steps[0]" },
   "init.moveStep": { path: "steps[1]", to: 0 },
   "init.reorderAuto": undefined,
@@ -447,6 +449,46 @@ describe("recipes", () => {
     expect(doc.get().recipe.facets).toEqual(["ERC20"]);
   });
 
+  test("a catalog that keeps recipes in recipes.json (Q15) loads the file first, once, and loads the same recipe", async () => {
+    const { catalog, files } = shardedCatalog(fixture());
+    const served = shardFetch(files);
+    const original = globalThis.fetch;
+    globalThis.fetch = served.fetch;
+    try {
+      start(undefined, catalog);
+      // Whether a recipe loads never waits on the file.
+      expect(reason("recipe.load", { name: "GovernedVault" })).toBeNull();
+      expect(served.urls).toEqual([]);
+      const lines = await run("recipe.load", { name: "GovernedVault" });
+      expect(lines).toEqual(["Loaded GovernedVault · 12 facets · 120 selectors · from script/base/defi/DeployGovernedVault.s.sol."]);
+      const want = loadTemplate(fixture(), "GovernedVault");
+      expect(want.ok && doc.get().recipe).toEqual(want.ok ? want.value : false);
+      await run("recipe.replace", { name: "SafeDiamondCut" });
+      expect(doc.get().recipe.template?.name).toBe("SafeDiamondCut");
+      expect(served.urls).toEqual(["/catalog/fixture/recipes.json"]);
+      // The Blank diamond isn't in the file, so it never waits on it.
+      globalThis.fetch = shardFetch(files, { status: 503 }).fetch;
+      await run("recipe.replace", { name: "Blank diamond" });
+      expect(doc.get().recipe.template).toBeUndefined();
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("a recipes.json that doesn't load says why, and the sheet stays as it was", async () => {
+    const { catalog, files } = shardedCatalog(fixture());
+    const original = globalThis.fetch;
+    globalThis.fetch = shardFetch(files, { status: 404 }).fetch;
+    try {
+      start(undefined, catalog);
+      const before = doc.get();
+      expect(await run("recipe.load", { name: "ERC20" })).toEqual(["Couldn't load the recipes. recipes.json answered 404."]);
+      expect(doc.get()).toBe(before);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
   test("the Blank diamond loads by name; recipes that don't load in v1 say why", async () => {
     start();
     // Five facets, three of them cards (Receive, AccessControl, AccessControlDiamondCut).
@@ -529,6 +571,27 @@ describe("init", () => {
     const removed = await run("init.removeStep", { path: "steps[1]" });
     expect(removed).toEqual(["Removed ERC20Init from the init plan.", "Resolved: Name is required. Fill it in before deploying.", "Resolved: Symbol is required. Fill it in before deploying."]);
     expect(await run("init.removeStep", { path: "steps[4]" })).toEqual(["There's no step 5 in the init plan."]);
+  });
+
+  test("INIT-04 for a facet whose only init is a bundle: Use the GovernedVault bundle replaces the steps, as one undo step (Q28)", async () => {
+    const base = fixture();
+    const catalog: Catalog = { ...base, facets: base.facets.map((f) => (f.name === "GovernedVault" ? { ...f, init: "GovernedVaultInit" } : f)) };
+    const blank = blankDiamond(catalog);
+    start(makeProject({ recipe: makeRecipe({ facets: [...blank.facets, "GovernedVault"], init: blank.init }, catalog) }), catalog);
+    await settle();
+    const before = doc.get().recipe.init;
+    expect(before).toMatchObject({ kind: "steps", steps: [{ spec: "AccessControlInit" }] });
+    const fix = getAnalysis().problems.find((p) => p.id === "INIT-04:GovernedVault")?.fixes[0];
+    expect(fix).toEqual({ id: "init.useBundle", args: { spec: "GovernedVaultInit" } });
+    expect(commandState(fix as CommandRef).title).toBe("Use the GovernedVault bundle");
+    const lines = await run("init.useBundle", { spec: "GovernedVaultInit" });
+    expect(lines[0]).toBe("Replaced AccessControlInit with the GovernedVaultInit bundle.");
+    expect(doc.get().recipe.init).toEqual({ kind: "bundle", spec: "GovernedVaultInit", args: {} });
+    expect(getAnalysis().problems.some((p) => p.id === "INIT-04:GovernedVault")).toBe(false);
+    expect(doc.state().undoLabel).toBe("Replaced AccessControlInit with the GovernedVaultInit bundle");
+    await run("history.undo");
+    expect(doc.get().recipe.init).toEqual(before);
+    expect(await run("init.useBundle", { spec: "AccessControlInit" })).toEqual(["AccessControlInit isn't a bundle. Add it as an init step instead."]);
   });
 
   test("Reorder steps automatically satisfies every after constraint in one step", async () => {
@@ -640,6 +703,7 @@ describe("disabled reasons and no-op lines", () => {
       ["init.setArg", { value: "1" }, "Name an init field"],
       ["init.setArg", { path: "bundle.p.asset" }, "Give the field a value"],
       ["init.addStep", {}, "Name the init to add"],
+      ["init.useBundle", {}, "Name the bundle to use"],
       ["init.removeStep", {}, "Name the step to remove"],
       ["init.moveStep", { path: "bundle", to: 0 }, "Name the step to move"],
       ["init.moveStep", { path: "steps[0]" }, "Say where to move it"],

@@ -1,7 +1,8 @@
 /**
  * Recipe commands (Flow 2, spec L405-L411): load a recipe (in place on an empty sheet, else as a new project),
- * replace this sheet with one (one undo step), and Keep immutable (CORE-02). What they do is in `run/recipe.ts`,
- * loaded after the first paint.
+ * replace this sheet with one (one undo step), and Keep immutable (CORE-02). A template's recipe can be in the
+ * catalog's `recipes.json` (Q15), so loading one waits for that file; asking whether one loads never does. What
+ * they do is in `run/recipe.ts`, loaded after the first paint.
  */
 import type { Catalog, Recipe, Result } from "@lattice-studio/core";
 import { blankDiamond, loadTemplate, templateList } from "@lattice-studio/core";
@@ -17,10 +18,17 @@ export const BLANK_DIAMOND = "Blank diamond";
 
 export type LoadedRecipe = { recipe: Recipe; name: string; script?: string };
 
-/** The recipe `name` names, case-insensitively: the Blank diamond or a catalog template that loads in v1. */
+export function isBlank(wanted: string): boolean {
+  return /^blank( diamond)?$/i.test(wanted);
+}
+
+/**
+ * The recipe `name` names, case-insensitively: the Blank diamond or a catalog template that loads in v1. A template
+ * needs `catalog` to carry its recipe (`loadRecipeNamed` makes sure it does).
+ */
 export function resolveRecipe(catalog: Catalog, name: string): Result<LoadedRecipe, string> {
   const wanted = unquote(name);
-  if (/^blank( diamond)?$/i.test(wanted)) return ok({ recipe: blankDiamond(catalog), name: BLANK_DIAMOND });
+  if (isBlank(wanted)) return ok({ recipe: blankDiamond(catalog), name: BLANK_DIAMOND });
   const loaded = loadTemplate(catalog, wanted);
   if (!loaded.ok) return loaded;
   const templateName = loaded.value.template?.name ?? wanted;
@@ -40,7 +48,7 @@ function recipeEnabled(ctx: CommandContext, name: unknown): Enablement {
   if (!ctx.catalog) return disabled(CATALOG_NOT_LOADED);
   // Cheap for buttons and palette rows, which ask on every change: build the recipe only to learn why not.
   const wanted = unquote(name).toLowerCase();
-  if (/^blank( diamond)?$/.test(wanted)) return OK;
+  if (isBlank(wanted)) return OK;
   const item = templateList(ctx.catalog).find((t) => t.name.toLowerCase() === wanted);
   if (item?.loadable) return OK;
   const loaded = resolveRecipe(ctx.catalog, name);

@@ -254,6 +254,8 @@ export type LoadRecipeFn = (project: Project, catalog: Catalog, recipe: Recipe, 
 /** `value` undefined clears the argument. */
 export type SetInitArgFn = (project: Project, catalog: Catalog, path: string, value: Arg | undefined) => EditResult;
 export type AddInitStepFn = (project: Project, catalog: Catalog, spec: string, index?: number) => EditResult;
+/** INIT-04's Use the {bundle} bundle: the plan becomes the bundle init `spec`, in place of its steps. */
+export type UseInitBundleFn = (project: Project, catalog: Catalog, spec: string) => EditResult;
 /** INIT-03's Remove {A}. */
 export type RemoveInitStepFn = (project: Project, catalog: Catalog, path: string) => EditResult;
 export type MoveInitStepFn = (project: Project, catalog: Catalog, from: number, to: number) => EditResult;
@@ -295,7 +297,7 @@ export const API_OWNERS = {
   formatSelector: "C10", formatAddress: "C10", formatCount: "C10", formatGas: "C10", formatFee: "C10",
   formatDuration: "C10", formatTime: "C10", formatKeys: "C10", plural: "C10", lintCopy: "C10",
   placeFacet: "C11", removeFacets: "C11", routeSelector: "C11", clearOwner: "C11", excludeSelector: "C11",
-  includeSelector: "C11", loadRecipe: "C11", setInitArg: "C11", addInitStep: "C11", removeInitStep: "C11",
+  includeSelector: "C11", loadRecipe: "C11", setInitArg: "C11", addInitStep: "C11", useInitBundle: "C11", removeInitStep: "C11",
   moveInitStep: "C11", setImmutable: "C11", renameProject: "C11", moveCards: "C11", setCardPosition: "C11",
   flipPins: "C11", setExpanded: "C11", applyLayout: "C11", recordPrediction: "C11",
 } as const satisfies Record<string, WpId>;

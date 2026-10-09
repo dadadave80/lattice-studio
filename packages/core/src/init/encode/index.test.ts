@@ -5,7 +5,7 @@ import type { Catalog, InitSpec } from "../../model/catalog";
 import type { Address } from "../../model/hex";
 import type { InitPlan, InitStepView } from "../../model/init";
 import type { Arg } from "../../model/recipe";
-import { addr, loadFixtureCatalog, makeCatalog, makeInit, makeShared } from "../../testing";
+import { addr, loadFixtureCatalog, makeCatalog, makeInit, makeShared, recipeOf } from "../../testing";
 import * as mod from "./index";
 import { decodeInit, encodeInit, UNSUPPORTED_IN_V1 } from "./index";
 
@@ -158,7 +158,8 @@ describe.skipIf(!fixture.ok)("encodeInit", () => {
   });
 
   test("the fixture templates' own args fail on what they leave for the person to fill", () => {
-    const template = catalog().recipes.find((r) => r.name === "GovernedVault")?.recipe.init;
+    const found = catalog().recipes.find((r) => r.name === "GovernedVault");
+    const template = found && recipeOf(found).init;
     if (template?.kind !== "bundle") throw new Error("fixture GovernedVault isn't a bundle");
     const vaultPlan: InitPlan = { kind: "bundle", steps: [stepView(spec("GovernedVaultInit"), "bundle", 0, template.args)] };
     expect(encodeInit(vaultPlan, catalog(), {})).toEqual({ ok: false, error: "bundle.p.asset is missing. Fill it in." });

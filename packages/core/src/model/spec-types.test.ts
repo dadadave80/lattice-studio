@@ -152,8 +152,9 @@ type Present<T> = Exclude<T, undefined | null>;
 /** Every assertion; a `false` anywhere fails `bun run typecheck`. */
 export type SpecTypeAssertions = [
   // Catalog (L139-L148) + provisional (contracts §3.1)
-  Assert<Equals<Keys<M.Catalog>, Keys<Catalog> | "provisional" | "libraries" | "registryOwner">>,
-  Assert<Mutual<Omit<M.Catalog, "provisional" | "libraries" | "registryOwner" | "facets" | "inits" | "recipes" | "chains">, Omit<Catalog, "facets" | "inits" | "recipes" | "chains">>>,
+  // + shards (Q15: recipes and init docs load on first use)
+  Assert<Equals<Keys<M.Catalog>, Keys<Catalog> | "provisional" | "libraries" | "registryOwner" | "shards">>,
+  Assert<Mutual<Omit<M.Catalog, "provisional" | "libraries" | "registryOwner" | "shards" | "facets" | "inits" | "recipes" | "chains">, Omit<Catalog, "facets" | "inits" | "recipes" | "chains">>>,
   Assert<Equals<M.Catalog["provisional"], string | undefined>>,
   // proxy gains `detail` (its ABI shard, for revert decoding)
   Assert<Equals<Keys<M.Catalog["proxy"]>, Keys<Catalog["proxy"]> | "detail">>,
@@ -174,13 +175,17 @@ export type SpecTypeAssertions = [
   // InitSpec (L175-L191); params gain `components` (contracts §3.1) and `role` (contracts §4 overlay)
   Assert<Equals<Keys<M.InitSpec>, Keys<InitSpec>>>,
   Assert<Mutual<Omit<M.InitSpec, "params">, Omit<InitSpec, "params">>>,
+  // `doc` is optional: an index can keep docs in `shards.initDocs` (Q15)
   Assert<Equals<Keys<Item<M.InitSpec["params"]>>, Keys<Item<InitSpec["params"]>> | "components" | "role" | "exampleSource">>,
-  Assert<Mutual<Omit<Item<M.InitSpec["params"]>, "components" | "role" | "exampleSource">, Item<InitSpec["params"]>>>,
+  Assert<Mutual<Omit<Item<M.InitSpec["params"]>, "components" | "role" | "exampleSource" | "doc">, Omit<Item<InitSpec["params"]>, "doc">>>,
+  Assert<Equals<Item<M.InitSpec["params"]>["doc"], string | undefined>>,
   Assert<Equals<Present<Item<M.InitSpec["params"]>["components"]>, M.InitParam[]>>,
   Assert<Equals<Keys<Item<M.InitSpec["initializes"]>>, Keys<Item<InitSpec["initializes"]>>>>,
   // RecipeTemplate (L192-L197)
-  Assert<Equals<Keys<M.RecipeTemplate>, Keys<RecipeTemplate>>>,
-  Assert<Mutual<M.RecipeTemplate, RecipeTemplate>>,
+  // `recipe` is optional and `facetCount` added: an index can keep recipes in `shards.recipes` (Q15)
+  Assert<Equals<Keys<M.RecipeTemplate>, Keys<RecipeTemplate> | "facetCount">>,
+  Assert<Mutual<Omit<M.RecipeTemplate, "recipe" | "facetCount">, Omit<RecipeTemplate, "recipe">>>,
+  Assert<Equals<M.RecipeTemplate["recipe"], M.Recipe | undefined>>,
   // ChainRelease (L198-L203); factory gains proxyInitCodeHash (contracts §3.1)
   Assert<Equals<Keys<M.ChainRelease>, Keys<ChainRelease>>>,
   Assert<Equals<Keys<Present<M.ChainRelease["factory"]>>, Keys<Present<ChainRelease["factory"]>> | "proxyInitCodeHash">>,
@@ -211,10 +216,15 @@ export type SpecTypeAssertions = [
   Assert<Equals<Keys<M.Analysis["stats"]>, Keys<Analysis["stats"]>>>,
   // AnalysisContext (L268-L272) + chain (contracts §3.1) + refs, unconfirmedFrom, knownFrom
   Assert<Equals<Keys<M.AnalysisContext>, Keys<AnalysisContext> | "chain" | "refs" | "unconfirmedFrom" | "knownFrom">>,
-  Assert<Mutual<Omit<M.AnalysisContext, "chain" | "refs" | "unconfirmedFrom" | "knownFrom">, AnalysisContext>>,
+  Assert<Mutual<Omit<M.AnalysisContext, "chain" | "refs" | "unconfirmedFrom" | "knownFrom" | "deploy">, Omit<AnalysisContext, "deploy">>>,
   Assert<Equals<M.AnalysisContext["unconfirmed"], string[]>>,
   Assert<Equals<M.AnalysisContext["known"], M.Address[]>>,
+  // A deliberate deviation from L269: `deploy.from` and `salt` are optional, so the NET checks run once a chain is
+  // selected (L301: "when a chain is selected and online") and only NET-05 waits for the signing account (David's
+  // answer to Q23, 2026-10-06). Same keys and types; only those two became optional.
   Assert<Equals<Keys<Present<M.AnalysisContext["deploy"]>>, Keys<Present<AnalysisContext["deploy"]>>>>,
+  Assert<Mutual<Required<Present<M.AnalysisContext["deploy"]>>, Present<AnalysisContext["deploy"]>>>,
+  Assert<Equals<Pick<Present<M.AnalysisContext["deploy"]>, "from" | "salt">, { from?: M.Address; salt?: M.Hex }>>,
   // Problem (L273-L278) + code, params, ack (contracts §3.1)
   Assert<Equals<Keys<M.Problem>, Keys<Problem> | "code" | "params" | "ack">>,
   Assert<Mutual<Omit<M.Problem, "code" | "params" | "ack">, Problem>>,
@@ -304,7 +314,7 @@ const shared: SharedContract = {
 const area: Area = "tokens";
 
 const recipe: M.Recipe = {
-  $schema: "https://lattice-studio.invalid/schema/recipe.v1.json",
+  $schema: "https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json",
   schemaVersion: 1,
   name: "GovernedVault",
   catalog: { tag: "v0.4.0", hash },
@@ -428,6 +438,9 @@ const context: M.AnalysisContext = {
   unconfirmed: ["bundle.p.asset"],
 };
 
+/** Before a wallet connects: the chain and path alone (the L269 deviation above). */
+const unsigned: M.AnalysisContext = { deploy: { chainId: 11155111, path: "factory" }, known: [], unconfirmed: [] };
+
 const commandRef: CommandRef = { id: "facet.place", args: { facet: "DiamondLoupeFacet" } };
 
 describe("spec data model", () => {
@@ -437,6 +450,7 @@ describe("spec data model", () => {
     expect(validateProjectFile(projectFile).ok).toBe(true);
     expect(analysis.plan[0]?.selectors).toEqual(["0xa9059cbb"]);
     expect(context.unconfirmed).toEqual(["bundle.p.asset"]);
+    expect(unsigned.deploy).toEqual({ chainId: 11155111, path: "factory" });
     expect(commandRef.id).toBe("facet.place");
   });
 });

@@ -2,7 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Address, catalogHash, type Hex, type Hex4 } from "@lattice-studio/core";
+import {
+  type Address, catalogHash, type Hex, type Hex4, type InitDocsShard, type RecipesShard, withInitDocs, withRecipes,
+} from "@lattice-studio/core";
+import { makeTemplate } from "@lattice-studio/core/testing";
+import { keccak256 } from "viem";
 import {
   assembleCatalog,
   type CatalogFs,
@@ -371,6 +375,57 @@ describe("index.json's canonical key order (contracts §4)", () => {
       await rm(dirA, { recursive: true, force: true });
       await rm(dirB, { recursive: true, force: true });
     }
+  });
+});
+
+describe("split (Q15): recipes and init docs in their own files", () => {
+  const init: CatalogInput["inits"][number] = {
+    name: "VaultInit",
+    contract: "VaultInit",
+    fn: "init((address,string))",
+    kind: "bundle",
+    params: [{ name: "p", type: "tuple", doc: "Settings.", components: [{ name: "asset", type: "address", doc: "The asset." }, { name: "name", type: "string", doc: "" }] }],
+    initializes: [],
+    after: [],
+    sameCall: [],
+    ctorArgs: [],
+  };
+  const template = makeTemplate({ name: "Vault" });
+  const input = minimalCatalogInput({ inits: [init], recipes: [template] });
+
+  test("the index leaves them out, references both files, and hashes to itself", () => {
+    const { catalog, files } = assembleCatalog(input, { split: true });
+    expect(catalog.recipes).toEqual([{ name: "Vault", script: template.script, proxy: "Lattice", phase: "v1", facetCount: 0 }]);
+    expect(JSON.stringify(catalog.inits)).not.toContain("doc");
+    expect(catalogHash(catalog)).toBe(catalog.hash);
+    const byPath = new Map(files.map((f) => [f.path, f.bytes]));
+    for (const ref of [catalog.shards?.recipes, catalog.shards?.initDocs]) {
+      if (ref === undefined) throw new Error("no shards");
+      const bytes = byPath.get(ref.path);
+      expect({ path: ref.path, bytes: bytes?.length, hash: bytes && keccak256(bytes) }).toEqual(ref);
+    }
+    const recipes = JSON.parse(new TextDecoder().decode(byPath.get("recipes.json"))) as RecipesShard;
+    const docs = JSON.parse(new TextDecoder().decode(byPath.get("init-docs.json"))) as InitDocsShard;
+    expect(docs).toEqual({ VaultInit: { p: "Settings.", "p.asset": "The asset.", "p.name": "" } });
+    // Put back, they're the catalog as written without the split.
+    const inline = assembleCatalog(input).catalog;
+    const back = withInitDocs(withRecipes(catalog, recipes), docs);
+    expect(back.recipes.map(({ facetCount: _count, ...rest }) => rest)).toEqual(inline.recipes);
+    expect(back.inits).toEqual(inline.inits);
+  });
+
+  test("without split nothing moves, and the index is minified either way", async () => {
+    const { catalog, files } = assembleCatalog(input);
+    expect(catalog.shards).toBeUndefined();
+    expect(catalog.recipes).toEqual([template]);
+    expect(files.map((f) => f.path)).not.toContain("recipes.json");
+    const index = new TextDecoder().decode(files.find((f) => f.path === "index.json")?.bytes);
+    expect(index).toBe(`${JSON.stringify(JSON.parse(index))}\n`);
+    await withTempDir(async (dir) => {
+      const result = await writeCatalog(dir, "split", input, { split: true });
+      if (!result.ok) throw new Error(result.error);
+      expect((await readdir(result.value.dir)).sort()).toEqual(["code", "index.json", "init-docs.json", "json", "recipes.json", "shards"]);
+    });
   });
 });
 

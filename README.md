@@ -84,7 +84,7 @@ The analysis is one pure-TypeScript package. The app, the CLI and the tests all 
 ```console
 $ bun packages/cli/src/main.ts check docs/examples/erc20.recipe.json
 Provisional catalog: Lattice 0.2.0 at dev f4a32c8; v1 targets 0.4.0
-ERC20 · recipe 0x2bbd90227eb2f4de2d758f5a620ae2a30da5ce4019493652eaaf825c4bea1ddb · Lattice dev-f4a32c8
+ERC20 · recipe 0x56e1453edddf0e680e6cc8066e0288e6fe8731e0f5b328b9216893c9449eaf1b · Lattice dev-f4a32c8
 2 facets · 15 selectors
 1 warning
   Warning  INIT-05  2 fields still use example values, including name (Example Token) and symbol (EXT).
@@ -154,7 +154,7 @@ Around those: a strict Content Security Policy with no `unsafe-inline` or `unsaf
 
 - **3,500+ unit tests** on the core and app logic (`bun test`).
 - **1,600+ component tests** in a real browser with screenshot baselines (Vitest Browser Mode).
-- **480+ end-to-end flows** in Playwright, with accessibility scans, forced colors and reduced motion. WCAG 2.2 AA is the target.
+- **480+ end-to-end flows** in Playwright, with accessibility scans, forced colors and reduced motion. WCAG 2.2 AA is the target, and twelve [manual keyboard scripts and a screen-reader matrix](apps/studio/e2e/a11y/MANUAL.md) cover what automation can't.
 - **Chain tests** on Anvil, and **golden tests** that hold Studio's plan against Lattice's own deploy scripts.
 - **Budgets in one command:** bundle size, schema drift, token drift and copy lint all run in `bun run check`.
 

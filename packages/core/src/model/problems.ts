@@ -286,7 +286,7 @@ export const PROBLEMS: Readonly<Record<ProblemCode, ProblemInfo>> = {
   "INIT-01": { severity: "blocker", owner: "C4a", fixes: ["init.focusField"] },
   "INIT-02": { severity: "blocker", owner: "C4a", fixes: ["init.reorderAuto", "init.open"] },
   "INIT-03": { severity: "variable", owner: "C4a", fixes: ["init.removeStep", "init.setArg"] },
-  "INIT-04": { severity: "blocker", owner: "C4a", fixes: ["init.addStep"] },
+  "INIT-04": { severity: "blocker", owner: "C4a", fixes: ["init.addStep", "init.useBundle"] },
   "INIT-05": { severity: "warning", ack: true, owner: "C4a", fixes: ["init.open", "ack.set"] },
   "AUTH-01": { severity: "warning", ack: true, owner: "C4c", fixes: ["authority.chooseMechanism", "ack.set"] },
   "AUTH-02": { severity: "blocker", owner: "C4c", fixes: ["init.setArg", "init.focusField"] },

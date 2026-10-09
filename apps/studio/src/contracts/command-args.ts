@@ -37,6 +37,8 @@ export type CommandArgsMap = {
   /** `verb: "oneAdmin"` titles it "Use one admin" (INIT-03, spec L329); a `{ $ref: "self" }` value reads Use "This diamond" (AUTH-02, L333). */
   "init.setArg": { path: string; value: Arg; verb?: "oneAdmin" };
   "init.addStep": { spec: string };
+  /** Replaces the plan with the bundle init `spec` (INIT-04, a facet whose only inits are bundles). */
+  "init.useBundle": { spec: string };
   /** A step path: "steps[2]". */
   "init.removeStep": { path: string };
   /** Moves the step at `path` to index `to` (0-based). */
