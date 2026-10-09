@@ -1,12 +1,16 @@
-/** What the init commands do (`../init.ts` defines them): set an argument, add, remove and move steps, reorder them. */
+/**
+ * What the init commands do (`../init.ts` defines them): set an argument, add a step, use a bundle, remove and move
+ * steps, reorder them.
+ */
 import type { Arg, Catalog, EditResult, InitStep, Project } from "@lattice-studio/core";
-import { addInitStep, autoOrder, lines, moveInitStep, removeInitStep, setInitArg } from "@lattice-studio/core";
+import { addInitStep, autoOrder, lines, moveInitStep, removeInitStep, setInitArg, useInitBundle } from "@lattice-studio/core";
 import type { CommandArgsOf, CommandContext } from "@/contracts";
 import { fieldAt, showValue, stepIndex } from "../init";
 import { combined, edit } from "../shared";
 
 type SetArgArgs = CommandArgsOf<"init.setArg">;
 type AddStepArgs = CommandArgsOf<"init.addStep">;
+type UseBundleArgs = CommandArgsOf<"init.useBundle">;
 type RemoveStepArgs = CommandArgsOf<"init.removeStep">;
 type MoveStepArgs = CommandArgsOf<"init.moveStep">;
 
@@ -44,6 +48,12 @@ export function addStep(ctx: CommandContext, { spec }: AddStepArgs): void {
   const catalog = ctx.catalog;
   if (!catalog) return;
   edit((p) => addInitStep(p, catalog, spec));
+}
+
+export function applyBundle(ctx: CommandContext, { spec }: UseBundleArgs): void {
+  const catalog = ctx.catalog;
+  if (!catalog) return;
+  edit((p) => useInitBundle(p, catalog, spec));
 }
 
 export function removeStep(ctx: CommandContext, { path }: RemoveStepArgs): void {

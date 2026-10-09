@@ -4,12 +4,35 @@ import { analyze, isCoreOnly, isNotImplemented, lines, loadRecipe, recipeStats, 
 import {
   createProject, emptyAnalysis, isPlaceholder, layoutMetrics, log, runCommand, type CommandArgsOf, type CommandContext,
 } from "@/contracts";
+import { catalogWithRecipes } from "@/catalog/parts";
 import { studioState } from "../../runtime";
-import { resolveRecipe, type LoadedRecipe } from "../recipe";
-import { edit, sayNote } from "../shared";
+import { isBlank, resolveRecipe, type LoadedRecipe } from "../recipe";
+import { edit, sayNote, unquote } from "../shared";
 
 type LoadArgs = CommandArgsOf<"recipe.load">;
 type ReplaceArgs = CommandArgsOf<"recipe.replace">;
+
+/**
+ * `resolveRecipe` for a command's run: a template's recipe loads first if the catalog keeps it in a shard. Says why
+ * and returns null when the recipe, or the file that holds it, doesn't load.
+ */
+async function loadRecipeNamed(catalog: Catalog, name: string): Promise<LoadedRecipe | null> {
+  let source = catalog;
+  if (!isBlank(unquote(name))) {
+    const withRecipes = await catalogWithRecipes(catalog);
+    if (!withRecipes.ok) {
+      log({ tag: "Error", text: withRecipes.error });
+      return null;
+    }
+    source = withRecipes.value;
+  }
+  const loaded = resolveRecipe(source, name);
+  if (!loaded.ok) {
+    sayNote(loaded.error);
+    return null;
+  }
+  return loaded.value;
+}
 
 function analysisOf(recipe: Recipe, catalog: Catalog): Analysis {
   try {
@@ -56,39 +79,32 @@ function replaceInPlace(loaded: LoadedRecipe, catalog: Catalog): void {
 export async function load(ctx: CommandContext, { name }: LoadArgs): Promise<void> {
   const catalog = ctx.catalog;
   if (!catalog) return;
-  const loaded = resolveRecipe(catalog, name);
-  if (!loaded.ok) {
-    sayNote(loaded.error);
-    return;
-  }
+  const loaded = await loadRecipeNamed(catalog, name);
+  if (!loaded) return;
   if (isCoreOnly(ctx.project.recipe)) {
     // An empty sheet: the recipe loads in place (spec L408).
-    replaceInPlace(loaded.value, catalog);
+    replaceInPlace(loaded, catalog);
     return;
   }
   // A sheet with facets: a new project, and this one stays under Projects (spec L408).
-  const analysis = analysisOf(loaded.value.recipe, catalog);
-  const layout = tidied(loaded.value.recipe, catalog, analysis);
-  const created = await createProject(loaded.value.recipe, loaded.value.name, { layout });
+  const analysis = analysisOf(loaded.recipe, catalog);
+  const layout = tidied(loaded.recipe, catalog, analysis);
+  const created = await createProject(loaded.recipe, loaded.name, { layout });
   if (!created.ok) {
     log({ tag: "Error", text: created.error });
     return;
   }
   const engine = studioState().analysis;
-  engine.say(loadedLine(loaded.value, catalog, analysis));
+  engine.say(loadedLine(loaded, catalog, analysis));
   engine.flush();
   fitView();
 }
 
-export function replace(ctx: CommandContext, { name }: ReplaceArgs): void {
+export async function replace(ctx: CommandContext, { name }: ReplaceArgs): Promise<void> {
   const catalog = ctx.catalog;
   if (!catalog) return;
-  const loaded = resolveRecipe(catalog, name);
-  if (!loaded.ok) {
-    sayNote(loaded.error);
-    return;
-  }
-  replaceInPlace(loaded.value, catalog);
+  const loaded = await loadRecipeNamed(catalog, name);
+  if (loaded) replaceInPlace(loaded, catalog);
 }
 
 export function keepImmutable(): void {
