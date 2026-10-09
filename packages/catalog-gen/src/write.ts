@@ -7,6 +7,9 @@
  * computes replaced by the raw content it's computed from: `creationCode` is the hex string a `code/*.hex` file
  * holds, `detail` and `standardJson` are the JSON value a `shards/*.json` or `json/*.standard.json` file holds.
  * Everything else (addresses, hashes, salts, overlay data) is already final and passes straight through.
+ *
+ * With `split` (Q15, what `bun run catalog` writes), template recipes and init parameter docs leave the index for
+ * `recipes.json` and `init-docs.json`, which the app loads on first use; the index records both as `shards`.
  */
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
@@ -27,10 +30,15 @@ import {
   type Result,
   type Seam,
   type SharedContract,
+  splitInitDocs,
+  splitRecipes,
   validateCatalog,
   validateCatalogManifest,
 } from "@lattice-studio/core";
-import { codePath, detailPath, jsonFileBytes, shardRefFor, sortedJsonFileBytes, standardJsonPath, textFileBytes } from "./shards";
+import {
+  codePath, detailPath, INIT_DOCS_PATH, jsonFileBytes, RECIPES_PATH, shardRefFor, sortedJsonFileBytes, standardJsonPath,
+  textFileBytes,
+} from "./shards";
 
 /** A shared contract's release data, with `creationCode` and `detail` as raw content instead of `ShardRef`s. */
 export type SharedContractInput = Omit<SharedContract, "creationCode" | "detail"> & {
@@ -82,6 +90,9 @@ export type CatalogFile = { path: string; bytes: Uint8Array };
 
 /** `assembleCatalog`'s result: the finished index and every file that backs it (`index.json` included). */
 export type AssembledCatalog = { catalog: Catalog; files: CatalogFile[] };
+
+/** `split`: move template recipes and init docs out of the index into their own files (Q15). */
+export type AssembleOptions = { split?: boolean };
 
 const ZERO_HASH: Hex = `0x${"00".repeat(32)}`;
 
@@ -176,16 +187,26 @@ function buildLibrary(files: FileRegistry, input: LibraryInput): { name: string;
 /**
  * Builds the catalog index and every file it references, deterministically: the same input always produces
  * the same bytes and the same `hash`. Pure — no file system access, so it's safe to call any number of times.
+ * The returned `catalog` is the index as written: with `split`, without recipes or init docs.
  */
-export function assembleCatalog(input: CatalogInput): AssembledCatalog {
+export function assembleCatalog(input: CatalogInput, opts?: AssembleOptions): AssembledCatalog {
   const files = new FileRegistry();
   const registry = buildSharedContract(files, "LatticeRegistry", input.registry);
   const factory = buildSharedContract(files, "LatticeFactory", input.factory);
   const proxy = buildProxy(files, input.proxy);
   const facets = input.facets.map((facet) => buildFacet(files, facet));
-  const inits = input.inits.map((init) => buildInitSpec(files, init));
+  let inits = input.inits.map((init) => buildInitSpec(files, init));
   const chains = input.chains.map((chain) => buildChainRelease(files, chain));
   const libraries = input.libraries?.map((library) => buildLibrary(files, library));
+  let recipes = input.recipes;
+  let shards: Catalog["shards"];
+  if (opts?.split === true) {
+    const splitTemplates = splitRecipes(recipes);
+    const splitDocs = splitInitDocs(inits);
+    recipes = splitTemplates.templates;
+    inits = splitDocs.inits;
+    shards = { recipes: files.json(RECIPES_PATH, splitTemplates.shard), initDocs: files.json(INIT_DOCS_PATH, splitDocs.shard) };
+  }
 
   const withoutHash: Omit<Catalog, "hash"> = {
     lattice: input.lattice,
@@ -196,12 +217,13 @@ export function assembleCatalog(input: CatalogInput): AssembledCatalog {
     proxy,
     facets,
     inits,
-    recipes: input.recipes,
+    recipes,
     chains,
     seams: input.seams,
     ...(input.provisional !== undefined ? { provisional: input.provisional } : {}),
     ...(libraries !== undefined ? { libraries } : {}),
     ...(input.registryOwner !== undefined ? { registryOwner: input.registryOwner } : {}),
+    ...(shards !== undefined ? { shards } : {}),
   };
   // `catalogHash` deletes `hash` before hashing, so the placeholder's value doesn't matter.
   const hash = catalogHash({ ...withoutHash, hash: ZERO_HASH });
@@ -334,12 +356,12 @@ export async function writeCatalog(
   catalogDir: string,
   id: string,
   input: CatalogInput,
-  opts?: { makeDefault?: boolean },
+  opts?: { makeDefault?: boolean } & AssembleOptions,
   fs: CatalogFs = nodeFs,
 ): Promise<Result<{ catalog: Catalog; dir: string; manifest: CatalogManifest }, string>> {
   let assembled: AssembledCatalog;
   try {
-    assembled = assembleCatalog(input);
+    assembled = assembleCatalog(input, opts?.split === true ? { split: true } : undefined);
   } catch (error) {
     return err(`catalog-gen: failed assembling catalog "${id}": ${errorMessage(error)}`);
   }

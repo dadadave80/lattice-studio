@@ -969,9 +969,10 @@ export type InitMerge = {
 };
 
 function mergeParam(p: InitParam, o: InitParamOverlay | undefined, path: string, out: InitMerge): InitParam {
-  const merged: InitParam = { name: p.name, type: p.type, doc: o?.doc ?? p.doc };
+  const source = p.doc ?? "";
+  const merged: InitParam = { name: p.name, type: p.type, doc: o?.doc ?? source };
   if (merged.doc === "") out.undocumented.push(path);
-  if (o?.doc !== undefined && p.doc !== "" && o.doc !== p.doc) out.docOverrides.push({ path, source: p.doc, overlay: o.doc });
+  if (o?.doc !== undefined && source !== "" && o.doc !== source) out.docOverrides.push({ path, source, overlay: o.doc });
   if (o?.unit !== undefined) merged.unit = o.unit;
   if (o?.rule !== undefined) merged.rule = o.rule;
   if (o?.example !== undefined) merged.example = o.example;

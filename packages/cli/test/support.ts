@@ -19,6 +19,7 @@ import {
   toChecksum,
   validateCatalog,
 } from "@lattice-studio/core";
+import { loadBuiltCatalog } from "@lattice-studio/core/testing";
 import { run } from "../src/cli";
 import type { Deps } from "../src/deps";
 
@@ -56,8 +57,12 @@ export const BUILT_DEFAULT_ID = manifest.default;
 /** K3's fixture catalog, reached with `--catalog fixtures/catalog`. */
 export const FIXTURE: Catalog = readCatalog(join(FIXTURE_CATALOGS, "fixture", "index.json"));
 
+/** `BUILT` with its templates' recipes back from `recipes.json` (Q15), which `template` needs. */
+const BUILT_WITH_RECIPES = loadBuiltCatalog();
+
 export function template(catalog: Catalog, name: string): Recipe {
-  const loaded = loadTemplate(catalog, name);
+  const source = catalog === BUILT && BUILT_WITH_RECIPES.ok ? BUILT_WITH_RECIPES.value : catalog;
+  const loaded = loadTemplate(source, name);
   if (!loaded.ok) throw new Error(loaded.error);
   return loaded.value;
 }

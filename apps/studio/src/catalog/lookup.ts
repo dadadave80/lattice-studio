@@ -3,8 +3,9 @@
  * publishes: the migrate flow (S13) and this module's own pin check need to ask about a catalog other than
  * the one on screen, without disturbing it.
  */
-import type { Catalog, CatalogManifest, Hex, Result } from "@lattice-studio/core";
+import type { Catalog, CatalogManifest, Hex, Result, ShardRef } from "@lattice-studio/core";
 import { err, ok } from "@lattice-studio/core";
+import { keccak256 } from "viem";
 import { catalogBase } from "@/contracts";
 
 export type ManifestEntry = CatalogManifest["catalogs"][number];
@@ -37,6 +38,30 @@ export function entryDir(entry: ManifestEntry): string {
 export function catalogDirFor(id: string, manifest: CatalogManifest | null): string {
   const entry = manifest?.catalogs.find((candidate) => candidate.id === id);
   return entry ? entryDir(entry) : `${catalogBase()}${dirOf(id)}`;
+}
+
+/**
+ * A file of catalog `id` served from `dir`, as text, once its bytes match `ref.hash` (keccak256 of the raw file).
+ * A mismatch is an error, never silently accepted. Never throws.
+ */
+export async function fetchVerified(id: string, dir: string, ref: ShardRef): Promise<Result<string, string>> {
+  let response: Response;
+  try {
+    response = await fetch(`${dir}${ref.path}`);
+  } catch (error) {
+    return err(error instanceof Error ? error.message : String(error));
+  }
+  if (!response.ok) return err(`${ref.path} answered ${response.status}.`);
+  let buffer: Uint8Array;
+  try {
+    buffer = new Uint8Array(await response.arrayBuffer());
+  } catch (error) {
+    return err(error instanceof Error ? error.message : String(error));
+  }
+  if (keccak256(buffer).toLowerCase() !== ref.hash.toLowerCase()) {
+    return err(`${ref.path} doesn't match catalog ${id}'s hash for it. Reload the catalog.`);
+  }
+  return ok(new TextDecoder().decode(buffer));
 }
 
 /** The manifest entry a project's `recipe.catalog` names, by hash (the canonical identity; `tag` is display only). */

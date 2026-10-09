@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Catalog, Hex4, Recipe } from "@lattice-studio/core";
 import { analyze } from "@lattice-studio/core";
 import { loadFixtureCatalog, makeRecipe } from "@lattice-studio/core/testing";
-import { buildNotes, collisionCaption, COLLISION_RULE, noteOf } from "./note-model";
+import { arrivalOrder, buildNotes, collisionCaption, COLLISION_RULE, noteOf } from "./note-model";
 import { stepProblem } from "./problem-order";
 
 const loaded = loadFixtureCatalog();
@@ -56,6 +56,38 @@ describe("collision notes (spec L434-L436, PA bug 22)", () => {
     const [note] = notes.filter((n) => n.kind === "collision");
     expect(note?.caption).toBe("Selector collision");
     expect(note?.selectors.map((s) => s.hex)).toEqual([ATTRIBUTE]);
+  });
+
+  test("Keep and Route: the card already on the sheet comes first, so the newcomer is the one being decided", () => {
+    const facets = ["AxelarGatewayAdapter", "HyperlaneGatewayAdapter"];
+    const analysis = analyze(recipe(facets), catalog);
+    // Hyperlane was on the sheet; Axelar is the newcomer.
+    const arrived = arrivalOrder(arrivalOrder([], ["HyperlaneGatewayAdapter"]), recipe(facets).facets);
+    expect(arrived).toEqual(["HyperlaneGatewayAdapter", "AxelarGatewayAdapter"]);
+    const [note] = buildNotes(analysis, catalog, arrived).filter((n) => n.kind === "collision");
+    expect(note?.contenders).toEqual(["HyperlaneGatewayAdapter", "AxelarGatewayAdapter"]);
+    // The note keeps its id (catalog order), so it stays the same object across edits.
+    expect(note?.id).toBe("collision:AxelarGatewayAdapter+HyperlaneGatewayAdapter");
+    expect(note?.facets).toEqual(facets);
+  });
+
+  test("three contenders follow their arrival too; facets that arrived together keep catalog order", () => {
+    const facets = ["AxelarGatewayAdapter", "CCIPGatewayAdapter", "HyperlaneGatewayAdapter"];
+    const arrived = arrivalOrder(["HyperlaneGatewayAdapter"], recipe(facets).facets);
+    const [three] = buildNotes(analyze(recipe(facets), catalog), catalog, arrived).filter((n) => n.contenders.length === 3);
+    expect(three?.contenders).toEqual(["HyperlaneGatewayAdapter", "AxelarGatewayAdapter", "CCIPGatewayAdapter"]);
+  });
+
+  test("arrival order: kept places, newcomers last, a facet that left and came back is new", () => {
+    const start = arrivalOrder([], ["A", "B"]);
+    expect(start).toEqual(["A", "B"]);
+    expect(arrivalOrder(start, ["A", "B"])).toBe(start);
+    const placed = arrivalOrder(["B"], ["A", "B"]);
+    expect(placed).toEqual(["B", "A"]);
+    const removed = arrivalOrder(placed, ["A"]);
+    expect(removed).toEqual(["A"]);
+    expect(arrivalOrder(removed, ["A", "B"])).toEqual(["A", "B"]);
+    expect(arrivalOrder(["B", "A"], ["C"])).toEqual(["C"]);
   });
 
   test("the caption counts only when there are several", () => {

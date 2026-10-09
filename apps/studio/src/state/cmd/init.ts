@@ -1,11 +1,12 @@
 /**
  * Init commands (Flow 7, spec L457-L469): set an argument (`set <field> <value>`, IR L151), add a step
- * (INIT-04), remove one (INIT-03's Remove {A}), move one, and Reorder steps automatically (INIT-02).
+ * (INIT-04), use a bundle in place of the steps (INIT-04 for a bundle-only facet), remove a step (INIT-03's
+ * Remove {A}), move one, and Reorder steps automatically (INIT-02).
  */
 import type { Arg, Catalog, EditResult, FieldModel, InitStep, Project, Recipe, Result } from "@lattice-studio/core";
 import {
   addInitStep, autoOrder, formatAddress, formatDuration, isAddress, lines, moveInitStep, planInit, removeInitStep,
-  setInitArg, validateArg,
+  setInitArg, useInitBundle, validateArg,
 } from "@lattice-studio/core";
 import { command, doc, getCatalog, type CommandArgsOf } from "@/contracts";
 import { studioState } from "../runtime";
@@ -13,6 +14,7 @@ import { combined, disabled, edit, err, guard, isString, OK, ok, unquote } from 
 
 type SetArgArgs = CommandArgsOf<"init.setArg">;
 type AddStepArgs = CommandArgsOf<"init.addStep">;
+type UseBundleArgs = CommandArgsOf<"init.useBundle">;
 type RemoveStepArgs = CommandArgsOf<"init.removeStep">;
 type MoveStepArgs = CommandArgsOf<"init.moveStep">;
 
@@ -196,6 +198,29 @@ export const addStepCommand = command<AddStepArgs>({
     const catalog = ctx.catalog;
     if (!catalog) return;
     edit((p) => addInitStep(p, catalog, spec));
+  },
+});
+
+/** A bundle by what it sets up: GovernedVaultInit → "GovernedVault". */
+export function bundleName(spec: string): string {
+  return spec.endsWith("Init") && spec.length > "Init".length ? spec.slice(0, -"Init".length) : spec;
+}
+
+export const useBundleCommand = command<UseBundleArgs>({
+  id: "init.useBundle",
+  // INIT-04's fix for a facet whose only inits are bundles: "Use the GovernedVault bundle" (Q28, 2026-10-06).
+  title: ({ spec }) => `Use the ${bundleName(spec)} bundle`,
+  category: "Build",
+  enabled(ctx, args) {
+    const blocked = guard(ctx);
+    if (blocked) return blocked;
+    if (!isString(args.spec)) return disabled("Name the bundle to use");
+    return OK;
+  },
+  run(ctx, { spec }) {
+    const catalog = ctx.catalog;
+    if (!catalog) return;
+    edit((p) => useInitBundle(p, catalog, spec));
   },
 });
 

@@ -4,7 +4,7 @@ import type { Catalog } from "../model/catalog";
 import type { Address } from "../model/hex";
 import type { Recipe } from "../model/recipe";
 import { blankDiamond as buildBlank } from "../plan/templates";
-import { loadFixtureCatalog } from "../testing";
+import { loadFixtureCatalog, recipeOf } from "../testing";
 
 const loaded = loadFixtureCatalog();
 
@@ -29,7 +29,7 @@ export function blankDiamond(catalog: Catalog): Recipe {
 export function template(catalog: Catalog, name: string): Recipe {
   const found = catalog.recipes.find((r) => r.name === name);
   if (!found) throw new Error(`No ${name} template in the fixture catalog`);
-  return structuredClone(found.recipe);
+  return structuredClone(recipeOf(found));
 }
 
 /** An empty context: no chain, nothing known, nothing unconfirmed. */

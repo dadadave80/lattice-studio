@@ -4,7 +4,7 @@ import type { Catalog } from "../model/catalog";
 import type { Recipe } from "../model/recipe";
 import { renderProblem } from "../narrate/problem";
 import { blankDiamond } from "../plan";
-import { loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe } from "../testing";
+import { loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe, recipeOf } from "../testing";
 import { checkSto } from "./sto";
 
 function input(catalog: Catalog, recipe: Partial<Recipe>): CheckInput {
@@ -118,7 +118,7 @@ describe("the fixture catalog", () => {
   test.skipIf(!fixture.ok)("v1 templates and the Blank diamond raise no STO-01", () => {
     if (!fixture.ok) return;
     const cat = fixture.value;
-    const recipes = [...cat.recipes.filter((r) => r.phase === "v1").map((r) => r.recipe), blankDiamond(cat)];
+    const recipes = [...cat.recipes.filter((r) => r.phase === "v1").map(recipeOf), blankDiamond(cat)];
     expect(recipes).toHaveLength(4);
     for (const recipe of recipes) {
       expect(checkSto(input(cat, recipe)).filter((p) => p.code === "STO-01")).toEqual([]);

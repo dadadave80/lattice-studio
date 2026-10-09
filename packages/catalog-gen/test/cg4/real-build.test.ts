@@ -107,7 +107,7 @@ type Param = InitSkeleton["params"][number];
 
 function paramOverlay(p: Param, withDocs: boolean): InitParamOverlay {
   const o: InitParamOverlay = {};
-  if (withDocs) o.doc = p.doc;
+  if (withDocs && p.doc !== undefined) o.doc = p.doc;
   if (p.unit !== undefined) o.unit = p.unit;
   if (p.rule !== undefined) o.rule = p.rule;
   if (p.example !== undefined) o.example = p.example;
@@ -146,7 +146,7 @@ async function fixtureInits(): Promise<InitSkeleton[]> {
 
 function docs(params: Param[], prefix: string, out: Map<string, string>): Map<string, string> {
   for (const p of params) {
-    out.set(`${prefix}.${p.name}`, p.doc);
+    out.set(`${prefix}.${p.name}`, p.doc ?? "");
     if (p.components) docs(p.components, `${prefix}.${p.name}`, out);
   }
   return out;

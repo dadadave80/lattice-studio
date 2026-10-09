@@ -58,10 +58,13 @@ function spy(id: CommandId): CommandArgs[] {
 }
 
 describe("Structure tree: shape and names", () => {
-  test("facets at the root, named as their cards, then Problems and Init plan; one Tab stop", async () => {
+  test("facets grouped by area, named as their cards, then Problems and Init plan; one Tab stop", async () => {
     await renderTree(template("GovernedVault"));
+    const tokens = page.getByRole("treeitem", { name: "Tokens, 3 facets" });
+    await expect.element(tokens).toHaveAttribute("aria-level", "1");
+    await expect.element(tokens).toHaveAttribute("aria-expanded", "true");
     const erc20 = page.getByRole("treeitem", { name: "ERC20, 9 selectors, 4 served by other facets" });
-    await expect.element(erc20).toHaveAttribute("aria-level", "1");
+    await expect.element(erc20).toHaveAttribute("aria-level", "2");
     await expect.element(erc20).toHaveAttribute("aria-expanded", "false");
     await expect.element(page.getByRole("treeitem", { name: /^Problems, \d+$/ })).toHaveAttribute("aria-expanded", "true");
     await expect.element(page.getByRole("treeitem", { name: "Init plan, GovernedVaultInit bundle" })).toBeVisible();
@@ -80,6 +83,58 @@ describe("Structure tree: shape and names", () => {
       expect(await axeViolations(screen.container)).toEqual([]);
       await screen.unmount();
     }
+  });
+});
+
+describe("Structure tree: area groups (the boards' Recipe outline)", () => {
+  test("Core first, then one group per area in name order, each with its cards in recipe order", async () => {
+    await renderTree(template("GovernedVault"));
+    const roots = [...document.querySelectorAll<HTMLElement>('[role="treeitem"][aria-level="1"]')].map((r) => r.dataset.treeId);
+    expect(roots).toEqual(["core", "area:access", "area:defi", "area:diamond", "area:governance", "area:security", "area:tokens", "problems", "init"]);
+    await expect.element(page.getByRole("treeitem", { name: "DeFi, 2 facets" })).toBeVisible();
+    const governance = [...document.querySelectorAll<HTMLElement>('[role="treeitem"][aria-level="2"]')]
+      .map((r) => r.dataset.treeId)
+      .filter((id) => ["facet:GovernedDiamondCut", "facet:Governor", "facet:TimelockController", "facet:Votes"].includes(id ?? ""));
+    expect(governance).toEqual(["facet:GovernedDiamondCut", "facet:Governor", "facet:TimelockController", "facet:Votes"]);
+  });
+
+  test("← and Enter close a group, → and Space open it; arrows walk from a group into its cards", async () => {
+    await renderTree(template("GovernedVault"));
+    row("area:defi").focus();
+    await userEvent.keyboard("{ArrowLeft}");
+    await expect.element(page.getByRole("treeitem", { name: "DeFi, 2 facets" })).toHaveAttribute("aria-expanded", "false");
+    expect(document.querySelector('[data-tree-id="facet:VaultCore"]')).toBeNull();
+    await userEvent.keyboard("{ArrowRight}");
+    await expect.element(page.getByRole("treeitem", { name: "DeFi, 2 facets" })).toHaveAttribute("aria-expanded", "true");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByRole("treeitem", { name: "DeFi, 2 facets" })).toHaveAttribute("aria-expanded", "false");
+    await userEvent.keyboard(" ");
+    await expect.element(page.getByRole("treeitem", { name: "DeFi, 2 facets" })).toHaveAttribute("aria-expanded", "true");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(focusedId()).toBe("facet:GovernedVault");
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(focusedId()).toBe("area:defi");
+    // A group isn't a facet: selecting it leaves the sheet's selection alone.
+    expect(session.get().selection).toEqual([]);
+  });
+
+  test("a facet selected on the sheet opens its closed group, and a newly placed facet's group starts open", async () => {
+    await renderTree(template("GovernedVault"));
+    row("area:tokens").focus();
+    await userEvent.keyboard("{ArrowLeft}");
+    await expect.element(page.getByRole("treeitem", { name: "Tokens, 3 facets" })).toHaveAttribute("aria-expanded", "false");
+    (document.activeElement as HTMLElement | null)?.blur();
+    session.set({ selection: ["ERC4626"] });
+    await expect.element(page.getByRole("treeitem", { name: "Tokens, 3 facets" })).toHaveAttribute("aria-expanded", "true");
+    await expect.element(page.getByRole("treeitem", { name: /^ERC4626, / })).toHaveAttribute("aria-selected", "true");
+    // HyperlaneGatewayAdapter brings the Crosschain group, open.
+    doc.apply("Placed", (p) => ({
+      project: { ...p, recipe: makeRecipe({ ...p.recipe, facets: [...p.recipe.facets, "HyperlaneGatewayAdapter"] }, catalog) },
+      changed: true,
+      summary: "Placed",
+    }));
+    await expect.element(page.getByRole("treeitem", { name: "Crosschain, 1 facet" })).toHaveAttribute("aria-expanded", "true");
+    await expect.element(page.getByRole("treeitem", { name: /^HyperlaneGatewayAdapter, / })).toBeVisible();
   });
 });
 
@@ -114,11 +169,11 @@ describe("Structure tree: the core", () => {
     expect(row("core").tabIndex).toBe(0);
   });
 
-  test("with cards, the tree reads Core, the cards, Problems and Init plan; no Core only line", async () => {
+  test("with cards, the tree reads Core, the cards' areas, Problems and Init plan; no Core only line", async () => {
     await renderTree(template("ERC20"));
     expect(page.getByText("Core only").elements()).toHaveLength(0);
     const roots = [...document.querySelectorAll<HTMLElement>('[role="treeitem"][aria-level="1"]')].map((r) => r.dataset.treeId);
-    expect(roots).toEqual(["core", "facet:ERC20", "facet:Receive", "problems", "init"]);
+    expect(roots).toEqual(["core", "area:diamond", "area:tokens", "problems", "init"]);
   });
 
   test("Enter or Space on the group or the fallback selects the core; the group shows selected while it is", async () => {
@@ -259,10 +314,10 @@ describe("Structure tree: facets", () => {
 
   test("Delete removes the selection when the focused facet is in it", async () => {
     await renderTree(template("GovernedVault"));
-    await page.getByRole("treeitem", { name: /^Receive, / }).click();
+    await page.getByRole("treeitem", { name: /^Governor, / }).click();
     await userEvent.keyboard("{Shift>}{ArrowUp}{/Shift}{Backspace}");
-    expect(doc.get().recipe.facets).not.toContain("Receive");
-    expect(doc.get().recipe.facets).not.toContain("AccessControl");
+    expect(doc.get().recipe.facets).not.toContain("Governor");
+    expect(doc.get().recipe.facets).not.toContain("GovernedDiamondCut");
     expect(session.get().selection).toEqual([]);
   });
 

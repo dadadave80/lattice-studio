@@ -26,6 +26,8 @@ export const BUDGETS = {
   css: 25_000,
   fontsTotal: 90_000,
   fontsCount: 2,
+  // Spec L812's target, warn-only. Accepted floor (Q15): dev-f4a32c8's index is 73,930 B gz with recipes and init
+  // docs in their own files and the index minified (81,407 B before); the rest is shared contracts' release data.
   catalogIndex: 60_000,
   lazyChunk: 70_000,
 } as const;

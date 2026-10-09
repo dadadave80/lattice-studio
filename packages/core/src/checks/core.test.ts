@@ -5,7 +5,7 @@ import type { Hex4 } from "../model/hex";
 import type { Recipe } from "../model/recipe";
 import { renderProblem } from "../narrate/problem";
 import { blankDiamond } from "../plan";
-import { loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe } from "../testing";
+import { loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe, recipeOf } from "../testing";
 import { checkCore, upgradeConflictReason } from "./core";
 
 /**
@@ -252,7 +252,7 @@ describe("the fixture catalog's templates and the Blank diamond", () => {
     const v1 = cat.recipes.filter((r) => r.phase === "v1");
     expect(v1.map((r) => r.name).sort()).toEqual(["ERC20", "GovernedVault", "SafeDiamondCut"]);
     const blank = blankDiamond(cat);
-    const recipes: [string, Partial<Recipe>][] = [...v1.map((t): [string, Partial<Recipe>] => [t.name, t.recipe]), ["Blank", blank]];
+    const recipes: [string, Partial<Recipe>][] = [...v1.map((t): [string, Partial<Recipe>] => [t.name, recipeOf(t)]), ["Blank", blank]];
     for (const [name, recipe] of recipes) {
       const found = checkCore(input(cat, recipe)).map((p) => p.code);
       expect({ name, found: found.filter((c) => c === "CORE-01" || c === "CORE-03") }).toEqual({ name, found: [] });
@@ -260,7 +260,7 @@ describe("the fixture catalog's templates and the Blank diamond", () => {
       expect({ name, found }).toEqual({ name, found: [] });
     }
     const erc20 = v1.find((t) => t.name === "ERC20");
-    expect(erc20?.recipe.immutable).toBe(true);
+    expect(erc20 && recipeOf(erc20).immutable).toBe(true);
     const mutable: Partial<Recipe> = { ...erc20?.recipe };
     delete mutable.immutable;
     expect(checkCore(input(cat, mutable)).map((p) => p.code)).toEqual(["CORE-02"]);
@@ -269,7 +269,8 @@ describe("the fixture catalog's templates and the Blank diamond", () => {
   test.skipIf(!fixture.ok)("CORE-03 on the fixture: GovernedVault plus SafeDiamondCut", () => {
     if (!fixture.ok) return;
     const gv = fixture.value.recipes.find((r) => r.name === "GovernedVault");
-    const problems = checkCore(input(fixture.value, { ...gv?.recipe, facets: [...(gv?.recipe.facets ?? []), "SafeDiamondCut"] }));
+    const recipe = gv && recipeOf(gv);
+    const problems = checkCore(input(fixture.value, { ...recipe, facets: [...(recipe?.facets ?? []), "SafeDiamondCut"] }));
     expect(problems.map((p) => [p.id, p.params.reason])).toEqual([
       ["CORE-03:GovernedDiamondCut+SafeDiamondCut", "SafeDiamondCut would let the Safe skip GovernedDiamondCut's upgrade executor role"],
     ]);

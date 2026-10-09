@@ -558,13 +558,19 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
 
   /**
    * The plan a landed diamond is judged against: the session's own; else the sheet's when the record is for the same
-   * recipe; else a Studio recipe with the record's hash. Null when none of these is the record's recipe.
+   * recipe; else a Studio recipe with the record's hash. Null when none of these is the record's recipe, or when the
+   * templates' recipes don't load (said once per record).
    */
-  const planFor = (record: Deployment, source: PlanSource, catalog: Catalog): readonly PlanEntry[] | null => {
+  const planFor = async (record: Deployment, source: PlanSource, catalog: Catalog): Promise<readonly PlanEntry[] | null> => {
     if (source) return source.plan;
     const analysis = inputs.analysis();
     if (analysis.recipeHash.toLowerCase() === record.recipeHash.toLowerCase()) return analysis.plan;
-    return templatePlan(catalog, record.recipeHash);
+    const templates = await deps.files.recipes(catalog);
+    if (!templates.ok) {
+      reportOnce(record, templates.error);
+      return null;
+    }
+    return templatePlan(templates.value, record.recipeHash);
   };
 
   /** Reads `facets()` a few times: a load-balanced RPC can answer from a node a block behind the receipt. */
@@ -611,7 +617,8 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
       banner(false);
       patch({ phase: "confirmed", chainId: record.chainId, address: record.address, error: undefined });
     }
-    const plan = planFor(record, source, catalog);
+    const plan = await planFor(record, source, catalog);
+    if (!alive()) return;
     if (plan === null && record.fromFile === true) {
       // A file can't vouch for itself: without its recipe's plan, it stays From file (spec L501, L857).
       reportOnce(record, fileRecordUnchecked(record.address, chain));

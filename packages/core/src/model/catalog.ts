@@ -72,7 +72,19 @@ export type Catalog = {
   libraries?: { name: string; release: SharedContract }[];
   /** Addition: the LatticeRegistry owner the release assumes (decision D6's placeholder while provisional). */
   registryOwner?: Address;
+  /**
+   * Addition (Q15): what this index leaves to files loaded on first use, to keep it small. `recipes` holds every
+   * template's recipe (`RecipesShard`), `initDocs` every init parameter's help (`InitDocsShard`). Absent, the index
+   * carries both inline, as catalogs written before Q15 and the fixtures do.
+   */
+  shards?: { recipes: ShardRef; initDocs: ShardRef };
 };
+
+/** `recipes.json` (Q15): each template's recipe, by template name. */
+export type RecipesShard = Record<string, Recipe>;
+
+/** `init-docs.json` (Q15): each init's parameter help, by init name, then by parameter path (`p.asset` for a component). */
+export type InitDocsShard = Record<string, Record<string, string>>;
 
 /** Deployed once per chain through Arachnid's proxy (spec L149-L155). */
 export type SharedContract = {
@@ -152,7 +164,8 @@ export type InitParam = {
    * `components` is set (never the "(address,string)" form).
    */
   type: string;
-  doc: string;
+  /** Absent when the index keeps docs in `Catalog.shards.initDocs`. */
+  doc?: string;
   unit?: Unit;
   /** Grammar in contracts §4: range(a,b), gt(n), gte(n), nonzero, maxlen(n), code(safe|token|contract), enum(a|b|c), joined with &. */
   rule?: string;
@@ -207,9 +220,11 @@ export type RecipeTemplate = {
   /** "script/base/defi/DeployGovernedVault.s.sol". */
   script: string;
   proxy: "Lattice" | "AccountDiamond" | "ModularAccount6900";
-  /** Facets, owners, exclusions and init, as the script builds them. */
-  recipe: Recipe;
+  /** Facets, owners, exclusions and init, as the script builds them. Absent when the index keeps recipes in `Catalog.shards.recipes`. */
+  recipe?: Recipe;
   phase: "v1" | "v1.1" | "later";
+  /** Addition (Q15): the recipe's facets without the core's two, for the recipe list, when `recipe` is in a shard. */
+  facetCount?: number;
 };
 
 /**

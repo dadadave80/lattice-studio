@@ -4,11 +4,11 @@
   "name": "ERC20",
   "catalog": {
     "tag": "dev-f4a32c8",
-    "hash": "0x2ab42999bbfac307417b4265a7e9dbb8e004a8473bc9fc532b9bf33efa1d20c1"
+    "hash": "0xe6b26b64bc16221815377e4bd5c7c410b49e52badb93ab1f786164f57349fc76"
   },
   "template": {
     "name": "ERC20",
-    "catalogHash": "0x2ab42999bbfac307417b4265a7e9dbb8e004a8473bc9fc532b9bf33efa1d20c1"
+    "catalogHash": "0xe6b26b64bc16221815377e4bd5c7c410b49e52badb93ab1f786164f57349fc76"
   },
   "facets": [
     "ERC20",

@@ -15,7 +15,7 @@ import * as z from "zod";
 // Studio ships a strict CSP with no 'unsafe-eval'; Zod's JIT probes `new Function` (caught, but it still files a
 // CSP report). Validation without the JIT is fast enough for Studio's documents (CCR from S11a).
 z.config({ jitless: true });
-import type { AbiItem, Catalog, CatalogManifest, FacetDetail, InitParam } from "./catalog";
+import type { AbiItem, Catalog, CatalogManifest, FacetDetail, InitDocsShard, InitParam, RecipesShard } from "./catalog";
 import { isAddress } from "./hex";
 import { formatPath, MAX_JSON_DEPTH } from "./path";
 import type { ParseIssue } from "./io";
@@ -357,7 +357,7 @@ export const InitParamSchema: z.ZodType<InitParam> = z.lazy(() =>
   z.looseObject({
     name: text,
     type: text,
-    doc: text,
+    doc: opt(text),
     unit: opt(z.enum(["seconds", "percent", "wei"])),
     rule: opt(text),
     example: opt(JsonValueSchema),
@@ -387,8 +387,9 @@ export const RecipeTemplateSchema = z.looseObject({
   name: text,
   script: text,
   proxy: z.enum(["Lattice", "AccountDiamond", "ModularAccount6900"]),
-  recipe: RecipeSchema,
+  recipe: opt(RecipeSchema),
   phase: z.enum(["v1", "v1.1", "later"]),
+  facetCount: opt(z.int().nonnegative()),
 });
 
 export const ChainReleaseSchema = z.looseObject({
@@ -426,7 +427,14 @@ export const CatalogSchema = z.looseObject({
   provisional: opt(text),
   libraries: opt(z.array(z.looseObject({ name: text, release: SharedContractSchema }))),
   registryOwner: opt(AddressSchema),
+  shards: opt(z.looseObject({ recipes: ShardRefSchema, initDocs: ShardRefSchema })),
 }) satisfies z.ZodType<Catalog>;
+
+/** `recipes.json` (Q15): each template's recipe, by template name. */
+export const RecipesShardSchema = z.record(text, RecipeSchema) satisfies z.ZodType<RecipesShard>;
+
+/** `init-docs.json` (Q15): each init's parameter help, by init name, then parameter path. */
+export const InitDocsShardSchema = z.record(text, z.record(text, text)) satisfies z.ZodType<InitDocsShard>;
 
 /** `catalog/manifest.json` (contracts §4). */
 export const CatalogManifestSchema = z.looseObject({
@@ -612,4 +620,12 @@ export function validateCatalogManifest(json: unknown): Result<CatalogManifest, 
 
 export function validateFacetDetail(json: unknown): Result<FacetDetail, ParseIssue[]> {
   return validate<z.ZodType<FacetDetail>>(FacetDetailSchema, json);
+}
+
+export function validateRecipesShard(json: unknown): Result<RecipesShard, ParseIssue[]> {
+  return validate<z.ZodType<RecipesShard>>(RecipesShardSchema, json);
+}
+
+export function validateInitDocsShard(json: unknown): Result<InitDocsShard, ParseIssue[]> {
+  return validate<z.ZodType<InitDocsShard>>(InitDocsShardSchema, json);
 }
