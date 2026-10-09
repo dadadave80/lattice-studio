@@ -1,7 +1,7 @@
 import type { Recipe } from "@lattice-studio/core";
 import { afterEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { commandRef, commandState, doc, history, runCommand, session } from "@/contracts";
+import { commandRef, commandState, doc, getCatalogStatus, history, runCommand, session } from "@/contracts";
 import { DialogHost } from "@/ui/overlays/DialogHost";
 import { bufferedServices, fixtureCatalog, renderWithStudio } from "../../test/harness";
 import { ELSEWHERE } from "./copy";
@@ -63,6 +63,8 @@ describe("Migrate (spec L290): fixture to fixture-next", () => {
     expect([...doc.get().recipe.facets].sort()).toEqual([...recipe().facets].sort());
     expect(history.canUndo).toBe(false);
     expect(bufferedServices().log.some((l) => l.text === "Migrated to catalog fixture-next. Undo history starts here.")).toBe(true);
+    // The pin switches the loaded catalog to fixture-next: let it land here, not in a later test.
+    await expect.poll(() => getCatalogStatus()).toMatchObject({ status: "ready", id: "fixture-next" });
   });
 
   test("Esc leaves the project as it was", async () => {
