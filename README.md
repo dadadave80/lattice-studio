@@ -103,7 +103,7 @@ The analysis is one pure-TypeScript package. The app, the CLI and the tests all 
 ```console
 $ bun packages/cli/src/main.ts check docs/examples/erc20.recipe.json
 Provisional catalog: Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0
-ERC20 · recipe 0xcb6a754d2dbc9870e692bb17a71e5db35dcc0a3aaaf3abe76b17aef27b89d909 · Lattice dev-6c8db45
+ERC20 · recipe 0xab819a7fb89dcf17f571f69571992abdce4ba890355bc496c0e3078933d70008 · Lattice dev-6c8db45
 2 facets · 15 selectors
 1 warning
   Warning  INIT-05  2 fields still use example values, including name (Example Token) and symbol (EXT).
