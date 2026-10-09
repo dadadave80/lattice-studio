@@ -117,8 +117,8 @@ describe("evaluate", () => {
     expect(e.fixes.some((f) => f.includes("analysis/analyze.ts 34%") && f.includes("analyze.ts:105 20%"))).toBe(true);
   });
 
-  test("the ruling: LCP report-only until Q19, the drag row names Q19, the rest (analysis since FX29) enforced", () => {
-    expect(REPORT_ONLY).toEqual({ lcp: "Q19", drag: "Q19" });
+  test("the ruling: LCP report-only until Q19, INP until the Undo fix, the drag row names Q19, the rest (analysis since FX29) enforced", () => {
+    expect(REPORT_ONLY).toEqual({ lcp: "Q19", drag: "Q19", inp: "the Undo fix" });
     const e = evaluate(inputs({ lighthouse: lighthouse(7900) }));
     expect(e.ok).toBe(true);
     expect(e.rows.find((r) => r.item.startsWith("Largest Contentful Paint"))).toMatchObject({ status: "over", enforced: false, until: "Q19" });
@@ -127,8 +127,10 @@ describe("evaluate", () => {
     expect(slow.ok).toBe(false);
     expect(e.rows.find((r) => r.item.startsWith("Drag, added per move"))).toMatchObject({ enforced: false, until: "Q19" });
     expect(e.fixes.some((f) => f.startsWith("LCP is 7.90 s"))).toBe(true);
-    // INP and the first-load gate still fail the run.
-    expect(evaluate(inputs({ drag: drag(232) })).ok).toBe(false);
+    // INP over is reported, not failed; the first-load gate still fails the run.
+    const sluggish = evaluate(inputs({ drag: drag(232) }));
+    expect(sluggish.ok).toBe(true);
+    expect(sluggish.rows.find((r) => r.item.startsWith("Interaction to Next Paint"))).toMatchObject({ status: "over", enforced: false, until: "the Undo fix" });
     expect(evaluate(inputs({ size: size(380_000) })).ok).toBe(false);
     const text = renderEvaluation(e, [], false);
     expect(text).toMatch(/Largest Contentful Paint \(mobile, median of 3\)\s+7\.90 s\s+2\.5 s\s+over \(report-only until Q19\)/);
