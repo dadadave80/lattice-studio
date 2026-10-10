@@ -46,8 +46,14 @@ export async function renderSheet(options: StudioOptions = {}) {
 export async function settled(): Promise<void> {
   // A project with no viewport yet opens once the chrome's lazy chunks have drawn the floats (`floatsDrawn`).
   await expect.poll(() => session.get().viewports[doc.get().id] !== undefined, { timeout: 10_000 }).toBe(true);
-  await expect.poll(() => sameAsStored()).toBe(true);
+  await expect.poll(() => sameAsStored(), { timeout: DRAW_TIMEOUT_MS }).toBe(true);
 }
+
+/**
+ * How long a wait for React Flow to draw a view may take: a few frames here, but seconds on GitHub's runner for a
+ * sheet of every facet at 200%, past `expect.poll`'s 1 s default.
+ */
+const DRAW_TIMEOUT_MS = 10_000;
 
 function sameAsStored(): boolean {
   const stored = session.get().viewports[doc.get().id];
@@ -99,11 +105,16 @@ export function drawnViewport(): Viewport {
 
 /** Waits until React Flow has drawn where the view is going (a move lands on the next render), and returns it. */
 export async function drawn(): Promise<Viewport> {
-  await expect.poll(() => {
-    const target = sheetViewport();
-    const now = drawnViewport();
-    return Math.abs(now.x - target.x) < 0.5 && Math.abs(now.y - target.y) < 0.5 && Math.abs(now.zoom - target.zoom) < 1e-3;
-  }).toBe(true);
+  await expect
+    .poll(
+      () => {
+        const target = sheetViewport();
+        const now = drawnViewport();
+        return Math.abs(now.x - target.x) < 0.5 && Math.abs(now.y - target.y) < 0.5 && Math.abs(now.zoom - target.zoom) < 1e-3;
+      },
+      { timeout: DRAW_TIMEOUT_MS },
+    )
+    .toBe(true);
   return drawnViewport();
 }
 

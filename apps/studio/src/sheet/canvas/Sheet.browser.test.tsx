@@ -525,10 +525,16 @@ describe("locate, Back to content, minimap, auto-pan", () => {
     const box = target.getBoundingClientRect();
     svg.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: box.left + box.width / 2, clientY: box.top + box.height / 2 }));
     const name = names[index] ?? "";
-    await expect.poll(() => {
-      const r = cardScreenRect(name);
-      return Math.abs(r.x + r.width / 2 - SHEET_WIDTH / 2) < 12 && Math.abs(r.y + r.height / 2 - SHEET_HEIGHT / 2) < 12;
-    }).toBe(true);
+    // A pan of 12 cards: a few frames here, longer on GitHub's runner.
+    await expect
+      .poll(
+        () => {
+          const r = cardScreenRect(name);
+          return Math.abs(r.x + r.width / 2 - SHEET_WIDTH / 2) < 12 && Math.abs(r.y + r.height / 2 - SHEET_HEIGHT / 2) < 12;
+        },
+        { timeout: 10_000 },
+      )
+      .toBe(true);
 
     await runCommand({ id: "sheet.minimapToggle" }, "palette");
     await expect.poll(() => document.querySelector(".react-flow__minimap")).toBeNull();
