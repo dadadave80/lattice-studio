@@ -570,6 +570,18 @@ describe("the Etherscan leg", () => {
     expect(texts().slice(1)).toEqual(["This deployment is already verified.", "This deployment is already verified."]);
   });
 
+  test("on Avalanche Fuji, which Etherscan serves, a keyed record gets both legs", async () => {
+    fresh();
+    const net = verifiers([QUEUED, PASS]);
+    const fuji = confirmed({ chainId: 43113 });
+    const records = memoryRecords([fuji]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), fuji), clock, [5_000]);
+    expect(net.etherscan()).toEqual(["verifysourcecode", "checkverifystatus"]);
+    expect(etherscanOutcomes.get(fuji)).toEqual({ outcome: "verified" });
+    expect(texts().sort()).toEqual(["Verified on Etherscan.", "Verified on Sourcify (exact match)."]);
+  });
+
   test("a catalog without the compiler's commit fails Etherscan before any call, and Sourcify goes on", async () => {
     fresh();
     const net = verifiers([]);

@@ -97,6 +97,9 @@ describe("diamond-words", () => {
     // Etherscan doesn't serve HSKChain Testnet: no line there, with a key or without one.
     expect(etherscanWord(record({ chainId: 133 }), undefined, true, true)).toBeNull();
     expect(etherscanWord(record({ chainId: 133 }), undefined, true, false)).toBeNull();
+    // It does serve Avalanche Fuji (Snowscan): the line appears once a key is set.
+    expect(etherscanWord(record({ chainId: 43113 }), undefined, true, true)).toBe("Verifying on Etherscan");
+    expect(etherscanWord(record({ chainId: 43113 }), { outcome: "verified" }, true, false)).toBe("Verified on Etherscan");
     expect(etherscanWord(record({ chainId: 11155111, status: "pending" }), undefined, true, true)).toBeNull();
     expect(etherscanWord(record({ chainId: 11155111, fromFile: true }), undefined, true, true)).toBeNull();
   });

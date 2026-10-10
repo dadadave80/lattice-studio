@@ -84,6 +84,7 @@ describe("the title block, row by row (spec L362)", () => {
     await block().getByRole("button", { name: "Chain and path: Choose a chain · LatticeFactory" }).click();
     const menu = page.getByRole("menu", { name: "Chain and path" });
     await expect.element(menu.getByRole("menuitemradio", { name: "HSKChain Testnet" })).toBeVisible();
+    await expect.element(menu.getByRole("menuitemradio", { name: "Avalanche Fuji" })).toBeVisible();
     await menu.getByRole("menuitemradio", { name: "Base Sepolia" }).click();
     // A radio choice keeps the menu open, so the path can be chosen next: End reaches CreateX, Enter picks it.
     await expect.element(menu).toBeVisible();
