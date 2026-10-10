@@ -50,11 +50,11 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 
 ## Linux screenshot baselines
 
-Every `toMatchScreenshot` baseline committed today is `*-chromium-darwin.png`: made on a Mac, since that's where Studio has been built so far. `ci.yml`'s `browser` job runs on `ubuntu-latest`, so its first real run has no `chromium-linux` baseline to compare against for any of the 93 states on the Claude Design States boards, and the Components gate fails on missing references, not an actual difference.
+Every `toMatchScreenshot` state has two committed baselines: `*-chromium-darwin.png`, made on a Mac, where Studio was built, and `*-chromium-linux.png`, made on `ubuntu-latest`, where `ci.yml`'s `browser` job runs. The Linux set landed on October 9, 2026 (#18, #19); before that the `browser` job failed on missing references, not on an actual difference.
 
-`update-screenshots.yml` (`workflow_dispatch` only) regenerates them: it runs `bun x vitest run --update` for `apps/studio` on `ubuntu-latest`, which writes a `chromium-linux` reference beside each test's existing `chromium-darwin` one, and uploads every `*-chromium-linux.png` it produced as a build artifact.
+`update-screenshots.yml` (`workflow_dispatch` only) regenerates the Linux set: it runs `bun x vitest run --update` for `apps/studio` on `ubuntu-latest`, which writes a `chromium-linux` reference beside each test's `chromium-darwin` one, and uploads every `*-chromium-linux.png` it produced as a build artifact.
 
-**Needs David:** once the repository exists, dispatch `update-screenshots.yml`, download the `chromium-linux-baselines` artifact, review the images, and commit them into each test's `__screenshots__` folder next to the existing `chromium-darwin` files. This workflow only produces and uploads the images; nothing commits them automatically.
+**Needs David:** when a change moves a state, dispatch `update-screenshots.yml`, download the `chromium-linux-baselines` artifact, review the images, and commit them into each test's `__screenshots__` folder next to the `chromium-darwin` files. This workflow only produces and uploads the images; nothing commits them automatically.
 
 ## Publishing the CLI
 
@@ -66,7 +66,7 @@ Every `toMatchScreenshot` baseline committed today is `*-chromium-darwin.png`: m
 
 The catalog in `catalog/` is currently built from Lattice commit `6c8db45`, which carries the tag `hedera-template-pin-6c8db45` but isn't a `vX.Y.Z` release, and every shared-contract address in it will change once it's rebuilt from a release tag — see `docs/architecture.md` and `README.md`'s "Rebuilding and verifying the catalog".
 
-**Needs David:** once Lattice `v0.4.0` is tagged and released through Arachnid's proxy, update the pinned submodule commit and run `bun run catalog` to rebuild. That rebuild is what clears the "Provisional catalog" notice the app and CLI print today. `docs/examples/erc20.recipe.json` is pinned to the current catalog's hash, so regenerate it from the rebuilt catalog's ERC20 template at the same time, or `lattice-studio check` on that example starts exiting 3 (catalog mismatch).
+**Needs David:** Lattice `v0.5.0` was released on October 9, 2026, so the re-pin is unblocked, and it is larger than `bun run catalog`. Lattice #321 changed `RecipeEntry` (it gains `bytes4[] exclude`), with it the `deploy` selector, and the `DiamondDeployed` event, so the frozen contracts layer (`packages/core/src/model/`, `apps/studio/src/contracts/`) changes as well; every shared-contract address moves, and the shared contracts placed on Hedera testnet on October 4, 2026 need redeploying. Until then the catalog's notice keeps naming 0.4.0 as the target: `TARGET_VERSION` in `packages/catalog-gen/src/main.ts` is baked into the committed catalog, and the `catalog-drift` job rebuilds and diffs it, so the constant and the catalog move together. To re-pin: update the pinned submodule commit and `TARGET_VERSION`, run `bun run catalog` to rebuild, and regenerate `docs/examples/erc20.recipe.json` from the rebuilt catalog's ERC20 template, since it is pinned to the catalog's hash and `lattice-studio check` on it otherwise starts exiting 3 (catalog mismatch). That rebuild is what clears the "Provisional catalog" notice the app and CLI print today.
 
 ## Wallet connections
 
