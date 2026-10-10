@@ -184,6 +184,11 @@ jobs:
       # Reuses the build size.ts just made (spec L902, §17 audit #14): a config regression that drops the React
       # Compiler preset fails here instead of only being caught by eye.
       - run: bun scripts/ci/react-compiler-dist-check.ts
+      # The check Vercel's build command ends with (docs/release.md, "Vercel"): the committed vercel.json's CSP must
+      # allow the import map this build produced. An app change without `STUDIO_VERCEL_JSON=1 bun run build` fails
+      # here, on the pull request, instead of at the deploy (#26). Both are plain `bun run build`s with no VITE_*
+      # variables, so the hashes agree.
+      - run: bun apps/studio/build/verify-headers.ts apps/studio/dist apps/studio/vercel.json
 
   lighthouse:
     name: Lighthouse CI (mobile)
