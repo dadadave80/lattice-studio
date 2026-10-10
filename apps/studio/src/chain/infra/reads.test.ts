@@ -4,7 +4,7 @@ import type { Address } from "@lattice-studio/core";
 import { custom, HttpRequestError } from "viem";
 import { getBlockNumber } from "viem/actions";
 import { accountBalance, accountKind, isDelegation } from "./account";
-import { ANVIL, BASE_SEPOLIA, ETHEREUM, HASHKEY_TESTNET, HEDERA_TESTNET, isRpcUrl, knownChains, publicRpcUrls, readUrls, rpcUrls, SEPOLIA } from "./chains";
+import { ANVIL, AVALANCHE_FUJI, BASE_SEPOLIA, ETHEREUM, HASHKEY_TESTNET, HEDERA_TESTNET, isRpcUrl, knownChains, publicRpcUrls, readUrls, rpcUrls, SEPOLIA } from "./chains";
 import { chainTransport, createClients, httpTransport, RANK, viemChain } from "./clients";
 import { ensCoinType, resolveName, reverseName } from "./ens";
 import { probeChain } from "./probe";
@@ -218,14 +218,18 @@ describe("fallback transport", () => {
     expect(hedera).toMatchObject({ id: 296, name: "Hedera Testnet", testnet: true, nativeCurrency: { symbol: "HBAR", decimals: 18 } });
     expect(hedera.blockExplorers?.default.url).toBe("https://hashscan.io/testnet");
     expect(hedera.contracts?.ensUniversalResolver).toBeUndefined();
+    const fuji = viemChain(AVALANCHE_FUJI, []);
+    expect(fuji).toMatchObject({ id: 43113, name: "Avalanche Fuji", testnet: true, nativeCurrency: { symbol: "AVAX", decimals: 18 } });
+    expect(fuji.blockExplorers?.default.url).toBe("https://testnet.snowtrace.io");
+    expect(fuji.contracts?.ensUniversalResolver).toBeUndefined();
   });
 });
 
 describe("end-to-end builds read every chain through local Anvil", () => {
   const NODE = "http://127.0.0.1:20043";
-  const PUBLIC = [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, HEDERA_TESTNET, ETHEREUM].flatMap((spec) => [spec.rpc.default, spec.rpc.extra ?? ""]).filter(Boolean);
+  const PUBLIC = [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, HEDERA_TESTNET, AVALANCHE_FUJI, ETHEREUM].flatMap((spec) => [spec.rpc.default, spec.rpc.extra ?? ""]).filter(Boolean);
 
-  test("no chain Studio can read uses a public Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet or Ethereum URL", () => {
+  test("no chain Studio can read uses a public Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet, Avalanche Fuji or Ethereum URL", () => {
     const clients = createClients({ e2e: true, overrides: { [ANVIL.id]: NODE }, transport: () => custom({ request: async () => "0x1" }) });
     for (const spec of knownChains(true)) {
       const urls = clients.urls(spec);

@@ -1,7 +1,8 @@
 /**
  * Where a card's trace to the core runs, in screen px: out of its ground glyph's stem to the gutter beside its
  * pin side, along the gutter to the ground rail (a horizontal line just above the core cell, spanning the sheet),
- * along the rail to the pad's column, and down into the pad. A selected card's routed rows each get a stub into
+ * along the rail to the pad's column, and down into the pad. Where another card lies across its run on the rail,
+ * the run drops below it while it can stay above the cell; a crossing it can't avoid is bridged. A selected card's routed rows each get a stub into
  * the gutter, so the wire visibly is its selectors. Pure: card rects in sheet units × React Flow's transform, the
  * rail's y and the pad's point in screen px. Every length matches `CardGround.module.css` and `CardHandles`.
  */
@@ -57,6 +58,12 @@ export type TraceInput = {
   pad: Point;
   /** `stubOffsets`, for a live trace; empty otherwise. */
   stubs: readonly number[];
+  /** Every other card, in screen px: the run drops below them, or bridges them where it can't. */
+  obstacles?: readonly Rect[];
+  /** The lowest the run may drop to, in screen px: just above the cell. `railY` when omitted. */
+  floorY?: number;
+  /** The title block's left edge, in screen px: a run reaching its column keeps to the rail, above the block. */
+  titleLeft?: number | null;
 };
 
 export type TracePaths = {
@@ -68,6 +75,8 @@ export type TracePaths = {
   stubs: string;
   /** Where each stub meets the gutter, from `origin`. */
   joints: Point[];
+  /** The stretches of the wire over another card, in screen px, drawn over it on a casing; empty when none. */
+  bridges: string;
 };
 
 /** Two decimals: enough for a crisp line, and a stable `d` while nothing moves. */
@@ -75,12 +84,63 @@ function px(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/** Whether `rect` lies across the horizontal line `y` between `lo` and `hi` (touching edges don't count). */
+function across(rect: Rect, y: number, lo: number, hi: number): boolean {
+  return rect.x < hi && rect.x + rect.width > lo && rect.y < y && rect.y + rect.height > y;
+}
+
+/**
+ * The y of a wire's run along the rail between `from` and `to`, in screen px: the rail while no card lies across
+ * it there; else just below the lowest card in the way (and any it then meets), while that stays at or above
+ * `floor`. A run that reaches the title block's column (`titleLeft`) keeps to the rail, so it never runs behind
+ * the block. When no drop clears every card, the rail: the crossing is bridged (`crossings`).
+ */
+export function runY(from: number, to: number, rail: number, floor: number, obstacles: readonly Rect[], titleLeft: number | null): number {
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  const deepest = titleLeft !== null && hi >= titleLeft ? rail : floor;
+  let y = rail;
+  for (let pass = 0; pass <= obstacles.length; pass++) {
+    const blocking = obstacles.filter((rect) => across(rect, y, lo, hi));
+    if (blocking.length === 0) return y;
+    y = Math.max(...blocking.map((rect) => rect.y + rect.height)) + RAIL_GAP;
+    if (y > deepest) return rail;
+  }
+  return rail;
+}
+
+/**
+ * The stretches of an axis-aligned polyline (screen px) that pass over any of `obstacles`, as one path. Where a
+ * wire has to cross a card, these draw over the card on a casing in the ground's colour, so the wire bridges the
+ * card instead of seeming to plug into it. Empty when the wire crosses nothing.
+ */
+export function crossings(points: readonly Point[], obstacles: readonly Rect[]): string {
+  let d = "";
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (!a || !b) continue;
+    for (const rect of obstacles) {
+      if (a.y === b.y && rect.y < a.y && rect.y + rect.height > a.y) {
+        const lo = Math.max(Math.min(a.x, b.x), rect.x);
+        const hi = Math.min(Math.max(a.x, b.x), rect.x + rect.width);
+        if (hi > lo) d += `M${px(lo)} ${px(a.y)}H${px(hi)}`;
+      } else if (a.x === b.x && a.y !== b.y && rect.x < a.x && rect.x + rect.width > a.x) {
+        const lo = Math.max(Math.min(a.y, b.y), rect.y);
+        const hi = Math.min(Math.max(a.y, b.y), rect.y + rect.height);
+        if (hi > lo) d += `M${px(a.x)} ${px(lo)}V${px(hi)}`;
+      }
+    }
+  }
+  return d;
+}
+
 /**
  * The trace's paths for one card. The wire runs to the screen-space rail and pad, so it changes whenever the card
  * moves; the stubs and joints keep their shape and only follow the card, so they're given from the card's corner
  * and change with its size, pins, rows and the zoom only.
  */
-export function tracePaths({ rect, side, transform, railY, pad, stubs }: TraceInput): TracePaths {
+export function tracePaths({ rect, side, transform, railY, pad, stubs, obstacles = [], floorY, titleLeft = null }: TraceInput): TracePaths {
   const [tx, ty, zoom] = transform;
   const origin = { x: px(rect.x * zoom + tx), y: px(rect.y * zoom + ty) };
   // The card at its own origin, so the anchor and the gutter come out relative to its corner.
@@ -89,11 +149,16 @@ export function tracePaths({ rect, side, transform, railY, pad, stubs }: TraceIn
   const edge = anchor.x * zoom;
   const lead = anchor.y * zoom + GLYPH_LEAD * glyphScale(zoom);
   const gutter = gutterX(local, side) * zoom;
-  const line = `M${px(origin.x + edge)} ${px(origin.y + lead)}H${px(origin.x + gutter)}V${px(railY)}H${px(pad.x)}V${px(pad.y)}`;
+  const start = { x: px(origin.x + edge), y: px(origin.y + lead) };
+  const run = px(origin.x + gutter);
+  const end = { x: px(pad.x), y: px(pad.y) };
+  const rail = px(runY(run, end.x, railY, floorY ?? railY, obstacles, titleLeft));
+  const line = `M${start.x} ${start.y}H${run}V${rail}H${end.x}V${end.y}`;
+  const points = [start, { x: run, y: start.y }, { x: run, y: rail }, { x: end.x, y: rail }, end];
   const ys = stubs.map((offset) => offset * zoom);
   const joints = ys.map((y) => ({ x: px(gutter), y: px(y) }));
   const top = ys.length ? Math.min(...ys) : null;
   const stubPath =
     top === null ? "" : `M${px(gutter)} ${px(top)}V${px(lead)}${ys.map((y) => `M${px(edge)} ${px(y)}H${px(gutter)}`).join("")}`;
-  return { line, origin, stubs: stubPath, joints };
+  return { line, origin, stubs: stubPath, joints, bridges: crossings(points, obstacles) };
 }

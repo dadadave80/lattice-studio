@@ -8,7 +8,7 @@ import { afterEach, beforeAll, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { session } from "@/contracts";
 import { emulateForcedColors } from "@/ui/testing/axe";
-import { paneElement, renderSheet } from "../canvas/testing/sheet-harness";
+import { expandTitleBlock, paneElement, renderSheet } from "../canvas/testing/sheet-harness";
 import { cell, coreProject } from "./testing/core-harness";
 
 const RECEIVE = "0x00000000";
@@ -43,6 +43,9 @@ function sheetElement(): HTMLElement {
 async function renderCore(project: ReturnType<typeof coreProject>, theme: "dark" | "light") {
   await renderSheet({ project, theme, session: { viewports: { [project.id]: { x: 0, y: 0, zoom: 1 } } } });
   await expect.poll(() => document.querySelector("[data-core-cell]"), { timeout: 10_000 }).not.toBeNull();
+  // The 700 px sheet is short, so the title block starts collapsed (David's decision on SH-01/SH-02); these shots
+  // frame the cell beside the full one.
+  await expandTitleBlock();
   await expect
     .poll(() => {
       const title = document.querySelector('[data-chrome="title-block"]');

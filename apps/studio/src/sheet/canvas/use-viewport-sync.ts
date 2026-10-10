@@ -3,8 +3,8 @@ import { useReactFlow, useStoreApi, type OnMove } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { doc, getAnalysis, getCatalog, loadViewport, session, useDocument, type Viewport } from "@/contracts";
 import { cardSizes, cardsBounds } from "./geometry";
-import { attachSheet, sheetSize, storeViewport } from "./sheet-view";
-import { clampViewport, FIT_MAX_ZOOM, fitRect, isViewport, sameViewport } from "./viewport-math";
+import { attachSheet, fitInRoom, floatsDrawn, sheetSize, storeViewport } from "./sheet-view";
+import { clampViewport, FIT_MAX_ZOOM, isViewport, sameViewport } from "./viewport-math";
 
 const START: Viewport = { x: 0, y: 0, zoom: 1 };
 
@@ -12,7 +12,7 @@ const START: Viewport = { x: 0, y: 0, zoom: 1 };
 function firstViewport(): Viewport {
   const layout = doc.get().layout;
   const bounds = cardsBounds(layout, cardSizes(layout, getCatalog(), getAnalysis()));
-  return bounds ? fitRect(bounds, sheetSize(), { maxZoom: FIT_MAX_ZOOM }) : START;
+  return bounds ? fitInRoom(bounds, FIT_MAX_ZOOM) : START;
 }
 
 export type ViewportSync = {
@@ -90,7 +90,14 @@ export function useViewportSync(wrapper: RefObject<HTMLElement | null>): Viewpor
     if (held) {
       apply(held);
     } else {
-      const settle = (saved: unknown) => apply(session.get().viewports[projectId] ?? (isViewport(saved) ? saved : firstViewport()));
+      // A project with no viewport yet fits its cards once the floats are drawn in their resting form, so it frames
+      // them in the room the title block leaves as it starts (collapsed on a short sheet), not before it shows.
+      const settle = (saved: unknown) => {
+        const known = session.get().viewports[projectId] ?? (isViewport(saved) ? saved : null);
+        if (known) apply(known);
+        else if (Object.keys(doc.get().layout).length === 0) apply(START);
+        else void floatsDrawn().then(() => apply(session.get().viewports[projectId] ?? firstViewport()));
+      };
       loadViewport(projectId).then(settle, () => settle(null));
     }
     return () => {

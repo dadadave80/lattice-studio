@@ -434,7 +434,7 @@ describe("probes and readiness", () => {
     start();
     const unknown = await service.probe(5);
     expect(unknown.ok).toBe(false);
-    expect(!unknown.ok && unknown.error).toBe("Studio doesn't deploy to Chain 5. Choose Sepolia, Base Sepolia, HSKChain Testnet or Hedera Testnet.");
+    expect(!unknown.ok && unknown.error).toBe("Studio doesn't deploy to Chain 5. Choose Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet or Avalanche Fuji.");
     setCatalogStatus({ status: "loading" });
     expect(await service.probe(SEPOLIA.id)).toEqual({ ok: false, error: "The catalog hasn't loaded yet." });
     expect(service.readiness(SEPOLIA.id)).toEqual({ status: "error", reason: "The catalog hasn't loaded yet." });
@@ -442,7 +442,7 @@ describe("probes and readiness", () => {
 
   test("the picker lists the v1 testnets", () => {
     start();
-    expect(service.chains().map((c) => c.name)).toEqual(["Sepolia", "Base Sepolia", "HSKChain Testnet", "Hedera Testnet"]);
+    expect(service.chains().map((c) => c.name)).toEqual(["Sepolia", "Base Sepolia", "HSKChain Testnet", "Hedera Testnet", "Avalanche Fuji"]);
     expect(service.chains()[0]).toMatchObject({ id: 11155111, testnet: true, explorer: "https://sepolia.etherscan.io" });
   });
 });

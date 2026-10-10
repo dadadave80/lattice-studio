@@ -287,10 +287,11 @@ describe("the review's marks after a change or a sign (spec L562, L574, L601)", 
 });
 
 describe("the review's currency", () => {
-  test("is the selected chain's: HSK on HSKChain Testnet, HBAR on Hedera Testnet, ETH on the Sepolias and before a chain is chosen", () => {
+  test("is the selected chain's: HSK on HSKChain Testnet, HBAR on Hedera Testnet, AVAX on Avalanche Fuji, ETH on the Sepolias and before a chain is chosen", () => {
     expect(currencyOf({ chainId: 133 })).toEqual({ symbol: "HSK", decimals: 18 });
     // Hedera's JSON-RPC relay reports balances and fees in weibars (18 decimals), not tinybars (8).
     expect(currencyOf({ chainId: 296 })).toEqual({ symbol: "HBAR", decimals: 18 });
+    expect(currencyOf({ chainId: 43113 })).toEqual({ symbol: "AVAX", decimals: 18 });
     expect(currencyOf({ chainId: 11155111 })).toEqual({ symbol: "ETH", decimals: 18 });
     expect(currencyOf({ chainId: 84532 })).toEqual({ symbol: "ETH", decimals: 18 });
     expect(currencyOf({ chainId: null })).toEqual({ symbol: "ETH", decimals: 18 });

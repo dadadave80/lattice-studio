@@ -31,9 +31,11 @@ test("pane toggles and the pane switcher keep the sheet's viewport and never rem
   await settled();
   await runCommand({ id: "sheet.zoomTo", args: { zoom: 0.5 } }, "palette");
   await drawn();
-  const before = drawnViewport();
+  // Compared with the stored x, not the drawn one: the DOM's transform rounds (175.525 against 175.5248…), so the
+  // drawn x could differ before the wheel's move end is stored.
+  const before = storedViewport();
   wheel({ deltaY: 90, deltaX: -60 });
-  await expect.poll(() => storedViewport()?.x).not.toBe(before.x);
+  await expect.poll(() => storedViewport()?.x).not.toBe(before?.x);
   await drawn();
 
   for (const pane of ["console", "inspector", "left"] as const) {
@@ -51,5 +53,9 @@ test("pane toggles and the pane switcher keep the sheet's viewport and never rem
   await expect.poll(() => flow.checkVisibility()).toBe(true);
   expect(flowElement()).toBe(flow);
   expect(storedViewport()).toEqual(stored);
-  expect(drawnViewport()).toEqual({ x: stored?.x, y: stored?.y, zoom: stored?.zoom });
+  // Within the DOM transform's rounding (it keeps three decimals).
+  const shown = drawnViewport();
+  expect(shown.x).toBeCloseTo(stored?.x ?? Number.NaN, 2);
+  expect(shown.y).toBeCloseTo(stored?.y ?? Number.NaN, 2);
+  expect(shown.zoom).toBeCloseTo(stored?.zoom ?? Number.NaN, 4);
 });

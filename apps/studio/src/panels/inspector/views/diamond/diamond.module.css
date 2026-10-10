@@ -31,7 +31,7 @@
   font: var(--lx-font-body-sm);
   letter-spacing: var(--lx-tracking-body-sm);
   color: var(--lx-text-muted);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .holder {

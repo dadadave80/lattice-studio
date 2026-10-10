@@ -57,6 +57,12 @@
   color: var(--lx-text-muted);
 }
 
+/* A leaf has no chevron to hit: half the slot keeps it indented under its parent's name and gives the name
+   the room (a catalog name beats its count at the default pane width). */
+.chevron:not(.toggle) {
+  inline-size: var(--lx-space-3);
+}
+
 .toggle {
   cursor: pointer;
 }
@@ -71,7 +77,8 @@
   display: flex;
   align-items: center;
   gap: var(--lx-space-2);
-  overflow-wrap: anywhere;
+  /* Wrapped content breaks between words, or at an identifier's <wbr> (ui/text/Identifier), never mid-word. */
+  overflow-wrap: break-word;
 }
 
 /* Virtualized rows have a fixed height: one line, cut with an ellipsis. */

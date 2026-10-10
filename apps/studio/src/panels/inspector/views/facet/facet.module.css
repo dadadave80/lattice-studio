@@ -3,7 +3,7 @@
 .code {
   font: var(--lx-font-code-sm);
   letter-spacing: var(--lx-tracking-code-sm);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .contested {
@@ -63,7 +63,7 @@ button.row[aria-disabled="true"] {
 
 .signature {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .excluded .signature {

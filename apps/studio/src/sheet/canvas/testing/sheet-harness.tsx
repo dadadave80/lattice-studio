@@ -44,7 +44,8 @@ export async function renderSheet(options: StudioOptions = {}) {
 
 /** Waits until the open project has a stored viewport and React Flow shows it. */
 export async function settled(): Promise<void> {
-  await expect.poll(() => session.get().viewports[doc.get().id] !== undefined).toBe(true);
+  // A project with no viewport yet opens once the chrome's lazy chunks have drawn the floats (`floatsDrawn`).
+  await expect.poll(() => session.get().viewports[doc.get().id] !== undefined, { timeout: 10_000 }).toBe(true);
   await expect.poll(() => sameAsStored()).toBe(true);
 }
 
@@ -65,6 +66,27 @@ export function paneElement(): HTMLElement {
   const el = document.querySelector<HTMLElement>(".react-flow__pane");
   if (!el) throw new Error("The sheet has no pane.");
   return el;
+}
+
+/**
+ * Expands the title block as a person would (its Expand button), for tests about what sits beside the full block:
+ * the 700 px tall test sheet is short, so it starts collapsed (David's decision on SH-01/SH-02). Focus, which
+ * follows the toggle, is let go again, so no focus ring shows in a screenshot.
+ */
+export async function expandTitleBlock(): Promise<void> {
+  const form = () => document.querySelector('[data-chrome="title-block"]')?.getAttribute("data-form") ?? null;
+  await expect.poll(form, { timeout: 10_000 }).not.toBeNull();
+  if (form() === "collapsed") document.querySelector<HTMLButtonElement>('[data-chrome="title-block"] [data-title-toggle]')?.click();
+  await expect.poll(form).toBe("full");
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  // The core cell follows the block's new width a frame or two later: wait until it sits beside it again.
+  await expect
+    .poll(() => {
+      const cell = document.querySelector("[data-core-cell]");
+      const title = document.querySelector('[data-chrome="title-block"]');
+      return !cell || !title || Math.abs(cell.getBoundingClientRect().right + 8 - title.getBoundingClientRect().left) < 2;
+    })
+    .toBe(true);
 }
 
 /** The transform React Flow draws now, read from the DOM (mid-glide too). */

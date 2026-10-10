@@ -9,7 +9,7 @@ import styles from "./CutPlanFooter.module.css";
 
 /**
  * The cut plan pinned at the inspector's foot (IR L126, board 06): `[00] ADD name`, address, routed/total
- * selectors and ⟂ while contested, with Copy plan as JSON; under it the diamond's address, predicted or live
+ * selectors and ⟂ while contested, with Copy plan as JSON in the pinned head; under it the diamond's address, predicted or live
  * (spec L384: Live badge, explorer and Louper links). The core's entries lead, tagged fixed: they're cut first
  * and stay. Facets that route nothing show below the rows too (PA L9, §18 #3c), the way the plan JSON and every
  * export already say what was left out.
@@ -25,50 +25,55 @@ export function CutPlanFooter() {
 
   return (
     <section className={styles.footer} aria-labelledby={headingId} data-inspector-plan="">
-      <div className={styles.head}>
+      {/* Pinned: the heading, the count and Copy plan as JSON stay put while the cuts and the address scroll. */}
+      <div className={styles.planHead}>
         <h2 id={headingId} className={styles.label}>
           DiamondCut plan
         </h2>
-        <span className={styles.aside}>{`${rows.length} · ${CORE_FIRST}`}</span>
+        <span className={styles.headEnd}>
+          <span className={styles.aside}>{`${rows.length} · ${CORE_FIRST}`}</span>
+          <CommandButton command={commandRef("plan.copyJson")} icon="copy" iconOnly size="small" />
+        </span>
       </div>
-      {rows.length === 0 ? (
-        <p className={styles.empty}>{catalog ? "No cuts yet. Place facets to plan the cut." : "Loading the catalog…"}</p>
-      ) : (
-        <ol className={styles.rows} aria-label="Cuts in order">
-          {rows.map((row) => (
-            <li
-              key={row.facet}
-              className={row.contested ? `${styles.row} ${styles.contested}` : styles.row}
-              {...(row.fixed ? { "data-fixed": "" } : {})}
-            >
-              <span className={styles.index}>{row.index}</span>
-              <span className={styles.action}>ADD</span>
-              <span className={styles.name}>{row.facet}</span>
-              <span className={styles.address} title={row.address}>
-                {formatAddress(row.address)}
-              </span>
-              <span className={styles.count}>{row.count}</span>
-              {/* After the count, so the core's names keep the first line's full width in a narrow inspector. */}
-              {row.fixed ? <span className={styles.tag}>fixed</span> : null}
-              {row.contested ? (
-                <span className={styles.mark}>
-                  <span aria-hidden="true">⟂</span>
-                  <VisuallyHidden>contested</VisuallyHidden>
+      {/* It scrolls on its own (IN-01), so it takes Tab and a name: the keyboard can reach and scroll what's below. */}
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-tabindex */}
+      <div className={styles.scroller} role="group" aria-label="Cuts and address" tabIndex={0} data-inspector-plan-scroller="">
+        {rows.length === 0 ? (
+          <p className={styles.empty}>{catalog ? "No cuts yet. Place facets to plan the cut." : "Loading the catalog…"}</p>
+        ) : (
+          <ol className={styles.rows} aria-label="Cuts in order">
+            {rows.map((row) => (
+              <li
+                key={row.facet}
+                className={row.contested ? `${styles.row} ${styles.contested}` : styles.row}
+                {...(row.fixed ? { "data-fixed": "" } : {})}
+              >
+                <span className={styles.index}>{row.index}</span>
+                <span className={styles.action}>ADD</span>
+                <span className={styles.name}>{row.facet}</span>
+                <span className={styles.address} title={row.address}>
+                  {formatAddress(row.address)}
                 </span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      )}
-      {omitted.length > 0 ? (
-        <p className={styles.omitted} data-omitted="">
-          {`Placed but routes nothing, so no Add is cut for it: ${omitted.join(", ")}.`}
-        </p>
-      ) : null}
-      <div className={styles.copy}>
-        <CommandButton command={commandRef("plan.copyJson")} size="small" variant="quiet" />
+                <span className={styles.count}>{row.count}</span>
+                {/* After the count, so the core's names keep the first line's full width in a narrow inspector. */}
+                {row.fixed ? <span className={styles.tag}>fixed</span> : null}
+                {row.contested ? (
+                  <span className={styles.mark}>
+                    <span aria-hidden="true">⟂</span>
+                    <VisuallyHidden>contested</VisuallyHidden>
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        )}
+        {omitted.length > 0 ? (
+          <p className={styles.omitted} data-omitted="">
+            {`Placed but routes nothing, so no Add is cut for it: ${omitted.join(", ")}.`}
+          </p>
+        ) : null}
+        <DiamondAddress />
       </div>
-      <DiamondAddress />
     </section>
   );
 }

@@ -501,3 +501,42 @@ describe("Structure tree: init plan", () => {
     expect(opened).toEqual([{}, { focus: "steps[1]" }]);
   });
 });
+
+describe("Structure tree: names at the default 240 px pane (ST-01)", () => {
+  /** Text runs that wrap onto a second line. Problems wrap their sentences, so they're left out. */
+  function wrappedRows(): string[] {
+    const wrapped: string[] = [];
+    for (const item of document.querySelectorAll<HTMLElement>('[role="treeitem"]')) {
+      if (item.dataset.treeId?.startsWith("problem:")) continue;
+      const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const tops = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)));
+        if (tops.size > 1) wrapped.push(`${item.dataset.treeId}: ${node.textContent}`);
+      }
+    }
+    return wrapped;
+  }
+
+  test("long facet names and Init plan stay on one line, cut with an ellipsis, never broken mid-word", async () => {
+    const vault = template("GovernedVault");
+    const long = "L1ToL2CrossDomainMessengerGatewayAdapter";
+    const recipe = { ...vault, facets: [...vault.facets, long, "CCIPGatewayAdapter"] };
+    await renderWithStudio(
+      <div style={{ inlineSize: 240, blockSize: 900, display: "flex", flexDirection: "column" }}>
+        <StructurePanel />
+      </div>,
+      { project: makeProject({ recipe }) },
+    );
+    await expect.element(page.getByRole("treeitem", { name: /^Init plan/ })).toBeVisible();
+    expect(wrappedRows()).toEqual([]);
+    // The group label keeps its two words whole: no "I / n / i / t" column.
+    const label = [...row("init").querySelectorAll("span")].find((span) => span.textContent === "Init plan");
+    expect(label).toBeDefined();
+    expect(label!.scrollWidth).toBeLessThanOrEqual(label!.clientWidth);
+    // A cut name keeps the whole name a hover away.
+    const name = [...row(`facet:${long}`).querySelectorAll("span")].find((span) => span.textContent === long);
+    expect(name?.title).toBe(long);
+  });
+});

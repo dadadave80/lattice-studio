@@ -1,6 +1,7 @@
 import type { Address, ProjectStatus } from "@lattice-studio/core";
 import { formatAddress, formatProblemSummary, isCoreOnly, recipeStats } from "@lattice-studio/core";
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { spacing } from "@lattice-studio/tokens";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   chainService, commandRef, env, now, useAnalysis, useCatalog, useDeployState, useDocument, useOnline, useSession,
   type DeployState,
@@ -16,6 +17,7 @@ import { copyText } from "@/ui/copy/copy-text";
 import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
 import { StatusChip } from "@/ui/status/StatusChip";
 import { ChainPathPicker } from "./ChainPathPicker";
+import { rememberedTitleBlockChoice, rememberTitleBlockChoice } from "./title-block-choice";
 import {
   confirmIn, elapsedText, IN_FLIGHT_PHASES, LANDED_PHASES, NEW_TAB, NO_ADDRESS, OFFLINE_MARK, ON_ITS_WAY,
   PLACE_FACETS_FIRST, toFill, YOUR_WALLET,
@@ -31,10 +33,51 @@ export type AddressLine =
   | { kind: "address"; address: Address; label: "Predicted" | "Deployed"; href?: string; offline: boolean };
 
 /**
- * Whether the title block is collapsed, for the page's life. The frozen session store has no field for it yet
- * (CCR: `panes.titleBlock.collapsed`); until then the canvas remounting keeps it here.
+ * A sheet shorter than this, in px, opens with the title block collapsed (David's decision on SH-01/SH-02):
+ * 15 × `--lx-space-12` (720). The full block is about 6 of those steps tall (286 px measured), so below this it
+ * would take more than 40% of the sheet's height from the cards Fit frames. At the default panes that collapses
+ * it in a 900 px tall window (a 700 px sheet) and keeps it full at 1080 (880 px), or at 900 with the console closed.
  */
-let remembered = false;
+export const SHORT_SHEET = 15 * Number.parseFloat(spacing["space-12"]);
+
+/**
+ * Whether the title block starts collapsed: while the sheet is empty (the core alone: the block would only say
+ * "Choose a chain", "Not deployed" and a disabled Deploy…) or short (`SHORT_SHEET`; null while not measured).
+ */
+export function collapsedByDefault(empty: boolean, short: boolean | null): boolean {
+  return empty || short === true;
+}
+
+/**
+ * Whether the sheet the block sits on is shorter than `SHORT_SHEET`, kept current; null with no sheet around it
+ * (as in its own tests). It changes only when the sheet crosses the line, so a resize doesn't re-render the block.
+ */
+function useShortSheet(root: RefObject<HTMLElement | null>, active: boolean): boolean | null {
+  const [short, setShort] = useState<boolean | null>(null);
+  useLayoutEffect(() => {
+    const sheet = active ? root.current?.closest<HTMLElement>(".react-flow") : null;
+    if (!sheet) return;
+    // Measured before the first paint, so Fit and the first view find the block in the form it keeps. A hidden
+    // sheet (a pane switcher tab) measures 0: it keeps what it last was.
+    const measure = () => {
+      if (sheet.clientHeight > 0) setShort(sheet.clientHeight < SHORT_SHEET);
+    };
+    measure();
+    // A resize changes the block's form a frame later, outside the observer's callback, so the panels that follow
+    // its size (the core cell) don't loop the observers.
+    let frame = 0;
+    const sizes = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    });
+    sizes.observe(sheet);
+    return () => {
+      cancelAnimationFrame(frame);
+      sizes.disconnect();
+    };
+  }, [root, active]);
+  return active ? short : null;
+}
 
 /** The wallet's name while a signature is awaited ("Confirm in MetaMask"), from the chain module. */
 function useWalletName(active: boolean): string {
@@ -310,15 +353,28 @@ function StripBlock({ facts }: { facts: Facts }) {
  */
 export function TitleBlockContent({ form: forced }: { form?: TitleBlockForm }) {
   const tier = useLayoutTier();
-  const [collapsed, setCollapsed] = useState(remembered);
+  const [choice, setChoice] = useState(rememberedTitleBlockChoice);
   const facts = useTitleBlockFacts();
   const root = useRef<HTMLElement>(null);
   const id = useId();
   const toggled = useRef(false);
+  const onSheet = forced === undefined && (tier === "wide" || tier === "mid");
+  const short = useShortSheet(root, onSheet);
+  const byDefault = collapsedByDefault(facts.empty, short);
+  // A choice made against another default is spent: the condition changed, so the default rules again. Until the
+  // sheet is measured (the first render) the condition isn't known yet, and the choice stands.
+  const known = !onSheet || short !== null;
+  // A spent choice is forgotten, so the condition changing back doesn't bring it back (`title-block-choice.ts`).
+  const live = choice !== null && choice === rememberedTitleBlockChoice() && (!known || choice.over === byDefault) ? choice : null;
+  const collapsed = live ? live.collapsed : byDefault;
+  useLayoutEffect(() => {
+    if (known && live === null && choice !== null && rememberedTitleBlockChoice() === choice) rememberTitleBlockChoice(null);
+  }, [known, live, choice]);
   const setForm = (next: boolean) => {
-    remembered = next;
+    const made = { collapsed: next, over: byDefault };
+    rememberTitleBlockChoice(made);
     toggled.current = true;
-    setCollapsed(next);
+    setChoice(made);
   };
   // The toggle is a new button in the other form: focus follows it, so the keyboard never loses its place.
   useLayoutEffect(() => {
@@ -330,7 +386,16 @@ export function TitleBlockContent({ form: forced }: { form?: TitleBlockForm }) {
     forced ?? (tier === "phone" ? null : tier === "narrow" ? "strip" : collapsed ? "collapsed" : "full");
   if (form === null) return null;
   return (
-    <section ref={root} id={id} className={styles.titleBlock} aria-label="Title block" data-form={form} data-chrome="title-block">
+    <section
+      ref={root}
+      id={id}
+      className={styles.titleBlock}
+      aria-label="Title block"
+      data-form={form}
+      data-chrome="title-block"
+      // Set once the sheet is measured and the form is the one the block keeps: `floatsDrawn` waits for it.
+      data-measured={known ? "" : undefined}
+    >
       {form === "full" ? <FullBlock facts={facts} toggle={{ controls: id, onToggle: () => setForm(true) }} /> : null}
       {form === "collapsed" ? <CollapsedBlock facts={facts} toggle={{ controls: id, onToggle: () => setForm(false) }} /> : null}
       {form === "strip" ? <StripBlock facts={facts} /> : null}
@@ -338,8 +403,5 @@ export function TitleBlockContent({ form: forced }: { form?: TitleBlockForm }) {
   );
 }
 
-/** @internal Tests: forget the collapse the last title block remembered. */
-export function resetTitleBlockCollapse(): void {
-  remembered = false;
-}
+export { resetTitleBlockCollapse } from "./title-block-choice";
 

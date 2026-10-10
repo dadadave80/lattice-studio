@@ -49,7 +49,7 @@ export const CHOOSE_A_CHAIN = "Choose a chain first.";
 /** `wallet.switchNetwork` with no wallet connected. */
 export const CONNECT_A_WALLET = "Connect a wallet first.";
 
-/** "Sepolia, Base Sepolia, HSKChain Testnet or Hedera Testnet". */
+/** "Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet or Avalanche Fuji". */
 export function orList(names: readonly string[]): string {
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names.at(-1) ?? ""}` : (names[0] ?? "");
 }

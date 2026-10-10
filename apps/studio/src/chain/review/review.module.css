@@ -196,6 +196,34 @@
   gap: var(--lx-space-2);
 }
 
+/* An open disclosure (What gets cut) takes the section's full width, under its label, rather than the value column. */
+.section:has(> .content > .disclosure[open]) > .content {
+  grid-column: 1 / -1;
+}
+
+.tableScroll {
+  min-inline-size: 0;
+  overflow-x: auto;
+}
+
+/* What gets cut: words break only between words, short cells never wrap, the address is its short form. */
+.cutTable th,
+.cutTable td {
+  overflow-wrap: normal;
+}
+
+.cutTable thead th,
+.nowrap {
+  white-space: nowrap;
+}
+
+.address {
+  display: inline-flex;
+  gap: var(--lx-space-1);
+  align-items: center;
+  white-space: nowrap;
+}
+
 .disclosure > summary {
   cursor: pointer;
   inline-size: fit-content;
@@ -238,6 +266,18 @@
 }
 
 @media (max-width: 767px) {
+  /* As the dialog's own footer: stacked full width, Sign & deploy on top, the reason above it. */
+  .footer {
+    flex-direction: column-reverse;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .footerReason {
+    flex: none;
+    order: 1;
+  }
+
   .section {
     grid-template-columns: minmax(0, 1fr);
     row-gap: var(--lx-space-2);

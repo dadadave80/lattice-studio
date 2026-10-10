@@ -74,6 +74,11 @@ function Legend({ model }: { model: InitOrderModel }) {
       position="top-right"
       className={styles.legend}
       data-chrome="init-legend"
+      // It scrolls within the sheet's free height (SH-03), so it takes Tab and a name: the keyboard can scroll it.
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+      role="group"
+      aria-labelledby="init-order-legend"
+      tabIndex={0}
       data-below-minimap={below === null ? undefined : ""}
       style={below === null ? undefined : ({ "--minimap-bottom": `${below}px` } as CSSProperties)}
     >

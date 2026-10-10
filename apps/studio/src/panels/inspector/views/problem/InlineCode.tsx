@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { breakIdentifier } from "@/ui/text/Identifier";
 
 /**
  * Text whose `backticked` spans are code: problem messages and `formatSelector` output mark signatures and
@@ -15,7 +16,7 @@ export function InlineCode({ text, codeClassName }: { text: string; codeClassNam
     if (isCode) {
       nodes.push(
         <code key={index} className={codeClassName}>
-          {part}
+          {breakIdentifier(part)}
         </code>,
       );
     } else {

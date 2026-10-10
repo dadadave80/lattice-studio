@@ -76,10 +76,13 @@
   opacity: 0.35;
 }
 
-/* Off-screen cards skip painting; the size stays the token-computed one (spec L824). */
+/* Off-screen cards skip painting; the size stays the token-computed one (spec L824). content-visibility clips
+   to the padding box, so the box reaches a node's half-width past each side and the padding brings the content
+   back to the card's edges: pin nodes draw whole on the frame instead of cut in half. */
 .paint {
   position: absolute;
-  inset: 0;
+  inset: 0 calc(-1 * var(--lx-space-1));
+  padding-inline: var(--lx-space-1);
   display: flex;
   flex-direction: column;
   overflow: hidden;

@@ -11,7 +11,7 @@ import { page, userEvent } from "vitest/browser";
 import { commandState, doc, getAnalysis, runCommand, session, startCatalogDrag } from "@/contracts";
 import { bufferedServices, fixtureCatalog } from "../../../test/harness";
 import { ensureVisible } from "../canvas/sheet-view";
-import { drawn } from "../canvas/testing/sheet-harness";
+import { drawn, expandTitleBlock } from "../canvas/testing/sheet-harness";
 import { stampText, planIndex } from "../card/plan-index";
 import {
   announced, cardNode, clickCard, client, flowElement, layoutNow, position, press, selection,
@@ -39,6 +39,8 @@ afterEach(async () => {
 describe("the cell", () => {
   test("sits beside the title block as one toolbar whose rows carry their state", async () => {
     await renderCoreSheet({ project: coreProject(["ERC20", "SafeDiamondCut"], { id: ID }), ...VIEW });
+    // The 700 px sheet is short, so the title block starts collapsed (David's decision on SH-01/SH-02); beside the full one.
+    await expandTitleBlock();
     const toolbar = page.getByRole("toolbar", { name: "Core" });
     await expect.element(toolbar).toBeVisible();
     expect(cell().getAttribute("data-keyctx")).toBe("global");
@@ -335,6 +337,8 @@ describe("auto-pan", () => {
     // Under the cell: the cell sits at the sheet's bottom, from x 361 in a 1000 px sheet.
     project.layout["Pausable"] = { x: 400, y: 480, pins: "left" };
     await renderCoreSheet({ project, ...VIEW });
+    // Beside the full title block (the short sheet starts it collapsed: David's decision on SH-01/SH-02).
+    await expandTitleBlock();
     const overlap = (a: DOMRect, b: DOMRect) =>
       Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
     expect(overlap(cardNode("Pausable").getBoundingClientRect(), cell().getBoundingClientRect())).toBeGreaterThan(0);
@@ -350,6 +354,8 @@ describe("auto-pan", () => {
 describe("Back to content (D16)", () => {
   test("lifts by the cell's height where it would sit under the cell", async () => {
     await renderCoreSheet({ project: coreProject(["ERC20"], { id: ID }), ...VIEW });
+    // Beside the full title block (the short sheet starts it collapsed: David's decision on SH-01/SH-02).
+    await expandTitleBlock();
     const height = Math.ceil(cell().getBoundingClientRect().height);
     // A 1000 px sheet: the cell's left edge lies inside Back to content's column, so it lifts.
     await expect.poll(() => flow().style.getPropertyValue("--lx-core-lift")).toBe(`${height + 8}px`);

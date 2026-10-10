@@ -71,13 +71,44 @@ export function centerOn(point: Point, size: Size, zoom: number): Viewport {
   return { x: size.width / 2 - point.x * z, y: size.height / 2 - point.y * z, zoom: z };
 }
 
-/** The viewport that frames `rect` (sheet units) in a sheet of `size`, `padding` screen px around it. */
-export function fitRect(rect: Rect, size: Size, options: { padding?: number; maxZoom?: number } = {}): Viewport {
+/** Screen px held by what floats over each edge of the sheet (the tool strip, the title block, the core cell). */
+export type Insets = { top: number; right: number; bottom: number; left: number };
+
+export type FitOptions = {
+  /** The least room left on each side, in screen px. */
+  padding?: number;
+  maxZoom?: number;
+  /** What floats over each edge: Fit frames into the sheet minus these, and `padding` where it's more. */
+  insets?: Partial<Insets>;
+};
+
+/**
+ * The viewport that frames `rect` (sheet units) in a sheet of `size`: into the room the insets leave, with at
+ * least `padding` screen px on every side, centered in that room.
+ */
+export function fitRect(rect: Rect, size: Size, options: FitOptions = {}): Viewport {
   const padding = options.padding ?? FIT_PADDING;
-  const room = { width: Math.max(1, size.width - 2 * padding), height: Math.max(1, size.height - 2 * padding) };
+  const side = (key: keyof Insets) => Math.max(padding, options.insets?.[key] ?? 0);
+  const left = side("left");
+  const top = side("top");
+  const room = { width: Math.max(1, size.width - left - side("right")), height: Math.max(1, size.height - top - side("bottom")) };
   const fits = Math.min(room.width / Math.max(1, rect.width), room.height / Math.max(1, rect.height));
   const zoom = clampZoom(Math.min(fits, options.maxZoom ?? MAX_ZOOM));
-  return centerOn({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }, size, zoom);
+  const center = { x: left + room.width / 2, y: top + room.height / 2 };
+  return { x: center.x - (rect.x + rect.width / 2) * zoom, y: center.y - (rect.y + rect.height / 2) * zoom, zoom };
+}
+
+/**
+ * `fitRect` into whichever of `layouts` (alternative insets: the room beside a float, or above it) frames `rect`
+ * largest; the first on a tie. With none, the whole sheet.
+ */
+export function fitBest(rect: Rect, size: Size, layouts: readonly Partial<Insets>[], options: Omit<FitOptions, "insets"> = {}): Viewport {
+  let best: Viewport | null = null;
+  for (const insets of layouts) {
+    const viewport = fitRect(rect, size, { ...options, insets });
+    if (best === null || viewport.zoom > best.zoom + EPSILON) best = viewport;
+  }
+  return best ?? fitRect(rect, size, options);
 }
 
 /** What a sheet of `size` shows at `viewport`, in sheet units. */

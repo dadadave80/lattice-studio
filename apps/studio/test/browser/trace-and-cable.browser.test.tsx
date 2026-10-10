@@ -11,6 +11,7 @@ import { analyze, contestedSelectors, withCore, type Hex4, type Project } from "
 import { makeRecipe } from "@lattice-studio/core/testing";
 import { beforeAll, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
+import { session } from "@/contracts";
 import { cardProject } from "@/sheet/card/testing/projects";
 import { renderSheet } from "@/sheet/canvas/testing/sheet-harness";
 import { emulateForcedColors } from "@/ui/testing/axe";
@@ -39,9 +40,13 @@ function withCoreFacets(project: Project): Project {
   return { ...project, recipe: withCore(project.recipe, catalog) };
 }
 
-/** Waits until the title block's summary text (async on the analysis) has painted and holds still. */
+/**
+ * Waits until the title block has painted and the page holds still. Its summary ("N facets · M selectors") is gone
+ * from the frame: the 700 px sheet is short, so the block starts collapsed (David's decision on SH-01/SH-02); the
+ * traces and ties each test waits for already come from the analysis.
+ */
 async function settledScreen(): Promise<void> {
-  await expect.element(page.getByText(/^\d+ facets? · \d+ selectors?$/)).toBeVisible();
+  await expect.element(page.getByRole("region", { name: "Title block" })).toBeVisible();
   await expect.poll(() => {
     const text = document.querySelector("[data-inspector-plan], [data-region='title-block']")?.textContent ?? document.body.textContent;
     return new Promise<boolean>((resolve) =>
@@ -85,6 +90,34 @@ describe.each(["dark", "light"] as const)("board: trace and cable, a conflict ti
     await settledScreen();
     await document.fonts.ready;
     await expect.element(page.elementLocator(flow())).toMatchScreenshot(`trace-and-cable-conflict-${theme}`);
+  });
+});
+
+describe("the trace paints in Chromium", () => {
+  test("the svg holding a trace keeps its width (the reset's max-width: 100% clamped it to 0 px)", async () => {
+    await renderSheet({ theme: "light", project: traceProject(), settings: { reduceMotion: "on" } });
+    const edge = "g[data-edge='needs:VaultCore:ERC4626']";
+    await expect.poll(() => document.querySelector(edge), { timeout: 8000 }).not.toBeNull();
+    expect(document.querySelector(edge)?.closest("svg")?.getBoundingClientRect().width ?? 0).toBeGreaterThan(0);
+  });
+
+  test("the label sits over its own trace while an end is selected", async () => {
+    await renderSheet({ theme: "light", project: traceProject(), settings: { reduceMotion: "on" } });
+    const label = "[data-trace-label='needs:VaultCore:ERC4626']";
+    await expect.poll(() => document.querySelector(label), { timeout: 8000 }).not.toBeNull();
+    session.set({ selection: ["VaultCore"] });
+    await expect.poll(() => document.querySelector(label)?.hasAttribute("data-live")).toBe(true);
+    await settledScreen();
+    // The label lets the pointer through; hit-test it as if it didn't, to see what paints on top.
+    const onTop = () => {
+      const el = document.querySelector<HTMLElement>(label);
+      if (!el) return "no label";
+      el.style.pointerEvents = "auto";
+      const box = el.getBoundingClientRect();
+      const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return top?.closest(label) ? "label" : (top?.outerHTML.slice(0, 80) ?? "nothing");
+    };
+    await expect.poll(onTop).toBe("label");
   });
 });
 

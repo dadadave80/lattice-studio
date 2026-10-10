@@ -25,6 +25,13 @@ export const VIEWPORTS = {
 
 export type ViewportWidth = keyof typeof VIEWPORTS;
 
+/**
+ * A desktop window tall enough that the title block starts full (an 880 px sheet at the default panes): flows that
+ * work in its full rows (chain and path, counts, Fill in, Compare with the sheet…) run here, because a 1440 × 900
+ * window's 700 px sheet is short and starts it collapsed (David's decision on SH-01/SH-02).
+ */
+export const TALL_DESKTOP = { width: 1440, height: 1080 } as const;
+
 /** The narrow widths every flow that moves controls runs at too (brief Q0, spec L938). */
 export const NARROW_WIDTHS = [768, 375] as const satisfies readonly ViewportWidth[];
 

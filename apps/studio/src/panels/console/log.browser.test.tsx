@@ -60,6 +60,25 @@ describe("Log (IR L134)", () => {
     await expect.element(page.getByText("Showing 1 of 4")).toBeVisible();
   });
 
+  test("tag chips at rest are quiet, borderless and regular weight; a pressed one keeps its accent edge (CN-02)", async () => {
+    await renderConsole();
+    const chip = (name: string) => page.getByRole("button", { name, exact: true }).element() as HTMLElement;
+    await userEvent.click(page.getByRole("button", { name: "Error", exact: true }));
+    await expect.element(page.getByRole("button", { name: "Error", exact: true })).toHaveAttribute("aria-pressed", "true");
+    const rest = getComputedStyle(chip("Collision"));
+    const probe = document.createElement("span");
+    probe.style.color = "var(--lx-text-muted)";
+    chip("Collision").parentElement?.append(probe);
+    onCleanup(() => probe.remove());
+    // Colors ease over 120 ms: read them once they've settled.
+    await expect.poll(() => rest.borderTopColor).toBe("rgba(0, 0, 0, 0)");
+    await expect.poll(() => rest.color).toBe(getComputedStyle(probe).color);
+    expect(rest.fontWeight).toBe("400");
+    const pressed = getComputedStyle(chip("Error"));
+    expect(pressed.borderTopColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(pressed.backgroundImage).toContain("linear-gradient");
+  });
+
   test("text, -exclude and /regex/ filter; a filter matching nothing says so", async () => {
     await renderConsole();
     seedLines();

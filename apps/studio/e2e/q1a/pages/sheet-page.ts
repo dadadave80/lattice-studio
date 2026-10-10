@@ -66,6 +66,17 @@ export class SheetPage {
   }
 
   /**
+   * Expands the title block with the keyboard (no pointer event), as a person would to reach its full rows: the
+   * 700 px sheet of a 1440 × 900 window is short, so it starts collapsed (David's decision on SH-01/SH-02).
+   */
+  async expandTitleBlock(): Promise<void> {
+    const block = this.root.getByRole("region", { name: "Title block", exact: true });
+    await block.getByRole("button", { name: "Expand title block" }).focus();
+    await this.page.keyboard.press("Enter");
+    await expect(block).toHaveAttribute("data-form", "full");
+  }
+
+  /**
    * Waits until `name`'s card is on screen, selected (spec L427: placing selects). The card's own accessible
    * description ends "Selected." once it is (S4a's `describeCard`; the `data-selected` attribute lives on
    * `FacetCard`'s inner paint div, not the `role=group` node this locates, so it can't be read from here).
