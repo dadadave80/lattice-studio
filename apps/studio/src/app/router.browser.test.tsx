@@ -87,7 +87,8 @@ describe("routes", () => {
   test("#open= is v2", async () => {
     go("#open=eip155:11155111:0x5FbDB2315678afecb367f032d93F642f64180aa3");
     await renderWithStudio(<App />);
-    await expect.poll(lastLine).toBe("Open diamond… arrives in v2.");
+    // Among the lines, not the last one: the previous test's app can still log after this one boots.
+    await expect.poll(() => bufferedServices().log.some((l) => l.text === "Open diamond… arrives in v2.")).toBe(true);
   });
 
   test("an unknown route says there's nothing there", async () => {
