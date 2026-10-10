@@ -486,9 +486,11 @@ describe("locate, Back to content, minimap, auto-pan", () => {
     const project = sheetProject(4);
     await renderSheet({ project });
     const button = page.getByRole("button", { name: "Back to content" });
+    // The clock starts as the view moves, as the app's timer does: read after the draw, a slow runner's poll lag
+    // made the 1 s look like 910 ms.
+    const gone = performance.now();
     session.set((s) => ({ viewports: { ...s.viewports, [project.id]: { x: 20000, y: 20000, zoom: 1 } } }));
     await expect.poll(() => drawnViewport().x).toBe(20000);
-    const gone = performance.now();
     await new Promise((resolve) => setTimeout(resolve, BACK_TO_CONTENT_DELAY_MS * 0.6));
     expect(document.querySelector("[data-back-to-content]")).toBeNull();
     await expect.element(button).toBeVisible();
