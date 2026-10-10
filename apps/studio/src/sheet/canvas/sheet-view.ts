@@ -185,25 +185,40 @@ export function fitLayouts(size: Size = sheetSize()): Partial<Insets>[] {
 const FLOATS_POLL_MS = 16;
 /** At most this long, in ms, the first view waits for them. */
 const FLOATS_WAIT_MS = 1500;
-/** Checks the first view waits once they are, for the core cell to take its place beside the title block. */
+/** Checks the first view waits once they are, for the core cell to hold its place beside the title block. */
 const FLOATS_SETTLE_CHECKS = 2;
+/** The core cell's gap from the title block it sits beside or above (`CoreCell`'s GAP), in px. */
+const CELL_GAP = 8;
+
+/**
+ * Whether the core cell has taken its place by the title block: beside it, its right edge a gap from the block's
+ * left, or above it, its bottom a gap from the block's top. The margin that puts it there follows the block's
+ * measured form a frame or two later, and until then the cell sits at the sheet's bottom edge, 42 px lower on a
+ * short sheet: a first view framed around it there drops the cards 21 px, or zooms them a tenth larger.
+ */
+function cellPlaced(sheet: HTMLElement): boolean {
+  const cell = floatBox(sheet, '[data-chrome="core-cell"]');
+  const title = floatBox(sheet, '[data-chrome="title-block"]');
+  if (!cell || !title) return false;
+  return Math.abs(cell.x + cell.width + CELL_GAP - title.x) < 1 || Math.abs(cell.y + cell.height + CELL_GAP - title.y) < 1;
+}
 
 /**
  * Resolves once the floats Fit measures are drawn in their resting form: the title block (in the form it starts
- * in, collapsed on a short sheet, once it has measured the sheet: `data-measured`) and the core cell, which load in lazy chunks, then a couple of checks more for the
- * cell to settle beside the block. Neither shows at the phone tier. Timers, not animation frames, so a page in the
- * background still opens; and it resolves anyway after `FLOATS_WAIT_MS`, so a chunk that never lands can't hold
- * the first view back.
+ * in, collapsed on a short sheet, once it has measured the sheet: `data-measured`) and the core cell in its place
+ * by the block (`cellPlaced`), which load in lazy chunks, then a couple of checks more for both to hold still.
+ * Neither shows at the phone tier. Timers, not animation frames, so a page in the background still opens; and it
+ * resolves anyway after `FLOATS_WAIT_MS`, so a chunk that never lands can't hold the first view back.
  */
 export function floatsDrawn(): Promise<void> {
   return new Promise((resolve) => {
     let left = Math.ceil(FLOATS_WAIT_MS / FLOATS_POLL_MS);
     let settle = FLOATS_SETTLE_CHECKS;
     const check = () => {
-      const sheet = mounted()?.element();
+      const sheet = mounted()?.element() ?? null;
       const drawn =
         currentTier() === "phone" ||
-        (sheet?.querySelector('[data-chrome="title-block"][data-measured]') && sheet.querySelector('[data-chrome="core-cell"]'));
+        (sheet !== null && sheet.querySelector('[data-chrome="title-block"][data-measured]') !== null && cellPlaced(sheet));
       if (drawn) settle--;
       if (settle < 0 || --left <= 0) resolve();
       else setTimeout(check, FLOATS_POLL_MS);
