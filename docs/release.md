@@ -6,7 +6,7 @@ This describes how a change becomes a release: versioning, CI, hosting, and the 
 
 [`release-please`](https://github.com/googleapis/release-please) reads conventional commits and keeps two packages' versions and changelogs in step with them (`.github/workflows/release-please.yml`, configured in `.github/release-please-config.json` and `.github/release-please-manifest.json`): `packages/cli`, the one thing this project ships to a registry, and `apps/studio`, versioned so every export it writes (a Foundry script's header, an agent brief, a Safe batch) carries a real version instead of the placeholder `0.0.0` its `package.json` starts at. On every push to `main`, release-please opens or updates a pull request per package proposing its next version from the commits that touch it since its last release; merging a pull request bumps that package's `package.json`, writes its changelog, and tags its release. The other packages (`core`, `catalog-gen`, `tokens`) aren't independently versioned.
 
-**Needs David:** the workflow runs on every push to `main`, but it fails with "GitHub Actions is not permitted to create or approve pull requests" until the repository allows it (Settings → Actions → General → Workflow permissions), so no version has been cut yet. Its proposed release waits on the `release-please--branches--main` branch.
+The workflow runs on every push to `main` with a token from the lattice-release-please GitHub App (`RELEASE_PLEASE_APP_CLIENT_ID` variable, `RELEASE_PLEASE_APP_PRIVATE_KEY` secret), so the release PR it opens runs CI like any other. **Needs David:** merging that PR cuts the first version; it proposes 1.0.0 for both packages.
 
 ## Hosting
 
