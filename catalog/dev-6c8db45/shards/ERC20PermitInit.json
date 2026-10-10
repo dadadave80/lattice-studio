@@ -1,0 +1,47 @@
+{
+  "name": "ERC20PermitInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidName",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidVersion",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StringTooLong",
+      "inputs": [
+        {
+          "name": "str",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-20 Permit (ERC-2612) extension — seeds the EIP-712 domain and nonce storage {ERC20Permit} builds its digest over, then registers IERC20Permit via ERC-165. The EIP-712 domain uses the token `name_` and version \"1\". Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC20Init}; it must NOT open its own pre/postInitializer."
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20PermitInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/ERC20/ERC20PermitInit.sol"
+  }
+}

@@ -1,0 +1,284 @@
+{
+  "name": "HTSAdapter",
+  "abi": [
+    {
+      "name": "associateToken",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "burnToken",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        },
+        {
+          "type": "int64",
+          "name": "amount"
+        },
+        {
+          "type": "int64[]",
+          "name": "serialNumbers"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int64",
+          "name": "newTotalSupply"
+        }
+      ]
+    },
+    {
+      "name": "createFungibleToken",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "symbol"
+        },
+        {
+          "type": "string",
+          "name": "memo"
+        },
+        {
+          "type": "int32",
+          "name": "decimals"
+        },
+        {
+          "type": "int64",
+          "name": "initialSupply"
+        },
+        {
+          "type": "int64",
+          "name": "maxSupply"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "token"
+        }
+      ]
+    },
+    {
+      "name": "createNonFungibleToken",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "name"
+        },
+        {
+          "type": "string",
+          "name": "symbol"
+        },
+        {
+          "type": "string",
+          "name": "memo"
+        },
+        {
+          "type": "int64",
+          "name": "maxSupply"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address",
+          "name": "token"
+        }
+      ]
+    },
+    {
+      "name": "createdTokens",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address[]",
+          "name": "tokens"
+        }
+      ]
+    },
+    {
+      "name": "dissociateToken",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "htsTokenType",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int32",
+          "name": "tokenType"
+        }
+      ]
+    },
+    {
+      "name": "isAssociated",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool",
+          "name": "associated"
+        }
+      ]
+    },
+    {
+      "name": "isHTSToken",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool",
+          "name": "isToken"
+        }
+      ]
+    },
+    {
+      "name": "mintToken",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        },
+        {
+          "type": "int64",
+          "name": "amount"
+        },
+        {
+          "type": "bytes[]",
+          "name": "metadata"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "int64",
+          "name": "newTotalSupply"
+        },
+        {
+          "type": "int64[]",
+          "name": "serialNumbers"
+        }
+      ]
+    },
+    {
+      "name": "transferNFT",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "int64",
+          "name": "serialNumber"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "transferToken",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "int64",
+          "name": "amount"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "transferTokenFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "type": "address",
+          "name": "token"
+        },
+        {
+          "type": "address",
+          "name": "from"
+        },
+        {
+          "type": "address",
+          "name": "to"
+        },
+        {
+          "type": "int64",
+          "name": "amount"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet that makes the diamond a first-class Hedera Token Service account: association, treasury transfers, and creation / mint / burn of tokens keyed to the diamond.",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/tokens/hedera/HTSAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/hedera/HTSAdapter.sol"
+  }
+}

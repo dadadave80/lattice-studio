@@ -33,18 +33,18 @@ export type InventoryEntry = {
   path: string;
 };
 
-/** `FacetInventory.inventory()`: the 100 (name, path) pairs, in inventory order. */
+/** `FacetInventory.inventory()`: its (name, path) pairs, in inventory order, whatever the inventory's size. */
 export function readInventory(dir: string): InventoryEntry[] {
   const text = readSource(dir, INVENTORY_PATH);
-  const [namesPart, pathsPart] = text.split("string[100] memory p");
-  if (namesPart === undefined || pathsPart === undefined) throw new Error(`${INVENTORY_PATH}: unexpected layout`);
+  const [namesPart, pathsPart, ...rest] = text.split(/string\[\d+\] memory p\b/);
+  if (namesPart === undefined || pathsPart === undefined || rest.length > 0) throw new Error(`${INVENTORY_PATH}: unexpected layout`);
   const names = [...namesPart.matchAll(/^\s+"([A-Za-z0-9]+)",?$/gm)].map((m) => m[1] ?? "");
   const paths = [...pathsPart.matchAll(/^\s+"([^":]+):([A-Za-z0-9]+)",?$/gm)].map((m) => ({ file: m[1] ?? "", name: m[2] ?? "" }));
   if (names.length !== paths.length) throw new Error(`${INVENTORY_PATH}: ${names.length} names but ${paths.length} paths`);
   return names.map((name, i) => {
     const p = paths[i];
     if (!p || p.name !== name) throw new Error(`${INVENTORY_PATH}: entry ${i} is ${name} but its path names ${p?.name}`);
-    // diamond-lib's facets are listed by artifact basename (FacetInventory.sol L224-L229).
+    // diamond-lib's facets are listed by artifact basename (FacetInventory.sol L234-L237).
     const path = p.file.startsWith("src/") ? p.file : `lib/diamond-lib/src/facets/${p.file}`;
     return { name, path };
   });

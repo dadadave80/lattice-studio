@@ -84,7 +84,7 @@ describe("ProblemDoc (one code's page)", () => {
     // The fixture catalog's pinned commit (fixtures/catalog/fixture/index.json), never a hardcoded one.
     await expect
       .element(link)
-      .toHaveAttribute("href", "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/LatticeFactory.sol#L103-L107");
+      .toHaveAttribute("href", "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/LatticeFactory.sol#L103-L107");
   });
 
   test("the back control returns to the index through a click, moving focus to its heading", async () => {

@@ -553,21 +553,24 @@ describe("the Etherscan leg", () => {
   });
 
   test("on a chain Etherscan doesn't serve, Sourcify verifies and Etherscan is never asked or mentioned", async () => {
-    fresh();
-    const net = verifiers([]);
-    const hashkey = confirmed({ chainId: 133 });
-    const records = memoryRecords([hashkey]);
-    const clock = manualClock();
-    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), hashkey), clock, []);
-    expect(net.etherscan()).toEqual([]);
-    expect(etherscanOutcomes.get(hashkey)).toBeUndefined();
-    expect(texts()).toEqual(["Verified on Sourcify (exact match)."]);
-    expect(records.all()[0]?.verification).toBe("exact_match");
-    // Retry has nothing left to do there, with a key or without one, and never says Etherscan isn't set up.
-    await retryVerification({ chainId: 133, address: ADDRESS }, keyed(net.fetchImpl, records, clock));
-    await retryVerification({ chainId: 133, address: ADDRESS }, deps(net.fetchImpl, records, clock, LONG_BUILD));
-    expect(net.etherscan()).toEqual([]);
-    expect(texts().slice(1)).toEqual(["This deployment is already verified.", "This deployment is already verified."]);
+    // HSKChain Testnet (133) and Hedera Testnet (296).
+    for (const chainId of [133, 296]) {
+      fresh();
+      const net = verifiers([]);
+      const record = confirmed({ chainId });
+      const records = memoryRecords([record]);
+      const clock = manualClock();
+      await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), record), clock, []);
+      expect(net.etherscan()).toEqual([]);
+      expect(etherscanOutcomes.get(record)).toBeUndefined();
+      expect(texts()).toEqual(["Verified on Sourcify (exact match)."]);
+      expect(records.all()[0]?.verification).toBe("exact_match");
+      // Retry has nothing left to do there, with a key or without one, and never says Etherscan isn't set up.
+      await retryVerification({ chainId, address: ADDRESS }, keyed(net.fetchImpl, records, clock));
+      await retryVerification({ chainId, address: ADDRESS }, deps(net.fetchImpl, records, clock, LONG_BUILD));
+      expect(net.etherscan()).toEqual([]);
+      expect(texts().slice(1)).toEqual(["This deployment is already verified.", "This deployment is already verified."]);
+    }
   });
 
   test("on Avalanche Fuji, which Etherscan serves, a keyed record gets both legs", async () => {

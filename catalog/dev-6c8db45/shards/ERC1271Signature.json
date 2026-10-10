@@ -1,0 +1,56 @@
+{
+  "name": "ERC1271Signature",
+  "abi": [
+    {
+      "type": "function",
+      "name": "isValidSignature",
+      "inputs": [
+        {
+          "name": "hash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "signature",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "InvalidShortString",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x1626ba7e": {
+        "notice": "Returns `0x1626ba7e` when `signature` is a valid signature over `hash` for this contract.",
+        "dev": "The magic value is `bytes4(keccak256(\"isValidSignature(bytes32,bytes)\"))`. Any other return (or a revert) means invalid.",
+        "params": {
+          "hash": "The hash of the signed data.",
+          "signature": "The signature bytes (opaque; format is account-defined)."
+        }
+      }
+    },
+    "notice": "ERC-1271 contract-signature facet. Lets the Diamond declare a signature valid (for permits, Seaport orders, Permit2) when it is a valid signature from the configured `AccountSigner` owner.",
+    "dev": "Stateless delegator — logic lives in {ERC1271SignatureLib}. Implements ERC-7739 defensive rehashing: accepts only nested `TypedDataSign` / `PersonalSign` envelopes bound to this account's EIP-712 domain (a plain signature over the raw hash is rejected), defeating cross-account replay."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/ERC1271Signature.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/accounts/ERC1271Signature.sol"
+  }
+}

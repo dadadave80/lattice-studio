@@ -1,0 +1,24 @@
+{
+  "name": "HederaPrngAdapterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe1c7392a": {
+        "notice": "Runs the PRNG module initializer. MUST be invoked via the diamond's `initialize` `_init` delegatecall."
+      }
+    },
+    "notice": "One-shot initializer for a PRNG diamond — registers the IHederaPrngAdapter interface (ERC-165) and nothing else: the module is stateless (the seed comes straight from the system contract at call time, so there is no subscription, no keeper and no request book to seed). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer)."
+  },
+  "source": {
+    "path": "src/oracles/hedera/HederaPrngAdapterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/hedera/HederaPrngAdapterInit.sol"
+  }
+}

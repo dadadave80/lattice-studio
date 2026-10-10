@@ -18,12 +18,12 @@ import {
   validateCatalog,
   validateCatalogManifest,
 } from "@lattice-studio/core";
-import bundledIndex from "../../../catalog/dev-f4a32c8/index.json" with { type: "json" };
-import bundledProxyCode from "../../../catalog/dev-f4a32c8/code/Lattice.creation.hex" with { type: "text" };
+import bundledIndex from "../../../catalog/dev-6c8db45/index.json" with { type: "json" };
+import bundledProxyCode from "../../../catalog/dev-6c8db45/code/Lattice.creation.hex" with { type: "text" };
 import { catalogMismatch, errorMessage, type Failure, invalid } from "./failure";
 
 /** The id of the catalog bundled into the CLI; a test keeps it equal to `catalog/manifest.json`'s default. */
-export const BUNDLED_CATALOG_ID = "dev-f4a32c8";
+export const BUNDLED_CATALOG_ID = "dev-6c8db45";
 
 /** A catalog plus where it came from and how to get the `Lattice` proxy's creation code (CreateX exports). */
 export type LoadedCatalog = {

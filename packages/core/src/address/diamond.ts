@@ -3,7 +3,7 @@ import type { CreatexPredictFn, FactoryPredictFn } from "../model/api";
 import { isAddress, sameAddress, type Address, type Hex } from "../model/hex";
 import { assertBytes } from "./bytes";
 
-/** The canonical CreateX singleton, the same on every chain (Lattice's script/lib/CreateXDeployer.sol L25). */
+/** The canonical CreateX singleton, the same on every chain (Lattice's script/lib/CreateXDeployer.sol L28). */
 export const CREATEX: Address = "0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed";
 
 /**

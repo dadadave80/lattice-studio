@@ -56,8 +56,10 @@ describe("chain.select", () => {
     expect(parse(["84532"])).toEqual({ ok: true, value: { chainId: 84532 } });
     expect(parse(["hskchain", "testnet"])).toEqual({ ok: true, value: { chainId: 133 } });
     expect(parse(["133"])).toEqual({ ok: true, value: { chainId: 133 } });
-    expect(parse(["mainnet"])).toEqual({ ok: false, error: "Studio doesn't deploy to mainnet. Choose Sepolia, Base Sepolia, HSKChain Testnet or Avalanche Fuji." });
-    expect(parse([])).toEqual({ ok: false, error: "chain takes a chain: Sepolia, Base Sepolia, HSKChain Testnet or Avalanche Fuji." });
+    expect(parse(["Hedera", "Testnet"])).toEqual({ ok: true, value: { chainId: 296 } });
+    expect(parse(["296"])).toEqual({ ok: true, value: { chainId: 296 } });
+    expect(parse(["mainnet"])).toEqual({ ok: false, error: "Studio doesn't deploy to mainnet. Choose Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet or Avalanche Fuji." });
+    expect(parse([])).toEqual({ ok: false, error: "chain takes a chain: Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet or Avalanche Fuji." });
   });
 
   test("selects the chain, says so, and probes it with the project's path", async () => {
@@ -70,7 +72,7 @@ describe("chain.select", () => {
   });
 
   test("an unlisted chain is disabled with the reason", () => {
-    expect(state("chain.select", { chainId: 1 })).toMatchObject({ ok: false, reason: "Studio doesn't deploy to Ethereum. Choose Sepolia, Base Sepolia, HSKChain Testnet or Avalanche Fuji." });
+    expect(state("chain.select", { chainId: 1 })).toMatchObject({ ok: false, reason: "Studio doesn't deploy to Ethereum. Choose Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet or Avalanche Fuji." });
   });
 
   test("a probe that fails is an Error line", async () => {

@@ -1,0 +1,62 @@
+{
+  "name": "ERC20Capped",
+  "abi": [
+    {
+      "type": "function",
+      "name": "cap",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "ERC20ExceededCap",
+      "inputs": [
+        {
+          "name": "increasedSupply",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "cap",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC20InvalidCap",
+      "inputs": [
+        {
+          "name": "cap",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x355274ea": {
+        "notice": "Returns the cap on the token's total supply."
+      }
+    },
+    "notice": "Stateless Diamond facet for ERC-20 tokens with a capped total supply.",
+    "dev": "Inherits ERC20. Exposes a `mint` function (access-controlled externally) that enforces the cap before delegating to ERC20Lib._mint."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20Capped.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/ERC20/ERC20Capped.sol"
+  }
+}

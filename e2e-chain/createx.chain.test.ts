@@ -7,7 +7,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { decodeFunctionResult, encodeAbiParameters, encodeFunctionData, keccak256, parseAbi, type Address, type Hex } from "viem";
 import { CREATEX, analyze, buildSalt, createxPredict, type ChainState, type Scope } from "@lattice-studio/core";
-import mockFixture from "../packages/core/src/address/fixtures/lattice-f4a32c8.json";
+import mockFixture from "../packages/core/src/address/fixtures/lattice-6c8db45.json";
 import { builtCatalog } from "./harness/catalog";
 import { ANVIL_SKIP_REASON, PORT, anvilPort, announceSkip } from "./harness/env";
 import { ALICE, BOB, send, startNode, withChainId, type Node } from "./harness/node";

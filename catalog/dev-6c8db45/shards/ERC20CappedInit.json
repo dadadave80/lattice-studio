@@ -1,0 +1,37 @@
+{
+  "name": "ERC20CappedInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "cap_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "ERC20InvalidCap",
+      "inputs": [
+        {
+          "name": "cap",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-20 Capped extension — seeds the supply cap and registers IERC20Capped via ERC-165. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC20Init}; it must NOT open its own pre/postInitializer. Reverts with {IERC20Capped-ERC20InvalidCap} when `cap_` is zero."
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20CappedInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/ERC20/ERC20CappedInit.sol"
+  }
+}

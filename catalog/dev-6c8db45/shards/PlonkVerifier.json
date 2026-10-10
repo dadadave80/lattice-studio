@@ -1,0 +1,206 @@
+{
+  "name": "PlonkVerifier",
+  "abi": [
+    {
+      "type": "function",
+      "name": "verifyProof",
+      "inputs": [
+        {
+          "name": "vk",
+          "type": "tuple",
+          "internalType": "struct IPlonkVerifier.VerifyingKey",
+          "components": [
+            {
+              "name": "qm",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "ql",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "qr",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "qo",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "qc",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "s1",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "s2",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "s3",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "k1",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "k2",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "power",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "omega",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "x2",
+              "type": "uint256[2][2]",
+              "internalType": "uint256[2][2]"
+            }
+          ]
+        },
+        {
+          "name": "proof",
+          "type": "tuple",
+          "internalType": "struct IPlonkVerifier.Proof",
+          "components": [
+            {
+              "name": "a",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "b",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "c",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "z",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "t1",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "t2",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "t3",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "wxi",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "wxiw",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "eval_a",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "eval_b",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "eval_c",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "eval_s1",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "eval_s2",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "eval_zw",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        },
+        {
+          "name": "input",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "PlonkInvalidInputs",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x5d484314": {
+        "notice": "Verifies a PLONK proof against `vk` for the given public `input`.",
+        "dev": "Returns `false` (does not revert) for an invalid proof, an out-of-range public input (`>= SNARK_SCALAR_FIELD`), an off-curve / out-of-range proof point, or a failed pairing. Reverts only on structural misuse (empty input).",
+        "params": {
+          "input": "The public inputs, in the circuit's public-signal order.",
+          "proof": "The PLONK proof.",
+          "vk": "The verifying key for the circuit."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet exposing a GENERIC PLONK verifier over BN254. The verifying key is a parameter, so one deployment verifies proofs for any circuit — a reusable verifier primitive for the ZK privacy modules and consumers who bring PLONK circuits.",
+    "dev": "All logic lives in {PlonkVerifierLib}. Pure verification (view): no state beyond the ERC-165 registration written at init."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/privacy/PlonkVerifier.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/privacy/PlonkVerifier.sol"
+  }
+}

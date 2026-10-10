@@ -1,0 +1,94 @@
+{
+  "name": "ERC5564Announcer",
+  "abi": [
+    {
+      "type": "function",
+      "name": "announce",
+      "inputs": [
+        {
+          "name": "schemeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "stealthAddress",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ephemeralPubKey",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "metadata",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Announcement",
+      "inputs": [
+        {
+          "name": "schemeId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "stealthAddress",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "caller",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "ephemeralPubKey",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "metadata",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x4d1f9583": {
+        "notice": "Emits an {Announcement} broadcasting a stealth payment.",
+        "dev": "Permissionless and stateless; `caller` in the event is forced to `msg.sender`.",
+        "params": {
+          "ephemeralPubKey": "The sender's ephemeral public key.",
+          "metadata": "Scheme-specific metadata (view tag + optional transfer hints for scheme 1).",
+          "schemeId": "The stealth-address scheme id (1 == SECP256k1 with view tags).",
+          "stealthAddress": "The destination stealth address."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet implementing the ERC-5564 stealth-address announcer.",
+    "dev": "All logic lives in {ERC5564AnnouncerLib}. Inherit this in your Diamond to let any account broadcast stealth payments via {announce}. Permissionless by design — no access control."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/privacy/ERC5564Announcer.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/privacy/ERC5564Announcer.sol"
+  }
+}

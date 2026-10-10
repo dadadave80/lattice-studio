@@ -1,0 +1,320 @@
+{
+  "API3AdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry)."
+  },
+  "API3QRNGAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the QRNG config + request setters)."
+  },
+  "AccessControlEnumerableInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE`."
+  },
+  "AccessControlInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE`."
+  },
+  "AccessControlTimedInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE`."
+  },
+  "AccessManagedInit": {
+    "authority": "The AccessManager authority governing this contract."
+  },
+  "AccessManagerInit": {
+    "admin": "The address granted the initial `ADMIN_ROLE`."
+  },
+  "AccountInit": {
+    "owner": "The account's initial ECDSA signing owner."
+  },
+  "AccountInit6900": {
+    "owner": "The account's admin: the authority that installs and uninstalls validations and executions."
+  },
+  "AcrossBridgeAdapterInit": {
+    "spokePool": "The LOCAL chain's canonical Across v3 SpokePool."
+  },
+  "AggregatorExecAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the allow-list setter)."
+  },
+  "AxelarGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+    "gateway": "The Axelar gateway the adapter dispatches `callContract` to and validates inbound calls with."
+  },
+  "BandAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry and `setReference`).",
+    "reference_": "The Band StdReference contract the adapter reads rates from."
+  },
+  "BridgeERC20Init": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the link/handler registry).",
+    "token": "The legacy ERC-20 token custodied by the bridge."
+  },
+  "BridgeERC7802Init": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the link/handler registry).",
+    "token": "The ERC-7802 token minted/burned by the bridge."
+  },
+  "CCIPGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+    "router": "The CCIP router the adapter dispatches `ccipSend` to and accepts `ccipReceive` from.",
+    "feeToken": "The initial CCIP fee token (`address(0)` = pay fees in native gas)."
+  },
+  "CCTPBridgeAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+    "tokenMessenger": "The deployed CCTP v2 `TokenMessengerV2` (burn side).",
+    "messageTransmitter": "The deployed CCTP v2 `MessageTransmitterV2` (receive/mint side).",
+    "usdc": "The deployed USDC token bridged by CCTP."
+  },
+  "ChainRegistryInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every registry setter and the fan-out)."
+  },
+  "ChainlinkAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry)."
+  },
+  "ChainlinkAutomationAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls `setConfig`)."
+  },
+  "ChainlinkCREAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls `setForwarder`/`setWorkflow`)."
+  },
+  "ChainlinkVRFInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the VRF config + request setters)."
+  },
+  "ChronicleAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry)."
+  },
+  "CommitRevealInit": {},
+  "ConstantProductInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE`.",
+    "tokenA": "One of the two pool reserve tokens.",
+    "tokenB": "The other pool reserve token."
+  },
+  "CrosschainLinkInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the link/handler registry)."
+  },
+  "CrosschainTimelockHandlerInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (timelock admin + link/handler registry admin).",
+    "minDelay": "The timelock's minimum operation delay."
+  },
+  "DIAAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry)."
+  },
+  "DiamondIntrospectionInit.initImmutable": {},
+  "DiamondIntrospectionInit.initUpgradeable": {},
+  "ENSResolverInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls role assignment).",
+    "registry": "The external ENS registry the facet reads resolvers from."
+  },
+  "ENSReverseClaimerInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls role assignment).",
+    "registrar": "The external ENS reverse registrar the facet forwards `setName` to."
+  },
+  "ENSSubnameIssuerInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls role assignment).",
+    "wrapper": "The external ENS NameWrapper the facet forwards `setSubnodeRecord` to."
+  },
+  "ERC1155Init": {
+    "uri_": "The token URI template shared by every token type."
+  },
+  "ERC165Init": {},
+  "ERC20BurnableInit": {},
+  "ERC20CappedInit": {
+    "cap_": "The maximum total supply, in the token's smallest unit; it must be nonzero."
+  },
+  "ERC20CrosschainInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls `setLink`/`setHandler`).",
+    "name_": "Token name.",
+    "symbol_": "Token symbol."
+  },
+  "ERC20FlashMintInit": {},
+  "ERC20Init": {
+    "name_": "Token name.",
+    "symbol_": "Token symbol."
+  },
+  "ERC20PausableInit": {
+    "admin_": "The address granted DEFAULT_ADMIN_ROLE, which gates pause and unpause."
+  },
+  "ERC20PermitInit": {
+    "name_": "The EIP-712 domain name: the token name."
+  },
+  "ERC20VotesInit": {
+    "name_": "The EIP-712 domain name: the token name.",
+    "admin_": "The address granted DEFAULT_ADMIN_ROLE, which gates a consumer's minting authority."
+  },
+  "ERC20WrapperInit": {
+    "underlying_": "The ERC-20 token the wrapper holds 1:1; it can't be the wrapper itself."
+  },
+  "ERC2981Init": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the royalty setters)."
+  },
+  "ERC4626Init": {
+    "asset_": "The underlying ERC-20 asset the vault holds.",
+    "name_": "The vault share token name.",
+    "symbol_": "The vault share token symbol.",
+    "decimalsOffset_": "Virtual-share decimals offset for inflation-attack mitigation (usually 0)."
+  },
+  "ERC5564AnnouncerInit": {},
+  "ERC6538RegistryInit": {},
+  "ERC721Init": {
+    "name_": "Token name.",
+    "symbol_": "Token symbol."
+  },
+  "ERC721URIStorageInit": {
+    "admin_": "The metadata admin granted DEFAULT_ADMIN_ROLE, who may call setTokenURI."
+  },
+  "ERC7786OpenBridgeInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the gateway set, threshold and remotes)."
+  },
+  "ERC7802Init": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE`.",
+    "bridge": "The trusted bridge granted `CROSSCHAIN_BRIDGE_ROLE` (mints/burns crosschain supply).",
+    "name_": "Token name.",
+    "symbol_": "Token symbol."
+  },
+  "GelatoAutomateAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls `setConfig`/`createTask`/`cancelTask`)."
+  },
+  "GelatoVRFAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the operator + request setters)."
+  },
+  "GovernedDiamondCutInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (manages guardians and resumes operation)."
+  },
+  "GovernedSafeDiamondCutInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (manages guardians and resumes operation).",
+    "safe": "The Gnosis Safe multisig pinned as the sole scheduling/execution authority.",
+    "minThreshold": "The minimum signature threshold the pinned Safe must enforce.",
+    "minDelay": "The minimum timelock delay (seconds) between schedule and execute."
+  },
+  "GovernedVaultENSInit": {
+    "p": "Governance and ENS parameters for the ENS-named self-governed vault.",
+    "p.vault": "The base self-governed vault parameters.",
+    "p.vault.asset": "Underlying ERC-20 the vault holds.",
+    "p.vault.name": "Share-token name (also the EIP-712 domain name and governor name).",
+    "p.vault.symbol": "Share-token symbol.",
+    "p.vault.decimalsOffset": "ERC-4626 virtual-share offset (usually 0).",
+    "p.vault.minDelay": "Timelock delay between queue and execute.",
+    "p.vault.votingDelay": "Time between proposal creation and voting start.",
+    "p.vault.votingPeriod": "How long the vote stays open (must be more than 0).",
+    "p.vault.proposalThreshold": "Minimum votes to create a proposal.",
+    "p.vault.quorumNumerator": "Quorum as a percentage of total supply.",
+    "p.reverseRegistrar": "The chain's ENS reverse registrar.",
+    "p.ensName": "Primary ENS name claimed at init; an empty name skips the claim."
+  },
+  "GovernedVaultInit": {
+    "p": "Governance parameters for the self-governed vault.",
+    "p.asset": "Underlying ERC-20 the vault holds.",
+    "p.name": "Share-token name (also the EIP-712 domain name and governor name).",
+    "p.symbol": "Share-token symbol.",
+    "p.decimalsOffset": "ERC-4626 virtual-share offset (usually 0).",
+    "p.minDelay": "Timelock delay between queue and execute.",
+    "p.votingDelay": "Time between proposal creation and voting start.",
+    "p.votingPeriod": "How long the vote stays open (must be more than 0).",
+    "p.proposalThreshold": "Minimum votes to create a proposal.",
+    "p.quorumNumerator": "Quorum as a percentage of total supply."
+  },
+  "Groth16VerifierInit": {},
+  "HASSignatureVerifierInit": {},
+  "HSSAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` and `HSS_SCHEDULER_ROLE`."
+  },
+  "HTSAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE`, `HTS_MANAGER_ROLE` and `HTS_OPERATOR_ROLE`."
+  },
+  "HederaExchangeRateAdapterInit": {},
+  "HederaPrngAdapterInit": {},
+  "HyperbridgeGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+    "host": "The Hyperbridge IsmpHost the adapter dispatches to and accepts module callbacks from."
+  },
+  "HyperlaneGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+    "mailbox": "The Hyperlane Mailbox the adapter dispatches to and accepts `handle` deliveries from."
+  },
+  "L1ToL2CrossDomainMessengerGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the counterpart/min-gas setters).",
+    "counterpartChainId": "The paired-domain chain id.",
+    "counterpartAdapter": "The sibling adapter on the paired domain (must be non-zero).",
+    "minGasLimit": "The `minGasLimit` the messenger relays outbound messages with."
+  },
+  "L2ToL2CrossDomainMessengerGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the remote-adapter setter)."
+  },
+  "LayerZeroGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+    "endpoint": "The LayerZero v2 EndpointV2 the adapter dispatches `send` to and accepts `lzReceive` from."
+  },
+  "MarketplaceZoneInit": {
+    "admin_": "The address granted DEFAULT_ADMIN_ROLE, which gates setPaused, setRoyaltyRequired and MARKETPLACE_BLOCKED_ROLE grants."
+  },
+  "MultiInit": {
+    "_initAddresses": "The init contracts, delegatecalled in order.",
+    "_initData": "The calldata for each init contract, index-aligned with the addresses."
+  },
+  "OwnableInit": {
+    "_owner": "The address to set as the contract owner."
+  },
+  "PlonkVerifierInit": {},
+  "PrivateVotingInit": {
+    "verifier": "The {ISemaphoreVerifier} contract address used to check the anonymous vote proofs."
+  },
+  "PythAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry and `setPyth`).",
+    "pyth": "The Pyth contract the adapter reads prices from and forwards update fees to."
+  },
+  "PythEntropyAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the entropy config + request setters)."
+  },
+  "RedStoneAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry)."
+  },
+  "SafeDiamondCutInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (manages guardians and resumes operation).",
+    "safe": "The Gnosis Safe multisig pinned as the sole cut authority.",
+    "minThreshold": "The minimum signature threshold the pinned Safe must enforce."
+  },
+  "SafeHarborAdopterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (administers `SAFE_HARBOR_ADMIN_ROLE`).",
+    "registry": "The SEAL SafeHarborRegistry for this chain (must be non-zero).",
+    "factory": "The SEAL AgreementFactory for this chain (zero allowed; disables `createAndAdopt`)."
+  },
+  "SemaphoreInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls `setVerifier`).",
+    "verifier": "The {ISemaphoreVerifier} contract address used to check Semaphore proofs."
+  },
+  "ShieldedPoolInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls `createPool`)."
+  },
+  "StargateBridgeAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter)."
+  },
+  "StarknetGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+    "starknetCore": "The Starknet core (`StarknetMessaging`) contract on this chain.",
+    "expectedChainReference": "The ERC-7930 chain reference this adapter accepts (UTF-8 chain-id string, e.g. `SN_MAIN` = `0x534e5f4d41494e`)."
+  },
+  "StrategyManagerInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE`."
+  },
+  "SuperchainETHBridgeAdapterInit": {},
+  "TWAPOracleInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE`."
+  },
+  "TellorAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls the feed registry and `setTellor`).",
+    "tellor": "The Tellor oracle contract the adapter reads reports from."
+  },
+  "VaultCoreInit": {
+    "asset_": "The underlying ERC-20 asset the vault holds.",
+    "name_": "The vault share token name.",
+    "symbol_": "The vault share token symbol.",
+    "admin_": "The account granted `DEFAULT_ADMIN_ROLE` (may set the strategy manager).",
+    "decimalsOffset_": "Virtual-share decimals offset for inflation-attack mitigation (usually 0)."
+  },
+  "WormholeGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+    "relayer": "The Wormhole relayer the adapter dispatches `sendPayloadToEvm` to and accepts deliveries from.",
+    "wormholeChainId": "This chain's Wormhole chain id."
+  },
+  "ZetaChainGatewayAdapterInit": {
+    "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+    "gateway": "The ZetaChain `GatewayEVM` the adapter dispatches `call` to and accepts `onCall` from.",
+    "hubChainId": "The hub chainId whose ZEVM universal app terminates the route.",
+    "hubRemoteApp": "The trusted ZEVM universal app (hub) for `hubChainId`.",
+    "defaultOnRevertGasLimit": "The default `onRevertGasLimit` used to build per-message `RevertOptions`."
+  }
+}

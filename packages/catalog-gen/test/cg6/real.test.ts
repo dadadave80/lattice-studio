@@ -66,7 +66,7 @@ const dir = latticeDir();
 
 describe("the recipe overlay", () => {
   test("loads, and every template builds against the catalog's facets and inits", () => {
-    expect(built.templates.length).toBe(84);
+    expect(built.templates.length).toBe(85);
     expect(built.templates.slice(0, 3).map((t) => t.name)).toEqual([...V1]);
     expect(built.templates.filter((t) => t.phase === "v1").map((t) => t.name)).toEqual([...V1]);
     expect(new Set(built.templates.map((t) => t.phase))).toEqual(new Set(["v1", "v1.1"]));

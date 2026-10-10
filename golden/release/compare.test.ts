@@ -136,6 +136,7 @@ describe("createxRawAddress", () => {
   // catalog/dev-f4a32c8/index.json. The CreateX address is the one forge reported: this suite's harness logged
   // `STUDIO_RELEASE contract LatticeRegistry 0x303aabD5fD0AF342095DA749b62aE651c1c9be79 …` after DeployRelease
   // deployed through MockCreateX at that pin (2026-09-23). It's copied from forge's output, not computed with viem.
+  // catalog/dev-6c8db45/index.json has the same salt and init-code hash.
   const salt: Hex = "0xc78231000c48b308a55c9ed0de492d4ee766bc920c611d52ef984a4d9baa3a9c";
   const initCodeHash: Hex = "0xf7efc65848d4b86379f7b2c82cc1738b823f21adc67589b9ab3dc1b8821c63ab";
 

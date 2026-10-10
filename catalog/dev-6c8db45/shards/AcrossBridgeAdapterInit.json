@@ -1,0 +1,38 @@
+{
+  "name": "AcrossBridgeAdapterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "spokePool",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "AcrossZeroAddress",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x19ab453c": {
+        "notice": "Runs the reentrancy-guard + Across-adapter initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "spokePool": "The LOCAL chain's canonical Across v3 SpokePool."
+        }
+      }
+    },
+    "notice": "One-shot initializer for an Across v3 token-bridge diamond — seeds the reentrancy guard (the deposit and message-handling paths are `nonReentrant`) and wires the LOCAL chain's canonical SpokePool (registering the IAcrossBridgeAdapter interface via ERC-165). NO AccessControl is seeded because the adapter has no admin surface (Across chain ids are passed raw by callers; there is no domain table). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; the `__*_init` guard passes because the window is already open). Reverts `AcrossZeroAddress` if the SpokePool is zero."
+  },
+  "source": {
+    "path": "src/crosschain/across/AcrossBridgeAdapterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/crosschain/across/AcrossBridgeAdapterInit.sol"
+  }
+}

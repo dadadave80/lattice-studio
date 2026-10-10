@@ -102,6 +102,6 @@
   },
   "source": {
     "path": "src/oracles/api3/API3QRNGAdapter.sol",
-    "url": "https://github.com/dadadave80/lattice/blob/f4a32c8330934d39bcfdffff87d35a04b7fa6a79/src/oracles/api3/API3QRNGAdapter.sol"
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/api3/API3QRNGAdapter.sol"
   }
 }

@@ -84,8 +84,8 @@ describe("success", () => {
     expect(catalogLines[0]?.tag).toBe("Note");
   });
 
-  test("the console's first line is \"Catalog: Lattice 0.4.0 · 100 facets.\" and nothing comes before it (spec L401)", async () => {
-    // The generated catalog (100 facets) as a v0.4.0 release: the pinned Lattice is still a provisional
+  test("the console's first line is \"Catalog: Lattice 0.4.0 · 105 facets.\" and nothing comes before it (spec L401)", async () => {
+    // The generated catalog (105 facets) as a v0.4.0 release: the pinned Lattice is still a provisional
     // dev build, so its own line names that instead (spec L401 describes the v1 release).
     const REAL = new URL("../../../../catalog/", import.meta.url);
     const realManifest = JSON.parse(readFileSync(new URL("manifest.json", REAL), "utf8")) as CatalogManifest;
@@ -103,7 +103,7 @@ describe("success", () => {
     loader.start({ ok: true, value: realManifest });
     await waitFor(() => getCatalogStatus().status !== "loading");
     expect(getCatalogStatus().status).toBe("ready");
-    expect(bufferedServices().log.map((line) => line.text)).toEqual(["Catalog: Lattice 0.4.0 · 100 facets."]);
+    expect(bufferedServices().log.map((line) => line.text)).toEqual(["Catalog: Lattice 0.4.0 · 105 facets."]);
   });
 
   test("the fixture flag: lattice.tag is \"fixture\", surfaced through isFixtureCatalog()", async () => {

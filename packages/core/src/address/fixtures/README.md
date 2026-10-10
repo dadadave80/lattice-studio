@@ -1,7 +1,7 @@
 # Address fixtures
 
-`lattice-f4a32c8.json` holds the bytecode that `../anvil.test.ts` deploys on Anvil. It comes from Lattice at the
-pinned commit `f4a32c8330934d39bcfdffff87d35a04b7fa6a79`, built with `FOUNDRY_PROFILE=ci` (solc 0.8.36, the
+`lattice-6c8db45.json` holds the bytecode that `../anvil.test.ts` deploys on Anvil. It comes from Lattice at the
+pinned commit `6c8db45aa46986af2edb6a0d8fb02a4a92faef01`, built with `FOUNDRY_PROFILE=ci` (solc 0.8.36, the
 version in Lattice's `foundry.toml`) and Foundry 1.8.3. Don't edit it by hand. Regenerate it whenever the pin
 changes.
 
@@ -30,4 +30,6 @@ Put the four values into the JSON, update `source` with the new commit and tool 
 the new short commit. Then rerun `bun test packages/core/src/address`. The literal addresses under "vectors pinned
 from Anvil" in `../index.test.ts` depend on `latticeInitCodeHash`, so update them from the new Anvil run.
 
-At `f4a32c8`, the output of these `forge inspect` commands matches the committed JSON byte for byte.
+At `6c8db45`, the output of these `forge inspect` commands matches the committed JSON byte for byte. It's the same
+bytecode as at the previous pin, `f4a32c8`: the move added facets and changed none of these three contracts, so the
+addresses under "vectors pinned from Anvil" stand.

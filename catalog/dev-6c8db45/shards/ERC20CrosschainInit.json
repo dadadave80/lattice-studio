@@ -1,0 +1,70 @@
+{
+  "name": "ERC20CrosschainInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol_",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xb2b45df5": {
+        "notice": "Runs the access-control + reentrancy-guard + ERC-20 + crosschain-link + crosschain module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls `setLink`/`setHandler`).",
+          "name_": "Token name.",
+          "symbol_": "Token symbol."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a self-bridging ERC-20 diamond: seeds `AccessControl` (the crosschain-link admin setters), the ReentrancyGuard used by the crosschain transfer path, the base `ERC20` (name/symbol + ERC-165), the {CrosschainLink} receive/send registry, and the {ERC20Crosschain} self-bridge (registers IBridgeFungible). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Runs the exact `__*_init` sequence the legacy inheritance mock performed, but on a REAL diamond. Companion to the {ERC20Init}/{ERC2981Init} patterns."
+  },
+  "source": {
+    "path": "src/tokens/ERC20/ERC20CrosschainInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/ERC20/ERC20CrosschainInit.sol"
+  }
+}

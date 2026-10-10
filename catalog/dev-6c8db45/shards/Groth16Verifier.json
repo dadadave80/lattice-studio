@@ -1,0 +1,106 @@
+{
+  "name": "Groth16Verifier",
+  "abi": [
+    {
+      "type": "function",
+      "name": "verifyProof",
+      "inputs": [
+        {
+          "name": "vk",
+          "type": "tuple",
+          "internalType": "struct IGroth16Verifier.VerifyingKey",
+          "components": [
+            {
+              "name": "alpha",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "beta",
+              "type": "uint256[2][2]",
+              "internalType": "uint256[2][2]"
+            },
+            {
+              "name": "gamma",
+              "type": "uint256[2][2]",
+              "internalType": "uint256[2][2]"
+            },
+            {
+              "name": "delta",
+              "type": "uint256[2][2]",
+              "internalType": "uint256[2][2]"
+            },
+            {
+              "name": "ic",
+              "type": "uint256[2][]",
+              "internalType": "uint256[2][]"
+            }
+          ]
+        },
+        {
+          "name": "proof",
+          "type": "tuple",
+          "internalType": "struct IGroth16Verifier.Proof",
+          "components": [
+            {
+              "name": "a",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            },
+            {
+              "name": "b",
+              "type": "uint256[2][2]",
+              "internalType": "uint256[2][2]"
+            },
+            {
+              "name": "c",
+              "type": "uint256[2]",
+              "internalType": "uint256[2]"
+            }
+          ]
+        },
+        {
+          "name": "input",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "Groth16InvalidVerifyingKey",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x6d832d8e": {
+        "notice": "Verifies a Groth16 proof against `vk` for the given public `input`.",
+        "dev": "Returns `false` (does not revert) for an invalid proof, an out-of-range public input (`>= SNARK_SCALAR_FIELD`), an off-curve / out-of-range proof point, or a failed pairing. Reverts only on structural misuse (key/input arity mismatch).",
+        "params": {
+          "input": "The public inputs, in the circuit's public-signal order.",
+          "proof": "The Groth16 proof.",
+          "vk": "The verifying key for the circuit."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet exposing a GENERIC Groth16 verifier over BN254. The verifying key is a parameter, so one deployment verifies proofs for any circuit — the primitive the ZK privacy modules plug their circuit's key into.",
+    "dev": "All logic lives in {Groth16VerifierLib}. Pure verification (view): no state beyond the ERC-165 registration written at init."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/privacy/Groth16Verifier.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/privacy/Groth16Verifier.sol"
+  }
+}

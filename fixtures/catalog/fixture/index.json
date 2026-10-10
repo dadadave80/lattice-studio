@@ -1,13 +1,13 @@
 {
   "lattice": {
     "tag": "fixture",
-    "commit": "f4a32c8330934d39bcfdffff87d35a04b7fa6a79"
+    "commit": "6c8db45aa46986af2edb6a0d8fb02a4a92faef01"
   },
   "toolchain": {
     "foundry": "1.8.3",
     "solc": "0.8.36"
   },
-  "hash": "0xce843be12f8b470d72cd0ddb41df9aed8a0c7d7abad718b34bb8b2731805ff24",
+  "hash": "0x694131ad41ee836f34ab8ec0a166e4d5c729f850c3cc0a3985997c07f5ca5b65",
   "deployer": {
     "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
     "codehash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989"
@@ -90,7 +90,7 @@
       "detail": {
         "path": "shards/AcrossBridgeAdapter.json",
         "bytes": 2086,
-        "hash": "0xf98f75f7d668183434b2ad85b7d3ef64a6373ae1cb541456d90d0c5e66b831b3"
+        "hash": "0x33c98548cd82b8be0cb4cbac7fe08a99a618deec4292d6e6d9cd29228612dd0d"
       }
     },
     {
@@ -159,7 +159,7 @@
       "detail": {
         "path": "shards/AxelarGatewayAdapter.json",
         "bytes": 3270,
-        "hash": "0xa2df3b20f70f54948fa90d2d8212052678ae6e289068d7f3a7d15878f3ae8af0"
+        "hash": "0x8c97476165abbdfa4aca2488af0ad61580590d0f945c11fb96074d38bac0f9c7"
       }
     },
     {
@@ -204,7 +204,7 @@
       "detail": {
         "path": "shards/BridgeERC20.json",
         "bytes": 1353,
-        "hash": "0x3608a2d183cbe501decb8e25c3abb53b76b3bee7bbd4c01a487d8279ee68060a"
+        "hash": "0xbd29155ecfc51ab9193e7bddc4d70fc23db6b4c5dc375f74612f4f92a6a3bfc6"
       }
     },
     {
@@ -249,7 +249,7 @@
       "detail": {
         "path": "shards/BridgeERC7802.json",
         "bytes": 1341,
-        "hash": "0x32d9e5ba54734276c0bbbaa5eeaffdf94787d5c23d950fb7c6412e2d1890b7b2"
+        "hash": "0xd29ef5943e849cf80bc8727830a43c5e62ac01be8caad46ba43cfc973b83461d"
       }
     },
     {
@@ -354,7 +354,7 @@
       "detail": {
         "path": "shards/CCIPGatewayAdapter.json",
         "bytes": 7129,
-        "hash": "0xfc7da72f14dadbb05c716054d778d7a87f85e554b251c93eba7bdd41b21ff22e"
+        "hash": "0x1e604ccae203f34056ab0a008083ee1009e12898ce9e00185e04effe0721a473"
       }
     },
     {
@@ -443,7 +443,7 @@
       "detail": {
         "path": "shards/CCTPBridgeAdapter.json",
         "bytes": 4738,
-        "hash": "0x076cbfff063ad31fc9d11da0f0cd5bf7678520713a5d30c886de71691f5a081b"
+        "hash": "0x271509fb892992c5c9a6e4c7ddb2e64e2b4046b2b34e933dc4d3ccde0f106f72"
       }
     },
     {
@@ -534,7 +534,7 @@
       "detail": {
         "path": "shards/ChainRegistry.json",
         "bytes": 8634,
-        "hash": "0x8e5d33d6fa2c2237edd49d538c0645e12763cf340f02879ff0e7442137ca3b18"
+        "hash": "0x080f0d71b9dacffada63794e5c41c1a600f283e5bdee5361f6cf602dbb48569f"
       }
     },
     {
@@ -595,7 +595,7 @@
       "detail": {
         "path": "shards/CrosschainLink.json",
         "bytes": 3010,
-        "hash": "0xef4296c1440d46442ef66c621edcc2b96a26ad858223c096d0599fa107c4946b"
+        "hash": "0x971aa673560bbe5a3cadc41a5c0995ff0947ca15ba5c864c93fc333d629e3797"
       }
     },
     {
@@ -632,7 +632,7 @@
       "detail": {
         "path": "shards/CrosschainTimelockHandler.json",
         "bytes": 1058,
-        "hash": "0x71cba6c0e61d4c93da64ea2a090e7380dbfbd12b1d03cd2b40e68ac002645d51"
+        "hash": "0xc00ce9556ba178453faf1c616665d2020b15e9b6c0de6b80abad4cde68bf6c4c"
       }
     },
     {
@@ -714,7 +714,7 @@
       "detail": {
         "path": "shards/ERC7786OpenBridge.json",
         "bytes": 3685,
-        "hash": "0x01b446bcefcde66394c94679a2508efbbbbb2997a571fe13a80fa75e820cc765"
+        "hash": "0x3d6c10d4977c9b0b6ade6410dcc49b3825c016ff0be3fd931e63b769b7e496fa"
       }
     },
     {
@@ -827,7 +827,7 @@
       "detail": {
         "path": "shards/HyperbridgeGatewayAdapter.json",
         "bytes": 10962,
-        "hash": "0xdf73b9f00b42e06558a43a2a006fbec2bc382faefec7fd3f226560a9ab9a1c8c"
+        "hash": "0x63bf2a4ac699f325530392a4c395b1fbc40ced0818262ec86677a4f77d6ae23d"
       }
     },
     {
@@ -908,7 +908,7 @@
       "detail": {
         "path": "shards/HyperlaneGatewayAdapter.json",
         "bytes": 4116,
-        "hash": "0x34479ae4f6d9578e36a1d3fec7163803b3298e682cd3d767da7d3e0509de9615"
+        "hash": "0x4a3322847a28bef19116d8edc636f6c007490c8a1148f604e9277559fa7a82ee"
       }
     },
     {
@@ -977,7 +977,7 @@
       "detail": {
         "path": "shards/L1ToL2CrossDomainMessengerGatewayAdapter.json",
         "bytes": 3044,
-        "hash": "0xb5f8c0092487ae7e671fdca06e8d1ad018cf98abead098bff5c2c45935ef68e7"
+        "hash": "0xed79663c1fb7621489721040387f26ad4f7c57eedf1d7c1ab02632b2fb29261d"
       }
     },
     {
@@ -1034,7 +1034,7 @@
       "detail": {
         "path": "shards/L2ToL2CrossDomainMessengerGatewayAdapter.json",
         "bytes": 2494,
-        "hash": "0x9d653d43d5383fc9177d7a3875e6c7c4a9ec0619c499d8600501c26794275415"
+        "hash": "0xf973b62d15f5a796db2517389faf642fe8b49a1697cae0147c8221b5ea040a57"
       }
     },
     {
@@ -1127,7 +1127,7 @@
       "detail": {
         "path": "shards/LayerZeroGatewayAdapter.json",
         "bytes": 5638,
-        "hash": "0x33cee92af2ba540baaef94bb4d912c6f71a538d0dd30dd9be3ba0468d14c16ea"
+        "hash": "0xe31526b86f6ad5ea54c131353cd6907e4335a926941c726021df727eb0266dd8"
       }
     },
     {
@@ -1188,7 +1188,7 @@
       "detail": {
         "path": "shards/StargateBridgeAdapter.json",
         "bytes": 3413,
-        "hash": "0x5d9775c0b5fcf21941a5a0043d4658438eca6bf0a44d6529b6be046eda158ec8"
+        "hash": "0xd1714161dcf6a9d99c3179a7d042cd7a48167a166961bb9cde775432246f6aab"
       }
     },
     {
@@ -1269,7 +1269,7 @@
       "detail": {
         "path": "shards/StarknetGatewayAdapter.json",
         "bytes": 4631,
-        "hash": "0xcdbf59bb0bfd59e552d081b1f051a9628c1748e8b7ab8a6bbe411c58a63b7357"
+        "hash": "0x55794a6343b1e2f0519a1fc31738202179c9d4378dd69ee751b85520e3ddbeb2"
       }
     },
     {
@@ -1304,7 +1304,7 @@
       "detail": {
         "path": "shards/SuperchainETHBridgeAdapter.json",
         "bytes": 1091,
-        "hash": "0x6bf35a4e7d990ff69de2df0d88ad6595ca65ebed3617054a24b7b645ed22a770"
+        "hash": "0x48c62fd6b68d0c443b244af9c475a0163aa0ec708b2ba84d656f503ab18e7a3d"
       }
     },
     {
@@ -1385,7 +1385,7 @@
       "detail": {
         "path": "shards/WormholeGatewayAdapter.json",
         "bytes": 4286,
-        "hash": "0xb9a62797507b86d1cfa275b6c3a8f11d30140770e0c63f54ca1a7f58bb3b3a9d"
+        "hash": "0x8c8dd9f1a940c84af644ffbbe082afe7eb6d31d9c329bc4c37d2a68d6e11b2c6"
       }
     },
     {
@@ -1458,7 +1458,7 @@
       "detail": {
         "path": "shards/ZetaChainGatewayAdapter.json",
         "bytes": 3355,
-        "hash": "0x52dbf80dc9e2d8294e2ef1f514aec80a052595b3c973a3efdefc86877b644a24"
+        "hash": "0xc67c1095c15783aa2431d564031b83c4bdaf0e2003e946b2c3a71646981cdab7"
       }
     },
     {
@@ -1511,7 +1511,7 @@
       "detail": {
         "path": "shards/API3Adapter.json",
         "bytes": 2106,
-        "hash": "0x04f7de4e890baf657eb1cd6f4aee43a4398232522e0561d349cac232af1c865d"
+        "hash": "0xe2630399507c26f2ee4204ba9b22164497ac308d452cd78c3b7d007bf8b30eff"
       }
     },
     {
@@ -1568,7 +1568,7 @@
       "detail": {
         "path": "shards/API3QRNGAdapter.json",
         "bytes": 2221,
-        "hash": "0x6b9751df5f43e7441c50e1bb7ddef96f0fcef45883b814c75595e13e7a8ff187"
+        "hash": "0x3cd12335dbbcc5abd5ef371687b25c94df91b395749c88f827c9f2db65037498"
       }
     },
     {
@@ -1629,7 +1629,7 @@
       "detail": {
         "path": "shards/BandAdapter.json",
         "bytes": 2820,
-        "hash": "0x5ab9c1f840e608584c33ce98a2c20b8db3afc0b3be2cf8dca0ca5d4419c404c2"
+        "hash": "0xc8c9bc53d85543fed22f56df5673b3bc93078d0a58624cb46cbf52f153c70005"
       }
     },
     {
@@ -1682,7 +1682,7 @@
       "detail": {
         "path": "shards/ChainlinkAdapter.json",
         "bytes": 2217,
-        "hash": "0xdc76349355d658feee199736b02073caa7633dee13b8b4a5ee3cd7931e16dd02"
+        "hash": "0xe2583f157716b202be0b1d2beabd392a95370a061f311ae34aea7e69d044414e"
       }
     },
     {
@@ -1743,7 +1743,7 @@
       "detail": {
         "path": "shards/ChainlinkAutomationAdapter.json",
         "bytes": 2186,
-        "hash": "0xe757b11865e63950db681ec7aa811d6059eab658fb334239cbc1ec753d114fd1"
+        "hash": "0x9d992cca2837d7af71bfb62778cf412536eefe87f25166910e4875f641bdc00a"
       }
     },
     {
@@ -1800,7 +1800,7 @@
       "detail": {
         "path": "shards/ChainlinkCREAdapter.json",
         "bytes": 2213,
-        "hash": "0xe5371d07c2f9ad23ceea7bcdb9ab8ca83444a10986166b935f8db11a9af60edc"
+        "hash": "0x35856c068f76d9e42676e8b092a7e0f13004a490459c1bb7acb482071618578a"
       }
     },
     {
@@ -1853,7 +1853,7 @@
       "detail": {
         "path": "shards/ChainlinkVRF.json",
         "bytes": 2103,
-        "hash": "0x71fbd21b2d12723e5674dbf4499f5eb177aa0800f11c94d11748824e2aab1eef"
+        "hash": "0xef6f84604e3e54cc728b74d0c54d52dd1196724645a7e1c3448e68cf0ca9847b"
       }
     },
     {
@@ -1906,7 +1906,7 @@
       "detail": {
         "path": "shards/ChronicleAdapter.json",
         "bytes": 2165,
-        "hash": "0x3e96e9bd26ad4efa27395de4f7585637ab6a6bd682fc5223eb8e75f54e0a6427"
+        "hash": "0xd1597ea70c6bf6aa616982035e6d636ef0c4fc4d71abf1709e88c56900af66c2"
       }
     },
     {
@@ -1959,7 +1959,7 @@
       "detail": {
         "path": "shards/DIAAdapter.json",
         "bytes": 2288,
-        "hash": "0xfa200662ef1425809c0fa86de2602f1562b7698400b5b313fccc2be55c04a4be"
+        "hash": "0xa36380c0852f5b4b6df10b4235ebf2a5c6d3a935fed2b9633e94770134b46499"
       }
     },
     {
@@ -2012,7 +2012,7 @@
       "detail": {
         "path": "shards/GelatoAutomateAdapter.json",
         "bytes": 2253,
-        "hash": "0x561c391cb4b062d75466014ab428aea1c2e4bdc14fb94d3bab53a30a367afeb4"
+        "hash": "0xe56356cfd70cd507590e840da747e8df679ece75e2a6bd684d973f7004c5ef75"
       }
     },
     {
@@ -2065,7 +2065,146 @@
       "detail": {
         "path": "shards/GelatoVRFAdapter.json",
         "bytes": 1746,
-        "hash": "0xd14625ff7cab6f10e4e5505d76d0944fd82eb3be3a7d87b81e16ff40d30738af"
+        "hash": "0x6556294c91cc8d1597aef7f1c5ebc59793e24fdaff06ea6adce98f6195ebe0e6"
+      }
+    },
+    {
+      "name": "HederaExchangeRateAdapter",
+      "area": "oracles",
+      "source": "src/oracles/hedera/HederaExchangeRateAdapter.sol",
+      "summary": "Diamond facet exposing Hedera's network USD/HBAR exchange rate (system contract 0x168).",
+      "selectors": [
+        {
+          "hex": "0xa26c8e04",
+          "signature": "hbarUsdWad()"
+        },
+        {
+          "hex": "0x43a88229",
+          "signature": "tinybarsToTinycents(uint256)"
+        },
+        {
+          "hex": "0x2e3cff6a",
+          "signature": "tinycentsToTinybars(uint256)"
+        },
+        {
+          "hex": "0x8f66af92",
+          "signature": "usdCentsToWei(uint256)"
+        }
+      ],
+      "touches": [],
+      "release": {
+        "salt": "0x19b3d6a1dd613e299afe168ca7ebb93bb6e54c61f4eb6b3f1ea21241a76c34ae",
+        "version": "0.2.0",
+        "address": "0x2619301D58af2C05de8c58303199ddf17143Da20",
+        "codehash": "0x1786be895afad4606df80fffe54963245b233a014afcd8f9f63be26784adcc21",
+        "initCodeHash": "0x6e5e1ebcfc3cdcb4c98a6a7bc6c5f761883bfbcc154092f1f6d0aec50adcfc88",
+        "creationCode": {
+          "path": "code/HederaExchangeRateAdapter.creation.hex",
+          "bytes": 68,
+          "hash": "0xfa1c1292477b9edc87fd0c0ca1ffe9839d497037c545ee5215e4d68bb91cffd8"
+        }
+      },
+      "requires": [],
+      "detail": {
+        "path": "shards/HederaExchangeRateAdapter.json",
+        "bytes": 1604,
+        "hash": "0x4f7f90b866cd6119d802b06fb5ac426c6ec08a7cb02bc8ac1e8d0e2299e85b6c"
+      }
+    },
+    {
+      "name": "HederaPrngAdapter",
+      "area": "oracles",
+      "source": "src/oracles/hedera/HederaPrngAdapter.sol",
+      "summary": "Diamond facet exposing Hedera's PRNG system contract (0x169) as synchronous randomness.",
+      "selectors": [
+        {
+          "hex": "0xc2f9516d",
+          "signature": "drawInRange(uint32,uint32)"
+        },
+        {
+          "hex": "0x4c7dde2f",
+          "signature": "drawSeed()"
+        }
+      ],
+      "touches": [],
+      "release": {
+        "salt": "0xc5dd9ceac11f8daa6c752bdaf98c97d6486857ba2a3bc54e3efedb0ecce97a35",
+        "version": "0.2.0",
+        "address": "0xE697E0465BD597d489090988865e61aEb6ceb5Dd",
+        "codehash": "0xebbd4dfcf81b9b17c8ed02bc6aaa935afdbfaac1b5307dd2ae2c5e31a4762f6b",
+        "initCodeHash": "0x28cf6abb6c5891629723aef093d24e8ff977e21bd84d88b19dbdd2d01614e627",
+        "creationCode": {
+          "path": "code/HederaPrngAdapter.creation.hex",
+          "bytes": 52,
+          "hash": "0x29ce19e4e14e61f26210954f95d8f190bdd33cacfcc34574b7b8eb299026f4bf"
+        }
+      },
+      "requires": [],
+      "detail": {
+        "path": "shards/HederaPrngAdapter.json",
+        "bytes": 1011,
+        "hash": "0xababa1adf8000a9970446a6f16b1e1c1cc3dab1ffcde1defc0dc7b45aa99d3f4"
+      }
+    },
+    {
+      "name": "HSSAdapter",
+      "area": "oracles",
+      "source": "src/oracles/hedera/HSSAdapter.sol",
+      "summary": "Diamond facet for Hedera Schedule Service automation: scheduled (self-)calls paid by the diamond, plus contract-key signatures on native scheduled transactions.",
+      "selectors": [
+        {
+          "hex": "0xf0637961",
+          "signature": "authorizeSchedule(address)"
+        },
+        {
+          "hex": "0x1735e9e0",
+          "signature": "completeSelfCall(bytes32)"
+        },
+        {
+          "hex": "0x72d42394",
+          "signature": "deleteSchedule(address)"
+        },
+        {
+          "hex": "0xdfb4a999",
+          "signature": "hasScheduleCapacity(uint256,uint256)"
+        },
+        {
+          "hex": "0x6f5bfde8",
+          "signature": "scheduleCall(address,uint256,uint256,uint64,bytes)"
+        },
+        {
+          "hex": "0xec2a7610",
+          "signature": "scheduleOf(bytes32)"
+        },
+        {
+          "hex": "0x193704bb",
+          "signature": "scheduleSelfCall(bytes32,uint256,uint256,bytes)"
+        }
+      ],
+      "storage": {
+        "id": "lattice.storage.HSSAdapter",
+        "slot": "0x12fa09b7b2cb13ace416911567e16cefd04261b5db45857ec33ecae7c1298700"
+      },
+      "touches": [
+        "lattice.storage.AccessControl"
+      ],
+      "release": {
+        "salt": "0xb734182ff63ee0c2110353e52a3a2b863ac01976bbf0da32e1585c7f1cb23cd4",
+        "version": "0.2.0",
+        "address": "0x09C4210195F59fD9C5DC991de7992b85e4F8c24a",
+        "codehash": "0xd2f052f1a85039c8808b6387f2c47b8e3729c1a846b49f3b0beb7b17945fd2d8",
+        "initCodeHash": "0x8104fadd2c07e0acdc9f4944b9d0914265f5f53de742967be329bb30941e6bd7",
+        "creationCode": {
+          "path": "code/HSSAdapter.creation.hex",
+          "bytes": 38,
+          "hash": "0xc2971a851b48424e76e5eb91f0d8f6530fb1ddeb093af44c09c98127d8463518"
+        }
+      },
+      "requires": [],
+      "detail": {
+        "path": "shards/HSSAdapter.json",
+        "bytes": 3053,
+        "hash": "0x8153b7947340cf5bac1532cd50f7429c3e8855ac2fd6b343b262f9162f4c8370"
       }
     },
     {
@@ -2134,7 +2273,7 @@
       "detail": {
         "path": "shards/PythAdapter.json",
         "bytes": 3363,
-        "hash": "0xaa4c973f231d663aa5682d593018facc20edce4462613ad3edf9181d8ed49c01"
+        "hash": "0xb560a50618eea3d2c0a9007a14e2e439a158f0d620e91da76485d58aabad7494"
       }
     },
     {
@@ -2191,7 +2330,7 @@
       "detail": {
         "path": "shards/PythEntropyAdapter.json",
         "bytes": 2198,
-        "hash": "0xddc36288cbace2895ae714d849b86c61a1e4896b7a631e2d43de89837f45930f"
+        "hash": "0x8a566b3cf454b7cb9b6646fe599ce54615c919a5486d3de4fc3daad9c11c4017"
       }
     },
     {
@@ -2244,7 +2383,7 @@
       "detail": {
         "path": "shards/RedStoneAdapter.json",
         "bytes": 2333,
-        "hash": "0x4298aca259f1fdde0e38a7acdacae23cf4fb462563fe0074cc7f57d4fbceb225"
+        "hash": "0x0110207512732f30df1c0ae8dbe4b744289aa52ce4fbfca374416dc0cb5cd164"
       }
     },
     {
@@ -2305,7 +2444,7 @@
       "detail": {
         "path": "shards/TellorAdapter.json",
         "bytes": 2722,
-        "hash": "0x0640cf4b53fd569bec0e2c375e2e894e8e75ca07e2a0351a0869a07a339a7c3c"
+        "hash": "0x09ef75f6606b765a6a252b139f2fea7e1df0febf6dc263e7c98cc43c1153da7a"
       }
     },
     {
@@ -2362,7 +2501,7 @@
       "detail": {
         "path": "shards/TWAPOracle.json",
         "bytes": 2135,
-        "hash": "0x5b32259efaf8c804fa9229dd707fce7b573090dd3c407418a653d3168adc6e52"
+        "hash": "0x0fb6e2a55d13901e5b8e956d2f5bb14a3eb2d2702f602797d87561a6947f733f"
       }
     },
     {
@@ -2421,7 +2560,7 @@
       "detail": {
         "path": "shards/ERC1155.json",
         "bytes": 3075,
-        "hash": "0x1f7d840952c046876a70f3caf1f0b2b7867545b6cdeb316100d761f8cd867a64"
+        "hash": "0x3dc76ee14f2730ed3eae33e7b1be5c96c66ef9f3768f735554471d36470e6dcc"
       }
     },
     {
@@ -2489,7 +2628,7 @@
       "detail": {
         "path": "shards/ERC20.json",
         "bytes": 2867,
-        "hash": "0xd0ff0dc11514b4e2b4a54d05f6f5ed78ba04f236d629b2c080465abfae60e5df"
+        "hash": "0x8bbc77b7dfb4334827b2b169a6d17c173b9707dbee1f0123b9534afb05a367d2"
       }
     },
     {
@@ -2526,7 +2665,7 @@
       "detail": {
         "path": "shards/ERC20Burnable.json",
         "bytes": 887,
-        "hash": "0x04a88762e09e2828a54074dd8e2b68b3e14c15907f199db878196f3f0fa5e400"
+        "hash": "0x633266a6a57cbbe965e8ab459dbfd44722be9c0e677ed45a18ebbda4d729e778"
       }
     },
     {
@@ -2563,7 +2702,7 @@
       "detail": {
         "path": "shards/ERC20Capped.json",
         "bytes": 555,
-        "hash": "0xf6b773d8ca89e72afef3ba61e27a02c80be9d0455a43fabf93c0c115957b16b0"
+        "hash": "0x32ccb4c79df92ac3f53e346daf4a61c6ed6b7a5a99beab65dc5e08ea609f234b"
       }
     },
     {
@@ -2601,7 +2740,7 @@
       "detail": {
         "path": "shards/ERC20Crosschain.json",
         "bytes": 1214,
-        "hash": "0x8672ed0c9f8a3fcba9145151380d5d3cf178f870d9dda65f36b2a351eb306244"
+        "hash": "0xbccabed89fff4f5a41049a1450512e19935dec933dd42b1dfe908d4c1b60fcf2"
       }
     },
     {
@@ -2642,7 +2781,7 @@
       "detail": {
         "path": "shards/ERC20FlashMint.json",
         "bytes": 1549,
-        "hash": "0x9832ac885ab6e11ac403e96f4acba30b204105023d6db80b8064e88922f2f704"
+        "hash": "0x726fe8aa29bd043d38e3d0f6b2178add98576bf25539ab23b19ad39669a6d053"
       }
     },
     {
@@ -2681,7 +2820,7 @@
       "detail": {
         "path": "shards/ERC20Pausable.json",
         "bytes": 1156,
-        "hash": "0x6d63ded13a036898f89159a4b463e52c5d954801a077c7e0e03e453e84d59fea"
+        "hash": "0x33a1fabab6027dc33afec801220b85641ea233508f1c5e518d1e8c328041ce1f"
       }
     },
     {
@@ -2725,7 +2864,7 @@
       "detail": {
         "path": "shards/ERC20Permit.json",
         "bytes": 1516,
-        "hash": "0x175acc2a2fdbeb2327f1a6aff3252223584db4de96df774bf659f38a3ca083b0"
+        "hash": "0x66a6e2e27ba5cd1b0035f63ca27098fe254a4783473ffad8caf9a9fff6411af7"
       }
     },
     {
@@ -2784,7 +2923,7 @@
       "detail": {
         "path": "shards/ERC20Votes.json",
         "bytes": 2564,
-        "hash": "0xaad8362a3af5bc5146c462cbeb1eb7c88b9f40f625bc8949a3ba0cb1ff906d1a"
+        "hash": "0x6c1aa5155cf893f9df8724c12d188ea4a24fb75745f6a6d11dfc30a8d984718f"
       }
     },
     {
@@ -2837,7 +2976,7 @@
       "detail": {
         "path": "shards/ERC2981.json",
         "bytes": 1870,
-        "hash": "0x961ada714ffb2bcb28ea99f1790a4b6e1f4de26d85ed546eeb4f818cc551b066"
+        "hash": "0x5c661f8bec56f6d2f359a45e5b8c22124cb7a6521276f67dbe0de37e25d56bdc"
       }
     },
     {
@@ -2942,7 +3081,7 @@
       "detail": {
         "path": "shards/ERC4626.json",
         "bytes": 5324,
-        "hash": "0x9081c973a1272e4b9328697d34d98ee633cbdb47af9903d5129c35cbecd91db4"
+        "hash": "0xcef6a0cf883b2d82cdc9f98facaef52de3e484809098acb1daab843753b9aec6"
       }
     },
     {
@@ -3021,7 +3160,7 @@
       "detail": {
         "path": "shards/ERC721.json",
         "bytes": 4033,
-        "hash": "0xc2eefc0d2b9aa1de097e8d753da8f5d2ba8951a48a4c03a6519348052f7a1814"
+        "hash": "0x3956f5ee2f7599274b73edd9081eb618078796658d35a60326800bd4c4b95ff0"
       }
     },
     {
@@ -3059,7 +3198,92 @@
       "detail": {
         "path": "shards/ERC7802.json",
         "bytes": 1068,
-        "hash": "0x903575454dd3751ac9d5c93c80321fce3e5c672e580d18888c1b1bc162dfdcdf"
+        "hash": "0x804ee77e521b3ed63fadb76fd62e4aa6ef60b40e58381a681d3551267294cf0a"
+      }
+    },
+    {
+      "name": "HTSAdapter",
+      "area": "tokens",
+      "source": "src/tokens/hedera/HTSAdapter.sol",
+      "summary": "Diamond facet that makes the diamond a first-class Hedera Token Service account: association, treasury transfers, and creation / mint / burn of tokens keyed to the diamond.",
+      "selectors": [
+        {
+          "hex": "0xa7efe348",
+          "signature": "associateToken(address)"
+        },
+        {
+          "hex": "0xd6910d06",
+          "signature": "burnToken(address,int64,int64[])"
+        },
+        {
+          "hex": "0xdeaac2bb",
+          "signature": "createFungibleToken(string,string,string,int32,int64,int64)"
+        },
+        {
+          "hex": "0x6830760a",
+          "signature": "createNonFungibleToken(string,string,string,int64)"
+        },
+        {
+          "hex": "0x54771086",
+          "signature": "createdTokens()"
+        },
+        {
+          "hex": "0xd5d607b6",
+          "signature": "dissociateToken(address)"
+        },
+        {
+          "hex": "0xcaaf0325",
+          "signature": "htsTokenType(address)"
+        },
+        {
+          "hex": "0xd55fe582",
+          "signature": "isAssociated(address)"
+        },
+        {
+          "hex": "0x20cab858",
+          "signature": "isHTSToken(address)"
+        },
+        {
+          "hex": "0xe0f4059a",
+          "signature": "mintToken(address,int64,bytes[])"
+        },
+        {
+          "hex": "0x84ec4652",
+          "signature": "transferNFT(address,address,int64)"
+        },
+        {
+          "hex": "0x75fd1606",
+          "signature": "transferToken(address,address,int64)"
+        },
+        {
+          "hex": "0x5f34cf96",
+          "signature": "transferTokenFrom(address,address,address,int64)"
+        }
+      ],
+      "storage": {
+        "id": "lattice.storage.HTSAdapter",
+        "slot": "0x91b64afeea686e80e2bda212862c0850ed3389288ac3f914b1109537d6e3f500"
+      },
+      "touches": [
+        "lattice.storage.AccessControl"
+      ],
+      "release": {
+        "salt": "0x01f38607ccd373710bce354781180a55da6cd6dad6a2a447fc5ffb4763cea397",
+        "version": "0.2.0",
+        "address": "0x2036De396Aac04BDf12F55c6B32227b9EA459CbF",
+        "codehash": "0xd1eddb72b27f37d08e2146b900d72629f9e8c6ae76ddb6d86837469984d51c6d",
+        "initCodeHash": "0xdef0ae4a72b9c2fd0636df18cac3c0d2c998a8da124cdf1f537013772a071232",
+        "creationCode": {
+          "path": "code/HTSAdapter.creation.hex",
+          "bytes": 38,
+          "hash": "0x6c779dcd10740938cbfc0563cce696495f36d94d75bb0c07af4408f29804df9b"
+        }
+      },
+      "requires": [],
+      "detail": {
+        "path": "shards/HTSAdapter.json",
+        "bytes": 5576,
+        "hash": "0x94bec4cbc463e4b75ca4719994ab13a8bcd33fd34480cd7d2e3766a679d0b60a"
       }
     },
     {
@@ -3124,7 +3348,7 @@
       "detail": {
         "path": "shards/MarketplaceZone.json",
         "bytes": 5057,
-        "hash": "0xda0aaf7e96761e50730aa40ccb52ea8ee4255b5212f66add7e3266fbda245ff0"
+        "hash": "0x5023b3efca23246f1cdf65a28c10152b4cad27d078ad0d504f77c8f6337bb45d"
       }
     },
     {
@@ -3144,6 +3368,10 @@
         {
           "hex": "0x90d1a7de",
           "signature": "requireUserVerification()"
+        },
+        {
+          "hex": "0x9c012f57",
+          "signature": "setHederaAccountSigner(address)"
         },
         {
           "hex": "0x13af4035",
@@ -3185,8 +3413,8 @@
       "family": "account",
       "detail": {
         "path": "shards/AccountSigner.json",
-        "bytes": 2089,
-        "hash": "0x9e1f1cefa83f793b8fb955a33185018b8ac4f93de8c621ade6fa1b214a34ad16"
+        "bytes": 2331,
+        "hash": "0xfb6338a6172e0b3628f6d56fd3b32d85c8ca7cfb91447d205913b363bd58818c"
       }
     },
     {
@@ -3220,7 +3448,7 @@
       "detail": {
         "path": "shards/ERC1271Signature.json",
         "bytes": 698,
-        "hash": "0xab09cbeb0ca3743c67eab3294aaa7246944124f615fd9745670d5700781094f9"
+        "hash": "0x390b244ab2f3d899be7443462cf01e9c3ca3526a899d7cd224b976eed75e80db"
       }
     },
     {
@@ -3267,7 +3495,7 @@
       "detail": {
         "path": "shards/ERC4337Validation.json",
         "bytes": 1912,
-        "hash": "0x71eafde93e49b83fc346bf54bf8c2b5825fe9d3f9e85981acdc4672d81af0613"
+        "hash": "0x360cc6be2f5bc90c48d23dec2cc0659a5d03ee40aec3ac15d0beafb09efb5aaa"
       }
     },
     {
@@ -3305,7 +3533,7 @@
       "detail": {
         "path": "shards/ERC6900AccountView.json",
         "bytes": 961,
-        "hash": "0x3961cba3db1c90cf839af735b8b417095da7001c5805eb221eff9dff2dc329b5"
+        "hash": "0xbf9e639ddbec167bd2267fd1bf5f5ac549f45c0d440405249a7ad340f7c1fb4c"
       }
     },
     {
@@ -3347,7 +3575,7 @@
       "detail": {
         "path": "shards/ERC6900Executor.json",
         "bytes": 1779,
-        "hash": "0x658192f15c1feed650d786ea243a7765213d5bc69bd9403856ce3737f551b06a"
+        "hash": "0x12e5c114585460e375a9c57bdbf4cedc4638c723992abf40394d3e75564d9c75"
       }
     },
     {
@@ -3400,7 +3628,7 @@
       "detail": {
         "path": "shards/ERC6900ModuleManager.json",
         "bytes": 4001,
-        "hash": "0x066e663b02ebab515425471cffc5d9e2e7a9acbde16361c599d6dc4b8a12fe5e"
+        "hash": "0x75e7033a57370d08a1ea3a8dc6d23e07ae80a96442bae731ce342e47c759f353"
       }
     },
     {
@@ -3434,7 +3662,7 @@
       "detail": {
         "path": "shards/ERC6900Signature.json",
         "bytes": 840,
-        "hash": "0x8f2eb7e8444baa631085a63b82856636f5f37e65dc6957a258ac965971096d71"
+        "hash": "0xc96f2a5c4722f07334bdfa76123c08dac7f6c1c5c4b2d68c2bafca01c6ec19e2"
       }
     },
     {
@@ -3469,7 +3697,7 @@
       "detail": {
         "path": "shards/ERC6900Validation.json",
         "bytes": 1548,
-        "hash": "0x83795d550d29be682ecd12dedf6a208b16df89244569a3fb51f336b0824ce017"
+        "hash": "0xf38cd062d79dc6ee552b0293546a73a47cabe3ba1705eda3ed3a27f2893ca89d"
       }
     },
     {
@@ -3512,7 +3740,42 @@
       "detail": {
         "path": "shards/ERC7821Executor.json",
         "bytes": 971,
-        "hash": "0xe3f6d8a76d83049472a2b7eb144a364653c79427580ebf54fde395012898b566"
+        "hash": "0xaf954cdcbd300465c9e3028289a138e46ef11d439bbc2b15b604d7f5746c5f2d"
+      }
+    },
+    {
+      "name": "HASSignatureVerifier",
+      "area": "accounts",
+      "source": "src/accounts/hedera/HASSignatureVerifier.sol",
+      "summary": "Diamond facet exposing HIP-632 native Hedera account signature verification (ED25519 + ECDSA, key lists via the protobuf path) as two never-reverting views.",
+      "selectors": [
+        {
+          "hex": "0xb2526367",
+          "signature": "isAuthorized(address,bytes,bytes)"
+        },
+        {
+          "hex": "0x249024ac",
+          "signature": "isAuthorizedRaw(address,bytes32,bytes)"
+        }
+      ],
+      "touches": [],
+      "release": {
+        "salt": "0x88b9e75d3dd68c3c3c0cdec0af980080cdfa016f8b09bcb361cd5524f31bbc14",
+        "version": "0.2.0",
+        "address": "0x46D7742f0d8dbA2C36C7d6673D7D65373B8ECf36",
+        "codehash": "0x9a8f25491d0756769d2999a6e0e9f59216321744f116c9dcc50519ed1532c708",
+        "initCodeHash": "0x3c213fd5801e77e313c849e3372ae2c7f7489989dfaf828d30df0ed4d79414dd",
+        "creationCode": {
+          "path": "code/HASSignatureVerifier.creation.hex",
+          "bytes": 58,
+          "hash": "0x4b45dbcb4e13800833815f80039fd308f656c9442d1a5058ab88a0ba33cbcd34"
+        }
+      },
+      "requires": [],
+      "detail": {
+        "path": "shards/HASSignatureVerifier.json",
+        "bytes": 1427,
+        "hash": "0xe60825b8521ccb6cfb1513370939b688309fe71690eb1eb350941f5c3d1fae8d"
       }
     },
     {
@@ -3591,7 +3854,7 @@
       "detail": {
         "path": "shards/ConstantProduct.json",
         "bytes": 5121,
-        "hash": "0x43de1f68cd5999fd606cc9a7286b29b262d3142aa21459bc6819af009937080d"
+        "hash": "0xa49bdf18f1dae43c514010bf26780b84afafd83a4c05d1e290d6d9b135f3e9de"
       }
     },
     {
@@ -3636,7 +3899,7 @@
       "detail": {
         "path": "shards/AggregatorExecAdapter.json",
         "bytes": 1844,
-        "hash": "0xbf630cedbfbefbe8b905f9ab9966ebc2c3763a77a7b416665f1107f957d033c1"
+        "hash": "0xbd26286eee64f62bccaba5cb24e847570c10f263ca93e53bdfe447db34ef6268"
       }
     },
     {
@@ -3725,7 +3988,7 @@
       "detail": {
         "path": "shards/GovernedVault.json",
         "bytes": 4201,
-        "hash": "0xfbf817b73d9feda1a4a6e5ed1d8f4c8cbe16bf05a034ba818135c17a14180230"
+        "hash": "0xf47151c52ecf46a35ca5e569ff0935183a9dcb9ab3e7c3fa1c43129b37b269ac"
       }
     },
     {
@@ -3806,7 +4069,7 @@
       "detail": {
         "path": "shards/StrategyManager.json",
         "bytes": 3059,
-        "hash": "0x9893cb05de5c4014962da3886886fff6b8234ce4d77bda5087021adda1fe60fd"
+        "hash": "0x1fd6fe17d767f5e1ab55e7ae43fdca0ff6eec15999b0fd13103d458616ca6176"
       }
     },
     {
@@ -3897,7 +4160,7 @@
       "detail": {
         "path": "shards/VaultCore.json",
         "bytes": 3601,
-        "hash": "0xacc32c76c54ffa6b8e95481e4d5d8ca0e76d0c880266e57186bf730a7a681edb"
+        "hash": "0x9ed73c3032d8a2d5318447e7445731463722c340b018aa33104071f0f4ec6295"
       }
     },
     {
@@ -3948,7 +4211,7 @@
       "detail": {
         "path": "shards/CommitReveal.json",
         "bytes": 1924,
-        "hash": "0x2d312d71b1a9b92d9900a9e91f78f80d01c24e7860150696cde352be86a25052"
+        "hash": "0x9c51b41670a9e1788e00e02c7e509945f0cb865fec327efb48fb850814a7c8a0"
       }
     },
     {
@@ -3979,7 +4242,7 @@
       "detail": {
         "path": "shards/ERC5564Announcer.json",
         "bytes": 854,
-        "hash": "0x94c6c97aa53269441e537be4103391f08df91584192c73be7237fb27778e79f4"
+        "hash": "0xb51649bcdf28b917af94b212f120721b1a6158ac5ecb493e5ff29f3c8d7bd5e9"
       }
     },
     {
@@ -4041,7 +4304,7 @@
       "detail": {
         "path": "shards/ERC6538Registry.json",
         "bytes": 2402,
-        "hash": "0x58188efe9b1b41735596903dccba28e5ac0907659e0a4778687d7710ebbf2547"
+        "hash": "0x00d2940528b242119d4204ce924b338ad74124e000c765434ec5bf7f90740174"
       }
     },
     {
@@ -4072,7 +4335,7 @@
       "detail": {
         "path": "shards/Groth16Verifier.json",
         "bytes": 1395,
-        "hash": "0xd4e1a32bd669f16ce12cd074c18d4bd9a5d2dbab4b9267a9d066bb2ee61cf778"
+        "hash": "0xd2ef210bde4b08027c04074b2ce7ac7f80ad9b257bf5a4f9ab9295b5598aa036"
       }
     },
     {
@@ -4103,7 +4366,7 @@
       "detail": {
         "path": "shards/PlonkVerifier.json",
         "bytes": 2626,
-        "hash": "0x205d7656edf1a052b762d720acf363cd76a1129673a089a481db55ae3ff8989e"
+        "hash": "0x1bd2e945195dad63a04a885df698c766e38678abfa46cda6e0b16f2c9f5a6423"
       }
     },
     {
@@ -4160,7 +4423,7 @@
       "detail": {
         "path": "shards/PrivateVoting.json",
         "bytes": 2799,
-        "hash": "0x95c1dfccdcebd4201fdc45173d3c7f4364417a7ce14db1a85dfdf3a18859e1b7"
+        "hash": "0xe72085e6ff59aebff1219d743340bb2119617645c638656b2ebf3cc14de76234"
       }
     },
     {
@@ -4249,7 +4512,7 @@
       "detail": {
         "path": "shards/Semaphore.json",
         "bytes": 4876,
-        "hash": "0xc1aacfea52075858b34f82c9a953c4e4e3b956bd921736c6ca59e278642093de"
+        "hash": "0xe3727e81ebf3453b9b847771a5cc556ec491a121b2e82a1d7ce1f07e6d9683e9"
       }
     },
     {
@@ -4314,7 +4577,7 @@
       "detail": {
         "path": "shards/ShieldedPool.json",
         "bytes": 3654,
-        "hash": "0xc47b51d8ec1a50c8f74791f2b15927b08df6e4419fbedd6ca20c5b224776ce4f"
+        "hash": "0xdbd87d39069f99c58f9f52c97a1e08cb2b2061c10ab485618add08b334da8925"
       }
     },
     {
@@ -4357,7 +4620,7 @@
       "detail": {
         "path": "shards/AccessControlDiamondCut.json",
         "bytes": 1093,
-        "hash": "0xf2ea813647479cd991009410fa07ffa255dc6c884a734c5ec9934b6cd1745f48"
+        "hash": "0xc08f6d668595b4ba931b3c56528deae426c78aa1814acd34ce1b1a9dc3fc58cc"
       }
     },
     {
@@ -4437,7 +4700,7 @@
       "detail": {
         "path": "shards/GovernedDiamondCut.json",
         "bytes": 3578,
-        "hash": "0x77e6cadb7bbda369759a341768d03d43d49687de60e86edfe56a613d201896d5"
+        "hash": "0x7c540df5da9873f0303feaec63ea2e964981be56b06cc91bd19f7a6a17123a00"
       }
     },
     {
@@ -4557,7 +4820,7 @@
       "detail": {
         "path": "shards/GovernedSafeDiamondCut.json",
         "bytes": 6611,
-        "hash": "0x7de5540209d7ff0b5f57b0a1fede24f62b3f880a7f61d37f411fa79b6403d349"
+        "hash": "0x5611c218c3b24a228cac2c3da8db5224fc3ecbcfedd3690c23c64031270111da"
       }
     },
     {
@@ -4735,7 +4998,7 @@
       "detail": {
         "path": "shards/Governor.json",
         "bytes": 11558,
-        "hash": "0x07f552b21baf8ba2e59a7254b170dee7b898feb5aae5dd37c4f9701e4f6c9154"
+        "hash": "0x5db6025dc7fa6d9317cb294adef6014cc3f47a6f14826a17c5cb4f64940e1e60"
       }
     },
     {
@@ -4823,7 +5086,7 @@
       "detail": {
         "path": "shards/SafeDiamondCut.json",
         "bytes": 3984,
-        "hash": "0x567a5e59ff2987eb3539aca4869237a3a66fb4dd900c26b6ad608348af10996c"
+        "hash": "0x4be669af247430aa9b8bc365dc5b01c5dbb0d8b796c898cfea34cb829f39027f"
       }
     },
     {
@@ -4884,7 +5147,7 @@
       "detail": {
         "path": "shards/SafeHarborAdopter.json",
         "bytes": 3814,
-        "hash": "0x1bcea3ed8ecb989a0e130b31639a4fffcf9399d0d66f220f9665252fd89da3f5"
+        "hash": "0xb39c75df831b75af712f78a32c84e23931944e0aa2e8cf0c76c0a05e8067bc4e"
       }
     },
     {
@@ -4989,7 +5252,7 @@
       "detail": {
         "path": "shards/TimelockController.json",
         "bytes": 6765,
-        "hash": "0xed8d5d94d2b83de06dcdb211fd96cdba21a8fa2357fac12ae497f323cab7703b"
+        "hash": "0xfb311df2277e107716d5571b95e26e7fc7b5ffd6abe8804b0370bfbef8390635"
       }
     },
     {
@@ -5056,7 +5319,7 @@
       "detail": {
         "path": "shards/Votes.json",
         "bytes": 2770,
-        "hash": "0xa9de372706d1dc17b0eb80b621a71eb5994adddc3d4668b29e3b4981ee70dc6c"
+        "hash": "0xa3b11f2fa4dcfedeae64c3ea48450523e099aa5f34ad937cf940855018d2f0c5"
       }
     },
     {
@@ -5113,7 +5376,7 @@
       "detail": {
         "path": "shards/CircuitBreaker.json",
         "bytes": 2348,
-        "hash": "0x009fc9d1733de43ad04cf28d4a5057845096a3f1c21a867495397f6d015e62fa"
+        "hash": "0xe4f43c8197965d6be39b78f29e91c9b8b5f1451c813ad99e270faf1253fe9775"
       }
     },
     {
@@ -5174,7 +5437,7 @@
       "detail": {
         "path": "shards/EmergencyStop.json",
         "bytes": 1885,
-        "hash": "0x01cd3296ed95f1aa6df516b61f7c0238abd53855dec921bed8bbd53f9c7d56fa"
+        "hash": "0x0d3a4447fe722516100fc27c63a68d3c8596fbc63c4a842723759121d67915b9"
       }
     },
     {
@@ -5227,7 +5490,7 @@
       "detail": {
         "path": "shards/InvariantChecker.json",
         "bytes": 1835,
-        "hash": "0xdd6a070cd1d93c7cc615d72379841a2ee52f532ddec8649815e7aabdedf9356a"
+        "hash": "0x627091679927dc1d166f6c70f8ce52694ae42f1fbf94266cdfa9a065581683fd"
       }
     },
     {
@@ -5272,7 +5535,7 @@
       "detail": {
         "path": "shards/Pausable.json",
         "bytes": 817,
-        "hash": "0x7b7dadc01c86c0467c41fe47af2d2af05740682e7ed33ca92f6db2b3b76bcca0"
+        "hash": "0x0ddd57ec774ae89c84cc9fd43c268076fe1f3192273aa30084890984b7dc9770"
       }
     },
     {
@@ -5321,7 +5584,7 @@
       "detail": {
         "path": "shards/RateLimiter.json",
         "bytes": 1744,
-        "hash": "0xb53aa955d8a8551ea977e7412b468dec3c8005a055fa63505b7c7356977622c8"
+        "hash": "0xe7452a91df6e660df5a64e028b67f32cd33c0fee644f5b32edd501c72401e1d5"
       }
     },
     {
@@ -5374,7 +5637,7 @@
       "detail": {
         "path": "shards/AccessControl.json",
         "bytes": 1960,
-        "hash": "0x053042358b9c66d1ea4d04b99840f321b4ee7705cadc68a84199010182094cc7"
+        "hash": "0x8d428af034c0c9bbea877bc350b45a8ae33c85f5a575e286bfa10c38e36cccb8"
       }
     },
     {
@@ -5440,7 +5703,7 @@
       "detail": {
         "path": "shards/AccessControlEnumerable.json",
         "bytes": 2873,
-        "hash": "0xdaefb77682d7ebc09fc18953fa2148a6ac911878de8ca5ceec0b40f4d9056a2e"
+        "hash": "0x66a25ad82c55a3fa8558a1e0f9b9dc6e894ced213c7662fb87433c0ef2b034b9"
       }
     },
     {
@@ -5506,7 +5769,7 @@
       "detail": {
         "path": "shards/AccessControlTimed.json",
         "bytes": 3250,
-        "hash": "0x3b76241c80799a786e2f93aa42dbd88c6c0d85380c307254afbfd5b778e75763"
+        "hash": "0x202ba589d1213d66cc130ed771d17edfa6df0db945cdd92a4c993e54e297c264"
       }
     },
     {
@@ -5553,7 +5816,7 @@
       "detail": {
         "path": "shards/AccessManaged.json",
         "bytes": 1234,
-        "hash": "0xff22bb3732534c0e984d658ee7566213ae14ab8f44c472fc3adc165736043f0f"
+        "hash": "0xcf318bec50ab5cd436cd03ddc94ce515155f93895e03d983982ff12f68c866d2"
       }
     },
     {
@@ -5700,7 +5963,7 @@
       "detail": {
         "path": "shards/AccessManager.json",
         "bytes": 9943,
-        "hash": "0x757fb013267a97ede3069e783c8882c6571c978e6594a284520761754d43a3a9"
+        "hash": "0x18736c1f2e346c1c1af6d497ba891fc73518db0f87a4aabda2f109e8e993487f"
       }
     },
     {
@@ -5753,7 +6016,7 @@
       "detail": {
         "path": "shards/ENSResolver.json",
         "bytes": 1747,
-        "hash": "0x1257ab5c7d5449ee606b5632563cfdb2836e0d2b91199d70aa13f8fe89adcaf1"
+        "hash": "0x0534550d8f8e1560c4acbf50278c50206a20cb3753ca8290372782f6bc5f7b68"
       }
     },
     {
@@ -5802,7 +6065,7 @@
       "detail": {
         "path": "shards/ENSReverseClaimer.json",
         "bytes": 1278,
-        "hash": "0x23823a5eca47cff821f458a544c7c4baf437d7f4c80bbddea5c305122255a593"
+        "hash": "0x5978e6d82669fde06b42f8e6246cd81760c6cb73163f53af63a899c613c1ac5b"
       }
     },
     {
@@ -5847,7 +6110,7 @@
       "detail": {
         "path": "shards/ENSSubnameIssuer.json",
         "bytes": 1563,
-        "hash": "0x30028e5c79d7f2d670e28d33c302d3ccda5d2c869ea186f136b5119ec02254a4"
+        "hash": "0x22ba39eba739e2eb9c3f920e997dc853946921b027bdba19e778cecc162ca1c3"
       }
     },
     {
@@ -5882,7 +6145,7 @@
       "detail": {
         "path": "shards/EIP712.json",
         "bytes": 1027,
-        "hash": "0xfa38179e04554dab15787c7b7e8af0212e9e9a478eca63cffdb96afa31c9e0e9"
+        "hash": "0x905e28aee6b387c2bb1245b1a04518b24c62138470360268320104f0d85f7270"
       }
     },
     {
@@ -5913,7 +6176,7 @@
       "detail": {
         "path": "shards/Multicall.json",
         "bytes": 658,
-        "hash": "0x991268816524ebaffaca63ee7bb1a130726260a2cc0d1b1e834ff1cf4e4babd5"
+        "hash": "0x39c855dc82e9c85fa5eb0c3b15eaa9707d31a28c17588975c27b12f682540800"
       }
     },
     {
@@ -5944,7 +6207,7 @@
       "detail": {
         "path": "shards/Receive.json",
         "bytes": 452,
-        "hash": "0xe60b54c2aeb8b5570cae856202b47bb614242addb84a8d5a2d26f43cbc2e084f"
+        "hash": "0x321e28c5ef64e89a96b5e874ebb4efde2874b50dff9567fc1727a1f2372ee9f8"
       }
     },
     {
@@ -7388,5 +7651,5 @@
     }
   ],
   "registryOwner": "0x000000000000000000000000000000000000dEaD",
-  "provisional": "Lattice 0.2.0 at dev f4a32c8; v1 targets 0.4.0. Fixture catalog: invented release data."
+  "provisional": "Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0. Fixture catalog: invented release data."
 }

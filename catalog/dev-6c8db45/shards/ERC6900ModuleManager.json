@@ -1,0 +1,558 @@
+{
+  "name": "ERC6900ModuleManager",
+  "abi": [
+    {
+      "type": "function",
+      "name": "accountId",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "installExecution",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "manifest",
+          "type": "tuple",
+          "internalType": "struct ExecutionManifest",
+          "components": [
+            {
+              "name": "executionFunctions",
+              "type": "tuple[]",
+              "internalType": "struct ManifestExecutionFunction[]",
+              "components": [
+                {
+                  "name": "executionSelector",
+                  "type": "bytes4",
+                  "internalType": "bytes4"
+                },
+                {
+                  "name": "skipRuntimeValidation",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "allowGlobalValidation",
+                  "type": "bool",
+                  "internalType": "bool"
+                }
+              ]
+            },
+            {
+              "name": "executionHooks",
+              "type": "tuple[]",
+              "internalType": "struct ManifestExecutionHook[]",
+              "components": [
+                {
+                  "name": "executionSelector",
+                  "type": "bytes4",
+                  "internalType": "bytes4"
+                },
+                {
+                  "name": "entityId",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                },
+                {
+                  "name": "isPreHook",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "isPostHook",
+                  "type": "bool",
+                  "internalType": "bool"
+                }
+              ]
+            },
+            {
+              "name": "interfaceIds",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "installData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "installValidation",
+      "inputs": [
+        {
+          "name": "validationConfig",
+          "type": "bytes25",
+          "internalType": "ValidationConfig"
+        },
+        {
+          "name": "selectors",
+          "type": "bytes4[]",
+          "internalType": "bytes4[]"
+        },
+        {
+          "name": "installData",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "hooks",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "uninstallExecution",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "manifest",
+          "type": "tuple",
+          "internalType": "struct ExecutionManifest",
+          "components": [
+            {
+              "name": "executionFunctions",
+              "type": "tuple[]",
+              "internalType": "struct ManifestExecutionFunction[]",
+              "components": [
+                {
+                  "name": "executionSelector",
+                  "type": "bytes4",
+                  "internalType": "bytes4"
+                },
+                {
+                  "name": "skipRuntimeValidation",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "allowGlobalValidation",
+                  "type": "bool",
+                  "internalType": "bool"
+                }
+              ]
+            },
+            {
+              "name": "executionHooks",
+              "type": "tuple[]",
+              "internalType": "struct ManifestExecutionHook[]",
+              "components": [
+                {
+                  "name": "executionSelector",
+                  "type": "bytes4",
+                  "internalType": "bytes4"
+                },
+                {
+                  "name": "entityId",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                },
+                {
+                  "name": "isPreHook",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "isPostHook",
+                  "type": "bool",
+                  "internalType": "bool"
+                }
+              ]
+            },
+            {
+              "name": "interfaceIds",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "uninstallData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "uninstallValidation",
+      "inputs": [
+        {
+          "name": "validationFunction",
+          "type": "bytes24",
+          "internalType": "ModuleEntity"
+        },
+        {
+          "name": "uninstallData",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "hookUninstallData",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "ExecutionInstalled",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "manifest",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct ExecutionManifest",
+          "components": [
+            {
+              "name": "executionFunctions",
+              "type": "tuple[]",
+              "internalType": "struct ManifestExecutionFunction[]",
+              "components": [
+                {
+                  "name": "executionSelector",
+                  "type": "bytes4",
+                  "internalType": "bytes4"
+                },
+                {
+                  "name": "skipRuntimeValidation",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "allowGlobalValidation",
+                  "type": "bool",
+                  "internalType": "bool"
+                }
+              ]
+            },
+            {
+              "name": "executionHooks",
+              "type": "tuple[]",
+              "internalType": "struct ManifestExecutionHook[]",
+              "components": [
+                {
+                  "name": "executionSelector",
+                  "type": "bytes4",
+                  "internalType": "bytes4"
+                },
+                {
+                  "name": "entityId",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                },
+                {
+                  "name": "isPreHook",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "isPostHook",
+                  "type": "bool",
+                  "internalType": "bool"
+                }
+              ]
+            },
+            {
+              "name": "interfaceIds",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ExecutionUninstalled",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "onUninstallSucceeded",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        },
+        {
+          "name": "manifest",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct ExecutionManifest",
+          "components": [
+            {
+              "name": "executionFunctions",
+              "type": "tuple[]",
+              "internalType": "struct ManifestExecutionFunction[]",
+              "components": [
+                {
+                  "name": "executionSelector",
+                  "type": "bytes4",
+                  "internalType": "bytes4"
+                },
+                {
+                  "name": "skipRuntimeValidation",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "allowGlobalValidation",
+                  "type": "bool",
+                  "internalType": "bool"
+                }
+              ]
+            },
+            {
+              "name": "executionHooks",
+              "type": "tuple[]",
+              "internalType": "struct ManifestExecutionHook[]",
+              "components": [
+                {
+                  "name": "executionSelector",
+                  "type": "bytes4",
+                  "internalType": "bytes4"
+                },
+                {
+                  "name": "entityId",
+                  "type": "uint32",
+                  "internalType": "uint32"
+                },
+                {
+                  "name": "isPreHook",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "isPostHook",
+                  "type": "bool",
+                  "internalType": "bool"
+                }
+              ]
+            },
+            {
+              "name": "interfaceIds",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ValidationInstalled",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "entityId",
+          "type": "uint32",
+          "indexed": true,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ValidationUninstalled",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "entityId",
+          "type": "uint32",
+          "indexed": true,
+          "internalType": "uint32"
+        },
+        {
+          "name": "onUninstallSucceeded",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "ArrayLengthMismatch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ExecutionFunctionAlreadySet",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ExecutionFunctionShadowsFacet",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ExecutionHookAlreadySet",
+      "inputs": [
+        {
+          "name": "hookConfig",
+          "type": "bytes25",
+          "internalType": "HookConfig"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidInterfaceId",
+      "inputs": [
+        {
+          "name": "interfaceId",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ModuleInstallCallbackFailed",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "revertReason",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NullModule",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PreValidationHookLimitExceeded",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "UnauthorizedModuleConfig",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ValidationAlreadySet",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        },
+        {
+          "name": "validationFunction",
+          "type": "bytes24",
+          "internalType": "ModuleEntity"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x9cfd7cff": {
+        "notice": "ERC-6900 account identifier, `\"vendorname.accountname.semver\"`."
+      },
+      "0x001a63e9": {
+        "notice": "Installs an execution module from its manifest (execution functions, execution hooks, interface ids)."
+      },
+      "0x1bbf564c": {
+        "notice": "Installs (or updates) a validation function with its allowed selectors and associated hooks."
+      },
+      "0x93b1dc61": {
+        "notice": "Uninstalls an execution module (reverses its manifest)."
+      },
+      "0xb6b1ccfe": {
+        "notice": "Uninstalls a validation function and tears down its selectors and hooks."
+      }
+    },
+    "notice": "ERC-6900 module-configuration facet: installs/uninstalls execution modules (selector → module + execution hooks) and validation modules (`ModuleEntity` → flags + selectors + validation/exec hooks). The `execute` / `executeBatch` / `executeWithRuntimeValidation` dispatch surface (the rest of `IERC6900Account`) lands in the executor facet; this facet is the install/uninstall half.",
+    "dev": "Stateless delegator — logic/storage live in {ERC6900ModuleManagerLib}. Part of the ERC-6900 account blueprint, an alternative flavor to the ERC-7579 stack (`ERC7579ModuleConfig`)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/erc6900/ERC6900ModuleManager.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/accounts/erc6900/ERC6900ModuleManager.sol"
+  }
+}

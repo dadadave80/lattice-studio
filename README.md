@@ -9,7 +9,7 @@
 Compose a contract system from facets, catch every mistake on the edit that makes it,<br />
 and ship it as a Foundry script, a Safe batch or one verified transaction.
 
-[**Open the app**](https://lattice-studio-topaz.vercel.app) · [Watch the demo](https://youtu.be/Fzei4h-vTQg) · [Architecture](docs/architecture.md) · [Security model](SECURITY.md) · [CLI](packages/cli/README.md)
+[**Open the app**](https://lattice-studio-git-feat-hedera-david-dadas-projects.vercel.app) · [Watch the demo](https://youtu.be/Fzei4h-vTQg) · [Architecture](docs/architecture.md) · [Security model](SECURITY.md) · [CLI](packages/cli/README.md)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-16150f?style=flat-square)](LICENSE)
 [![EIP-2535 diamonds](https://img.shields.io/badge/EIP--2535-diamonds-1f4fe0?style=flat-square)](https://eips.ethereum.org/EIPS/eip-2535)
@@ -37,7 +37,7 @@ Studio moves them to the moment you make them, and it gives the same answer ever
 
 | | |
 | --- | --- |
-| **Compose** | 100 facets and 84 recipe templates from Lattice (tokens, governance, access control, DeFi, oracles, crosschain and more) on a sheet where every selector shows the facet that answers it. |
+| **Compose** | 105 facets and 85 recipe templates from Lattice (tokens, governance, access control, DeFi, oracles, crosschain, Hedera and more) on a sheet where every selector shows the facet that answers it. |
 | **Check** | Nine families of checks on every edit: selectors, semantics, the diamond's core, dependencies, storage, inits, authority, links and network. About 2 ms for a 30-facet diamond. Every finding has a rule id (`SEL-01`, `INIT-05`, `LINK-01`) and names its fix. |
 | **Export** | A standalone Foundry script, an agent brief, a `recipe.json` with its schema, a Safe Transaction Builder batch, a project file, or a share link that lives in the URL fragment, which a server never sees. |
 | **Deploy** | One transaction through LatticeFactory or CreateX. Studio predicts the address, checks each shared contract's codehash against the catalog before you sign, compares the on-chain loupe with the plan afterwards, and verifies the source on Sourcify and, with an API key, on Etherscan. |
@@ -64,9 +64,28 @@ cast call 0xF70f3E9D2183B4e829DB615E08551bafcE6C9755 "facetAddresses()(address[]
 
 <img src="apps/studio/public/pitch/deployed.png" alt="The deployed diamond in Lattice Studio: live on Sepolia, verified on Sourcify with an exact match, with its authority and cut plan in the inspector" />
 
+## Proof on Hedera testnet
+
+A Hedera diamond composed in Studio, with `HTSAdapter` on the sheet, deployed by the Foundry script Studio exports (`lattice-studio export foundry`). First, the 14 shared contracts it needs went to their release addresses through Arachnid's deployment proxy, as Deploy missing contracts does; CreateX isn't on Hedera. Then the diamond created a Hedera Token Service token through its own `HTSAdapter`:
+
+| | |
+| --- | --- |
+| Diamond | [`0xFDd6e099fF4b48a9179443A9D846AfA816997e23`](https://hashscan.io/testnet/contract/0xFDd6e099fF4b48a9179443A9D846AfA816997e23): `ChainlinkAdapter`, `HTSAdapter`, access control, the emergency stop, `Receive` and the core |
+| Deploy transaction | [`0x53b08097…dcf00`](https://hashscan.io/testnet/transaction/0x53b08097c1a742c49bc59b40311e51cd4910309cba5e361d51ad05be694dcf00), one transaction through LatticeFactory |
+| HTS token the diamond created | [`0x…a5B060`](https://hashscan.io/testnet/token/0x0000000000000000000000000000000000a5B060), "Lattice Studio Hedera" (LSH), in [`0xd492f483…8210d`](https://hashscan.io/testnet/transaction/0xd492f48384b3a312ba22321bd2435f13b80228b4a1a63c34733c37949c78210d) |
+| LatticeFactory | [`0xc192cEa531C8FFb3cBE69A98f4795757E4A2c7be`](https://hashscan.io/testnet/contract/0xc192cEa531C8FFb3cBE69A98f4795757E4A2c7be), the same address as on Sepolia |
+| Source | [Exact match on Sourcify](https://repo.sourcify.dev/296/0xFDd6e099fF4b48a9179443A9D846AfA816997e23) for the diamond and all 14 shared contracts |
+
+The loupe returns the eight facets of the plan, at their release addresses:
+
+```sh
+cast call 0xFDd6e099fF4b48a9179443A9D846AfA816997e23 "facetAddresses()(address[])" \
+  --rpc-url https://testnet.hashio.io/api
+```
+
 ## Quickstart
 
-Use the [hosted app](https://lattice-studio-topaz.vercel.app), or run it yourself with [Bun](https://bun.sh):
+Use the [hosted app](https://lattice-studio-git-feat-hedera-david-dadas-projects.vercel.app), or run it yourself with [Bun](https://bun.sh):
 
 ```sh
 git clone https://github.com/dadadave80/lattice-studio.git
@@ -83,8 +102,8 @@ The analysis is one pure-TypeScript package. The app, the CLI and the tests all 
 
 ```console
 $ bun packages/cli/src/main.ts check docs/examples/erc20.recipe.json
-Provisional catalog: Lattice 0.2.0 at dev f4a32c8; v1 targets 0.4.0
-ERC20 · recipe 0x56e1453edddf0e680e6cc8066e0288e6fe8731e0f5b328b9216893c9449eaf1b · Lattice dev-f4a32c8
+Provisional catalog: Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0
+ERC20 · recipe 0xab819a7fb89dcf17f571f69571992abdce4ba890355bc496c0e3078933d70008 · Lattice dev-6c8db45
 2 facets · 15 selectors
 1 warning
   Warning  INIT-05  2 fields still use example values, including name (Example Token) and symbol (EXT).
@@ -201,10 +220,11 @@ bun packages/cli/src/main.ts verify-catalog --lattice ../lattice
 
 Studio is at v1: it composes new Lattice diamonds and deploys them on testnets. The edges, stated plainly:
 
-- **Testnets only.** Sepolia, Base Sepolia, HashKey Chain testnet (chain 133, "HSKChain Testnet" in the picker) and Avalanche Fuji (chain 43113). Mainnet is off in v1; Lattice and CreateX are both unaudited.
+- **Testnets only.** Sepolia, Base Sepolia, HashKey Chain testnet (chain 133, "HSKChain Testnet" in the picker), Hedera testnet (chain 296, "Hedera Testnet" in the picker) and Avalanche Fuji (chain 43113). Mainnet is off in v1, Hedera mainnet included; Lattice and CreateX are both unaudited.
 - **HashKey Chain testnet is new.** It was added on October 2, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX isn't deployed there, so only the LatticeFactory path works, and verification runs on Sourcify alone (Etherscan doesn't serve the chain).
+- **Hedera testnet is new.** It was added on October 4, 2026. The same day, the shared contracts a Lattice base with `HTSAdapter` needs went there at their release addresses: LatticeRegistry, LatticeFactory, eight facets and four inits ([Proof on Hedera testnet](#proof-on-hedera-testnet)). Deploy missing contracts deploys any other one a recipe names, through Arachnid's deployment proxy (it's on Hedera testnet). CreateX isn't deployed on Hedera, so only the LatticeFactory path works, and verification runs on Sourcify alone (Etherscan doesn't serve the chain).
 - **Avalanche Fuji is new.** It was added on October 10, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX is on Fuji, so both the LatticeFactory and the CreateX paths work, and verification runs on Sourcify and on Etherscan.
-- **The catalog is provisional.** It's built from Lattice's `dev` branch at commit `f4a32c8` (Lattice `VERSION` 0.2.0), not yet a tagged release. v1 targets Lattice `v0.4.0`, released through Arachnid's deployment proxy; every shared-contract address in the catalog changes at that re-pin. `check`, `plan` and the app all print "Provisional catalog" while this is true. [`docs/release.md`](docs/release.md) has what re-pinning involves.
+- **The catalog is provisional.** It's built from Lattice commit `6c8db45` (Lattice `VERSION` 0.2.0, tag `hedera-template-pin-6c8db45` on the `feat/hedera-system-contract-modules` branch), not yet a `vX.Y.Z` release. It adds Lattice's Hedera facets (`HTSAdapter`, `HSSAdapter`, `HederaExchangeRateAdapter`, `HederaPrngAdapter` and `HASSignatureVerifier`) to the 100 of `dev-f4a32c8`, which stays in the manifest so recipes made against it still open. The pin also gives seven account facets new code, and so new addresses: `AccountSigner`, `ERC1271Signature`, `ERC4337Validation`, `ERC6900Executor`, `ERC6900Signature`, `ERC6900Validation` and `ERC7821Executor`. A recipe that uses one of them plans a different address for it under `dev-6c8db45` than under `dev-f4a32c8`. v1 targets Lattice `v0.4.0`, released through Arachnid's deployment proxy; every shared-contract address in the catalog changes at that re-pin. `check`, `plan` and the app all print "Provisional catalog" while this is true. [`docs/release.md`](docs/release.md) has what re-pinning involves.
 - **New diamonds only.** Upgrading a live diamond is v2.
 - **The CLI isn't on npm yet.** Run it from a checkout.
 - **CI is red for known reasons, none of which fail locally.** The `browser` job has no Linux screenshot baselines yet (every committed one was made on macOS), the Foundry jobs (`golden`, `chain`, `catalog-drift`) fail building the pinned Lattice checkout on the runner, and a `Performance` benchmark misses its budget there. [`docs/release.md`](docs/release.md) has the steps.

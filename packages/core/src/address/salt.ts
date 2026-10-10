@@ -17,7 +17,7 @@ export const SCOPE_FLAG: Record<Scope, Hex> = { "every-chain": "0x00", "this-cha
 
 /**
  * `from ‖ flag ‖ entropy`, 20 + 1 + 11 bytes, lowercase (spec L286, R15). The same layout as Lattice's
- * `CreateXDeployer._guardedSalt` (script/lib/CreateXDeployer.sol L33-L35), with the flag chosen by scope.
+ * `CreateXDeployer._guardedSalt` (script/lib/CreateXDeployer.sol L67-L69), with the flag chosen by scope.
  * Diamonds use it on both paths: LatticeFactory folds the sender in again, CreateX guards it.
  */
 export const buildSalt: BuildSaltFn = (from, scope, entropy) => {

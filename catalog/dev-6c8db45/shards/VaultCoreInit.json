@@ -1,0 +1,82 @@
+{
+  "name": "VaultCoreInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "asset_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "admin_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "decimalsOffset_",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x544ea103": {
+        "notice": "Seeds access control, the ERC-20 share metadata, the ERC-4626 vault params, and VaultCore.",
+        "params": {
+          "admin_": "The account granted `DEFAULT_ADMIN_ROLE` (may set the strategy manager).",
+          "asset_": "The underlying ERC-20 asset the vault holds.",
+          "decimalsOffset_": "Virtual-share decimals offset for inflation-attack mitigation (usually 0).",
+          "name_": "The vault share token name.",
+          "symbol_": "The vault share token symbol."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a VaultCore diamond — an ERC-4626 vault extended with strategy hooks. Runs the module initializers in dependency order inside a single initializing window: AccessControl (grants `DEFAULT_ADMIN_ROLE` to `admin`, gating strategy-manager changes), ERC-20 (share metadata), ERC-4626 (underlying asset + offset), then VaultCore (registers IVaultCore via ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window — it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open."
+  },
+  "source": {
+    "path": "src/defi/VaultCoreInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/defi/VaultCoreInit.sol"
+  }
+}

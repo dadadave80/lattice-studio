@@ -1,0 +1,723 @@
+{
+  "name": "HTSAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "associateToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "burnToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "int64",
+          "internalType": "int64"
+        },
+        {
+          "name": "serialNumbers",
+          "type": "int64[]",
+          "internalType": "int64[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "newTotalSupply",
+          "type": "int64",
+          "internalType": "int64"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "createFungibleToken",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "memo",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "decimals",
+          "type": "int32",
+          "internalType": "int32"
+        },
+        {
+          "name": "initialSupply",
+          "type": "int64",
+          "internalType": "int64"
+        },
+        {
+          "name": "maxSupply",
+          "type": "int64",
+          "internalType": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "createNonFungibleToken",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "memo",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "maxSupply",
+          "type": "int64",
+          "internalType": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "createdTokens",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "tokens",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "dissociateToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "htsTokenType",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tokenType",
+          "type": "int32",
+          "internalType": "int32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isAssociated",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "associated",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isHTSToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "isToken",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "mintToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "int64",
+          "internalType": "int64"
+        },
+        {
+          "name": "metadata",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "newTotalSupply",
+          "type": "int64",
+          "internalType": "int64"
+        },
+        {
+          "name": "serialNumbers",
+          "type": "int64[]",
+          "internalType": "int64[]"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferNFT",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "serialNumber",
+          "type": "int64",
+          "internalType": "int64"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "int64",
+          "internalType": "int64"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferTokenFrom",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "from",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "int64",
+          "internalType": "int64"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "HTSTokenAssociated",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "HTSTokenBurned",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "int64",
+          "indexed": false,
+          "internalType": "int64"
+        },
+        {
+          "name": "newTotalSupply",
+          "type": "int64",
+          "indexed": false,
+          "internalType": "int64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "HTSTokenCreated",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "fungible",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "HTSTokenDissociated",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "HTSTokenMinted",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "int64",
+          "indexed": false,
+          "internalType": "int64"
+        },
+        {
+          "name": "newTotalSupply",
+          "type": "int64",
+          "indexed": false,
+          "internalType": "int64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "HTSTokenTransferred",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "int64",
+          "indexed": false,
+          "internalType": "int64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSAccountFrozen",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSAccountIsTreasury",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSAllowanceExceeded",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSCallFailed",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        },
+        {
+          "name": "responseCode",
+          "type": "int64",
+          "internalType": "int64"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSInsufficientBalance",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSInsufficientGas",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HTSInvalidAmount",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HTSKeyNotActive",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSKycNotGranted",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSMaxSupplyReached",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSNonZeroBalance",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSNotAToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSTokenAlreadyAssociated",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSTokenNoSupplyKey",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSTokenNotAssociated",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HTSTokenPaused",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xa7efe348": {
+        "notice": "Associates the diamond with `token` so it can hold and receive it."
+      },
+      "0xd6910d06": {
+        "notice": "Burns `amount` units (FT) or the given `serialNumbers` (NFT) from the treasury."
+      },
+      "0xdeaac2bb": {
+        "notice": "Creates a fungible HTS token with the diamond as treasury, auto-renew account, and holder of the admin + supply keys (`delegatableContractId`). `msg.value` pays the network's creation fee.",
+        "params": {
+          "maxSupply": "Zero for an infinite supply; otherwise the finite cap."
+        }
+      },
+      "0x6830760a": {
+        "notice": "Creates a non-fungible HTS token with the diamond as treasury / key holder. `msg.value` pays the fee."
+      },
+      "0x54771086": {
+        "notice": "The HTS tokens this diamond created (it is their treasury and key holder)."
+      },
+      "0xd5d607b6": {
+        "notice": "Dissociates the diamond from `token` (its balance must be zero)."
+      },
+      "0xcaaf0325": {
+        "notice": "HTS token type: 0 fungible, 1 non-fungible."
+      },
+      "0xd55fe582": {
+        "notice": "True if the diamond is associated with `token` (HIP-719 facade `isAssociated()`)."
+      },
+      "0x20cab858": {
+        "notice": "True if `token` is an HTS token (`isToken` on the system contract)."
+      },
+      "0xe0f4059a": {
+        "notice": "Mints `amount` units (FT) or `metadata.length` serials (NFT) to the treasury. Requires the diamond to hold the supply key as a `delegatableContractId` key."
+      },
+      "0x84ec4652": {
+        "notice": "Transfers NFT `serialNumber` of `token` owned by the diamond to `to`."
+      },
+      "0x75fd1606": {
+        "notice": "Transfers `amount` of `token` from the diamond's own balance to `to`."
+      },
+      "0x5f34cf96": {
+        "notice": "Transfers `amount` of `token` from `from` to `to` using the allowance `from` granted the diamond."
+      }
+    },
+    "notice": "Diamond facet that makes the diamond a first-class Hedera Token Service account: association, treasury transfers, and creation / mint / burn of tokens keyed to the diamond.",
+    "dev": "Stateless delegator — all logic and storage live in HTSAdapterLib. Consumers inherit this contract and add AccessControl + an initializer. Only meaningful on Hedera (chain ids 295 / 296 / 297 / 298)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/tokens/hedera/HTSAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/tokens/hedera/HTSAdapter.sol"
+  }
+}

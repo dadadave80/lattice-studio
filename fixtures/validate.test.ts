@@ -242,9 +242,9 @@ describe("names and references", () => {
   for (const id of IDS) {
     const catalog = catalogs[id];
 
-    test(`${id}: 100 facets with unique names; unique init and template names`, () => {
+    test(`${id}: 105 facets with unique names; unique init and template names`, () => {
       const unique = (xs: string[]): void => expect(new Set(xs).size).toBe(xs.length);
-      expect(catalog.facets).toHaveLength(100);
+      expect(catalog.facets).toHaveLength(105);
       unique(catalog.facets.map((f) => f.name));
       unique(catalog.inits.map((i) => i.name));
       unique(catalog.recipes.map((r) => r.name));
@@ -499,7 +499,7 @@ describe("fixture-next, for the migrate flow", () => {
 describe.skipIf(!lattice)("against Lattice's source at the pin", () => {
   const dir = lattice as string;
 
-  test("the catalog is exactly FacetInventory, in its order (FacetInventory.sol L20-L228)", () => {
+  test("the catalog is exactly FacetInventory, in its order (FacetInventory.sol L20-L238)", () => {
     expect(fixture.facets.map((f) => [f.name, f.source])).toEqual(readInventory(dir).map((e) => [e.name, e.path]));
   });
 

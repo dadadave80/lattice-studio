@@ -1,0 +1,76 @@
+{
+  "name": "HederaExchangeRateAdapter",
+  "abi": [
+    {
+      "name": "hbarUsdWad",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "priceWad"
+        }
+      ]
+    },
+    {
+      "name": "tinybarsToTinycents",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "tinybars"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "tinycents"
+        }
+      ]
+    },
+    {
+      "name": "tinycentsToTinybars",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "tinycents"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "tinybars"
+        }
+      ]
+    },
+    {
+      "name": "usdCentsToWei",
+      "type": "function",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "cents"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256",
+          "name": "weibar"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "notice": "Diamond facet exposing Hedera's network USD/HBAR exchange rate (system contract 0x168).",
+    "functions": {}
+  },
+  "source": {
+    "path": "src/oracles/hedera/HederaExchangeRateAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/hedera/HederaExchangeRateAdapter.sol"
+  }
+}

@@ -1,0 +1,339 @@
+{
+  "name": "HSSAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "authorizeSchedule",
+      "inputs": [
+        {
+          "name": "scheduleAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "completeSelfCall",
+      "inputs": [
+        {
+          "name": "jobId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "deleteSchedule",
+      "inputs": [
+        {
+          "name": "scheduleAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "hasScheduleCapacity",
+      "inputs": [
+        {
+          "name": "expirySecond",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "gasLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "scheduleCall",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "expirySecond",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "gasLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "value",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "scheduleAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "scheduleOf",
+      "inputs": [
+        {
+          "name": "jobId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "scheduleAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "scheduleSelfCall",
+      "inputs": [
+        {
+          "name": "jobId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "expirySecond",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "gasLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "scheduleAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "HSSCallScheduled",
+      "inputs": [
+        {
+          "name": "scheduleAddress",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "target",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "jobId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "expirySecond",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "gasLimit",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "HSSScheduleAuthorized",
+      "inputs": [
+        {
+          "name": "scheduleAddress",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "HSSScheduleDeleted",
+      "inputs": [
+        {
+          "name": "scheduleAddress",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HSSCallFailed",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        },
+        {
+          "name": "responseCode",
+          "type": "int64",
+          "internalType": "int64"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HSSExpiryBusy",
+      "inputs": [
+        {
+          "name": "expirySecond",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "gasLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HSSInvalidExpiry",
+      "inputs": [
+        {
+          "name": "expirySecond",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HSSJobAlreadyScheduled",
+      "inputs": [
+        {
+          "name": "jobId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "scheduleAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HSSNotScheduledSelfCall",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf0637961": {
+        "notice": "Signs a native scheduled transaction with the diamond's contract key (HIP-755)."
+      },
+      "0x1735e9e0": {
+        "notice": "Clears `jobId`'s live schedule; callable only by the diamond executing its own scheduled call."
+      },
+      "0x72d42394": {
+        "notice": "Deletes a schedule the diamond created (HIP-1215 `deleteSchedule`)."
+      },
+      "0xdfb4a999": {
+        "notice": "True if the network can still accept a `gasLimit` call at `expirySecond`."
+      },
+      "0x6f5bfde8": {
+        "notice": "Schedules `to.call{value}(data)` at `expirySecond`, paid by the diamond, executed with the diamond as `msg.sender`. Returns the schedule entity's address."
+      },
+      "0xec2a7610": {
+        "notice": "The schedule address recorded for `jobId` (zero if none / already cleared)."
+      },
+      "0x193704bb": {
+        "notice": "Schedules a call to the diamond itself under `jobId` (one live schedule per job). The callback must clear the job via {completeSelfCall} so it can be re-scheduled.",
+        "dev": "KNOWN PHASE-2 LIMITATION — a `jobId` can be stranded. {completeSelfCall} is the ONLY path that clears `jobId`, and it is callable only by the diamond executing its own scheduled call. So if the schedule never fires — the scheduler deletes it with {deleteSchedule}, the expiry passes unexecuted, or the diamond is out of HBAR at fire time — `jobId` stays occupied and every later `scheduleSelfCall` for it reverts {HSSJobAlreadyScheduled} forever. {deleteSchedule} takes a schedule address and cannot free the job. Recovery today needs a diamond cut. The fix (a scheduler-gated cancel that clears the map) is deliberately deferred: it changes this interface's function set and therefore its pinned `interfaceId`, and the whole self-call design rests on the unverified assumption that a fired schedule presents `msg.sender == address(this)` — probe 6 in `script/config/hedera/ProbeHedera.s.sol` settles that first. Do not build a recurring job on `scheduleSelfCall` until both land."
+      }
+    },
+    "notice": "Diamond facet for Hedera Schedule Service automation: scheduled (self-)calls paid by the diamond, plus contract-key signatures on native scheduled transactions.",
+    "dev": "Stateless delegator over HSSAdapterLib. Only meaningful on Hedera."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/hedera/HSSAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/hedera/HSSAdapter.sol"
+  }
+}

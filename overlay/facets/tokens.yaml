@@ -157,6 +157,17 @@ ERC7802:
     name: ERC7802Init
     source: src/tokens/ERC7802/ERC7802Init.sol#L23-L23
 
+HTSAdapter:
+  requires: []
+  init:
+    name: HTSAdapterInit
+    source: src/tokens/hedera/HTSAdapterInit.sol#L18-L23
+  notes: >-
+    Only meaningful on Hedera (src/tokens/hedera/HTSAdapter.sol L12-L13): every call goes to the Hedera Token Service
+    system contract. DeployHTSAdapter cuts Receive alongside it because the diamond is the treasury and auto-renew
+    account of every token it creates, so it must be able to hold HBAR (script/base/tokens/DeployHTSAdapter.s.sol
+    L19-L23).
+
 MarketplaceZone:
   requires: []
   init:

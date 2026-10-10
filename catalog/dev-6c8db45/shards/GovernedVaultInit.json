@@ -1,0 +1,191 @@
+{
+  "name": "GovernedVaultInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "p",
+          "type": "tuple",
+          "internalType": "struct GovernedVaultParams",
+          "components": [
+            {
+              "name": "asset",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "name",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "decimalsOffset",
+              "type": "uint8",
+              "internalType": "uint8"
+            },
+            {
+              "name": "minDelay",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "votingDelay",
+              "type": "uint48",
+              "internalType": "uint48"
+            },
+            {
+              "name": "votingPeriod",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "proposalThreshold",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "quorumNumerator",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "MinDelayChange",
+      "inputs": [
+        {
+          "name": "oldDuration",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "newDuration",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleAdminChanged",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "previousAdminRole",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "newAdminRole",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidName",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidVersion",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "GovernorInvalidQuorumFraction",
+      "inputs": [
+        {
+          "name": "quorumNumerator",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "quorumDenominator",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GovernorInvalidVotingPeriod",
+      "inputs": [
+        {
+          "name": "votingPeriod",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StringTooLong",
+      "inputs": [
+        {
+          "name": "str",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the self-governed ERC-4626 vault diamond. Runs every module initializer in dependency order inside a single initializing window. The SELF-REFERENTIAL wiring is the crux: this contract is delegatecalled by {Diamond.initialize}, so `address(this)` IS the diamond — the {Governor}'s vote `token` and `timelock` are both set to it, the timelock's sole proposer is it (so the Governor can queue), and its `DEFAULT_ADMIN_ROLE` (the vault's strategy-admin gate) is held by it (i.e. only reachable through a passed, timelock-executed proposal). Execution is left OPEN (`executor = address(0)`), so anyone may execute a proposal once its delay elapses.",
+    "dev": "Delegatecalled inside the diamond's initializing window — each `__*_init` guard passes because the window is already open; it must NOT open its own pre/postInitializer."
+  },
+  "source": {
+    "path": "src/defi/GovernedVaultInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/defi/GovernedVaultInit.sol"
+  }
+}

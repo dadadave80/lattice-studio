@@ -1,0 +1,64 @@
+{
+  "name": "AxelarGatewayAdapterInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gateway",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf09a4016": {
+        "notice": "Runs the access-control + Axelar-adapter module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls every adapter setter).",
+          "gateway": "The Axelar gateway the adapter dispatches `callContract` to and validates inbound calls with."
+        }
+      }
+    },
+    "notice": "One-shot initializer for an Axelar gateway-adapter diamond — seeds AccessControl so the chain-equivalence and remote-gateway setters are admin-gated, and wires the Axelar gateway (registering the ERC-7786 interface via ERC-165). Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Companion to the {ERC2981Init} and {ChainlinkAdapterInit} patterns — a first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/crosschain/axelar/AxelarGatewayAdapterInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/crosschain/axelar/AxelarGatewayAdapterInit.sol"
+  }
+}

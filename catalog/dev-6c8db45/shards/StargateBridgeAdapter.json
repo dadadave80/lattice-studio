@@ -1,0 +1,561 @@
+{
+  "name": "StargateBridgeAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "poolOf",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "quoteSendFee",
+      "inputs": [
+        {
+          "name": "p",
+          "type": "tuple",
+          "internalType": "struct IStargateBridgeAdapter.SendTokenParams",
+          "components": [
+            {
+              "name": "recipient",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "token",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "amountLD",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "minAmountLD",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "destinationChainId",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "nativeFee",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerPool",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "pool",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "registerStargateEid",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "eid",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "sendToken",
+      "inputs": [
+        {
+          "name": "p",
+          "type": "tuple",
+          "internalType": "struct IStargateBridgeAdapter.SendTokenParams",
+          "components": [
+            {
+              "name": "recipient",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "token",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "amountLD",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "minAmountLD",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "destinationChainId",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "guid",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "amountSentLD",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountReceivedLD",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "stargateChainIdOf",
+      "inputs": [
+        {
+          "name": "eid",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "stargateEidOf",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "RegisteredEid",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "eid",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RegisteredPool",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "pool",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "StargateTokenSent",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "destinationChainId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "guid",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "amountSentLD",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountReceivedLD",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AdapterSafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BridgeAmountMismatch",
+      "inputs": [
+        {
+          "name": "requested",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "received",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BridgeTransferFailed",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InteroperableAddressParsingError",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressEmpty",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressInvalidEvmWidth",
+      "inputs": [
+        {
+          "name": "length",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NonEvmAddressTooLong",
+      "inputs": [
+        {
+          "name": "length",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateChainReferenceTooLong",
+      "inputs": [
+        {
+          "name": "length",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateDestinationMismatch",
+      "inputs": [
+        {
+          "name": "declaredChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "givenChainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateEidAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "eid",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateInsufficientFee",
+      "inputs": [
+        {
+          "name": "required",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "provided",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargatePoolTokenMismatch",
+      "inputs": [
+        {
+          "name": "expected",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "actual",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateSameChain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateTokenAlreadyRegistered",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateTokenNotRegistered",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateUnknownDestinationChain",
+      "inputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "StargateZeroAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StargateZeroAmount",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StargateZeroChainId",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StargateZeroEid",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StargateZeroMinAmount",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x988b1fa7": {
+        "notice": "The Stargate pool registered for `token` (0 = unset)."
+      },
+      "0x248b67b0": {
+        "notice": "Quotes the LayerZero native fee of a send, building the IDENTICAL `SendParam` the send path dispatches (same internal builder — quote/send can never drift)."
+      },
+      "0x7286e5e5": {
+        "notice": "Registers `token`'s Stargate pool (identity — register once; {StargateTokenAlreadyRegistered} on a duplicate). FAIL-CLOSED: reverts {StargatePoolTokenMismatch} unless `pool.token() == token`. Admin only.",
+        "dev": "ERC-20 pools only in v1 — never register a `StargatePoolNative` (its `token()` is address(0), so the zero-token guard rejects it structurally). A pool upgrade cannot re-point an existing token entry in v1 (deliberate YAGNI): ship a new adapter config instead."
+      },
+      "0xb18dcea7": {
+        "notice": "Registers an EVM chainId ↔ LayerZero eid equivalence (both directions, fail-loud — identities are never remapped; zero chainId/eid rejected). Admin only.",
+        "dev": "Stargate rides LayerZero, so the eid here equals the LayerZero adapter's eid for the same chain — recorded in this adapter's OWN map (adapters never share hot-path storage)."
+      },
+      "0x396e0d4c": {
+        "notice": "Sends `p.amountLD` of `p.token` (pulled from `msg.sender`) through its registered Stargate pool toward the ERC-7930 `p.recipient` on `p.destinationChainId`. `msg.value` is the LayerZero fee EXCLUSIVELY (quoted precheck; excess refunds to `msg.sender`, never the diamond).",
+        "dev": "TAXI ONLY (issue #77 Q11): the send is dispatched with EMPTY `oftCmd` (immediate/taxi mode) and EMPTY `composeMsg`/`extraOptions` — bus mode (deferred batched sends) and `lzCompose` destination hooks are DEFERRED to a future revision. DUST SWEEP: pools truncate `amountLD` to shared decimals, so the pool may debit less than was pulled; the exact un-debited remainder is returned to `msg.sender` in the same call and the diamond nets zero."
+      },
+      "0x67a67974": {
+        "notice": "The EVM chainId registered for `eid` (0 = unset)."
+      },
+      "0x385ce1dd": {
+        "notice": "The LayerZero eid registered for `chainId` (0 = unset)."
+      }
+    },
+    "notice": "Stargate v2 pooled-liquidity token-bridge facet — the third token rail beside CCTP (burn/mint) and Across (intent): `sendToken` pulls the token from the caller and deposits it into the LOCAL Stargate pool (unified liquidity), which has the DESTINATION pool credit the ERC-7930 recipient. OUTBOUND-ONLY for plain transfers: the destination-side LayerZero receiver is Stargate's own pool, NOT a Lattice facet — there is no inbound surface, no `receiveId`, no source attribution, and this facet is never routed through OpenBridge. `composeMsg`/`lzCompose` and bus mode are DEFERRED.",
+    "dev": "Stateless delegator — logic/storage live in {StargateBridgeAdapterLib}. The outbound send is `nonReentrant` with strict CEI, a quoted fee PRECHECK, exact-amount approval hygiene, and a dust sweep (pools truncate to shared decimals — any un-debited remainder returns to the caller in the same call). `msg.value` is the LayerZero fee EXCLUSIVELY (ERC-20 pools only in v1; `StargatePoolNative` is deferred); excess fee refunds go to the calling user, never the diamond."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/crosschain/layerzero/StargateBridgeAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/crosschain/layerzero/StargateBridgeAdapter.sol"
+  }
+}

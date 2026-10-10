@@ -70,7 +70,7 @@ export function problemSummary(analysis: Pick<Analysis, "problems">): string {
   return formatProblemSummary({ blockers: blockerCount(analysis), warnings });
 }
 
-/** "GovernedVault · recipe 0x… · Lattice dev-f4a32c8" */
+/** "GovernedVault · recipe 0x… · Lattice dev-6c8db45" */
 export function headerLine(recipe: Recipe, catalog: Catalog, analysis: Analysis, fallbackName: string): string {
   return `${recipe.name ?? fallbackName} · recipe ${analysis.recipeHash} · ${latticeName(catalog)}`;
 }

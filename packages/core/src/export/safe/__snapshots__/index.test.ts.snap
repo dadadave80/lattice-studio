@@ -7,10 +7,10 @@ exports[`exportSafeBatch snapshot: SafeDiamondCut on Sepolia through LatticeFact
   "createdAt": 1790000000000,
   "meta": {
     "name": "Deploy SafeDiamondCut to 0xa4DBf35248FC2459A1b2dCe172F89118E7DAbEdf · Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC · Sepolia",
-    "description": "Lattice Studio 1.0.0-test · recipe 0xea03ca2063f61ec788602df26dcea57bd8ea938ed25bcc4869b11a98a83334c5 · Lattice fixture\\nDeploys SafeDiamondCut to 0xa4DBf35248FC2459A1b2dCe172F89118E7DAbEdf on Sepolia (chain 11155111), from Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC, through LatticeFactory at 0xc0eac9A5c061341447c7ffbdcAbF9aFc4A832326.\\nThe salt starts with this Safe's address and \\"This diamond\\" resolves to 0xa4DBf35248FC2459A1b2dCe172F89118E7DAbEdf.\\nImport it only into Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC on Sepolia: the Transaction Builder checks neither the Safe nor the chain, and from another Safe it would deploy with references built for this Safe.\\nLeaves out deploying missing shared contracts: use Deploy missing contracts… in Studio, or Lattice's DeployRelease at fixture, which any account may run.",
+    "description": "Lattice Studio 1.0.0-test · recipe 0xb0fc48b1b564041f872d56775d9a91a411d3291fc35b4fd17f1d41b8a5abd253 · Lattice fixture\\nDeploys SafeDiamondCut to 0xa4DBf35248FC2459A1b2dCe172F89118E7DAbEdf on Sepolia (chain 11155111), from Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC, through LatticeFactory at 0xc0eac9A5c061341447c7ffbdcAbF9aFc4A832326.\\nThe salt starts with this Safe's address and \\"This diamond\\" resolves to 0xa4DBf35248FC2459A1b2dCe172F89118E7DAbEdf.\\nImport it only into Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC on Sepolia: the Transaction Builder checks neither the Safe nor the chain, and from another Safe it would deploy with references built for this Safe.\\nLeaves out deploying missing shared contracts: use Deploy missing contracts… in Studio, or Lattice's DeployRelease at fixture, which any account may run.",
     "createdFromSafeAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
     "createdFromOwnerAddress": "",
-    "checksum": "0xd7fbd309f914e45f62ba86841d74f844ba2cbf0cbea9684d508bdc3dc72830a4"
+    "checksum": "0xa15c6230512e04701e8b9bc29257a798fa0b27f188d967ac09f3f9e41b366417"
   },
   "transactions": [
     {
@@ -30,10 +30,10 @@ exports[`exportSafeBatch snapshot: GovernedVault through CreateX on this chain o
   "createdAt": 1790000000000,
   "meta": {
     "name": "Deploy GovernedVault to 0xCbB0F91756e81B92129227866b50E564052Aae5E · Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC · Sepolia",
-    "description": "Lattice Studio 1.0.0-test · recipe 0x0313c8d93d6397ad760c9be19a73bd752e783f295a97dfd0027bc60428c33dd5 · Lattice fixture\\nDeploys GovernedVault to 0xCbB0F91756e81B92129227866b50E564052Aae5E on Sepolia (chain 11155111), from Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC, through CreateX at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed.\\nThe salt starts with this Safe's address and \\"This diamond\\" resolves to 0xCbB0F91756e81B92129227866b50E564052Aae5E.\\nImport it only into Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC on Sepolia: the Transaction Builder checks neither the Safe nor the chain, and from another Safe or on another chain it would deploy with references built for this Safe and chain.\\nLeaves out deploying missing shared contracts: use Deploy missing contracts… in Studio, or Lattice's DeployRelease at fixture, which any account may run.",
+    "description": "Lattice Studio 1.0.0-test · recipe 0x4ed352688983390bbf19dd70f3f044d815b0a44e25a3be0ea7a38940800a32f0 · Lattice fixture\\nDeploys GovernedVault to 0xCbB0F91756e81B92129227866b50E564052Aae5E on Sepolia (chain 11155111), from Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC, through CreateX at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed.\\nThe salt starts with this Safe's address and \\"This diamond\\" resolves to 0xCbB0F91756e81B92129227866b50E564052Aae5E.\\nImport it only into Safe 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC on Sepolia: the Transaction Builder checks neither the Safe nor the chain, and from another Safe or on another chain it would deploy with references built for this Safe and chain.\\nLeaves out deploying missing shared contracts: use Deploy missing contracts… in Studio, or Lattice's DeployRelease at fixture, which any account may run.",
     "createdFromSafeAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
     "createdFromOwnerAddress": "",
-    "checksum": "0x18c93e82004192d574ecc507f311726562ff4bab176c3722a84bf6a201972a65"
+    "checksum": "0xe803fd9646ab6340c1d41f250b8c8c5f873a758f10e302546a105d2b459bbbe2"
   },
   "transactions": [
     {

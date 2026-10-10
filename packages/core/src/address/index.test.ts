@@ -61,7 +61,7 @@ describe("vectors pinned from Anvil", () => {
     );
   });
 
-  test("LatticeFactory at 0x5FbD…0aa3 (pin f4a32c8) predicts this for Alice, every chain", () => {
+  test("LatticeFactory at 0x5FbD…0aa3 (pin 6c8db45) predicts this for Alice, every chain", () => {
     const salt = buildSalt(ALICE, "every-chain", entropy);
     expect(factoryPredict({ factory: "0x5FbDB2315678afecb367f032d93F642f64180aa3", proxyInitCodeHash: HASH, from: ALICE, salt })).toBe(
       "0x7E6EDbe7eC66DC17D0aebd572FaF9e3F75510631",

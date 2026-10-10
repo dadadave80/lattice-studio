@@ -1,0 +1,139 @@
+{
+  "name": "ENSReverseClaimer",
+  "abi": [
+    {
+      "type": "function",
+      "name": "ensName",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "reverseRegistrar",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setEnsName",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setReverseRegistrar",
+      "inputs": [
+        {
+          "name": "reverseRegistrar",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "EnsNameSet",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ReverseRegistrarSet",
+      "inputs": [
+        {
+          "name": "reverseRegistrar",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ENSReverseClaimerZeroRegistrar",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x8ef71b8d": {
+        "notice": "Returns the diamond's last ENS name set through this facet.",
+        "dev": "Convenience cache only: it reflects the last name set THROUGH THIS FACET and may not equal the live ENS reverse record, which can be changed directly at the resolver or made stale by registrar rotation ({setReverseRegistrar}) or a registrar resolver change. Off-chain consumers should resolve the live ENS reverse record rather than trust this value."
+      },
+      "0x80869853": {
+        "notice": "Returns the currently configured reverse registrar."
+      },
+      "0xdf0487bc": {
+        "notice": "Sets the diamond's primary ENS name via the configured reverse registrar.",
+        "dev": "Gated on `ENS_MANAGER_ROLE`. Calls `IReverseRegistrar.setName(name)` with the diamond as `msg.sender`, so the diamond's `addr.reverse` record resolves to `name`. Passing an empty string clears the reverse record, matching canonical `ReverseRegistrar` semantics.",
+        "params": {
+          "name": "The ENS name to set as the diamond's primary name."
+        }
+      },
+      "0x557499ba": {
+        "notice": "Sets or rotates the reverse registrar (e.g. per-chain configuration).",
+        "dev": "Gated on `ENS_MANAGER_ROLE`. Reverts {ENSReverseClaimerZeroRegistrar} for a zero address.",
+        "params": {
+          "reverseRegistrar": "The reverse registrar to use."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet letting a diamond claim and advertise its own primary ENS name via ENS reverse resolution. Inherit this in your Diamond to make the contract resolve to e.g. `treasury.myproto.eth` in explorers and wallets.",
+    "dev": "All logic lives in {ENSReverseClaimerLib}. Identity changes are gated on `ENS_MANAGER_ROLE` (managed through the diamond's AccessControl module). The registrar is supplied at init and can be rotated per chain via {setReverseRegistrar}."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/ens/ENSReverseClaimer.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/ens/ENSReverseClaimer.sol"
+  }
+}

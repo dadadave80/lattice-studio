@@ -1,0 +1,96 @@
+{
+  "name": "SafeDiamondCutInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "safe",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "minThreshold",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "SafeDiamondCutThresholdTooLow",
+      "inputs": [
+        {
+          "name": "threshold",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minThreshold",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SafeDiamondCutZeroSafe",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SafeDiamondCutZeroThreshold",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x86863ec6": {
+        "notice": "Runs the access-control + emergency-stop + Safe-cut module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (manages guardians and resumes operation).",
+          "minThreshold": "The minimum signature threshold the pinned Safe must enforce.",
+          "safe": "The Gnosis Safe multisig pinned as the sole cut authority."
+        }
+      }
+    },
+    "notice": "One-shot initializer for a Safe-gated diamond-cut diamond — seeds AccessControl (so guardian management + `emergencyResume` are `DEFAULT_ADMIN_ROLE`-gated), EmergencyStop, registers the IDiamondCut + IDiamondLoupe ERC-165 flags, and pins the Safe authority + minimum threshold. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Mirrors exactly what the old `MockSafeDiamond.initialize` did, minus the redundant pre/postInitializer. Companion to the {ERC2981Init} pattern — a first-class production deploy artifact."
+  },
+  "source": {
+    "path": "src/governance/SafeDiamondCutInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/governance/SafeDiamondCutInit.sol"
+  }
+}

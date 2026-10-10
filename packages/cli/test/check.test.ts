@@ -40,12 +40,12 @@ describe("check", () => {
     expect(code).toBe(0);
     const { analysis } = coreRead(erc20, BUILT);
     const lines = stdout.trimEnd().split("\n");
-    expect(lines[0]).toBe(`ERC20 · recipe ${analysis.recipeHash} · Lattice dev-f4a32c8`);
+    expect(lines[0]).toBe(`ERC20 · recipe ${analysis.recipeHash} · Lattice dev-6c8db45`);
     expect(lines[1]).toBe(recipeStats(analysis, BUILT).text);
     expect(lines[2]).toBe("1 warning");
     expect(lines[3]).toBe(`  Warning  INIT-05  ${analysis.problems[0]?.message}`);
     // The provisional catalog note goes to stderr, so stdout stays the command's output.
-    expect(stderr).toContain("Provisional catalog: Lattice 0.2.0 at dev f4a32c8");
+    expect(stderr).toContain("Provisional catalog: Lattice 0.2.0 at dev 6c8db45");
   });
 
   test("blockers: exit 1, listed first", async () => {
@@ -90,7 +90,7 @@ describe("check", () => {
     writeFileSync(file, JSON.stringify(recipe));
     const { code, stderr } = await runCli(["check", file]);
     expect(code).toBe(2);
-    expect(stderr).toContain("unknown-facet.json: facets[4] ‘ERC20X’ isn't in Lattice dev-f4a32c8.");
+    expect(stderr).toContain("unknown-facet.json: facets[4] ‘ERC20X’ isn't in Lattice dev-6c8db45.");
   });
 
   test("a missing file, no file, too many files: exit 2", async () => {

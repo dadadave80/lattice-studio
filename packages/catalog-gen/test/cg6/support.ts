@@ -1,5 +1,5 @@
 /**
- * What the CG6 tests check the real recipe overlay against: the fixture catalog's 100 facets (names, selectors,
+ * What the CG6 tests check the real recipe overlay against: the fixture catalog's 105 facets (names, selectors,
  * signatures and families, which K3 checks against Lattice's source), every init spec name the overlay knows
  * (CG5) with the fixture's params where it has them, and the golden routing GT1 recorded from the scripts.
  */

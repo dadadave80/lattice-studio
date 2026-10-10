@@ -111,6 +111,22 @@ GelatoVRFAdapterInit:
       authority: true
       role: DEFAULT_ADMIN_ROLE
       source: src/oracles/gelato/GelatoVRFAdapterInit.sol#L19-L19
+HederaExchangeRateAdapterInit:
+  kind: step
+  source: src/oracles/hedera/HederaExchangeRateAdapterInit.sol#L16-L18
+HederaPrngAdapterInit:
+  kind: step
+  source: src/oracles/hedera/HederaPrngAdapterInit.sol#L16-L18
+HSSAdapterInit:
+  kind: step
+  source: src/oracles/hedera/HSSAdapterInit.sol#L18-L22
+  params:
+    admin:
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/oracles/hedera/HSSAdapterInit.sol#L19-L19
 PythAdapterInit:
   kind: step
   source: src/oracles/pyth/PythAdapterInit.sol#L20-L23

@@ -1,0 +1,185 @@
+{
+  "name": "ERC7821Executor",
+  "abi": [
+    {
+      "type": "function",
+      "name": "execute",
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "executionData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "supportsExecutionMode",
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "BatchExecuted",
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "calls",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "CallNotPermitted",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidAccountNonce",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "currentNonce",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SessionKeyNotActive",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SpendLimitExceeded",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "cap",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "attempted",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnauthorizedExecutor",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedExecutionMode",
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe9ae5c53": {
+        "notice": "Executes a batch of calls encoded per `mode`.",
+        "dev": "Authorization is implementation-defined (this account: self / EntryPoint / admin / signed opData).",
+        "params": {
+          "executionData": "The encoded calls (and optional opData), per `mode`.",
+          "mode": "The execution mode selecting the `executionData` encoding."
+        }
+      },
+      "0xd03c7914": {
+        "notice": "Whether `mode` is supported by {execute}.",
+        "params": {
+          "mode": "The execution mode to query."
+        }
+      }
+    },
+    "notice": "ERC-7821 minimal batch executor facet. Executes a batch of calls from the account, authorized for the account itself, the configured ERC-4337 EntryPoint, or a `DEFAULT_ADMIN_ROLE` holder.",
+    "dev": "Stateless delegator — logic lives in {ERC7821ExecutorLib}. Following the ERC-7821 reference, execution is gated by authorization only (no reentrancy lock, which would block legitimate self-re-entrant flows). An unauthorized caller may still execute a batch the owner signed off-chain via the opData envelope (replay-protected by the account nonce)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/erc7579/ERC7821Executor.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/accounts/erc7579/ERC7821Executor.sol"
+  }
+}

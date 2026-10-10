@@ -6,7 +6,7 @@ This describes how a change becomes a release: versioning, CI, hosting, and the 
 
 [`release-please`](https://github.com/googleapis/release-please) reads conventional commits and keeps two packages' versions and changelogs in step with them (`.github/workflows/release-please.yml`, configured in `.github/release-please-config.json` and `.github/release-please-manifest.json`): `packages/cli`, the one thing this project ships to a registry, and `apps/studio`, versioned so every export it writes (a Foundry script's header, an agent brief, a Safe batch) carries a real version instead of the placeholder `0.0.0` its `package.json` starts at. On every push to `main`, release-please opens or updates a pull request per package proposing its next version from the commits that touch it since its last release; merging a pull request bumps that package's `package.json`, writes its changelog, and tags its release. The other packages (`core`, `catalog-gen`, `tokens`) aren't independently versioned.
 
-**Needs David:** the workflow only runs once the repository has a `main` branch on GitHub (see below).
+**Needs David:** the workflow runs on every push to `main`, but it fails with "GitHub Actions is not permitted to create or approve pull requests" until the repository allows it (Settings → Actions → General → Workflow permissions), so no version has been cut yet. Its proposed release waits on the `release-please--branches--main` branch.
 
 ## Hosting
 
@@ -40,11 +40,10 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 
 ## CI
 
-`.github/workflows/` is written and ready but not running: `ci.yml` (the pull request gate: typecheck, lint, unit, browser, e2e, golden, chain, catalog drift, size, Lighthouse), `fork.yml` (the Sepolia fork suite), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only), `release-please.yml`, `publish-cli.yml`, and `update-screenshots.yml` (manual, `workflow_dispatch` only: regenerates the missing `chromium-linux` screenshot baselines as a downloadable artifact — see "Linux screenshot baselines" below).
+`.github/workflows/` runs on GitHub: `ci.yml` (the pull request gate: typecheck, lint, unit, browser, e2e, golden, chain, catalog drift, size, Lighthouse), `fork.yml` (the Sepolia fork suite), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only), `release-please.yml`, `publish-cli.yml`, and `update-screenshots.yml` (manual, `workflow_dispatch` only: regenerates the missing `chromium-linux` screenshot baselines as a downloadable artifact — see "Linux screenshot baselines" below).
 
 **Needs David:**
 
-- Create the GitHub repository and push. None of these workflows run before that.
 - Add the `SEPOLIA_RPC_URL` repository secret. `fork.yml` runs without it: the fork suite forks a recent finalized Sepolia block from the first public RPC that serves it and uses the secret only when every public one fails, so the secret is a fallback, not a gate. The pull request gate's own `chain` job runs against a local Anvil node either way.
 - Add the `NPM_TOKEN` repository secret, scoped to publish `lattice-studio` with provenance. Needed before `publish-cli.yml` can run at all.
 - Install solc 0.8.36 (Lattice's pin) before the `golden`, `chain`, and `catalog-drift` jobs run, so `forge build` inside the pinned Lattice checkout has it available.
@@ -65,7 +64,7 @@ Every `toMatchScreenshot` baseline committed today is `*-chromium-darwin.png`: m
 
 ## Re-pinning to a tagged Lattice release
 
-The catalog in `catalog/` is currently built from Lattice's `dev` branch, not a tagged release, and every shared-contract address in it will change once it's rebuilt from a real tag — see `docs/architecture.md` and `README.md`'s "Rebuilding and verifying the catalog".
+The catalog in `catalog/` is currently built from Lattice commit `6c8db45`, which carries the tag `hedera-template-pin-6c8db45` but isn't a `vX.Y.Z` release, and every shared-contract address in it will change once it's rebuilt from a release tag — see `docs/architecture.md` and `README.md`'s "Rebuilding and verifying the catalog".
 
 **Needs David:** once Lattice `v0.4.0` is tagged and released through Arachnid's proxy, update the pinned submodule commit and run `bun run catalog` to rebuild. That rebuild is what clears the "Provisional catalog" notice the app and CLI print today. `docs/examples/erc20.recipe.json` is pinned to the current catalog's hash, so regenerate it from the rebuilt catalog's ERC20 template at the same time, or `lattice-studio check` on that example starts exiting 3 (catalog mismatch).
 
@@ -85,7 +84,7 @@ After a deploy Studio verifies the diamond on Sourcify, which needs no key, and 
 
 The variable is inlined into the bundle and readable by anyone, so it must be a dedicated free-tier key, never a paid one (see `SECURITY.md`). Set it in the Vercel project's environment (Production and Preview), never in a GitHub workflow: CI uploads build artifacts.
 
-**Needs David:** create an Etherscan API key and set it as `VITE_ETHERSCAN_API_KEY` in Vercel. Etherscan lists Base Sepolia as a paid-tier chain; with a free key, verification there may answer "Etherscan's free plan doesn't cover this chain." while Sepolia and Sourcify go on working. Etherscan API V2 doesn't serve HashKey Chain testnet (chain 133; its explorer is Blockscout), so Studio never asks Etherscan about a diamond there and verifies it on Sourcify alone. Etherscan API V2 does serve Avalanche Fuji (chain 43113, through Snowscan); whether a free key covers it is unconfirmed, the same caveat as Base Sepolia.
+**Needs David:** create an Etherscan API key and set it as `VITE_ETHERSCAN_API_KEY` in Vercel. Etherscan lists Base Sepolia as a paid-tier chain; with a free key, verification there may answer "Etherscan's free plan doesn't cover this chain." while Sepolia and Sourcify go on working. Etherscan API V2 doesn't serve HashKey Chain testnet (chain 133; its explorer is Blockscout) or Hedera testnet (chain 296; its explorer is HashScan), so Studio never asks Etherscan about a diamond on either and verifies it on Sourcify alone. Etherscan API V2 does serve Avalanche Fuji (chain 43113, through Snowscan); whether a free key covers it is unconfirmed, the same caveat as Base Sepolia.
 
 ## Real-device performance check
 

@@ -7,7 +7,7 @@ export type Param = { name?: string | undefined; type: string; components?: read
 
 /** What the catalog lets the decoder read back from hashes. */
 export type Knowledge = {
-  /** keccak256("lattice.<Name>") → "lattice.<Name>" (LatticeRegistry's name hash, DeployRelease.s.sol L204). */
+  /** keccak256("lattice.<Name>") → "lattice.<Name>" (LatticeRegistry's name hash, DeployRelease.s.sol L210). */
   names: ReadonlyMap<Hex, string>;
   /** Role hashes → role names, from init parameters' `role` (`DEFAULT_ADMIN_ROLE` is 0x00, AccessControlLib L24). */
   roles: ReadonlyMap<Hex, string>;

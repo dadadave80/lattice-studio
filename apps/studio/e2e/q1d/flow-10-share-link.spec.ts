@@ -362,7 +362,7 @@ test.describe("Flow 10 step 7: opening a share link (spec L504, IR L203)", () =>
 /**
  * Interpretations
  *
- * 1. The catalog tag this e2e build serves is "dev-f4a32c8" (`catalog/manifest.json`'s default entry), not the
+ * 1. The catalog tag this e2e build serves is "dev-6c8db45" (`catalog/manifest.json`'s default entry), not the
  *    spec's illustrative "0.4.1"/"0.4.0" or the brief's stated "0.2.0" (stale by the time this ran): every tag
  *    and hash assertion above reads `_support/catalog.ts`'s `catalog()` at run time instead of hardcoding one.
  *    Flagged as a Follow-up: the brief's catalog-tag note should be dropped or read live in future briefs.

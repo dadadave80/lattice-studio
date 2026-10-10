@@ -8,7 +8,7 @@ AccountInit:
       rule: nonzero
       authority: true
       role: signer
-      source: src/accounts/libraries/AccountSignerLib.sol#L146-L150
+      source: src/accounts/libraries/AccountSignerLib.sol#L166-L170
 
 AccountInit6900:
   kind: step
@@ -22,3 +22,7 @@ AccountInit6900:
       authority: true
       role: DEFAULT_ADMIN_ROLE
       source: src/accounts/erc6900/AccountInit6900.sol#L45-L45
+
+HASSignatureVerifierInit:
+  kind: step
+  source: src/accounts/hedera/HASSignatureVerifierInit.sol#L11-L13

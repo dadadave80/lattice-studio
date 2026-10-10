@@ -1,7 +1,7 @@
 /**
  * The chains Studio deploys to (spec Phasing: the v1 testnets) and the static facts about each: the picker's
  * `ChainInfo`, the default and extra RPCs for the fallback transport (spec L841), the per-transaction gas cap
- * where one is fixed (EIP-7825, spec R16) and the chain ENS names resolve on (spec L462).
+ * where one is fixed (EIP-7825, spec R16, or Hedera's relay) and the chain ENS names resolve on (spec L462).
  *
  * Plain data, no viem: the commands read it from the entry chunk. The lazy module turns it into viem chains.
  */
@@ -10,7 +10,11 @@ import type { ChainInfo } from "@/contracts";
 export type ChainSpec = ChainInfo & {
   /** The chain's own public RPC ("the chain default") and one extra, in fallback order after the person's own. */
   rpc: { default: string; extra?: string };
-  /** EIP-7825's 16,777,216 where it applies; else the latest block's gasLimit (contracts §3.1 `gasCap`). */
+  /**
+   * The per-transaction gas cap where one is fixed: EIP-7825's 16,777,216 where it applies, or Hedera's 15,000,000
+   * (its JSON-RPC relay rejects a transaction above that with -32005 GAS_LIMIT_TOO_HIGH while its blocks report a
+   * gasLimit of 150,000,000). Else the latest block's gasLimit (contracts §3.1 `gasCap`).
+   */
   gasCap?: bigint;
   /** The chain ENS names resolve on for this chain: Ethereum for mainnets, Sepolia for testnets. Null: none. */
   ensChainId: number | null;
@@ -62,6 +66,23 @@ export const HASHKEY_TESTNET: ChainSpec = {
 };
 
 /**
+ * Hedera's testnet, read through Hashio, Hedera's public JSON-RPC relay. The explorer is HashScan, which serves the
+ * `/tx/<hash>` and `/address/<address>` paths. Over JSON-RPC, balances and fees are in weibars (18 decimals); only
+ * contracts see tinybars (8).
+ */
+export const HEDERA_TESTNET: ChainSpec = {
+  id: 296,
+  name: "Hedera Testnet",
+  testnet: true,
+  explorer: "https://hashscan.io/testnet",
+  faucet: "https://portal.hedera.com/faucet",
+  rpc: { default: "https://testnet.hashio.io/api" },
+  gasCap: 15_000_000n,
+  ensChainId: 11155111,
+  nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
+};
+
+/**
  * Avalanche's Fuji testnet, the C-Chain (EVM). The explorer is Snowtrace (Routescan), the one Avalanche's own tooling
  * links to. The default RPC is Avalanche's public endpoint, the extra one PublicNode's; both answered chain id 43113
  * on 2026-10-10. The faucet is the Builder Hub's (sign-in required). No EIP-7825 cap: the block gas limit applies.
@@ -105,8 +126,8 @@ export const ETHEREUM: ChainSpec = {
 /** The picker's chains, in display order; Anvil last and only when `e2e`. */
 export function pickerChains(e2e: boolean): readonly ChainSpec[] {
   return e2e
-    ? [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, AVALANCHE_FUJI, ANVIL]
-    : [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, AVALANCHE_FUJI];
+    ? [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, HEDERA_TESTNET, AVALANCHE_FUJI, ANVIL]
+    : [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, HEDERA_TESTNET, AVALANCHE_FUJI];
 }
 
 /** Every chain the module can read: the picker's, plus the ENS-only chains. */
@@ -131,7 +152,7 @@ export function chainName(chainId: number, e2e: boolean): string {
 
 /**
  * The picker chain a console argument names: its id, or its name ignoring case and spaces
- * ("sepolia", "Base Sepolia", "basesepolia", "hskchain-testnet", "84532").
+ * ("sepolia", "Base Sepolia", "basesepolia", "hskchain-testnet", "hedera-testnet", "84532").
  */
 export function chainFromText(text: string, e2e: boolean): ChainSpec | undefined {
   const trimmed = text.trim();
@@ -184,7 +205,8 @@ export function rpcUrls(spec: ChainSpec, override: string | undefined): string[]
 /**
  * The URLs Studio reads `spec` through: `rpcUrls` with the person's override for that chain. An end-to-end build
  * reads every chain through local Anvil instead (its override, then its default), so a test never reaches a public
- * Sepolia, Base Sepolia, HSKChain Testnet, Avalanche Fuji or Ethereum RPC; the Anvil node stands in for whichever chain is selected.
+ * Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet, Avalanche Fuji or Ethereum RPC; the Anvil node stands in
+ * for whichever chain is selected.
  */
 export function readUrls(spec: ChainSpec, overrides: Readonly<Record<number, string>>, e2e: boolean): string[] {
   if (e2e && spec.id !== ANVIL.id) return rpcUrls(ANVIL, overrides[ANVIL.id]);

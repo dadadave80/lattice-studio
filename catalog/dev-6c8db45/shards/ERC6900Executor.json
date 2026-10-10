@@ -1,0 +1,217 @@
+{
+  "name": "ERC6900Executor",
+  "abi": [
+    {
+      "type": "function",
+      "name": "execute",
+      "inputs": [
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "executeBatch",
+      "inputs": [
+        {
+          "name": "calls",
+          "type": "tuple[]",
+          "internalType": "struct Call[]",
+          "components": [
+            {
+              "name": "target",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "value",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "data",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "executeWithRuntimeValidation",
+      "inputs": [
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "authorization",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "error",
+      "name": "PostExecHookReverted",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "entityId",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "revertReason",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PreExecHookReverted",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "entityId",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "revertReason",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PreRuntimeValidationHookFailed",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "entityId",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "revertReason",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "RuntimeValidationFunctionReverted",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "entityId",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "revertReason",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SelfCallRecursionDepthExceeded",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ValidationFunctionMissing",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xb61d27f6": {
+        "notice": "Executes a single call to `target` with `value`, gated by the caller's runtime validation."
+      },
+      "0x34fcd5be": {
+        "notice": "Executes a batch of calls atomically (any sub-call revert reverts all)."
+      },
+      "0xf2680c0f": {
+        "notice": "Runs the validation function named by `authorization` then self-dispatches `data`."
+      }
+    },
+    "notice": "ERC-6900 execution facet: the native `execute` / `executeBatch` (validation-gated, exec-hook-wrapped calls to arbitrary targets) and the explicit-auth `executeWithRuntimeValidation`. Together with the `ModularAccount6900` fallback (which dispatches installed execution-module selectors) this completes the ERC-6900 execution surface of `IERC6900Account`.",
+    "dev": "Stateless delegator — logic lives in {ERC6900ExecutorLib}; it reads the registries owned by {ERC6900ModuleManagerLib}. Part of the ERC-6900 account blueprint (alternative to the ERC-7579 stack)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/erc6900/ERC6900Executor.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/accounts/erc6900/ERC6900Executor.sol"
+  }
+}

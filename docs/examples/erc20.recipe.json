@@ -1,14 +1,14 @@
 {
-  "$schema": "https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json",
+  "$schema": "https://lattice-studio.invalid/schema/recipe.v1.json",
   "schemaVersion": 1,
   "name": "ERC20",
   "catalog": {
-    "tag": "dev-f4a32c8",
-    "hash": "0xe6b26b64bc16221815377e4bd5c7c410b49e52badb93ab1f786164f57349fc76"
+    "tag": "dev-6c8db45",
+    "hash": "0xff95b40d61ef1d34d245c9a15bb667145bbcfdaf25b12b9cf21dbf413a69e865"
   },
   "template": {
     "name": "ERC20",
-    "catalogHash": "0xe6b26b64bc16221815377e4bd5c7c410b49e52badb93ab1f786164f57349fc76"
+    "catalogHash": "0xff95b40d61ef1d34d245c9a15bb667145bbcfdaf25b12b9cf21dbf413a69e865"
   },
   "facets": [
     "ERC20",

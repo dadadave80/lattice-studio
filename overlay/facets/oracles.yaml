@@ -102,6 +102,21 @@ GelatoVRFAdapter:
   seamReview: >-
     getUserKey is shared with ChainlinkVRF; each reads its own request map, and no deploy script or doc pins an
     owner, so the user chooses (SEL-01).
+HederaExchangeRateAdapter:
+  requires: []
+  init:
+    name: HederaExchangeRateAdapterInit
+    source: src/oracles/hedera/HederaExchangeRateAdapterInit.sol#L16-L18
+HederaPrngAdapter:
+  requires: []
+  init:
+    name: HederaPrngAdapterInit
+    source: src/oracles/hedera/HederaPrngAdapterInit.sol#L16-L18
+HSSAdapter:
+  requires: []
+  init:
+    name: HSSAdapterInit
+    source: src/oracles/hedera/HSSAdapterInit.sol#L18-L22
 PythAdapter:
   requires: []
   init:

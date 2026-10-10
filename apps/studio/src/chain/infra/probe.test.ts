@@ -4,7 +4,7 @@ import { analyze, buildSalt, MULTICALL3 } from "@lattice-studio/core";
 import { makeRecipe } from "@lattice-studio/core/testing";
 import { encodeErrorResult, HttpRequestError, keccak256, parseAbi } from "viem";
 import { CREATEX_CODEHASH as HARNESS_CREATEX, MULTICALL3_CODEHASH as HARNESS_MULTICALL3 } from "../../../test/harness/chain";
-import { ANVIL, BASE_SEPOLIA, SEPOLIA, type ChainSpec } from "./chains";
+import { ANVIL, BASE_SEPOLIA, HEDERA_TESTNET, SEPOLIA, type ChainSpec } from "./chains";
 import { createClients } from "./clients";
 import {
   CODEHASH_PROGRAM, CREATEX_CODEHASH, EMPTY_CODEHASH, MULTICALL3_CODEHASH, probeChain, readCodehashes,
@@ -219,6 +219,12 @@ describe("probeChain", () => {
     expect((await probe()).gasCap).toBe("60000000");
     const anvil = setup({ spec: ANVIL, gasLimit: 30_000_000n });
     expect((await anvil.probe()).gasCap).toBe("30000000");
+  });
+
+  test("Hedera Testnet: the relay's 15M per-transaction cap, not the 150M its blocks report", async () => {
+    const { chain, probe } = setup({ spec: HEDERA_TESTNET, gasLimit: 150_000_000n });
+    expect((await probe()).gasCap).toBe("15000000");
+    expect(chain.methods()).not.toContain("eth_getBlockByNumber");
   });
 
   test("a chain-specific LatticeFactory is probed at its own address", async () => {

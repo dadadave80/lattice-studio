@@ -32,7 +32,7 @@ describe("predict", () => {
       entropySource: "flags",
       from: SAFE,
       salt,
-      catalog: "dev-f4a32c8",
+      catalog: "dev-6c8db45",
     });
   });
 

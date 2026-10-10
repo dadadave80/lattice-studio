@@ -174,12 +174,12 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     fixture = await fixtureInits();
   }, BUILD_TIMEOUT_MS);
 
-  test("84 init contracts give 85 specs, sorted by name; every internal call was followed", () => {
-    expect(new Set(inits.map((f) => f.spec.contract)).size).toBe(84);
-    expect(inits).toHaveLength(85);
+  test("89 init contracts give 90 specs, sorted by name; every internal call was followed", () => {
+    expect(new Set(inits.map((f) => f.spec.contract)).size).toBe(89);
+    expect(inits).toHaveLength(90);
     const names = inits.map((f) => f.spec.name);
     expect(names).toEqual([...names].sort());
-    expect(new Set(names).size).toBe(85);
+    expect(new Set(names).size).toBe(90);
     expect(notes).toEqual([]);
     // Calls into other code, which aren't init code: pinned so a new one gets looked at.
     expect(externalCalls).toEqual([
@@ -249,7 +249,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
       ["AccountInit6900", [{ name: "entryPoint_", type: "address" }]],
     ]);
     const stateless = statelessInitContracts(inits).map((c) => c.contract);
-    expect(stateless).toHaveLength(82);
+    expect(stateless).toHaveLength(87);
     expect(stateless).not.toContain("AccountInit");
     expect(stateless).toContain("DiamondIntrospectionInit");
   });
@@ -302,7 +302,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     );
     const covered = new Set(fixture.map((s) => s.name));
     expect(merged.withoutOverlay).toEqual(inits.map((f) => f.spec.name).filter((n) => !covered.has(n)));
-    expect(merged.withoutOverlay).toHaveLength(68);
+    expect(merged.withoutOverlay).toHaveLength(73);
     expect(merged.withoutOverlay).not.toContain("AccountInit");
   });
 });

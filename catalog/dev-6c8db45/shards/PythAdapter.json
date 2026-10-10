@@ -1,0 +1,464 @@
+{
+  "name": "PythAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "priceId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        },
+        {
+          "name": "maxConfBps",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getUpdateFee",
+      "inputs": [
+        {
+          "name": "updateData",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "answerWad",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestAnswerRaw",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "price",
+          "type": "int64",
+          "internalType": "int64"
+        },
+        {
+          "name": "expo",
+          "type": "int32",
+          "internalType": "int32"
+        },
+        {
+          "name": "conf",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "publishTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pyth",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "priceId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "internalType": "uint48"
+        },
+        {
+          "name": "maxConfBps",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setPyth",
+      "inputs": [
+        {
+          "name": "pyth_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "unregisterFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "updatePriceFeeds",
+      "inputs": [
+        {
+          "name": "updateData",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "event",
+      "name": "FeedRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "priceId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        },
+        {
+          "name": "maxConfBps",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "FeedUnregistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PythContractSet",
+      "inputs": [
+        {
+          "name": "pyth",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PythConfidenceTooWide",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "conf",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "price",
+          "type": "int64",
+          "internalType": "int64"
+        },
+        {
+          "name": "maxConfBps",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PythContractIsZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PythContractNotSet",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PythExpoOutOfRange",
+      "inputs": [
+        {
+          "name": "expo",
+          "type": "int32",
+          "internalType": "int32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PythFeedNotRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PythFuturePrice",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "publishTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PythInsufficientFee",
+      "inputs": [
+        {
+          "name": "provided",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "required",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PythInvalidAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "price",
+          "type": "int64",
+          "internalType": "int64"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PythInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PythRefundFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PythStaleData",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "publishTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxStaleness",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x280aebcf": {
+        "notice": "Returns a feed's configuration.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0xd47eed45": {
+        "notice": "Returns the fee (wei) required to submit `updateData`.",
+        "params": {
+          "updateData": "The signed Pyth price-update blobs."
+        }
+      },
+      "0x084d4783": {
+        "notice": "Returns the latest price for `key`, normalized to 18 decimals (WAD). Selector matches {IPriceOracleReader.latestAnswer}. Reverts on stale / future / non-positive / wide-confidence.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0xad0ddbee": {
+        "notice": "Returns the validated raw price for `key`.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0xf98d06f0": {
+        "notice": "Returns the Pyth contract address."
+      },
+      "0xb364e0d4": {
+        "notice": "Registers a Pyth feed under `key`. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "The arbitrary feed identifier.",
+          "maxConfBps": "Maximum confidence ratio in basis points (0 = disabled).",
+          "maxStaleness": "Maximum age (seconds); must be non-zero.",
+          "priceId": "The Pyth price-feed id (non-zero)."
+        }
+      },
+      "0xee22fd6f": {
+        "notice": "Sets the Pyth contract. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "pyth_": "The Pyth contract (non-zero)."
+        }
+      },
+      "0x2a589908": {
+        "notice": "Removes a registered feed. Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "The feed identifier to remove."
+        }
+      },
+      "0xef9e5e28": {
+        "notice": "Refreshes on-chain Pyth prices from `updateData`. Permissionless and caller-funded: `msg.value` must be `>= getUpdateFee(updateData)`; any excess is refunded to the caller.",
+        "params": {
+          "updateData": "The signed Pyth price-update blobs."
+        }
+      }
+    },
+    "notice": "Diamond facet exposing pull-based Pyth price feeds with per-feed staleness + confidence configuration and WAD-normalized answers. Shares the {IPriceOracleReader} read surface with the other Lattice oracle adapters.",
+    "dev": "Stateless delegator — all logic and storage live in {PythAdapterLib}. Consumers inherit this contract and add AccessControl + an initializer. Prices are refreshed via the payable {updatePriceFeeds}, then read via {latestAnswer}."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/pyth/PythAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/oracles/pyth/PythAdapter.sol"
+  }
+}

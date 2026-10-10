@@ -1,0 +1,413 @@
+{
+  "name": "PrivateVoting",
+  "abi": [
+    {
+      "type": "function",
+      "name": "createPoll",
+      "inputs": [
+        {
+          "name": "groupId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "numChoices",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        {
+          "name": "startTime",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "endTime",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getPoll",
+      "inputs": [
+        {
+          "name": "pollId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IPrivateVoting.PollView",
+          "components": [
+            {
+              "name": "groupId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "numChoices",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "creator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "startTime",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "endTime",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "totalVotes",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getVotes",
+      "inputs": [
+        {
+          "name": "pollId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "choice",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "hasVoted",
+      "inputs": [
+        {
+          "name": "pollId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "nullifier",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pollCount",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "vote",
+      "inputs": [
+        {
+          "name": "pollId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "proof",
+          "type": "tuple",
+          "internalType": "struct ISemaphore.SemaphoreProof",
+          "components": [
+            {
+              "name": "merkleTreeDepth",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "merkleTreeRoot",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "nullifier",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "message",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "scope",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "points",
+              "type": "uint256[8]",
+              "internalType": "uint256[8]"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "PollCreated",
+      "inputs": [
+        {
+          "name": "pollId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "groupId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "creator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "numChoices",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        },
+        {
+          "name": "startTime",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        },
+        {
+          "name": "endTime",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "VoteCast",
+      "inputs": [
+        {
+          "name": "pollId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "choice",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "nullifier",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "NullifierAlreadySpent",
+      "inputs": [
+        {
+          "name": "nullifier",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NullifierIsZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NullifierOutOfField",
+      "inputs": [
+        {
+          "name": "nullifier",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingAlreadyVoted",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingClosed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingInvalidChoice",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingInvalidNumChoices",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingInvalidProof",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingInvalidTimeWindow",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingNotGroupAdmin",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingNotOpen",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingPollDoesNotExist",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PrivateVotingScopeMismatch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SemaphoreGroupDoesNotExist",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SemaphoreGroupHasNoMembers",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SemaphoreMerkleTreeDepthUnsupported",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SemaphoreMerkleTreeRootNotInGroup",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SemaphoreVerifierNotSet",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x5fc5999b": {
+        "notice": "Creates a poll over `groupId`. Only the group admin may create polls for it.",
+        "params": {
+          "endTime": "Unix time voting closes (0 = never).",
+          "groupId": "The Semaphore group whose members may vote.",
+          "numChoices": "Number of options (>= 2).",
+          "startTime": "Unix time voting opens (0 = immediately)."
+        }
+      },
+      "0x1a8cbcaa": {
+        "notice": "Returns the public configuration of `pollId`."
+      },
+      "0x91f36633": {
+        "notice": "Returns the vote count for `choice` in `pollId`."
+      },
+      "0x64390ff1": {
+        "notice": "Returns whether `nullifier` has already voted in `pollId`."
+      },
+      "0x9207891d": {
+        "notice": "Returns the number of polls created."
+      },
+      "0xd5d4738f": {
+        "notice": "Casts an anonymous ballot in `pollId`. `proof.scope` must equal `pollId` and `proof.message` is the chosen option; the nullifier prevents a second ballot.",
+        "params": {
+          "pollId": "The poll to vote in.",
+          "proof": "The Semaphore proof of membership binding the choice + poll."
+        }
+      }
+    },
+    "notice": "Stateless Diamond facet for anonymous one-person-one-vote polling over Semaphore groups: a member casts an anonymous ballot with a Semaphore proof (scope = poll id, message = choice), and the scope-bound nullifier gives each member exactly one vote per poll.",
+    "dev": "All logic lives in {PrivateVotingLib}. Composes the {ISemaphore} module (must be present in the same diamond). 1-person-1-vote, not token-weighted."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/privacy/PrivateVoting.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/privacy/PrivateVoting.sol"
+  }
+}

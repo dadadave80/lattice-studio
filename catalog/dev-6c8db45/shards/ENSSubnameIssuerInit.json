@@ -1,0 +1,69 @@
+{
+  "name": "ENSSubnameIssuerInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "wrapper",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "ENSSubnameIssuerZeroNameWrapper",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf09a4016": {
+        "notice": "Runs the ENS subname-issuer + access-control module initializers. MUST be invoked via the diamond's `initialize` `_init` delegatecall.",
+        "params": {
+          "admin": "The address granted `DEFAULT_ADMIN_ROLE` (controls role assignment).",
+          "wrapper": "The external ENS NameWrapper the facet forwards `setSubnodeRecord` to."
+        }
+      }
+    },
+    "notice": "One-shot initializer for an ENS subname-issuer diamond — seeds AccessControl (so `issueSubname` and the wrapper setter are `ENS_SUBNAME_ISSUER_ROLE`-gated), registers the IENSSubnameIssuer interface (ERC-165), and wires the external ENS NameWrapper the facet forwards `setSubnodeRecord` to. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; each `__*_init` guard passes because the window is already open). Reverts {ENSSubnameIssuerZeroNameWrapper} for a zero wrapper."
+  },
+  "source": {
+    "path": "src/ens/ENSSubnameIssuerInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/6c8db45aa46986af2edb6a0d8fb02a4a92faef01/src/ens/ENSSubnameIssuerInit.sol"
+  }
+}
