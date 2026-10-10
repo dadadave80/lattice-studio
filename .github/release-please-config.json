@@ -3,6 +3,7 @@
   "release-type": "node",
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": false,
+  "initial-version": "0.1.0",
   "packages": {
     "packages/cli": {
       "package-name": "lattice-studio",
