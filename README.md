@@ -9,7 +9,7 @@
 Compose a contract system from facets, catch every mistake on the edit that makes it,<br />
 and ship it as a Foundry script, a Safe batch or one verified transaction.
 
-[**Open the app**](https://lattice-studio-git-feat-hedera-david-dadas-projects.vercel.app) · [Watch the demo](https://youtu.be/Fzei4h-vTQg) · [Architecture](docs/architecture.md) · [Security model](SECURITY.md) · [CLI](packages/cli/README.md)
+[**Open the app**](https://lattice-studio-topaz.vercel.app) · [Watch the demo](https://youtu.be/Fzei4h-vTQg) · [Architecture](docs/architecture.md) · [Security model](SECURITY.md) · [CLI](packages/cli/README.md)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-16150f?style=flat-square)](LICENSE)
 [![EIP-2535 diamonds](https://img.shields.io/badge/EIP--2535-diamonds-1f4fe0?style=flat-square)](https://eips.ethereum.org/EIPS/eip-2535)
@@ -85,7 +85,7 @@ cast call 0xFDd6e099fF4b48a9179443A9D846AfA816997e23 "facetAddresses()(address[]
 
 ## Quickstart
 
-Use the [hosted app](https://lattice-studio-git-feat-hedera-david-dadas-projects.vercel.app), or run it yourself with [Bun](https://bun.sh):
+Use the [hosted app](https://lattice-studio-topaz.vercel.app), or run it yourself with [Bun](https://bun.sh):
 
 ```sh
 git clone https://github.com/dadadave80/lattice-studio.git
@@ -224,17 +224,17 @@ Studio is at v1: it composes new Lattice diamonds and deploys them on testnets. 
 - **HashKey Chain testnet is new.** It was added on October 2, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX isn't deployed there, so only the LatticeFactory path works, and verification runs on Sourcify alone (Etherscan doesn't serve the chain).
 - **Hedera testnet is new.** It was added on October 4, 2026. The same day, the shared contracts a Lattice base with `HTSAdapter` needs went there at their release addresses: LatticeRegistry, LatticeFactory, eight facets and four inits ([Proof on Hedera testnet](#proof-on-hedera-testnet)). Deploy missing contracts deploys any other one a recipe names, through Arachnid's deployment proxy (it's on Hedera testnet). CreateX isn't deployed on Hedera, so only the LatticeFactory path works, and verification runs on Sourcify alone (Etherscan doesn't serve the chain).
 - **Avalanche Fuji is new.** It was added on October 10, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX is on Fuji, so both the LatticeFactory and the CreateX paths work, and verification runs on Sourcify and on Etherscan.
-- **The catalog is provisional.** It's built from Lattice commit `6c8db45` (Lattice `VERSION` 0.2.0, tag `hedera-template-pin-6c8db45` on the `feat/hedera-system-contract-modules` branch), not yet a `vX.Y.Z` release. It adds Lattice's Hedera facets (`HTSAdapter`, `HSSAdapter`, `HederaExchangeRateAdapter`, `HederaPrngAdapter` and `HASSignatureVerifier`) to the 100 of `dev-f4a32c8`, which stays in the manifest so recipes made against it still open. The pin also gives seven account facets new code, and so new addresses: `AccountSigner`, `ERC1271Signature`, `ERC4337Validation`, `ERC6900Executor`, `ERC6900Signature`, `ERC6900Validation` and `ERC7821Executor`. A recipe that uses one of them plans a different address for it under `dev-6c8db45` than under `dev-f4a32c8`. v1 targets Lattice `v0.4.0`, released through Arachnid's deployment proxy; every shared-contract address in the catalog changes at that re-pin. `check`, `plan` and the app all print "Provisional catalog" while this is true. [`docs/release.md`](docs/release.md) has what re-pinning involves.
+- **The catalog is provisional.** It's built from Lattice commit `6c8db45` (Lattice `VERSION` 0.2.0, tag `hedera-template-pin-6c8db45` on the `feat/hedera-system-contract-modules` branch), not yet a `vX.Y.Z` release. It adds Lattice's Hedera facets (`HTSAdapter`, `HSSAdapter`, `HederaExchangeRateAdapter`, `HederaPrngAdapter` and `HASSignatureVerifier`) to the 100 of `dev-f4a32c8`, which stays in the manifest so recipes made against it still open. The pin also gives seven account facets new code, and so new addresses: `AccountSigner`, `ERC1271Signature`, `ERC4337Validation`, `ERC6900Executor`, `ERC6900Signature`, `ERC6900Validation` and `ERC7821Executor`. A recipe that uses one of them plans a different address for it under `dev-6c8db45` than under `dev-f4a32c8`. v1 targets Lattice `v0.5.0` (released October 9, 2026); the catalog's own notice still names 0.4.0 until the rebuild, and every shared-contract address in the catalog changes at that re-pin. `check`, `plan` and the app all print "Provisional catalog" while this is true. [`docs/release.md`](docs/release.md) has what re-pinning involves.
 - **New diamonds only.** Upgrading a live diamond is v2.
 - **The CLI isn't on npm yet.** Run it from a checkout.
-- **CI is red for known reasons, none of which fail locally.** The `browser` job has no Linux screenshot baselines yet (every committed one was made on macOS), the Foundry jobs (`golden`, `chain`, `catalog-drift`) fail building the pinned Lattice checkout on the runner, and a `Performance` benchmark misses its budget there. [`docs/release.md`](docs/release.md) has the steps.
+- **CI is green on `dev`; `Performance` is red on one budget.** `ci.yml` (typecheck, lint, unit, browser, e2e, golden, chain, catalog drift, size, Lighthouse) passes on `dev`. `perf.yml` misses one enforced budget: the analysis of 30 colliding cards takes about 5.4 ms (median, 4× CPU) against 5 ms. It stays red until the analysis gets under budget or the budget becomes report-only like INP (#21); which comes first is David's call. [`docs/release.md`](docs/release.md) describes the workflows.
 
 ## Roadmap
 
 The aim is one place where a contract system is designed, reviewed and shipped, with the same deterministic analysis available to people, pipelines and agents.
 
 - Upgrading live diamonds (v2).
-- Re-pinning to the canonical Lattice 0.4.0 release.
+- Re-pinning to the canonical Lattice 0.5.0 release.
 - Smart-account recipes, once Lattice ships AccountFactory.
 - The CLI on npm, with provenance.
 - Mainnet, behind an explicit typed confirmation that names the unaudited code.
