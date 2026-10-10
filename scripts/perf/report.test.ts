@@ -117,14 +117,16 @@ describe("evaluate", () => {
     expect(e.fixes.some((f) => f.includes("analysis/analyze.ts 34%") && f.includes("analyze.ts:105 20%"))).toBe(true);
   });
 
-  test("the ruling: LCP report-only until Q19, INP until the Undo fix, the drag row names Q19, the rest (analysis since FX29) enforced", () => {
-    expect(REPORT_ONLY).toEqual({ lcp: "Q19", drag: "Q19", inp: "the Undo fix" });
+  test("the ruling: LCP report-only until Q19, INP until the Undo fix, analysis until the analyze fix, the drag row names Q19, the first-load gate enforced", () => {
+    expect(REPORT_ONLY).toEqual({ lcp: "Q19", drag: "Q19", inp: "the Undo fix", analysis: "the analyze fix" });
     const e = evaluate(inputs({ lighthouse: lighthouse(7900) }));
     expect(e.ok).toBe(true);
     expect(e.rows.find((r) => r.item.startsWith("Largest Contentful Paint"))).toMatchObject({ status: "over", enforced: false, until: "Q19" });
+    // Analysis over is reported, not failed, and still gets its fix request.
     const slow = evaluate(inputs({ analysis: analysis(6.7) }));
-    expect(slow.rows.find((r) => r.item.startsWith("Analysis, 30 colliding"))).toMatchObject({ status: "over", enforced: true });
-    expect(slow.ok).toBe(false);
+    expect(slow.rows.find((r) => r.item.startsWith("Analysis, 30 colliding"))).toMatchObject({ status: "over", enforced: false, until: "the analyze fix" });
+    expect(slow.ok).toBe(true);
+    expect(slow.fixes.some((f) => f.startsWith("analyze takes 6.70 ms"))).toBe(true);
     expect(e.rows.find((r) => r.item.startsWith("Drag, added per move"))).toMatchObject({ enforced: false, until: "Q19" });
     expect(e.fixes.some((f) => f.startsWith("LCP is 7.90 s"))).toBe(true);
     // INP over is reported, not failed; the first-load gate still fails the run.
