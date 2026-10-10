@@ -201,8 +201,9 @@ bun packages/cli/src/main.ts verify-catalog --lattice ../lattice
 
 Studio is at v1: it composes new Lattice diamonds and deploys them on testnets. The edges, stated plainly:
 
-- **Testnets only.** Sepolia, Base Sepolia and HashKey Chain testnet (chain 133, "HSKChain Testnet" in the picker). Mainnet is off in v1; Lattice and CreateX are both unaudited.
+- **Testnets only.** Sepolia, Base Sepolia, HashKey Chain testnet (chain 133, "HSKChain Testnet" in the picker) and Avalanche Fuji (chain 43113). Mainnet is off in v1; Lattice and CreateX are both unaudited.
 - **HashKey Chain testnet is new.** It was added on October 2, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX isn't deployed there, so only the LatticeFactory path works, and verification runs on Sourcify alone (Etherscan doesn't serve the chain).
+- **Avalanche Fuji is new.** It was added on October 10, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX is on Fuji, so both the LatticeFactory and the CreateX paths work, and verification runs on Sourcify and on Etherscan.
 - **The catalog is provisional.** It's built from Lattice's `dev` branch at commit `f4a32c8` (Lattice `VERSION` 0.2.0), not yet a tagged release. v1 targets Lattice `v0.4.0`, released through Arachnid's deployment proxy; every shared-contract address in the catalog changes at that re-pin. `check`, `plan` and the app all print "Provisional catalog" while this is true. [`docs/release.md`](docs/release.md) has what re-pinning involves.
 - **New diamonds only.** Upgrading a live diamond is v2.
 - **The CLI isn't on npm yet.** Run it from a checkout.
