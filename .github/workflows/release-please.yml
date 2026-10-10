@@ -36,10 +36,17 @@ jobs:
       # The release PR bumps apps/studio/package.json, and Settings → About shows that version, so the bundle and
       # with it the CSP hash change. Regenerate vercel.json on the release branch, or its Vercel deploy and Size
       # budgets fail (#31). Runs each time release-please opens or rewrites the PR.
+      # The branch name via jq, not fromJSON: on a release run `pr` is empty, and GitHub evaluates a skipped step's
+      # fromJSON anyway, which failed the run before the catalog hash steps (0.1.0).
+      - id: release-pr
+        if: steps.release.outputs.pr
+        env:
+          PR: ${{ steps.release.outputs.pr }}
+        run: echo "branch=$(jq -r .headBranchName <<<"$PR")" >> "$GITHUB_OUTPUT"
       - if: steps.release.outputs.pr
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          ref: ${{ steps.release-pr.outputs.branch }}
           token: ${{ steps.app-token.outputs.token }}
       - if: steps.release.outputs.pr
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -48,7 +55,7 @@ jobs:
       - name: Regenerate vercel.json on the release PR
         if: steps.release.outputs.pr
         env:
-          BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          BRANCH: ${{ steps.release-pr.outputs.branch }}
         run: |
           bun install --frozen-lockfile
           STUDIO_VERCEL_JSON=1 bun run build
