@@ -1,6 +1,6 @@
 {
   "name": "lattice-studio",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Check, plan, predict and export Lattice diamond recipes from the command line.",
   "type": "module",
