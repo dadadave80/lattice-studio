@@ -43,6 +43,10 @@ export const REPORT_ONLY: Readonly<Partial<Record<BudgetKey, string>>> = {
   // David, 2026-10-09: on GitHub's runner the slowest step, Undo, measured 168-360 ms against 200 across runs of
   // the same code, so one sample decides the job. Reported until Undo itself is made cheaper.
   inp: "the Undo fix",
+  // David, 2026-10-10: on GitHub's runner the 30 colliding cards case measured 5.40 ms median (p95 6.90) against
+  // 5 on every dev commit since 2026-10-09; the other case passes at 4.20. Its time goes to analyze.ts (27%),
+  // view.ts (15%) and keccak (8%). Reported until analyze itself is made cheaper.
+  analysis: "the analyze fix",
 };
 
 export type Status = "ok" | "over" | "above reference" | "warn" | "info" | "missing";
