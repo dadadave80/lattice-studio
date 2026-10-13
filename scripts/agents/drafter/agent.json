@@ -1,0 +1,9 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Lattice Drafter",
+  "description": "Drafts Lattice recipes (EIP-2535 diamonds) from plain English with Qwen 3.8 Max. Every draft must pass Lattice Studio's deterministic checks before a person deploys it, and its reputation comes only from passports anyone can recompute.",
+  "image": "https://raw.githubusercontent.com/dadadave80/lattice-studio/dev/apps/studio/public/icons/icon-512.png",
+  "endpoints": [{ "name": "source", "endpoint": "https://github.com/dadadave80/lattice-studio/tree/dev/scripts/agents/drafter" }],
+  "registrations": [],
+  "supportedTrust": ["reputation"]
+}
