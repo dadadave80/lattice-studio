@@ -2,7 +2,7 @@
 import { describe, expect, test } from "bun:test";
 import { lintCopy } from "@lattice-studio/core";
 import { catalogDeployBlock } from ".";
-import { AVALANCHE_FUJI, chainFromText, chainInfo, HASHKEY_TESTNET, HEDERA_TESTNET, pickerChains, publicRpcUrls, rpcUrls } from "./chains";
+import { AVALANCHE_FUJI, chainFromText, chainInfo, HASHKEY_TESTNET, HEDERA_TESTNET, MONAD_TESTNET, pickerChains, publicRpcUrls, rpcUrls } from "./chains";
 import {
   CANCELED_IN_WALLET, CHAIN_CHECKS_NEED_CONNECTION, checking, couldntRead, LOADING_WALLET_SUPPORT, needsFunds, NO_WALLET,
   rpcNotAnswering, walletOn,
@@ -33,8 +33,8 @@ describe("Flow 14", () => {
 
 describe("chains", () => {
   test("v1 testnets in the picker; Anvil only in end-to-end builds", () => {
-    expect(pickerChains(false).map((c) => c.id)).toEqual([11155111, 84532, 133, 296, 43113]);
-    expect(pickerChains(true).map((c) => c.id)).toEqual([11155111, 84532, 133, 296, 43113, 31337]);
+    expect(pickerChains(false).map((c) => c.id)).toEqual([11155111, 84532, 133, 296, 43113, 10143]);
+    expect(pickerChains(true).map((c) => c.id)).toEqual([11155111, 84532, 133, 296, 43113, 10143, 31337]);
     expect(chainFromText("anvil", false)).toBeUndefined();
     expect(chainFromText("anvil", true)?.id).toBe(31337);
   });
@@ -92,6 +92,26 @@ describe("chains", () => {
     expect(chainFromText("43113", false)).toBe(AVALANCHE_FUJI);
     expect(chainFromText("avalanche-fuji", false)).toBe(AVALANCHE_FUJI);
     expect(chainFromText("Avalanche Fuji", false)).toBe(AVALANCHE_FUJI);
+  });
+
+  test("Monad Testnet: chain 10143, MON, two public RPCs, Monadscan and the faucet, ENS through Sepolia", () => {
+    expect(chainInfo(MONAD_TESTNET)).toEqual({
+      id: 10143,
+      name: "Monad Testnet",
+      testnet: true,
+      explorer: "https://testnet.monadscan.com",
+      faucet: "https://faucet.monad.xyz",
+    });
+    expect(MONAD_TESTNET.nativeCurrency).toEqual({ name: "Monad", symbol: "MON", decimals: 18 });
+    expect(MONAD_TESTNET.ensChainId).toBe(11155111);
+    expect(MONAD_TESTNET.gasCap).toBe(30_000_000n);
+    const both = ["https://testnet-rpc.monad.xyz", "https://rpc.ankr.com/monad_testnet"];
+    expect(rpcUrls(MONAD_TESTNET, undefined)).toEqual(both);
+    expect(publicRpcUrls(MONAD_TESTNET, "https://rpc.example/key")).toEqual(both);
+    expect(chainFromText("10143", false)).toBe(MONAD_TESTNET);
+    expect(chainFromText("monad-testnet", false)).toBe(MONAD_TESTNET);
+    expect(chainFromText("Monad Testnet", false)).toBe(MONAD_TESTNET);
+    expect(chainFromText("monad", false)).toBeUndefined();
   });
 
   test("`chain <id>`: a picker chain by its number, nothing for one Studio doesn't list (IR L155)", () => {

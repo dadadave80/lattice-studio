@@ -99,6 +99,24 @@ export const AVALANCHE_FUJI: ChainSpec = {
 };
 
 /**
+ * Monad's public testnet. The explorer is Monadscan, Etherscan's. The default RPC is Monad's own, the extra one
+ * Ankr's; the documented endpoints could not be reached from this environment on 2026-10-13. The faucet is
+ * Monad's. The per-transaction gas cap is fixed at 30,000,000, Monad's protocol limit: its blocks report a
+ * 200,000,000 gas limit, which the probe would otherwise take as the cap. Monad charges the gas limit, not the gas used.
+ */
+export const MONAD_TESTNET: ChainSpec = {
+  id: 10143,
+  name: "Monad Testnet",
+  testnet: true,
+  explorer: "https://testnet.monadscan.com",
+  faucet: "https://faucet.monad.xyz",
+  rpc: { default: "https://testnet-rpc.monad.xyz", extra: "https://rpc.ankr.com/monad_testnet" },
+  ensChainId: 11155111,
+  gasCap: 30_000_000n,
+  nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
+};
+
+/**
  * Local Anvil, only in end-to-end builds (contracts §5.5). Its shared-contract addresses equal every other
  * chain's. Tests point it at their own node through Settings → Networks (`settings.rpc[31337]`).
  */
@@ -126,8 +144,8 @@ export const ETHEREUM: ChainSpec = {
 /** The picker's chains, in display order; Anvil last and only when `e2e`. */
 export function pickerChains(e2e: boolean): readonly ChainSpec[] {
   return e2e
-    ? [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, HEDERA_TESTNET, AVALANCHE_FUJI, ANVIL]
-    : [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, HEDERA_TESTNET, AVALANCHE_FUJI];
+    ? [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, HEDERA_TESTNET, AVALANCHE_FUJI, MONAD_TESTNET, ANVIL]
+    : [SEPOLIA, BASE_SEPOLIA, HASHKEY_TESTNET, HEDERA_TESTNET, AVALANCHE_FUJI, MONAD_TESTNET];
 }
 
 /** Every chain the module can read: the picker's, plus the ENS-only chains. */
@@ -205,7 +223,7 @@ export function rpcUrls(spec: ChainSpec, override: string | undefined): string[]
 /**
  * The URLs Studio reads `spec` through: `rpcUrls` with the person's override for that chain. An end-to-end build
  * reads every chain through local Anvil instead (its override, then its default), so a test never reaches a public
- * Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet, Avalanche Fuji or Ethereum RPC; the Anvil node stands in
+ * Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet, Avalanche Fuji, Monad Testnet or Ethereum RPC; the Anvil node stands in
  * for whichever chain is selected.
  */
 export function readUrls(spec: ChainSpec, overrides: Readonly<Record<number, string>>, e2e: boolean): string[] {

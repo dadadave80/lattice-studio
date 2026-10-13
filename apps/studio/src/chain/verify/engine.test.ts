@@ -585,6 +585,18 @@ describe("the Etherscan leg", () => {
     expect(texts().sort()).toEqual(["Verified on Etherscan.", "Verified on Sourcify (exact match)."]);
   });
 
+  test("on Monad Testnet, which Etherscan API V2 serves, a keyed record gets the Etherscan leg", async () => {
+    fresh();
+    const net = verifiers([QUEUED, PASS]);
+    const monad = confirmed({ chainId: 10143 });
+    const records = memoryRecords([monad]);
+    const clock = manualClock();
+    await run(verifyIfNeeded(keyed(net.fetchImpl, records, clock), monad), clock, [5_000]);
+    expect(net.etherscan()).toEqual(["verifysourcecode", "checkverifystatus"]);
+    expect(etherscanOutcomes.get(monad)).toEqual({ outcome: "verified" });
+    expect(texts().sort()).toEqual(["Verified on Etherscan.", "Verified on Sourcify (exact match)."]);
+  });
+
   test("a catalog without the compiler's commit fails Etherscan before any call, and Sourcify goes on", async () => {
     fresh();
     const net = verifiers([]);

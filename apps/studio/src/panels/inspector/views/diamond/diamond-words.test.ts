@@ -102,6 +102,9 @@ describe("diamond-words", () => {
     // It does serve Avalanche Fuji (Snowscan): the line appears once a key is set.
     expect(etherscanWord(record({ chainId: 43113 }), undefined, true, true)).toBe("Verifying on Etherscan");
     expect(etherscanWord(record({ chainId: 43113 }), { outcome: "verified" }, true, false)).toBe("Verified on Etherscan");
+    // It is served by Etherscan API V2 (Monadscan): the line appears once a key is set.
+    expect(etherscanWord(record({ chainId: 10143 }), undefined, true, true)).toBe("Verifying on Etherscan");
+    expect(etherscanWord(record({ chainId: 10143 }), { outcome: "verified" }, true, false)).toBe("Verified on Etherscan");
     expect(etherscanWord(record({ chainId: 11155111, status: "pending" }), undefined, true, true)).toBeNull();
     expect(etherscanWord(record({ chainId: 11155111, fromFile: true }), undefined, true, true)).toBeNull();
   });
