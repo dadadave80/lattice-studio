@@ -11,7 +11,7 @@ describe("help", () => {
   test("bun packages/cli/src/main.ts --help lists every command and exit code", async () => {
     const { code, stdout } = await spawnCli(["--help"]);
     expect(code).toBe(0);
-    for (const command of ["check <file>", "plan <file>", "predict", "export foundry <file>", "export brief <file>", "export recipe <file>", "export safe <file>", "verify-catalog"]) {
+    for (const command of ["check <file>", "plan <file>", "predict", "export foundry <file>", "export brief <file>", "export recipe <file>", "export safe <file>", "passport <address>", "verify-catalog"]) {
       expect(stdout).toContain(`  ${command}`);
     }
     expect(stdout).toContain("Exit codes: 0 no blockers, 1 blockers, 2 invalid input, 3 catalog mismatch.");
@@ -52,7 +52,7 @@ describe("invalid input exits 2 with the usage", () => {
 
   test.each([
     [["check", "r.json", "--nope", "--json"], "Unknown option '--nope'."],
-    [["--json"], "Name a command: check, plan, predict, export or verify-catalog."],
+    [["--json"], "Name a command: check, plan, predict, export, passport or verify-catalog."],
     [["export", "script", "--json"], "export takes foundry, brief, recipe or safe, not script."],
   ] as [string[], string][])("with --json, %p is JSON on stdout", async (argv, message) => {
     const { code, stdout, stderr } = await runCli(argv);

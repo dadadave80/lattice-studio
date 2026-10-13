@@ -6,6 +6,7 @@ import { parseCommandLine } from "./args";
 import { runCheck } from "./commands/check";
 import { runExport } from "./commands/export";
 import { runPredict } from "./commands/predict";
+import { runPassport } from "./commands/passport";
 import { runVerifyCatalog } from "./commands/verify";
 import type { Deps } from "./deps";
 import { EXIT, errorMessage, invalid } from "./failure";
@@ -45,6 +46,8 @@ export async function run(argv: readonly string[], deps: Deps): Promise<number> 
         return await runExport("recipe", parsed.value, deps);
       case "export safe":
         return await runExport("safe", parsed.value, deps);
+      case "passport":
+        return await runPassport(parsed.value, deps);
       case "verify-catalog":
         return await runVerifyCatalog(parsed.value, deps);
       default:

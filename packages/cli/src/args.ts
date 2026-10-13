@@ -22,6 +22,8 @@ const OPTIONS = {
   confirm: { type: "string", multiple: true },
   out: { type: "string" },
   lattice: { type: "string" },
+  recipe: { type: "string" },
+  "from-block": { type: "string" },
 } as const;
 
 export type OptionName = keyof typeof OPTIONS;
@@ -42,9 +44,11 @@ export type Values = {
   confirm?: string[];
   out?: string;
   lattice?: string;
+  recipe?: string;
+  "from-block"?: string;
 };
 
-export type CommandName = "check" | "plan" | "predict" | "export foundry" | "export brief" | "export recipe" | "export safe" | "verify-catalog";
+export type CommandName = "check" | "plan" | "predict" | "export foundry" | "export brief" | "export recipe" | "export safe" | "verify-catalog" | "passport";
 
 export type Parsed = {
   /** Undefined for a bare `--help` or `--version`. */
@@ -67,6 +71,7 @@ export const COMMAND_OPTIONS: Record<CommandName, readonly OptionName[]> = {
   "export recipe": [...COMMON, "project", "out"],
   "export safe": [...COMMON, ...SALT, "safe", "chain", "confirm", "out"],
   "verify-catalog": [...COMMON, "lattice"],
+  passport: [...COMMON, "chain", "rpc", "recipe", "from-block", "out"],
 };
 
 const EXPORT_KINDS = ["foundry", "brief", "recipe", "safe"] as const;
@@ -82,7 +87,7 @@ export function parseCommandLine(argv: readonly string[]): Result<Parsed, string
   const [first, ...rest] = parsed.positionals;
   if (first === undefined) {
     if (values.help === true || values.version === true) return ok({ args: [], values });
-    return err("Name a command: check, plan, predict, export or verify-catalog.");
+    return err("Name a command: check, plan, predict, export, passport or verify-catalog.");
   }
   let command: CommandName;
   let args = rest;
@@ -94,12 +99,12 @@ export function parseCommandLine(argv: readonly string[]): Result<Parsed, string
     }
     command = `export ${kind}` as CommandName;
     args = more;
-  } else if (first === "check" || first === "plan" || first === "predict" || first === "verify-catalog") {
+  } else if (first === "check" || first === "plan" || first === "predict" || first === "verify-catalog" || first === "passport") {
     command = first;
   } else if (first === "help") {
     return ok({ args: [], values: { ...values, help: true } });
   } else {
-    return err(`${first} isn't a command. Use check, plan, predict, export or verify-catalog.`);
+    return err(`${first} isn't a command. Use check, plan, predict, export, passport or verify-catalog.`);
   }
   const allowed = new Set<string>(COMMAND_OPTIONS[command]);
   for (const name of Object.keys(values)) {

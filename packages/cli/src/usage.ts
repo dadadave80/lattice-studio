@@ -10,7 +10,13 @@ Commands:
   export brief <file>     Write the agent brief (Markdown)
   export recipe <file>    Write the normalized recipe.json with its $schema
   export safe <file>      Write a Safe Transaction Builder batch that deploys the diamond
+  passport <address>      Identify a deployed diamond and check its recipe, cut history and owner
   verify-catalog          Rebuild the catalog from a Lattice checkout and compare it with the committed one
+
+Usage: lattice-studio passport <address> --chain <id> [--recipe <file>] [--rpc <url>] [--from-block <n>] [--json] [--out <file>]
+  What a deployed diamond runs: each facet's catalog release, routing against a recipe, cut history and owner().
+  Reads only. Exit 0 when no claim fails, 1 when one does, 2 for invalid input or an unreadable chain, 3 for a
+  recipe whose catalog isn't bundled. ENVIO_API_TOKEN reads cut history through Envio HyperRPC.
 
 Options:
   --json                  Machine-readable output (check mirrors the Analysis type)
@@ -43,6 +49,7 @@ lattice-studio predict --deployer 0x… --chain 8453 --path createx --entropy 0x
   "export brief": "lattice-studio export brief recipe.json --out BRIEF.md",
   "export recipe": "lattice-studio export recipe governed-vault.lattice.json --out recipe.json",
   "export safe": "lattice-studio export safe governed-vault.lattice.json --safe 0x… --chain 11155111 --out batch.json",
+  passport: "lattice-studio passport 0x… --chain 10143 --json",
   "verify-catalog": "bun packages/cli/src/main.ts verify-catalog --lattice ../lattice",
 };
 
