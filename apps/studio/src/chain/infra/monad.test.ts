@@ -15,7 +15,7 @@ describe("Monad Testnet", () => {
       id: 10143,
       name: "Monad Testnet",
       testnet: true,
-      explorer: "https://testnet.monadscan.com",
+      explorer: "https://testnet.monadvision.com",
       faucet: "https://faucet.monad.xyz",
     });
   });

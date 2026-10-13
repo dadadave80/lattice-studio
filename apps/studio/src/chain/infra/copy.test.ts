@@ -94,12 +94,12 @@ describe("chains", () => {
     expect(chainFromText("Avalanche Fuji", false)).toBe(AVALANCHE_FUJI);
   });
 
-  test("Monad Testnet: chain 10143, MON, two public RPCs, Monadscan and the faucet, ENS through Sepolia", () => {
+  test("Monad Testnet: chain 10143, MON, two public RPCs, MonadVision and the faucet, ENS through Sepolia", () => {
     expect(chainInfo(MONAD_TESTNET)).toEqual({
       id: 10143,
       name: "Monad Testnet",
       testnet: true,
-      explorer: "https://testnet.monadscan.com",
+      explorer: "https://testnet.monadvision.com",
       faucet: "https://faucet.monad.xyz",
     });
     expect(MONAD_TESTNET.nativeCurrency).toEqual({ name: "Monad", symbol: "MON", decimals: 18 });

@@ -79,6 +79,34 @@ async function run(promise: Promise<void>, clock: ManualClock, ticks: number[]):
 }
 
 describe("verifyRecord", () => {
+  test("routes Monad to BlockVision's Sourcify instance and Sepolia to sourcify.dev for submission and polling", async () => {
+    clearServiceBuffers();
+    const urls: string[] = [];
+    const fetchImpl: VerifyFetch = async (input, init) => {
+      urls.push(input);
+      return init?.method === "POST"
+        ? json(202, { verificationId: "job-1" })
+        : json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } });
+    };
+    const monadRecord = confirmed({ chainId: 10143 });
+    const monadRecords = memoryRecords([monadRecord]);
+    const monadDeps = deps(fetchImpl, monadRecords, manualClock());
+    delete monadDeps.baseUrl;
+    await verifyRecord(monadDeps, monadRecord);
+    const sepoliaRecord = confirmed();
+    const sepoliaRecords = memoryRecords([sepoliaRecord]);
+    const sepoliaDeps = deps(fetchImpl, sepoliaRecords, manualClock());
+    delete sepoliaDeps.baseUrl;
+    await verifyRecord(sepoliaDeps, sepoliaRecord);
+
+    expect(urls).toEqual([
+      `https://sourcify-api-monad.blockvision.org/v2/verify/10143/${ADDRESS}`,
+      "https://sourcify-api-monad.blockvision.org/v2/verify/job-1",
+      `https://sourcify.dev/server/v2/verify/${CHAIN_ID}/${ADDRESS}`,
+      "https://sourcify.dev/server/v2/verify/job-1",
+    ]);
+  });
+
   test("an exact match writes exact_match and logs Verified", async () => {
     clearServiceBuffers();
     const { fetchImpl } = scriptedFetch([

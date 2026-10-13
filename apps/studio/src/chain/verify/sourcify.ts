@@ -15,6 +15,10 @@ import type { VerifyFetch } from "./ports";
 
 export const SOURCIFY_BASE = "https://sourcify.dev/server";
 
+export function sourcifyApiFor(chainId: number): string {
+  return chainId === 10143 ? "https://sourcify-api-monad.blockvision.org" : SOURCIFY_BASE;
+}
+
 export type SourcifySubmission = {
   stdJsonInput: unknown;
   compilerVersion: string;

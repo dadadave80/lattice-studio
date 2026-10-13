@@ -224,7 +224,7 @@ describe("fallback transport", () => {
     expect(fuji.contracts?.ensUniversalResolver).toBeUndefined();
     const monad = viemChain(MONAD_TESTNET, []);
     expect(monad).toMatchObject({ id: 10143, name: "Monad Testnet", testnet: true, nativeCurrency: { symbol: "MON", decimals: 18 } });
-    expect(monad.blockExplorers?.default.url).toBe("https://testnet.monadscan.com");
+    expect(monad.blockExplorers?.default.url).toBe("https://testnet.monadvision.com");
     expect(monad.contracts?.ensUniversalResolver).toBeUndefined();
   });
 });

@@ -23,7 +23,7 @@ import { couldntVerifyLine, couldntVerifyOnEtherscanLine, ETHERSCAN_NOT_SET_UP, 
 import { ETHERSCAN_BASE, etherscanCompilerVersion, pollEtherscan, scrub, submitToEtherscan } from "./etherscan";
 import { etherscanOutcomes } from "./etherscan-outcomes";
 import type { VerifyDeps } from "./ports";
-import { pollSourcify, SOURCIFY_BASE, submitToSourcify } from "./sourcify";
+import { pollSourcify, sourcifyApiFor, submitToSourcify } from "./sourcify";
 
 const CONTRACT_IDENTIFIER = "src/Lattice.sol:Lattice";
 /** Backoff between polls; the last interval repeats. */
@@ -132,7 +132,7 @@ export async function verifyRecord(deps: VerifyDeps, record: Deployment, signal?
     return fail(deps, record, `Sourcify doesn't verify contracts on ${unverifiableChainName(record.chainId)}.`);
   }
   if (signal?.aborted) return;
-  const base = deps.baseUrl ?? SOURCIFY_BASE;
+  const base = deps.baseUrl ?? sourcifyApiFor(record.chainId);
   const build = await deps.proxyBuild(record.chainId, record.path);
   if (signal?.aborted) return;
   if (!build.ok) return fail(deps, record, build.error);

@@ -99,7 +99,7 @@ export const AVALANCHE_FUJI: ChainSpec = {
 };
 
 /**
- * Monad's public testnet. The explorer is Monadscan, Etherscan's. The default RPC is Monad's own, the extra one
+ * Monad's public testnet. The explorer is MonadVision. The default RPC is Monad's own, the extra one
  * Ankr's; the documented endpoints could not be reached from this environment on 2026-10-13. The faucet is
  * Monad's. The per-transaction gas cap is fixed at 30,000,000, Monad's protocol limit: its blocks report a
  * 200,000,000 gas limit, which the probe would otherwise take as the cap. Monad charges the gas limit, not the gas used.
@@ -108,7 +108,7 @@ export const MONAD_TESTNET: ChainSpec = {
   id: 10143,
   name: "Monad Testnet",
   testnet: true,
-  explorer: "https://testnet.monadscan.com",
+  explorer: "https://testnet.monadvision.com",
   faucet: "https://faucet.monad.xyz",
   rpc: { default: "https://testnet-rpc.monad.xyz", extra: "https://rpc.ankr.com/monad_testnet" },
   ensChainId: 11155111,
