@@ -1,0 +1,323 @@
+{
+  "kind": "lattice-passport/v1",
+  "chainId": 10143,
+  "address": "0x00729c71C732c72b84132AF001FAA9cE73EA5c7B",
+  "block": 70810413,
+  "catalog": {
+    "tag": "dev-6c8db45",
+    "hash": "0xff95b40d61ef1d34d245c9a15bb667145bbcfdaf25b12b9cf21dbf413a69e865"
+  },
+  "recipeHash": "0x1883b64cc6e7bb80165e24718b211f43442f612fc9fc3d51377e65761a50a50d",
+  "facets": [
+    {
+      "address": "0xD4C5F6e52d45932d2CF99D8ef6Db9146A30af5a9",
+      "codehash": "0x41f9736ff4ca8d09c97117eac2c4aa7b6f5929b0b96d695dfc99bc62420a2b1f",
+      "selectors": [
+        "0x7a0ed627",
+        "0xadfca15e",
+        "0x52ef6b2c",
+        "0xcdffacc6"
+      ],
+      "kind": "known",
+      "name": "DiamondLoupeFacet",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0x6c829646D071E81605eAD27C35dF20A11A0a382C",
+      "codehash": "0x0cdfb43628b3c8cba08c135d87958fc247705142facb351b01c4ad764d726eb5",
+      "selectors": [
+        "0x01ffc9a7"
+      ],
+      "kind": "known",
+      "name": "ERC165Facet",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0x4781Ce40aC9dee1b5042eF116E7390880E2a5814",
+      "codehash": "0x8ab2541697242d535a837252f982d0634ad5840d4da8376e40349a37dca68264",
+      "selectors": [
+        "0xdd62ed3e",
+        "0x095ea7b3",
+        "0x70a08231",
+        "0x95d89b41",
+        "0x18160ddd"
+      ],
+      "kind": "known",
+      "name": "ERC20",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0xD1cFBaCa662847E5686B9b0cFDDbf097648041c4",
+      "codehash": "0x5385b58c77270c7b67f8e23eedc939788d384d1195869944a992b8a1b37c0e13",
+      "selectors": [
+        "0xf1127ed8",
+        "0x5c19a95c",
+        "0xc3cda520",
+        "0x6fcfff45"
+      ],
+      "kind": "known",
+      "name": "ERC20Votes",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0x78401a8760a1ba47cAF37486a2627EF495752F55",
+      "codehash": "0x349bbf03fa3f974d744974a4deb36c8bfcd7844091152da65dec0cfcee343b71",
+      "selectors": [
+        "0x38d52e0f",
+        "0x07a2d13a",
+        "0xc6e6f592",
+        "0x313ce567",
+        "0x402d267d",
+        "0xc63d75b6",
+        "0xd905777e",
+        "0xce96cb77",
+        "0xef8b30f7",
+        "0xb3d7f6b9",
+        "0x4cdad506",
+        "0x0a28a477"
+      ],
+      "kind": "known",
+      "name": "ERC4626",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0xC93F814B7b6f460137A16391eC3321E3A92fB525",
+      "codehash": "0x5cef67581e7165c83e2be84d6060aa3022a56c111e0cf3c91d2d7f5d6ddca583",
+      "selectors": [
+        "0x4bf5d7e9",
+        "0xd5cae628",
+        "0x8ff262e3",
+        "0x91ddadf4",
+        "0x6e553f65",
+        "0x94bf804d",
+        "0x06fdde03",
+        "0xba087652",
+        "0xa9059cbb",
+        "0x23b872dd",
+        "0xb460af94"
+      ],
+      "kind": "known",
+      "name": "GovernedVault",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0x7A117d83F867F6BfAF765Bc370f118d494DA72F2",
+      "codehash": "0xa38b0528bcf877ed570e03657c6842926d79f198d3ebdfd3e6ecd65f6da41032",
+      "selectors": [
+        "0x5915e15d",
+        "0x36cd2b11",
+        "0xe16b03a3",
+        "0x43ff28f3",
+        "0x5c966646",
+        "0x39b70e38",
+        "0x01e1d114"
+      ],
+      "kind": "known",
+      "name": "VaultCore",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0x05C0E672D43c4cA5617753Bd6018D53125b64C9f",
+      "codehash": "0x9af04da607233fa0e90ac9477cfc5e9fb32b25bf16da98179c8764271f61630a",
+      "selectors": [
+        "0xaa982c45",
+        "0x1f931c1c",
+        "0xc83542a6",
+        "0x4487678f",
+        "0x22cabf70",
+        "0x3adda78e",
+        "0xc8d8e114",
+        "0x35342750",
+        "0x0746a956"
+      ],
+      "kind": "known",
+      "name": "GovernedDiamondCut",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0xAa3688615877D5269B6A81ed4037Fe8DE201889A",
+      "codehash": "0xb37a551f3bd17a36bb57ade4e313682b5db47d54f061c292c06dc50d6e26bdcf",
+      "selectors": [
+        "0xdd4e2ba5",
+        "0x452115d6",
+        "0x56781388",
+        "0x7b3c71d3",
+        "0x5f398a14",
+        "0x2656227d",
+        "0xeb9019d4",
+        "0x43859632",
+        "0xc59057e4",
+        "0xc01f9e37",
+        "0xab58fb8e",
+        "0x143489d0",
+        "0x2d63f693",
+        "0xb58131b0",
+        "0x544ffc9c",
+        "0x7d5e81e2",
+        "0x160cbed7",
+        "0xf8ce560a",
+        "0x97c3d334",
+        "0xa7713a70",
+        "0x60c4247f",
+        "0xece40cc1",
+        "0x79051887",
+        "0xe540d01d",
+        "0x3e4f49e6",
+        "0xd33219b4",
+        "0xfc0c546a",
+        "0x06f3f9e6",
+        "0xa890c910",
+        "0x54fd4d50",
+        "0x3932abb1",
+        "0x02a251a3"
+      ],
+      "kind": "known",
+      "name": "Governor",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0xb81bba1E3536f9C17dBc06A0F681C6129a52c5C0",
+      "codehash": "0x0f51c4b58ae9274a38404fdfc24acdc4a43758aa8f127c0007c63b43829021a0",
+      "selectors": [
+        "0xb08e51c0",
+        "0x07bd0265",
+        "0x8f61f4f5",
+        "0xc4d252f5",
+        "0x134008d3",
+        "0xe38335e5",
+        "0xf27a0c92",
+        "0x7958004c",
+        "0xd45c4435",
+        "0x8065657f",
+        "0xb1c5f427",
+        "0x31d50750",
+        "0x2ab0f529",
+        "0x584b153e",
+        "0x13bc9f20",
+        "0x01d5062a",
+        "0x8f2a0bb0",
+        "0x64d62353"
+      ],
+      "kind": "known",
+      "name": "TimelockController",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0x4293DEFA1F8e129e0Fa9156EBe7B6b96f3d7e5E3",
+      "codehash": "0x49487404e46869e9dbafbb013bfe4c6db6d39c80add5d537e19d169c884d8b6c",
+      "selectors": [
+        "0x587cde1e",
+        "0x8e539e8c",
+        "0x3a46b1a8",
+        "0x9ab24eb0"
+      ],
+      "kind": "known",
+      "name": "Votes",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0x357eb69Ba100FE5f0802D872a1C886FeB10e8D10",
+      "codehash": "0x2cdd0b9a102fe4dcab7845b498097e8e6805d8ee09a5184a89216f95e0d8ba2a",
+      "selectors": [
+        "0xa526d83b",
+        "0x93c87f03",
+        "0xb1e3268b",
+        "0x0c68ba21",
+        "0x3f683b6a",
+        "0x71404156",
+        "0x5b0b0c07"
+      ],
+      "kind": "known",
+      "name": "EmergencyStop",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0xFEf17cf434B8f89A43df91447F6d4351E3Bf6F17",
+      "codehash": "0x5a6a05b94dce1d83b05e0535579c82596670ca336e697909c17fe780f6431f8f",
+      "selectors": [
+        "0x248a9ca3",
+        "0x2f2ff15d",
+        "0x91d14854",
+        "0x36568abe",
+        "0xd547741f"
+      ],
+      "kind": "known",
+      "name": "AccessControl",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    },
+    {
+      "address": "0x7EC3278C4c8435D3351FEEe3A8CB081807c68F3E",
+      "codehash": "0xd50dcd72bdb16d08be14fe50923c5ff676f47fffcc7fa9dddc8c72001a9cab39",
+      "selectors": [
+        "0x00000000"
+      ],
+      "kind": "known",
+      "name": "Receive",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    }
+  ],
+  "deployment": null,
+  "history": null,
+  "authority": null,
+  "claims": [
+    {
+      "id": "PP-01",
+      "status": "pass",
+      "message": "Code is deployed at 0x00729c71C732c72b84132AF001FAA9cE73EA5c7B on Monad Testnet."
+    },
+    {
+      "id": "PP-02",
+      "status": "pass",
+      "message": "The loupe lists 14 facets routing 120 selectors."
+    },
+    {
+      "id": "PP-03",
+      "status": "pass",
+      "message": "Every facet is a Lattice release: DiamondLoupeFacet@0.2.0, ERC165Facet@0.2.0, ERC20@0.2.0, ERC20Votes@0.2.0, ERC4626@0.2.0 and 9 more."
+    },
+    {
+      "id": "PP-04",
+      "status": "pass",
+      "message": "Routing matches the recipe: 120 selectors on 14 facets."
+    },
+    {
+      "id": "PP-05",
+      "status": "pass",
+      "message": "The recipe is pinned to catalog dev-6c8db45, which this CLI bundles."
+    },
+    {
+      "id": "PP-06",
+      "status": "skip",
+      "message": "History not read: set ENVIO_API_TOKEN or pass --from-block."
+    },
+    {
+      "id": "PP-07",
+      "status": "skip",
+      "message": "History not read: set ENVIO_API_TOKEN or pass --from-block."
+    },
+    {
+      "id": "PP-08",
+      "status": "skip",
+      "message": "The diamond doesn't route owner()."
+    }
+  ],
+  "source": {
+    "reads": "rpc",
+    "logs": null
+  },
+  "digest": "0x6de7e44eb5c111377ef4abb9c88d4d2462c1b6701b841729174702106f749055"
+}

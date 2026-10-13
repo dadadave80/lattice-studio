@@ -1,0 +1,62 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dadadave80/lattice-studio/main/apps/studio/public/schema/recipe.v1.json",
+  "schemaVersion": 1,
+  "name": "Untitled",
+  "catalog": {
+    "tag": "dev-6c8db45",
+    "hash": "0xff95b40d61ef1d34d245c9a15bb667145bbcfdaf25b12b9cf21dbf413a69e865"
+  },
+  "template": {
+    "name": "GovernedVault",
+    "catalogHash": "0xff95b40d61ef1d34d245c9a15bb667145bbcfdaf25b12b9cf21dbf413a69e865"
+  },
+  "facets": [
+    "ERC20",
+    "ERC20Votes",
+    "ERC4626",
+    "GovernedVault",
+    "VaultCore",
+    "GovernedDiamondCut",
+    "Governor",
+    "TimelockController",
+    "Votes",
+    "EmergencyStop",
+    "AccessControl",
+    "Receive",
+    "DiamondLoupeFacet",
+    "ERC165Facet"
+  ],
+  "owners": {
+    "0x01e1d114": "VaultCore",
+    "0x06fdde03": "GovernedVault",
+    "0x23b872dd": "GovernedVault",
+    "0x313ce567": "ERC4626",
+    "0x4bf5d7e9": "GovernedVault",
+    "0x5c19a95c": "ERC20Votes",
+    "0x6e553f65": "GovernedVault",
+    "0x8ff262e3": "GovernedVault",
+    "0x91ddadf4": "GovernedVault",
+    "0x94bf804d": "GovernedVault",
+    "0xa9059cbb": "GovernedVault",
+    "0xb460af94": "GovernedVault",
+    "0xba087652": "GovernedVault",
+    "0xc3cda520": "ERC20Votes"
+  },
+  "exclude": [],
+  "init": {
+    "kind": "bundle",
+    "spec": "GovernedVaultInit",
+    "args": {
+      "p": {
+        "name": "Grant vault",
+        "symbol": "gVLT",
+        "decimalsOffset": "0",
+        "minDelay": "300",
+        "votingDelay": "60",
+        "votingPeriod": "600",
+        "proposalThreshold": "0",
+        "quorumNumerator": "4"
+      }
+    }
+  }
+}
