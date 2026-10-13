@@ -19,6 +19,7 @@ The package bundles the catalog it checks against (the Lattice release its versi
 | `export brief <file>` | Writes the agent brief (Markdown) |
 | `export recipe <file>` | Writes the normalized `recipe.json` with its `$schema` |
 | `export safe <file>` | Writes a Safe Transaction Builder batch that deploys the diamond from the Safe |
+| `passport <address>` | Identifies a deployed diamond, compares its routing with a recipe, and reports cut history and authority |
 | `verify-catalog` | Rebuilds the catalog from a Lattice checkout and compares it with the committed one |
 
 ## Exit codes
@@ -28,7 +29,7 @@ The package bundles the catalog it checks against (the Lattice release its versi
 | 0 | No blockers |
 | 1 | The recipe has blockers (Foundry and Safe exports refuse to write) |
 | 2 | Invalid input: a bad flag, a file that doesn't validate, an RPC for the wrong chain |
-| 3 | Catalog mismatch: the recipe is pinned to a catalog this CLI doesn't have, a catalog doesn't hash to its own hash, or the rebuilt catalog differs |
+| 3 | Catalog mismatch: the recipe is pinned to a catalog this CLI doesn't have, a catalog doesn't hash to its own hash, the rebuilt catalog differs, or a passport recipe uses an unbundled catalog |
 
 ## Examples
 
@@ -75,6 +76,22 @@ Verify the catalog. This rebuilds it with Foundry 1.8.3 from a Lattice checkout 
 ```sh
 bun packages/cli/src/main.ts verify-catalog --lattice ../lattice
 ```
+
+## passport
+
+    lattice-studio passport <address> --chain <id> [--recipe <file>] [--rpc <url>] [--from-block <n>] [--json] [--out <file>]
+
+Reads a deployed diamond at one block and reports eight claims: code at the address (PP-01), an EIP-2535 loupe
+(PP-02), every facet a release in a bundled catalog (PP-03), routing that matches `--recipe` (PP-04) and its catalog
+(PP-05), no cuts since the deployment (PP-06), the deployment transaction (PP-07) and `owner()` (PP-08). It reads only
+and never signs.
+
+Exit codes: 0 when no claim fails, 1 when one does, 2 for invalid input or a chain that can't be read, 3 when the
+recipe's catalog isn't bundled. `--json` prints the passport and `--out` writes it. Its `digest` is keccak256 of the
+passport's canonical JSON without the digest (keys sorted, no whitespace), so anyone can recompute it at the same block.
+
+Cut history comes from Envio HyperRPC when `ENVIO_API_TOKEN` is set (chains 10143, 143, 11155111 and 84532), else from
+the RPC starting at `--from-block`. Without either, PP-06 and PP-07 are skipped.
 
 ## Building
 
