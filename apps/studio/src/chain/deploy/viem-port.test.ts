@@ -5,10 +5,11 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { Address, Hex } from "@lattice-studio/core";
-import { createClient, custom, defineChain } from "viem";
-import { createViemPort, NOT_ENOUGH_FUNDS } from "./viem-port";
+import { createClient, custom, defineChain, numberToHex, type Chain } from "viem";
+import { createViemPort, NOT_ENOUGH_FUNDS, type ViemPortOptions } from "./viem-port";
 
 const FROM = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as Address;
+const TO = "0x2222222222222222222222222222222222222222" as Address;
 const TX = { to: "0x4e59b44847b379578588920cA78FbF26c0B4956C" as Address, data: "0x1234" as Hex, value: 0n };
 const CHAIN = defineChain({ id: 11155111, name: "Sepolia", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: ["http://stub"] } } });
 
@@ -94,5 +95,70 @@ describe("simulating without eth_simulateV1", () => {
   test("an internal error from a node a block behind is an error to try again, not can't simulate", async () => {
     const outcome = await simulate(port({ eth_call: { code: -32603, message: "header not found" } }));
     expect(outcome.kind).toBe("error");
+  });
+});
+
+const MONAD: Chain = {
+  id: 10143,
+  name: "Monad Testnet",
+  nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
+  rpcUrls: { default: { http: ["http://unused.invalid"] } },
+};
+
+/** A node that refuses eth_simulateV1 with `refusal` and answers everything else normally. */
+function portRefusing(refusal: { code: number; message: string }) {
+  const methods: string[] = [];
+  const client = createClient({
+    chain: MONAD,
+    transport: custom(
+      {
+        async request({ method }: { method: string; params?: unknown }): Promise<unknown> {
+          methods.push(method);
+          if (method === "eth_simulateV1") throw Object.assign(new Error(refusal.message), { code: refusal.code });
+          if (method === "eth_blockNumber") return numberToHex(1234);
+          if (method === "eth_call") return "0x";
+          if (method === "eth_estimateGas") return numberToHex(21_000);
+          throw new Error(`Unexpected ${method}`);
+        },
+      },
+      { retryCount: 0 },
+    ),
+  });
+  const service = {
+    chains: () => [{ id: 10143, name: "Monad Testnet", testnet: true }],
+    probe: async () => ({ ok: false as const, error: "unused" }),
+    codeAt: async () => ({ ok: false as const, error: "unused" }),
+    readFacets: async () => ({ ok: false as const, error: "unused" }),
+    account: () => null,
+  } as unknown as ViemPortOptions["service"];
+  const wallet: ViemPortOptions["wallet"] = {
+    send: async () => ({ kind: "error", message: "unused" }),
+    atomicBatch: async () => false,
+    sendCalls: async () => ({ kind: "error", message: "unused" }),
+    waitCalls: async () => ({ kind: "aborted" }),
+  };
+  const refusingPort = createViemPort({ service, client: () => client, wallet, noteEstimate: () => {} });
+  return { port: refusingPort, methods };
+}
+
+const MONAD_TX = { to: TO, data: "0x", value: 0n } as const;
+
+describe("simulate on a node that refuses eth_simulateV1", () => {
+  test("-32601 falls back to eth_call and eth_estimateGas", async () => {
+    const { port: refusingPort, methods } = portRefusing({ code: -32601, message: "the method eth_simulateV1 does not exist/is not available" });
+    const outcome = await refusingPort.simulate(10143, { from: FROM, tx: MONAD_TX, simulateV1: true });
+    expect(outcome).toEqual({ kind: "ok", block: 1234, gas: 21_000n, method: "call" });
+    expect(methods).toEqual(["eth_simulateV1", "eth_blockNumber", "eth_call", "eth_estimateGas"]);
+  });
+
+  test("-32602 (Monad: missing or invalid parameters) falls back too", async () => {
+    const { port: refusingPort } = portRefusing({ code: -32602, message: "Missing or invalid parameters" });
+    expect(await refusingPort.simulate(10143, { from: FROM, tx: MONAD_TX, simulateV1: true })).toMatchObject({ kind: "ok", method: "call" });
+  });
+
+  test("a revert inside eth_simulateV1 is still a revert", async () => {
+    const { port: refusingPort, methods } = portRefusing({ code: 3, message: "execution reverted" });
+    expect(await refusingPort.simulate(10143, { from: FROM, tx: MONAD_TX, simulateV1: true })).toMatchObject({ kind: "reverted", method: "simulate" });
+    expect(methods).toEqual(["eth_simulateV1"]);
   });
 });

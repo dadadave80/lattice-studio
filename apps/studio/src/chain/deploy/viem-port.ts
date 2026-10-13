@@ -79,6 +79,16 @@ function refusesMethod(error: BaseError): boolean {
     || (e instanceof Error && /method (not found|not supported|not allowed|is not available)|not (supported|allowed|whitelisted)|does not exist/i.test(e.message))) !== null;
 }
 
+/** eth_simulateV1 itself was refused (the method, or its parameters), not the call: the node has said nothing about the deploy yet. */
+function refusesSimulateV1(error: BaseError): boolean {
+  if (revertData(error) !== null) return false;
+  const reverted = error.walk((e) => named(e, "ExecutionRevertedError") || named(e, "ContractFunctionRevertedError")
+    || coded(e, 3) || (e instanceof Error && /execution reverted|\brevert/i.test(e.message))) !== null;
+  if (reverted) return false;
+  return refusesMethod(error) || error.walk((e) => named(e, "InvalidParamsRpcError") || coded(e, -32602)
+    || (e instanceof Error && /invalid param|missing or invalid/i.test(e.message))) !== null;
+}
+
 /**
  * What a failed simulation means, from an allow-list (spec L575, L588, L590):
  * - down, timed out or rate-limited (-32005) → the RPC "isn't answering", which Retry reading answers;
@@ -125,6 +135,23 @@ export function createViemPort(options: ViemPortOptions): DeployChainPort {
   const clientOf = (chainId: number): ChainClient => options.client(chainId);
   const nameOf = (chainId: number): string => service.chains().find((c) => c.id === chainId)?.name ?? `Chain ${chainId}`;
   const unreachable = (chainId: number): string => `${nameOf(chainId)}'s public RPC isn't answering.`;
+
+  /** The simulation through eth_call and eth_estimateGas: chains without eth_simulateV1, and nodes that refuse it. */
+  const viaCall = async (client: ChainClient, chainId: number, from: Address, tx: TxRequest): Promise<SimulationOutcome> => {
+    let blockNumber: bigint;
+    try {
+      blockNumber = await getBlockNumber(client, { cacheTime: 0 });
+    } catch (error) {
+      return simulationFailure(error, { simulateV1: false, block: 0, unreachable: unreachable(chainId) });
+    }
+    try {
+      await call(client, { account: from, to: tx.to, data: tx.data, value: tx.value, blockNumber });
+      const gas = await estimateGas(client, { account: from, to: tx.to, data: tx.data, value: tx.value });
+      return { kind: "ok", block: Number(blockNumber), gas, method: "call" };
+    } catch (error) {
+      return simulationFailure(error, { simulateV1: false, block: Number(blockNumber), unreachable: unreachable(chainId) });
+    }
+  };
 
   const seen = async (client: ChainClient, hash: Hex): Promise<SeenTx | null> => {
     try {
@@ -176,8 +203,8 @@ export function createViemPort(options: ViemPortOptions): DeployChainPort {
 
     async simulate(chainId, { from, tx, simulateV1 }): Promise<SimulationOutcome> {
       const client = clientOf(chainId);
-      try {
-        if (simulateV1) {
+      if (simulateV1) {
+        try {
           const [block] = await simulateBlocks(client, {
             blocks: [{ calls: [{ account: from, to: tx.to, data: tx.data, value: tx.value }] }],
             validation: false,
@@ -189,18 +216,15 @@ export function createViemPort(options: ViemPortOptions): DeployChainPort {
             return { kind: "ok", block: number, gas: result.gasUsed, events: result.logs?.length ?? 0, method: "simulate" };
           }
           return { kind: "reverted", block: number, data: result.data, method: "simulate" };
-        }
-        const blockNumber = await getBlockNumber(client, { cacheTime: 0 });
-        try {
-          await call(client, { account: from, to: tx.to, data: tx.data, value: tx.value, blockNumber });
-          const gas = await estimateGas(client, { account: from, to: tx.to, data: tx.data, value: tx.value });
-          return { kind: "ok", block: Number(blockNumber), gas, method: "call" };
         } catch (error) {
-          return simulationFailure(error, { simulateV1: false, block: Number(blockNumber), unreachable: unreachable(chainId) });
+          // A node that answered the probe's empty eth_simulateV1 but refuses a real one (Monad Testnet: no
+          // `validation: false`, or the method switched off) hasn't judged the deploy: eth_call does instead.
+          if (!(error instanceof BaseError && refusesSimulateV1(error))) {
+            return simulationFailure(error, { simulateV1: true, block: 0, unreachable: unreachable(chainId) });
+          }
         }
-      } catch (error) {
-        return simulationFailure(error, { simulateV1, block: 0, unreachable: unreachable(chainId) });
       }
+      return viaCall(client, chainId, from, tx);
     },
 
     async call(chainId, { from, tx, block }): Promise<CallOutcome> {
