@@ -29,25 +29,21 @@ Everything shown, checked or exported is a pure function of the recipe plus a ca
 
 ## Proof on Monad testnet
 
-Monad testnet deployment details and their recomputable passport:
+Two diamonds deployed from Studio on Monad Testnet and verified on Monadscan:
 
-| | |
-| --- | --- |
-| Diamond | [`<MONAD_DIAMOND>`](<MONAD_EXPLORER_URL>) — `<diamond name>` (`<symbol>`) |
-| Deploy transaction | `<MONAD_DEPLOY_TX>`, through LatticeFactory |
-| LatticeFactory | `<LatticeFactory address>` |
-| Shared contracts placed by Deploy missing contracts | `<shared contract addresses and deployment transactions>` |
-| Source verification | `<VERIFICATION_URL>` |
-| Passport | [`docs/examples/monad-passport.json`](docs/examples/monad-passport.json), digest `<passport digest>` |
+| Diamond | Deploy transaction | Recipe | Verification | Passport |
+| --- | --- | --- | --- | --- |
+| Governed vault: [`0x00729c71C732c72b84132AF001FAA9cE73EA5c7B`](https://testnet.monadscan.com/address/0x00729c71C732c72b84132AF001FAA9cE73EA5c7B#code) — Grant vault (`gVLT`) | `<GOVERNED_VAULT_DEPLOY_TX>`, through LatticeFactory | [`docs/examples/governed-vault.recipe.json`](docs/examples/governed-vault.recipe.json) | [Monadscan verification](https://testnet.monadscan.com/address/0x00729c71C732c72b84132AF001FAA9cE73EA5c7B#code) | [`docs/examples/governed-vault-passport.json`](docs/examples/governed-vault-passport.json), digest `0x6de7e44eb5c111377ef4abb9c88d4d2462c1b6701b841729174702106f749055` |
+| Lattice Monad Token: [`0x976363fb36926c09410Df80D50fE92a04bB70139`](https://testnet.monadscan.com/address/0x976363fb36926c09410Df80D50fE92a04bB70139#code) — Lattice Monad Token (`LMT`) | `<MONAD_TOKEN_DEPLOY_TX>`, through LatticeFactory | [`docs/examples/monad-token.recipe.json`](docs/examples/monad-token.recipe.json) | [Monadscan verification](https://testnet.monadscan.com/address/0x976363fb36926c09410Df80D50fE92a04bB70139#code) | [`docs/examples/monad-token-passport.json`](docs/examples/monad-token-passport.json), digest `0x53ea6987c1581dc5030172866a588f2eea18f56946649bb2bc98545e7cabf74e` |
+
+LatticeFactory: `<LatticeFactory address>`. Shared contracts placed by Deploy missing contracts: `<shared contract addresses and deployment transactions>`.
 
 Check it yourself:
 
 ```sh
-cast call <MONAD_DIAMOND> "facetAddresses()(address[])" --rpc-url https://testnet-rpc.monad.xyz
-bun packages/cli/src/main.ts passport <MONAD_DIAMOND> --chain 10143 --recipe docs/examples/monad.recipe.json --json
+cast call 0x00729c71C732c72b84132AF001FAA9cE73EA5c7B "facetAddresses()(address[])" --rpc-url https://testnet-rpc.monad.xyz
+bun packages/cli/src/main.ts passport 0x00729c71C732c72b84132AF001FAA9cE73EA5c7B --chain 10143 --recipe docs/examples/governed-vault.recipe.json --json
 ```
-
-Add the Monad recipe at `docs/examples/monad.recipe.json` before running the Passport command.
 
 ## Lattice Passport
 
@@ -62,21 +58,12 @@ bun packages/cli/src/main.ts passport <diamond-address> --chain 10143 --recipe r
 
 See the [Lattice Passport guide](docs/passport.md) for the claims, data sources and CI usage.
 
-## Lattice Drafter
-
-Lattice Drafter uses Qwen 3.8 Max to draft a recipe through Lattice Studio's catalog, check and plan tools. It writes a
-recipe only when `check` exits 0; it never deploys or signs. See the [sample transcript](<DRAFTER_TRANSCRIPT_URL>).
-
-```sh
-DRAFTER_API_KEY=… bun scripts/agents/drafter/drafter.ts "An ERC20 called Metro Credits with symbol MCR" --out .drafts/mcr.recipe.json
-```
-
-ERC-8004 agent id: `<DRAFTER_AGENT_ID>`. Feedback transaction: `<DRAFTER_FEEDBACK_TX>`.
-
 ## Built for Monad Metropolis
 
 Built between September 1 and October 13, 2026: Lattice Studio itself (this repository's history), Monad Testnet as a
-deploy target, Lattice Passport and the Lattice Drafter (October 13).
+deploy target and Lattice Passport (October 13).
+
+Monad's node refuses eth_simulateV1 as most clients send it, so Studio's deploy simulation now falls back to eth_call and eth_estimateGas on such chains. Sourcify verification on Monad goes through BlockVision's instance.
 
 Pre-existing foundation: [Lattice](https://github.com/dadadave80/lattice), David Dada's earlier open-source facet
 library, pinned here as a read-only submodule. Lattice's own commits are not claimed as hackathon work.
@@ -89,9 +76,7 @@ Why Monad:
   bad deploy before signing saves real MON. Studio enforces the cap.
 - Blocks land every few hundred milliseconds, so a diamond's upgrade history can sit anywhere in tens of millions of
   blocks while public RPCs cap `eth_getLogs` ranges. Envio HyperRPC returns it in one query.
-- ERC-8004 is canonical on Monad: the Drafter holds an on-chain identity and earns reputation only when its contract's
-  passport verifies.
-- Sub-second blocks with finality two blocks later make draft, check, deploy and passport one sitting.
+- Sub-second blocks with finality two blocks later make check, deploy and passport one sitting.
 
 AI disclosure: Studio was built with coding agents (<AI tools David used>) under David Dada's direction;
 [`AGENTS.md`](AGENTS.md) describes how. The Monad work on October 13 was implemented by Codex with GPT-6 Luna from a
@@ -294,7 +279,7 @@ Studio is at v1: it composes new Lattice diamonds and deploys them on testnets. 
 - **HashKey Chain testnet is new.** It was added on October 2, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX isn't deployed there, so only the LatticeFactory path works, and verification runs on Sourcify alone (Etherscan doesn't serve the chain).
 - **Hedera testnet is new.** It was added on October 4, 2026. The same day, the shared contracts a Lattice base with `HTSAdapter` needs went there at their release addresses: LatticeRegistry, LatticeFactory, eight facets and four inits ([Proof on Hedera testnet](#proof-on-hedera-testnet)). Deploy missing contracts deploys any other one a recipe names, through Arachnid's deployment proxy (it's on Hedera testnet). CreateX isn't deployed on Hedera, so only the LatticeFactory path works, and verification runs on Sourcify alone (Etherscan doesn't serve the chain).
 - **Avalanche Fuji is new.** It was added on October 10, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX is on Fuji, so both the LatticeFactory and the CreateX paths work, and verification runs on Sourcify and on Etherscan.
-- **Monad Testnet is new.** It was added on October 13, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX and Arachnid's proxy are canonical there, so both the LatticeFactory and CreateX paths work. The per-transaction gas cap is fixed at 30,000,000, and Monad charges the gas limit. Verification runs through Etherscan API V2 (Monadscan); Sourcify support could not be confirmed from this environment.
+- **Monad Testnet is new.** It was added on October 13, 2026. The governed vault and Lattice Monad Token above were deployed from Studio and verified on Monadscan, with their facets matching their passports. CreateX and Arachnid's proxy are canonical there, so both the LatticeFactory and CreateX paths work. The per-transaction gas cap is fixed at 30,000,000, and Monad charges the gas limit. Sourcify verification uses [BlockVision's Monad instance](https://sourcify-api-monad.blockvision.org); Etherscan API V2 also serves Monadscan.
 - **The catalog is provisional.** It's built from Lattice commit `6c8db45` (Lattice `VERSION` 0.2.0, tag `hedera-template-pin-6c8db45` on the `feat/hedera-system-contract-modules` branch), not yet a `vX.Y.Z` release. It adds Lattice's Hedera facets (`HTSAdapter`, `HSSAdapter`, `HederaExchangeRateAdapter`, `HederaPrngAdapter` and `HASSignatureVerifier`) to the 100 of `dev-f4a32c8`, which stays in the manifest so recipes made against it still open. The pin also gives seven account facets new code, and so new addresses: `AccountSigner`, `ERC1271Signature`, `ERC4337Validation`, `ERC6900Executor`, `ERC6900Signature`, `ERC6900Validation` and `ERC7821Executor`. A recipe that uses one of them plans a different address for it under `dev-6c8db45` than under `dev-f4a32c8`. v1 targets Lattice `v0.5.0` (released October 9, 2026); the catalog's own notice still names 0.4.0 until the rebuild, and every shared-contract address in the catalog changes at that re-pin. `check`, `plan` and the app all print "Provisional catalog" while this is true. [`docs/release.md`](docs/release.md) has what re-pinning involves.
 - **New diamonds only.** Upgrading a live diamond is v2.
 - **The CLI isn't on npm yet.** Run it from a checkout.
