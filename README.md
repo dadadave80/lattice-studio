@@ -27,22 +27,75 @@ Lattice Studio is a static, local-first web app for building modular smart contr
 
 Everything shown, checked or exported is a pure function of the recipe plus a catalog generated from a pinned Lattice release. No backend, no accounts, no analytics.
 
-## Why
+## Proof on Monad testnet
 
-A diamond is the most flexible way to ship a large contract system on the EVM: one address, no 24 KB limit on the whole, upgradeable facet by facet. It is also the easiest to get wrong. Two facets claim the same selector. Inits run in the wrong order. Storage namespaces overlap. Nobody ends up holding the authority to upgrade. These mistakes usually surface at deploy time or in an audit, after the expensive part is done.
-
-Studio moves them to the moment you make them, and it gives the same answer everywhere the question is asked: on the sheet, in the exported script, in CI and to a coding agent.
-
-## What it does
+Monad testnet deployment details and their recomputable passport:
 
 | | |
 | --- | --- |
-| **Compose** | 105 facets and 85 recipe templates from Lattice (tokens, governance, access control, DeFi, oracles, crosschain, Hedera and more) on a sheet where every selector shows the facet that answers it. |
-| **Check** | Nine families of checks on every edit: selectors, semantics, the diamond's core, dependencies, storage, inits, authority, links and network. About 2 ms for a 30-facet diamond. Every finding has a rule id (`SEL-01`, `INIT-05`, `LINK-01`) and names its fix. |
-| **Export** | A standalone Foundry script, an agent brief, a `recipe.json` with its schema, a Safe Transaction Builder batch, a project file, or a share link that lives in the URL fragment, which a server never sees. |
-| **Deploy** | One transaction through LatticeFactory or CreateX. Studio predicts the address, checks each shared contract's codehash against the catalog before you sign, compares the on-chain loupe with the plan afterwards, and verifies the source on Sourcify and, with an API key, on Etherscan. |
-| **Bootstrap a chain** | Where Lattice's shared contracts aren't deployed yet, Studio deploys them through Arachnid's proxy at their predicted addresses. |
-| **Stay local** | Projects live in your browser. The app works offline after first load. The core never touches a network; only the lazily loaded chain module does, to read a chain you chose, deploy or verify. |
+| Diamond | [`<MONAD_DIAMOND>`](<MONAD_EXPLORER_URL>) — `<diamond name>` (`<symbol>`) |
+| Deploy transaction | `<MONAD_DEPLOY_TX>`, through LatticeFactory |
+| LatticeFactory | `<LatticeFactory address>` |
+| Shared contracts placed by Deploy missing contracts | `<shared contract addresses and deployment transactions>` |
+| Source verification | `<VERIFICATION_URL>` |
+| Passport | [`docs/examples/monad-passport.json`](docs/examples/monad-passport.json), digest `<passport digest>` |
+
+Check it yourself:
+
+```sh
+cast call <MONAD_DIAMOND> "facetAddresses()(address[])" --rpc-url https://testnet-rpc.monad.xyz
+bun packages/cli/src/main.ts passport <MONAD_DIAMOND> --chain 10143 --recipe docs/examples/monad.recipe.json --json
+```
+
+Add the Monad recipe at `docs/examples/monad.recipe.json` before running the Passport command.
+
+## Lattice Passport
+
+A passport records deployed code, the EIP-2535 routing, known Lattice facet releases, cut history and the routed
+upgrade authority. With a recipe, it compares selector routing against Studio's plan and emits eight claims plus a
+digest that anyone can recompute from the same facts. It proves composition and provenance, not storage values such
+as a token's name, the safety of Lattice's unaudited code, or that an RPC answered honestly.
+
+```sh
+bun packages/cli/src/main.ts passport <diamond-address> --chain 10143 --recipe recipe.json --json
+```
+
+See the [Lattice Passport guide](docs/passport.md) for the claims, data sources and CI usage.
+
+## Lattice Drafter
+
+Lattice Drafter uses Qwen 3.8 Max to draft a recipe through Lattice Studio's catalog, check and plan tools. It writes a
+recipe only when `check` exits 0; it never deploys or signs. See the [sample transcript](<DRAFTER_TRANSCRIPT_URL>).
+
+```sh
+DRAFTER_API_KEY=… bun scripts/agents/drafter/drafter.ts "An ERC20 called Metro Credits with symbol MCR" --out .drafts/mcr.recipe.json
+```
+
+ERC-8004 agent id: `<DRAFTER_AGENT_ID>`. Feedback transaction: `<DRAFTER_FEEDBACK_TX>`.
+
+## Built for Monad Metropolis
+
+Built between September 1 and October 13, 2026: Lattice Studio itself (this repository's history), Monad Testnet as a
+deploy target, Lattice Passport and the Lattice Drafter (October 13).
+
+Pre-existing foundation: [Lattice](https://github.com/dadadave80/lattice), David Dada's earlier open-source facet
+library, pinned here as a read-only submodule. Lattice's own commits are not claimed as hackathon work.
+
+Why Monad:
+
+- CreateX and Arachnid's deployer are canonical on Monad testnet, so Lattice's shared contracts land at the same
+  predicted addresses as on every other chain, and the catalog match works unchanged.
+- Monad charges a transaction's full gas limit, even when it reverts, under a 30M per-transaction cap, so catching a
+  bad deploy before signing saves real MON. Studio enforces the cap.
+- Blocks land every few hundred milliseconds, so a diamond's upgrade history can sit anywhere in tens of millions of
+  blocks while public RPCs cap `eth_getLogs` ranges. Envio HyperRPC returns it in one query.
+- ERC-8004 is canonical on Monad: the Drafter holds an on-chain identity and earns reputation only when its contract's
+  passport verifies.
+- Sub-second blocks with finality two blocks later make draft, check, deploy and passport one sitting.
+
+AI disclosure: Studio was built with coding agents (<AI tools David used>) under David Dada's direction;
+[`AGENTS.md`](AGENTS.md) describes how. The Monad work on October 13 was implemented by Codex with GPT-6 Luna from a
+written handoff and reviewed by David.
 
 ## Proof on Sepolia
 
@@ -63,6 +116,23 @@ cast call 0xF70f3E9D2183B4e829DB615E08551bafcE6C9755 "facetAddresses()(address[]
 ```
 
 <img src="apps/studio/public/pitch/deployed.png" alt="The deployed diamond in Lattice Studio: live on Sepolia, verified on Sourcify with an exact match, with its authority and cut plan in the inspector" />
+
+## Why
+
+A diamond is the most flexible way to ship a large contract system on the EVM: one address, no 24 KB limit on the whole, upgradeable facet by facet. It is also the easiest to get wrong. Two facets claim the same selector. Inits run in the wrong order. Storage namespaces overlap. Nobody ends up holding the authority to upgrade. These mistakes usually surface at deploy time or in an audit, after the expensive part is done.
+
+Studio moves them to the moment you make them, and it gives the same answer everywhere the question is asked: on the sheet, in the exported script, in CI and to a coding agent.
+
+## What it does
+
+| | |
+| --- | --- |
+| **Compose** | 105 facets, 90 inits and 85 recipe templates from Lattice (tokens, governance, access control, DeFi, oracles, crosschain, Hedera and more) on a sheet where every selector shows the facet that answers it. |
+| **Check** | Nine families of checks on every edit: selectors, semantics, the diamond's core, dependencies, storage, inits, authority, links and network. About 2 ms for a 30-facet diamond. Every finding has a rule id (`SEL-01`, `INIT-05`, `LINK-01`) and names its fix. |
+| **Export** | A standalone Foundry script, an agent brief, a `recipe.json` with its schema, a Safe Transaction Builder batch, a project file, or a share link that lives in the URL fragment, which a server never sees. |
+| **Deploy** | One transaction through LatticeFactory or CreateX. Studio predicts the address, checks each shared contract's codehash against the catalog before you sign, compares the on-chain loupe with the plan afterwards, and verifies the source on Sourcify and, with an API key, on Etherscan. |
+| **Bootstrap a chain** | Where Lattice's shared contracts aren't deployed yet, Studio deploys them through Arachnid's proxy at their predicted addresses. |
+| **Stay local** | Projects live in your browser. The app works offline after first load. The core never touches a network; only the lazily loaded chain module does, to read a chain you chose, deploy or verify. |
 
 ## Proof on Hedera testnet
 
