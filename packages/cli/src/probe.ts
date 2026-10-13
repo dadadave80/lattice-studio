@@ -33,10 +33,11 @@ const KNOWN_CHAINS: ViemChain[] = Object.values(viemChains as Record<string, unk
 
 /**
  * Per-transaction gas caps a chain fixes below its blocks' gasLimit, as Studio's chain table has them: EIP-7825's
- * 16,777,216 on Ethereum and Sepolia, and 15,000,000 on Hedera Testnet, whose JSON-RPC relay rejects a transaction
- * above that (-32005 GAS_LIMIT_TOO_HIGH) while its blocks report a gasLimit of 150,000,000.
+ * 16,777,216 on Ethereum and Sepolia; 15,000,000 on Hedera Testnet, whose JSON-RPC relay rejects a transaction
+ * above that (-32005 GAS_LIMIT_TOO_HIGH) while its blocks report a gasLimit of 150,000,000; and 30,000,000 on Monad
+ * Testnet, whose protocol caps a transaction there while its blocks report a far higher gasLimit.
  */
-const FIXED_GAS_CAPS: Readonly<Record<number, bigint>> = { 1: 16_777_216n, 11155111: 16_777_216n, 296: 15_000_000n };
+export const FIXED_GAS_CAPS: Readonly<Record<number, bigint>> = { 1: 16_777_216n, 11155111: 16_777_216n, 296: 15_000_000n, 10143: 30_000_000n };
 
 /** Preferred names where several viem chains share an id (31337 is Anvil, Hardhat and Foundry). */
 const PREFERRED: Record<number, string> = { 31337: "Anvil", 1: "Ethereum" };
