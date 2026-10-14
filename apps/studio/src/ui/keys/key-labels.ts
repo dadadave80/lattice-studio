@@ -54,6 +54,18 @@ export function keyLabel(keys: string, platform: Platform): string {
   return formatKeys([...tokens, displayToken(last)].join("+"), platform);
 }
 
+/**
+ * The same keys as separate keycaps, in `keyLabel`'s order: `"Mod+k"` is ⌘ and K on macOS, Ctrl and K
+ * elsewhere; `"Mod+Shift+z"` is ⇧, ⌘ and Z on macOS.
+ */
+export function keyCaps(keys: string, platform: Platform): string[] {
+  const tokens = splitTokens(keys);
+  const last = displayToken(tokens.pop() ?? "");
+  const modifiers = tokens.length ? formatKeys(tokens.join("+"), platform) : "";
+  const caps = platform === "mac" ? Array.from(modifiers) : modifiers.split("+").filter(Boolean);
+  return [...caps, last === "+" ? last : formatKeys(last, platform)];
+}
+
 const ARIA_MODIFIERS: Record<string, (p: Platform) => string> = {
   Mod: (p) => (p === "mac" ? "Meta" : "Control"),
   Ctrl: () => "Control",

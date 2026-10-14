@@ -102,7 +102,12 @@ describe("regions at each width", () => {
       const overflow = bar().getByRole("button", { name: "More" });
       const deploy = bar().getByRole("button", { name: /^Deploy…/ });
       const undo = bar().getByRole("button", { name: "Undo" });
+      const search = bar().getByRole("button", { name: /^Search (⌘|Ctrl\+)K$/ });
 
+      // The overflow menu holds Share at every width; the search field shows at every width but 320 px.
+      await expect.element(overflow).toBeVisible();
+      if (width >= 360) await expect.element(search).toBeVisible();
+      else expect(search.query()).toBeNull();
       if (tier === "wide") {
         await expect.poll(showing).toEqual(["left", "sheet", "inspector", "console"]);
         await expect.element(toggles).not.toBeInTheDocument();
@@ -117,13 +122,8 @@ describe("regions at each width", () => {
         await expect.poll(showing).toEqual(["sheet", "console"]);
         await expect.element(toggles).toBeVisible();
         await expect.element(switcher).not.toBeInTheDocument();
-        if (tier === "narrow") {
-          await expect.element(deploy).toBeVisible();
-          await expect.element(overflow).toBeVisible();
-        } else {
-          await expect.element(deploy).not.toBeInTheDocument();
-          await expect.element(overflow).not.toBeInTheDocument();
-        }
+        if (tier === "narrow") await expect.element(deploy).toBeVisible();
+        else await expect.element(deploy).not.toBeInTheDocument();
       }
       if (tier !== "phone") await expect.element(undo).toBeVisible();
       // Exactly one filled primary button per view (spec L349): Deploy…, in the title block from 1024 px and in

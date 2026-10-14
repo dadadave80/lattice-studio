@@ -1,7 +1,7 @@
 /*
  * The title bar (spec L355, final-*-sample screens): 40 px, the App menu and history at the start, the project
- * name, save status and status chip in the middle, Share, Light/Dark and ⌘K at the end. Narrow layouts have no
- * board yet (PA L78): built from the drawn bar and the tokens.
+ * name, save status and status chip in the middle, the search field, Light/Dark and the ⋯ menu (Share) at the
+ * end. Narrow layouts have no board yet (PA L78): built from the drawn bar and the tokens.
  */
 .bar {
   display: flex;
@@ -152,8 +152,84 @@
   cursor: default;
 }
 
-.palette {
+/*
+ * The search field (#36): a bordered field, the icon, "SEARCH" in muted caps, the shortcut's keycaps at the far
+ * end. The class is doubled to outrank Button.module.css whichever order the two sheets load in. It and the theme
+ * switch share a height (32 px, the segments plus the group's hairlines) and the `border` hairline.
+ */
+.search.search {
+  justify-content: flex-start;
+  gap: var(--lx-space-2);
+  inline-size: var(--lx-card-width);
+  min-block-size: var(--lx-space-8);
+  padding-inline: var(--lx-space-2) var(--lx-space-1);
+  color: var(--lx-text-muted);
+}
+
+/* 1024-1279 px, where the pane toggles share the bar: as wide as its content, so the middle keeps its room. */
+.bar[data-layout="mid"] .search.search {
+  inline-size: auto;
+}
+
+.searchLabel {
   font: var(--lx-font-code-sm);
+  letter-spacing: var(--lx-tracking-label);
+  text-transform: uppercase;
+}
+
+.keycaps {
+  display: flex;
+  gap: var(--lx-space-1);
+  margin-inline-start: auto;
+}
+
+.keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: calc(var(--lx-space-6) - var(--lx-space-1));
+  block-size: calc(var(--lx-space-6) - var(--lx-space-1));
+  padding-inline: var(--lx-space-1);
+  border: var(--lx-stroke-hair) solid var(--lx-border);
+  background: var(--lx-sunken);
+  color: var(--lx-text-muted);
+  font: var(--lx-font-code-sm);
+}
+
+/* Under 1024 px: the icon alone, sized like the bar's other icon buttons. */
+.search.compact {
+  justify-content: center;
+  inline-size: calc(var(--lx-space-6) + var(--lx-space-1));
+  min-block-size: calc(var(--lx-space-6) + var(--lx-space-1));
+  padding-inline: 0;
+}
+
+.compact .searchLabel,
+.compact .keycaps {
+  display: none;
+}
+
+/*
+ * Under 360 px "Not deployed" (never shortened) and Deploy… leave no room for it: the palette stays in the
+ * overflow menu, and ⌘K. A width, not the crowding measure: hiding the icon widens the middle, which would
+ * un-crowd it and bring the icon back.
+ */
+@media (max-width: 359.98px) {
+  .search.compact {
+    display: none;
+  }
+}
+
+/* The theme switch beside it: icon segments about as wide as they are tall. */
+.theme > button {
+  min-block-size: calc(var(--lx-space-8) - 2 * var(--lx-stroke-hair));
+  padding-inline: var(--lx-space-2);
+}
+
+@media (forced-colors: active) {
+  .keycap {
+    border-color: CanvasText;
+  }
 }
 
 /* The pane switcher under 768 px: a second row of the title bar region (its tab list draws the hairline). */
