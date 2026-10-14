@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lattice Studio · Monad Metropolis</title>
+  <meta name="description" content="Compose EIP-2535 diamonds from facets, catch every mistake on the edit that makes it, deploy to Monad in one transaction, and prove what's running with a recomputable passport.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/pitch/pitch.css">
+  <script type="module" src="/pitch/pitch.js"></script>
+</head>
+<body>
+<nav class="deck-nav" aria-label="Slides">
+  <a class="home" href="/" aria-label="Open Lattice Studio">
+    <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 1.5 L22.5 12 L12 22.5 L1.5 12 Z"/>
+      <path d="M12 6.5 L17.5 12 L12 17.5 L6.5 12 Z"/>
+      <path d="M12 1.5 L12 6.5 M22.5 12 L17.5 12 M12 22.5 L12 17.5 M1.5 12 L6.5 12"/>
+    </svg>
+  </a>
+  <button type="button" data-step="-1" aria-label="Previous slide" hidden>←</button>
+  <ol>
+      <li><a href="#slide-1" aria-label="Slide 1: Lattice Studio">01</a></li>
+      <li><a href="#slide-2" aria-label="Slide 2: The problem">02</a></li>
+      <li><a href="#slide-3" aria-label="Slide 3: What it does">03</a></li>
+      <li><a href="#slide-4" aria-label="Slide 4: Lattice Passport">04</a></li>
+      <li><a href="#slide-5" aria-label="Slide 5: Agents you can check">05</a></li>
+      <li><a href="#slide-6" aria-label="Slide 6: Why Monad">06</a></li>
+      <li><a href="#slide-7" aria-label="Slide 7: Proof on Monad testnet">07</a></li>
+      <li><a href="#slide-8" aria-label="Slide 8: One core, three surfaces">08</a></li>
+      <li><a href="#slide-9" aria-label="Slide 9: How it's built">09</a></li>
+      <li><a href="#slide-10" aria-label="Slide 10: Status and next">10</a></li>
+  </ol>
+  <button type="button" data-step="1" aria-label="Next slide" hidden>→</button>
+</nav>
+<main>
+
+  <section id="slide-1" class="slide cover" aria-labelledby="h1">
+    <p class="label">Monad Metropolis · Trust, Identity &amp; AI Infrastructure</p>
+    <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 1.5 L22.5 12 L12 22.5 L1.5 12 Z"/>
+      <path d="M12 6.5 L17.5 12 L12 17.5 L6.5 12 Z"/>
+      <path d="M12 1.5 L12 6.5 M22.5 12 L17.5 12 M12 22.5 L12 17.5 M1.5 12 L6.5 12"/>
+    </svg>
+    <h1 id="h1">Lattice Studio</h1>
+    <p class="lede">The design environment for EIP-2535 diamonds. Compose a contract system from facets, catch every mistake on the edit that makes it, deploy to Monad in one transaction, and prove what's running with a passport anyone can recompute.</p>
+    <p class="links">
+      <a class="button" href="/">Open the app</a>
+      <a href="https://github.com/dadadave80/lattice-studio">github.com/dadadave80/lattice-studio</a>
+    </p>
+  </section>
+
+  <section id="slide-2" class="slide" aria-labelledby="h2">
+    <p class="label">The problem</p>
+    <h2 id="h2">A diamond's mistakes show up at deploy time, or in the audit</h2>
+    <ul class="grid four">
+      <li><h3>Selector collisions</h3><p>Two facets claim the same function. One silently wins.</p></li>
+      <li><h3>Init order</h3><p>An init runs before the module it depends on is set up.</p></li>
+      <li><h3>Storage overlap</h3><p>Two facets write to the same namespace.</p></li>
+      <li><h3>Authority</h3><p>Nobody, or the wrong key, ends up able to upgrade.</p></li>
+    </ul>
+    <p class="note">A diamond is one address made of many facets: no 24 KB limit on the whole, upgradeable piece by piece. It is also the easiest contract system to get wrong, and on Monad a reverted deploy still pays its whole gas limit.</p>
+  </section>
+
+  <section id="slide-3" class="slide split" aria-labelledby="h3">
+    <div>
+      <p class="label">What it does</p>
+      <h2 id="h3">Every check runs on every edit</h2>
+      <ul class="plain">
+        <li>Place facets from the Lattice catalog on a sheet: 105 facets, 90 inits, 85 recipe templates.</li>
+        <li>Nine families of checks rerun on each change, in about 2 ms for a 30-facet diamond. Each finding names its fix.</li>
+        <li>Deploy through LatticeFactory in one transaction, to an address Studio predicted first. The on-chain loupe is compared with the plan, then the source is verified.</li>
+        <li>No backend, no accounts, no analytics. Works offline after the first load.</li>
+      </ul>
+    </div>
+    <picture>
+      <source srcset="/pitch/sheet-dark.png" media="(prefers-color-scheme: dark)">
+      <img src="/pitch/sheet-light.png" width="1440" height="900" loading="lazy" alt="The Studio sheet with a twelve-facet GovernedVault recipe, the catalog on the left and the inspector on the right.">
+    </picture>
+  </section>
+
+  <section id="slide-4" class="slide" aria-labelledby="h4">
+    <p class="label">Lattice Passport</p>
+    <h2 id="h4">Eight claims about a deployed diamond, and a digest anyone can recompute</h2>
+    <ul class="grid four">
+      <li><h3>PP-01</h3><p>Code is deployed at the address.</p></li>
+      <li><h3>PP-02</h3><p>It answers the EIP-2535 loupe.</p></li>
+      <li><h3>PP-03</h3><p>Every routed facet's code hash matches a known Lattice release.</p></li>
+      <li><h3>PP-04</h3><p>Selector routing matches the plan from the recipe.</p></li>
+      <li><h3>PP-05</h3><p>The recipe uses a bundled catalog.</p></li>
+      <li><h3>PP-06</h3><p>No <code>DiamondCut</code> since deployment.</p></li>
+      <li><h3>PP-07</h3><p>The earliest cut identifies the deployment path.</p></li>
+      <li><h3>PP-08</h3><p>Who <code>owner()</code> says holds the diamond.</p></li>
+    </ul>
+    <p class="note"><code>lattice-studio passport 0x0072…5c7B --chain 10143 --recipe governed-vault.recipe.json --json</code>. Exit codes make it a CI gate. It says what it can't prove too: storage values, the safety of unaudited code, or an honest RPC.</p>
+  </section>
+
+  <section id="slide-5" class="slide" aria-labelledby="h5">
+    <p class="label">Agents you can check</p>
+    <h2 id="h5">Agent trust from checks a person can rerun, not from the agent's word</h2>
+    <ul class="grid three">
+      <li><h3>Lattice Drafter</h3><p>Drafts a recipe from plain English by calling Studio's CLI as tools. It may finish only when <code>check</code> exits 0. It never deploys and never signs.</p></li>
+      <li><h3>ERC-8004</h3><p>The Drafter's registration file, and the commands that register it on Monad testnet and credit it from passports with no failed claim, are in the repo.</p></li>
+      <li><h3>A skill for any agent</h3><p>Claude Code, Codex and the rest drive the same CLI through a skill file: stable JSON, stable exit codes, the same analysis as the sheet.</p></li>
+    </ul>
+    <p class="note">The person stays in the loop at the one step that matters: confirming the authority address and signing the deploy.</p>
+  </section>
+
+  <section id="slide-6" class="slide" aria-labelledby="h6">
+    <p class="label">Why Monad</p>
+    <h2 id="h6">Built for how Monad charges, settles and remembers</h2>
+    <ul class="grid four">
+      <li><h3>Canonical deployers</h3><p>CreateX and Arachnid's proxy are live on Monad, so Lattice's shared contracts land at the same predicted addresses as on every other chain.</p></li>
+      <li><h3>Gas charged in full</h3><p>Monad bills the whole gas limit, even on a revert, under a 30M cap per transaction. Catching a bad deploy before signing saves real MON. Studio enforces the cap.</p></li>
+      <li><h3>Sub-second finality</h3><p>Blocks every few hundred milliseconds, final two blocks later: check, deploy and passport in one sitting.</p></li>
+      <li><h3>History at scale</h3><p>A diamond's cut history can sit anywhere in tens of millions of blocks. The passport reads it through Envio HyperRPC in one query.</p></li>
+    </ul>
+    <p class="note">Monad's node refuses <code>eth_simulateV1</code> as most clients send it, so Studio's deploy simulation falls back to <code>eth_call</code>. Sourcify verification goes through BlockVision's Monad instance; Monadscan is verified through Etherscan's API V2.</p>
+  </section>
+
+  <section id="slide-7" class="slide split" aria-labelledby="h7">
+    <div>
+      <p class="label">Proof</p>
+      <h2 id="h7">Two diamonds deployed and verified on Monad testnet from the live app</h2>
+      <dl>
+        <dt>Governed vault, gVLT, 12 facets</dt>
+        <dd><a href="https://testnet.monadscan.com/address/0x00729c71C732c72b84132AF001FAA9cE73EA5c7B#code"><code>0x00729c71C732c72b84132AF001FAA9cE73EA5c7B</code></a></dd>
+        <dt>Its deploy transaction</dt>
+        <dd><a href="https://testnet.monadscan.com/tx/0x04ab20c51cdc15ecfb695fac43d2e50bc28408b8b9029b4b74331e5541d0eaa0"><code>0x04ab20c5…d0eaa0</code></a>, one transaction through LatticeFactory</dd>
+        <dt>Lattice Monad Token, LMT</dt>
+        <dd><a href="https://testnet.monadscan.com/address/0x976363fb36926c09410Df80D50fE92a04bB70139#code"><code>0x976363fb36926c09410Df80D50fE92a04bB70139</code></a></dd>
+        <dt>LatticeFactory on Monad</dt>
+        <dd><a href="https://testnet.monadscan.com/address/0xc192cEa531C8FFb3cBE69A98f4795757E4A2c7be"><code>0xc192cEa531C8FFb3cBE69A98f4795757E4A2c7be</code></a>, the same address as on Sepolia</dd>
+      </dl>
+      <p class="note">Passports and recipes are committed under <code>docs/examples/</code>. <code>cast call 0x0072…5c7B "facetAddresses()(address[])" --rpc-url https://testnet-rpc.monad.xyz</code> returns the plan's facets.</p>
+    </div>
+    <img src="/pitch/deployed.png" width="1600" height="1007" loading="lazy" alt="Studio showing a project live, with the console line Verified on Sourcify (exact match) and the authority and cut plan in the inspector.">
+  </section>
+
+  <section id="slide-8" class="slide" aria-labelledby="h8">
+    <p class="label">One core, three surfaces</p>
+    <h2 id="h8">The app, the CLI and CI cannot disagree</h2>
+    <ul class="grid three">
+      <li><h3>App</h3><p>The sheet, the review dialog and a one-transaction deploy through LatticeFactory or CreateX.</p></li>
+      <li><h3>CLI</h3><p><code>check recipe.json --json</code> and <code>passport &lt;address&gt;</code>, with stable exit codes for pipelines.</p></li>
+      <li><h3>Coding agents</h3><p>An agent brief export and a skill file hand a recipe and its findings to an agent, which runs the same analysis.</p></li>
+    </ul>
+    <p class="note">Exports: Foundry script, agent brief, recipe JSON with schema, Safe Transaction Builder batch, share link.</p>
+  </section>
+
+  <section id="slide-9" class="slide" aria-labelledby="h9">
+    <p class="label">How it's built</p>
+    <h2 id="h9">A pure core, a generated catalog, and tests at every layer</h2>
+    <ul class="grid four stats">
+      <li><p class="stat">3,700+</p><p>unit tests</p></li>
+      <li><p class="stat">1,600+</p><p>component tests in a real browser</p></li>
+      <li><p class="stat">480+</p><p>end-to-end flows</p></li>
+      <li><p class="stat">1,100+</p><p>commits, September 23 to October 13</p></li>
+    </ul>
+    <p class="note">Bun monorepo. The core has no DOM, network, clock or randomness. The catalog is generated from a pinned Lattice checkout. React and React Flow for the sheet; viem and wagmi in a lazily loaded chain module, the only code that talks to a network. Golden tests run against Lattice's own deploy scripts; chain tests run on Anvil.</p>
+  </section>
+
+  <section id="slide-10" class="slide" aria-labelledby="h10">
+    <p class="label">Status and next</p>
+    <h2 id="h10">What's real, what isn't yet, and where it goes</h2>
+    <ul class="grid two">
+      <li><h3>Real today</h3><p>Compose, check, export, deploy and passport new Lattice diamonds on Monad Testnet, Sepolia, Base Sepolia, HSKChain Testnet, Hedera Testnet and Avalanche Fuji. All of Studio was built between September 23 and October 13, 2026.</p></li>
+      <li><h3>Provisional</h3><p>The catalog is built from Lattice commit <code>6c8db45</code>, not a tagged release. Mainnet is off until Lattice is audited. The CLI is not on npm yet. The Drafter is registered under ERC-8004 by command, not yet on chain.</p></li>
+    </ul>
+    <ul class="plain">
+      <li>Next: upgrades of live diamonds, the CLI on npm, the re-pin to Lattice's tagged release, Monad mainnet.</li>
+    </ul>
+    <p class="links">
+      <a class="button" href="/">Open the app</a>
+      <a href="https://github.com/dadadave80/lattice-studio">Studio on GitHub</a>
+      <a href="https://github.com/dadadave80/lattice-studio/blob/main/docs/passport.md">Passport guide</a>
+      <a href="https://github.com/dadadave80/lattice">Lattice on GitHub</a>
+    </p>
+    <p class="note">Lattice, the facet library, is David Dada's earlier open-source work and predates the event. Studio was built inside the hackathon window with coding agents (Claude Code and Codex) under his direction. David Dada · built from Nigeria</p>
+  </section>
+
+</main>
+</body>
+</html>
