@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/dadadave80/lattice-studio/compare/lattice-studio-v0.1.0...lattice-studio-v0.2.0) (2026-10-14)
+
+
+### Features
+
+* **cli:** passport address, what a diamond runs and whether it matches its recipe ([ae88027](https://github.com/dadadave80/lattice-studio/commit/ae88027a0ca44ed8b82c6b60bf7e893a3749e3ae))
+* **cli:** passport building blocks: identify facets, compare routing, summarize cut history ([ce83d70](https://github.com/dadadave80/lattice-studio/commit/ce83d709b13d157836094b63d98a73c0e590dccc))
+
+
+### Bug Fixes
+
+* **cli:** Monad Testnet's fixed 30,000,000 per-transaction gas cap ([963a97f](https://github.com/dadadave80/lattice-studio/commit/963a97fc7764f8cb52b0d8d717fd2e1fd1f4ea39))
+
 ## 0.1.0 (2026-10-10)
 
 
