@@ -302,8 +302,8 @@ Start: **Collisions**. F6 to the Sheet.
    Known gap (2026-10-06): focus falls to the page body when the toast closes. Until that's fixed this step fails on where focus goes.
 4. Press Mod+Z.
    Expect: the same undo the toast offered, without the toast. Every toast action has another path.
-5. Share a link: F6 to the Title bar, Tab to **Share** and press Enter.
-   Expect: "Link copied" and the link's length in characters, as a toast. When the browser blocks the clipboard, the link shows selected under **Share** with "Press ⌘C to copy" ("Press Ctrl+C to copy" on Windows and Linux); Esc or Tab closes it and focus returns to **Share**.
+5. Share a link: F6 to the Title bar, Tab to **More** (⋯) and press Enter, then Enter on **Share**.
+   Expect: "Link copied" and the link's length in characters, as a toast. When the browser blocks the clipboard, the link shows selected with "Press ⌘C to copy" ("Press Ctrl+C to copy" on Windows and Linux); Esc or Tab closes it and focus returns to **More**.
 6. Open Projects (Mod+K, `Projects`, Enter) and press **Delete** on a project you don't need.
    Expect: no confirmation; a toast "Moved {name} to Recently deleted" with **Undo**.
 7. Open a damaged link: add `#s=1.broken` to Studio's address and load it.

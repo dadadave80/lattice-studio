@@ -7,7 +7,7 @@
   white-space: nowrap;
 }
 
-/* A shortcut chip: the keys in a hairline box, as the title bar's ⌘K chip. */
+/* A shortcut chip: the keys in a hairline box, as menus and tooltips show them. */
 .chip {
   composes: kbd;
   padding-block: 0;

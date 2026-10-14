@@ -1,6 +1,6 @@
 /**
- * The title bar (IR L60-L74, spec L355): the App menu, the save status, Share and the overflow menu ("More")
- * that swallows Share (and more) below 1024 px. Shared by every Q1d spec (Flows 10-11 touch all of it: Save,
+ * The title bar (IR L60-L74, spec L355): the App menu, the save status and the overflow menu ("More"), which
+ * holds Share at every width (and more below 1024 px). Shared by every Q1d spec (Flows 10-11 touch all of it: Save,
  * Save a copy…, Open…, Share and, at narrow widths, Export move in here).
  */
 import { expect, type Locator, type Page } from "@playwright/test";
