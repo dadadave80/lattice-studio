@@ -33,10 +33,10 @@ Two diamonds deployed from Studio on Monad Testnet and verified on Monadscan:
 
 | Diamond | Deploy transaction | Recipe | Verification | Passport |
 | --- | --- | --- | --- | --- |
-| Governed vault: [`0x00729c71C732c72b84132AF001FAA9cE73EA5c7B`](https://testnet.monadscan.com/address/0x00729c71C732c72b84132AF001FAA9cE73EA5c7B#code) — Grant vault (`gVLT`) | `<GOVERNED_VAULT_DEPLOY_TX>`, through LatticeFactory | [`docs/examples/governed-vault.recipe.json`](docs/examples/governed-vault.recipe.json) | [Monadscan verification](https://testnet.monadscan.com/address/0x00729c71C732c72b84132AF001FAA9cE73EA5c7B#code) | [`docs/examples/governed-vault-passport.json`](docs/examples/governed-vault-passport.json), digest `0x6de7e44eb5c111377ef4abb9c88d4d2462c1b6701b841729174702106f749055` |
-| Lattice Monad Token: [`0x976363fb36926c09410Df80D50fE92a04bB70139`](https://testnet.monadscan.com/address/0x976363fb36926c09410Df80D50fE92a04bB70139#code) — Lattice Monad Token (`LMT`) | `<MONAD_TOKEN_DEPLOY_TX>`, through LatticeFactory | [`docs/examples/monad-token.recipe.json`](docs/examples/monad-token.recipe.json) | [Monadscan verification](https://testnet.monadscan.com/address/0x976363fb36926c09410Df80D50fE92a04bB70139#code) | [`docs/examples/monad-token-passport.json`](docs/examples/monad-token-passport.json), digest `0x53ea6987c1581dc5030172866a588f2eea18f56946649bb2bc98545e7cabf74e` |
+| Governed vault: [`0x00729c71C732c72b84132AF001FAA9cE73EA5c7B`](https://testnet.monadscan.com/address/0x00729c71C732c72b84132AF001FAA9cE73EA5c7B#code) — Grant vault (`gVLT`) | [`0x04ab20c5…d0eaa0`](https://testnet.monadscan.com/tx/0x04ab20c51cdc15ecfb695fac43d2e50bc28408b8b9029b4b74331e5541d0eaa0), one transaction through LatticeFactory | [`docs/examples/governed-vault.recipe.json`](docs/examples/governed-vault.recipe.json) | [Monadscan verification](https://testnet.monadscan.com/address/0x00729c71C732c72b84132AF001FAA9cE73EA5c7B#code) | [`docs/examples/governed-vault-passport.json`](docs/examples/governed-vault-passport.json), digest `0x6de7e44eb5c111377ef4abb9c88d4d2462c1b6701b841729174702106f749055` |
+| Lattice Monad Token: [`0x976363fb36926c09410Df80D50fE92a04bB70139`](https://testnet.monadscan.com/address/0x976363fb36926c09410Df80D50fE92a04bB70139#code) — Lattice Monad Token (`LMT`) | [`0xa57fd36e…a4e879`](https://testnet.monadscan.com/tx/0xa57fd36e041eb3b7c2501fd92ea55b05331d9f9ca0a8798ac90d18b758a4e879), one transaction through LatticeFactory | [`docs/examples/monad-token.recipe.json`](docs/examples/monad-token.recipe.json) | [Monadscan verification](https://testnet.monadscan.com/address/0x976363fb36926c09410Df80D50fE92a04bB70139#code) | [`docs/examples/monad-token-passport.json`](docs/examples/monad-token-passport.json), digest `0x53ea6987c1581dc5030172866a588f2eea18f56946649bb2bc98545e7cabf74e` |
 
-LatticeFactory: `<LatticeFactory address>`. Shared contracts placed by Deploy missing contracts: `<shared contract addresses and deployment transactions>`.
+LatticeFactory: [`0xc192cEa531C8FFb3cBE69A98f4795757E4A2c7be`](https://testnet.monadscan.com/address/0xc192cEa531C8FFb3cBE69A98f4795757E4A2c7be), at the same predicted address as on Sepolia. The shared facets and inits were placed by Deploy missing contracts at the catalog's predicted addresses; the loupe call below lists the ones the vault routes to.
 
 Check it yourself:
 
@@ -78,7 +78,7 @@ Why Monad:
   blocks while public RPCs cap `eth_getLogs` ranges. Envio HyperRPC returns it in one query.
 - Sub-second blocks with finality two blocks later make check, deploy and passport one sitting.
 
-AI disclosure: Studio was built with coding agents (<AI tools David used>) under David Dada's direction;
+AI disclosure: Studio was built with coding agents (Claude Code and Codex) under David Dada's direction;
 [`AGENTS.md`](AGENTS.md) describes how. The Monad work on October 13 was implemented by Codex with GPT-6 Luna from a
 written handoff and reviewed by David.
 
