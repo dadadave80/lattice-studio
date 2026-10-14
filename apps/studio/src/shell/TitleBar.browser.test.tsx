@@ -5,10 +5,20 @@ import { page, userEvent } from "vitest/browser";
 import {
   commandRef, commandState, doc, emptyAnalysis, provideAnalysis, putDeployment, runCommand, session, settings,
 } from "@/contracts";
+import { overridePlatform } from "@/ui/shared/platform";
 import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio, seedDeployState } from "../../test/harness";
+import { CommandPalette } from "@/palette/CommandPalette";
+import { resetPaletteState } from "@/palette/palette-state";
 import { Shell } from "./Shell";
 
 const bar = () => page.getByRole("region", { name: "Title bar", exact: true });
+/** The shell with the palette mounted, as the app has it, so the search field has something to open. */
+const withPalette = (
+  <>
+    <Shell />
+    <CommandPalette preload={() => () => undefined} />
+  </>
+);
 const HASH: Hex = `0x${"ab".repeat(32)}`;
 
 function useAnalysisOf(analysis: Analysis): void {
@@ -233,13 +243,69 @@ describe("the App menu", () => {
 });
 
 describe("the other controls", () => {
-  test("Undo, Redo, Share, the theme and ⌘K run their commands, or say why not", async () => {
+  test("Undo, Redo, the search field, the theme and Share in the overflow menu run their commands, or say why not", async () => {
     await renderWithStudio(<Shell />);
     await expect.element(bar().getByRole("button", { name: "Undo" })).toHaveAccessibleDescription("Nothing to undo");
-    await expect.element(bar().getByRole("button", { name: /^Share/ })).toHaveAttribute("aria-disabled", "true");
-    await expect.element(bar().getByRole("button", { name: /(⌘|Ctrl\+)K ?Command palette/ })).toBeVisible();
+    await expect.element(bar().getByRole("button", { name: /^Search (⌘|Ctrl\+)K$/ })).toBeVisible();
     await expect.element(bar().getByRole("group", { name: "Theme" })).toBeVisible();
+    await expect.element(bar().getByRole("button", { name: /^Share/ })).not.toBeInTheDocument();
+    await bar().getByRole("button", { name: "More" }).click();
+    const menu = page.getByRole("menu", { name: "More" });
+    await expect.element(menu.getByRole("menuitem", { name: "Share" })).toHaveAttribute("aria-disabled", "true");
+    expect(menu.getByRole("menuitem").elements()).toHaveLength(1);
+    await userEvent.keyboard("{Escape}");
   });
+
+  test("the search field: an icon, SEARCH and the shortcut as keycaps; its name is Search and the shortcut", async () => {
+    onCleanup(overridePlatform("mac"));
+    onCleanup(resetPaletteState);
+    await renderWithStudio(withPalette);
+    const search = bar().getByRole("button", { name: "Search ⌘K", exact: true });
+    await expect.element(search).toBeVisible();
+    const el = search.element() as HTMLElement;
+    expect(el.querySelector("svg")?.getAttribute("data-icon")).toBe("search");
+    expect([...el.querySelectorAll("kbd")].map((k) => k.textContent)).toEqual(["⌘", "K"]);
+    const label = [...el.querySelectorAll<HTMLElement>("[aria-hidden='true']")].find((s) => s.textContent === "Search");
+    expect(label && getComputedStyle(label).textTransform).toBe("uppercase");
+    // Beside the theme switch, at its height, both at the bar's far end but for the overflow menu.
+    const theme = bar().getByRole("group", { name: "Theme" }).element().getBoundingClientRect();
+    const box = el.getBoundingClientRect();
+    expect(box.height).toBe(theme.height);
+    expect(box.right).toBeLessThan(theme.left);
+    expect(getComputedStyle(el).borderTopColor).toBe(getComputedStyle(bar().getByRole("group", { name: "Theme" }).element()).borderTopColor);
+    await search.click();
+    await expect.element(page.getByRole("dialog", { name: "Command palette" })).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+  });
+
+  test("off macOS the keycaps read Ctrl and K", async () => {
+    onCleanup(overridePlatform("other"));
+    await renderWithStudio(<Shell />);
+    const search = bar().getByRole("button", { name: "Search Ctrl+K", exact: true });
+    await expect.element(search).toBeVisible();
+    expect([...(search.element() as HTMLElement).querySelectorAll("kbd")].map((k) => k.textContent)).toEqual(["Ctrl", "K"]);
+  });
+
+  for (const width of [900, 600]) {
+    test(`at ${width} px the search field is its icon, with the same name`, async () => {
+      onCleanup(overridePlatform("mac"));
+      await page.viewport(width, 900);
+      onCleanup(resetPaletteState);
+      try {
+        await renderWithStudio(withPalette);
+        const search = bar().getByRole("button", { name: "Search ⌘K", exact: true });
+        await expect.element(search).toBeVisible();
+        const el = search.element() as HTMLElement;
+        expect(el.querySelector("kbd")?.checkVisibility()).toBe(false);
+        expect(el.getBoundingClientRect().width).toBeLessThanOrEqual(32);
+        await search.click();
+        await expect.element(page.getByRole("dialog", { name: "Command palette" })).toBeVisible();
+        await userEvent.keyboard("{Escape}");
+      } finally {
+        await page.viewport(1440, 900);
+      }
+    });
+  }
 
   test("the theme switch names Light and Dark, in that order, and confirms a switch", async () => {
     await renderWithStudio(<Shell />, { theme: "dark" });
