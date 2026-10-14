@@ -154,8 +154,9 @@
 
 /*
  * The search field (#36): a bordered field, the icon, "SEARCH" in muted caps, the shortcut's keycaps at the far
- * end. The class is doubled to outrank Button.module.css whichever order the two sheets load in. It and the theme
- * switch share a height (32 px, the segments plus the group's hairlines) and the `border` hairline.
+ * end. The class is doubled (and, for its ink, the enabled state named) to outrank Button.module.css whichever
+ * order the two sheets load in. It and the theme switch share a height (32 px, the segments plus the group's
+ * hairlines) and the `border` hairline.
  */
 .search.search {
   justify-content: flex-start;
@@ -163,6 +164,10 @@
   inline-size: var(--lx-card-width);
   min-block-size: var(--lx-space-8);
   padding-inline: var(--lx-space-2) var(--lx-space-1);
+}
+
+/* Muted at rest; while the palette can't open (a dialog is up) the field takes Button's faint disabled ink. */
+.search.search:not([aria-disabled="true"]) {
   color: var(--lx-text-muted);
 }
 
@@ -192,7 +197,7 @@
   padding-inline: var(--lx-space-1);
   border: var(--lx-stroke-hair) solid var(--lx-border);
   background: var(--lx-sunken);
-  color: var(--lx-text-muted);
+  color: inherit;
   font: var(--lx-font-code-sm);
 }
 

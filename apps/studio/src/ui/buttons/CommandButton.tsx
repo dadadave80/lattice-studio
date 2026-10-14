@@ -15,6 +15,8 @@ export type CommandButtonProps = {
   iconOnly?: boolean;
   /** Visible text when it differs from the command's title (the title stays in the tooltip). */
   children?: ReactNode;
+  /** The tooltip, when the visible text names the control differently from the command's title. */
+  tooltip?: string;
   className?: string;
 };
 
@@ -23,7 +25,9 @@ export type CommandButtonProps = {
  * `aria-disabled` with the command's reason while it can't run, and `runCommand(ref, "button")` on click,
  * which logs what happened or why not.
  */
-export function CommandButton({ command, variant, size, block, icon, iconOnly = false, children, className }: CommandButtonProps) {
+export function CommandButton({
+  command, variant, size, block, icon, iconOnly = false, children, tooltip, className,
+}: CommandButtonProps) {
   const state = useCommandState(command, "button");
   const keymap = useSettings((s) => s.keymap);
   const binding = listBindings(keymap).find(
@@ -49,7 +53,7 @@ export function CommandButton({ command, variant, size, block, icon, iconOnly = 
     <Button
       disabledReason={reason}
       onClick={run}
-      {...(children === undefined ? {} : { tooltip: state.title })}
+      {...(children === undefined ? {} : { tooltip: tooltip ?? state.title })}
       {...shortcut}
       {...(variant ? { variant } : {})}
       {...(size ? { size } : {})}

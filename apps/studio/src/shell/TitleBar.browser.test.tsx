@@ -273,6 +273,9 @@ describe("the other controls", () => {
     expect(box.height).toBe(theme.height);
     expect(box.right).toBeLessThan(theme.left);
     expect(getComputedStyle(el).borderTopColor).toBe(getComputedStyle(bar().getByRole("group", { name: "Theme" }).element()).borderTopColor);
+    // The tooltip says what the name says, so a voice user reads the word they can say.
+    await search.hover();
+    await expect.poll(() => document.querySelector("[data-tooltip]")?.textContent).toMatch(/^Search/);
     await search.click();
     await expect.element(page.getByRole("dialog", { name: "Command palette" })).toBeVisible();
     await userEvent.keyboard("{Escape}");
