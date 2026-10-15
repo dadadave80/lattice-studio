@@ -1,0 +1,29 @@
+# Builds the pinned Lattice checkout with the ci profile, from a cache keyed on the gitlink and the Foundry version.
+# A hit leaves forge only its own staleness check. A miss builds and saves straight away, before any harness adds
+# files to lattice/. warm-cache.yml runs this on dev and main, so a pull request that keeps the pin always hits.
+name: Build Lattice
+description: forge build of the pinned Lattice checkout, from a warm cache when the pin hasn't moved
+
+runs:
+  using: composite
+  steps:
+    - id: pin
+      shell: bash
+      run: echo "key=lattice-build-${{ runner.os }}-v1.8.3-$(git rev-parse HEAD:lattice)" >> "$GITHUB_OUTPUT"
+    - id: restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          lattice/out
+          lattice/cache
+        key: ${{ steps.pin.outputs.key }}
+    - name: Build the pinned Lattice checkout (ci profile)
+      shell: bash
+      run: FOUNDRY_PROFILE=ci forge build --root lattice
+    - if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          lattice/out
+          lattice/cache
+        key: ${{ steps.pin.outputs.key }}
