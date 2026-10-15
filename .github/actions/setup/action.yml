@@ -1,8 +1,9 @@
 # Every CI job's setup after checkout: Bun, Node when asked, the frozen install, and when asked Foundry and
-# Playwright's browsers. Caches are restored, never saved here: a cache saved on a pull request is visible to that
-# pull request only, so warm-cache.yml saves them on dev and main, where every pull request can read them.
+# Playwright's browsers. Bun's own install cache isn't kept: restoring it takes as long as the install. The browsers
+# are restored, never saved here: a cache saved on a pull request is visible to that pull request only, so
+# warm-cache.yml saves them on dev and main, where every pull request can read them.
 name: Set up Studio
-description: Bun, the frozen install, and optionally Node, Foundry and Playwright browsers, from warm caches
+description: Bun, the frozen install, and optionally Node, Foundry and Playwright browsers from a warm cache
 
 inputs:
   node:
@@ -25,11 +26,6 @@ runs:
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version: "22"
-    - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ~/.bun/install/cache
-        key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-        restore-keys: bun-${{ runner.os }}-
     # Frozen lockfile, install scripts blocked (root package.json's empty trustedDependencies; spec "Compromised npm
     # dependency"): CI installs exactly what bun.lock pins and runs no lifecycle script.
     - shell: bash
@@ -52,7 +48,10 @@ runs:
       with:
         path: ~/.cache/ms-playwright
         key: ${{ steps.playwright.outputs.key }}
-    # On a hit this only installs the system libraries; the browsers are already in place.
+    # On a hit this only installs the system libraries; the browsers are already in place. Without man-db's
+    # auto-update, apt skips rebuilding the man-page index after the install, which nothing here reads.
     - if: inputs.browsers != ''
       shell: bash
-      run: bun x playwright install --with-deps ${{ inputs.browsers }}
+      run: |
+        sudo rm -f /var/lib/man-db/auto-update
+        bun x playwright install --with-deps ${{ inputs.browsers }}
