@@ -149,10 +149,11 @@ describe("fork.yml (§17 audit #76, spec L935, Q7: the fork block is the harness
     }
   });
 
+  // The only gate is the changed-paths one (#45): no job waits on anything but `changes` or reads a secret in `if`.
   test("runs without the SEPOLIA_RPC_URL secret: no job is gated on it", () => {
     for (const job of jobs) {
-      expect(job.if).toBeUndefined();
-      expect(job.needs).toBeUndefined();
+      if (job.needs !== undefined) expect(job.needs).toBe("changes");
+      if (job.if !== undefined) expect(String(job.if)).not.toContain("secrets");
     }
   });
 

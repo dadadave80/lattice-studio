@@ -1,14 +1,17 @@
 # Lattice Studio's pull-request gate (brief Q6; spec "Testing and release", spec L897 "bun run check").
-# Not run until David pushes the repo and creates it on GitHub (HANDOFF.md D4): written now so the day he does,
-# every gate is ready. Nothing here sends a transaction to a public network; the golden and chain jobs run
-# against a local Anvil (D8's default), with CreateX's and Multicall3's real runtime code etched by the test
-# harness itself (Q5), not by this workflow.
+# Nothing here sends a transaction to a public network; the golden and chain jobs run against a local Anvil (D8's
+# default), with CreateX's and Multicall3's real runtime code etched by the test harness itself (Q5), not by this
+# workflow.
+#
+# Each job runs only when its inputs changed (#45): the `changes` job diffs the pull request against its base and
+# scripts/ci/changes.sh maps the paths to groups. A job gated off shows as skipped, which GitHub counts as passing.
+# There's no push trigger: a pull request is the only way into dev or main, and it already ran here. nightly.yml
+# dispatches a full run on dev every night, and a manual workflow_dispatch runs everything on any branch.
 name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main, dev] # dev is scripts/wp/merge.ts's integration branch
+  workflow_dispatch: {}
 
 # A PR gate never needs write access; release-please and publish-cli (separate workflows) ask for more.
 permissions:
@@ -24,8 +27,38 @@ env:
   FOUNDRY_VERSION: "v1.8.3" # contracts.md §2: David chose 1.8.3 over the planned 1.8.1 (2026-09-23, QUESTIONS Q1)
 
 jobs:
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.groups.outputs.code }}
+      app: ${{ steps.groups.outputs.app }}
+      size: ${{ steps.groups.outputs.size }}
+      golden: ${{ steps.groups.outputs.golden }}
+      chain: ${{ steps.groups.outputs.chain }}
+      catalog: ${{ steps.groups.outputs.catalog }}
+    steps:
+      # A pull request checks out its merge commit, whose first parent is the base it merges into: two commits of
+      # history are enough for the diff. Anything else (workflow_dispatch) runs every job.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - id: groups
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && git rev-parse -q --verify HEAD^2 >/dev/null; then
+            git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt"
+            echo "$(wc -l < "$RUNNER_TEMP/changed.txt") changed paths:"
+            cat "$RUNNER_TEMP/changed.txt"
+            bash scripts/ci/changes.sh < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "A $GITHUB_EVENT_NAME run: every job runs."
+            bash scripts/ci/changes.sh --all | tee -a "$GITHUB_OUTPUT"
+          fi
+
   checks:
     name: bun run check
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -44,6 +77,8 @@ jobs:
 
   test:
     name: bun test (core logic)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,6 +90,8 @@ jobs:
 
   browser:
     name: Component tests (Vitest Browser Mode)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -82,8 +119,21 @@ jobs:
           retention-days: 14
 
   e2e:
-    name: End to end (Playwright)
+    name: End to end (Playwright, ${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
+    # Split by project, so every test runs exactly once: playwright.config.ts's `chromium` project (every spec)
+    # across three shards, and its `webkit-smoke` project (the @smoke set, spec "Screen readers, tier 1") on its
+    # own runner, the only one that installs WebKit.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "chromium 1/3", browser: chromium, args: "--project=chromium --shard=1/3" }
+          - { name: "chromium 2/3", browser: chromium, args: "--project=chromium --shard=2/3" }
+          - { name: "chromium 3/3", browser: chromium, args: "--project=chromium --shard=3/3" }
+          - { name: "WebKit @smoke", browser: webkit, args: "--project=webkit-smoke" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -93,21 +143,24 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: bun install --frozen-lockfile
+      # Chromium shares the key the browser and perf jobs use; WebKit gets its own, or it would never be cached.
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-      # Chromium for Flows 1-14 and 17; WebKit for the @smoke set only (spec "Screen readers, tier 1").
-      - run: bun x playwright install --with-deps chromium webkit
-      # Anvil for the deploy flows (12-14) and the kit's smoke tests. The contracts come from catalog/, so no build.
+          key: playwright-${{ runner.os }}${{ matrix.browser == 'webkit' && '-webkit' || '' }}-${{ hashFiles('bun.lock') }}
+      - run: bun x playwright install --with-deps ${{ matrix.browser }}
+      # Anvil for the deploy flows (12-14) and the kit's smoke tests, and global setup checks for it on every
+      # runner. The contracts come from catalog/, so no build.
       - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
         with:
           version: ${{ env.FOUNDRY_VERSION }}
-      - run: bun run e2e
+      - run: bun run e2e ${{ matrix.args }}
 
   golden:
     name: Golden tests (Foundry)
+    needs: changes
+    if: needs.changes.outputs.golden == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -120,14 +173,34 @@ jobs:
         with:
           version: ${{ env.FOUNDRY_VERSION }}
       - run: bun install --frozen-lockfile
+      # The build of the pinned Lattice commit, keyed on the gitlink and the Foundry version: a hit leaves forge
+      # only its own staleness check. Saved straight after the build, before the golden harness adds its files.
+      - id: pin
+        run: echo "sha=$(git rev-parse HEAD:lattice)" >> "$GITHUB_OUTPUT"
+      - id: lattice-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            lattice/out
+            lattice/cache
+          key: lattice-build-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-${{ steps.pin.outputs.sha }}
       - name: Build the pinned Lattice checkout (ci profile)
         run: FOUNDRY_PROFILE=ci forge build --root lattice
+      - if: steps.lattice-build.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            lattice/out
+            lattice/cache
+          key: lattice-build-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-${{ steps.pin.outputs.sha }}
       - run: bun run golden
         env:
           LATTICE_DIR: ${{ github.workspace }}/lattice
 
   chain:
     name: Chain tests (Anvil, Foundry)
+    needs: changes
+    if: needs.changes.outputs.chain == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -140,8 +213,25 @@ jobs:
         with:
           version: ${{ env.FOUNDRY_VERSION }}
       - run: bun install --frozen-lockfile
+      # The same cached build as the golden job's.
+      - id: pin
+        run: echo "sha=$(git rev-parse HEAD:lattice)" >> "$GITHUB_OUTPUT"
+      - id: lattice-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            lattice/out
+            lattice/cache
+          key: lattice-build-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-${{ steps.pin.outputs.sha }}
       - name: Build the pinned Lattice checkout (ci profile)
         run: FOUNDRY_PROFILE=ci forge build --root lattice
+      - if: steps.lattice-build.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            lattice/out
+            lattice/cache
+          key: lattice-build-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-${{ steps.pin.outputs.sha }}
       # Local Anvil, D8's default: CreateX's and Multicall3's real runtime code is etched by e2e-chain's own
       # harness (Q5), not by this step. The Sepolia fork suite skips here (no SEPOLIA_FORK); fork.yml runs it. No
       # transaction ever reaches a public network.
@@ -151,6 +241,8 @@ jobs:
 
   catalog-drift:
     name: Catalog drift
+    needs: changes
+    if: needs.changes.outputs.catalog == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -163,8 +255,9 @@ jobs:
         with:
           version: ${{ env.FOUNDRY_VERSION }}
       - run: bun install --frozen-lockfile
-      - name: Build the pinned Lattice checkout (ci profile)
-        run: FOUNDRY_PROFILE=ci forge build --root lattice
+      # No build step and no build cache: `bun run catalog` treats this lattice/ as the read-only main checkout
+      # and builds a fresh temporary copy of its tracked files from nothing (packages/catalog-gen's USAGE), so it
+      # never reads lattice/out, and a cached build could neither speed it up nor hide drift.
       - run: bun run catalog
         env:
           LATTICE_DIR: ${{ github.workspace }}/lattice
@@ -173,6 +266,8 @@ jobs:
 
   size:
     name: Size budgets
+    needs: changes
+    if: needs.changes.outputs.size == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -189,29 +284,3 @@ jobs:
       # here, on the pull request, instead of at the deploy (#26). Both are plain `bun run build`s with no VITE_*
       # variables, so the hashes agree.
       - run: bun apps/studio/build/verify-headers.ts apps/studio/dist apps/studio/vercel.json
-
-  lighthouse:
-    name: Lighthouse CI (mobile)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - run: bun install --frozen-lockfile
-      - run: bun run build
-      # @lhci/cli is apps/studio's devDependency (contracts §2, ^0.15.1, resolved 0.15.1 in bun.lock): `bun x
-      # lhci` resolves the installed binary, never fetches from the registry. Reports stay in this run's own
-      # artifact storage (upload.target "filesystem" in lighthouserc.json), not a public URL: no analytics and
-      # nothing published without David (spec "Privacy").
-      - name: Preview and audit
-        run: bun x lhci autorun --config=scripts/ci/lighthouserc.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always()
-        with:
-          name: lighthouse-report
-          path: .lighthouseci
-          retention-days: 14

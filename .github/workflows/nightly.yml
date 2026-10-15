@@ -2,7 +2,8 @@
 # report-only; release tags block"; brief Q6). Runs the golden and chain suites against the tip of Lattice's
 # `dev` instead of the pinned submodule commit, so a Lattice change that would break Studio is caught before
 # it lands in a release tag. Report-only: never blocks a PR, never fails the run for drift, only for a setup
-# problem (checkout, build, install). Not run until David pushes the repo (HANDOFF.md D4).
+# problem (checkout, build, install). A second job dispatches Studio's own full CI, Performance and fork runs on
+# Studio's `dev`. The schedule runs from the default branch, so both jobs start once this file is on main.
 name: Nightly (Lattice dev)
 
 on:
@@ -67,3 +68,21 @@ jobs:
           echo "- golden: ${{ steps.golden.outcome }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- chain: ${{ steps.chain.outcome }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Report-only: this job never fails the workflow for test drift, only for a setup problem." >> "$GITHUB_STEP_SUMMARY"
+
+  # The safety net for CI's path gates (#45): pull requests run only the jobs their paths need and merges don't
+  # re-run CI, so once a night every gate runs in full on dev. workflow_dispatch is the one event GITHUB_TOKEN may
+  # start other workflows with. Those runs report on their own; this job fails only if a dispatch is refused.
+  full-suite-on-dev:
+    name: Dispatch the full CI, Performance and fork suites on dev
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for workflow in ci.yml perf.yml fork.yml; do
+            gh workflow run "$workflow" --ref dev
+            echo "Dispatched $workflow on dev."
+          done
