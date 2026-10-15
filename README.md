@@ -9,7 +9,7 @@
 Compose a contract system from facets, catch every mistake on the edit that makes it,<br />
 and ship it as a Foundry script, a Safe batch or one verified transaction.
 
-[**Open the app**](https://lattice-studio-topaz.vercel.app) · [Watch the demo](https://youtu.be/Fzei4h-vTQg) · [Architecture](docs/architecture.md) · [Security model](SECURITY.md) · [CLI](packages/cli/README.md)
+[**Open the app**](https://lattice-studio-topaz.vercel.app) · [Watch the demo](https://youtu.be/Twkk9R-VbK0) · [Architecture](docs/architecture.md) · [Security model](SECURITY.md) · [CLI](packages/cli/README.md)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-16150f?style=flat-square)](LICENSE)
 [![EIP-2535 diamonds](https://img.shields.io/badge/EIP--2535-diamonds-1f4fe0?style=flat-square)](https://eips.ethereum.org/EIPS/eip-2535)
