@@ -19,7 +19,7 @@
   font: var(--lx-font-body);
   letter-spacing: var(--lx-tracking-body);
   color: var(--lx-text);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .anchor {
@@ -31,7 +31,7 @@
   padding: var(--lx-space-2) 0;
   border-bottom: var(--lx-stroke-hair) solid var(--lx-border-subtle);
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .anchor:last-child {

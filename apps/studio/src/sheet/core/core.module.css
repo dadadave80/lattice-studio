@@ -113,6 +113,7 @@
 
 .panel {
   margin: var(--lx-space-4);
+  margin-inline-end: calc(var(--lx-space-4) + var(--sheet-inset-end, 0px));
 }
 
 .cell {

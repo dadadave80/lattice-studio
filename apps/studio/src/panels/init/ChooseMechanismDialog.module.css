@@ -42,7 +42,7 @@
   border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
   font: var(--lx-font-code-sm);
   letter-spacing: var(--lx-tracking-code-sm);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .changes li::before {

@@ -66,6 +66,19 @@ export function paneVisibility(panes: Panes, tier: LayoutTier): PaneVisibility {
   };
 }
 
+/** How far an open drawer covers the sheet from each side, in px: zero at the tiers without drawers. */
+export type SheetInsets = { start: number; end: number };
+
+/**
+ * The sheet's insets (the `--sheet-inset-start` and `--sheet-inset-end` the shell sets on the sheet): the open
+ * drawer's width on its side, so whatever floats over the sheet, and Fit, keep to the room the drawer leaves.
+ */
+export function sheetInsets(panes: Panes, tier: LayoutTier): SheetInsets {
+  const seen = paneVisibility(panes, tier);
+  if (!seen.drawers) return { start: 0, end: 0 };
+  return { start: seen.left ? panes.left.size : 0, end: seen.inspector ? panes.inspector.size : 0 };
+}
+
 /** What `pane.show` names. */
 export type ShownPane = NarrowPane;
 

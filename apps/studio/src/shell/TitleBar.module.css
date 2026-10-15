@@ -99,6 +99,11 @@
   padding-inline: var(--lx-space-1);
 }
 
+/* Under 768 px the name never gets down to a letter or two: past a few letters it moves to the Sheet tab. */
+.bar[data-layout="phone"] .middle[data-crowded] .name {
+  min-inline-size: var(--lx-space-12);
+}
+
 .nameText {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -237,7 +242,67 @@
   }
 }
 
-/* The pane switcher under 768 px: a second row of the title bar region (its tab list draws the hairline). */
+/*
+ * The pane switcher under 768 px: a second row of the title bar region (its tab list draws the hairline). The
+ * tabs share the row while they fit; past that each keeps its label whole and the row scrolls, faded at the cut
+ * edge so it reads as one that does.
+ */
 .switcher {
+  position: relative;
   min-inline-size: 0;
+}
+
+.switcherList.switcherList {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.switcherList.switcherList::-webkit-scrollbar {
+  display: none;
+}
+
+.switcherList.switcherList [role="tab"] {
+  flex-shrink: 0;
+  min-inline-size: max-content;
+}
+
+/* The Sheet tab carrying the project name: as much of it as a card's width allows. */
+.switcherList.switcherList [role="tab"]:first-of-type > span {
+  max-inline-size: calc(var(--lx-card-width) * 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.switcher::before,
+.switcher::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset-block: 0 var(--lx-stroke-hair);
+  inline-size: var(--lx-space-8);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.switcher::before {
+  inset-inline-start: 0;
+  background: linear-gradient(to left, transparent, var(--lx-panel));
+}
+
+.switcher::after {
+  inset-inline-end: 0;
+  background: linear-gradient(to right, transparent, var(--lx-panel));
+}
+
+.switcher[data-cut-start]::before,
+.switcher[data-cut-end]::after {
+  opacity: 1;
+}
+
+@media (forced-colors: active) {
+  .switcher::before,
+  .switcher::after {
+    display: none;
+  }
 }
