@@ -2,16 +2,17 @@
 # preview, drag benchmark, every PR"). `bun scripts/perf/run.ts` builds the app (scripts/ci/size.ts --build),
 # serves it with `vite preview`, runs Lighthouse CI on the mobile profile and the Playwright benchmarks (first-load
 # composition, analysis on 30 facets, the 30-card drag with scripted INP) at 4× CPU throttling, and fails when an
-# enforced budget is missed; its table and fix requests are in the log and in the uploaded results.
+# enforced budget is missed; its table and fix requests are in the log and in the uploaded results. This is the
+# only Lighthouse run: ci.yml no longer has its own (#45).
 #
-# Not run until David pushes the repo and creates it on GitHub (HANDOFF.md D4). Nothing here reaches a network
-# beyond installing what bun.lock pins and Playwright's Chromium: the benchmarks block every non-local request.
+# Nothing here reaches a network beyond installing what bun.lock pins and Playwright's Chromium: the benchmarks
+# block every non-local request. Runs when the app's inputs changed (ci.yml's `changes` job explains the gate; the
+# same script decides here), and on workflow_dispatch, which nightly.yml sends for dev every night.
 name: Performance
 
 on:
   pull_request:
-  push:
-    branches: [main, dev]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -25,8 +26,28 @@ env:
   NODE_VERSION: "22"
 
 jobs:
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.groups.outputs.app }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - id: groups
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && git rev-parse -q --verify HEAD^2 >/dev/null; then
+            git diff --name-only HEAD^1 HEAD | bash scripts/ci/changes.sh | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "A $GITHUB_EVENT_NAME run: every job runs."
+            bash scripts/ci/changes.sh --all | tee -a "$GITHUB_OUTPUT"
+          fi
+
   perf:
     name: Performance budgets (build, Lighthouse CI, benchmarks)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

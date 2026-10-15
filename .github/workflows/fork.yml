@@ -4,6 +4,9 @@
 # public one fails; without the secret that fallback is simply skipped. Read-only against Sepolia except for the
 # deploys the fork test suite itself makes on its own forked, in-memory chain (prool/Anvil) — nothing ever reaches
 # a real network.
+#
+# Runs when the chain tests' inputs changed (ci.yml's `changes` job explains the gate; the same script decides
+# here), and on workflow_dispatch, which nightly.yml sends for dev every night.
 name: Sepolia fork suite
 
 on:
@@ -13,13 +16,37 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: fork-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BUN_VERSION: "1.4.2"
   FOUNDRY_VERSION: "v1.8.3"
 
 jobs:
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      chain: ${{ steps.groups.outputs.chain }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - id: groups
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && git rev-parse -q --verify HEAD^2 >/dev/null; then
+            git diff --name-only HEAD^1 HEAD | bash scripts/ci/changes.sh | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "A $GITHUB_EVENT_NAME run: every job runs."
+            bash scripts/ci/changes.sh --all | tee -a "$GITHUB_OUTPUT"
+          fi
+
   sepolia-fork:
     name: bun run test:chain (Sepolia fork)
+    needs: changes
+    if: needs.changes.outputs.chain == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,8 +59,25 @@ jobs:
         with:
           version: ${{ env.FOUNDRY_VERSION }}
       - run: bun install --frozen-lockfile
+      # The cached build ci.yml's golden and chain jobs share, keyed on the gitlink and the Foundry version.
+      - id: pin
+        run: echo "sha=$(git rev-parse HEAD:lattice)" >> "$GITHUB_OUTPUT"
+      - id: lattice-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            lattice/out
+            lattice/cache
+          key: lattice-build-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-${{ steps.pin.outputs.sha }}
       - name: Build the pinned Lattice checkout (ci profile)
         run: FOUNDRY_PROFILE=ci forge build --root lattice
+      - if: steps.lattice-build.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            lattice/out
+            lattice/cache
+          key: lattice-build-${{ runner.os }}-${{ env.FOUNDRY_VERSION }}-${{ steps.pin.outputs.sha }}
       # SEPOLIA_FORK=1 opts the fork suite in (ci.yml's `chain` job leaves it out). The fork block and the endpoint
       # are the harness's (e2e-chain/harness/sepolia.ts), not environment variables. SEPOLIA_RPC_URL is empty when
       # the secret isn't set, and the harness then tries the public RPCs only.
