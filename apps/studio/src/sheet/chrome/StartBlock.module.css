@@ -7,11 +7,11 @@
 /*
  * The block hangs from the top, and the layer ends above the band the core cell and the title block hold at the
  * sheet's bottom (`--lx-core-band`, set by the cell), plus a step: a short window scrolls the block instead of
- * running it under them (SH-01).
+ * running it under them (SH-01). It keeps to the room an open drawer leaves (`--sheet-inset-*`, the shell's).
  */
 .startLayer {
   position: absolute;
-  inset: 0 0 calc(var(--lx-core-band, 0px) + var(--lx-space-4));
+  inset: 0 var(--sheet-inset-end, 0px) calc(var(--lx-core-band, 0px) + var(--lx-space-4)) var(--sheet-inset-start, 0px);
   z-index: 4;
   display: grid;
   place-items: start center;

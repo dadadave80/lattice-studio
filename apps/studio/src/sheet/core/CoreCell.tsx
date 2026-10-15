@@ -4,6 +4,7 @@ import { Panel, useStore } from "@xyflow/react";
 import { memo, useLayoutEffect, useRef, type CSSProperties, type RefObject } from "react";
 import { commandRef, KEY_CONTEXT_ATTRIBUTE, runCommand, session, useSession } from "@/contracts";
 import { useTitleBlockSize } from "@/sheet/chrome/title-block-size";
+import { useSheetInsets } from "@/shell/sheet-insets";
 import { Toolbar } from "@/ui/nav/Toolbar";
 import { ToolbarButton } from "@/ui/nav/ToolbarButton";
 import { cx } from "@/ui/shared/cx";
@@ -85,6 +86,7 @@ function samePads(a: Pads | null, b: Pads | null): boolean {
 export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onPads }: CoreCellProps) {
   const root = useStore((s) => s.domNode);
   const sheetWidth = useStore((s) => s.width);
+  const insets = useSheetInsets();
   const title = useTitleBlockSize();
   const collapsed = useSession((s) => s.panes.core.collapsed);
   const cell = useRef<HTMLDivElement>(null);
@@ -97,7 +99,7 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
   const titleHeight = title?.height ?? null;
 
   // The pads' points and the rail, whenever something can move them: the cell's or the sheet's size (observed),
-  // the title block's width (the cell's margin), a fold. And whether Back to content would sit under the cell
+  // the title block's width (the cell's margin), an open drawer's inset, a fold. And whether Back to content would sit under the cell
   // (D16): then it lifts by the cell's height through a CSS variable on the sheet. Both are written only when
   // they change: the variable is inherited, so writing it restyles the whole sheet.
   useLayoutEffect(() => {
@@ -133,7 +135,8 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
         band.current = wantBand;
         root.style.setProperty(CORE_BAND_VAR, wantBand);
       }
-      const column = box.width / 2 + BACK_TO_CONTENT_HALF;
+      // Back to content centers in the room an open drawer leaves (`Sheet.module.css`).
+      const column = box.width / 2 + (insets.start - insets.end) / 2 + BACK_TO_CONTENT_HALF;
       const under = own.left - box.left < column;
       // The collapsed title block can reach across the column too (its one row is as wide as its address note, and
       // the cell then sits above it): Back to content then clears the higher of the two.
@@ -167,7 +170,7 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
       if (frame !== 0) cancelAnimationFrame(frame);
       sizes.disconnect();
     };
-  }, [root, onPads, titleWidth, titleHeight, collapsed, empty]);
+  }, [root, onPads, titleWidth, titleHeight, collapsed, empty, insets.start, insets.end]);
 
   useLayoutEffect(
     () => () => {
@@ -181,13 +184,15 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
     [root, onPads],
   );
 
-  // Beside the title block while both fit across the sheet; above it when they don't (the title block's strip
-  // form at narrow widths spans the sheet, and a cell pushed past its left edge would sit off-screen).
-  const beside = !title || sheetWidth <= 0 || title.width + GAP + CELL_WIDTH + 2 * EDGE <= sheetWidth;
+  // Beside the title block while both fit across the room an open drawer leaves; above it when they don't (the
+  // title block's strip form at narrow widths spans the sheet, and a cell pushed past its left edge would sit
+  // off-screen or under the left drawer). The drawer's inset is in the margin, as in the class's own.
+  const room = sheetWidth - insets.start - insets.end;
+  const beside = !title || sheetWidth <= 0 || title.width + GAP + CELL_WIDTH + 2 * EDGE <= room;
   const style: CSSProperties | undefined = !title
     ? undefined
     : beside
-      ? { marginInlineEnd: `calc(var(--lx-space-4) + ${title.width + GAP}px)` }
+      ? { marginInlineEnd: `calc(var(--lx-space-4) + var(--sheet-inset-end, 0px) + ${title.width + GAP}px)` }
       : { marginBlockEnd: `calc(var(--lx-space-4) + ${title.height + GAP}px)` };
 
   // What the pads show (a trace ending on them, the pointer on them) is said on the cell's own element, so a card
