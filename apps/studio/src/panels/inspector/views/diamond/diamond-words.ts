@@ -90,16 +90,32 @@ export function verificationFailureReason(record: Deployment, online: boolean): 
 }
 
 /**
- * Etherscan's line under Sourcify's, for a confirmed record of our own: its outcome, or Verifying while there's a
- * key and no outcome yet. Null when there's nothing to say: offline, no key, or a chain Etherscan doesn't serve.
+ * Etherscan's line under Sourcify's, for a confirmed record of our own: its outcome, or Verifying while its job is
+ * actually in flight. Null when there's nothing to say: offline, nothing running and no outcome, or a chain
+ * Etherscan doesn't serve.
  */
 export function etherscanWord(
-  record: Pick<Deployment, "status" | "fromFile" | "chainId">, outcome: EtherscanOutcome | undefined, online: boolean, keySet: boolean,
+  record: Pick<Deployment, "status" | "fromFile" | "chainId">, outcome: EtherscanOutcome | undefined, online: boolean, inFlight: boolean,
 ): string | null {
   if (!online || record.status !== "confirmed" || record.fromFile === true) return null;
   if (outcome?.outcome === "verified") return "Verified on Etherscan";
   if (outcome?.outcome === "failed") return "Couldn't verify on Etherscan";
-  return keySet && etherscanServes(record.chainId) ? "Verifying on Etherscan" : null;
+  return inFlight && etherscanServes(record.chainId) ? "Verifying on Etherscan" : null;
+}
+
+/**
+ * What a confirmed record of our own offers when Etherscan hasn't said anything about it yet, on a chain Etherscan
+ * serves: "add-key" (a hint pointing to Settings → Deploy) without an API key, "verify" (Verify on Etherscan) with
+ * one. Null otherwise: offline, an outcome or a running job already speaks for it, or there's nothing to verify.
+ */
+export function etherscanOffer(
+  record: Pick<Deployment, "status" | "fromFile" | "chainId">,
+  outcome: EtherscanOutcome | undefined,
+  state: { online: boolean; inFlight: boolean; keySet: boolean },
+): "add-key" | "verify" | null {
+  if (!state.online || record.status !== "confirmed" || record.fromFile === true) return null;
+  if (outcome !== undefined || state.inFlight || !etherscanServes(record.chainId)) return null;
+  return state.keySet ? "verify" : "add-key";
 }
 
 /** Why Etherscan couldn't verify, shown exactly when `etherscanWord` says it couldn't. */

@@ -522,15 +522,36 @@ describe("DiamondView: deployments", () => {
     expect(argsOf(reverify)).toEqual({ chainId: SEPOLIA, address: address("f2") });
   });
 
-  test("with a key and no outcome yet a record reads Verifying on Etherscan; without a key it says nothing", async () => {
+  test("no Etherscan outcome yet: a hint to Settings → Deploy without a key, Verify on Etherscan with one, never Verifying", async () => {
+    const reverify = spyOn("deploy.retryVerification");
     const id = "deploy-etherscan-key";
     await putDeployment(record(id, { address: address("f3") }));
     await renderWithStudio(view, { project: makeProject({ id }), chain: true });
     await expect.element(page.getByText("Verified (exact match)")).toBeVisible();
-    await expect.element(page.getByText(/Etherscan/)).not.toBeInTheDocument();
+    await expect.element(page.getByText("Add an Etherscan API key in Settings to verify there too.")).toBeVisible();
+    await expect.element(page.getByText("Verifying on Etherscan")).not.toBeInTheDocument();
+
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await vi.waitFor(() => expect(session.get().dialogs.at(-1)).toMatchObject({ id: "settings", props: { group: "deploy" } }));
+    expect(bufferedServices().log.map((l) => l.text)).toContain("Opened Settings → Deploy.");
 
     settings.set({ etherscanApiKey: "test-key" });
-    await expect.element(page.getByText("Verifying on Etherscan")).toBeVisible();
+    await page.getByRole("button", { name: "Verify on Etherscan" }).click();
+    expect(argsOf(reverify)).toEqual({ chainId: SEPOLIA, address: address("f3") });
+    // The spy sends nothing, so nothing is in flight: the row still doesn't claim to be verifying.
+    await expect.element(page.getByText("Verifying on Etherscan")).not.toBeInTheDocument();
+    await expect.element(page.getByText(/Add an Etherscan API key/)).not.toBeInTheDocument();
+  });
+
+  test("Etherscan offers nothing on a chain it doesn't serve, key or no key", async () => {
+    const id = "deploy-etherscan-unserved";
+    await putDeployment(record(id, { address: address("f4"), chainId: 296 }));
+    await renderWithStudio(view, { project: makeProject({ id }), chain: true });
+    await expect.element(page.getByText("Verified (exact match)")).toBeVisible();
+    await expect.element(page.getByText(/Etherscan/)).not.toBeInTheDocument();
+    settings.set({ etherscanApiKey: "test-key" });
+    await expect.element(page.getByRole("button", { name: "Verify on Etherscan" })).not.toBeInTheDocument();
+    await expect.element(page.getByText(/Etherscan/)).not.toBeInTheDocument();
   });
 
   test("a pending or verified record offers no reason and no Copy verify command", async () => {

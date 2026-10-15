@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Address, Deployment, Hex } from "@lattice-studio/core";
 import { formatAddress } from "@lattice-studio/core";
 import {
-  etherscanFailureReason, etherscanWord, groupDeployments, holderText, statusWord, verificationFailureReason, verificationWord,
+  etherscanFailureReason, etherscanOffer, etherscanWord, groupDeployments, holderText, statusWord, verificationFailureReason, verificationWord,
 } from "./diamond-words";
 
 const CURRENT: Hex = `0x${"ab".repeat(32)}`;
@@ -83,30 +83,50 @@ describe("diamond-words", () => {
     ).toBeUndefined();
   });
 
-  test("Etherscan's word: its outcome, Verifying only with a key, and nothing when there's nothing to say", () => {
+  test("Etherscan's word: its outcome, Verifying only while a job is in flight, and nothing when there's nothing to say", () => {
     const failed = { outcome: "failed" as const, reason: "Etherscan didn't finish in time.", keyed: false };
     const own = record({ chainId: 11155111 });
     expect(etherscanWord(own, { outcome: "verified" }, true, false)).toBe("Verified on Etherscan");
     expect(etherscanWord(own, failed, true, false)).toBe("Couldn't verify on Etherscan");
     expect(etherscanWord(own, undefined, true, true)).toBe("Verifying on Etherscan");
-    // No key and no outcome: the row says nothing, so a Studio without a key reads as it always did.
+    // No outcome and nothing in flight, key or no key: Verifying would claim a request that was never made.
     expect(etherscanWord(own, undefined, true, false)).toBeNull();
     // Offline nothing stored can be confirmed (ruling R7); Anvil is never submitted; only our own confirmed records are.
     expect(etherscanWord(own, { outcome: "verified" }, false, true)).toBeNull();
     expect(etherscanWord(record({ chainId: 31337 }), undefined, true, true)).toBeNull();
-    // Etherscan doesn't serve HSKChain Testnet or Hedera Testnet: no line there, with a key or without one.
+    // Etherscan doesn't serve HSKChain Testnet or Hedera Testnet: no line there.
     expect(etherscanWord(record({ chainId: 133 }), undefined, true, true)).toBeNull();
-    expect(etherscanWord(record({ chainId: 133 }), undefined, true, false)).toBeNull();
     expect(etherscanWord(record({ chainId: 296 }), undefined, true, true)).toBeNull();
-    expect(etherscanWord(record({ chainId: 296 }), undefined, true, false)).toBeNull();
-    // It does serve Avalanche Fuji (Snowscan): the line appears once a key is set.
+    // It does serve Avalanche Fuji (Snowscan) and Monad Testnet (Monadscan).
     expect(etherscanWord(record({ chainId: 43113 }), undefined, true, true)).toBe("Verifying on Etherscan");
     expect(etherscanWord(record({ chainId: 43113 }), { outcome: "verified" }, true, false)).toBe("Verified on Etherscan");
-    // It is served by Etherscan API V2 (Monadscan): the line appears once a key is set.
     expect(etherscanWord(record({ chainId: 10143 }), undefined, true, true)).toBe("Verifying on Etherscan");
     expect(etherscanWord(record({ chainId: 10143 }), { outcome: "verified" }, true, false)).toBe("Verified on Etherscan");
     expect(etherscanWord(record({ chainId: 11155111, status: "pending" }), undefined, true, true)).toBeNull();
     expect(etherscanWord(record({ chainId: 11155111, fromFile: true }), undefined, true, true)).toBeNull();
+  });
+
+  test("Etherscan's offer: a Settings hint without a key, Verify on Etherscan with one, only where nothing is said yet", () => {
+    const own = record({ chainId: 11155111 });
+    const idle = { online: true, inFlight: false };
+    expect(etherscanOffer(own, undefined, { ...idle, keySet: false })).toBe("add-key");
+    expect(etherscanOffer(own, undefined, { ...idle, keySet: true })).toBe("verify");
+    // Served by Etherscan API V2: Avalanche Fuji, Monad Testnet.
+    expect(etherscanOffer(record({ chainId: 43113 }), undefined, { ...idle, keySet: false })).toBe("add-key");
+    expect(etherscanOffer(record({ chainId: 10143 }), undefined, { ...idle, keySet: true })).toBe("verify");
+    // Not served: HSKChain Testnet, Hedera Testnet, Anvil. Nothing to offer, key or no key.
+    for (const chainId of [133, 296, 31337]) {
+      expect(etherscanOffer(record({ chainId }), undefined, { ...idle, keySet: false })).toBeNull();
+      expect(etherscanOffer(record({ chainId }), undefined, { ...idle, keySet: true })).toBeNull();
+    }
+    // Etherscan already answered, or a job is running: the outcome line or Verifying says it instead.
+    expect(etherscanOffer(own, { outcome: "verified" }, { ...idle, keySet: true })).toBeNull();
+    expect(etherscanOffer(own, { outcome: "failed", reason: "No.", keyed: false }, { ...idle, keySet: true })).toBeNull();
+    expect(etherscanOffer(own, undefined, { online: true, inFlight: true, keySet: true })).toBeNull();
+    // Offline, not ours, or not confirmed: nothing.
+    expect(etherscanOffer(own, undefined, { online: false, inFlight: false, keySet: true })).toBeNull();
+    expect(etherscanOffer(record({ chainId: 11155111, fromFile: true }), undefined, { ...idle, keySet: true })).toBeNull();
+    expect(etherscanOffer(record({ chainId: 11155111, status: "pending" }), undefined, { ...idle, keySet: false })).toBeNull();
   });
 
   test("Etherscan's failure reason: only for a failure, and only online", () => {
