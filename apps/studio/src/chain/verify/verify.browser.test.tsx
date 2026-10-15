@@ -1,14 +1,18 @@
 /**
  * The verify engine wired into the app: the watcher over a confirmed record, `deploy.retryVerification` (S5c's
- * Deployments list shows it only when a record's verification failed), against the real dev server's `/catalog/`
+ * Deployments list offers it when a record's verification failed, and as Verify on Etherscan when there's a key
+ * and Etherscan hasn't been asked), against the real dev server's `/catalog/`
  * (the fixture catalog `seedStudio` loads, exactly where `standard-json.ts` reads it) with only Sourcify's own
  * network faked. `services.ts`'s auto-start stays off under Vitest; the watcher is started by hand.
  */
 import { describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 import type { Address, Deployment } from "@lattice-studio/core";
+import { makeProject } from "@lattice-studio/core/testing";
 import { commandRef, getCatalogStatus, listDeployments, putDeployment, runCommand, setCatalogStatus, settings } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
-import { onCleanup, seedStudio } from "../../../test/harness";
+import { DiamondView } from "@/panels/inspector/views/diamond/DiamondView";
+import { fixtureCatalog, onCleanup, renderWithStudio, seedStudio } from "../../../test/harness";
 import { appVerifyDeps } from "./app-deps";
 import { ETHERSCAN_BASE } from "./etherscan";
 import { etherscanOutcomes } from "./etherscan-outcomes";
@@ -85,7 +89,7 @@ describe("the verify watcher", () => {
 });
 
 /** Fakes Etherscan's API too, and counts its calls: no test may reach the real one, key or no key. */
-function fakeEtherscan(respond: (fields: URLSearchParams) => Response): { calls(): string[] } {
+function fakeEtherscan(respond: (fields: URLSearchParams) => Response | Promise<Response>): { calls(): string[] } {
   const calls: string[] = [];
   const original = globalThis.fetch.bind(globalThis);
   const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
@@ -253,5 +257,52 @@ describe("deploy.retryVerification", () => {
     const outcome = await runCommand(commandRef("deploy.retryVerification", { chainId: 999, address: ADDRESS }), "api");
     expect(outcome).toEqual({ ok: true });
     expect(bufferedServices().log.map((l) => l.text)).toContain("Couldn't find that deployment record to retry.");
+  });
+});
+
+describe("Verify on Etherscan, for a diamond deployed before there was a key", () => {
+  test("deployed without a key: save one, press Verify on Etherscan, and it reads Verified on Etherscan", async () => {
+    // The real catalog carries solc's full version, which Etherscan needs; the fixture's has only the short one.
+    const catalog = fixtureCatalog();
+    const withLongCompiler = { ...catalog, toolchain: { ...catalog.toolchain, solcLong: "0.8.36+commit.8a079791" } };
+    const id = "etherscan-later";
+    let answer: (response: Response) => void = () => {};
+    const sent: (string | null)[] = [];
+    const etherscan = fakeEtherscan((fields) => {
+      sent.push(fields.get("apikey"));
+      return new Promise<Response>((resolve) => {
+        answer = resolve;
+      });
+    });
+    // Sourcify verified it when it was deployed; Etherscan was never asked, since there was no key.
+    await putDeployment(confirmedRecord(id, { verification: "exact_match" }));
+    await renderWithStudio(<DiamondView view={{ kind: "diamond" }} />, { project: makeProject({ id }), catalog: withLongCompiler, chain: true });
+
+    await expect.element(page.getByText("Verified (exact match)")).toBeVisible();
+    await expect.element(page.getByText("Add an Etherscan API key in Settings to verify there too.")).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Verify on Etherscan" })).not.toBeInTheDocument();
+    await expect.element(page.getByText("Verifying on Etherscan")).not.toBeInTheDocument();
+
+    settings.set({ etherscanApiKey: "test-key" });
+    const verify = page.getByRole("button", { name: "Verify on Etherscan" });
+    await expect.element(verify).toBeVisible();
+    // A key alone sends nothing, and so says nothing is verifying.
+    await expect.element(page.getByText("Verifying on Etherscan")).not.toBeInTheDocument();
+    await expect.element(page.getByText(/Add an Etherscan API key/)).not.toBeInTheDocument();
+    expect(etherscan.calls()).toEqual([]);
+
+    await verify.click();
+    await vi.waitFor(() => expect(etherscan.calls()).toEqual(["verifysourcecode"]));
+    // The request is in flight: now, and only now, it's Verifying.
+    await expect.element(page.getByText("Verifying on Etherscan")).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Verify on Etherscan" })).not.toBeInTheDocument();
+
+    answer(jsonResponse(200, { status: "0", message: "NOTOK", result: "Contract source code already verified" }));
+    await expect.element(page.getByText("Verified on Etherscan")).toBeVisible();
+    await expect.element(page.getByText("Verifying on Etherscan")).not.toBeInTheDocument();
+    expect(etherscan.calls()).toEqual(["verifysourcecode"]);
+    expect(sent).toEqual(["test-key"]);
+    expect(bufferedServices().log.map((l) => l.text)).toContain("Verified on Etherscan.");
+    expect(document.body.innerHTML).not.toContain("test-key");
   });
 });

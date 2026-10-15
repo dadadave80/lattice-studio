@@ -82,7 +82,7 @@ The id goes in the `VITE_WALLETCONNECT_PROJECT_ID` build-time environment variab
 
 ## Contract verification
 
-After a deploy Studio verifies the diamond on Sourcify, which needs no key, and on Etherscan (API V2, one key for every chain), which does. The build's default key goes in the `VITE_ETHERSCAN_API_KEY` build-time environment variable, read by `apps/studio/src/contracts/env.ts` as `env.etherscanApiKey`; a key typed in Settings → Deploy overrides it for that browser. Without either, Studio verifies on Sourcify alone.
+After a deploy Studio verifies the diamond on Sourcify, which needs no key, and on Etherscan (API V2, one key for every chain), which does. The build's default key goes in the `VITE_ETHERSCAN_API_KEY` build-time environment variable, read by `apps/studio/src/contracts/env.ts` as `env.etherscanApiKey`; a key typed in Settings → Deploy overrides it for that browser. Without either, Studio verifies on Sourcify alone, and each record on a chain Etherscan serves points to Settings → Deploy. A key added later reaches diamonds deployed before it: the open project's records are submitted once it's saved, and a record Etherscan hasn't been asked about yet offers Verify on Etherscan.
 
 The variable is inlined into the bundle and readable by anyone, so it must be a dedicated free-tier key, never a paid one (see `SECURITY.md`). Set it in the Vercel project's environment (Production and Preview), never in a GitHub workflow: CI uploads build artifacts.
 
