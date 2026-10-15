@@ -10,6 +10,7 @@ import type { Address, Deployment, Result } from "@lattice-studio/core";
 import { bufferedServices, clearServiceBuffers } from "@/contracts/services";
 import { retryVerification, verifyIfNeeded, verifyingNow, verifyRecord } from "./engine";
 import { etherscanOutcomes } from "./etherscan-outcomes";
+import { verifyJobs } from "./in-flight";
 import type { ProxyBuild, VerifyDeps, VerifyFetch } from "./ports";
 import { flush, manualClock, memoryRecords, type FakeRecords, type ManualClock } from "./testing";
 
@@ -445,6 +446,26 @@ const texts = (): string[] => bufferedServices().log.map((l) => l.text);
 const PAST_THE_CAP: number[] = Array(14).fill(30_000);
 
 describe("the Etherscan leg", () => {
+  test("is in flight, where the Deployments list can see it, only while its job runs; without a key, never", async () => {
+    fresh();
+    const seen: boolean[] = [];
+    const stop = verifyJobs.subscribe(() => seen.push(verifyJobs.has(confirmed(), "etherscan")));
+    const net = verifiers([QUEUED, PASS]);
+    const clock = manualClock();
+    const none = { ...deps(net.fetchImpl, memoryRecords([confirmed()]), clock), etherscanKey: () => undefined };
+    await run(verifyIfNeeded(none, confirmed({ verification: "exact_match" })), clock, []);
+    expect(seen).toEqual([]);
+    expect(net.etherscan()).toEqual([]);
+
+    const job = verifyIfNeeded(keyed(net.fetchImpl, memoryRecords([confirmed()]), clock), confirmed({ verification: "exact_match" }));
+    await flush();
+    expect(verifyJobs.has(confirmed(), "etherscan")).toBe(true);
+    await run(job, clock, [5_000]);
+    expect(verifyJobs.has(confirmed(), "etherscan")).toBe(false);
+    expect(seen).toEqual([true, false]);
+    stop();
+  });
+
   test("both verifiers verify, each saying so", async () => {
     fresh();
     const net = verifiers([QUEUED, PASS]);
