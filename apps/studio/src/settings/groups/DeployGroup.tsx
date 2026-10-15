@@ -83,8 +83,8 @@ export function DeployGroup() {
         autoComplete="off"
         description={
           etherscanApiKey === "" && buildHasKey
-            ? "Leave empty to use this build's key. A key typed here stays in this browser and is sent only to Etherscan."
-            : `${etherscanApiKey === "" ? "Not set up. " : ""}Verifies a diamond on Etherscan after a deploy, alongside Sourcify. The key stays in this browser and is sent only to Etherscan.`
+            ? "Optional. Leave empty to use this build's key. A key typed here stays in this browser and is sent only to Etherscan."
+            : `${etherscanApiKey === "" ? "Optional, not set up." : "Optional."} Verifies diamonds on Etherscan alongside Sourcify, including ones deployed before the key was added. The key stays in this browser and is sent only to Etherscan.`
         }
       />
       <div className={styles.stack}>

@@ -78,13 +78,13 @@ describe("DeployGroup", () => {
     // Masked: a saved key isn't shown in full on a shared screen.
     await expect.element(field).toHaveAttribute("type", "password");
     await expect.element(field).toHaveAccessibleDescription(
-      "Verifies a diamond on Etherscan after a deploy, alongside Sourcify. The key stays in this browser and is sent only to Etherscan.",
+      "Optional. Verifies diamonds on Etherscan alongside Sourcify, including ones deployed before the key was added. The key stays in this browser and is sent only to Etherscan.",
     );
     await field.fill("");
     await userEvent.keyboard("{Enter}");
     expect(settings.get().etherscanApiKey).toBe("");
     await expect.element(field).toHaveAccessibleDescription(
-      "Not set up. Verifies a diamond on Etherscan after a deploy, alongside Sourcify. The key stays in this browser and is sent only to Etherscan.",
+      "Optional, not set up. Verifies diamonds on Etherscan alongside Sourcify, including ones deployed before the key was added. The key stays in this browser and is sent only to Etherscan.",
     );
   });
 
