@@ -47,7 +47,7 @@ const CASES: readonly DialogCase[] = [
     name: "the palette, from a title bar button",
     async from(page) {
       await erc20(page);
-      await titleBarButton(page, "Share");
+      await titleBarButton(page, "More");
     },
     open: (page) => openPalette(page).then(() => undefined),
     popup: dialog(/.+/),
@@ -74,7 +74,7 @@ const CASES: readonly DialogCase[] = [
     name: "Settings, through the palette",
     async from(page) {
       await erc20(page);
-      await titleBarButton(page, "Share");
+      await titleBarButton(page, "More");
     },
     open: (page) => runInPalette(page, "Open Settings"),
     popup: dialog("Settings"),
@@ -83,7 +83,7 @@ const CASES: readonly DialogCase[] = [
     name: "About, through the palette",
     async from(page) {
       await erc20(page);
-      await titleBarButton(page, "Share");
+      await titleBarButton(page, "More");
     },
     open: (page) => runInPalette(page, "Open About"),
     popup: dialog(/About/),
@@ -92,7 +92,7 @@ const CASES: readonly DialogCase[] = [
     name: "Projects, through the palette",
     async from(page) {
       await erc20(page);
-      await titleBarButton(page, "Share");
+      await titleBarButton(page, "More");
     },
     open: (page) => runInPalette(page, "Projects"),
     popup: dialog("Projects"),
@@ -101,7 +101,7 @@ const CASES: readonly DialogCase[] = [
     name: "Save a copy, through the palette",
     async from(page) {
       await erc20(page);
-      await titleBarButton(page, "Share");
+      await titleBarButton(page, "More");
     },
     open: (page) => runInPalette(page, "Save a copy…"),
     popup: dialog(/Save a copy/),
@@ -110,19 +110,23 @@ const CASES: readonly DialogCase[] = [
     name: "Choose an upgrade mechanism, through the palette",
     async from(page) {
       await erc20(page);
-      await titleBarButton(page, "Share");
+      await titleBarButton(page, "More");
     },
     open: (page) => runInPalette(page, "Choose an upgrade mechanism…"),
     popup: dialog(/upgrade mechanism/i),
   },
   {
-    // The test browser blocks the clipboard, so Share shows the link selected under the button (copy-text.ts).
-    name: "Share's copy fallback, from its title bar button",
+    // The test browser blocks the clipboard, so Share shows the link selected for copying (copy-text.ts).
+    name: "Share's copy fallback, from the overflow menu",
     from: async (page) => {
       await erc20(page);
-      await titleBarButton(page, "Share");
+      await titleBarButton(page, "More");
     },
-    open: (page) => page.keyboard.press("Enter"),
+    open: async (page) => {
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("menuitem", { name: "Share" })).toBeFocused();
+      await page.keyboard.press("Enter");
+    },
     popup: (page) => page.getByRole("group", { name: /to copy/ }),
   },
   {

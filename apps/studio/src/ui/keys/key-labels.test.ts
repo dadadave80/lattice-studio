@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ariaKeyShortcuts, firstKeys, isSingleKey, keyLabel } from "./key-labels";
+import { ariaKeyShortcuts, firstKeys, isSingleKey, keyCaps, keyLabel } from "./key-labels";
 import { liveSpecs } from "./use-aria-key-shortcuts";
 
 describe("keyLabel", () => {
@@ -21,6 +21,18 @@ describe("keyLabel", () => {
     expect(keyLabel("Mod+Enter", "mac")).toBe("⌘⏎");
     expect(keyLabel("?", "mac")).toBe("?");
     expect(keyLabel("Mod++", "other")).toBe("Ctrl++");
+  });
+});
+
+describe("keyCaps", () => {
+  test("one cap per key, in keyLabel's order", () => {
+    expect(keyCaps("Mod+k", "mac")).toEqual(["⌘", "K"]);
+    expect(keyCaps("Mod+k", "other")).toEqual(["Ctrl", "K"]);
+    expect(keyCaps("Mod+Shift+z", "mac")).toEqual(["⇧", "⌘", "Z"]);
+    expect(keyCaps("Mod+Shift+z", "other")).toEqual(["Ctrl", "Shift", "Z"]);
+    expect(keyCaps("Mod+Enter", "mac")).toEqual(["⌘", "⏎"]);
+    expect(keyCaps("Mod++", "other")).toEqual(["Ctrl", "+"]);
+    expect(keyCaps("Escape", "other")).toEqual(["Esc"]);
   });
 });
 

@@ -36,12 +36,22 @@ const ARRANGE: readonly Item[] = [
 /**
  * The overflow menu (⋯). Under 768 px (spec L370, IR L74): Undo, Redo, Share, Export, the theme, the palette,
  * the tool strip and, while arguments are missing, Fill in. At 768-1023 px (`partial`), where the title bar
- * also holds the pane toggles and Deploy…, only Share, the theme and the palette move here. `saveStatus` puts
- * the save status first, when a crowded title bar has no room for it.
+ * also holds the pane toggles and Deploy…, only Share, the theme and the palette move here. 1024 px and wider
+ * (`shareOnly`), where the search field and the theme switch have room in the bar, it holds Share alone.
+ * `saveStatus` puts the save status first, when a crowded title bar has no room for it.
  */
-export function OverflowMenu({ saveStatus, partial = false }: { saveStatus: boolean; partial?: boolean }) {
+export function OverflowMenu({
+  saveStatus, partial = false, shareOnly = false,
+}: { saveStatus: boolean; partial?: boolean; shareOnly?: boolean }) {
   const fillIn = useNeedsFillIn();
   const status = useSaveStatus();
+  if (shareOnly) {
+    return (
+      <Menu label="More" align="end" trigger={<IconButton icon="more" label="More" />}>
+        <MenuCommandItem command={commandRef("share.copyLink")} label="Share" />
+      </Menu>
+    );
+  }
   return (
     <Menu label="More" align="end" trigger={<IconButton icon="more" label="More" />}>
       {saveStatus ? (

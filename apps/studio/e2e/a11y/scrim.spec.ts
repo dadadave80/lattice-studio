@@ -47,7 +47,9 @@ const CLOSES: readonly ScrimCase[] = [
       await seedProject(page, { project: projectFor(everythingRecipe(), "Everything", {}, catalog()) });
       await waitForSheet(page);
       await focusRegion(page, "Title bar");
-      await tabTo(page, region(page, "Title bar").getByRole("button", { name: "Share", exact: true }));
+      await tabTo(page, region(page, "Title bar").getByRole("button", { name: "More", exact: true }));
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("menuitem", { name: "Share" })).toBeFocused();
       await page.keyboard.press("Enter");
       return dialog(page, "Share");
     },

@@ -52,14 +52,14 @@ export async function runPalette(page: Page, title: string): Promise<void> {
 
 /**
  * Runs a command through the palette as `mode` says: the keyboard path above, or with the pointer: the title bar's
- * ⌘K chip, then a click on the command's row.
+ * search field, then a click on the command's row.
  */
 export async function runPaletteWith(page: Page, mode: InputMode, title: string): Promise<void> {
   if (mode === "keyboard") {
     await runPalette(page, title);
     return;
   }
-  await region(page, "Title bar").getByRole("button", { name: /Command palette$/ }).click();
+  await region(page, "Title bar").getByRole("button", { name: /^Search (⌘|Ctrl\+)K$/ }).click();
   const input = paletteInput(page);
   await expect(input).toBeVisible();
   await input.fill(title);

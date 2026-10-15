@@ -1,15 +1,16 @@
 import { useRef } from "react";
 import { commandRef, useDocument, useSaveStatus } from "@/contracts";
 import { CommandButton } from "@/ui/buttons/CommandButton";
+import { cx } from "@/ui/shared/cx";
 import { AppMenu } from "./AppMenu";
 import { DeployButton } from "./DeployButton";
 import { isDrawerTier, useLayoutTier } from "./layout-tier";
 import { OverflowMenu } from "./OverflowMenu";
-import { PaletteChip } from "./PaletteChip";
 import { PaneToggles } from "./PaneToggles";
 import { ProjectName } from "./ProjectName";
 import { ProjectStatusChip } from "./ProjectStatusChip";
 import { SaveStatus } from "./SaveStatus";
+import { SearchField } from "./SearchField";
 import { useStatusChip } from "./status";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { useCrowded } from "./use-crowded";
@@ -17,11 +18,12 @@ import styles from "./TitleBar.module.css";
 
 /**
  * The title bar (spec L355, IR L60-L74), 40 px tall. At every width: the App menu, the project name, the
- * status chip. 1024 px and wider: Undo, Redo, the save status, Share, Light/Dark and ⌘K; 768-1279 px adds the
- * pane toggles. Below 1024 px Deploy… moves here, the product name and the save status shrink to icons, and
- * an overflow menu (⋯) takes Share, the theme and ⌘K; under 768 px it also takes Undo, Redo, Export and the
- * tool strip, and the save status shows only when something needs saying. When the middle runs out of room, the name truncates
- * first, then the chip shrinks, then the save status moves into the overflow menu.
+ * status chip and an overflow menu (⋯) that holds Share. 1024 px and wider: Undo, Redo, the save status, the
+ * search field and Light/Dark; 768-1279 px adds the pane toggles. Below 1024 px Deploy… moves here, the product
+ * name, the save status and the search field shrink to icons, and the overflow menu also takes the theme and the
+ * palette; under 768 px it also takes Undo, Redo, Export and the tool strip, and the save status shows only
+ * when something needs saying. When the middle runs out of room, the name truncates first, then the chip
+ * shrinks, then the save status moves into the overflow menu.
  */
 export function TitleBar() {
   const tier = useLayoutTier();
@@ -54,16 +56,15 @@ export function TitleBar() {
       <div className={styles.end}>
         {short ? (
           <>
+            <SearchField compact />
             <DeployButton again={chip.deployAgain} />
             <OverflowMenu saveStatus={saveInMenu} partial={!phone} />
           </>
         ) : (
           <>
-            <CommandButton command={commandRef("share.copyLink")} icon="share" size="small">
-              Share
-            </CommandButton>
-            <ThemeSwitch />
-            <PaletteChip />
+            <SearchField />
+            <ThemeSwitch className={cx(styles.theme)} />
+            <OverflowMenu saveStatus={false} shareOnly />
           </>
         )}
       </div>
