@@ -53,7 +53,7 @@ describe("changes.sh", () => {
   });
 
   test("workflows, the lockfile, root configs and the script itself run everything, as does --all", () => {
-    for (const path of [".github/workflows/ci.yml", "bun.lock", "package.json", "bunfig.toml", "tsconfig.base.json", ".oxlintrc.json", ".gitmodules", "scripts/ci/changes.sh"]) {
+    for (const path of [".github/workflows/ci.yml", ".github/actions/setup/action.yml", "bun.lock", "package.json", "bunfig.toml", "tsconfig.base.json", ".oxlintrc.json", ".gitmodules", "scripts/ci/changes.sh"]) {
       expect(groupsFor(["README.md", path])).toEqual([...GROUPS]);
     }
     expect(groupsFor([], ["--all"])).toEqual([...GROUPS]);
