@@ -9,7 +9,8 @@ defineCommands([
     id: "deploy.retryVerification",
     title: () => "Retry verification",
     category: "Deploy",
-    // Reached from a deployment record's own row, which shows it only when Sourcify or Etherscan couldn't verify it.
+    // Reached from a deployment record's own row: Retry verification when Sourcify or Etherscan couldn't verify it,
+    // Verify on Etherscan when there's a key and Etherscan hasn't been asked yet.
     palette: false,
     enabled: () => ({ ok: true }),
     async run(_ctx, { chainId, address }) {

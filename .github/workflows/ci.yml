@@ -1,14 +1,22 @@
-# Lattice Studio's pull-request gate (brief Q6; spec "Testing and release", spec L897 "bun run check").
-# Not run until David pushes the repo and creates it on GitHub (HANDOFF.md D4): written now so the day he does,
-# every gate is ready. Nothing here sends a transaction to a public network; the golden and chain jobs run
-# against a local Anvil (D8's default), with CreateX's and Multicall3's real runtime code etched by the test
-# harness itself (Q5), not by this workflow.
+# Lattice Studio's pull-request gate (brief Q6; spec "Testing and release", spec L897 "bun run check"), including
+# the performance budgets (spec L940) and the Sepolia fork suite (spec L934-L935). Nothing here sends a transaction
+# to a public network: the Foundry suites run against local Anvil nodes, with CreateX's and Multicall3's real
+# runtime code etched by the test harness itself (Q5), and the fork suite forks Sepolia into an in-memory chain.
+#
+# Each job and step runs only when its inputs changed (#45): the `changes` job diffs the pull request against its
+# base and scripts/ci/changes.sh maps the paths to groups. A job gated off shows as skipped, which GitHub counts as
+# passing. There's no push trigger: a pull request is the only way into dev or main, and it already ran here.
+# nightly.yml dispatches a full run on dev every night, and a manual workflow_dispatch runs everything on any branch.
+#
+# Setup is .github/actions/setup, and its caches are warmed on dev and main by warm-cache.yml (a cache saved on a
+# pull request is visible to that pull request only). Related suites share one runner where they'd otherwise each
+# pay for the same install: `static` runs check, bun test and size; `foundry` builds Lattice once for all four
+# Foundry suites.
 name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main, dev] # dev is scripts/wp/merge.ts's integration branch
+  workflow_dispatch: {}
 
 # A PR gate never needs write access; release-please and publish-cli (separate workflows) ask for more.
 permissions:
@@ -18,63 +26,85 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  BUN_VERSION: "1.4.2"
-  NODE_VERSION: "22"
-  FOUNDRY_VERSION: "v1.8.3" # contracts.md §2: David chose 1.8.3 over the planned 1.8.1 (2026-09-23, QUESTIONS Q1)
-
 jobs:
-  checks:
-    name: bun run check
+  changes:
+    name: Changed paths
     runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.groups.outputs.code }}
+      app: ${{ steps.groups.outputs.app }}
+      size: ${{ steps.groups.outputs.size }}
+      golden: ${{ steps.groups.outputs.golden }}
+      chain: ${{ steps.groups.outputs.chain }}
+      catalog: ${{ steps.groups.outputs.catalog }}
     steps:
+      # A pull request checks out its merge commit, whose first parent is the base it merges into: two commits of
+      # history are enough for the diff. Anything else (workflow_dispatch) runs every job.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: ${{ env.BUN_VERSION }}
-      # typecheck.ts runs TypeScript's compiler under Node (contracts §2: TS 7 has no JS API yet), so `check`
-      # needs Node too, same as `browser`/`e2e`.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      # Frozen lockfile, install scripts blocked (root package.json's empty trustedDependencies; spec
-      # "Compromised npm dependency"): CI installs exactly what bun.lock pins and runs no lifecycle script.
-      - run: bun install --frozen-lockfile
-      - run: bun run check
+          fetch-depth: 2
+      - id: groups
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && git rev-parse -q --verify HEAD^2 >/dev/null; then
+            git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt"
+            echo "$(wc -l < "$RUNNER_TEMP/changed.txt") changed paths:"
+            cat "$RUNNER_TEMP/changed.txt"
+            bash scripts/ci/changes.sh < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "A $GITHUB_EVENT_NAME run: every job runs."
+            bash scripts/ci/changes.sh --all | tee -a "$GITHUB_OUTPUT"
+          fi
 
-  test:
-    name: bun test (core logic)
+  # check, bun test and the size budgets: each is a few minutes at most, so one install serves all three. Every step
+  # runs even when an earlier one failed, so one failure doesn't hide another.
+  static:
+    name: Check, unit tests and size
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.size == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      # typecheck.ts runs TypeScript's compiler under Node (contracts §2: TS 7 has no JS API yet).
+      - uses: ./.github/actions/setup
         with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - run: bun install --frozen-lockfile
-      - run: bun test
+          node: "true"
+      - name: bun run check
+        if: needs.changes.outputs.code == 'true'
+        run: bun run check
+      - name: bun test (core logic)
+        if: (success() || failure()) && needs.changes.outputs.code == 'true'
+        run: bun test
+      - name: Size budgets
+        if: (success() || failure()) && needs.changes.outputs.size == 'true'
+        run: bun scripts/ci/size.ts --build
+      # Reuses the build size.ts just made (spec L902, §17 audit #14): a config regression that drops the React
+      # Compiler preset fails here instead of only being caught by eye.
+      - name: React Compiler in the build
+        if: (success() || failure()) && needs.changes.outputs.size == 'true'
+        run: bun scripts/ci/react-compiler-dist-check.ts
+      # The check Vercel's build command ends with (docs/release.md, "Vercel"): the committed vercel.json's CSP must
+      # allow the import map this build produced. An app change without `STUDIO_VERCEL_JSON=1 bun run build` fails
+      # here, on the pull request, instead of at the deploy (#26). Both are plain `bun run build`s with no VITE_*
+      # variables, so the hashes agree.
+      - name: vercel.json matches the build
+        if: (success() || failure()) && needs.changes.outputs.size == 'true'
+        run: bun apps/studio/build/verify-headers.ts apps/studio/dist apps/studio/vercel.json
 
   browser:
     name: Component tests (Vitest Browser Mode)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup
         with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - run: bun install --frozen-lockfile
-      - name: Cache Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-      - run: bun x playwright install --with-deps chromium
+          node: "true"
+          browsers: chromium
       - run: bun run test:browser
       # A screenshot with no baseline for this OS leaves the runner's own rendering under attachments/, ready to
       # review and commit as its `-chromium-linux.png`; a mismatch leaves the actual and the diff.
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: browser-test-results
@@ -82,136 +112,101 @@ jobs:
           retention-days: 14
 
   e2e:
-    name: End to end (Playwright)
+    name: End to end (Playwright, ${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
+    # Split by project, so every test runs exactly once: playwright.config.ts's `chromium` project (every spec)
+    # across four shards, and its `webkit-smoke` project (the @smoke set, spec "Screen readers, tier 1") on its
+    # own runner, the only one that installs WebKit.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "chromium 1/4", browser: chromium, args: "--project=chromium --shard=1/4" }
+          - { name: "chromium 2/4", browser: chromium, args: "--project=chromium --shard=2/4" }
+          - { name: "chromium 3/4", browser: chromium, args: "--project=chromium --shard=3/4" }
+          - { name: "chromium 4/4", browser: chromium, args: "--project=chromium --shard=4/4" }
+          - { name: "WebKit @smoke", browser: webkit, args: "--project=webkit-smoke" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      # Anvil for the deploy flows (12-14) and the kit's smoke tests, and global setup checks for it on every
+      # runner. The contracts come from catalog/, so no Lattice build.
+      - uses: ./.github/actions/setup
         with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - run: bun install --frozen-lockfile
-      - name: Cache Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-      # Chromium for Flows 1-14 and 17; WebKit for the @smoke set only (spec "Screen readers, tier 1").
-      - run: bun x playwright install --with-deps chromium webkit
-      # Anvil for the deploy flows (12-14) and the kit's smoke tests. The contracts come from catalog/, so no build.
-      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
-        with:
-          version: ${{ env.FOUNDRY_VERSION }}
-      - run: bun run e2e
+          node: "true"
+          foundry: "true"
+          browsers: ${{ matrix.browser }}
+      - run: bun run e2e ${{ matrix.args }}
 
-  golden:
-    name: Golden tests (Foundry)
+  perf:
+    # `bun scripts/perf/run.ts` builds the app (scripts/ci/size.ts --build), serves it with `vite preview`, runs
+    # Lighthouse CI on the mobile profile and the Playwright benchmarks (first-load composition, analysis on 30
+    # facets, the 30-card drag with scripted INP) at 4× CPU throttling, and fails when an enforced budget is missed;
+    # its table and fix requests are in the log and in the uploaded results. The benchmarks block every non-local
+    # request. This is the only Lighthouse run.
+    name: Performance budgets (build, Lighthouse CI, benchmarks)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The full Chromium: the benchmarks use Playwright's `chromium` channel, and Lighthouse CI drives the same binary.
+      - uses: ./.github/actions/setup
         with:
-          submodules: recursive
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
-        with:
-          version: ${{ env.FOUNDRY_VERSION }}
-      - run: bun install --frozen-lockfile
-      - name: Build the pinned Lattice checkout (ci profile)
-        run: FOUNDRY_PROFILE=ci forge build --root lattice
-      - run: bun run golden
-        env:
-          LATTICE_DIR: ${{ github.workspace }}/lattice
-
-  chain:
-    name: Chain tests (Anvil, Foundry)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
-        with:
-          version: ${{ env.FOUNDRY_VERSION }}
-      - run: bun install --frozen-lockfile
-      - name: Build the pinned Lattice checkout (ci profile)
-        run: FOUNDRY_PROFILE=ci forge build --root lattice
-      # Local Anvil, D8's default: CreateX's and Multicall3's real runtime code is etched by e2e-chain's own
-      # harness (Q5), not by this step. The Sepolia fork suite skips here (no SEPOLIA_FORK); fork.yml runs it. No
-      # transaction ever reaches a public network.
-      - run: bun run test:chain
-        env:
-          LATTICE_DIR: ${{ github.workspace }}/lattice
-
-  catalog-drift:
-    name: Catalog drift
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
-        with:
-          version: ${{ env.FOUNDRY_VERSION }}
-      - run: bun install --frozen-lockfile
-      - name: Build the pinned Lattice checkout (ci profile)
-        run: FOUNDRY_PROFILE=ci forge build --root lattice
-      - run: bun run catalog
-        env:
-          LATTICE_DIR: ${{ github.workspace }}/lattice
-      # A rebuilt catalog must equal the committed one (contracts §1 "catalog/ CG8, generated, committed").
-      - run: git diff --exit-code catalog/
-
-  size:
-    name: Size budgets
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - run: bun install --frozen-lockfile
-      - run: bun scripts/ci/size.ts --build
-      # Reuses the build size.ts just made (spec L902, §17 audit #14): a config regression that drops the React
-      # Compiler preset fails here instead of only being caught by eye.
-      - run: bun scripts/ci/react-compiler-dist-check.ts
-      # The check Vercel's build command ends with (docs/release.md, "Vercel"): the committed vercel.json's CSP must
-      # allow the import map this build produced. An app change without `STUDIO_VERCEL_JSON=1 bun run build` fails
-      # here, on the pull request, instead of at the deploy (#26). Both are plain `bun run build`s with no VITE_*
-      # variables, so the hashes agree.
-      - run: bun apps/studio/build/verify-headers.ts apps/studio/dist apps/studio/vercel.json
-
-  lighthouse:
-    name: Lighthouse CI (mobile)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - run: bun install --frozen-lockfile
-      - run: bun run build
-      # @lhci/cli is apps/studio's devDependency (contracts §2, ^0.15.1, resolved 0.15.1 in bun.lock): `bun x
-      # lhci` resolves the installed binary, never fetches from the registry. Reports stay in this run's own
-      # artifact storage (upload.target "filesystem" in lighthouserc.json), not a public URL: no analytics and
-      # nothing published without David (spec "Privacy").
-      - name: Preview and audit
-        run: bun x lhci autorun --config=scripts/ci/lighthouserc.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+          node: "true"
+          browsers: chromium
+      - run: bun scripts/perf/run.ts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: lighthouse-report
-          path: .lighthouseci
+          name: perf-results
+          path: |
+            apps/studio/test-results/perf-*/results.json
+            apps/studio/test-results/perf-*/*.json
+            apps/studio/test-results/perf-*/lighthouse/.lighthouseci
+          # Lighthouse CI keeps its reports in `.lighthouseci`, which upload-artifact skips unless told otherwise.
+          include-hidden-files: true
           retention-days: 14
+
+  # The four Foundry suites on one runner: one install, one Lattice build. Each step runs when its own inputs
+  # changed, and even when an earlier one failed, so one failure doesn't hide another.
+  foundry:
+    name: Foundry (chain, Sepolia fork, golden, catalog drift)
+    needs: changes
+    if: needs.changes.outputs.golden == 'true' || needs.changes.outputs.chain == 'true' || needs.changes.outputs.catalog == 'true'
+    runs-on: ubuntu-latest
+    env:
+      LATTICE_DIR: ${{ github.workspace }}/lattice
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup
+        with:
+          foundry: "true"
+      - if: needs.changes.outputs.golden == 'true' || needs.changes.outputs.chain == 'true'
+        uses: ./.github/actions/lattice-build
+      # Local Anvil (D8's default) and, with SEPOLIA_FORK=1, the Sepolia fork suite in the same run. The fork suite
+      # needs no secret (Q7): the harness forks a recent finalized block from the first public Sepolia RPC that
+      # serves it (e2e-chain/harness/sepolia.ts), and falls back to the SEPOLIA_RPC_URL repository secret only when
+      # every public one fails; unset, that fallback is skipped.
+      - name: Chain tests (Anvil and Sepolia fork)
+        if: needs.changes.outputs.chain == 'true'
+        run: bun run test:chain
+        env:
+          SEPOLIA_FORK: "1"
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+      # After the chain suites: the golden harness adds its own files to lattice/.
+      - name: Golden tests
+        if: (success() || failure()) && needs.changes.outputs.golden == 'true'
+        run: bun run golden
+      # `bun run catalog` builds a fresh temporary copy of lattice/'s tracked files from nothing (packages/catalog-gen's
+      # USAGE), so neither the cached build nor the golden harness's files reach it, and drift can't hide.
+      - name: Catalog drift
+        if: (success() || failure()) && needs.changes.outputs.catalog == 'true'
+        run: |
+          bun run catalog
+          # A rebuilt catalog must equal the committed one (contracts §1 "catalog/ CG8, generated, committed").
+          git diff --exit-code catalog/

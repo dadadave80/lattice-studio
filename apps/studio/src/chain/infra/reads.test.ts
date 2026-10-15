@@ -6,12 +6,13 @@ import { getBlockNumber } from "viem/actions";
 import { accountBalance, accountKind, isDelegation } from "./account";
 import { ANVIL, AVALANCHE_FUJI, BASE_SEPOLIA, ETHEREUM, HASHKEY_TESTNET, HEDERA_TESTNET, isRpcUrl, knownChains, MONAD_TESTNET, publicRpcUrls, readUrls, rpcUrls, SEPOLIA } from "./chains";
 import { chainTransport, createClients, httpTransport, RANK, viemChain } from "./clients";
-import { ensCoinType, resolveName, reverseName } from "./ens";
+import { ensCoinType, ensCoinTypes, resolveName, reverseName } from "./ens";
 import { probeChain } from "./probe";
 import { fixtureCatalog, healthyAccounts, listedRecords, mockChain } from "./testing";
 
 const ALICE = "0x5FbDB2315678afecb367f032d93F642f64180aa3" as Address;
 const ALICE_BASE = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512" as Address;
+const ALICE_DEFAULT = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" as Address;
 const identity = (name: string): string => name.toLowerCase();
 
 function clientFor(chain: ReturnType<typeof mockChain>, spec = SEPOLIA) {
@@ -26,28 +27,50 @@ describe("ENS", () => {
     expect(ensCoinType(8453, 1)).toBe(2147492101n);
   });
 
-  test("names resolve on Sepolia for testnets, to the address for the selected chain", async () => {
+  test("off the ENS chain, the chain's coin type, then the default EVM one (ENSIP-19), then 60", () => {
+    expect(ensCoinTypes(SEPOLIA.id, SEPOLIA.id)).toEqual([60n]);
+    expect(ensCoinTypes(BASE_SEPOLIA.id, SEPOLIA.id)).toEqual([0x80000000n | 84532n, 0x80000000n, 60n]);
+    expect(ensCoinTypes(SEPOLIA.id, ETHEREUM.id)).toEqual([0x80000000n | 11155111n, 0x80000000n, 60n]);
+  });
+
+  test("names resolve to the address for the selected chain, falling back to the default EVM address and then 60", async () => {
     const sepolia = mockChain({
       chainId: SEPOLIA.id,
       accounts: { "0xeeeeeeee14d718c2b47d9923deab1335e144eeee": { code: "0x01" } },
-      ens: { "alice.eth": { "60": ALICE, [String(0x80000000 + 84532)]: ALICE_BASE } },
+      ens: {
+        "alice.eth": { "60": ALICE, [String(0x80000000 + 84532)]: ALICE_BASE },
+        "carol.eth": { "60": ALICE },
+        "dave.eth": { "60": ALICE, [String(0x80000000)]: ALICE_DEFAULT },
+      },
     });
     const client = clientFor(sepolia);
     expect(await resolveName(client, identity, "alice.eth", SEPOLIA.id, SEPOLIA.id)).toBe(ALICE);
     expect(await resolveName(client, identity, "alice.eth", BASE_SEPOLIA.id, SEPOLIA.id)).toBe(ALICE_BASE);
+    expect(await resolveName(client, identity, "carol.eth", BASE_SEPOLIA.id, SEPOLIA.id)).toBe(ALICE);
+    expect(await resolveName(client, identity, "dave.eth", BASE_SEPOLIA.id, SEPOLIA.id)).toBe(ALICE_DEFAULT);
     expect(await resolveName(client, identity, "bob.eth", SEPOLIA.id, SEPOLIA.id)).toBeNull();
+    expect(await resolveName(client, identity, "bob.eth", BASE_SEPOLIA.id, SEPOLIA.id)).toBeNull();
   });
 
-  test("reverse lookups use the same coin type", async () => {
+  test("reverse lookups follow the same order", async () => {
     const sepolia = mockChain({
       chainId: SEPOLIA.id,
       accounts: { "0xeeeeeeee14d718c2b47d9923deab1335e144eeee": { code: "0x01" } },
-      reverse: { [`${ALICE.toLowerCase()}:60`]: "alice.eth", [`${ALICE_BASE.toLowerCase()}:${0x80000000 + 84532}`]: "alice.eth" },
+      reverse: {
+        [`${ALICE.toLowerCase()}:60`]: "alice.eth",
+        [`${ALICE_BASE.toLowerCase()}:${0x80000000 + 84532}`]: "base.eth",
+        [`${ALICE_BASE.toLowerCase()}:60`]: "alice.eth",
+        [`${ALICE_DEFAULT.toLowerCase()}:${0x80000000}`]: "default.eth",
+        [`${ALICE_DEFAULT.toLowerCase()}:60`]: "alice.eth",
+      },
     });
     const client = clientFor(sepolia);
     expect(await reverseName(client, ALICE, SEPOLIA.id, SEPOLIA.id)).toBe("alice.eth");
-    expect(await reverseName(client, ALICE_BASE, BASE_SEPOLIA.id, SEPOLIA.id)).toBe("alice.eth");
-    expect(await reverseName(client, ALICE, BASE_SEPOLIA.id, SEPOLIA.id)).toBeNull();
+    expect(await reverseName(client, ALICE_BASE, BASE_SEPOLIA.id, SEPOLIA.id)).toBe("base.eth");
+    expect(await reverseName(client, ALICE_DEFAULT, BASE_SEPOLIA.id, SEPOLIA.id)).toBe("default.eth");
+    expect(await reverseName(client, ALICE, BASE_SEPOLIA.id, SEPOLIA.id)).toBe("alice.eth");
+    expect(await reverseName(client, ALICE_BASE, SEPOLIA.id, SEPOLIA.id)).toBe("alice.eth");
+    expect(await reverseName(client, "0x0000000000000000000000000000000000000001" as Address, BASE_SEPOLIA.id, SEPOLIA.id)).toBeNull();
   });
 
   test("an RPC failure throws for the service to word", async () => {
@@ -208,6 +231,7 @@ describe("fallback transport", () => {
 
   test("viem chains carry ENS's Universal Resolver only where ENS lives", () => {
     expect(viemChain(SEPOLIA, []).contracts?.ensUniversalResolver).toBeDefined();
+    expect(viemChain(ETHEREUM, []).contracts?.ensUniversalResolver).toBeDefined();
     expect(viemChain(BASE_SEPOLIA, []).contracts?.ensUniversalResolver).toBeUndefined();
     expect(viemChain(BASE_SEPOLIA, []).rpcUrls.default.http).toEqual([BASE_SEPOLIA.rpc.default]);
     const hashkey = viemChain(HASHKEY_TESTNET, []);

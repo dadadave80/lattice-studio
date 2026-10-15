@@ -1,7 +1,7 @@
 /**
  * The chains Studio deploys to (spec Phasing: the v1 testnets) and the static facts about each: the picker's
  * `ChainInfo`, the default and extra RPCs for the fallback transport (spec L841), the per-transaction gas cap
- * where one is fixed (EIP-7825, spec R16, or Hedera's relay) and the chain ENS names resolve on (spec L462).
+ * where one is fixed (EIP-7825, spec R16, or Hedera's relay) and the chains whose ENS names resolve on (spec L462).
  *
  * Plain data, no viem: the commands read it from the entry chunk. The lazy module turns it into viem chains.
  */
@@ -16,13 +16,19 @@ export type ChainSpec = ChainInfo & {
    * gasLimit of 150,000,000). Else the latest block's gasLimit (contracts §3.1 `gasCap`).
    */
   gasCap?: bigint;
-  /** The chain ENS names resolve on for this chain: Ethereum for mainnets, Sepolia for testnets. Null: none. */
-  ensChainId: number | null;
+  /**
+   * The chains whose ENS this chain's names resolve on, in order: the next is read only when the one before has no
+   * record. Testnets read Sepolia's, then Ethereum's; Ethereum reads its own. Empty: none.
+   */
+  ensChainIds: readonly number[];
   /** Solidity and the wallet see this as the native currency. */
   nativeCurrency: { name: string; symbol: string; decimals: number };
 };
 
 const ETHER = { name: "Ether", symbol: "ETH", decimals: 18 } as const;
+
+/** Testnets' ENS: Sepolia's registry, then Ethereum's for names Sepolia doesn't have. */
+const TESTNET_ENS: readonly number[] = [11155111, 1];
 
 /** EIP-7825's per-transaction gas cap, on Ethereum and Sepolia since Fusaka (spec R16). */
 export const EIP7825_GAS_CAP = 16_777_216n;
@@ -35,7 +41,7 @@ export const SEPOLIA: ChainSpec = {
   faucet: "https://www.alchemy.com/faucets/ethereum-sepolia",
   rpc: { default: "https://11155111.rpc.thirdweb.com", extra: "https://ethereum-sepolia-rpc.publicnode.com" },
   gasCap: EIP7825_GAS_CAP,
-  ensChainId: 11155111,
+  ensChainIds: TESTNET_ENS,
   nativeCurrency: { ...ETHER, name: "Sepolia Ether" },
 };
 
@@ -46,7 +52,7 @@ export const BASE_SEPOLIA: ChainSpec = {
   explorer: "https://sepolia.basescan.org",
   faucet: "https://www.alchemy.com/faucets/base-sepolia",
   rpc: { default: "https://sepolia.base.org", extra: "https://base-sepolia-rpc.publicnode.com" },
-  ensChainId: 11155111,
+  ensChainIds: TESTNET_ENS,
   nativeCurrency: { ...ETHER, name: "Sepolia Ether" },
 };
 
@@ -61,7 +67,7 @@ export const HASHKEY_TESTNET: ChainSpec = {
   explorer: "https://testnet-explorer.hskchain.net",
   faucet: "https://faucet.hskchain.net/faucet",
   rpc: { default: "https://testnet.hsk.xyz" },
-  ensChainId: 11155111,
+  ensChainIds: TESTNET_ENS,
   nativeCurrency: { name: "HashKey EcoPoints", symbol: "HSK", decimals: 18 },
 };
 
@@ -78,7 +84,7 @@ export const HEDERA_TESTNET: ChainSpec = {
   faucet: "https://portal.hedera.com/faucet",
   rpc: { default: "https://testnet.hashio.io/api" },
   gasCap: 15_000_000n,
-  ensChainId: 11155111,
+  ensChainIds: TESTNET_ENS,
   nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
 };
 
@@ -94,7 +100,7 @@ export const AVALANCHE_FUJI: ChainSpec = {
   explorer: "https://testnet.snowtrace.io",
   faucet: "https://build.avax.network/console/primary-network/faucet",
   rpc: { default: "https://api.avax-test.network/ext/bc/C/rpc", extra: "https://avalanche-fuji-c-chain-rpc.publicnode.com" },
-  ensChainId: 11155111,
+  ensChainIds: TESTNET_ENS,
   nativeCurrency: { name: "Avalanche", symbol: "AVAX", decimals: 18 },
 };
 
@@ -111,7 +117,7 @@ export const MONAD_TESTNET: ChainSpec = {
   explorer: "https://testnet.monadvision.com",
   faucet: "https://faucet.monad.xyz",
   rpc: { default: "https://testnet-rpc.monad.xyz", extra: "https://rpc.ankr.com/monad_testnet" },
-  ensChainId: 11155111,
+  ensChainIds: TESTNET_ENS,
   gasCap: 30_000_000n,
   nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
 };
@@ -125,11 +131,11 @@ export const ANVIL: ChainSpec = {
   name: "Anvil",
   testnet: true,
   rpc: { default: "http://127.0.0.1:8545" },
-  ensChainId: null,
+  ensChainIds: [],
   nativeCurrency: ETHER,
 };
 
-/** Ethereum, only to resolve ENS for mainnets; it isn't in the picker while mainnets stay off (spec Phasing). */
+/** Ethereum, only to resolve ENS (for testnets, names Sepolia's ENS doesn't have); it isn't in the picker while mainnets stay off (spec Phasing). */
 export const ETHEREUM: ChainSpec = {
   id: 1,
   name: "Ethereum",
@@ -137,7 +143,7 @@ export const ETHEREUM: ChainSpec = {
   explorer: "https://etherscan.io",
   rpc: { default: "https://ethereum.reth.rs/rpc", extra: "https://ethereum-rpc.publicnode.com" },
   gasCap: EIP7825_GAS_CAP,
-  ensChainId: 1,
+  ensChainIds: [1],
   nativeCurrency: ETHER,
 };
 
@@ -177,6 +183,11 @@ export function chainFromText(text: string, e2e: boolean): ChainSpec | undefined
   if (/^\d+$/.test(trimmed)) return findChain(Number(trimmed), e2e);
   const key = trimmed.toLowerCase().replace(/[\s_-]+/g, "");
   return pickerChains(e2e).find((chain) => chain.name.toLowerCase().replace(/\s+/g, "") === key);
+}
+
+/** The names of the chains whose ENS `chainId`'s names resolve on, in the order they're read. */
+export function ensRegistryNames(chainId: number, e2e: boolean): string[] {
+  return (findKnownChain(chainId, e2e)?.ensChainIds ?? []).map((id) => chainName(id, e2e));
 }
 
 /** The picker's `ChainInfo` rows (contracts `ChainService.chains()`), without the RPC and ENS details. */

@@ -240,7 +240,7 @@ describe("field types (spec L461-L466)", () => {
 
     await safe.fill("nobody.eth");
     await userEvent.keyboard("{Enter}");
-    await expect.element(safe).toHaveAccessibleDescription(/nobody\.eth doesn't resolve to an address\./);
+    await expect.element(safe).toHaveAccessibleDescription(/nobody\.eth has no address on Sepolia's or Ethereum's ENS\./);
     expect(argAt(doc.get(), "steps[0].safe")).toBe(SAFE);
   });
 

@@ -2,10 +2,10 @@
 import { describe, expect, test } from "bun:test";
 import { lintCopy } from "@lattice-studio/core";
 import { catalogDeployBlock } from ".";
-import { AVALANCHE_FUJI, chainFromText, chainInfo, HASHKEY_TESTNET, HEDERA_TESTNET, MONAD_TESTNET, pickerChains, publicRpcUrls, rpcUrls } from "./chains";
+import { ANVIL, AVALANCHE_FUJI, chainFromText, chainInfo, ensRegistryNames, ETHEREUM, HASHKEY_TESTNET, HEDERA_TESTNET, MONAD_TESTNET, pickerChains, publicRpcUrls, rpcUrls, SEPOLIA } from "./chains";
 import {
-  CANCELED_IN_WALLET, CHAIN_CHECKS_NEED_CONNECTION, checking, couldntRead, LOADING_WALLET_SUPPORT, needsFunds, NO_WALLET,
-  rpcNotAnswering, walletOn,
+  CANCELED_IN_WALLET, CHAIN_CHECKS_NEED_CONNECTION, checking, couldntRead, ensGatewayFailed, LOADING_WALLET_SUPPORT, needsFunds,
+  NO_WALLET, noEnsRecord, rpcNotAnswering, walletOn,
 } from "./copy";
 
 describe("Flow 14", () => {
@@ -31,6 +31,24 @@ describe("Flow 14", () => {
   });
 });
 
+describe("ENS", () => {
+  test("a name with no record says where Studio looked; an offchain resolver that didn't answer says so", () => {
+    expect(noEnsRecord("safe.eth", ["Sepolia", "Ethereum"])).toBe("safe.eth has no address on Sepolia's or Ethereum's ENS.");
+    expect(noEnsRecord("safe.eth", ["Ethereum"])).toBe("safe.eth has no address on Ethereum's ENS.");
+    expect(noEnsRecord("safe.eth", [])).toBe("safe.eth doesn't resolve to an address.");
+    expect(ensGatewayFailed("safe.eth")).toBe("Couldn't resolve safe.eth: its offchain resolver didn't answer.");
+    for (const text of [noEnsRecord("safe.eth", ["Sepolia", "Ethereum"]), ensGatewayFailed("safe.eth")]) expect(lintCopy(text)).toEqual([]);
+  });
+
+  test("testnets read Sepolia's ENS, then Ethereum's; Ethereum reads its own; Anvil has none", () => {
+    for (const chain of pickerChains(false)) expect(chain.ensChainIds).toEqual([11155111, 1]);
+    expect(ETHEREUM.ensChainIds).toEqual([1]);
+    expect(ANVIL.ensChainIds).toEqual([]);
+    expect(ensRegistryNames(SEPOLIA.id, false)).toEqual(["Sepolia", "Ethereum"]);
+    expect(ensRegistryNames(ANVIL.id, true)).toEqual([]);
+  });
+});
+
 describe("chains", () => {
   test("v1 testnets in the picker; Anvil only in end-to-end builds", () => {
     expect(pickerChains(false).map((c) => c.id)).toEqual([11155111, 84532, 133, 296, 43113, 10143]);
@@ -39,7 +57,7 @@ describe("chains", () => {
     expect(chainFromText("anvil", true)?.id).toBe(31337);
   });
 
-  test("HSKChain Testnet: chain 133, HSK, its own RPC, explorer and faucet, ENS through Sepolia", () => {
+  test("HSKChain Testnet: chain 133, HSK, its own RPC, explorer and faucet, ENS through Sepolia, then Ethereum", () => {
     expect(chainInfo(HASHKEY_TESTNET)).toEqual({
       id: 133,
       name: "HSKChain Testnet",
@@ -48,7 +66,7 @@ describe("chains", () => {
       faucet: "https://faucet.hskchain.net/faucet",
     });
     expect(HASHKEY_TESTNET.nativeCurrency).toEqual({ name: "HashKey EcoPoints", symbol: "HSK", decimals: 18 });
-    expect(HASHKEY_TESTNET.ensChainId).toBe(11155111);
+    expect(HASHKEY_TESTNET.ensChainIds).toEqual([11155111, 1]);
     expect(HASHKEY_TESTNET.gasCap).toBeUndefined();
     expect(rpcUrls(HASHKEY_TESTNET, undefined)).toEqual(["https://testnet.hsk.xyz"]);
     expect(publicRpcUrls(HASHKEY_TESTNET, "https://rpc.example/key")).toEqual(["https://testnet.hsk.xyz"]);
@@ -57,7 +75,7 @@ describe("chains", () => {
     expect(chainFromText("HSKChain Testnet", false)).toBe(HASHKEY_TESTNET);
   });
 
-  test("Hedera Testnet: chain 296, HBAR in weibars, Hashio's 15M per-transaction cap, HashScan, ENS through Sepolia", () => {
+  test("Hedera Testnet: chain 296, HBAR in weibars, Hashio's 15M per-transaction cap, HashScan, ENS through Sepolia, then Ethereum", () => {
     expect(chainInfo(HEDERA_TESTNET)).toEqual({
       id: 296,
       name: "Hedera Testnet",
@@ -66,7 +84,7 @@ describe("chains", () => {
       faucet: "https://portal.hedera.com/faucet",
     });
     expect(HEDERA_TESTNET.nativeCurrency).toEqual({ name: "HBAR", symbol: "HBAR", decimals: 18 });
-    expect(HEDERA_TESTNET.ensChainId).toBe(11155111);
+    expect(HEDERA_TESTNET.ensChainIds).toEqual([11155111, 1]);
     expect(HEDERA_TESTNET.gasCap).toBe(15_000_000n);
     expect(rpcUrls(HEDERA_TESTNET, undefined)).toEqual(["https://testnet.hashio.io/api"]);
     expect(publicRpcUrls(HEDERA_TESTNET, "https://rpc.example/key")).toEqual(["https://testnet.hashio.io/api"]);
@@ -75,7 +93,7 @@ describe("chains", () => {
     expect(chainFromText("Hedera Testnet", false)).toBe(HEDERA_TESTNET);
   });
 
-  test("Avalanche Fuji: chain 43113, AVAX, two public RPCs, Snowtrace and the Builder Hub faucet, ENS through Sepolia", () => {
+  test("Avalanche Fuji: chain 43113, AVAX, two public RPCs, Snowtrace and the Builder Hub faucet, ENS through Sepolia, then Ethereum", () => {
     expect(chainInfo(AVALANCHE_FUJI)).toEqual({
       id: 43113,
       name: "Avalanche Fuji",
@@ -84,7 +102,7 @@ describe("chains", () => {
       faucet: "https://build.avax.network/console/primary-network/faucet",
     });
     expect(AVALANCHE_FUJI.nativeCurrency).toEqual({ name: "Avalanche", symbol: "AVAX", decimals: 18 });
-    expect(AVALANCHE_FUJI.ensChainId).toBe(11155111);
+    expect(AVALANCHE_FUJI.ensChainIds).toEqual([11155111, 1]);
     expect(AVALANCHE_FUJI.gasCap).toBeUndefined();
     const both = ["https://api.avax-test.network/ext/bc/C/rpc", "https://avalanche-fuji-c-chain-rpc.publicnode.com"];
     expect(rpcUrls(AVALANCHE_FUJI, undefined)).toEqual(both);
@@ -94,7 +112,7 @@ describe("chains", () => {
     expect(chainFromText("Avalanche Fuji", false)).toBe(AVALANCHE_FUJI);
   });
 
-  test("Monad Testnet: chain 10143, MON, two public RPCs, MonadVision and the faucet, ENS through Sepolia", () => {
+  test("Monad Testnet: chain 10143, MON, two public RPCs, MonadVision and the faucet, ENS through Sepolia, then Ethereum", () => {
     expect(chainInfo(MONAD_TESTNET)).toEqual({
       id: 10143,
       name: "Monad Testnet",
@@ -103,7 +121,7 @@ describe("chains", () => {
       faucet: "https://faucet.monad.xyz",
     });
     expect(MONAD_TESTNET.nativeCurrency).toEqual({ name: "Monad", symbol: "MON", decimals: 18 });
-    expect(MONAD_TESTNET.ensChainId).toBe(11155111);
+    expect(MONAD_TESTNET.ensChainIds).toEqual([11155111, 1]);
     expect(MONAD_TESTNET.gasCap).toBe(30_000_000n);
     const both = ["https://testnet-rpc.monad.xyz", "https://rpc.ankr.com/monad_testnet"];
     expect(rpcUrls(MONAD_TESTNET, undefined)).toEqual(both);

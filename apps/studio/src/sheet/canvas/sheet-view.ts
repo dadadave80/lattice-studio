@@ -20,10 +20,13 @@ import type { Hex4, Point, Rect, Size } from "@lattice-studio/core";
 import { doc, getAnalysis, getCatalog, saveViewport, session, type Viewport } from "@/contracts";
 import { reducedMotion } from "@/a11y/preferences";
 import { currentTier } from "@/shell/layout-tier";
+import { paneVisibility } from "@/shell/panes";
+import { currentSheetInsets } from "@/shell/sheet-insets";
 import { RAIL_GAP } from "@/sheet/core/geometry";
 import { cardRect, cardSizes, cardsBounds } from "./geometry";
 import {
-  centerOn, clampZoom, clearOf, FIT_MAX_ZOOM, fitBest, intersects, LOCATE_ZOOM, MAX_ZOOM, toScreen, zoomAt, type Insets,
+  centerOn, clampZoom, clearOf, FIT_MAX_ZOOM, fitBest, fitRoom, intersects, LOCATE_ZOOM, MAX_ZOOM, toScreen, zoomAt,
+  type Insets,
 } from "./viewport-math";
 
 /** The attribute a floating element over the sheet carries, so auto-pan keeps focused cards clear of it. */
@@ -47,8 +50,10 @@ export type SheetHandle = {
 };
 
 const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 1 };
-/** The title bar and the console header, in px, for estimating the sheet's size with no sheet mounted. */
-const CHROME_HEIGHT = 40 + 36;
+/** The title bar, the console header and the pane switcher (under 768 px), in px, for estimating the sheet's size with no sheet mounted. */
+const TITLE_BAR_HEIGHT = 40;
+const CONSOLE_HEADER = 36;
+const SWITCHER_HEIGHT = 29;
 
 const handles: SheetHandle[] = [];
 let lastSize: Size | null = null;
@@ -86,9 +91,14 @@ export function sheetSize(): Size {
     return measured;
   }
   if (lastSize) return lastSize;
+  // Only side panes that sit beside the sheet narrow it: drawers float over it, and under 768 px it's alone.
   const { panes } = session.get();
-  const width = window.innerWidth - (panes.left.open ? panes.left.size : 0) - (panes.inspector.open ? panes.inspector.size : 0);
-  const height = window.innerHeight - CHROME_HEIGHT - (panes.console.open ? panes.console.size : 0);
+  const tier = currentTier();
+  const seen = paneVisibility(panes, tier);
+  const beside = !seen.drawers && tier !== "phone";
+  const width = window.innerWidth - (beside && seen.left ? panes.left.size : 0) - (beside && seen.inspector ? panes.inspector.size : 0);
+  const below = tier === "phone" ? SWITCHER_HEIGHT : CONSOLE_HEADER + (seen.console === "body" ? panes.console.size : 0);
+  const height = window.innerHeight - TITLE_BAR_HEIGHT - below;
   return { width: Math.max(320, width), height: Math.max(240, height) };
 }
 
@@ -133,9 +143,6 @@ function sizes() {
   return cardSizes(doc.get().layout, getCatalog(), getAnalysis());
 }
 
-/** Screen px between a framed card and what floats beside it. */
-const FLOAT_GAP = 16;
-
 /** A float's box relative to the sheet's top-left corner, while it shows. */
 function floatBox(sheet: HTMLElement, selector: string): Rect | null {
   const el = sheet.querySelector<HTMLElement>(selector);
@@ -147,38 +154,21 @@ function floatBox(sheet: HTMLElement, selector: string): Rect | null {
 }
 
 /**
- * The room Fit, Zoom to selection and a project's first view frame cards into (SH-02, CO-01): the sheet minus the
- * tool strip at the left, the init order legend at the right while it shows, and at the bottom either
- * - the band under the ground rail (the higher of the core cell's and the title block's tops), so no core trace
- *   runs under a card, or
- * - the core cell's band alone, with the title block's column at the right while it's full, where a trace drops
- *   below the cards (CO-01).
- * Two layouts; `fitBest` takes the one that frames the cards larger. Neither floats nor this leave less than half
- * the sheet either way. Empty with no sheet mounted: the whole sheet.
+ * The room Fit, Zoom to selection and a project's first view frame cards into (`fitRoom`): the sheet minus an
+ * open drawer and the floats, measured where they are now. Empty with no sheet mounted: the whole sheet.
  */
 export function fitLayouts(size: Size = sheetSize()): Partial<Insets>[] {
   const sheet = mounted()?.element();
   if (!sheet) return [];
-  const strip = floatBox(sheet, '[data-chrome="tool-strip"]');
-  const legend = floatBox(sheet, '[data-chrome="init-legend"]');
-  const cell = floatBox(sheet, '[data-chrome="core-cell"]');
-  const title = floatBox(sheet, '[data-chrome="title-block"]');
-  const full = sheet.querySelector('[data-chrome="title-block"][data-form="full"]') !== null;
-  const left = Math.min(size.width / 4, strip ? strip.x + strip.width + FLOAT_GAP : 0);
-  const fromRight = (box: Rect | null) => (box ? size.width - box.x + FLOAT_GAP : 0);
-  const fromBottom = (top: number | null) => (top === null ? 0 : size.height - top + FLOAT_GAP);
-  const cap = (n: number, of: number) => Math.min(n, of / 2);
-  const legendRight = fromRight(legend);
-  const tops = [cell?.y, title?.y].filter((y): y is number => y !== undefined);
-  const railTop = tops.length ? Math.min(...tops) - RAIL_GAP : null;
-  const under = { left, right: cap(legendRight, size.width), bottom: cap(fromBottom(railTop), size.height) };
-  if (!full || !title) return [under];
-  const beside = {
-    left,
-    right: cap(Math.max(legendRight, fromRight(title)), size.width),
-    bottom: cap(fromBottom(cell ? cell.y - RAIL_GAP : null), size.height),
-  };
-  return [under, beside];
+  return fitRoom(size, {
+    strip: floatBox(sheet, '[data-chrome="tool-strip"]'),
+    legend: floatBox(sheet, '[data-chrome="init-legend"]'),
+    cell: floatBox(sheet, '[data-chrome="core-cell"]'),
+    title: floatBox(sheet, '[data-chrome="title-block"]'),
+    full: sheet.querySelector('[data-chrome="title-block"][data-form="full"]') !== null,
+    inset: currentSheetInsets(),
+    railGap: RAIL_GAP,
+  });
 }
 
 /** How often, in ms, the first view checks whether the floats are drawn (their chunks load lazily). */
@@ -206,7 +196,8 @@ function cellPlaced(sheet: HTMLElement): boolean {
 /**
  * Resolves once the floats Fit measures are drawn in their resting form: the title block (in the form it starts
  * in, collapsed on a short sheet, once it has measured the sheet: `data-measured`) and the core cell in its place
- * by the block (`cellPlaced`), which load in lazy chunks, then a couple of checks more for both to hold still.
+ * by the block (`cellPlaced`), which load in lazy chunks, then a couple of checks more for them to hold still
+ * (unmoved between checks: an inspector drawer opening on a selection moves them a frame or two later).
  * Neither shows at the phone tier. Timers, not animation frames, so a page in the background still opens; and it
  * resolves anyway after `FLOATS_WAIT_MS`, so a chunk that never lands can't hold the first view back.
  */
@@ -214,12 +205,13 @@ export function floatsDrawn(): Promise<void> {
   return new Promise((resolve) => {
     let left = Math.ceil(FLOATS_WAIT_MS / FLOATS_POLL_MS);
     let settle = FLOATS_SETTLE_CHECKS;
+    let last = "";
     const check = () => {
-      const sheet = mounted()?.element() ?? null;
-      const drawn =
-        currentTier() === "phone" ||
-        (sheet !== null && sheet.querySelector('[data-chrome="title-block"][data-measured]') !== null && cellPlaced(sheet));
-      if (drawn) settle--;
+      // Held still: drawn, and where the last check found them (a drawer opening moves them a frame or two later).
+      const where = floatsWhere();
+      if (floatsReady() && where === last) settle--;
+      else settle = FLOATS_SETTLE_CHECKS;
+      last = where;
       if (settle < 0 || --left <= 0) resolve();
       else setTimeout(check, FLOATS_POLL_MS);
     };
@@ -227,16 +219,79 @@ export function floatsDrawn(): Promise<void> {
   });
 }
 
+/**
+ * Whether the sheet is mounted with the floats Fit measures drawn in their resting form (see `floatsDrawn`), or
+ * the tier draws none of them.
+ */
+export function floatsReady(): boolean {
+  if (currentTier() === "phone") return true;
+  const sheet = mounted()?.element() ?? null;
+  return sheet !== null && sheet.querySelector('[data-chrome="title-block"][data-measured]') !== null && cellPlaced(sheet);
+}
+
+/** Screen px the sheet's Panels keep from its edge, or from an open drawer's (space-4). */
+const PANEL_EDGE = 16;
+
+/**
+ * Whether the floats are drawn and already sit where the open drawer puts them: the tool strip a step right of
+ * the left drawer, the title block a step left of the inspector. False for a frame or two after a drawer opens or
+ * closes (a selection opening the inspector), when Fit has to wait for them.
+ */
+export function floatsSettled(): boolean {
+  if (!floatsReady()) return false;
+  if (currentTier() === "phone") return true;
+  const sheet = mounted()?.element();
+  if (!sheet) return false;
+  const inset = currentSheetInsets();
+  const strip = floatBox(sheet, '[data-chrome="tool-strip"]');
+  const title = floatBox(sheet, '[data-chrome="title-block"]');
+  const width = sheet.clientWidth;
+  const stripAt = strip === null || Math.abs(strip.x - inset.start - PANEL_EDGE) < 1;
+  const titleAt = title === null || Math.abs(title.x + title.width + inset.end + PANEL_EDGE - width) < 1;
+  return stripAt && titleAt;
+}
+
+/** Where the floats Fit measures are now, as a string to compare between checks. */
+function floatsWhere(): string {
+  const sheet = mounted()?.element();
+  if (!sheet) return "";
+  const at = (selector: string) => {
+    const box = floatBox(sheet, selector);
+    return box ? `${Math.round(box.x)},${Math.round(box.y)},${Math.round(box.width)},${Math.round(box.height)}` : "-";
+  };
+  return ['[data-chrome="tool-strip"]', '[data-chrome="init-legend"]', '[data-chrome="core-cell"]', '[data-chrome="title-block"]']
+    .map(at)
+    .join("|");
+}
+
 /** The viewport that frames `bounds` (sheet units) in the room the floats leave (`fitLayouts`). */
 export function fitInRoom(bounds: Rect, maxZoom: number, size: Size = sheetSize()): Viewport {
   return fitBest(bounds, size, fitLayouts(size), { maxZoom });
 }
 
-/** Frames `names` (every card when omitted), up to 100% for Fit and 200% for a selection. Null when none is placed. */
+/** The project whose sheet fits its cards again once it mounts: Fit ran while no sheet was there to measure. */
+let fitOnMount: string | null = null;
+
+/**
+ * Whether `projectId`'s sheet should fit its cards as it opens, rather than restore the viewport stored for it:
+ * Fit ran before it mounted (the Fit command waits for it a moment first), when the view could only be estimated.
+ * Asking forgets it.
+ */
+export function takeFitOnMount(projectId: string): boolean {
+  const wanted = fitOnMount === projectId;
+  fitOnMount = null;
+  return wanted;
+}
+
+/**
+ * Frames `names` (every card when omitted), up to 100% for Fit and 200% for a selection. Null when none is placed.
+ * With no sheet mounted, it stores an estimate and Fit runs again once the sheet opens, in the room it really has.
+ */
 export function fitCards(names?: readonly string[]): Viewport | null {
   const layout = doc.get().layout;
   const bounds = cardsBounds(layout, sizes(), names);
   if (!bounds) return null;
+  if (!names && !mounted()) fitOnMount = doc.get().id;
   return moveViewport(fitInRoom(bounds, names ? MAX_ZOOM : FIT_MAX_ZOOM));
 }
 

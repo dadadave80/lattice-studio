@@ -1,7 +1,7 @@
 /**
  * The opt-in Sepolia fork suite (spec L934-L935 Fork row; decisions D8 and Q7): a local Anvil node forking Sepolia
  * at a recent finalized block, where CreateX, Multicall3 and Arachnid's proxy are the chain's own. Runs when
- * SEPOLIA_FORK=1 (fork.yml sets it). The block comes from the first public Sepolia RPC that serves it
+ * SEPOLIA_FORK=1 (ci.yml's foundry job sets it). The block comes from the first public Sepolia RPC that serves it
  * (harness/sepolia.ts), with SEPOLIA_RPC_URL as the fallback only when they all fail; the log names the block and
  * the endpoint's host, never the secret. Every transaction goes to the local fork, never to Sepolia.
  *
@@ -33,7 +33,7 @@ const DEPLOYER_BALANCE = `0x${(10_000n * 10n ** 18n).toString(16)}`;
 
 // From the environment only (never a file): it may carry a provider key.
 const SECRET_URL = process.env["SEPOLIA_RPC_URL"] || undefined;
-const FORK_SKIP = SKIP_REASON ?? (process.env["SEPOLIA_FORK"] !== "1" ? "SEPOLIA_FORK isn't 1 (decision D8: the fork suite is opt-in; fork.yml sets it)" : undefined);
+const FORK_SKIP = SKIP_REASON ?? (process.env["SEPOLIA_FORK"] !== "1" ? "SEPOLIA_FORK isn't 1 (decision D8: the fork suite is opt-in; ci.yml's foundry job sets it)" : undefined);
 if (FORK_SKIP !== undefined) console.log(`Sepolia fork: skipped, ${FORK_SKIP}.`);
 
 describe.skipIf(FORK_SKIP !== undefined)("Sepolia fork at a recent finalized block", () => {

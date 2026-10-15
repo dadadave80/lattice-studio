@@ -39,7 +39,7 @@ export function viemChain(spec: ChainSpec, urls: readonly string[]): Chain {
     nativeCurrency: spec.nativeCurrency,
     rpcUrls: { default: { http: urls.length > 0 ? [...urls] : [spec.rpc.default] } },
     ...(spec.explorer ? { blockExplorers: { default: { name: `${spec.name} explorer`, url: spec.explorer } } } : {}),
-    ...(spec.ensChainId === spec.id ? { contracts: { ensUniversalResolver: { address: ENS_UNIVERSAL_RESOLVER } } } : {}),
+    ...(spec.ensChainIds.includes(spec.id) ? { contracts: { ensUniversalResolver: { address: ENS_UNIVERSAL_RESOLVER } } } : {}),
     testnet: spec.testnet,
   };
 }

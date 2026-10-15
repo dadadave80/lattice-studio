@@ -1,16 +1,16 @@
 /*
  * The sheet's chrome (spec L357, L362, L378, L383; the title block, empty sheet and init order boards). Tokens
- * only; Panels sit a grid step in from the sheet's edges. Forced colors keep every outline in CanvasText.
+ * only; Panels sit a grid step in from the sheet's edges, and from an open drawer's edge where one covers the
+ * sheet (`--sheet-inset-start` and `--sheet-inset-end`, set by the shell). Forced colors keep every outline in
+ * CanvasText.
  */
 
 /* ---- Tool strip and zoom readout ---------------------------------------------------------------------- */
 
-.toolStrip {
-  margin: var(--lx-space-4);
-}
-
+.toolStrip,
 .zoomReadout {
   margin: var(--lx-space-4);
+  margin-inline-start: calc(var(--lx-space-4) + var(--sheet-inset-start, 0px));
 }
 
 .readout {
@@ -26,13 +26,14 @@
 
 .titlePanel {
   margin: var(--lx-space-4);
+  margin-inline-end: calc(var(--lx-space-4) + var(--sheet-inset-end, 0px));
 }
 
 .titleBlock {
   display: flex;
   flex-direction: column;
   inline-size: calc(var(--lx-card-width) * 1.4);
-  max-inline-size: calc(100vw - var(--lx-space-8));
+  max-inline-size: calc(100vw - var(--lx-space-8) - var(--sheet-inset-start, 0px) - var(--sheet-inset-end, 0px));
   border: var(--lx-stroke-hair) solid var(--lx-border-strong);
   background: var(--lx-panel);
   color: var(--lx-text);
@@ -164,8 +165,10 @@ a.address {
 
 /* ---- Init order mode ---------------------------------------------------------------------------------- */
 
+/* Centered in the room an open drawer leaves. */
 .chip {
   margin-block-start: var(--lx-space-4);
+  translate: calc((var(--sheet-inset-start, 0px) - var(--sheet-inset-end, 0px)) / 2) 0;
 }
 
 .chip :global(button) {
@@ -197,6 +200,7 @@ a.address {
  */
 .legend {
   margin: var(--lx-space-4);
+  margin-inline-end: calc(var(--lx-space-4) + var(--sheet-inset-end, 0px));
   max-block-size: calc(100% - var(--lx-space-8) - var(--lx-core-band, 0px));
   overflow: auto;
 }

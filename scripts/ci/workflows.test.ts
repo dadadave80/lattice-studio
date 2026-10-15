@@ -136,30 +136,68 @@ describe("nightly.yml (§17 audit #40, spec L914: scheduled, report-only)", () =
   });
 });
 
-describe("fork.yml (§17 audit #76, spec L935, Q7: the fork block is the harness's, and the secret is only a fallback)", () => {
-  const text = readFileSync(join(workflowsDir, "fork.yml"), "utf8");
-  const doc = Bun.YAML.parse(text) as WorkflowLike;
-  const jobs = Object.values(doc.jobs ?? {}) as (JobLike & { if?: unknown; needs?: unknown })[];
-  const chainStep = jobs.flatMap((job) => job.steps ?? []).find((s) => typeof s.run === "string" && s.run.includes("bun run test:chain"));
+describe("ci.yml's Foundry job runs the Sepolia fork suite (§17 audit #76, spec L935, Q7: the fork block is the harness's, and the secret is only a fallback)", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike;
+  const job = doc.jobs?.["foundry"] as (JobLike & { if?: unknown; needs?: unknown }) | undefined;
+  const forkStep = job?.steps?.find((s) => typeof s.run === "string" && s.run.includes("bun run test:chain") && s.env?.["SEPOLIA_FORK"] !== undefined);
 
   test("declares no FORK_BLOCK env: the harness picks a recent finalized block and never reads one from the environment", () => {
     expect(doc.env?.["FORK_BLOCK"]).toBeUndefined();
-    for (const job of jobs) {
-      for (const step of job.steps ?? []) expect((step.env ?? {})["FORK_BLOCK"]).toBeUndefined();
-    }
+    for (const step of job?.steps ?? []) expect((step.env ?? {})["FORK_BLOCK"]).toBeUndefined();
   });
 
-  test("runs without the SEPOLIA_RPC_URL secret: no job is gated on it", () => {
-    for (const job of jobs) {
-      expect(job.if).toBeUndefined();
-      expect(job.needs).toBeUndefined();
-    }
+  // The only gate is the changed-paths one (#45): the job waits on nothing but `changes`, and no `if` reads a secret.
+  test("runs without the SEPOLIA_RPC_URL secret: nothing is gated on it", () => {
+    expect(job?.needs).toBe("changes");
+    expect(String(job?.if ?? "")).not.toContain("secrets");
+    for (const step of job?.steps ?? []) expect(String(step.if ?? "")).not.toContain("secrets");
   });
 
   test("opts the fork suite in and passes the secret through for the harness's fallback", () => {
-    expect(chainStep?.env?.["SEPOLIA_FORK"]).toBe("1");
-    expect(chainStep?.env?.["SEPOLIA_RPC_URL"]).toBe("${{ secrets.SEPOLIA_RPC_URL }}");
+    expect(forkStep?.env?.["SEPOLIA_FORK"]).toBe("1");
+    expect(forkStep?.env?.["SEPOLIA_RPC_URL"]).toBe("${{ secrets.SEPOLIA_RPC_URL }}");
   });
+});
+
+// One setup for every job (.github/actions/setup), so its caches and the frozen install can't drift between jobs.
+describe("ci.yml's jobs share one setup", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike;
+  for (const [id, job] of Object.entries(doc.jobs ?? {})) {
+    if (id === "changes") continue;
+    test(`${id} sets up through .github/actions/setup and installs nothing itself`, () => {
+      const steps = job.steps ?? [];
+      expect(steps.some((s) => s.uses === "./.github/actions/setup")).toBe(true);
+      for (const step of steps) {
+        expect(String(step.uses ?? "")).not.toMatch(/^(oven-sh\/setup-bun|actions\/setup-node|foundry-rs\/foundry-toolchain)@/);
+        expect(String(step.run ?? "")).not.toMatch(/\bbun\s+install\b|\bplaywright\s+install\b/);
+      }
+    });
+  }
+});
+
+// The composite actions under .github/actions hold the same rules as a workflow's steps.
+describe("composite actions", () => {
+  const actionsDir = join(repoRoot, ".github", "actions");
+  const bunLock = readFileSync(join(repoRoot, "bun.lock"), "utf8");
+  for (const name of readdirSync(actionsDir)) {
+    const text = readFileSync(join(actionsDir, name, "action.yml"), "utf8");
+    const doc = Bun.YAML.parse(text) as { name?: unknown; runs?: { using?: unknown; steps?: readonly StepLike[] } };
+    const steps = doc.runs?.steps ?? [];
+    test(`${name}: a named composite action with steps`, () => {
+      expect(typeof doc.name).toBe("string");
+      expect(doc.runs?.using).toBe("composite");
+      expect(steps.length).toBeGreaterThan(0);
+    });
+    test(`${name}: every Action pinned to a full commit SHA, every install frozen, no runner pinned outside bun.lock`, () => {
+      for (const step of steps) {
+        if (typeof step.uses === "string") expect(`${step.uses}`, name).toMatch(/^[\w.-]+\/[\w./-]+@[0-9a-f]{40}$/);
+        if (typeof step.run !== "string") continue;
+        if (/\bbun\s+install\b/.test(step.run)) expect(step.run).toMatch(/--frozen-lockfile\b/);
+        for (const runner of findPinnedRunners(step.run)) expect(isLockfilePinned(runner, bunLock), `${runner.pkg}@${runner.version}`).toBe(true);
+      }
+      for (const m of text.matchAll(/^\s*(?:-\s+)?uses:\s*(.+)$/gm)) expect((m[1] ?? "").trim(), name).toMatch(/@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
+    });
+  }
 });
 
 describe("update-screenshots.yml (§17 audit #79, spec L937: the missing chromium-linux baselines)", () => {

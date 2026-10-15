@@ -3,7 +3,7 @@ import { useReactFlow, useStoreApi, type OnMove } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { doc, getAnalysis, getCatalog, loadViewport, session, useDocument, type Viewport } from "@/contracts";
 import { cardSizes, cardsBounds } from "./geometry";
-import { attachSheet, fitInRoom, floatsDrawn, sheetSize, storeViewport } from "./sheet-view";
+import { attachSheet, fitInRoom, floatsDrawn, sheetSize, storeViewport, takeFitOnMount } from "./sheet-view";
 import { clampViewport, FIT_MAX_ZOOM, isViewport, sameViewport } from "./viewport-math";
 
 const START: Viewport = { x: 0, y: 0, zoom: 1 };
@@ -87,7 +87,10 @@ export function useViewportSync(wrapper: RefObject<HTMLElement | null>): Viewpor
       setRestored(projectId);
     };
     const held = session.get().viewports[projectId];
-    if (held) {
+    if (takeFitOnMount(projectId)) {
+      // Fit ran before the sheet mounted (a share link fits as it opens): the viewport it stored is an estimate.
+      void floatsDrawn().then(() => apply(firstViewport()));
+    } else if (held) {
       apply(held);
     } else {
       // A project with no viewport yet fits its cards once the floats are drawn in their resting form, so it frames

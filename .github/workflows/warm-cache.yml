@@ -1,0 +1,68 @@
+# Saves the caches every CI job restores (.github/actions/setup and lattice-build): Playwright's Chromium and WebKit,
+# and the pinned Lattice build. GitHub shows a pull request only the caches saved on its own ref
+# or on its base branch, so a cache saved by a pull request's CI helps that pull request alone. Saved here on dev and
+# main, they serve every pull request into either.
+#
+# Runs only when what's cached can change: the lockfile (Playwright's version), the Lattice pin, or the
+# setup itself. A key that already exists is left alone, so a run with nothing new restores nothing and saves
+# nothing beyond the checks.
+name: Warm caches
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - bun.lock
+      - lattice
+      - .gitmodules
+      - .github/actions/**
+      - .github/workflows/warm-cache.yml
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: warm-cache-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lattice:
+    name: The Lattice build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup
+        with:
+          foundry: "true"
+      # Restores the build when the key exists, and builds and saves it when it doesn't.
+      - uses: ./.github/actions/lattice-build
+
+  playwright:
+    name: Playwright ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Restores the browser when it's cached and downloads it when it isn't; the key is the one setup restores.
+      - id: setup
+        uses: ./.github/actions/setup
+        with:
+          browsers: ${{ matrix.browser }}
+      - id: key
+        run: echo "key=playwright-${{ runner.os }}-$(bun -e 'console.log(require("./node_modules/@playwright/test/package.json").version)')-${{ matrix.browser }}" >> "$GITHUB_OUTPUT"
+      - id: exists
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+      - if: steps.exists.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.key.outputs.key }}
