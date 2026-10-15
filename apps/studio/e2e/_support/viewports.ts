@@ -19,8 +19,11 @@ export type LayoutTier = "wide" | "mid" | "narrow" | "phone";
 /** The widths the spec's narrow variants run at, and the default desktop width. */
 export const VIEWPORTS = {
   1440: { width: 1440, height: 900, tier: "wide" },
+  1100: { width: 1100, height: 800, tier: "mid" },
+  900: { width: 900, height: 800, tier: "narrow" },
   768: { width: 768, height: 1024, tier: "narrow" },
   375: { width: 375, height: 812, tier: "phone" },
+  320: { width: 320, height: 640, tier: "phone" },
 } as const satisfies Record<number, { width: number; height: number; tier: LayoutTier }>;
 
 export type ViewportWidth = keyof typeof VIEWPORTS;
