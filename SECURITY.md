@@ -33,7 +33,7 @@ Lattice Studio's checks run inside the same bundle that a compromised build woul
 
 ## Privacy
 
-No analytics and no error reporting unless enabled by the person using Studio. Share links live in the URL fragment, which a server never sees. RPC providers see the addresses Studio reads; Sourcify and Etherscan receive the sources they verify, which are public anyway.
+No analytics and no error reporting unless enabled by the person using Studio. Share links live in the URL fragment, which a server never sees. RPC providers see the addresses Studio reads and the ENS names it resolves (on a testnet, a name Sepolia's ENS doesn't have is looked up through Ethereum's public RPCs); Sourcify and Etherscan receive the sources they verify, which are public anyway.
 
 ### The Etherscan API key
 

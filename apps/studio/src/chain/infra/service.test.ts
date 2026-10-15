@@ -6,7 +6,8 @@ import type { Config } from "@wagmi/core";
 import { doc, provideServices, session, setCatalogStatus, settings, type WalletConnector } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
 import { isolateContracts } from "@/contracts/test-support";
-import { BASE_SEPOLIA, SEPOLIA } from "./chains";
+import { BaseError, HttpRequestError } from "viem";
+import { BASE_SEPOLIA, ETHEREUM, SEPOLIA } from "./chains";
 import { createClients } from "./clients";
 import { CHAIN_CHECKS_NEED_CONNECTION } from "./copy";
 import { predict } from "@/state/prediction";
@@ -38,7 +39,9 @@ function start(wallet: Wallet | null = null): ChainRuntime {
   const clients = createClients({
     transport: (url) => {
       urlsCalled.add(url);
-      const chain = Object.values(chains).find((c) => url.includes(String(c.options.chainId))) ?? chains[SEPOLIA.id];
+      // Ethereum's URLs carry no chain id; every other mock's URL does (and "1" is in most of them).
+      const ethereum = url === ETHEREUM.rpc.default || url === ETHEREUM.rpc.extra;
+      const chain = (ethereum ? chains[ETHEREUM.id] : Object.values(chains).find((c) => c.options.chainId !== ETHEREUM.id && url.includes(String(c.options.chainId)))) ?? chains[SEPOLIA.id];
       if (!chain) throw new Error("no mock chain");
       return chain.transport();
     },
@@ -459,12 +462,13 @@ describe("reads", () => {
     expect(await service.readFacets(SEPOLIA.id, ME)).toEqual({ ok: false, error: `There's no diamond at ${ME} on Sepolia.` });
   });
 
-  test("ENS resolves on Sepolia; Base Sepolia names resolve there too; an invalid name says so", async () => {
+  test("ENS resolves on Sepolia; on Base Sepolia a name with only an ETH address resolves to it; an invalid name says so", async () => {
     start();
     expect(await service.resolveEns("alice.eth", SEPOLIA.id)).toEqual({ ok: true, value: SAFE });
     expect(await service.reverseEns(ME, SEPOLIA.id)).toEqual({ ok: true, value: "me.eth" });
-    // Base Sepolia resolves on Sepolia's resolver with its own coin type: alice.eth has none there.
-    expect(await service.resolveEns("alice.eth", BASE_SEPOLIA.id)).toEqual({ ok: true, value: null });
+    // alice.eth has no Base Sepolia or default EVM address, so its ETH address (coin type 60) is used.
+    expect(await service.resolveEns("alice.eth", BASE_SEPOLIA.id)).toEqual({ ok: true, value: SAFE });
+    expect(await service.reverseEns(ME, BASE_SEPOLIA.id)).toEqual({ ok: true, value: "me.eth" });
     const strict = createChainService({
       e2e: false,
       clients: createClients({ transport: () => chains[SEPOLIA.id]?.transport() ?? mockChain({ chainId: 1 }).transport() }),
@@ -478,11 +482,43 @@ describe("reads", () => {
     strict.dispose();
   });
 
-  test("ENS with Sepolia down says Sepolia isn't answering", async () => {
+  test("a name Sepolia's ENS doesn't have resolves on Ethereum's; Sepolia's record wins when both have one", async () => {
+    const OTHER = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" as Address;
+    chains[ETHEREUM.id] = mockChain({
+      chainId: ETHEREUM.id,
+      accounts: { "0xeeeeeeee14d718c2b47d9923deab1335e144eeee": { code: "0x01" } },
+      ens: { "ens.eth": { "60": OTHER }, "alice.eth": { "60": OTHER } },
+      reverse: { [`${OTHER.toLowerCase()}:60`]: "ens.eth" },
+    });
+    start();
+    expect(await service.resolveEns("ens.eth", SEPOLIA.id)).toEqual({ ok: true, value: OTHER });
+    expect(await service.resolveEns("ens.eth", BASE_SEPOLIA.id)).toEqual({ ok: true, value: OTHER });
+    expect(await service.resolveEns("alice.eth", SEPOLIA.id)).toEqual({ ok: true, value: SAFE });
+    expect(await service.reverseEns(OTHER, SEPOLIA.id)).toEqual({ ok: true, value: "ens.eth" });
+    expect(await service.resolveEns("nobody.eth", SEPOLIA.id)).toEqual({ ok: true, value: null });
+    expect(await service.reverseEns(SAFE, SEPOLIA.id)).toEqual({ ok: true, value: null });
+  });
+
+  test("ENS with Sepolia down says Sepolia isn't answering, without asking Ethereum", async () => {
     start();
     const sepolia = chains[SEPOLIA.id];
     if (sepolia) sepolia.down = true;
     expect(await service.resolveEns("alice.eth", BASE_SEPOLIA.id)).toEqual({ ok: false, error: "Sepolia's public RPC isn't answering." });
+    expect(await service.reverseEns(ME, BASE_SEPOLIA.id)).toEqual({ ok: false, error: "Sepolia's public RPC isn't answering." });
+    expect([...urlsCalled].some((url) => url === ETHEREUM.rpc.default || url === ETHEREUM.rpc.extra)).toBe(false);
+  });
+
+  test("an offchain resolver that didn't answer says so, not that the RPC is down", async () => {
+    start();
+    const sepolia = chains[SEPOLIA.id];
+    if (sepolia) {
+      sepolia.intercept = (method) => {
+        if (method !== "eth_call") return undefined;
+        const gateway = new BaseError("HTTP request failed.", { cause: new HttpRequestError({ url: "https://gateway.example" }) });
+        return Object.assign(gateway, { name: "OffchainLookupError" });
+      };
+    }
+    expect(await service.resolveEns("jesse.base.eth", SEPOLIA.id)).toEqual({ ok: false, error: "Couldn't resolve jesse.base.eth: its offchain resolver didn't answer." });
   });
 });
 
