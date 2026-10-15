@@ -84,7 +84,7 @@ describe("DeployGroup", () => {
     await userEvent.keyboard("{Enter}");
     expect(settings.get().etherscanApiKey).toBe("");
     await expect.element(field).toHaveAccessibleDescription(
-      "Optional, not set up. Verifies diamonds on Etherscan alongside Sourcify, including ones deployed before the key was added. The key stays in this browser and is sent only to Etherscan.",
+      "Optional. Not set up. Verifies diamonds on Etherscan alongside Sourcify, including ones deployed before the key was added. The key stays in this browser and is sent only to Etherscan.",
     );
   });
 

@@ -1,6 +1,7 @@
 /**
  * The verify engine wired into the app: the watcher over a confirmed record, `deploy.retryVerification` (S5c's
- * Deployments list shows it only when a record's verification failed), against the real dev server's `/catalog/`
+ * Deployments list offers it when a record's verification failed, and as Verify on Etherscan when there's a key
+ * and Etherscan hasn't been asked), against the real dev server's `/catalog/`
  * (the fixture catalog `seedStudio` loads, exactly where `standard-json.ts` reads it) with only Sourcify's own
  * network faked. `services.ts`'s auto-start stays off under Vitest; the watcher is started by hand.
  */

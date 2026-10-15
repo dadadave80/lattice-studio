@@ -4,7 +4,7 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { etherscanOutcomes } from "@/chain/verify/etherscan-outcomes";
-import { command, provideServices, putDeployment, session, settings } from "@/contracts";
+import { command, getCatalogStatus, provideServices, putDeployment, session, setCatalogStatus, settings } from "@/contracts";
 import { BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
 import {
   bufferedServices, fakeChainService, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio,
@@ -541,6 +541,20 @@ describe("DiamondView: deployments", () => {
     // The spy sends nothing, so nothing is in flight: the row still doesn't claim to be verifying.
     await expect.element(page.getByText("Verifying on Etherscan")).not.toBeInTheDocument();
     await expect.element(page.getByText(/Add an Etherscan API key/)).not.toBeInTheDocument();
+  });
+
+  test("Verify on Etherscan waits for the catalog, which the job reads the proxy's build from", async () => {
+    const id = "deploy-etherscan-catalog";
+    await putDeployment(record(id, { address: address("f5") }));
+    await renderWithStudio(view, { project: makeProject({ id }), chain: true, settings: { etherscanApiKey: "test-key" } });
+    const verify = page.getByRole("button", { name: "Verify on Etherscan" });
+    await expect.element(verify).toBeVisible();
+    const ready = getCatalogStatus();
+    setCatalogStatus({ status: "loading" });
+    onCleanup(() => setCatalogStatus(ready));
+    await expect.element(verify).not.toBeInTheDocument();
+    setCatalogStatus(ready);
+    await expect.element(verify).toBeVisible();
   });
 
   test("Etherscan offers nothing on a chain it doesn't serve, key or no key", async () => {

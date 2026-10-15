@@ -4,7 +4,7 @@ import { forgeVerifyCommand } from "@/chain/verify/copy";
 import { useEtherscanOutcome } from "@/chain/verify/etherscan-outcomes";
 import { useEtherscanInFlight } from "@/chain/verify/in-flight";
 import { etherscanBuildKey, etherscanKeyFrom } from "@/chain/verify/key";
-import { commandRef, log, now, openDialog, useSettings } from "@/contracts";
+import { commandRef, log, now, openDialog, useCatalogStatus, useSettings } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { copyText } from "@/ui/copy/copy-text";
@@ -51,6 +51,8 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, cha
   const etherscanReason = etherscanFailureReason(record, etherscanOutcome, online);
   const offer = etherscanOffer(record, etherscanOutcome, { online, inFlight: etherscanInFlight, keySet: etherscanKeySet });
   const sourcifyFailed = record.verification === "failed";
+  // Etherscan gets the proxy's build from the catalog: pressed while it loads, the job could only fail.
+  const catalogReady = useCatalogStatus().status === "ready";
   return (
     <li className={sheet.item} data-record={`${chainId}:${address}`}>
       <div className={sheet.itemLine}>
@@ -104,7 +106,7 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, cha
             Retry verification
           </CommandButton>
         ) : null}
-        {offer === "verify" && !sourcifyFailed ? (
+        {offer === "verify" && !sourcifyFailed && catalogReady ? (
           <CommandButton command={commandRef("deploy.retryVerification", { chainId, address })} size="small">
             Verify on Etherscan
           </CommandButton>
