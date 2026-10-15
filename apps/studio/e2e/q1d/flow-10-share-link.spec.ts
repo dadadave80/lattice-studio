@@ -90,7 +90,8 @@ test.describe("Flow 10 step 6: Share (spec L503, IR L71)", () => {
 
   test("is disabled on an empty sheet with 'Place facets first'", async ({ page }) => {
     await openEmpty(page);
-    const share = titleBar(page).getByRole("button", { name: "Share", exact: true });
+    const menu = await openOverflowMenu(page);
+    const share = menu.getByRole("menuitem", { name: "Share" });
     await expect(share).toHaveAccessibleDescription(PLACE_FACETS_FIRST);
     await expect(share).toHaveAttribute("aria-disabled", "true");
   });
@@ -120,8 +121,7 @@ test.describe("Flow 10 step 6: Share (spec L503, IR L71)", () => {
       test(`Share is disabled with 'Place facets first' from the overflow menu`, async ({ page }) => {
         await openEmpty(page);
         await expectTier(page, tierAt(width));
-        // clickShare opens the overflow menu below 1024 px (`pages/shell.ts`); the item itself carries the
-        // same disabled reason as the wide title-bar button, so this asserts the item without activating it.
+        // The overflow menu's item carries the disabled reason; this asserts it without activating it.
         const menu = await openOverflowMenu(page);
         const item = menu.getByRole("menuitem", { name: "Share" });
         await expect(item).toHaveAccessibleDescription(PLACE_FACETS_FIRST);
@@ -404,7 +404,7 @@ test.describe("Flow 10 step 7: opening a share link (spec L504, IR L203)", () =>
  *    `@smoke`, since both are real "refused, newer version" paths a person could hit and the wording differs
  *    ("Studio schema" vs "Studio share format").
  *
- * 6. Narrow widths (768, 375): only Share's own control relocates for this flow, into the title bar's overflow
+ * 6. Narrow widths (768, 375): Share stays in the title bar's overflow
  *    "More" menu (`clickShare`, confirmed by both narrow describes' `expectTier` + overflow-menu tests passing
  *    at both widths). One more thing changes shape there, found empirically rather than read in advance: below
  *    1024 px the Console drawer starts collapsed ("Expand console" in the accessibility snapshot), so a "Link

@@ -77,7 +77,7 @@ test.describe("focus around deploying (spec L751-L761, WCAG 2.4.3)", () => {
     const review = await openDeployReview(page);
     await tickAcknowledgements(page, review);
     await closeWithEscape(page, review);
-    await titleBarButton(page, "Share");
+    await titleBarButton(page, "More");
     await roundTrip(page, () => runInPalette(page, "Export Safe batch…"), page.getByRole("dialog", { name: /Safe batch/ }));
   });
 

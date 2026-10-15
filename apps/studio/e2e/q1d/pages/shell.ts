@@ -1,6 +1,6 @@
 /**
- * The title bar (IR L60-L74, spec L355): the App menu, the save status, Share and the overflow menu ("More")
- * that swallows Share (and more) below 1024 px. Shared by every Q1d spec (Flows 10-11 touch all of it: Save,
+ * The title bar (IR L60-L74, spec L355): the App menu, the save status and the overflow menu ("More"), which
+ * holds Share at every width (and more below 1024 px). Shared by every Q1d spec (Flows 10-11 touch all of it: Save,
  * Save a copy…, Open…, Share and, at narrow widths, Export move in here).
  */
 import { expect, type Locator, type Page } from "@playwright/test";
@@ -33,7 +33,7 @@ export function appMenuItem(menu: Locator, label: string): Locator {
   return menu.getByRole("menuitem", { name: label });
 }
 
-/** The "More" overflow menu's trigger (icon button), shown below 1024 px in place of Share, the theme and ⌘K. */
+/** The "More" overflow menu's trigger (icon button): Share at every width; below 1024 px also the theme and the palette. */
 export function overflowTrigger(page: Page): Locator {
   return titleBar(page).getByRole("button", { name: "More" });
 }
@@ -46,16 +46,8 @@ export async function openOverflowMenu(page: Page): Promise<Locator> {
   return menu;
 }
 
-/**
- * Runs Share (`share.copyLink`) however this viewport shows it: the title bar's own button at 1024 px and
- * wider, or the overflow menu's "Share" item below it. Pointer path.
- */
+/** Runs Share (`share.copyLink`) from the overflow menu, where it lives at every width. Pointer path. */
 export async function clickShare(page: Page): Promise<void> {
-  const direct = titleBar(page).getByRole("button", { name: "Share", exact: true });
-  if (await direct.isVisible().catch(() => false)) {
-    await direct.click();
-    return;
-  }
   const menu = await openOverflowMenu(page);
   await menu.getByRole("menuitem", { name: "Share" }).click();
 }
