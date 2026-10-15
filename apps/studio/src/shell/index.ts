@@ -11,9 +11,11 @@ export {
 } from "./layout-tier";
 export type { LayoutTier } from "./layout-tier";
 export {
-  consoleMax, hidePane, PANE_NAMES, PANE_SIZES, paneShowing, paneVisibility, showPane, togglePane, toggledShowing,
+  consoleMax, hidePane, PANE_NAMES, PANE_SIZES, paneShowing, paneVisibility, sheetInsets, showPane, togglePane,
+  toggledShowing,
 } from "./panes";
-export type { Panes, PaneVisibility, ShownPane, ToggledPane } from "./panes";
+export type { Panes, PaneVisibility, SheetInsets, ShownPane, ToggledPane } from "./panes";
+export { currentSheetInsets, useSheetInsets } from "./sheet-insets";
 export { setConsoleSize, setInspectorSize, setLeftSize, setPaneOpen } from "./sizes";
 export { chipWords, toneFor, useProjectStatus, useStatusChip } from "./status";
 export type { StatusChipWords } from "./status";

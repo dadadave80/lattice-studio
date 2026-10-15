@@ -164,6 +164,25 @@ describe("drawers, 768-1279 px", () => {
     await expect.poll(showing).toEqual(["sheet", "console"]);
   });
 
+  test("an open drawer sets the sheet's inset on its side; closing it resets the inset to 0px", async () => {
+    await renderAt(1100);
+    const inset = (side: "start" | "end") => getComputedStyle(pane("sheet")).getPropertyValue(`--sheet-inset-${side}`).trim();
+    const root = () => document.querySelector("[data-layout]");
+    expect([inset("start"), inset("end")]).toEqual(["0px", "0px"]);
+
+    await bar().getByRole("button", { name: "Catalog" }).click();
+    await expect.poll(() => root()?.getAttribute("data-drawer")).toBe("left");
+    expect([inset("start"), inset("end")]).toEqual([`${session.get().panes.left.size}px`, "0px"]);
+
+    await bar().getByRole("button", { name: "Inspector" }).click();
+    await expect.poll(() => root()?.getAttribute("data-drawer")).toBe("inspector");
+    expect([inset("start"), inset("end")]).toEqual(["0px", `${session.get().panes.inspector.size}px`]);
+
+    await bar().getByRole("button", { name: "Inspector" }).click();
+    await expect.poll(() => root()?.hasAttribute("data-drawer")).toBe(false);
+    expect([inset("start"), inset("end")]).toEqual(["0px", "0px"]);
+  });
+
   test("Structure opens the left drawer on its tab", async () => {
     await renderAt(1100);
     await bar().getByRole("button", { name: "Structure" }).click();

@@ -71,6 +71,21 @@
   min-block-size: 0;
   overflow: hidden;
   background: var(--lx-ground);
+  --sheet-inset-start: 0px;
+  --sheet-inset-end: 0px;
+}
+
+/*
+ * How far an open drawer covers the sheet from each side (768-1279 px): what floats over the sheet offsets by
+ * these, so the drawer never slides over the tool strip, the title block or the core cell. The drawer doesn't
+ * animate, so neither do they.
+ */
+.shell[data-drawer="left"] .sheet {
+  --sheet-inset-start: var(--shell-left);
+}
+
+.shell[data-drawer="inspector"] .sheet {
+  --sheet-inset-end: var(--shell-inspector);
 }
 
 /* Banners (spec L384, L389): a strip under the title bar, above whichever panes show; nothing while empty. */

@@ -82,6 +82,7 @@ export function Shell() {
       data-layout={tier}
       data-console={seen.console}
       data-drawers={drawers ? "" : undefined}
+      data-drawer={drawers && seen.left ? "left" : drawers && seen.inspector ? "inspector" : undefined}
       style={style}
     >
       <header {...regionProps(regions.titlebar, styles.titlebar)}>
