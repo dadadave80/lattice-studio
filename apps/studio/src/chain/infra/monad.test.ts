@@ -9,7 +9,7 @@ describe("Monad Testnet", () => {
 
   test("carries its static facts", () => {
     expect(MONAD_TESTNET.gasCap).toBe(30_000_000n);
-    expect(MONAD_TESTNET.ensChainId).toBe(11155111);
+    expect(MONAD_TESTNET.ensChainIds).toEqual([11155111, 1]);
     expect(MONAD_TESTNET.nativeCurrency).toEqual({ name: "Monad", symbol: "MON", decimals: 18 });
     expect(chainInfo(MONAD_TESTNET)).toEqual({
       id: 10143,

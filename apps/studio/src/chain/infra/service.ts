@@ -24,9 +24,10 @@ import { accountBalance, accountKind } from "./account";
 import { chainInfo, chainName, findChain, findKnownChain, isRpcUrl, pickerChains, publicRpcUrls, type ChainSpec } from "./chains";
 import type { ChainClient, Clients } from "./clients";
 import {
-  CHAIN_CHECKS_NEED_CONNECTION, couldntRead, invalidEnsName, noEns, overrideIgnored, rpcNotAnswering, unsupportedChain,
+  CHAIN_CHECKS_NEED_CONNECTION, couldntRead, ensGatewayFailed, invalidEnsName, noEns, overrideIgnored, rpcNotAnswering,
+  unsupportedChain,
 } from "./copy";
-import { loadNormalize, resolveName, reverseName, type Normalize } from "./ens";
+import { isOffchainLookupFailure, loadNormalize, resolveName, reverseName, type Normalize } from "./ens";
 import { isTransportFailure, probeChain, readCodeAt, type ProbeResult } from "./probe";
 import { WALLETCONNECT_ID, WALLETCONNECT_NAME, type Wallet, type WalletState } from "./wallet";
 
@@ -260,7 +261,8 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
 
   /**
    * Kind, balance and name, read only on the selected chain and only while the wallet is on it: a wallet on a
-   * chain the person didn't choose (Ethereum, say) never makes Studio call that chain's RPCs.
+   * chain the person didn't choose (Ethereum, say) never makes Studio call that chain's RPCs for its kind or balance.
+   * The name is the exception: on a testnet it's looked up on Sepolia's ENS, then on Ethereum's when Sepolia has none.
    */
   const enrich = async (state: WalletState): Promise<void> => {
     const chain = spec(state.chainId);
@@ -294,18 +296,38 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
   // ---------------------------------------------------------------------------------------------------------
   // ENS
 
-  const ensClient = (chainId: number): { client: ChainClient; ensChainId: number } | { error: string } => {
+  /** The chains whose ENS `chainId`'s names resolve on, in order (Sepolia, then Ethereum, for a testnet). */
+  const ensChains = (chainId: number): { chains: readonly ChainSpec[] } | { error: string } => {
     const chain = findKnownChain(chainId, options.e2e);
     if (!chain) return { error: unsupported(chainId) };
-    if (chain.ensChainId === null) return { error: noEns(chain.name) };
-    const ensChain = findKnownChain(chain.ensChainId, options.e2e);
-    if (!ensChain) return { error: noEns(chain.name) };
-    return { client: clients.get(ensChain), ensChainId: ensChain.id };
+    const ensChains = chain.ensChainIds.flatMap((id) => findKnownChain(id, options.e2e) ?? []);
+    if (ensChains.length === 0) return { error: noEns(chain.name) };
+    return { chains: ensChains };
+  };
+
+  /**
+   * Reads each ENS in order, moving to the next only when one has no record. A failure is reported for the ENS it
+   * came from and stops the walk, so Sepolia being down never quietly becomes Ethereum's answer.
+   */
+  const walkEns = async <T>(
+    chains: readonly ChainSpec[],
+    subject: string,
+    read: (client: ChainClient, ensChainId: number) => Promise<T | null>,
+  ): Promise<Result<T | null, string>> => {
+    for (const ensChain of chains) {
+      try {
+        const found = await read(clients.get(ensChain), ensChain.id);
+        if (found !== null) return { ok: true, value: found };
+      } catch (error) {
+        return { ok: false, error: isOffchainLookupFailure(error) ? ensGatewayFailed(subject) : failure(ensChain.id, error) };
+      }
+    }
+    return { ok: true, value: null };
   };
 
   const resolve: ChainService["resolveEns"] = async (name, chainId) => {
     if (!isOnline()) return NEEDS_CONNECTION;
-    const target = ensClient(chainId);
+    const target = ensChains(chainId);
     if ("error" in target) return { ok: false, error: target.error };
     normalizer ??= normalizeLoader();
     let normalize: Normalize;
@@ -321,22 +343,14 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
     } catch {
       return { ok: false, error: invalidEnsName(name) };
     }
-    try {
-      return { ok: true, value: await resolveName(target.client, normalize, name, chainId, target.ensChainId) };
-    } catch (error) {
-      return { ok: false, error: failure(target.ensChainId, error) };
-    }
+    return walkEns(target.chains, name, (client, ensChainId) => resolveName(client, normalize, name, chainId, ensChainId));
   };
 
   const reverse: ChainService["reverseEns"] = async (address, chainId) => {
     if (!isOnline()) return NEEDS_CONNECTION;
-    const target = ensClient(chainId);
+    const target = ensChains(chainId);
     if ("error" in target) return { ok: false, error: target.error };
-    try {
-      return { ok: true, value: await reverseName(target.client, address, chainId, target.ensChainId) };
-    } catch (error) {
-      return { ok: false, error: failure(target.ensChainId, error) };
-    }
+    return walkEns(target.chains, address, (client, ensChainId) => reverseName(client, address, chainId, ensChainId));
   };
 
   // ---------------------------------------------------------------------------------------------------------
