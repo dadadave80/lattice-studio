@@ -17,7 +17,7 @@ import {
 } from "@/contracts";
 import { focusCard } from "@/a11y/focus";
 import { tabStopOf } from "./nodes";
-import { fitCards, locateCard, sheetViewport, zoomSheet } from "./sheet-view";
+import { fitCards, floatsDrawn, floatsSettled, locateCard, sheetViewport, zoomSheet } from "./sheet-view";
 import { MAX_ZOOM, MIN_ZOOM, percent, zoomStep } from "./viewport-math";
 
 type ZoomToArgs = CommandArgsOf<"sheet.zoomTo">;
@@ -193,7 +193,14 @@ const zoomTo = command<ZoomToArgs>({
   run: (ctx, { zoom }) => zoomed(ctx, zoom),
 });
 
-function fit(ctx: CommandContext): void {
+/**
+ * Fit and Zoom to selection frame the cards in the room the floats leave, so they wait for the floats to hold still
+ * first: while the sheet is still opening (a share link or a recipe fits as it loads), or while a drawer that
+ * opened with the selection is still moving them. Framed before then, cards would run under the tool strip or the
+ * core cell.
+ */
+async function fit(ctx: CommandContext): Promise<void> {
+  if (!floatsSettled()) await floatsDrawn();
   const viewport = fitCards();
   const count = Object.keys(ctx.project.layout).length;
   if (viewport) say(ctx, `Fit ${count} ${count === 1 ? "card" : "cards"} · ${percent(viewport.zoom)}.`);
@@ -220,8 +227,9 @@ const zoomSelection = command({
   palette: true,
   console: { verb: "zoom", sub: "selection", syntax: "zoom selection", parse: noArgs },
   enabled: (ctx) => (placedSelection(ctx).length ? OK : refuse(NO_SELECTION)),
-  run(ctx) {
+  async run(ctx) {
     const names = placedSelection(ctx);
+    if (!floatsSettled()) await floatsDrawn();
     const viewport = fitCards(names);
     if (viewport) say(ctx, `Zoomed to ${names.length === 1 ? names[0] : `${names.length} cards`} · ${percent(viewport.zoom)}.`);
   },

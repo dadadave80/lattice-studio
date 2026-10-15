@@ -111,6 +111,59 @@ export function fitBest(rect: Rect, size: Size, layouts: readonly Partial<Insets
   return best ?? fitRect(rect, size, options);
 }
 
+/** Screen px between a framed card and what floats beside it. */
+export const FLOAT_GAP = 16;
+
+/** What floats over the sheet's edges, in px relative to its top-left corner (null while one doesn't show). */
+export type SheetFloats = {
+  /** The tool strip, at the left. */
+  strip: Rect | null;
+  /** The init order legend, at the right. */
+  legend: Rect | null;
+  /** The core cell and the title block, at the bottom right. */
+  cell: Rect | null;
+  title: Rect | null;
+  /** The title block shows in full (its column runs beside the cards, not under them). */
+  full: boolean;
+  /** How far an open drawer covers the sheet from each side (the shell's sheet insets). */
+  inset: { start: number; end: number };
+  /** Screen px the ground rail runs above the higher of the cell's and the title block's tops. */
+  railGap: number;
+};
+
+/**
+ * The room Fit frames cards into (SH-02, CO-01): the room an open drawer leaves, minus the tool strip at its left,
+ * the init order legend at its right while it shows, and at the bottom either
+ * - the band under the ground rail (the higher of the core cell's and the title block's tops), so no core trace
+ *   runs under a card, or
+ * - the core cell's band alone, with the title block's column at the right while it's full, where a trace drops
+ *   below the cards (CO-01).
+ * Two layouts; `fitBest` takes the one that frames the cards larger. No float takes more than half the room either
+ * way (the tool strip a quarter), but a drawer counts in full: it really covers the sheet. Beside a drawer, cards
+ * keep `FIT_PADDING` from its edge.
+ */
+export function fitRoom(size: Size, floats: SheetFloats): Partial<Insets>[] {
+  const { strip, legend, cell, title, full, inset, railGap } = floats;
+  const room = Math.max(0, size.width - inset.start - inset.end);
+  /** A side's inset: the drawer's, plus how far past its edge the floats there reach (at most `most`). */
+  const side = (drawer: number, reach: number, most: number) =>
+    drawer + Math.min(most, Math.max(reach - drawer, drawer > 0 ? FIT_PADDING : 0, 0));
+  const fromRight = (box: Rect | null) => (box ? size.width - box.x + FLOAT_GAP : 0);
+  const fromBottom = (top: number | null) => (top === null ? 0 : Math.min(size.height - top + FLOAT_GAP, size.height / 2));
+  const left = side(inset.start, strip ? strip.x + strip.width + FLOAT_GAP : 0, room / 4);
+  const legendRight = fromRight(legend);
+  const tops = [cell?.y, title?.y].filter((y): y is number => y !== undefined);
+  const railTop = tops.length ? Math.min(...tops) - railGap : null;
+  const under = { left, right: side(inset.end, legendRight, room / 2), bottom: fromBottom(railTop) };
+  if (!full || !title) return [under];
+  const beside = {
+    left,
+    right: side(inset.end, Math.max(legendRight, fromRight(title)), room / 2),
+    bottom: fromBottom(cell ? cell.y - railGap : null),
+  };
+  return [under, beside];
+}
+
 /** What a sheet of `size` shows at `viewport`, in sheet units. */
 export function visibleRect(viewport: Viewport, size: Size): Rect {
   return {

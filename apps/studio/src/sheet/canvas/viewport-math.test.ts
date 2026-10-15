@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
-  centerOn, clampViewport, clampZoom, clearOf, fitBest, fitRect, gridGap, intersects, isViewport, MAX_ZOOM, MIN_ZOOM, percent, sameViewport, toScreen,
-  visibleRect, zoomAt, zoomStep, ZOOM_STOPS,
+  centerOn, clampViewport, clampZoom, clearOf, fitBest, fitRect, fitRoom, gridGap, intersects, isViewport, MAX_ZOOM, MIN_ZOOM, percent,
+  sameViewport, toScreen, visibleRect, type SheetFloats, zoomAt, zoomStep, ZOOM_STOPS,
 } from "./viewport-math";
 
 describe("zoom range and stops", () => {
@@ -118,6 +118,51 @@ describe("viewports", () => {
   test("intersects needs shared area", () => {
     expect(intersects({ x: 0, y: 0, width: 10, height: 10 }, { x: 5, y: 5, width: 10, height: 10 })).toBe(true);
     expect(intersects({ x: 0, y: 0, width: 10, height: 10 }, { x: 10, y: 0, width: 10, height: 10 })).toBe(false);
+  });
+});
+
+describe("fitRoom: the room an open drawer and the floats leave", () => {
+  const size = { width: 1100, height: 560 };
+  const cards = { x: 0, y: 0, width: 1600, height: 900 };
+  /** The floats at 1100 px, each shifted along with the drawer's inset the way the CSS moves them. */
+  function floats(start: number, end: number): SheetFloats {
+    return {
+      strip: { x: 16 + start, y: 16, width: 36, height: 330 },
+      legend: null,
+      cell: { x: 500 - end, y: 400, width: 290, height: 100 },
+      title: { x: 798 - end, y: 440, width: 286, height: 104 },
+      full: false,
+      inset: { start, end },
+      railGap: 8,
+    };
+  }
+  /** Where the fitted cards land on screen. */
+  const framed = (start: number, end: number) => toScreen(cards, fitBest(cards, size, fitRoom(size, floats(start, end))));
+
+  test("with no drawer: the tool strip at the left, the band under the rail at the bottom", () => {
+    expect(fitRoom(size, floats(0, 0))).toEqual([{ left: 68, right: 0, bottom: 184 }]);
+    const shown = framed(0, 0);
+    expect(shown.x).toBeGreaterThanOrEqual(68 - 1e-6);
+    expect(shown.x + shown.width).toBeLessThanOrEqual(1100 - 48 + 1e-6);
+  });
+
+  test("with the left drawer open: the strip moves with it, and the cards land right of the strip", () => {
+    expect(fitRoom(size, floats(240, 0))).toEqual([{ left: 308, right: 0, bottom: 184 }]);
+    const shown = framed(240, 0);
+    expect(shown.x).toBeGreaterThanOrEqual(308 - 1e-6);
+    expect(shown.x + shown.width).toBeLessThanOrEqual(1100 - 48 + 1e-6);
+  });
+
+  test("with the inspector open: the cards keep the padding from its edge", () => {
+    expect(fitRoom(size, floats(0, 316))).toEqual([{ left: 68, right: 364, bottom: 184 }]);
+    const shown = framed(0, 316);
+    expect(shown.x).toBeGreaterThanOrEqual(68 - 1e-6);
+    expect(shown.x + shown.width).toBeLessThanOrEqual(1100 - 364 + 1e-6);
+  });
+
+  test("a drawer counts in full, but the floats beside it take at most a share of what's left", () => {
+    const wideStrip = { ...floats(240, 0), strip: { x: 256, y: 16, width: 600, height: 40 } };
+    expect(fitRoom(size, wideStrip)[0]?.left).toBe(240 + (1100 - 240) / 4);
   });
 });
 
