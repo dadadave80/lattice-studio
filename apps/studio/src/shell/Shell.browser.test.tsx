@@ -318,6 +318,19 @@ describe("under 768 px", () => {
     expect(session.get().panes.narrow).toBe("sheet");
   });
 
+  test("320 px: the switcher's row scrolls, fades at the cut edge, and brings the picked tab into view", async () => {
+    await renderAt(320);
+    const list = bar().getByRole("tablist", { name: "Panes" }).element() as HTMLElement;
+    const frame = list.closest("[class*='switcher']:not([role])") as HTMLElement;
+    expect(list.scrollWidth).toBeGreaterThan(list.clientWidth);
+    await expect.poll(() => frame.hasAttribute("data-cut-end")).toBe(true);
+    await runCommand(commandRef("pane.show", { pane: "console" }), "api");
+    const tab = bar().getByRole("tab", { name: "Console" }).element() as HTMLElement;
+    await expect.poll(() => tab.getBoundingClientRect().right).toBeLessThanOrEqual(320.5);
+    await expect.poll(() => frame.hasAttribute("data-cut-start")).toBe(true);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
+  });
+
   test("the switcher takes arrow keys", async () => {
     await renderAt(600);
     const sheetTab = bar().getByRole("tab", { name: "Sheet" });
@@ -409,10 +422,10 @@ describe("under 768 px", () => {
     expect(titlebar.scrollWidth).toBeLessThanOrEqual(titlebar.clientWidth);
     for (const id of ["sheet"] as const) expect(pane(id).getBoundingClientRect().right).toBeLessThanOrEqual(320);
 
-    const name = bar().getByRole("button", { name: project.name });
-    await expect.element(name).toBeVisible();
-    const text = (name.element() as HTMLElement).querySelector("span") as HTMLElement;
-    expect(text.scrollWidth).toBeGreaterThan(text.clientWidth);
+    // "Not deployed" is never shortened, so not even a few letters of the name fit beside it: rather than one
+    // letter, the name leaves the bar and the switcher's Sheet tab carries it.
+    await expect.element(bar().getByRole("tab", { name: `Sheet · ${project.name}` })).toBeVisible();
+    await expect.element(bar().getByRole("button", { name: project.name })).not.toBeInTheDocument();
 
     // A deploy in flight: the chip shrinks to its dot and one word, and keeps its full words for assistive tech.
     seedDeployState({ phase: "pending", chainId: 11155111 });
@@ -421,6 +434,13 @@ describe("under 768 px", () => {
     const shown = (chip.element() as HTMLElement).querySelector("[aria-hidden='true']:not(:empty)") as HTMLElement;
     expect(shown.textContent).toBe("Pending");
     expect((chip.element() as HTMLElement).getBoundingClientRect().right).toBeLessThanOrEqual(320);
+    // Beside the shorter chip a few letters of the name fit again: it comes back truncated, never to one letter.
+    const name = bar().getByRole("button", { name: project.name });
+    await expect.element(name).toBeVisible();
+    const text = (name.element() as HTMLElement).querySelector("span") as HTMLElement;
+    expect(text.scrollWidth).toBeGreaterThan(text.clientWidth);
+    expect(text.clientWidth).toBeGreaterThanOrEqual(32);
+    await expect.element(bar().getByRole("tab", { name: "Sheet", exact: true })).toBeVisible();
     expect(titlebar.scrollWidth).toBeLessThanOrEqual(titlebar.clientWidth);
     expectNoOverlap(titlebar);
 
