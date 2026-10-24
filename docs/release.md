@@ -54,19 +54,21 @@ Related suites share a runner instead of each paying for the same install: `stat
 
 ## Linux screenshot baselines
 
-Every `toMatchScreenshot` state has two committed baselines: `*-chromium-darwin.png`, made on a Mac, where Studio was built, and `*-chromium-linux.png`, made on `ubuntu-26.04`, where `ci.yml`'s `browser` job runs. The Linux set landed on October 9, 2026 (#18, #19); before that the `browser` job failed on missing references, not on an actual difference.
+Every `toMatchScreenshot` state has two committed baselines: `*-chromium-darwin.png`, made on a Mac, where Studio was built, and `*-chromium-linux.png`, made on `ubuntu-24.04`, where `ci.yml`'s `browser` job runs. The Linux set landed on October 9, 2026 (#18, #19); before that the `browser` job failed on missing references, not on an actual difference.
 
-`update-screenshots.yml` (`workflow_dispatch` only) regenerates the Linux set: it runs `bun x vitest run --update` for `apps/studio` on `ubuntu-26.04`, after deleting the committed Linux set so every reference is redrawn on that image, and writes a `chromium-linux` reference beside each test's `chromium-darwin` one, and uploads every `*-chromium-linux.png` it produced as a build artifact.
+`update-screenshots.yml` (`workflow_dispatch` only) regenerates the Linux set: it runs `bun x vitest run --update` for `apps/studio` on `ubuntu-24.04`, after deleting the committed Linux set so every reference is redrawn on that image, and writes a `chromium-linux` reference beside each test's `chromium-darwin` one, and uploads every `*-chromium-linux.png` it produced as a build artifact.
 
 **Needs David:** when a change moves a state, dispatch `update-screenshots.yml`, download the `chromium-linux-baselines` artifact, review the images, and commit them into each test's `__screenshots__` folder next to the `chromium-darwin` files. This workflow only produces and uploads the images; nothing commits them automatically.
 
 ## Runner image
 
-Every workflow pins its runner image (`runs-on: ubuntu-26.04`), never `ubuntu-latest`. When `ubuntu-latest` moved from 24.04 to 26.04 in October 2026, the same commit that had passed failed on a rerun, because the new image renders text differently and one screenshot drifted past the 3% tolerance. With a pinned image, only a commit can change the runner.
+Every workflow pins its runner image (`runs-on: ubuntu-24.04`), never `ubuntu-latest`. When `ubuntu-latest` moved from 24.04 to 26.04 in October 2026, the same commit that had passed failed on a rerun, because the new image renders text differently and one screenshot drifted past the 3% tolerance. With a pinned image, only a commit can change the runner.
+
+Studio stays on 24.04 for now: on 26.04, the component tests failed in 4 of 7 runs because some test files never loaded ("Failed to fetch dynamically imported module"), different files each time. Fix that before moving to 26.04.
 
 To move to a newer image, roughly once a year when GitHub makes a new Ubuntu LTS image generally available (see [actions/runner-images](https://github.com/actions/runner-images)), and before GitHub retires the pinned one:
 
-1. On a branch from `dev`, replace `ubuntu-26.04` with the new label in every file under `.github/workflows/`.
+1. On a branch from `dev`, replace `ubuntu-24.04` with the new label in every file under `.github/workflows/`.
 2. Push, then dispatch `update-screenshots.yml` on that branch: `gh workflow run update-screenshots.yml --ref <branch>`.
 3. Download the `chromium-linux-baselines` artifact, review the images, and commit them over the old ones.
 4. Open the pull request. CI runs on the new image against the new baselines.
