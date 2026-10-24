@@ -16,6 +16,11 @@ inputs:
     description: "Space-separated Playwright browsers to install, e.g. `chromium` or `chromium webkit`; empty for none"
     default: ""
 
+outputs:
+  playwright-key:
+    description: "The cache key the browsers were restored under, for warm-cache.yml to save under"
+    value: ${{ steps.playwright.outputs.key }}
+
 runs:
   using: composite
   steps:
@@ -36,13 +41,15 @@ runs:
       with:
         version: v1.8.3 # contracts.md §2: David chose 1.8.3 over the planned 1.8.1 (2026-09-23, QUESTIONS Q1)
         cache: false
-    # Browsers are keyed on the installed Playwright's version, so an unrelated lockfile change keeps the hit.
+    # Browsers are keyed on the installed Playwright's version, so an unrelated lockfile change keeps the hit, and
+    # on the OS release: Playwright builds WebKit per Ubuntu release, and one cached on 26.04 won't start on 24.04.
     - if: inputs.browsers != ''
       id: playwright
       shell: bash
       run: |
         version=$(bun -e 'console.log(require("./node_modules/@playwright/test/package.json").version)')
-        echo "key=playwright-${{ runner.os }}-$version-$(echo '${{ inputs.browsers }}' | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+        os=$(. /etc/os-release && echo "$ID-$VERSION_ID")
+        echo "key=playwright-$os-$version-$(echo '${{ inputs.browsers }}' | tr ' ' '-')" >> "$GITHUB_OUTPUT"
     - if: inputs.browsers != ''
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:

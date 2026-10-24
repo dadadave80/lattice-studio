@@ -53,16 +53,14 @@ jobs:
         uses: ./.github/actions/setup
         with:
           browsers: ${{ matrix.browser }}
-      - id: key
-        run: echo "key=playwright-${{ runner.os }}-$(bun -e 'console.log(require("./node_modules/@playwright/test/package.json").version)')-${{ matrix.browser }}" >> "$GITHUB_OUTPUT"
       - id: exists
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ steps.key.outputs.key }}
+          key: ${{ steps.setup.outputs.playwright-key }}
           lookup-only: true
       - if: steps.exists.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ steps.key.outputs.key }}
+          key: ${{ steps.setup.outputs.playwright-key }}
