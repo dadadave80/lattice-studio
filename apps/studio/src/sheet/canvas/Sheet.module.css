@@ -51,10 +51,13 @@
  */
 .backToContent:global(.react-flow__panel) {
   margin-block-end: calc(var(--lx-space-6) + var(--lx-core-lift, 0px));
+  translate: calc((var(--sheet-inset-start, 0px) - var(--sheet-inset-end, 0px)) / 2) 0;
 }
 
+/* Floats keep a grid step in from the sheet's edge, or from an open drawer's (`--sheet-inset-*`, the shell's). */
 .minimap {
   margin: var(--lx-space-4);
+  margin-inline-end: calc(var(--lx-space-4) + var(--sheet-inset-end, 0px));
   border: var(--lx-stroke-hair) solid var(--lx-border);
   background: var(--lx-panel);
 }

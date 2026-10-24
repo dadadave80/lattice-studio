@@ -459,7 +459,9 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
         } else {
           await activate(page, "keyboard", chain);
           await expect(sepolia).toBeVisible();
-          for (let i = 0; i < 5 && !(await sepolia.evaluate((el) => el === document.activeElement || el.getAttribute("data-highlighted") !== null)); i += 1) {
+          // As many presses as there are chains: each chain added to the picker moves Sepolia further from Anvil.
+          const options = await page.getByRole("option").count();
+          for (let i = 0; i < options && !(await sepolia.evaluate((el) => el === document.activeElement || el.getAttribute("data-highlighted") !== null)); i += 1) {
             await page.keyboard.press("ArrowUp");
           }
           await page.keyboard.press("Enter");

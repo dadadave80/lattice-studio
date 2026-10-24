@@ -76,3 +76,20 @@
 .status {
   display: block;
 }
+
+/* A link-styled button inside a quiet line (Etherscan's hint to Settings → Deploy). */
+.inlineLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--lx-text);
+  text-decoration: underline;
+  text-underline-offset: var(--lx-stroke-heavy);
+  cursor: pointer;
+}
+
+.inlineLink:hover {
+  color: var(--lx-accent-strong);
+}

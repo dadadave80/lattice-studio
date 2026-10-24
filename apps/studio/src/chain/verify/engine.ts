@@ -3,7 +3,7 @@
  * to a terminal outcome and writes the result back through `putDeployment`, so the deploy machine's "Verifying"
  * turns "Live" once it sees the record's `verification` leave "pending" (`chain/deploy/machine.ts`'s `onRecords`).
  *
- * One job runs per record at a time (the `inFlight` set), shared between the background watcher (`watcher.ts`) and
+ * One job runs per record at a time (`verifyJobs` in `in-flight.ts`), shared between the background watcher (`watcher.ts`) and
  * Retry verification, so a retry's write to "pending" never starts a second job alongside one already running.
  * Every write re-reads the record first and writes only the `verification` field back onto whatever's freshest
  * (S8c may be updating `tx` or `block` on the same record concurrently), and never touches a record that moved on
@@ -22,6 +22,7 @@ import { etherscanServes, sourcifyServes, unverifiableChainName } from "./chains
 import { couldntVerifyLine, couldntVerifyOnEtherscanLine, ETHERSCAN_NOT_SET_UP, etherscanVerifiedLine, verifiedLine } from "./copy";
 import { ETHERSCAN_BASE, etherscanCompilerVersion, pollEtherscan, scrub, submitToEtherscan } from "./etherscan";
 import { etherscanOutcomes } from "./etherscan-outcomes";
+import { verifyJobs, type VerifyLeg } from "./in-flight";
 import type { VerifyDeps } from "./ports";
 import { pollSourcify, sourcifyApiFor, submitToSourcify } from "./sourcify";
 
@@ -38,14 +39,6 @@ function recordKey(d: Pick<Deployment, "chainId" | "address">): string {
 /** Etherscan's backoff, between submissions it can't take yet and between polls; the last interval repeats. */
 const ETHERSCAN_INTERVALS_MS = [5_000, 5_000, 10_000, 15_000, 20_000, 30_000];
 
-type Leg = "sourcify" | "etherscan";
-
-/** Jobs already running, one entry per record and leg, so the watcher and a retry never submit the same one twice. */
-const inFlight = new Set<string>();
-
-function legKey(d: Pick<Deployment, "chainId" | "address">, leg: Leg): string {
-  return `${recordKey(d)}:${leg}`;
-}
 
 /** Resolves after `ms`, or at once when `signal` was already aborted, or as soon as it aborts meanwhile. */
 function wait(deps: VerifyDeps, ms: number, signal?: AbortSignal): Promise<void> {
@@ -256,34 +249,36 @@ export async function verifyOnEtherscan(deps: VerifyDeps, record: Deployment, ke
 }
 
 async function sourcifyIfNeeded(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
-  if (record.verification !== "pending") return;
-  const key = legKey(record, "sourcify");
-  if (inFlight.has(key)) return;
-  inFlight.add(key);
+  if (record.verification !== "pending" || verifyJobs.has(record, "sourcify")) return;
+  verifyJobs.add(record, "sourcify");
   try {
     await verifyRecord(deps, record, signal);
   } finally {
-    inFlight.delete(key);
+    verifyJobs.delete(record, "sourcify");
   }
 }
 
 async function etherscanIfNeeded(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
-  const leg = legKey(record, "etherscan");
-  if (inFlight.has(leg)) return;
-  inFlight.add(leg);
+  // Checked before the entry is added, with nothing awaited between, so a record with no key or a chain
+  // Etherscan doesn't serve never reads "Verifying on Etherscan", not even for a turn.
+  const due = (key: string | undefined): key is string =>
+    key !== undefined && etherscanServes(record.chainId) && etherscanOutcomes.get(record) === undefined && !signal?.aborted;
+  let key: string | undefined = deps.etherscanKey();
+  if (verifyJobs.has(record, "etherscan") || !due(key)) return;
+  verifyJobs.add(record, "etherscan");
   try {
-    for (;;) {
-      const key = deps.etherscanKey();
-      if (key === undefined || etherscanOutcomes.get(record) !== undefined) return;
+    while (due(key)) {
       await verifyOnEtherscan(deps, record, key, signal);
-      if (signal?.aborted || deps.etherscanKey() === key) return;
+      const used: string = key;
+      key = deps.etherscanKey();
+      if (signal?.aborted || key === used) return;
       // The key changed while this job ran: a failure the old key caused says nothing about the new one.
       const outcome = etherscanOutcomes.get(record);
       if (outcome?.outcome !== "failed" || !outcome.keyed) return;
       etherscanOutcomes.clear(record);
     }
   } finally {
-    inFlight.delete(leg);
+    verifyJobs.delete(record, "etherscan");
   }
 }
 
@@ -297,8 +292,8 @@ export async function verifyIfNeeded(deps: VerifyDeps, record: Deployment, signa
 }
 
 /** @internal Tests: whether a job for this record is running now. */
-export function verifyingNow(target: Pick<Deployment, "chainId" | "address">, leg: Leg = "sourcify"): boolean {
-  return inFlight.has(legKey(target, leg));
+export function verifyingNow(target: Pick<Deployment, "chainId" | "address">, leg: VerifyLeg = "sourcify"): boolean {
+  return verifyJobs.has(target, leg);
 }
 
 /**
@@ -322,7 +317,7 @@ export async function retryVerification(target: { chainId: number; address: Addr
   // for either) nor a second job on the same record would follow taking this back to "pending".
   const retrySourcify = found.verification === "failed";
   const outcome = etherscanOutcomes.get(found);
-  const etherscanRunning = inFlight.has(legKey(found, "etherscan"));
+  const etherscanRunning = verifyJobs.has(found, "etherscan");
   const etherscanOpen = etherscanServes(found.chainId) && outcome?.outcome !== "verified" && !etherscanRunning;
   const retryEtherscan = etherscanOpen && deps.etherscanKey() !== undefined;
   if (!retrySourcify && !retryEtherscan) {

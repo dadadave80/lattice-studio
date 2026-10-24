@@ -74,5 +74,16 @@ export function invalidEnsName(name: string): string {
   return `“${name}” isn't a valid ENS name.`;
 }
 
+/** No address on any ENS Studio read for the chain: "safe.eth has no address on Sepolia's or Ethereum's ENS." */
+export function noEnsRecord(name: string, registries: readonly string[]): string {
+  if (registries.length === 0) return `${name} doesn't resolve to an address.`;
+  return `${name} has no address on ${orList(registries.map((registry) => `${registry}'s`))} ENS.`;
+}
+
+/** A CCIP-Read gateway that didn't answer: the name's offchain resolver, not the chain's RPC. */
+export function ensGatewayFailed(name: string): string {
+  return `Couldn't resolve ${name}: its offchain resolver didn't answer.`;
+}
+
 /** WalletConnect without a project id in this build (CCR: `env.walletConnectProjectId`). */
 export const WALLETCONNECT_NOT_SET_UP = "WalletConnect isn't set up in this build of Studio.";

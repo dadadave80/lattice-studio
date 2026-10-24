@@ -33,7 +33,7 @@ Lattice Studio's checks run inside the same bundle that a compromised build woul
 
 ## Privacy
 
-No analytics and no error reporting unless enabled by the person using Studio. Share links live in the URL fragment, which a server never sees. RPC providers see the addresses Studio reads; Sourcify and Etherscan receive the sources they verify, which are public anyway.
+No analytics and no error reporting unless enabled by the person using Studio. Share links live in the URL fragment, which a server never sees. RPC providers see the addresses Studio reads and the ENS names it resolves (on a testnet, a name Sepolia's ENS doesn't have is looked up through Ethereum's public RPCs); Sourcify and Etherscan receive the sources they verify, which are public anyway.
 
 ### The Etherscan API key
 
@@ -41,8 +41,10 @@ Studio verifies a diamond on Etherscan with an API key from one of two places. A
 
 ## Reporting a problem
 
-Reporting isn't open yet: this repository has no public home, and no contact for a report has been agreed on.
+Report a vulnerability privately through GitHub: [open a draft security advisory](https://github.com/dadadave80/lattice-studio/security/advisories/new). If you can't use GitHub, email daveproxy80@gmail.com. Don't open a public issue for a vulnerability.
 
-**Needs David:** once this repository has a GitHub remote (`docs/release.md`), turn on private vulnerability reporting for it (Security → Report a vulnerability), and this section switches to pointing there.
+Include the affected version or commit, the steps to reproduce it, and what an attacker could do with it. You'll get an answer in the advisory or by email, and the fix is credited to you unless you'd rather it wasn't.
+
+This covers this repository: the app, the CLI and the catalog generator. A problem in the Lattice contracts belongs in [`dadadave80/lattice`](https://github.com/dadadave80/lattice/security/advisories/new).
 
 Studio never asks for a seed phrase, a private key, or an RPC URL with a credential in it, and a real report never needs to include one either.

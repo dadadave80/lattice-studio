@@ -1,7 +1,9 @@
 import type { Arg, Catalog, FieldModel } from "@lattice-studio/core";
 import { formatAddress, isAddress, isNotImplemented, lines, toChecksum } from "@lattice-studio/core";
 import { useState } from "react";
-import { chainService, getCatalog, session, useOnline, useSession } from "@/contracts";
+import { chainService, env, getCatalog, session, useOnline, useSession } from "@/contracts";
+import { ensRegistryNames } from "@/chain/infra/chains";
+import { noEnsRecord } from "@/chain/infra/copy";
 import { edit } from "@/state";
 import { Button } from "@/ui/buttons/Button";
 import { TextField } from "@/ui/fields/TextField";
@@ -84,7 +86,7 @@ export function AddressInput({ field, value, description, error, disabledReason,
       const resolved = await service.resolveEns(name, chainId);
       if (session.get().chainId !== chainId) return ensChainChanged(name);
       if (!resolved.ok) return resolved.error;
-      if (resolved.value === null) return `${name} doesn't resolve to an address.`;
+      if (resolved.value === null) return noEnsRecord(name, ensRegistryNames(chainId, env.e2e));
       return await store(resolved.value, name);
     } catch (caught) {
       if (isNotImplemented(caught)) return caught.message;

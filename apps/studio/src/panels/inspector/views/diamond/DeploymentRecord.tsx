@@ -2,14 +2,15 @@ import type { Deployment, Hex } from "@lattice-studio/core";
 import { formatAddress, formatTime } from "@lattice-studio/core";
 import { forgeVerifyCommand } from "@/chain/verify/copy";
 import { useEtherscanOutcome } from "@/chain/verify/etherscan-outcomes";
+import { useEtherscanInFlight } from "@/chain/verify/in-flight";
 import { etherscanBuildKey, etherscanKeyFrom } from "@/chain/verify/key";
-import { commandRef, now, useSettings } from "@/contracts";
+import { commandRef, log, now, openDialog, useCatalogStatus, useSettings } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { copyText } from "@/ui/copy/copy-text";
 import sheet from "../../shared/sheet.module.css";
 import { shortHash } from "@/app/format";
-import { etherscanFailureReason, etherscanWord, statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
+import { etherscanFailureReason, etherscanOffer, etherscanWord, statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
 import type { RecordCheck } from "./use-record-checks";
 import styles from "./diamond.module.css";
 
@@ -32,6 +33,12 @@ export type DeploymentRecordProps = {
   onRetry(): void;
 };
 
+/** Etherscan's API key lives in Settings → Deploy; the hint under a record opens it there. */
+function openDeploySettings(): void {
+  openDialog("settings", { group: "deploy" });
+  log({ tag: "Note", text: "Opened Settings → Deploy." });
+}
+
 /** One deployment record in the Deployments list (IR L119): status, address, recipe hash, verification, time. */
 export function DeploymentRecord({ record, currentHash, chainName, explorer, chainKnown, check, online, onRetry }: DeploymentRecordProps) {
   const { chainId, address } = record;
@@ -39,9 +46,13 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, cha
   const failureReason = verificationFailureReason(record, online);
   const etherscanOutcome = useEtherscanOutcome(record);
   const etherscanKeySet = etherscanKeyFrom(useSettings((s) => s.etherscanApiKey), etherscanBuildKey()) !== undefined;
-  const etherscan = etherscanWord(record, etherscanOutcome, online, etherscanKeySet);
+  const etherscanInFlight = useEtherscanInFlight(record);
+  const etherscan = etherscanWord(record, etherscanOutcome, online, etherscanInFlight);
   const etherscanReason = etherscanFailureReason(record, etherscanOutcome, online);
+  const offer = etherscanOffer(record, etherscanOutcome, { online, inFlight: etherscanInFlight, keySet: etherscanKeySet });
   const sourcifyFailed = record.verification === "failed";
+  // Etherscan gets the proxy's build from the catalog: pressed while it loads, the job could only fail.
+  const catalogReady = useCatalogStatus().status === "ready";
   return (
     <li className={sheet.item} data-record={`${chainId}:${address}`}>
       <div className={sheet.itemLine}>
@@ -62,6 +73,15 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, cha
       {failureReason ? <span className={sheet.text}>{failureReason}</span> : null}
       {etherscan ? <span className={styles.quiet}>{etherscan}</span> : null}
       {etherscanReason ? <span className={sheet.text}>{etherscanReason}</span> : null}
+      {offer === "add-key" ? (
+        <span className={styles.quiet}>
+          {"Add an Etherscan API key in "}
+          <button type="button" className={styles.inlineLink} onClick={openDeploySettings}>
+            Settings
+          </button>
+          {" to verify there too."}
+        </span>
+      ) : null}
       {check === "found" ? <span className={styles.quiet}>{`Code found on ${chainName}.`}</span> : null}
       {check === "empty" ? <span className={sheet.text}>{`No code at this address on ${chainName}.`}</span> : null}
       {check === "failed" ? (
@@ -84,6 +104,11 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, cha
         {sourcifyFailed || etherscanReason !== undefined ? (
           <CommandButton command={commandRef("deploy.retryVerification", { chainId, address })} size="small">
             Retry verification
+          </CommandButton>
+        ) : null}
+        {offer === "verify" && !sourcifyFailed && catalogReady ? (
+          <CommandButton command={commandRef("deploy.retryVerification", { chainId, address })} size="small">
+            Verify on Etherscan
           </CommandButton>
         ) : null}
         {sourcifyFailed ? (
