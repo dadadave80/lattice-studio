@@ -46,7 +46,9 @@ jobs:
         run: |
           git ls-files -z '*-chromium-linux.png' | xargs -0 rm
           bun x vitest run --update --passWithNoTests
+      # A failing test elsewhere in the suite doesn't stop the baselines it drew from being uploaded.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
         with:
           name: chromium-linux-baselines
           path: apps/studio/**/__screenshots__/**/*-chromium-linux.png
