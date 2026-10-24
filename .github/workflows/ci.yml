@@ -29,7 +29,7 @@ concurrency:
 jobs:
   changes:
     name: Changed paths
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     outputs:
       code: ${{ steps.groups.outputs.code }}
       app: ${{ steps.groups.outputs.app }}
@@ -61,7 +61,7 @@ jobs:
     name: Check, unit tests and size
     needs: changes
     if: needs.changes.outputs.code == 'true' || needs.changes.outputs.size == 'true'
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # typecheck.ts runs TypeScript's compiler under Node (contracts §2: TS 7 has no JS API yet).
@@ -94,7 +94,7 @@ jobs:
     name: Component tests (Vitest Browser Mode)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
@@ -115,7 +115,7 @@ jobs:
     name: End to end (Playwright, ${{ matrix.name }})
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     # Split by project, so every test runs exactly once: playwright.config.ts's `chromium` project (every spec)
     # across four shards, and its `webkit-smoke` project (the @smoke set, spec "Screen readers, tier 1") on its
     # own runner, the only one that installs WebKit.
@@ -148,7 +148,7 @@ jobs:
     name: Performance budgets (build, Lighthouse CI, benchmarks)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -176,7 +176,7 @@ jobs:
     name: Foundry (chain, Sepolia fork, golden, catalog drift)
     needs: changes
     if: needs.changes.outputs.golden == 'true' || needs.changes.outputs.chain == 'true' || needs.changes.outputs.catalog == 'true'
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     env:
       LATTICE_DIR: ${{ github.workspace }}/lattice
     steps:
