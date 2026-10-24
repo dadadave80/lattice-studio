@@ -17,7 +17,7 @@ env:
 
 jobs:
   release-please:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       # The lattice-release-please app's token, as in Lattice: a PR opened with the default token runs no
       # workflows, and GitHub signs the commits an app makes through the API.

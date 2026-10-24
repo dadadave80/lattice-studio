@@ -21,7 +21,7 @@ env:
 jobs:
   nightly-lattice-dev:
     name: Golden and chain tests against Lattice dev
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -74,7 +74,7 @@ jobs:
   # start other workflows with. Those runs report on their own; this job fails only if a dispatch is refused.
   full-suite-on-dev:
     name: Dispatch the full CI on dev
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       actions: write
     steps:

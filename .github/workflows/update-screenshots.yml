@@ -1,6 +1,6 @@
 # Regenerates the `chromium-linux` screenshot baselines (§17 audit #79, spec L937): every `toMatchScreenshot`
 # baseline committed today is `*-chromium-darwin.png` (made on a Mac), but `ci.yml`'s `browser` job runs on
-# `ubuntu-latest`, so the very first Linux run has no `chromium-linux` reference to compare against and the
+# `ubuntu-26.04`, so the very first Linux run has no `chromium-linux` reference to compare against and the
 # Components gate fails on missing baselines, not a real difference. Manual only (`workflow_dispatch`): this
 # writes an artifact for a person to review and commit, it never commits on its own and never runs as part of a
 # pull request. Committing the result waits on David's repository existing (HANDOFF.md D4; docs/release.md).
@@ -18,8 +18,8 @@ env:
 
 jobs:
   update-baselines:
-    name: bun x vitest run --update (chromium, ubuntu-latest)
-    runs-on: ubuntu-latest
+    name: bun x vitest run --update (chromium, ubuntu-26.04)
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -39,9 +39,13 @@ jobs:
       # `--update` flag directly: every `toMatchScreenshot` call without a matching `chromium-linux` reference
       # writes one instead of failing, and platform naming means the committed `chromium-darwin` baselines are
       # never touched.
-      - name: Regenerate every missing chromium-linux baseline
+      # `--update` leaves a reference alone while it still matches within tolerance, so a set made on an older
+      # runner image would survive half-redrawn. Deleting them first redraws every one on this image.
+      - name: Regenerate every chromium-linux baseline
         working-directory: apps/studio
-        run: bun x vitest run --update --passWithNoTests
+        run: |
+          find . -path ./node_modules -prune -o -name '*-chromium-linux.png' -print -delete
+          bun x vitest run --update --passWithNoTests
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: chromium-linux-baselines
