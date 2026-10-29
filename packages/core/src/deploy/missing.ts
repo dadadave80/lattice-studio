@@ -70,9 +70,7 @@ function order(args: MissingDeploysArgs): Result<{ items: Item[]; skipped: strin
       return ok(null);
     }
     visiting.add(key);
-    // Since Lattice 0.5.0 the factory's constructor reverts InvalidRegistry while its registry has no code.
-    const implied = item.name === "LatticeFactory" ? ["LatticeRegistry"] : [];
-    for (const dependency of [...implied, ...(item.release.dependsOn ?? [])]) {
+    for (const dependency of item.release.dependsOn ?? []) {
       const visited = visit(dependency, name);
       if (!visited.ok) return visited;
     }

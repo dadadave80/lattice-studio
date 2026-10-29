@@ -157,14 +157,14 @@ The analysis is one pure-TypeScript package. The app, the CLI and the tests all 
 
 ```console
 $ bun packages/cli/src/main.ts check docs/examples/erc20.recipe.json
-ERC20 · recipe 0xd02adc02de731b6e76713fd1b7288d72fdda33edc14ee3fe3b5877c64632ec32 · Lattice 0.5.0
+ERC20 · recipe 0x5afa323c9649e2cffa570b1b8034ffbe9d6df3a9edbb0920c727ecb2483cd994 · Lattice 0.5.0
 1 facet · 14 selectors
 2 warnings
   Warning  CORE-04  Plain ETH sent to this diamond will revert.
   Warning  INIT-05  2 fields still use example values, including name (Example Token) and symbol (EXT).
 
 $ bun packages/cli/src/main.ts plan docs/examples/erc20.recipe.json
-ERC20 · recipe 0xd02adc02de731b6e76713fd1b7288d72fdda33edc14ee3fe3b5877c64632ec32 · Lattice 0.5.0
+ERC20 · recipe 0x5afa323c9649e2cffa570b1b8034ffbe9d6df3a9edbb0920c727ecb2483cd994 · Lattice 0.5.0
 Cut plan · the core and 1 facet · 14 selectors
 [00] ADD DiamondLoupeFacet 0xD943…479B · 4/4 selectors · 0.5.0
 [01] ADD ERC165Facet 0xfDbE…F2f6 · 1/1 selector · 0.5.0

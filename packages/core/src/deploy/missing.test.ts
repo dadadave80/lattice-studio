@@ -33,7 +33,7 @@ const CODE: Record<string, Hex> = {
 
 const catalog: Catalog = makeCatalog({
   registry: release("LatticeRegistry", CODE.LatticeRegistry ?? "0x"),
-  factory: release("LatticeFactory", CODE.LatticeFactory ?? "0x"),
+  factory: release("LatticeFactory", CODE.LatticeFactory ?? "0x", ["LatticeRegistry"]),
   libraries: [{ name: "PoseidonT3", release: release("PoseidonT3", CODE.PoseidonT3 ?? "0x") }],
   facets: [
     makeFacet({ name: "ERC20", release: release("ERC20", CODE.ERC20 ?? "0x") }),
