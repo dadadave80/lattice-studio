@@ -1,0 +1,824 @@
+{
+  "name": "UniswapV3Adapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "asset",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "deploy",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "deployed",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "emergencyWithdraw",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "recovered",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "fee",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint24",
+          "internalType": "uint24"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "harvest",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "healthFactor",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isPaused",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "minHealthFactor",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "onERC721Received",
+      "inputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "operator",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pool",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "positionManager",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "reentrancyGuardEntered",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "rewardRecipient",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setOperator",
+      "inputs": [
+        {
+          "name": "operator_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setRewardRecipient",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setSlippageBps",
+      "inputs": [
+        {
+          "name": "slippageBps_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setTwapWindow",
+      "inputs": [
+        {
+          "name": "twapWindow_",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "slippageBps",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "token0",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "token1",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "tokenId",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "totalAssetsManaged",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "twapWindow",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "vault",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "withdraw",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "withdrawn",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Deployed",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "EmergencyWithdrawn",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "toVault",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "recovered",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OperatorSet",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RewardRecipientSet",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RewardsForwarded",
+      "inputs": [
+        {
+          "name": "rewardToken",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "UniswapV3AdapterConfigured",
+      "inputs": [
+        {
+          "name": "positionManager",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "pool",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "token0",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "token1",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "fee",
+          "type": "uint24",
+          "indexed": false,
+          "internalType": "uint24"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "UniswapV3PositionMinted",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "liquidity",
+          "type": "uint128",
+          "indexed": false,
+          "internalType": "uint128"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "UniswapV3SlippageSet",
+      "inputs": [
+        {
+          "name": "slippageBps",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "UniswapV3TwapWindowSet",
+      "inputs": [
+        {
+          "name": "twapWindow",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AdapterSafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterHealthFactorBreached",
+      "inputs": [
+        {
+          "name": "resulting",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "floor",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterInvalidOraclePrice",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterInvalidRecipient",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterNothingToDeploy",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterPaused",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterRewardForwardFailed",
+      "inputs": [
+        {
+          "name": "rewardToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterUnauthorized",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterZeroAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TickOutOfBounds",
+      "inputs": [
+        {
+          "name": "tick",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UniswapV3AdapterBadTickSpacing",
+      "inputs": [
+        {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UniswapV3AdapterDeployOffTwap",
+      "inputs": [
+        {
+          "name": "consumed0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "counted0",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UniswapV3AdapterPoolMismatch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "UniswapV3AdapterPositionsCallFailed",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UniswapV3AdapterSlippageTooHigh",
+      "inputs": [
+        {
+          "name": "slippageBps",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxBps",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UniswapV3AdapterTwapWindowZero",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x38d52e0f": {
+        "notice": "Returns the address of the underlying asset this strategy manages."
+      },
+      "0x775c300c": {
+        "notice": "Sweeps the adapter's idle asset balance into the external protocol.",
+        "dev": "Required because the vault PUSHES funds via a bare ERC-20 transfer (no callback). Reverts `ProtocolAdapterNothingToDeploy` if the idle balance is zero."
+      },
+      "0xdb2e21bc": {
+        "notice": "Fully exits the protocol position and returns all recovered assets to the vault.",
+        "dev": "Intended for the emergency path; callable by an authorized guardian/admin even when the adapter is paused."
+      },
+      "0xddca3f43": {
+        "notice": "Returns the pool fee tier (hundredths of a bip)."
+      },
+      "0x4641257d": {
+        "notice": "Claims reward tokens from the protocol and forwards them RAW (no swap) to the configured recipient.",
+        "dev": "Safe against zero-claim and fee-on-transfer reward tokens; never reverts `withdraw`."
+      },
+      "0x22841f01": {
+        "notice": "Returns the current health factor (WAD, 1e18 == 1.0) of the adapter's position.",
+        "dev": "Supply-only adapters return `type(uint256).max` (no debt). Leverage adapters return collateralValue * liquidationThreshold / debtValue."
+      },
+      "0xb187bd26": {
+        "notice": "Returns true when the adapter is paused or emergency-stopped, or the external protocol reports the asset paused/frozen. When true, `deploy()` must be a no-op path (revert), so a paused protocol cannot brick `rebalance()`."
+      },
+      "0xe1b4264c": {
+        "notice": "Returns the configured minimum health factor (WAD) the adapter must not breach."
+      },
+      "0x150b7a02": {
+        "notice": "Accepts the Uniswap V3 position NFT safe-minted by the NonfungiblePositionManager.",
+        "dev": "Returns the `IERC721Receiver.onERC721Received` selector so `_safeMint` succeeds. The adapter is the position custodian; it never expects any other NFT, but this handler is intentionally permissive (returns the magic value unconditionally) so the mint path on the real NFPM cannot revert."
+      },
+      "0x570ca735": {
+        "notice": "Returns the authorized operator (zero until wired)."
+      },
+      "0x16f0115b": {
+        "notice": "Returns the Uniswap V3 pool the adapter LPs into."
+      },
+      "0x791b98bc": {
+        "notice": "Returns the Uniswap V3 NonfungiblePositionManager."
+      },
+      "0xd2c725e0": {
+        "notice": "True while a guarded op is executing — mirrors StrategyManager so VaultCore can reject share-price-sensitive ops mid-deploy/withdraw (read-only reentrancy guard)."
+      },
+      "0x17f33340": {
+        "notice": "Returns the address rewards are forwarded to."
+      },
+      "0xb3ab15fb": {
+        "notice": "Sets the authorized operator permitted to call `deploy`/`withdraw`/`harvest`.",
+        "dev": "Admin-gated (`DEFAULT_ADMIN_ROLE`). Rejects `address(0)`; emits `IProtocolAdapter.OperatorSet`.",
+        "params": {
+          "operator_": "The new operator (typically the StrategyManager diamond)."
+        }
+      },
+      "0xe521136f": {
+        "notice": "Sets the reward recipient (admin only)."
+      },
+      "0x1a3ce4e6": {
+        "notice": "Sets the slippage tolerance in basis points (admin only)."
+      },
+      "0x5f553545": {
+        "notice": "Sets the TWAP observation window in seconds (admin only). Must be non-zero."
+      },
+      "0x578c71d9": {
+        "notice": "Returns the configured slippage tolerance in basis points."
+      },
+      "0x0dfe1681": {
+        "notice": "Returns the pool's token0 (== the adapter's asset, the vault-facing accounting token)."
+      },
+      "0xd21220a7": {
+        "notice": "Returns the pool's token1 (supplied by the keeper, never swapped by the adapter)."
+      },
+      "0x17d70f7c": {
+        "notice": "Returns the current position NFT id (0 == no position minted yet)."
+      },
+      "0x613c822b": {
+        "notice": "Returns the current total asset balance managed by this strategy.",
+        "dev": "This value is trusted by the StrategyManager and VaultCore for accounting. Strategy implementations MUST report accurate balances to avoid mispricing vault shares."
+      },
+      "0x8107e133": {
+        "notice": "Returns the TWAP observation window (seconds) used for valuation."
+      },
+      "0xfbfa77cf": {
+        "notice": "Returns the Lattice vault funds are returned to on emergency exit."
+      },
+      "0x00f714ce": {
+        "notice": "Withdraws `amount` of the underlying asset to `to`.",
+        "dev": "Called by the StrategyManager during rebalancing to recall excess allocations. The strategy is responsible for executing the ERC-20 transfer.",
+        "params": {
+          "amount": "Amount of underlying asset to withdraw.",
+          "to": "Recipient address (typically the vault)."
+        }
+      }
+    },
+    "notice": "Diamond facet adapting a **full-range** Uniswap V3 LP position into a Lattice vault strategy. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar), and `IUniswapV3Adapter` (Uniswap config). This is a **CUSTOM** adapter: a v3 LP is a two-token, NFT-wrapped concentrated-liquidity position that does not fit the single-asset `IStrategy` surface cleanly. Compromises (all documented in `UniswapV3AdapterLib`): full-range only (no active range management), swap-free (the keeper funds both tokens), `asset` == token0, and NAV counts token0 only (idle token0 plus the position's token0 leg), valued from the pool **TWAP** (`observe`), never `slot0` spot. A deploy, priced by the pool at spot, is refused when it would step that NAV by more than `slippageBps` of the token0 it consumes. A recall pays idle token0 only; the admin's `emergencyWithdraw` is the sole exit from the position. All logic lives in UniswapV3AdapterLib.",
+    "dev": "Provenance: Uniswap V3 core (https://github.com/Uniswap/v3-core) + periphery NonfungiblePositionManager (https://github.com/Uniswap/v3-periphery). The facet implements `onERC721Received` so the NFPM can safe-mint the position NFT to it."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/defi/UniswapV3Adapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/defi/UniswapV3Adapter.sol"
+  }
+}

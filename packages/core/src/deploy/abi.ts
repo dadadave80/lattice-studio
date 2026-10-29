@@ -41,6 +41,7 @@ export const LATTICE_FACTORY_ABI = [
         components: [
           { name: "nameHash", type: "bytes32" },
           { name: "version", type: "uint64" },
+          { name: "exclude", type: "bytes4[]" },
         ],
       },
       { name: "customCuts", ...FACET_CUT },
@@ -67,7 +68,9 @@ export const LATTICE_FACTORY_ABI = [
     inputs: [
       { name: "diamond", type: "address", indexed: true },
       { name: "deployer", type: "address", indexed: true },
+      { name: "recipeHash", type: "bytes32", indexed: true },
       { name: "salt", type: "bytes32", indexed: false },
+      { name: "init", type: "address", indexed: false },
     ],
   },
 ] as const;
@@ -151,8 +154,8 @@ export const MULTICALL3_ABI = [
   },
 ] as const;
 
-/** `LatticeFactory.deploy((bytes32,uint64)[],(address,uint8,bytes4[])[],address,bytes,bytes32)`. */
-export const FACTORY_DEPLOY_SELECTOR: Hex = "0x533677de";
+/** `LatticeFactory.deploy((bytes32,uint64,bytes4[])[],(address,uint8,bytes4[])[],address,bytes,bytes32)`. */
+export const FACTORY_DEPLOY_SELECTOR: Hex = "0xc381576d";
 /** `CreateX.deployCreate3AndInit(bytes32,bytes,bytes,(uint256,uint256))`. */
 export const CREATEX_DEPLOY_SELECTOR: Hex = "0x00d84acb";
 /** `Multicall3.aggregate3((address,bool,bytes)[])`. */

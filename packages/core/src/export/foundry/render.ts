@@ -245,6 +245,7 @@ export function renderScript(input: ScriptInput): string {
       "struct RecipeEntry {",
       "    bytes32 nameHash;",
       "    uint64 version;",
+      "    bytes4[] exclude;",
       "}",
       "",
       "interface ILatticeFactory {",

@@ -1,24 +1,22 @@
 name: AcrossBridgeAdapter
 script: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol
 buildCuts: buildCuts(address)
-source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L31-L39
+source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L30-L38
 proxy: Lattice
 phase: v1.1
 immutable: true
 cuts:
   - add: ERC165Facet
-    source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L62-L62
+    source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L61-L61
   - add: AcrossBridgeAdapter
-    source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L63-L63
+    source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L62-L62
   - add: DiamondLoupeFacet
-    source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L64-L64
-  - add: Receive
-    source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L65-L65
+    source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L63-L63
 init:
   kind: steps
   steps:
     - spec: AcrossBridgeAdapterInit
       args: {}  # the script passes (spokePool)
-  source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L36-L38
+  source: script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L35-L37
 gaps: >-
   No example arguments yet: the script takes every init argument as a parameter (spokePool).

@@ -127,6 +127,9 @@ HSSAdapterInit:
       authority: true
       role: DEFAULT_ADMIN_ROLE
       source: src/oracles/hedera/HSSAdapterInit.sol#L19-L19
+OracleGuardInit:
+  kind: step
+  source: src/oracles/OracleGuardInit.sol#L18-L20
 PythAdapterInit:
   kind: step
   source: src/oracles/pyth/PythAdapterInit.sol#L20-L23

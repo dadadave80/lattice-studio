@@ -7,11 +7,9 @@
     "DiamondLoupeFacet",
     "AccessControl",
     "EmergencyStop",
-    "SafeDiamondCut",
-    "Receive"
+    "SafeDiamondCut"
   ],
   "routing": {
-    "0x00000000": "Receive",
     "0x01ffc9a7": "ERC165Facet",
     "0x0746a956": "SafeDiamondCut",
     "0x0c68ba21": "EmergencyStop",
@@ -42,7 +40,6 @@
     "0xd547741f": "AccessControl"
   },
   "signatures": {
-    "0x00000000": "receive()",
     "0x01ffc9a7": "supportsInterface(bytes4)",
     "0x0746a956": "verifyInterfaceRegistered(bytes4)",
     "0x0c68ba21": "isGuardian(address)",

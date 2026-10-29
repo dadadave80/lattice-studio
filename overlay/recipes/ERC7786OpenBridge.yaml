@@ -1,21 +1,19 @@
 name: ERC7786OpenBridge
 script: script/base/crosschain/DeployERC7786OpenBridge.s.sol
 buildCuts: buildCuts(address)
-source: script/base/crosschain/DeployERC7786OpenBridge.s.sol#L28-L39
+source: script/base/crosschain/DeployERC7786OpenBridge.s.sol#L29-L39
 proxy: Lattice
 phase: v1.1
 cuts:
   - add: ERC165Facet
-    source: script/base/crosschain/DeployERC7786OpenBridge.s.sol#L30-L30
-  - add: AccessControl
     source: script/base/crosschain/DeployERC7786OpenBridge.s.sol#L31-L31
-  - add: ERC7786OpenBridge
+  - add: AccessControl
     source: script/base/crosschain/DeployERC7786OpenBridge.s.sol#L32-L32
-  - add: DiamondLoupeFacet
+  - add: ERC7786OpenBridge
     source: script/base/crosschain/DeployERC7786OpenBridge.s.sol#L33-L33
-  - add: AccessControlDiamondCut
+  - add: DiamondLoupeFacet
     source: script/base/crosschain/DeployERC7786OpenBridge.s.sol#L34-L34
-  - add: Receive
+  - add: AccessControlDiamondCut
     source: script/base/crosschain/DeployERC7786OpenBridge.s.sol#L35-L35
 init:
   kind: steps

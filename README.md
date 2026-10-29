@@ -42,7 +42,7 @@ Check it yourself:
 
 ```sh
 cast call 0x00729c71C732c72b84132AF001FAA9cE73EA5c7B "facetAddresses()(address[])" --rpc-url https://testnet-rpc.monad.xyz
-bun packages/cli/src/main.ts passport 0x00729c71C732c72b84132AF001FAA9cE73EA5c7B --chain 10143 --recipe docs/examples/governed-vault.recipe.json --json
+bun packages/cli/src/main.ts passport 0x00729c71C732c72b84132AF001FAA9cE73EA5c7B --chain 10143 --recipe docs/examples/governed-vault.recipe.json --catalog catalog/dev-6c8db45 --json
 ```
 
 ## Lattice Passport
@@ -112,7 +112,7 @@ Studio moves them to the moment you make them, and it gives the same answer ever
 
 | | |
 | --- | --- |
-| **Compose** | 105 facets, 90 inits and 85 recipe templates from Lattice (tokens, governance, access control, DeFi, oracles, crosschain, Hedera and more) on a sheet where every selector shows the facet that answers it. |
+| **Compose** | 129 facets, 102 inits and 85 recipe templates from Lattice (tokens, governance, access control, DeFi, oracles, crosschain, Hedera and more) on a sheet where every selector shows the facet that answers it. |
 | **Check** | Nine families of checks on every edit: selectors, semantics, the diamond's core, dependencies, storage, inits, authority, links and network. About 2 ms for a 30-facet diamond. Every finding has a rule id (`SEL-01`, `INIT-05`, `LINK-01`) and names its fix. |
 | **Export** | A standalone Foundry script, an agent brief, a `recipe.json` with its schema, a Safe Transaction Builder batch, a project file, or a share link that lives in the URL fragment, which a server never sees. |
 | **Deploy** | One transaction through LatticeFactory or CreateX. Studio predicts the address, checks each shared contract's codehash against the catalog before you sign, compares the on-chain loupe with the plan afterwards, and verifies the source on Sourcify and, with an API key, on Etherscan. |
@@ -157,22 +157,25 @@ The analysis is one pure-TypeScript package. The app, the CLI and the tests all 
 
 ```console
 $ bun packages/cli/src/main.ts check docs/examples/erc20.recipe.json
-Provisional catalog: Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0
-ERC20 · recipe 0xab819a7fb89dcf17f571f69571992abdce4ba890355bc496c0e3078933d70008 · Lattice dev-6c8db45
-2 facets · 15 selectors
-1 warning
+ERC20 · recipe 0x5afa323c9649e2cffa570b1b8034ffbe9d6df3a9edbb0920c727ecb2483cd994 · Lattice 0.5.0
+1 facet · 14 selectors
+2 warnings
+  Warning  CORE-04  Plain ETH sent to this diamond will revert.
   Warning  INIT-05  2 fields still use example values, including name (Example Token) and symbol (EXT).
 
 $ bun packages/cli/src/main.ts plan docs/examples/erc20.recipe.json
-Cut plan · the core and 2 facets · 15 selectors
-[00] ADD DiamondLoupeFacet 0xD4C5…f5a9 · 4/4 selectors · 0.2.0
-[01] ADD ERC165Facet 0x6c82…382C · 1/1 selector · 0.2.0
-[02] ADD ERC20 0x4781…5814 · 9/9 selectors · 0.2.0
-[03] ADD Receive 0x7EC3…8F3E · 1/1 selector · 0.2.0
-Init: calls MultiInit 0x7E28C4D7930b93643CC45fFc2585dd74C6fF8E83
+ERC20 · recipe 0x5afa323c9649e2cffa570b1b8034ffbe9d6df3a9edbb0920c727ecb2483cd994 · Lattice 0.5.0
+Cut plan · the core and 1 facet · 14 selectors
+[00] ADD DiamondLoupeFacet 0xD943…479B · 4/4 selectors · 0.5.0
+[01] ADD ERC165Facet 0xfDbE…F2f6 · 1/1 selector · 0.5.0
+[02] ADD ERC20 0xADFE…2BE6 · 9/9 selectors · 0.5.0
+Init: calls MultiInit 0x785DC61B75f06B4D1039Db74582d76489C65C443
+2 warnings
+  Warning  CORE-04  Plain ETH sent to this diamond will revert.
+  Warning  INIT-05  2 fields still use example values, including name (Example Token) and symbol (EXT).
 ```
 
-`docs/examples/erc20.recipe.json` is the ERC20 recipe template as Studio exports it, checked in so these commands run against a real file. The four addresses in that plan are among the five the Sepolia diamond above reports from its loupe: shared contracts are deployed once, at predicted addresses, and every diamond routes to them.
+`docs/examples/erc20.recipe.json` is the ERC20 recipe template as Studio exports it, checked in so these commands run against a real file. Shared contracts are deployed once, at predicted addresses, and every diamond routes to them. The addresses in that plan are Lattice 0.5.0's; the diamonds above were deployed under `dev-6c8db45`, which stays in the manifest, so their recipes and passports name it.
 
 ### For CI and coding agents
 
@@ -280,7 +283,7 @@ Studio is at v1: it composes new Lattice diamonds and deploys them on testnets. 
 - **Hedera testnet is new.** It was added on October 4, 2026. The same day, the shared contracts a Lattice base with `HTSAdapter` needs went there at their release addresses: LatticeRegistry, LatticeFactory, eight facets and four inits ([Proof on Hedera testnet](#proof-on-hedera-testnet)). Deploy missing contracts deploys any other one a recipe names, through Arachnid's deployment proxy (it's on Hedera testnet). CreateX isn't deployed on Hedera, so only the LatticeFactory path works, and verification runs on Sourcify alone (Etherscan doesn't serve the chain).
 - **Avalanche Fuji is new.** It was added on October 10, 2026. Nothing has been deployed there from the app yet: Lattice's shared contracts aren't on it, so the first deploy starts with Deploy missing contracts. CreateX is on Fuji, so both the LatticeFactory and the CreateX paths work, and verification runs on Sourcify and on Etherscan.
 - **Monad Testnet is new.** It was added on October 13, 2026. The governed vault and Lattice Monad Token above were deployed from Studio and verified on Monadscan, with their facets matching their passports. CreateX and Arachnid's proxy are canonical there, so both the LatticeFactory and CreateX paths work. The per-transaction gas cap is fixed at 30,000,000, and Monad charges the gas limit. Sourcify verification uses [BlockVision's Monad instance](https://sourcify-api-monad.blockvision.org); Etherscan API V2 also serves Monadscan.
-- **The catalog is provisional.** It's built from Lattice commit `6c8db45` (Lattice `VERSION` 0.2.0, tag `hedera-template-pin-6c8db45` on the `feat/hedera-system-contract-modules` branch), not yet a `vX.Y.Z` release. It adds Lattice's Hedera facets (`HTSAdapter`, `HSSAdapter`, `HederaExchangeRateAdapter`, `HederaPrngAdapter` and `HASSignatureVerifier`) to the 100 of `dev-f4a32c8`, which stays in the manifest so recipes made against it still open. The pin also gives seven account facets new code, and so new addresses: `AccountSigner`, `ERC1271Signature`, `ERC4337Validation`, `ERC6900Executor`, `ERC6900Signature`, `ERC6900Validation` and `ERC7821Executor`. A recipe that uses one of them plans a different address for it under `dev-6c8db45` than under `dev-f4a32c8`. v1 targets Lattice `v0.5.0` (released October 9, 2026); the catalog's own notice still names 0.4.0 until the rebuild, and every shared-contract address in the catalog changes at that re-pin. `check`, `plan` and the app all print "Provisional catalog" while this is true. [`docs/release.md`](docs/release.md) has what re-pinning involves.
+- **The deployed examples predate the re-pin.** The catalog is built from Lattice `v0.5.0` (commit `cca133b`). The Sepolia, Hedera testnet and Monad Testnet deployments above were made under `dev-6c8db45` (Lattice 0.2.0), which stays in the manifest with `dev-f4a32c8` so their recipes and passports still open; pass `--catalog catalog/dev-6c8db45` to the CLI for them. Every shared-contract address moved at the re-pin (LatticeFactory is now `0x36b485536d11D4b50eB54B8D929b7c7654f74db4`), so a new deploy on those chains starts with Deploy missing contracts. Lattice 0.5.0 drops `Receive` from its templates, so the ERC20 template now raises CORE-04 (plain ETH reverts). Its 13 new deploy scripts (`OracleGuard` and the ERC721, ERC1155 and ERC1363 extensions) have no template yet.
 - **New diamonds only.** Upgrading a live diamond is v2.
 - **The CLI isn't on npm yet.** Run it from a checkout.
 - **CI is green on `dev`.** `ci.yml` passes: typecheck, lint, unit, size, browser, e2e, the Foundry suites and the performance budgets, which have four rows report-only until their fixes land: LCP, drag, INP (#21) and, since October 10, 2026, the analysis of 30 colliding cards, which takes about 5.4 ms (median, 4× CPU) against 5 ms. `scripts/perf/report.ts`'s `REPORT_ONLY` names each one; delete an entry and its row enforces again. [`docs/release.md`](docs/release.md) describes the workflows.

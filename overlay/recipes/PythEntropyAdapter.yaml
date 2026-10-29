@@ -1,27 +1,25 @@
 name: PythEntropyAdapter
 script: script/base/oracles/DeployPythEntropyAdapter.s.sol
 buildCuts: buildCuts(address)
-source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L26-L37
+source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L25-L35
 proxy: Lattice
 phase: v1.1
 cuts:
   - add: ERC165Facet
-    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L28-L28
+    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L27-L27
   - add: AccessControl
-    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L29-L29
+    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L28-L28
   - add: PythEntropyAdapter
-    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L30-L30
+    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L29-L29
   - add: DiamondLoupeFacet
-    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L31-L31
+    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L30-L30
   - add: AccessControlDiamondCut
-    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L32-L32
-  - add: Receive
-    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L33-L33
+    source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L31-L31
 init:
   kind: steps
   steps:
     - spec: PythEntropyAdapterInit
       args: {}  # the script passes (admin)
-  source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L34-L36
+  source: script/base/oracles/DeployPythEntropyAdapter.s.sol#L32-L34
 gaps: >-
   No example arguments yet: the script takes every init argument as a parameter (admin).

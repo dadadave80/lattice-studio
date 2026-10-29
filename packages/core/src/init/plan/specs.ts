@@ -23,13 +23,15 @@ export function mainModule(spec: InitSpec): string {
 
 /**
  * The module a facet's own init is for (INIT-04, WP-FX23, WP-FX48): the `initializes` entry named after the facet,
- * when there is one. ERC20VotesInit ends with AccessControl even though ERC20Votes is its own module, so INIT-04
- * asks for this rather than assuming the last module is the facet's.
+ * when there is one. An init can end with another module than the facet's (ERC20VotesInit ended with AccessControl
+ * while ERC20Votes was its own module, until Lattice 0.5.0), so INIT-04 asks for this rather than assuming the last
+ * module is the facet's.
  *
  * With no entry of that name, a bundle sets up a whole assembly (GovernedVaultInit runs twelve modules, none of
  * them GovernedVault, and ends with Governor), so none of its modules is the facet's: the facet is its own
  * module, and INIT-04 counts it provided when a plan step covers every module of the bundle. A step init's last
- * module is the facet's (OwnableFacet → Ownable).
+ * module is the facet's (OwnableFacet → Ownable); when it runs several (ERC20VotesInit since Lattice 0.5.0), INIT-04
+ * asks for all of them.
  */
 export function facetModule(facet: string, spec: InitSpec): string {
   if (spec.initializes.some((entry) => entry.module === facet)) return facet;

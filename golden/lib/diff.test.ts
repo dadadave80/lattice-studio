@@ -55,15 +55,15 @@ describe("diffRouting", () => {
 
   test("added and removed selectors, facets and init steps are listed", () => {
     const expected = clone(base);
-    delete expected.routing["0x00000000"];
-    delete expected.signatures["0x00000000"];
-    expected.facets = expected.facets.filter((f) => f !== "Receive");
+    delete expected.routing["0x01ffc9a7"];
+    delete expected.signatures["0x01ffc9a7"];
+    expected.facets = expected.facets.filter((f) => f !== "ERC165Facet");
     expected.routing["0x12345678"] = "ERC20";
     expected.signatures["0x12345678"] = "mint(address,uint256)";
     expected.init.steps.pop();
     expect(diffRouting(expected, base)).toEqual([
-      "facets: [ERC165Facet, ERC20, DiamondLoupeFacet] → [ERC165Facet, ERC20, DiamondLoupeFacet, Receive]",
-      "0x00000000 receive(): (not routed) → Receive",
+      "facets: [ERC20, DiamondLoupeFacet] → [ERC165Facet, ERC20, DiamondLoupeFacet]",
+      "0x01ffc9a7 supportsInterface(bytes4): (not routed) → ERC165Facet",
       "0x12345678 mint(address,uint256): ERC20 → (not routed)",
       "init step 1: (no step) → DiamondIntrospectionInit.initImmutable() (0xd1a4dbd8)",
     ]);

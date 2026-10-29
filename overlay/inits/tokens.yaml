@@ -1,9 +1,45 @@
+ERC1155BurnableInit:
+  kind: step
+  source: src/tokens/ERC1155/ERC1155BurnableInit.sol#L12-L14
+
 ERC1155Init:
   kind: step
   source: src/tokens/ERC1155/ERC1155Init.sol#L14-L16
   params:
     uri_:
       doc: The token URI template shared by every token type.
+
+ERC1155PausableInit:
+  kind: step
+  source: src/tokens/ERC1155/ERC1155PausableInit.sol#L15-L18
+  params:
+    admin_:
+      doc: The address granted DEFAULT_ADMIN_ROLE, which gates pause() and unpause().
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/ERC1155/ERC1155PausableInit.sol#L17-L17
+
+ERC1155SupplyInit:
+  kind: step
+  source: src/tokens/ERC1155/ERC1155SupplyInit.sol#L13-L15
+
+ERC1155URIStorageInit:
+  kind: step
+  source: src/tokens/ERC1155/ERC1155URIStorageInit.sol#L16-L19
+  params:
+    admin_:
+      doc: The metadata admin granted DEFAULT_ADMIN_ROLE, who may call setURI and setBaseURI.
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/ERC1155/ERC1155URIStorageInit.sol#L18-L18
+
+ERC1363Init:
+  kind: step
+  source: src/tokens/ERC20/ERC1363Init.sol#L12-L14
 
 ERC20BurnableInit:
   kind: step
@@ -17,7 +53,7 @@ ERC20CappedInit:
       doc: The maximum total supply, in the token's smallest unit; it must be nonzero.
       rule: nonzero
       unit: wei
-      source: src/tokens/ERC20/libraries/ERC20CappedLib.sol#L54-L55
+      source: src/tokens/ERC20/libraries/ERC20CappedLib.sol#L65-L66
 
 ERC20CrosschainInit:
   kind: step
@@ -68,7 +104,7 @@ ERC20PermitInit:
 
 ERC20VotesInit:
   kind: step
-  source: src/tokens/ERC20/ERC20VotesInit.sol#L18-L24
+  source: src/tokens/ERC20/ERC20VotesInit.sol#L18-L23
   params:
     name_:
       doc: "The EIP-712 domain name: the token name."
@@ -78,16 +114,12 @@ ERC20VotesInit:
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
-      source: src/tokens/ERC20/ERC20VotesInit.sol#L23-L23
+      source: src/tokens/ERC20/ERC20VotesInit.sol#L22-L22
   sameCall:
     - module: ERC20
-      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38
-    - module: EIP712
-      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38
-    - module: Nonces
-      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38
+      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L15-L15
     - module: Votes
-      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L37-L38
+      source: src/tokens/ERC20/libraries/ERC20VotesLib.sol#L15-L15
 
 ERC20WrapperInit:
   kind: step
@@ -117,7 +149,26 @@ ERC4626Init:
     asset_:
       # Studio's rule: the source stores the asset without rejecting zero or a codeless address.
       rule: nonzero&code(token)
-      source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L74-L81
+      source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L111-L118
+
+ERC721BurnableInit:
+  kind: step
+  source: src/tokens/ERC721/ERC721BurnableInit.sol#L12-L14
+
+ERC721ConsecutiveInit:
+  kind: step
+  source: src/tokens/ERC721/ERC721ConsecutiveInit.sol#L16-L24
+  params:
+    firstId:
+      doc: The first token id the batches mint.
+    receivers:
+      doc: Who each batch mints to, one entry per batch.
+    amounts:
+      doc: How many consecutive tokens each batch mints, in the same order as receivers.
+
+ERC721EnumerableInit:
+  kind: step
+  source: src/tokens/ERC721/ERC721EnumerableInit.sol#L12-L14
 
 ERC721Init:
   kind: step
@@ -127,6 +178,18 @@ ERC721Init:
       doc: Token name.
     symbol_:
       doc: Token symbol.
+
+ERC721PausableInit:
+  kind: step
+  source: src/tokens/ERC721/ERC721PausableInit.sol#L14-L17
+  params:
+    admin_:
+      doc: The address granted DEFAULT_ADMIN_ROLE, which gates pause() and unpause().
+      # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
+      rule: nonzero
+      authority: true
+      role: DEFAULT_ADMIN_ROLE
+      source: src/tokens/ERC721/ERC721PausableInit.sol#L16-L16
 
 ERC721URIStorageInit:
   kind: step
@@ -139,6 +202,20 @@ ERC721URIStorageInit:
       authority: true
       role: DEFAULT_ADMIN_ROLE
       source: src/tokens/ERC721/ERC721URIStorageInit.sol#L19-L19
+
+ERC721VotesInit:
+  kind: step
+  source: src/tokens/ERC721/ERC721VotesInit.sol#L19-L26
+  params:
+    name_:
+      doc: "The EIP-712 domain name: the token name."
+
+ERC721WrapperInit:
+  kind: step
+  source: src/tokens/ERC721/ERC721WrapperInit.sol#L13-L15
+  params:
+    underlying_:
+      doc: The ERC-721 collection the wrapper holds.
 
 ERC7802Init:
   kind: step

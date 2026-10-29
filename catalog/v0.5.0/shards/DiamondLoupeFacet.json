@@ -1,0 +1,114 @@
+{
+  "name": "DiamondLoupeFacet",
+  "abi": [
+    {
+      "type": "function",
+      "name": "facetAddress",
+      "inputs": [
+        {
+          "name": "_functionSelector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "facetAddresses",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "facetFunctionSelectors",
+      "inputs": [
+        {
+          "name": "_facet",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4[]",
+          "internalType": "bytes4[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "facets",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "facets_",
+          "type": "tuple[]",
+          "internalType": "struct Facet[]",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x7a0ed627": {
+        "notice": "Gets all facet addresses and their function selectors."
+      },
+      "0xadfca15e": {
+        "notice": "Gets all the function selectors provided by a facet.",
+        "params": {
+          "_facet": "The facet address."
+        }
+      },
+      "0x52ef6b2c": {
+        "notice": "Get all the facet addresses used by a diamond."
+      },
+      "0xcdffacc6": {
+        "notice": "Gets the facet that supports the given selector.",
+        "dev": "If facet is not found return address(0).",
+        "params": {
+          "_functionSelector": "The function selector."
+        }
+      }
+    },
+    "notice": "Provides read-only functions to inspect the state of a Diamond proxy, including facets, function selectors, and supported interfaces",
+    "dev": "Implements the IDiamondLoupe interface as defined in EIP-2535"
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/facets/DiamondLoupeFacet.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/facets/DiamondLoupeFacet.sol"
+  }
+}

@@ -1,0 +1,581 @@
+{
+  "name": "ERC4626Adapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "asset",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "deploy",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "deployed",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "emergencyWithdraw",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "recovered",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "harvest",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "healthFactor",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isPaused",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "minHealthFactor",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "operator",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "reentrancyGuardEntered",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "rewardRecipient",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setOperator",
+      "inputs": [
+        {
+          "name": "operator_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setRewardRecipient",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setSideRewardToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "sideRewardToken",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "targetVault",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "totalAssetsManaged",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "vault",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "withdraw",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "withdrawn",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Deployed",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ERC4626AdapterConfigured",
+      "inputs": [
+        {
+          "name": "targetVault",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "vault",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "EmergencyWithdrawn",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "toVault",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "recovered",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OperatorSet",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RewardRecipientSet",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RewardsForwarded",
+      "inputs": [
+        {
+          "name": "rewardToken",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SideRewardTokenSet",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AdapterSafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC4626AdapterAssetMismatch",
+      "inputs": [
+        {
+          "name": "targetAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "configured",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC4626AdapterInvalidSideRewardToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterHealthFactorBreached",
+      "inputs": [
+        {
+          "name": "resulting",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "floor",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterInvalidOraclePrice",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterInvalidRecipient",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterNothingToDeploy",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterPaused",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterRewardForwardFailed",
+      "inputs": [
+        {
+          "name": "rewardToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterUnauthorized",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterZeroAddress",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x38d52e0f": {
+        "notice": "Returns the address of the underlying asset this strategy manages."
+      },
+      "0x775c300c": {
+        "notice": "Sweeps the adapter's idle asset balance into the external protocol.",
+        "dev": "Required because the vault PUSHES funds via a bare ERC-20 transfer (no callback). Reverts `ProtocolAdapterNothingToDeploy` if the idle balance is zero."
+      },
+      "0xdb2e21bc": {
+        "notice": "Fully exits the protocol position and returns all recovered assets to the vault.",
+        "dev": "Intended for the emergency path; callable by an authorized guardian/admin even when the adapter is paused."
+      },
+      "0x4641257d": {
+        "notice": "Claims reward tokens from the protocol and forwards them RAW (no swap) to the configured recipient.",
+        "dev": "Safe against zero-claim and fee-on-transfer reward tokens; never reverts `withdraw`."
+      },
+      "0x22841f01": {
+        "notice": "Returns the current health factor (WAD, 1e18 == 1.0) of the adapter's position.",
+        "dev": "Supply-only adapters return `type(uint256).max` (no debt). Leverage adapters return collateralValue * liquidationThreshold / debtValue."
+      },
+      "0xb187bd26": {
+        "notice": "Returns true when the adapter is paused or emergency-stopped, or the external protocol reports the asset paused/frozen. When true, `deploy()` must be a no-op path (revert), so a paused protocol cannot brick `rebalance()`."
+      },
+      "0xe1b4264c": {
+        "notice": "Returns the configured minimum health factor (WAD) the adapter must not breach."
+      },
+      "0x570ca735": {
+        "notice": "Returns the authorized operator (zero until wired)."
+      },
+      "0xd2c725e0": {
+        "notice": "True while a guarded op is executing — mirrors StrategyManager so VaultCore can reject share-price-sensitive ops mid-deploy/withdraw (read-only reentrancy guard)."
+      },
+      "0x17f33340": {
+        "notice": "Returns the address rewards are forwarded to."
+      },
+      "0xb3ab15fb": {
+        "notice": "Sets the authorized operator permitted to call `deploy`/`withdraw`/`harvest`.",
+        "dev": "Admin-gated (`DEFAULT_ADMIN_ROLE`). Rejects `address(0)`; emits `IProtocolAdapter.OperatorSet`.",
+        "params": {
+          "operator_": "The new operator (typically the StrategyManager diamond)."
+        }
+      },
+      "0xe521136f": {
+        "notice": "Sets the reward recipient (admin only)."
+      },
+      "0xe5d9f14b": {
+        "notice": "Sets an optional side-reward token to forward on harvest (admin only). address(0) clears it. Rejects the asset and the target vault's share token."
+      },
+      "0x8519da85": {
+        "notice": "Optional side-reward token (address(0) if none). Forwarded raw on harvest()."
+      },
+      "0x1f92db45": {
+        "notice": "Returns the target ERC4626 vault this adapter deposits into."
+      },
+      "0x613c822b": {
+        "notice": "Returns the current total asset balance managed by this strategy.",
+        "dev": "This value is trusted by the StrategyManager and VaultCore for accounting. Strategy implementations MUST report accurate balances to avoid mispricing vault shares."
+      },
+      "0xfbfa77cf": {
+        "notice": "Returns the Lattice vault funds are returned to."
+      },
+      "0x00f714ce": {
+        "notice": "Withdraws `amount` of the underlying asset to `to`.",
+        "dev": "Called by the StrategyManager during rebalancing to recall excess allocations. The strategy is responsible for executing the ERC-20 transfer.",
+        "params": {
+          "amount": "Amount of underlying asset to withdraw.",
+          "to": "Recipient address (typically the vault)."
+        }
+      }
+    },
+    "notice": "Diamond facet wrapping any ERC4626 vault (Yearn v3 / MetaMorpho) as a Lattice strategy. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar), and `IERC4626Adapter` (wrap config). NAV via `convertToAssets` (no oracle); supply-only (no leverage). All logic lives in ERC4626AdapterLib."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/defi/ERC4626Adapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/defi/ERC4626Adapter.sol"
+  }
+}

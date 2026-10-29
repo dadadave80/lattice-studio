@@ -207,6 +207,8 @@ jobs:
       - name: Catalog drift
         if: (success() || failure()) && needs.changes.outputs.catalog == 'true'
         run: |
+          # The submodule checkout carries no tags, and the catalog's id is the release tag on the pinned commit.
+          git -C lattice fetch --depth=1 origin "+refs/tags/v*:refs/tags/v*"
           bun run catalog
           # A rebuilt catalog must equal the committed one (contracts §1 "catalog/ CG8, generated, committed").
           git diff --exit-code catalog/

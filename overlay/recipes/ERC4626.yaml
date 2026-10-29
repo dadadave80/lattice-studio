@@ -1,17 +1,17 @@
 # The default, immutable overload: ERC165Facet, ERC20, ERC4626 as a mixed cut (Add the vault surface, Replace
-# ERC20's decimals with the share-offset variant), DiamondLoupeFacet and Receive, with ERC4626Init.
+# ERC20's decimals with the share-offset variant), and DiamondLoupeFacet, with ERC4626Init.
 name: ERC4626
 script: script/base/tokens/DeployERC4626.s.sol
 buildCuts: buildCuts(address,string,string,uint8)
-source: script/base/tokens/DeployERC4626.s.sol#L37-L45
+source: script/base/tokens/DeployERC4626.s.sol#L36-L44
 proxy: Lattice
 phase: v1.1
 immutable: true
 cuts:
   - add: ERC165Facet
-    source: script/base/tokens/DeployERC4626.s.sol#L72-L72
+    source: script/base/tokens/DeployERC4626.s.sol#L71-L71
   - add: ERC20
-    source: script/base/tokens/DeployERC4626.s.sol#L73-L73
+    source: script/base/tokens/DeployERC4626.s.sol#L72-L72
   - add: ERC4626
     selectors:
       - "asset()"
@@ -30,22 +30,20 @@ cuts:
       - "mint(uint256,address)"
       - "withdraw(uint256,address,address)"
       - "redeem(uint256,address,address)"
-    source: script/base/tokens/DeployERC4626.s.sol#L69-L74
-    listSource: script/base/tokens/DeployERC4626.s.sol#L82-L100
+    source: script/base/tokens/DeployERC4626.s.sol#L68-L73
+    listSource: script/base/tokens/DeployERC4626.s.sol#L80-L98
   - replace: ERC4626
     selectors: ["decimals()"]
-    source: script/base/tokens/DeployERC4626.s.sol#L69-L76
-    listSource: script/base/tokens/DeployERC4626.s.sol#L103-L106
+    source: script/base/tokens/DeployERC4626.s.sol#L68-L75
+    listSource: script/base/tokens/DeployERC4626.s.sol#L101-L104
   - add: DiamondLoupeFacet
-    source: script/base/tokens/DeployERC4626.s.sol#L77-L77
-  - add: Receive
-    source: script/base/tokens/DeployERC4626.s.sol#L78-L78
+    source: script/base/tokens/DeployERC4626.s.sol#L76-L76
 init:
   kind: steps
   steps:
     - spec: ERC4626Init
       args: {}  # the script passes (asset_, name_, symbol_, decimalsOffset_)
-  source: script/base/tokens/DeployERC4626.s.sol#L42-L44
+  source: script/base/tokens/DeployERC4626.s.sol#L41-L43
 gaps: >-
   No example arguments yet: the script takes every init argument as a parameter (asset_, name_, symbol_,
   decimalsOffset_).

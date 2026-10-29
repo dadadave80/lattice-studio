@@ -14,8 +14,8 @@ ERC20:
     source: src/tokens/ERC20/ERC20Init.sol#L13-L13
   seamReview: >-
     With ERC20Votes placed, transfer and transferFrom must be GovernedVault's or ERC20Votes' (DeployERC20Votes.s.sol
-    L21-22, spec R19); in GovernedVault, decimals must be ERC4626's (DeployGovernedVault.s.sol L28), which also owns
-    it by default (compose guide L40), and name is GovernedVault's by default (compose guide L41-42).
+    L21-22, spec R19); in GovernedVault, decimals must be ERC4626's (DeployGovernedVault.s.sol L34), which also owns
+    it by default (compose guide L53), and name is GovernedVault's by default (compose guide L55-56).
     DeployERC20Pausable replaces transfer and transferFrom with ERC20Pausable's, but no doc names a default, so
     without ERC20Votes the user chooses (SEL-01). approve, balanceOf, name, symbol and transferFrom also collide with
     ERC721, a different token standard no script combines with ERC20.
@@ -98,15 +98,15 @@ ERC20Votes:
       source: src/tokens/ERC20/ERC20Votes.sol#L15-L17
   defaultOwnerOf:
     - selectors: ["0x5c19a95c", "0xc3cda520"]
-      source: docs/guides/compose-your-own-diamond.md#L41-L41
+      source: docs/guides/compose-your-own-diamond.md#L55-L55
   init:
     name: ERC20VotesInit
     source: src/tokens/ERC20/ERC20VotesInit.sol#L18-L18
   seamReview: >-
     transfer and transferFrom are seams whenever ERC20Votes is placed: they must be GovernedVault's or ERC20Votes'
     so vote checkpoints move with balances (DeployERC20Votes.s.sol L21-22, spec R19). delegate and delegateBySig
-    must be ERC20Votes', not Votes', whose versions leave checkpoints at zero (Votes.sol L43-44); ERC20Votes also
-    owns them by default (compose guide L41). transferFrom also collides with ERC721.
+    must be ERC20Votes', the balance-aware versions Lattice's scripts keep over Votes' (DeployGovernedVault.s.sol
+    L40); ERC20Votes also owns them by default (compose guide L55). transferFrom also collides with ERC721.
   notes: >-
     Hard on Votes: getVotes, getPastVotes, delegates and clock are served only by the Votes facet, which
     DeployERC20Votes composes with ERC20 and ERC20Votes (src/tokens/ERC20/ERC20Votes.sol#L15-L17).
@@ -125,16 +125,17 @@ ERC4626:
       source: src/tokens/ERC4626/ERC4626.sol#L14-L16
   defaultOwnerOf:
     - selectors: ["0x313ce567"]
-      source: docs/guides/compose-your-own-diamond.md#L40-L40
+      source: docs/guides/compose-your-own-diamond.md#L53-L53
   init:
     name: ERC4626Init
     source: src/tokens/ERC4626/ERC4626Init.sol#L22-L22
   seamReview: >-
-    It owns decimals by default against ERC20 (compose guide L40), and in GovernedVault decimals must be ERC4626's
-    (DeployGovernedVault.s.sol L28, spec R19). VaultCore wins totalAssets, deposit, mint, withdraw and redeem by
-    default, as DeployVaultCore cuts them (DeployVaultCore.s.sol L21-23, compose guide L40). In GovernedVault
-    totalAssets must be VaultCore's and deposit, mint, withdraw and redeem GovernedVault's (DeployGovernedVault.s.sol
-    L30-32), so ERC4626 keeps only its own vault views there.
+    It owns decimals by default against ERC20 (compose guide L53), and in GovernedVault decimals must be ERC4626's
+    (DeployGovernedVault.s.sol L34, spec R19). VaultCore wins totalAssets, deposit, mint, withdraw and redeem by
+    default, as DeployVaultCore cuts them (DeployVaultCore.s.sol L20-22, compose guide L53), and maxDeposit and
+    maxMint (compose guide L53-54). In GovernedVault totalAssets, maxDeposit and maxMint must be VaultCore's and
+    deposit, mint, withdraw and redeem GovernedVault's (DeployGovernedVault.s.sol L36-39), so ERC4626 keeps only
+    its own vault views there.
 
 ERC721:
   requires: []

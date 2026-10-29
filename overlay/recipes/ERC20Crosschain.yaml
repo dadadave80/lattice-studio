@@ -1,4 +1,4 @@
-# DeployERC20's four cuts (its init discarded), then AccessControl, CrosschainLink, ERC20Crosschain and
+# DeployERC20's three cuts (its init discarded), then AccessControl, CrosschainLink, ERC20Crosschain and
 # AccessControlDiamondCut, with ERC20CrosschainInit, which initializes the token itself.
 name: ERC20Crosschain
 script: script/base/tokens/DeployERC20Crosschain.s.sol
@@ -8,13 +8,11 @@ proxy: Lattice
 phase: v1.1
 cuts:
   - add: ERC165Facet
-    source: script/base/tokens/DeployERC20.s.sol#L60-L60
+    source: script/base/tokens/DeployERC20.s.sol#L59-L59
   - add: ERC20
-    source: script/base/tokens/DeployERC20.s.sol#L61-L61
+    source: script/base/tokens/DeployERC20.s.sol#L60-L60
   - add: DiamondLoupeFacet
-    source: script/base/tokens/DeployERC20.s.sol#L62-L62
-  - add: Receive
-    source: script/base/tokens/DeployERC20.s.sol#L63-L63
+    source: script/base/tokens/DeployERC20.s.sol#L61-L61
   - add: AccessControl
     source: script/base/tokens/DeployERC20Crosschain.s.sol#L42-L42
   - add: CrosschainLink

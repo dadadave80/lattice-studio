@@ -1,22 +1,20 @@
 name: SuperchainETHBridgeAdapter
 script: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol
 buildCuts: buildCuts()
-source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L29-L34
+source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L28-L33
 proxy: Lattice
 phase: v1.1
 immutable: true
 cuts:
   - add: ERC165Facet
-    source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L56-L56
+    source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L55-L55
   - add: SuperchainETHBridgeAdapter
-    source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L57-L57
+    source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L56-L56
   - add: DiamondLoupeFacet
-    source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L58-L58
-  - add: Receive
-    source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L59-L59
+    source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L57-L57
 init:
   kind: steps
   steps:
     - spec: SuperchainETHBridgeAdapterInit
       args: {}
-  source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L31-L33
+  source: script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L30-L32

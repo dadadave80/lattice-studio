@@ -50,4 +50,4 @@ AccessManagerInit:
       rule: nonzero
       authority: true
       role: ADMIN_ROLE
-      source: src/access/libraries/AccessManagerLib.sol#L82-L83
+      source: src/access/libraries/AccessManagerLib.sol#L86-L87

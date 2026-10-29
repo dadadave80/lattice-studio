@@ -1,26 +1,24 @@
 name: PrivateVoting
 script: script/base/privacy/DeployPrivateVoting.s.sol
 buildCuts: buildCuts(address)
-source: script/base/privacy/DeployPrivateVoting.s.sol#L32-L40
+source: script/base/privacy/DeployPrivateVoting.s.sol#L31-L39
 proxy: Lattice
 phase: v1.1
 immutable: true
 cuts:
   - add: ERC165Facet
-    source: script/base/privacy/DeployPrivateVoting.s.sol#L63-L63
+    source: script/base/privacy/DeployPrivateVoting.s.sol#L62-L62
   - add: Semaphore
-    source: script/base/privacy/DeployPrivateVoting.s.sol#L64-L64
+    source: script/base/privacy/DeployPrivateVoting.s.sol#L63-L63
   - add: PrivateVoting
-    source: script/base/privacy/DeployPrivateVoting.s.sol#L65-L65
+    source: script/base/privacy/DeployPrivateVoting.s.sol#L64-L64
   - add: DiamondLoupeFacet
-    source: script/base/privacy/DeployPrivateVoting.s.sol#L66-L66
-  - add: Receive
-    source: script/base/privacy/DeployPrivateVoting.s.sol#L67-L67
+    source: script/base/privacy/DeployPrivateVoting.s.sol#L65-L65
 init:
   kind: steps
   steps:
     - spec: PrivateVotingInit
       args: {}  # the script passes (verifier)
-  source: script/base/privacy/DeployPrivateVoting.s.sol#L37-L39
+  source: script/base/privacy/DeployPrivateVoting.s.sol#L36-L38
 gaps: >-
   No example arguments yet: the script takes every init argument as a parameter (verifier).

@@ -1,0 +1,25 @@
+{
+  "name": "ERC721EnumerableInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "ERC721EnumerableForbiddenBatchMint",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-721 Enumerable extension — registers IERC721Enumerable via ERC-165. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC721Init}; it must NOT open its own pre/postInitializer."
+  },
+  "source": {
+    "path": "src/tokens/ERC721/ERC721EnumerableInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/tokens/ERC721/ERC721EnumerableInit.sol"
+  }
+}

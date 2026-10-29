@@ -33,7 +33,7 @@ const CODE: Record<string, Hex> = {
 
 const catalog: Catalog = makeCatalog({
   registry: release("LatticeRegistry", CODE.LatticeRegistry ?? "0x"),
-  factory: release("LatticeFactory", CODE.LatticeFactory ?? "0x"),
+  factory: release("LatticeFactory", CODE.LatticeFactory ?? "0x", ["LatticeRegistry"]),
   libraries: [{ name: "PoseidonT3", release: release("PoseidonT3", CODE.PoseidonT3 ?? "0x") }],
   facets: [
     makeFacet({ name: "ERC20", release: release("ERC20", CODE.ERC20 ?? "0x") }),
@@ -132,6 +132,12 @@ describe("dependencies", () => {
     expect(listed.txs.map((t) => t.names)).toEqual([["PoseidonT3"], ["Semaphore"]]);
     const unlisted = build({ names: ["ERC20", "Semaphore"], multicall3Canonical: false });
     expect(unlisted.txs.map((t) => t.names)).toEqual([["ERC20"], ["PoseidonT3"], ["Semaphore"]]);
+  });
+
+  test("LatticeRegistry deploys before LatticeFactory, whose constructor needs it", () => {
+    expect(build({ names: ["LatticeFactory"], multicall3Canonical: false }).txs.map((t) => t.names)).toEqual([["LatticeRegistry"], ["LatticeFactory"]]);
+    const present = build({ names: ["LatticeFactory"], chain: chain({ shared: { LatticeRegistry: { present: true } } }), multicall3Canonical: false });
+    expect(present.txs.map((t) => t.names)).toEqual([["LatticeFactory"]]);
   });
 
   test("a dependency already on the chain isn't sent again", () => {

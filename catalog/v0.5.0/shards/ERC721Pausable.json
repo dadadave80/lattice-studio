@@ -1,0 +1,232 @@
+{
+  "name": "ERC721Pausable",
+  "abi": [
+    {
+      "type": "function",
+      "name": "safeTransferFrom",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "safeTransferFrom",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferFrom",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Approval",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "approved",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Transfer",
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "ERC721ForbiddenMint",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ERC721IncorrectOwner",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC721InsufficientApproval",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC721InvalidApprover",
+      "inputs": [
+        {
+          "name": "approver",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC721InvalidReceiver",
+      "inputs": [
+        {
+          "name": "receiver",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC721NonexistentToken",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EnforcedPause",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x42842e0e": {
+        "notice": "Safely transfers `tokenId`, reverting {IPausable-EnforcedPause} while paused (replaces the base)."
+      },
+      "0xb88d4fde": {
+        "notice": "Safely transfers `tokenId` with `data`, reverting {IPausable-EnforcedPause} while paused (replaces the base)."
+      },
+      "0x23b872dd": {
+        "notice": "Transfers `tokenId` from `from` to `to`, reverting {IPausable-EnforcedPause} while paused (replaces the base `transferFrom`)."
+      }
+    },
+    "notice": "Stateless Diamond facet — ERC-721 whose token transfers can be paused.",
+    "dev": "Reuses the shared {PausableLib} pause state (no new storage or interface): the diamond also cuts the {Pausable} facet for the admin-gated `pause()`/`unpause()`. Under the 0.5.0 token hook model (D25, option (a)) the base {ERC721Lib} has no hook, so this facet REPLACES the base movement selectors it gates: `transferFrom` and both `safeTransferFrom` overloads. Differences from OpenZeppelin v5.6.1, which gates `_update` with `whenNotPaused`: - Only those three selectors are gated. A mint, burn or `_transfer` that another facet runs through {ERC721Lib} (an app facet, {ERC721Burnable}'s `burn`, {ERC721Wrapper}'s `depositFor`/`withdrawTo`/ `onERC721Received`) still runs while paused. A composing facet that must respect the pause calls {PausableLib.checkNotPaused} itself. - It replaces the same selectors as {ERC721Enumerable} and {ERC721Votes}, so it is mutually exclusive with them: one ERC-721 movement override per diamond (pinned by SelectorCompatibilityTest). - `pause()`/`unpause()` come from the {Pausable} facet, gated on `DEFAULT_ADMIN_ROLE`; OpenZeppelin leaves them to the deriving contract."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC721/ERC721Pausable.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/tokens/ERC721/ERC721Pausable.sol"
+  }
+}
