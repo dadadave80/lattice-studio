@@ -5,7 +5,7 @@
  * no checkout or the commit isn't in it.
  */
 import { afterAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { keccak256, toFunctionSelector } from "viem";
@@ -37,8 +37,8 @@ const lattice = latticeAtFixture();
 
 /**
  * Lattice's source at the fixture's commit: the checkout itself when it's there, else that commit exported to a
- * temporary folder, with `lib/diamond-lib` linked from the checkout when it pins the same diamond-lib. Null when
- * there's no checkout or its history lacks the commit (a shallow clone).
+ * temporary folder, with `lib/diamond-lib` linked from the checkout when it pins the same diamond-lib, else exported
+ * from the submodule's history. Null when there's no checkout or its history lacks either commit (a shallow clone).
  */
 function latticeAtFixture(): string | null {
   const dir = latticeDir();
@@ -51,10 +51,16 @@ function latticeAtFixture(): string | null {
   afterAll(() => rmSync(out, { recursive: true, force: true }));
   const archive = git("archive", commit);
   if (!archive.success || !Bun.spawnSync(["tar", "-x", "-C", out], { stdin: archive.stdout }).success) return null;
+  const lib = join(out, "lib", "diamond-lib");
+  rmSync(lib, { recursive: true, force: true });
   if (git("ls-tree", "HEAD", "lib/diamond-lib").stdout.toString().includes(`commit ${diamondLib}\t`)) {
-    rmSync(join(out, "lib", "diamond-lib"), { recursive: true, force: true });
-    symlinkSync(join(dir, "lib", "diamond-lib"), join(out, "lib", "diamond-lib"));
+    symlinkSync(join(dir, "lib", "diamond-lib"), lib);
+    return out;
   }
+  // The checkout pins another diamond-lib: export the fixture's from the submodule's history, or skip.
+  const libArchive = Bun.spawnSync(["git", "-C", join(dir, "lib", "diamond-lib"), "archive", diamondLib], { stdout: "pipe", stderr: "pipe" });
+  mkdirSync(lib, { recursive: true });
+  if (!libArchive.success || !Bun.spawnSync(["tar", "-x", "-C", lib], { stdin: libArchive.stdout }).success) return null;
   return out;
 }
 
