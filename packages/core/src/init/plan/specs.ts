@@ -30,7 +30,8 @@ export function mainModule(spec: InitSpec): string {
  * With no entry of that name, a bundle sets up a whole assembly (GovernedVaultInit runs twelve modules, none of
  * them GovernedVault, and ends with Governor), so none of its modules is the facet's: the facet is its own
  * module, and INIT-04 counts it provided when a plan step covers every module of the bundle. A step init's last
- * module is the facet's (OwnableFacet → Ownable).
+ * module is the facet's (OwnableFacet → Ownable); when it runs several (ERC20VotesInit since Lattice 0.5.0), INIT-04
+ * asks for all of them.
  */
 export function facetModule(facet: string, spec: InitSpec): string {
   if (spec.initializes.some((entry) => entry.module === facet)) return facet;

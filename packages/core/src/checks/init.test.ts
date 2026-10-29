@@ -495,12 +495,28 @@ const built = loadBuiltCatalog();
 describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20VotesInit and GovernedVaultInit)", () => {
   const realCatalog = built.ok ? built.value : catalog;
 
-  test("Blank diamond + ERC20Votes: since Lattice 0.5.0 ERC20VotesInit has no ERC20Votes module, so its module is AccessControl, which the Blank diamond's AccessControlInit covers (as ERC20Pausable's is)", () => {
+  test("Blank diamond + ERC20Votes raises INIT-04 for EIP712, the first module ERC20VotesInit runs that the Blank diamond's AccessControlInit doesn't (Lattice 0.5.0 has no ERC20Votes module)", () => {
     const recipe = makeRecipe(
       { facets: [...BLANK_FACETS, "ERC20Votes"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } },
       realCatalog,
     );
-    expect(only(run(recipe, realCatalog), "INIT-04")).toEqual([]);
+    const problems = only(run(recipe, realCatalog), "INIT-04");
+    expect(problems.map((p) => p.id)).toEqual(["INIT-04:EIP712"]);
+    expect(problems[0]?.message).toContain("EIP712 is never initialized");
+    expect(problems[0]?.fixes).toEqual([{ id: "init.addStep", args: { spec: "ERC20VotesInit" } }]);
+    applyAddStepFixes(recipe, realCatalog, problems);
+  });
+
+  test("Blank diamond + ERC20, Votes and ERC20Votes with AccessControlInit and ERC20Init still leaves EIP712, Nonces and Votes uninitialized", () => {
+    const recipe = makeRecipe(
+      {
+        facets: [...BLANK_FACETS, "ERC20", "Votes", "ERC20Votes"],
+        init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }, { spec: "ERC20Init", args: {} }] },
+      },
+      realCatalog,
+    );
+    const problems = only(run(recipe, realCatalog), "INIT-04").filter((p) => p.where.some((w) => w.kind === "facet" && w.facet === "ERC20Votes"));
+    expect(problems.map((p) => p.id)).toEqual(["INIT-04:EIP712"]);
   });
 
   test("Blank diamond + GovernedVault: its only inits are bundles and the plan already has a step, so it's offered Use the GovernedVault bundle, never an `addInitStep` it would refuse (Q28)", () => {
@@ -544,7 +560,7 @@ describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20Vo
       named.push(facet.name);
       if (module === facet.name) continue;
       renamed.push(`${facet.name} -> ${String(module)}`);
-      // A facet whose module has another name is a step init's own: its last module, which the init lists.
+      // A facet whose module has another name is a step init's own: a module the init runs, which it lists.
       expect([facet.name, spec.kind]).toEqual([facet.name, "step"]);
       expect(spec.initializes.some((entry) => entry.module === module)).toBe(true);
       expect(problems[0]?.message).toContain(`${String(module)} is never initialized`);
@@ -552,10 +568,10 @@ describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20Vo
     expect(named.length).toBeGreaterThan(60);
     // Pinned: a new entry here means a facet whose message names another module, and someone should look at it.
     expect(renamed.sort()).toEqual([
-      "CrosschainTimelockHandler -> CrosschainLink",
+      "CrosschainTimelockHandler -> AccessControl",
       "DiamondCutFacet -> Ownable",
-      "ERC20Pausable -> AccessControl",
-      "ERC20Votes -> AccessControl",
+      "ERC20Pausable -> Pausable",
+      "ERC20Votes -> EIP712",
       "OwnableFacet -> Ownable",
     ]);
   });
