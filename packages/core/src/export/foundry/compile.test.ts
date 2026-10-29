@@ -48,7 +48,7 @@ const SENDER: Address = "0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38";
 const CHAIN = 11155111;
 const CHAINS = [CHAIN, 84532];
 const FACTORY_ABI = parseAbi([
-  "function deploy((bytes32,uint64)[] entries, (address,uint8,bytes4[])[] customCuts, address init, bytes initCalldata, bytes32 salt)",
+  "function deploy((bytes32,uint64,bytes4[])[] entries, (address,uint8,bytes4[])[] customCuts, address init, bytes initCalldata, bytes32 salt)",
 ]);
 const CREATEX_ABI = parseAbi(["function deployCreate3AndInit(bytes32 salt, bytes initCode, bytes data, (uint256,uint256) values)"]);
 const LATTICE_ABI = parseAbi(["function initialize((address,uint8,bytes4[])[] facetCuts, address init, bytes data)"]);

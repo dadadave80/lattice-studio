@@ -70,7 +70,7 @@ function decodeFactory(data: Hex) {
   const decoded = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data });
   expect(decoded.functionName).toBe("deploy");
   const [entries, cuts, init, initCalldata, salt] = decoded.args as readonly [
-    readonly { nameHash: Hex; version: bigint }[], readonly { facetAddress: Address; action: number; functionSelectors: readonly Hex[] }[],
+    readonly { nameHash: Hex; version: bigint; exclude: readonly Hex[] }[], readonly { facetAddress: Address; action: number; functionSelectors: readonly Hex[] }[],
     Address, Hex, Hex,
   ];
   return { entries, cuts, init, initCalldata, salt };
@@ -78,7 +78,7 @@ function decodeFactory(data: Hex) {
 
 describe("selectors", () => {
   test("the ABIs carry the signatures the brief names", () => {
-    expect(toFunctionSelector("deploy((bytes32,uint64)[],(address,uint8,bytes4[])[],address,bytes,bytes32)")).toBe(FACTORY_DEPLOY_SELECTOR);
+    expect(toFunctionSelector("deploy((bytes32,uint64,bytes4[])[],(address,uint8,bytes4[])[],address,bytes,bytes32)")).toBe(FACTORY_DEPLOY_SELECTOR);
     expect(toFunctionSelector("deployCreate3AndInit(bytes32,bytes,bytes,(uint256,uint256))")).toBe(CREATEX_DEPLOY_SELECTOR);
     expect(build().tx.data.slice(0, 10)).toBe(FACTORY_DEPLOY_SELECTOR);
     expect(build({ path: "createx", proxyCreationCode: PROXY_CODE }).tx.data.slice(0, 10)).toBe(CREATEX_DEPLOY_SELECTOR);
@@ -124,7 +124,7 @@ describe("factory path", () => {
   test("a whole facet the registry lists with the catalog's address and codehash goes as a RecipeEntry", () => {
     const deploy = build({ chain: chain({ "ERC20@0.4.0": listed(erc20), "DiamondLoupeFacet@0.4.0": null }) });
     const decoded = decodeFactory(deploy.tx.data);
-    expect(decoded.entries).toEqual([{ nameHash: keccak256(stringToHex("lattice.ERC20")), version: 67108864n }]);
+    expect(decoded.entries).toEqual([{ nameHash: keccak256(stringToHex("lattice.ERC20")), version: 67108864n, exclude: [] }]);
     expect(decoded.cuts.map((cut) => cut.facetAddress)).toEqual([loupe.release.address]);
     expect(deploy.registryEntries).toEqual(["ERC20"]);
     expect(deploy.customCuts).toEqual(["DiamondLoupeFacet"]);
