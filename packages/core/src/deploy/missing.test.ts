@@ -134,6 +134,12 @@ describe("dependencies", () => {
     expect(unlisted.txs.map((t) => t.names)).toEqual([["ERC20"], ["PoseidonT3"], ["Semaphore"]]);
   });
 
+  test("LatticeRegistry deploys before LatticeFactory, whose constructor needs it", () => {
+    expect(build({ names: ["LatticeFactory"], multicall3Canonical: false }).txs.map((t) => t.names)).toEqual([["LatticeRegistry"], ["LatticeFactory"]]);
+    const present = build({ names: ["LatticeFactory"], chain: chain({ shared: { LatticeRegistry: { present: true } } }), multicall3Canonical: false });
+    expect(present.txs.map((t) => t.names)).toEqual([["LatticeFactory"]]);
+  });
+
   test("a dependency already on the chain isn't sent again", () => {
     const result = build({ names: ["Semaphore"], chain: chain({ shared: { PoseidonT3: { present: true } } }), multicall3Canonical: false });
     expect(result.txs.map((t) => t.names)).toEqual([["Semaphore"]]);

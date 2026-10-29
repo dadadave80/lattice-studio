@@ -40,7 +40,7 @@ function presentOn(chain: ChainState, item: Item): boolean {
 
 /**
  * The names in the order they must deploy: each contract's `dependsOn` first (PoseidonT3 before Semaphore and
- * ShieldedPool), otherwise the order given. Anything the chain already has is left out and listed in `skipped`, and
+ * ShieldedPool, LatticeRegistry before LatticeFactory), otherwise the order given. Anything the chain already has is left out and listed in `skipped`, and
  * a dependency the chain lacks is added even when `names` doesn't list it. Two names for one contract deploy once.
  * A chain with its own LatticeFactory (`catalog.chains`) refuses "LatticeFactory": that factory is a chain-specific
  * build, not the Arachnid release, and `buildDiamondDeploy` targets it.
@@ -70,7 +70,9 @@ function order(args: MissingDeploysArgs): Result<{ items: Item[]; skipped: strin
       return ok(null);
     }
     visiting.add(key);
-    for (const dependency of item.release.dependsOn ?? []) {
+    // Since Lattice 0.5.0 the factory's constructor reverts InvalidRegistry while its registry has no code.
+    const implied = item.name === "LatticeFactory" ? ["LatticeRegistry"] : [];
+    for (const dependency of [...implied, ...(item.release.dependsOn ?? [])]) {
       const visited = visit(dependency, name);
       if (!visited.ok) return visited;
     }
