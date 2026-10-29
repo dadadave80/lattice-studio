@@ -7,8 +7,9 @@ import type { AbiItem } from "../model/catalog";
  * - CreateX (not a Lattice contract): `FailedContractInitialisation(address,bytes)` 0xa57ca239 and
  *   `FailedContractCreation(address)` 0xc05cee7a, both with CreateX's own address as the emitter, plus the rest of
  *   CreateX's custom errors.
- * - LatticeRegistry and LatticeFactory (lattice/src/interfaces/ILatticeRegistry.sol L86-L121,
- *   ILatticeFactory.sol L37-L80), until catalogs carry their `SharedContract.detail` shards.
+ * - LatticeRegistry and LatticeFactory (lattice/src/interfaces/ILatticeRegistry.sol L112-L151,
+ *   ILatticeFactory.sol L49-L113): a fallback for a catalog without their `SharedContract.detail` shards. v0.5.0
+ *   ships both, and the app decodes with them when they're loaded.
  * - MultiInit (lattice/lib/diamond-lib/src/initializers/MultiInit.sol L6-L8).
  * - Lattice, the proxy: DiamondLib's errors (lattice/lib/diamond-lib/src/libraries/DiamondLib.sol L19-L64), which
  *   `Lattice.initialize` raises while it cuts and runs the init. `catalog.proxy.detail`, when a catalog has it,
