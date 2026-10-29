@@ -75,6 +75,6 @@ the CLI reads. Envio sees the diamond address whose cut history it returns.
 
 ## Roadmap
 
-An on-chain recipe hash can anchor passports after Studio re-pins to Lattice v0.5.0, whose `DiamondDeployed` event
-carries `recipeHash`. Passkey-signed passports could be verified through Monad's P256 precompile. Studio could act
+An on-chain recipe hash can anchor passports: since the re-pin to Lattice v0.5.0, `DiamondDeployed` carries
+`recipeHash`, which the passport doesn't read yet. Passkey-signed passports could be verified through Monad's P256 precompile. Studio could act
 as an ERC-8004 validator once a Validation Registry is canonical on Monad.
