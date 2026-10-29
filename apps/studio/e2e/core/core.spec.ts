@@ -138,7 +138,7 @@ test.describe("The pinned diamond core", () => {
     await openEmpty(page);
     const log = new ConsolePage(page);
     await log.run("core");
-    await expect(log.line(new RegExp(`Core: fallback ${coreSelectors()} routed · loupe 4/4 · ERC-165 IDiamondLoupe · cut Empty · no upgrade mechanism\\.`))).toBeVisible();
+    await expect(log.line(new RegExp(`Core: fallback ${coreSelectors()} routed · loupe 4/4 · ERC-165 IERC165, IDiamondLoupe · cut Empty · no upgrade mechanism\\.`))).toBeVisible();
     await expect(region(page, "Inspector").getByRole("heading", { level: 2, name: CORE_TITLE })).toBeVisible();
   });
 
@@ -179,7 +179,7 @@ test.describe("The pinned diamond core", () => {
       new MutationObserver(seen).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-tone"] });
     });
     await region(page, "Sheet").getByRole("button", { name: /^ERC20 / }).click();
-    await expect(sheetCards(page)).toHaveCount(2);
+    await expect(sheetCards(page)).toHaveCount(1);
     await expect.poll(() => page.evaluate(() => (window as unknown as { flashSeen?: boolean }).flashSeen)).toBe(true);
     await expect(page.locator('[data-core-traces] [data-tone="flash"]')).toHaveCount(0, { timeout: 5000 });
   });
@@ -194,13 +194,13 @@ test.describe("The pinned diamond core", () => {
 
   test("clicking the cell selects the core: the Diamond view names it and every card shows its place in the cut", async ({ page }) => {
     await seedProject(page, { project: recipeProject("ERC20") });
-    await expect(sheetCards(page)).toHaveCount(2);
+    await expect(sheetCards(page)).toHaveCount(1);
     await cell(page).getByRole("button", { name: "Core The diamond's fixed part" }).click();
     await expect(region(page, "Inspector").getByRole("heading", { level: 2, name: CORE_TITLE })).toBeVisible();
     // The core's two cuts are [00] and [01]; the cards follow in catalog order.
     const stamps = region(page, "Sheet").locator(".react-flow__node [data-stamp]");
-    await expect(stamps).toHaveCount(2);
-    expect((await stamps.evaluateAll((els) => els.map((el) => el.getAttribute("data-stamp")))).sort()).toEqual(["02", "03"]);
+    await expect(stamps).toHaveCount(1);
+    expect(await stamps.evaluateAll((els) => els.map((el) => el.getAttribute("data-stamp")))).toEqual(["02"]);
     await region(page, "Sheet").focus();
     await page.keyboard.press("Escape");
     await expect(stamps).toHaveCount(0);

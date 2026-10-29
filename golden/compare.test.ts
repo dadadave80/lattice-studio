@@ -103,7 +103,7 @@ describe("golden: Studio's plan against Lattice's scripts", () => {
     });
     const erc20 = studioSide(caseFor("ERC20").template, caseFor("ERC20").recipe, ready().catalog);
     expect(erc20.init.kind).toBe("MultiInit");
-    expect(erc20.routing["0x00000000"]).toBe("Receive");
+    expect(erc20.routing["0x00000000"]).toBeUndefined();
     expect(vault.routing["0x91ddadf4"]).toBe("GovernedVault");
     expect(vault.routing["0x4bf5d7e9"]).toBe("GovernedVault");
   });

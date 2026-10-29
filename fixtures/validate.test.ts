@@ -1,9 +1,12 @@
 /**
  * The fixture catalogs (`fixtures/catalog/`) against K1's schemas, the release formulas and Lattice's source at
- * the pin. Source checks read `LATTICE_DIR` (or the `lattice/` submodule) and skip when neither is checked out.
+ * the commit the fixture was built from (`provenance.json`). The submodule's pin moves on and the fixture doesn't, so
+ * source checks read that commit out of `LATTICE_DIR` (or the `lattice/` submodule)'s history, and skip when there's
+ * no checkout or the commit isn't in it.
  */
-import { describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { afterAll, describe, expect, test } from "bun:test";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { keccak256, toFunctionSelector } from "viem";
 import type { Catalog, Facet, InitParam, SharedContract, ShardRef } from "../packages/core/src/model/catalog.ts";
@@ -18,7 +21,6 @@ import { ARACHNID, create2Address, erc7201Slot, fileHash, indexHash, releaseSalt
 import { latticeDir, readExportSelectors, readInventory, readScriptCuts } from "./gen/lattice-source.ts";
 
 const ROOT = join(import.meta.dir, "catalog");
-const GOLDEN = join(import.meta.dir, "..", "golden", "expected");
 const IDS = ["fixture", "fixture-next"] as const;
 const EXPORT_SELECTORS = "0x0ef22643";
 
@@ -31,7 +33,30 @@ function load(id: string): Catalog {
 const catalogs = { fixture: load("fixture"), "fixture-next": load("fixture-next") };
 const fixture = catalogs.fixture;
 const next = catalogs["fixture-next"];
-const lattice = latticeDir();
+const lattice = latticeAtFixture();
+
+/**
+ * Lattice's source at the fixture's commit: the checkout itself when it's there, else that commit exported to a
+ * temporary folder, with `lib/diamond-lib` linked from the checkout when it pins the same diamond-lib. Null when
+ * there's no checkout or its history lacks the commit (a shallow clone).
+ */
+function latticeAtFixture(): string | null {
+  const dir = latticeDir();
+  if (dir === null) return null;
+  const { commit, diamondLib } = (JSON.parse(readFileSync(join(ROOT, "provenance.json"), "utf8")) as { lattice: { commit: string; diamondLib: string } }).lattice;
+  const git = (...args: string[]) => Bun.spawnSync(["git", "-C", dir, ...args], { stdout: "pipe", stderr: "pipe" });
+  if (git("rev-parse", "HEAD").stdout.toString().trim() === commit) return dir;
+  if (!git("cat-file", "-e", `${commit}^{commit}`).success) return null;
+  const out = mkdtempSync(join(tmpdir(), "lattice-fixture-"));
+  afterAll(() => rmSync(out, { recursive: true, force: true }));
+  const archive = git("archive", commit);
+  if (!archive.success || !Bun.spawnSync(["tar", "-x", "-C", out], { stdin: archive.stdout }).success) return null;
+  if (git("ls-tree", "HEAD", "lib/diamond-lib").stdout.toString().includes(`commit ${diamondLib}\t`)) {
+    rmSync(join(out, "lib", "diamond-lib"), { recursive: true, force: true });
+    symlinkSync(join(dir, "lib", "diamond-lib"), join(out, "lib", "diamond-lib"));
+  }
+  return out;
+}
 
 function facetOf(catalog: Catalog, name: string): Facet {
   const facet = catalog.facets.find((f) => f.name === name);
@@ -444,16 +469,6 @@ describe("templates", () => {
     for (const { name, recipe } of templatesOf(fixture)) expect([name, unmet(recipe.facets)]).toEqual([name, []]);
   });
 
-  const goldens = existsSync(GOLDEN) ? readdirSync(GOLDEN).filter((f) => f.endsWith(".routing.json")) : [];
-  test.skipIf(goldens.length === 0)("each template's routing equals golden/expected (GT1's Foundry run)", () => {
-    for (const file of goldens) {
-      const golden = JSON.parse(readFileSync(join(GOLDEN, file), "utf8")) as { recipe: string; routing: Record<string, string> };
-      const routed = Object.fromEntries(route(fixture, template(fixture, golden.recipe)).routed);
-      expect([golden.recipe, routed]).toEqual([golden.recipe, golden.routing]);
-    }
-    expect(goldens.length).toBeGreaterThanOrEqual(3);
-  });
-
   test("seams and default owners alone reproduce GovernedVault's owners", () => {
     const recipe = template(fixture, "GovernedVault");
     expect(route(fixture, { ...recipe, owners: {} }).routed).toEqual(route(fixture, recipe).routed);
@@ -494,9 +509,9 @@ describe("fixture-next, for the migrate flow", () => {
   });
 });
 
-// ── against Lattice's source at the pin ────────────────────────────────────────────────────────────
+// ── against Lattice's source at the fixture's commit ───────────────────────────────────────────────
 
-describe.skipIf(!lattice)("against Lattice's source at the pin", () => {
+describe.skipIf(!lattice)("against Lattice's source at the fixture's commit", () => {
   const dir = lattice as string;
 
   test("the catalog is exactly FacetInventory, in its order (FacetInventory.sol L20-L238)", () => {

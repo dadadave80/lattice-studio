@@ -1,27 +1,25 @@
 name: ChainRegistry
 script: script/base/crosschain/DeployChainRegistry.s.sol
 buildCuts: buildCuts(address)
-source: script/base/crosschain/DeployChainRegistry.s.sol#L29-L40
+source: script/base/crosschain/DeployChainRegistry.s.sol#L28-L38
 proxy: Lattice
 phase: v1.1
 cuts:
   - add: ERC165Facet
-    source: script/base/crosschain/DeployChainRegistry.s.sol#L31-L31
+    source: script/base/crosschain/DeployChainRegistry.s.sol#L30-L30
   - add: AccessControl
-    source: script/base/crosschain/DeployChainRegistry.s.sol#L32-L32
+    source: script/base/crosschain/DeployChainRegistry.s.sol#L31-L31
   - add: ChainRegistry
-    source: script/base/crosschain/DeployChainRegistry.s.sol#L33-L33
+    source: script/base/crosschain/DeployChainRegistry.s.sol#L32-L32
   - add: DiamondLoupeFacet
-    source: script/base/crosschain/DeployChainRegistry.s.sol#L34-L34
+    source: script/base/crosschain/DeployChainRegistry.s.sol#L33-L33
   - add: AccessControlDiamondCut
-    source: script/base/crosschain/DeployChainRegistry.s.sol#L35-L35
-  - add: Receive
-    source: script/base/crosschain/DeployChainRegistry.s.sol#L36-L36
+    source: script/base/crosschain/DeployChainRegistry.s.sol#L34-L34
 init:
   kind: steps
   steps:
     - spec: ChainRegistryInit
       args: {}  # the script passes (admin)
-  source: script/base/crosschain/DeployChainRegistry.s.sol#L37-L39
+  source: script/base/crosschain/DeployChainRegistry.s.sol#L35-L37
 gaps: >-
   No example arguments yet: the script takes every init argument as a parameter (admin).

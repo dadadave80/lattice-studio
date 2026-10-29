@@ -56,9 +56,9 @@ describe("InitSpec keys", () => {
 describe("ERC20VotesInit (FX36's note)", () => {
   const real = built.ok ? built.value.inits.find((init) => init.name === "ERC20VotesInit") : undefined;
 
-  test.skipIf(!real)("the built catalog's: ERC20Votes is its own module though AccessControl comes last, and ERC20, EIP712, Nonces and Votes share one call", () => {
-    expect(real?.initializes.map((entry) => entry.module)).toEqual(["EIP712", "Nonces", "Votes", "ERC20Votes", "AccessControl"]);
-    expect(real?.sameCall).toEqual(["ERC20", "EIP712", "Nonces", "Votes"]);
+  test.skipIf(!real)("the built catalog's: no ERC20Votes module since Lattice 0.5.0, AccessControl last, and ERC20 and Votes share one call", () => {
+    expect(real?.initializes.map((entry) => entry.module)).toEqual(["EIP712", "Nonces", "Votes", "AccessControl"]);
+    expect(real?.sameCall).toEqual(["ERC20", "Votes"]);
     expect(real?.after).toEqual([]);
   });
 

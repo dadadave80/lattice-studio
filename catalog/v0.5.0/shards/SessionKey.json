@@ -1,0 +1,409 @@
+{
+  "name": "SessionKey",
+  "abi": [
+    {
+      "type": "function",
+      "name": "isCallPermitted",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isSessionKeyActive",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registerSessionKey",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "validAfter",
+          "type": "uint48",
+          "internalType": "uint48"
+        },
+        {
+          "name": "validUntil",
+          "type": "uint48",
+          "internalType": "uint48"
+        },
+        {
+          "name": "permissions",
+          "type": "tuple[]",
+          "internalType": "struct ISessionKey.Permission[]",
+          "components": [
+            {
+              "name": "target",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "selector",
+              "type": "bytes4",
+              "internalType": "bytes4"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "revokeSessionKey",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "sessionKeyValidity",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "validAfter",
+          "type": "uint48",
+          "internalType": "uint48"
+        },
+        {
+          "name": "validUntil",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setSpendLimit",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "cap",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "spendLimit",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "cap",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "spent",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "SessionKeyRegistered",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "validAfter",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        },
+        {
+          "name": "validUntil",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        },
+        {
+          "name": "permissions",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SessionKeyRevoked",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SpendLimitSet",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "cap",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ApprovalNotPermitted",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ApprovalResetFailed",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "spender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CallNotPermitted",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidExpiry",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidSessionKey",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SessionKeyNotActive",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SpendLimitExceeded",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "cap",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "attempted",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe4aea089": {
+        "notice": "Whether `key` is permitted to call `(target, selector)` (honoring wildcards; `ANY_TARGET` does not match the account itself)."
+      },
+      "0xf4d2a194": {
+        "notice": "Whether `key` is registered and currently within its validity window."
+      },
+      "0xc8337e5a": {
+        "notice": "Registers (or replaces) a session key with a validity window + a `(target, selector)` allowlist.",
+        "dev": "Admin only. Re-registering a key that was not revoked overwrites the validity window and adds the given permissions to its existing ones. After {revokeSessionKey}, a registration starts clean."
+      },
+      "0x84f4fc6a": {
+        "notice": "Revokes a session key. Admin only.",
+        "dev": "Clears the validity window, invalidates every permission granted so far, and deletes the key's spend caps and spent counters. Re-registering the key restores none of them; set its limits again."
+      },
+      "0x78b6590d": {
+        "notice": "The validity window of `key` (`validUntil == 0` means unregistered/revoked)."
+      },
+      "0xba9735cc": {
+        "notice": "Sets a cumulative spend cap for `key` on `token` (native sentinel `0xEee…EEeE`), resetting the spent counter to 0. Admin only. A token with no cap set is uncapped."
+      },
+      "0xab1c8674": {
+        "notice": "The spend cap and amount already spent for `key` on `token`."
+      }
+    },
+    "notice": "Session-key facet. An admin registers scoped, expiring secondary keys (a `(target, selector)` allowlist + validity window); a registered key can then authorize batches through the `ERC7821Executor` signed-`opData` path without holding the owner key.",
+    "dev": "Stateless delegator — logic/storage live in {SessionKeyLib}. Enforces expiry, the allowlist (with `ANY_*` wildcards) and per-token cumulative spend limits, with post-batch approval resets on capped tokens. Revoking a key drops its grants and limits."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/SessionKey.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/accounts/SessionKey.sol"
+  }
+}

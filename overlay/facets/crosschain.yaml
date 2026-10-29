@@ -7,7 +7,7 @@ AcrossBridgeAdapter:
     name: AcrossBridgeAdapterInit
     source: src/crosschain/across/AcrossBridgeAdapterInit.sol#L19-L21
   notes: >-
-    No admin surface, so its recipe cuts no AccessControl (script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L16-L21).
+    No admin surface, so its recipe cuts no AccessControl (script/base/crosschain/DeployAcrossBridgeAdapter.s.sol#L15-L20).
 
 AxelarGatewayAdapter:
   requires: []
@@ -37,7 +37,7 @@ BridgeERC20:
     script cuts two of these together or pins an owner, so the user chooses (SEL-01).
   notes: >-
     The recipe registers it as CrosschainLink's handler after deploy with an admin setHandler call
-    (script/base/crosschain/DeployBridgeERC20.s.sol#L17-L21).
+    (script/base/crosschain/DeployBridgeERC20.s.sol#L16-L20).
 
 BridgeERC7802:
   requires:
@@ -56,7 +56,7 @@ BridgeERC7802:
     script cuts two of these together or pins an owner, so the user chooses (SEL-01).
   notes: >-
     The recipe registers it as CrosschainLink's handler after deploy with an admin setHandler call
-    (script/base/crosschain/DeployBridgeERC7802.s.sol#L17-L21).
+    (script/base/crosschain/DeployBridgeERC7802.s.sol#L16-L20).
 
 CCIPGatewayAdapter:
   requires: []
@@ -76,9 +76,9 @@ CCTPBridgeAdapter:
     name: CCTPBridgeAdapterInit
     source: src/crosschain/circle/CCTPBridgeAdapterInit.sol#L23-L26
   notes: >-
-    Its init deploys the diamond's CCTPHookExecutor with new (src/crosschain/circle/CCTPBridgeAdapterLib.sol#L161-L162).
+    Its init deploys the diamond's CCTPHookExecutor with new (src/crosschain/circle/CCTPBridgeAdapterLib.sol#L180-L181).
     The CCTP domain table is registered by the admin after deploy
-    (script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L20-L21).
+    (script/base/crosschain/DeployCCTPBridgeAdapter.s.sol#L19-L20).
 
 ChainRegistry:
   requires: []
@@ -89,7 +89,7 @@ ChainRegistry:
     No requirement on purpose: the facet states it works without any adapter facet, and addEvmChain's writes for
     an adapter that isn't cut go unread (src/crosschain/ChainRegistry.sol#L13-L19). Its recipe notes that in
     production the adapter facets the fan-out targets are cut into the same diamond
-    (script/base/crosschain/DeployChainRegistry.s.sol#L21-L22).
+    (script/base/crosschain/DeployChainRegistry.s.sol#L20-L21).
 
 CrosschainLink:
   requires: []
@@ -130,7 +130,7 @@ ERC7786OpenBridge:
   requires: []
   init:
     name: ERC7786OpenBridgeInit
-    source: src/crosschain/ERC7786OpenBridgeInit.sol#L19-L22
+    source: src/crosschain/ERC7786OpenBridgeInit.sol#L21-L24
   seamReview: >-
     sendMessage 0xcdfe7f5c and supportsAttribute 0xdc680a0f are shared with every ERC-7786 gateway adapter
     (sendMessage also with CrosschainLink), and receiveMessage 0x2432ef26 with CrosschainLink. The bridge is
@@ -201,7 +201,7 @@ StargateBridgeAdapter:
     source: src/crosschain/layerzero/StargateBridgeAdapterInit.sol#L21-L24
   notes: >-
     No protocol addresses at init: the admin registers the chainId-to-eid map and the ERC-20 pools after deploy
-    (script/base/crosschain/DeployStargateBridgeAdapter.s.sol#L20-L22).
+    (script/base/crosschain/DeployStargateBridgeAdapter.s.sol#L19-L21).
 
 StarknetGatewayAdapter:
   requires: []
@@ -216,7 +216,7 @@ SuperchainETHBridgeAdapter:
     source: src/crosschain/optimism/SuperchainETHBridgeAdapterInit.sol#L14-L16
   notes: >-
     Stateless with no admin surface, so its recipe cuts no AccessControl
-    (script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L16-L20).
+    (script/base/crosschain/DeploySuperchainETHBridgeAdapter.s.sol#L15-L19).
 
 WormholeGatewayAdapter:
   requires: []

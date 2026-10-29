@@ -1,5 +1,5 @@
 {
-  "default": "dev-6c8db45",
+  "default": "v0.5.0",
   "catalogs": [
     {
       "id": "dev-6c8db45",
@@ -14,6 +14,13 @@
       "commit": "f4a32c8330934d39bcfdffff87d35a04b7fa6a79",
       "hash": "0xe6b26b64bc16221815377e4bd5c7c410b49e52badb93ab1f786164f57349fc76",
       "path": "dev-f4a32c8/index.json"
+    },
+    {
+      "id": "v0.5.0",
+      "tag": "v0.5.0",
+      "commit": "cca133b07abda7fdde4468798d1dce3e36ea7849",
+      "hash": "0xc00bd4907372904809aa91a4df255773e09d9d760523ab640f6937a2da700ccf",
+      "path": "v0.5.0/index.json"
     }
   ]
 }

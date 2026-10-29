@@ -1,0 +1,24 @@
+{
+  "name": "OracleGuardInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe1c7392a": {
+        "notice": "Runs the OracleGuard module initializer. MUST be invoked via the diamond's `initialize` `_init` delegatecall."
+      }
+    },
+    "notice": "One-shot initializer for the OracleGuard module: registers the IOracleGuard interface (ERC-165). It does NOT seed AccessControl, so it composes (via {MultiInit}) next to the init that does: {AccessControlInit} in the standalone {DeployOracleGuard} recipe, or an adapter's own init (for example {ChainlinkAdapterInit}) when the guard is cut into a new adapter diamond. Delegatecalled by {Diamond.initialize} inside the initializing window (so it must NOT open its own pre/postInitializer; the `__OracleGuard_init` guard passes because the window is already open). A cut adding the guard to an already-initialized diamond calls `OracleGuardLib.__OracleGuard_init()` from its own reinitializer init."
+  },
+  "source": {
+    "path": "src/oracles/OracleGuardInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/oracles/OracleGuardInit.sol"
+  }
+}

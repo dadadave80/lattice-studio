@@ -3,13 +3,13 @@
 
 DiamondIntrospectionInit.initImmutable:
   kind: step
-  source: src/utils/DiamondIntrospectionInit.sol#L31-L35
+  source: src/utils/DiamondIntrospectionInit.sol#L34-L39
   registersInterfaces: true
   notes: >-
     Registers only the IDiamondLoupe flag, so supportsInterface(0x1f931c1c) stays false on an immutable
-    diamond (src/utils/DiamondIntrospectionInit.sol#L11-L13).
+    diamond (src/utils/DiamondIntrospectionInit.sol#L13-L15).
 
 DiamondIntrospectionInit.initUpgradeable:
   kind: step
-  source: src/utils/DiamondIntrospectionInit.sol#L21-L23
+  source: src/utils/DiamondIntrospectionInit.sol#L23-L26
   registersInterfaces: true

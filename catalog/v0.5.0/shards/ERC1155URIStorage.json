@@ -1,0 +1,116 @@
+{
+  "name": "ERC1155URIStorage",
+  "abi": [
+    {
+      "type": "function",
+      "name": "setBaseURI",
+      "inputs": [
+        {
+          "name": "baseURI",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setURI",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tokenURI",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "uri",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "URI",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        },
+        {
+          "name": "id",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x55f804b3": {
+        "notice": "Sets the prefix that `uri(tokenId)` prepends to every non-empty per-token URI.",
+        "dev": "Emits no event, as in OpenZeppelin: `URI` is per id, and a base change touches every id."
+      },
+      "0x862440e2": {
+        "notice": "Sets `tokenURI` as the per-token URI of `tokenId` and emits `URI(uri(tokenId), tokenId)`.",
+        "dev": "An empty `tokenURI` clears the entry, so `uri(tokenId)` falls back to the ERC-1155 URI template."
+      },
+      "0x0e89341c": {
+        "notice": "Returns the URI for token type `tokenId`: the base URI followed by the per-token URI when one is set, otherwise the ERC-1155 URI template.",
+        "dev": "Replaces the base {ERC1155} `uri` (0x0e89341c)."
+      }
+    },
+    "notice": "Stateless Diamond facet for ERC-1155 per-token URIs with an optional base URI.",
+    "dev": "Owns ONLY its own selectors: the admin setters `setURI` and `setBaseURI` (new) and `uri(uint256)`, which REPLACES the base {ERC1155} variant to read per-token URI storage. It does NOT inherit the {ERC1155} facet; that would re-export the base surface and collide with the standalone {ERC1155} facet in a diamond. The ERC-1155 base surface comes from a separately cut {ERC1155} facet, and {DeployERC1155URIStorage} composes both with a mixed Add/Replace cut. The setters are gated on `DEFAULT_ADMIN_ROLE`. Pure delegator."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC1155/ERC1155URIStorage.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/tokens/ERC1155/ERC1155URIStorage.sol"
+  }
+}

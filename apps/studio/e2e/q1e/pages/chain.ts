@@ -133,7 +133,7 @@ export async function unstick(node: AnvilNode, name: string): Promise<void> {
 }
 
 /**
- * LatticeRegistry's `_records[keccak256(abi.encode(nameHash, version))]` (storage slot 3; LatticeRegistry.sol L36-L46)
+ * LatticeRegistry's `_records[keccak256(abi.encode(nameHash, version))]` (storage slot 3; LatticeRegistry.sol L52-L61)
  * and its `Record` fields: facet and version share the first word, then registeredAt, codehash, selectorsHash.
  */
 const RECORDS_SLOT = 3n;

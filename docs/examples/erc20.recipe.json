@@ -3,16 +3,15 @@
   "schemaVersion": 1,
   "name": "ERC20",
   "catalog": {
-    "tag": "dev-6c8db45",
-    "hash": "0xff95b40d61ef1d34d245c9a15bb667145bbcfdaf25b12b9cf21dbf413a69e865"
+    "tag": "v0.5.0",
+    "hash": "0xc00bd4907372904809aa91a4df255773e09d9d760523ab640f6937a2da700ccf"
   },
   "template": {
     "name": "ERC20",
-    "catalogHash": "0xff95b40d61ef1d34d245c9a15bb667145bbcfdaf25b12b9cf21dbf413a69e865"
+    "catalogHash": "0xc00bd4907372904809aa91a4df255773e09d9d760523ab640f6937a2da700ccf"
   },
   "facets": [
     "ERC20",
-    "Receive",
     "DiamondLoupeFacet",
     "ERC165Facet"
   ],

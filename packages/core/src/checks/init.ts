@@ -237,8 +237,8 @@ function init04(input: CheckInput, steps: readonly PlannedStep[]): Problem[] {
     if (!placed.has(facet.name) || facet.init === undefined) continue;
     const spec = findSpec(catalog, facet.init);
     if (!spec || planned.has(spec.name)) continue;
-    // The facet's own module, not the init's last one: ERC20VotesInit ends with AccessControl even though
-    // ERC20Votes is its own module (FX23).
+    // The facet's own module, not the init's last one: ERC20VotesInit ended with AccessControl even though
+    // ERC20Votes was its own module, until Lattice 0.5.0 (FX23).
     const module = facetModule(facet.name, spec);
     // A bundle's facet with no module of its own is provided by any step that initializes all the bundle does
     // (GovernedVaultENSInit covers GovernedVaultInit), where a module facet needs its own module initialized.

@@ -1,0 +1,797 @@
+{
+  "name": "LidoAdapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "asset",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "bufferBalance",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "claimWithdrawal",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ethReceived",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "deploy",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "deployed",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "emergencyWithdraw",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "recovered",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "harvest",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "harvestToken",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "healthFactor",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isPaused",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "lido",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "minHealthFactor",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "operator",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pendingRequestAt",
+      "inputs": [
+        {
+          "name": "index",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pendingRequestCount",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pendingWithdrawalAssets",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "reentrancyGuardEntered",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "requestWithdrawal",
+      "inputs": [
+        {
+          "name": "wstAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "rewardRecipient",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setOperator",
+      "inputs": [
+        {
+          "name": "operator_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setRewardRecipient",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "stakedWstETH",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "totalAssetsManaged",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "vault",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "weth",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "withdraw",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "withdrawn",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "withdrawalQueue",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "wstETH",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "Deployed",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "EmergencyWithdrawn",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "toVault",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "recovered",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "LidoAdapterConfigured",
+      "inputs": [
+        {
+          "name": "weth",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "lido",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "wstETH",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "vault",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OperatorSet",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RewardRecipientSet",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RewardsForwarded",
+      "inputs": [
+        {
+          "name": "rewardToken",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "WithdrawalClaimed",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "ethReceived",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "WithdrawalRequested",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "stETHAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AdapterSafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LidoAdapterInsufficientWstETH",
+      "inputs": [
+        {
+          "name": "requested",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "available",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LidoAdapterNothingStaked",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LidoAdapterUnknownRequest",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LidoAdapterUnwrapperDeployFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LidoAdapterWethTransferFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterHealthFactorBreached",
+      "inputs": [
+        {
+          "name": "resulting",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "floor",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterInvalidOraclePrice",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterInvalidRecipient",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterNothingToDeploy",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterPaused",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterRewardForwardFailed",
+      "inputs": [
+        {
+          "name": "rewardToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterUnauthorized",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterZeroAddress",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x38d52e0f": {
+        "notice": "Returns the address of the underlying asset this strategy manages."
+      },
+      "0x1298f13c": {
+        "notice": "Returns the idle WETH buffer balance the synchronous `withdraw` is served from."
+      },
+      "0xf8444436": {
+        "notice": "Claims a finalized withdrawal request (permissionless/keeper): pulls the owed ETH from the queue and wraps it 1:1 into the WETH buffer, clearing the request from pending.",
+        "params": {
+          "requestId": "The id of the finalized pending request to claim."
+        }
+      },
+      "0x775c300c": {
+        "notice": "Sweeps the adapter's idle asset balance into the external protocol.",
+        "dev": "Required because the vault PUSHES funds via a bare ERC-20 transfer (no callback). Reverts `ProtocolAdapterNothingToDeploy` if the idle balance is zero."
+      },
+      "0xdb2e21bc": {
+        "notice": "Fully exits the protocol position and returns all recovered assets to the vault.",
+        "dev": "Intended for the emergency path; callable by an authorized guardian/admin even when the adapter is paused."
+      },
+      "0x4641257d": {
+        "notice": "Claims reward tokens from the protocol and forwards them RAW (no swap) to the configured recipient.",
+        "dev": "No-op: Lido yield accrues in the wstETH→stETH rate (already in NAV), not a claimable reward token. Use `harvestToken` to forward a specific stray (airdropped) token."
+      },
+      "0x0bb18dc1": {
+        "notice": "Forwards the adapter's entire balance of a stray (airdropped) `token` raw to the reward recipient (admin/keeper). The three core tokens (WETH/stETH/wstETH) are rejected so a sweep can never drain the buffer or the staked position."
+      },
+      "0x22841f01": {
+        "notice": "Returns the current health factor (WAD, 1e18 == 1.0) of the adapter's position.",
+        "dev": "Supply-only adapters return `type(uint256).max` (no debt). Leverage adapters return collateralValue * liquidationThreshold / debtValue."
+      },
+      "0xb187bd26": {
+        "notice": "Returns true when the adapter is paused or emergency-stopped, or the external protocol reports the asset paused/frozen. When true, `deploy()` must be a no-op path (revert), so a paused protocol cannot brick `rebalance()`."
+      },
+      "0x23509a2d": {
+        "notice": "Returns the Lido stETH token."
+      },
+      "0xe1b4264c": {
+        "notice": "Returns the configured minimum health factor (WAD) the adapter must not breach."
+      },
+      "0x570ca735": {
+        "notice": "Returns the authorized operator (zero until wired)."
+      },
+      "0x978e5f31": {
+        "notice": "Returns the pending withdrawal-request id at `index`."
+      },
+      "0xe0abba57": {
+        "notice": "Returns the number of pending (unclaimed) withdrawal requests."
+      },
+      "0xb5149a61": {
+        "notice": "Returns the total stETH currently sitting in pending (unclaimed) withdrawal requests.",
+        "dev": "Counted in NAV so funds in-flight through the queue are not lost from accounting."
+      },
+      "0xd2c725e0": {
+        "notice": "True while a guarded op is executing — mirrors StrategyManager so VaultCore can reject share-price-sensitive ops mid-deploy/withdraw (read-only reentrancy guard)."
+      },
+      "0x9ee679e8": {
+        "notice": "Unwraps `wstAmount` of wstETH to stETH and enqueues it in the Lido withdrawal queue (admin/keeper). Records the resulting request id + stETH amount as pending so NAV is unchanged by the move. The ETH is claimable later via `claimWithdrawal`.",
+        "params": {
+          "wstAmount": "The amount of wstETH to unwrap and enqueue."
+        }
+      },
+      "0x17f33340": {
+        "notice": "Returns the address rewards are forwarded to."
+      },
+      "0xb3ab15fb": {
+        "notice": "Sets the authorized operator permitted to call `deploy`/`withdraw`/`harvest`.",
+        "dev": "Admin-gated (`DEFAULT_ADMIN_ROLE`). Rejects `address(0)`; emits `IProtocolAdapter.OperatorSet`.",
+        "params": {
+          "operator_": "The new operator (typically the StrategyManager diamond)."
+        }
+      },
+      "0xe521136f": {
+        "notice": "Sets the reward recipient (admin only). Lido yield accrues in the wstETH→stETH rate, not a claimable reward token, so this only governs stray-token sweeps in `harvest()`."
+      },
+      "0x4aedacb4": {
+        "notice": "Returns the wstETH balance currently staked in Lido."
+      },
+      "0x613c822b": {
+        "notice": "Returns the current total asset balance managed by this strategy.",
+        "dev": "This value is trusted by the StrategyManager and VaultCore for accounting. Strategy implementations MUST report accurate balances to avoid mispricing vault shares."
+      },
+      "0xfbfa77cf": {
+        "notice": "Returns the Lattice vault funds are returned to on withdraw/emergency."
+      },
+      "0x3fc8cef3": {
+        "notice": "Returns the WETH token (the adapter's asset and idle buffer)."
+      },
+      "0x00f714ce": {
+        "notice": "Withdraws `amount` of the underlying asset to `to`.",
+        "dev": "Called by the StrategyManager during rebalancing to recall excess allocations. The strategy is responsible for executing the ERC-20 transfer.",
+        "params": {
+          "amount": "Amount of underlying asset to withdraw.",
+          "to": "Recipient address (typically the vault)."
+        }
+      },
+      "0x37d5fe99": {
+        "notice": "Returns the Lido withdrawal queue the slow leg routes through."
+      },
+      "0x4aa07e64": {
+        "notice": "Returns the wstETH wrapper the staked position is held as."
+      }
+    },
+    "notice": "Diamond facet adapting a Lido staking position into a Lattice vault strategy under the **buffer model**. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar), and `ILidoAdapter` (Lido config + async-queue keeper). The asset is **WETH**; native ETH is only an intermediate hop (WETH → ETH → stETH → wstETH on deploy, and the reverse on the async exit). Because Lido withdrawals are an async queue, the synchronous `IStrategy.withdraw` is served from an idle WETH buffer and is shortfall-honest; the slow Lido-queue exit runs out-of-band via `requestWithdrawal` / `claimWithdrawal`. All logic lives in LidoAdapterLib.",
+    "dev": "Provenance: Lido stETH / wstETH / WithdrawalQueue (https://github.com/lidofinance/lido-dao) + canonical WETH9 (https://github.com/gnosis/canonical-weth). The facet's own payable `receive()` serves STANDALONE hosting only — behind a diamond, empty-calldata ETH routes to the cut {Receive} facet, and the WETH unwrap goes through the stipend-safe {WETHUnwrapper}."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/defi/LidoAdapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/defi/LidoAdapter.sol"
+  }
+}

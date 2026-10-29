@@ -495,15 +495,12 @@ const built = loadBuiltCatalog();
 describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20VotesInit and GovernedVaultInit)", () => {
   const realCatalog = built.ok ? built.value : catalog;
 
-  test("Blank diamond + ERC20Votes raises INIT-04 for ERC20Votes, not for AccessControl (ERC20VotesInit's last module, spec L330)", () => {
+  test("Blank diamond + ERC20Votes: since Lattice 0.5.0 ERC20VotesInit has no ERC20Votes module, so its module is AccessControl, which the Blank diamond's AccessControlInit covers (as ERC20Pausable's is)", () => {
     const recipe = makeRecipe(
       { facets: [...BLANK_FACETS, "ERC20Votes"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } },
       realCatalog,
     );
-    const problems = only(run(recipe, realCatalog), "INIT-04");
-    expect(problems.map((p) => p.id)).toEqual(["INIT-04:ERC20Votes"]);
-    expect(problems[0]?.fixes).toEqual([{ id: "init.addStep", args: { spec: "ERC20VotesInit" } }]);
-    applyAddStepFixes(recipe, realCatalog, problems);
+    expect(only(run(recipe, realCatalog), "INIT-04")).toEqual([]);
   });
 
   test("Blank diamond + GovernedVault: its only inits are bundles and the plan already has a step, so it's offered Use the GovernedVault bundle, never an `addInitStep` it would refuse (Q28)", () => {
@@ -558,6 +555,7 @@ describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20Vo
       "CrosschainTimelockHandler -> CrosschainLink",
       "DiamondCutFacet -> Ownable",
       "ERC20Pausable -> AccessControl",
+      "ERC20Votes -> AccessControl",
       "OwnableFacet -> Ownable",
     ]);
   });

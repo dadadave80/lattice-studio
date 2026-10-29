@@ -30,6 +30,11 @@ facts in `gen/overlay.ts`. Every overlay fact names a phrase on the Lattice line
 resolves it to `path#Lx-Ly`, so a citation that stops matching the source fails the build. Don't edit
 `catalog/` by hand.
 
+The fixture stays at Lattice `6c8db45` while the submodule moves on (it's at `v0.5.0` now): the prototype's data
+covers only the 105 facets of that commit. To regenerate, point `LATTICE_DIR` at a checkout of `6c8db45`.
+`validate.test.ts` reads that commit out of the submodule's history on its own, so its source checks keep
+passing after a re-pin.
+
 ## What is real
 
 At Lattice `6c8db45aa46986af2edb6a0d8fb02a4a92faef01` (diamond-lib `393435fb`), `LatticeVersion.VERSION` =
