@@ -32,7 +32,8 @@ clean, because the catalog records its commit.
 
 The summary lists the release report (salt, address and codehash of every shared contract), the overlay lint, init
 notes, template gaps, chain-release gaps for Lattice A4, and the index size against its 60 KB gzip target. That
-target isn't met: what's left (about 72 KB gz) is shared contracts' release data, accepted as the floor.
+target isn't met: at `dev-6c8db45` what was left (about 72 KB gz) was shared contracts' release data, accepted as
+the floor; `v0.5.0`'s 129 facets bring it to about 94 KB gz.
 
 Two runs from the same commit write the same bytes. Never edit `catalog/` by hand.
 
