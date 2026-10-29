@@ -26,8 +26,8 @@ clean, because the catalog records its commit.
    overlay lint (errors stop the run; warnings are listed), template routing against the scripts, citations against
    the checkout, and the factory's `predict` against the proxy's init-code hash.
 4. Writes `catalog/<id>/` atomically and makes it `manifest.json`'s default. `<id>` is the checkout's release tag, or
-   `dev-<commit7>`. When the checkout's `VERSION` isn't 0.4.0, the catalog's `provisional` says so
-   ("Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0"). The index is minified, and keeps template recipes and init
+   `dev-<commit7>`. When the checkout's `VERSION` isn't `TARGET_VERSION` (0.5.0), the catalog's `provisional`
+   says so ("Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0" was the last). The index is minified, and keeps template recipes and init
    parameter docs in `recipes.json` and `init-docs.json` beside it, which the app loads on first use.
 
 The summary lists the release report (salt, address and codehash of every shared contract), the overlay lint, init
