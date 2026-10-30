@@ -14,13 +14,11 @@ Studio is a static app with two homes: Vercel, the primary origin with security 
 
 ### Vercel
 
-The Vercel project's root directory is `apps/studio`, with **Include source files outside of the Root Directory** turned on in the project settings — the committed `apps/studio/vercel.json`'s build command starts with `cd ../..` to reach the workspace root, and that setting is what lets it see the rest of the monorepo.
+The Vercel project's root directory is `apps/studio`, with **Include source files outside of the Root Directory** turned on in the project settings — `apps/studio/vercel.json`'s build command starts with `cd ../..` to reach the workspace root, and that setting is what lets it see the rest of the monorepo.
 
-`apps/studio/vercel.json` is generated, not hand-edited (`apps/studio/build/csp.ts` and `apps/studio/build/headers.ts` compute its Content Security Policy from the exact chunks a build produces). To release:
+`apps/studio/vercel.json` only says how to build. The headers and routes come from the build itself, through Vercel's [Build Output API](https://vercel.com/docs/build-output-api): the CSP has to carry the hash of an import map that changes with any code change, so `apps/studio/build/vercel-output.ts`, the build command's last step, computes it from the finished page and writes `.vercel/output/config.json`. There's nothing to regenerate or commit, and a `VITE_*` variable set in Vercel can't put the header out of step with the page.
 
-1. Regenerate it against the release build: `STUDIO_VERCEL_JSON=1 bun run build`. This writes `apps/studio/vercel.json` with the CSP hash for that build's inline style and import map.
-2. Commit `apps/studio/vercel.json`.
-3. **Needs David:** push and deploy. Vercel's own build command (already in the committed file) then runs `bun run build` again, carries the previous release's hashed chunks forward from `$STUDIO_PREVIOUS_RELEASE` (an environment variable **David** sets to the live origin, so a tab that hasn't refreshed still finds the chunks it's asking for), and finally runs `apps/studio/build/verify-headers.ts`, which **fails the deploy** if the committed `vercel.json`'s CSP doesn't match the index.html this build actually produced. A stale, hand-edited, or forgotten-to-regenerate `vercel.json` is caught there, not silently shipped, and earlier still by CI's Size budgets job, which runs the same check on the pull request's build.
+**Needs David:** push and deploy. Vercel's build command runs `bun run build`, carries the previous release's hashed chunks forward from `$STUDIO_PREVIOUS_RELEASE` (an environment variable **David** sets to the live origin, so a tab that hasn't refreshed still finds the chunks it's asking for), then writes the Build Output. `vercel-output.ts` moves `dist/` into it, so if Vercel ever stops reading the Build Output, the deploy fails on the missing output directory instead of shipping the page without its headers.
 
 On the very first release, `$STUDIO_PREVIOUS_RELEASE` is empty; `carry-previous.ts` says so in its output and carries nothing forward.
 

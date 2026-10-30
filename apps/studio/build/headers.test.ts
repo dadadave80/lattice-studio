@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
-  E2E_CONNECT_SOURCE, contentSecurityPolicy, cspHash, cspMismatch, cspOf, formatJson, inlineAttributeProblems,
-  inlineHashes, injectCspMeta, metaCspOf, vercelConfig,
+  E2E_CONNECT_SOURCE, contentSecurityPolicy, cspHash, cspMismatch, cspOf, buildOutputConfig, formatJson,
+  inlineAttributeProblems, inlineHashes, injectCspMeta, metaCspOf,
 } from "./headers.ts";
-import { isE2EBuild, secureHtml, vercelJsonTarget } from "./csp.ts";
+import { isE2EBuild, secureHtml } from "./csp.ts";
 import { e2eGuard } from "../vite.config.ts";
 
 const sha = (text: string) => `sha256-${createHash("sha256").update(text).digest("base64")}`;
@@ -131,35 +131,52 @@ describe("injectCspMeta", () => {
   });
 });
 
-describe("vercelConfig", () => {
-  const config = vercelConfig("default-src 'self'");
+describe("buildOutputConfig", () => {
+  const config = buildOutputConfig("default-src 'self'");
+  const matching = (path: string) => {
+    const routes = [];
+    for (const route of config.routes) {
+      if ("handle" in route) break;
+      if (new RegExp(route.src).test(path)) routes.push(route);
+    }
+    return routes;
+  };
+  const headersFor = (path: string) => Object.assign({}, ...matching(path).map((r) => ("headers" in r ? r.headers : {})));
 
   test("sends the CSP and COOP on every path", () => {
     expect(cspOf(config)).toBe("default-src 'self'");
-    const all = config.headers.find((h) => h.source === "/(.*)")?.headers ?? [];
-    expect(all).toContainEqual({ key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" });
-    expect(all.some((h) => h.key.startsWith("Cross-Origin-Embedder"))).toBe(false);
+    expect(headersFor("/some/route")).toMatchObject({
+      "Content-Security-Policy": "default-src 'self'",
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    });
+    expect(Object.keys(headersFor("/")).some((k) => k.startsWith("Cross-Origin-Embedder"))).toBe(false);
   });
 
   test("caches hashed assets forever and makes everything else revalidate", () => {
-    const cacheRules = config.headers.filter((h) => h.headers.some((x) => x.key === "Cache-Control"));
-    const rule = (path: string) =>
-      cacheRules.find((r) => new RegExp(`^${r.source.replace("(.*)", ".*")}$`).test(path))?.headers[0]?.value;
-    expect(rule("/assets/index-abc.js")).toBe("public, max-age=31536000, immutable");
+    expect(headersFor("/assets/index-abc.js")["Cache-Control"]).toBe("public, max-age=31536000, immutable");
     for (const path of ["/", "/index.html", "/sw.js", "/manifest.webmanifest", "/catalog/fixture/index.json"]) {
-      expect(rule(path)).toBe("no-cache");
+      expect(headersFor(path)["Cache-Control"]).toBe("no-cache");
     }
   });
 
-  test("builds, carries the previous release and verifies the headers before deploying", () => {
-    expect(config.buildCommand).toContain("bun run build");
-    expect(config.buildCommand).toContain("carry-previous.ts");
-    expect(config.buildCommand).toContain("verify-headers.ts");
-    expect(config.outputDirectory).toBe("dist");
+  test("redirects a trailing slash before anything else, and leaves the root alone", () => {
+    expect(config.routes[0]).toMatchObject({ status: 308, headers: { Location: "/$1" } });
+    expect(new RegExp((config.routes[0] as { src: string }).src).test("/some/route/")).toBe(true);
+    expect(new RegExp((config.routes[0] as { src: string }).src).test("/")).toBe(false);
+  });
+
+  test("files win over the rewrite, which leaves missing assets, catalog files and schemas as 404s", () => {
+    const at = config.routes.findIndex((r) => "handle" in r);
+    const rewrite = config.routes[at + 1] as { src: string; dest: string };
+    expect(rewrite.dest).toBe("/index.html");
+    expect(new RegExp(rewrite.src).test("/some/route")).toBe(true);
+    for (const path of ["/assets/a.js", "/catalog/a.json", "/schema/a.json", "/icons/a.png"]) {
+      expect(new RegExp(rewrite.src).test(path)).toBe(false);
+    }
   });
 
   test("is written deterministically", () => {
-    expect(formatJson(config)).toBe(formatJson(vercelConfig("default-src 'self'")));
+    expect(formatJson(config)).toBe(formatJson(buildOutputConfig("default-src 'self'")));
     expect(formatJson(config).endsWith("}\n")).toBe(true);
   });
 });
@@ -171,15 +188,5 @@ describe("cspMismatch", () => {
     const stale = PAGE.replace(CRITICAL, `${CRITICAL}a{}`);
     expect(cspMismatch(stale, csp, { frameAncestors: true })).toContain("doesn't match");
     expect(cspMismatch(PAGE, null, { frameAncestors: true })).toBe("No Content-Security-Policy is set.");
-  });
-});
-
-describe("vercelJsonTarget", () => {
-  test("writes nothing by default, the app's own file for 1, else the given path", () => {
-    expect(vercelJsonTarget(undefined, "/app", "/cwd")).toBeNull();
-    expect(vercelJsonTarget("", "/app", "/cwd")).toBeNull();
-    expect(vercelJsonTarget("1", "/app", "/cwd")).toBe("/app/vercel.json");
-    expect(vercelJsonTarget("out/v.json", "/app", "/cwd")).toBe("/cwd/out/v.json");
-    expect(vercelJsonTarget("/tmp/v.json", "/app", "/cwd")).toBe("/tmp/v.json");
   });
 });

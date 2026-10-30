@@ -1,6 +1,6 @@
 /**
  * The CSP and hosting headers (spec L862-L880, L834-L837), as pure functions over the built `index.html`.
- * `csp.ts` runs them at build time; `verify-headers.ts` and the tests run them again over `dist/`.
+ * `csp.ts` and `vercel-output.ts` run them at build time; `verify-headers.ts` and the tests run them again over `dist/`.
  *
  * The policy allows no `unsafe-inline` and no `unsafe-eval`. Every inline `<script>` (the SRI import map, and
  * any first-paint script) and every inline `<style>` (the critical CSS) is allowed by its SHA-256 hash, so the
@@ -114,52 +114,48 @@ export function securityHeaders(csp: string): Header[] {
   ];
 }
 
-export type VercelConfig = {
-  $schema: string;
-  framework: null;
-  installCommand: string;
-  buildCommand: string;
-  outputDirectory: string;
-  trailingSlash: boolean;
-  rewrites: { source: string; destination: string }[];
-  headers: { source: string; headers: Header[] }[];
-};
+export type VercelRoute =
+  | { src: string; headers: Record<string, string>; continue?: true; status?: number }
+  | { src: string; dest: string; check: true }
+  | { handle: "filesystem" };
+
+export type BuildOutputConfig = { version: 3; routes: VercelRoute[] };
+
+/** Headers on every path below `src`, for the routes after it to add to. */
+function headerRoute(src: string, headers: Header[]): VercelRoute {
+  return { src, headers: Object.fromEntries(headers.map((h) => [h.key, h.value])), continue: true };
+}
 
 /**
- * The whole of `apps/studio/vercel.json` (the Vercel project's root directory is `apps/studio`). The build
- * command rebuilds, carries the previous release's hashed chunks (spec L831) and refuses to deploy when this
- * file's CSP doesn't match the rebuilt `index.html`.
+ * Vercel's Build Output config for this build (`vercel-output.ts` writes it), so the header always carries the
+ * hashes of the page it's sent with. Routes run in order: the trailing-slash redirect, the headers, then files,
+ * which win over the rewrite. Missing assets, catalog files and schemas stay 404s, never index.html.
  */
-export function vercelConfig(csp: string): VercelConfig {
+export function buildOutputConfig(csp: string): BuildOutputConfig {
   return {
-    $schema: "https://openapi.vercel.sh/vercel.json",
-    framework: null,
-    installCommand: "cd ../.. && bun install --frozen-lockfile",
-    buildCommand:
-      "cd ../.. && bun run build" +
-      " && bun apps/studio/build/carry-previous.ts --out apps/studio/dist --from \"$STUDIO_PREVIOUS_RELEASE\"" +
-      " && bun apps/studio/build/verify-headers.ts apps/studio/dist apps/studio/vercel.json",
-    outputDirectory: "dist",
-    trailingSlash: false,
-    // Files win over rewrites on Vercel. Missing assets, catalog files and schemas stay 404s, never index.html.
-    rewrites: [{ source: "/((?!assets/|catalog/|schema/|icons/).*)", destination: "/index.html" }],
-    headers: [
-      { source: "/(.*)", headers: securityHeaders(csp) },
-      { source: "/assets/(.*)", headers: [{ key: "Cache-Control", value: IMMUTABLE }] },
-      { source: "/((?!assets/).*)", headers: [{ key: "Cache-Control", value: REVALIDATE }] },
+    version: 3,
+    routes: [
+      { src: "^/(.*)\\/$", headers: { Location: "/$1" }, status: 308 },
+      headerRoute("^/(.*)$", securityHeaders(csp)),
+      headerRoute("^/assets/(.*)$", [{ key: "Cache-Control", value: IMMUTABLE }]),
+      headerRoute("^/((?!assets/).*)$", [{ key: "Cache-Control", value: REVALIDATE }]),
+      { handle: "filesystem" },
+      { src: "^/((?!assets/|catalog/|schema/|icons/).*)$", dest: "/index.html", check: true },
     ],
   };
 }
 
-/** `vercel.json` as written: two-space JSON and a final newline, so rebuilding the same commit changes nothing. */
+/** Generated JSON as written: two-space JSON and a final newline, so rebuilding the same commit changes nothing. */
 export function formatJson(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-/** The CSP a `vercel.json` sends on every path, or null. */
-export function cspOf(config: Pick<VercelConfig, "headers">): string | null {
-  const all = config.headers.find((h) => h.source === "/(.*)");
-  return all?.headers.find((h) => h.key === "Content-Security-Policy")?.value ?? null;
+/** The CSP a Build Output config sends on every path, or null. */
+export function cspOf(config: BuildOutputConfig): string | null {
+  for (const route of config.routes) {
+    if ("headers" in route && route.src === "^/(.*)$") return route.headers["Content-Security-Policy"] ?? null;
+  }
+  return null;
 }
 
 const META_CSP = /<meta\s+http-equiv=["']Content-Security-Policy["'][^>]*>\s*/i;
