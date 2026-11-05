@@ -19,6 +19,7 @@ import { deleteDB } from "idb";
 import { createEditLock, STILL_SAVING } from "./lock";
 import { openChannel, type Channel, type ChannelMessage } from "./channel";
 import { fakeDoc, testPersistence, type FakeDoc } from "./testing";
+import { renameProject as renameLatestProject } from "./records";
 
 const realTimeout = globalThis.setTimeout.bind(globalThis);
 const DAY = 24 * 60 * 60 * 1000;
@@ -362,7 +363,7 @@ describe("projects", () => {
     rename("Not resurrected");
     await store.flush();
     expect(await store.listProjects()).toEqual([]);
-    expect(saveStatus()).toEqual({ state: "not-saved", text: "Not saved", detail: "Studio's data in this browser was cleared." });
+    expect(saveStatus()).toEqual({ state: "not-saved", text: "Not saved", detail: "Studio's data in this browser was cleared. Start a new project or open a project file to continue.", action: { id: "project.saveCopy" } });
   });
 });
 
@@ -445,7 +446,7 @@ describe("Recently deleted", () => {
     expect(await store.listProjects()).toEqual([]);
     expect((await store.listTrash())[0]?.name).toBe("Alpha edited");
     expect(saveStatus()).toEqual({
-      state: "not-saved", text: "Not saved", detail: "This project is in Recently deleted. Restore it to keep saving.",
+      state: "not-saved", text: "Not saved", detail: "This project is in Recently deleted. Restore it to keep saving.", action: { id: "project.saveCopy" },
     });
 
     await store.restoreProject(a.id);
@@ -920,7 +921,7 @@ describe("data that must never be lost", () => {
     expect((await first.listTrash()).map((t) => t.id)).toEqual([project.id]);
     await until(() => saveStatus().state === "not-saved", "the editing tab to stop saving");
     expect(saveStatus()).toEqual({
-      state: "not-saved", text: "Not saved", detail: "This project is in Recently deleted. Restore it to keep saving.",
+      state: "not-saved", text: "Not saved", detail: "This project is in Recently deleted. Restore it to keep saving.", action: { id: "project.saveCopy" },
     });
 
     // Restored in the other tab: the editing tab saves again, its newer edit included.
@@ -1432,4 +1433,462 @@ describe("deleting a deployment record (Discard proposal, spec L580)", () => {
     const error = await deleteDeployment(deployment(project.id, 9)).then(() => null, (e: Error) => e.message);
     expect(error).toBe("A new version of Studio is ready. Reload to delete deployment records. This deployment record wasn't deleted.");
   });
+});
+
+function refuseProjectWrites(name: "QuotaExceededError" | "UnknownError") {
+  const put = IDBObjectStore.prototype.put;
+  return vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+    this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>
+  ) {
+    if (this.name === "projects") throw new DOMException("Injected write failure", name);
+    return put.apply(this, args);
+  });
+}
+
+for (const failure of ["QuotaExceededError", "UnknownError"] as const) {
+  test.each(["open", "new", "import", "duplicate", "delete"] as const)(
+    `%s preserves pending work after ${failure}`, async (operation) => {
+      const store = testPersistence({ quietMs: 60_000 });
+      const a = await created("A");
+      const b = await created("B");
+      expect((await store.projects.openProject(a.id)).ok).toBe(true);
+      rename("A pending");
+      const before = doc.get();
+      const spy = refuseProjectWrites(failure);
+      const result = operation === "open" ? await store.projects.openProject(b.id)
+        : operation === "new" ? await store.projects.createProject(recipe, "C")
+        : operation === "import" ? await store.importProject(makeProject({ name: "Imported", recipe }), [])
+        : operation === "duplicate" ? await store.duplicateProject(a.id)
+        : await store.deleteProject(a.id);
+      expect(result).toMatchObject({ ok: false });
+      expect(doc.get()).toBe(before);
+      expect(store.editLock()).toEqual({ state: "held", projectId: a.id });
+      expect(store.projects.saveStatus()).toMatchObject({ state: "not-saved", action: { id: "project.saveCopy" } });
+      expect(await storedName(store, a.id)).toBe("A");
+      expect((await store.listProjects()).map((p) => p.id).sort()).toEqual([a.id, b.id].sort());
+      expect(await store.listTrash()).toEqual([]);
+      spy.mockRestore();
+      expect((await store.projects.openProject(b.id)).ok).toBe(true);
+      expect(await storedName(store, a.id)).toBe("A pending");
+    },
+  );
+}
+
+test.each(["new", "open", "import"] as const)(
+  "explicit local clear allows %s over exactly the acknowledged document", async (operation) => {
+    const store = testPersistence({ quietMs: 60_000 });
+    await created("Clear me");
+    rename("Pending before deliberate clear");
+    const cleared = doc.get();
+    await store.clearData();
+    expect(await store.listProjects()).toEqual([]);
+    expect(doc.get()).toBe(cleared);
+    expect(store.projects.saveStatus().state).not.toBe("saved");
+    const target = makeProject({ id: "newly-stored-after-clear", name: "Target", recipe });
+    if (operation === "open") {
+      const connection = await openStudioDb(store.dbName, { onVersionChange: () => {} });
+      await connection.put("projects", { id: target.id, savedAt: 1, project: target });
+      connection.close();
+    }
+    const result = operation === "new" ? await store.projects.createProject(recipe, "Fresh")
+      : operation === "open" ? await store.projects.openProject(target.id)
+      : await store.importProject(target, []);
+    expect(result.ok).toBe(true);
+    expect(doc.get()).not.toBe(cleared);
+    expect(doc.get().name).toBe(operation === "new" ? "Fresh" : "Target");
+  },
+);
+
+test("export all reserves generated filenames and preserves every project", async () => {
+  const store = testPersistence();
+  const source: Project[] = [];
+  for (const name of ["Vault", "Vault", "Vault-2", "VAULT", "Vault!"]) source.push(await created(name));
+  const files = await store.exportAll();
+  expect(new Set(files.map((f) => f.filename.toLowerCase())).size).toBe(source.length);
+  const contents = files.map((f) => JSON.parse(f.text) as { project: Project });
+  expect(contents.map((f) => f.project.id).sort()).toEqual(source.map((p) => p.id).sort());
+});
+
+test("export all includes the unsaved owner document without clearing its failure", async () => {
+  const store = testPersistence({ quietMs: 60_000 });
+  const a = await created("A");
+  await putDeployment(deployment(a.id, 1));
+  rename("A pending");
+  const before = doc.get();
+  refuseProjectWrites("QuotaExceededError");
+  await store.flush();
+  const exported = (await store.exportAll()).map((f) => JSON.parse(f.text) as { project?: Project; deployments?: Deployment[] });
+  const current = exported.find((f) => f.project?.id === a.id);
+  expect(current?.project).toEqual(before);
+  expect(current?.deployments).toEqual([deployment(a.id, 1)]);
+  expect(doc.get()).toBe(before);
+  expect(store.projects.saveStatus().state).toBe("not-saved");
+  expect(await storedName(store, a.id)).toBe("A");
+});
+
+test("remote rename refuses the editing owner's lock and preserves the other open lock", async () => {
+  const first = testPersistence({ quietMs: 60_000 });
+  const a = await created("A");
+  const second = testPersistence({ dbName: first.dbName, doc: fakeDoc(makeProject({ id: "boot-b", recipe })), provide: false, page: null });
+  expect((await second.projects.createProject(recipe, "B")).ok).toBe(true);
+  const beforeLock = second.editLock();
+  expect(await second.renameProject(a.id, "Remote")).toMatchObject({ ok: false });
+  expect(second.editLock()).toEqual(beforeLock);
+  doc.apply("Changed recipe", (p) => ({ project: { ...p, recipe: { ...p.recipe, exclude: ["0x12345678"] } }, changed: true, summary: "Changed recipe" }));
+  await first.flush();
+  const row = (await first.listProjects()).find((p) => p.id === a.id);
+  expect(row?.name).toBe("A");
+  expect(row?.project.recipe.exclude).toEqual(["0x12345678"]);
+});
+
+test("switching saves edits made During switch save before replacing the document", async () => {
+  const store = testPersistence({ quietMs: 60_000 });
+  const a = await created("A");
+  const b = await created("B");
+  await store.projects.openProject(a.id);
+  rename("Before switch");
+  const transaction = IDBDatabase.prototype.transaction;
+  let injected = false;
+  vi.spyOn(IDBDatabase.prototype, "transaction").mockImplementation(function (this: IDBDatabase, ...args: Parameters<IDBDatabase["transaction"]>) {
+    const tx = transaction.apply(this, args);
+    if (!injected && args[1] === "readwrite" && doc.get().name === "Before switch") {
+      injected = true;
+      queueMicrotask(() => rename("During switch save"));
+    }
+    return tx;
+  });
+  expect((await store.projects.openProject(b.id)).ok).toBe(true);
+  expect(injected).toBe(true);
+  expect(await storedName(store, a.id)).toBe("During switch save");
+});
+
+test("the final replacement guard refuses edits made after reading the target", async () => {
+  const store = testPersistence({ quietMs: 60_000 });
+  const a = await created("A");
+  const b = await created("B");
+  await store.projects.openProject(a.id);
+  const get = IDBObjectStore.prototype.get;
+  let injected = false;
+  vi.spyOn(IDBObjectStore.prototype, "get").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore["get"]>) {
+    const request = get.apply(this, args);
+    if (!injected && this.name === "projects" && args[0] === b.id) {
+      injected = true;
+      request.addEventListener("success", () => rename("After target read"));
+    }
+    return request;
+  });
+  const result = await store.projects.openProject(b.id);
+  expect(injected).toBe(true);
+  expect(result).toMatchObject({ ok: false, error: "Changes aren't saved. Save a copy before switching projects." });
+  expect(doc.get().name).toBe("After target read");
+  expect(store.editLock()).toEqual({ state: "held", projectId: a.id });
+});
+
+test("an import stored before a last edit reports partial success and retains its records", async () => {
+  const store = testPersistence({ quietMs: 60_000 });
+  const a = await created("A");
+  const transaction = IDBDatabase.prototype.transaction;
+  let injected = false;
+  vi.spyOn(IDBDatabase.prototype, "transaction").mockImplementation(function (this: IDBDatabase, ...args: Parameters<IDBDatabase["transaction"]>) {
+    const tx = transaction.apply(this, args);
+    const stores = Array.isArray(args[0]) ? args[0] : [args[0]];
+    if (!injected && args[1] === "readwrite" && stores.includes("deployments") && stores.includes("projects") && !stores.includes("trash")) {
+      injected = true;
+      tx.addEventListener("complete", () => rename("During import"));
+    }
+    return tx;
+  });
+  const imported = makeProject({ name: "Imported", recipe });
+  const result = await store.importProject(imported, [deployment(imported.id, 2)]);
+  expect(injected).toBe(true);
+  expect(result.ok).toBe(false);
+  if (result.ok) throw new Error("Expected partial import refusal");
+  expect(result.error).toContain("Imported the project, but couldn't open it.");
+  expect(doc.get().id).toBe(a.id);
+  expect(doc.get().name).toBe("During import");
+  const copy = (await store.listProjects()).find((row) => row.name === "Imported");
+  expect(copy).toBeDefined();
+  expect(await store.deployments.listDeployments(copy!.id)).toMatchObject([{ projectId: copy!.id, fromFile: true }]);
+});
+
+test("a local clear does not acknowledge edits made while its transaction runs", async () => {
+  const store = testPersistence({ quietMs: 60_000 });
+  await created("Clear me");
+  const transaction = IDBDatabase.prototype.transaction;
+  let injected = false;
+  vi.spyOn(IDBDatabase.prototype, "transaction").mockImplementation(function (this: IDBDatabase, ...args: Parameters<IDBDatabase["transaction"]>) {
+    const tx = transaction.apply(this, args);
+    const stores = Array.isArray(args[0]) ? args[0] : [args[0]];
+    if (!injected && args[1] === "readwrite" && stores.includes("deployments") && stores.includes("meta")) {
+      injected = true;
+      queueMicrotask(() => rename("Made during clear"));
+    }
+    return tx;
+  });
+  await store.clearData();
+  expect(injected).toBe(true);
+  const pending = doc.get();
+  expect((await store.projects.createProject(recipe, "Fresh")).ok).toBe(false);
+  expect(doc.get()).toBe(pending);
+  expect(await store.listProjects()).toEqual([]);
+  expect(store.projects.saveStatus()).toMatchObject({ state: "not-saved", action: { id: "project.saveCopy" } });
+});
+
+test.each(["new", "open", "import"] as const)("an edit after local clear still protects %s", async (operation) => {
+  const store = testPersistence({ quietMs: 60_000 });
+  await created("Clear me");
+  await store.clearData();
+  rename("Made after clear");
+  const before = doc.get();
+  const target = makeProject({ id: "after-clear-target", recipe });
+  const connection = await openStudioDb(store.dbName, { onVersionChange: () => {} });
+  await connection.put("projects", { id: target.id, savedAt: 1, project: target });
+  connection.close();
+  const result = operation === "new" ? await store.projects.createProject(recipe, "Fresh")
+    : operation === "open" ? await store.projects.openProject(target.id)
+    : await store.importProject(target, []);
+  expect(result.ok).toBe(false);
+  expect(doc.get()).toBe(before);
+  expect((await store.listProjects()).map((row) => row.id)).toEqual([target.id]);
+});
+
+test.each([false, true])("another tab's clear grants no acknowledgement, with pending edits: %s", async (pending) => {
+  const first = testPersistence({ quietMs: 60_000 });
+  await created("A");
+  if (pending) rename("Pending");
+  const before = doc.get();
+  const second = testPersistence({ dbName: first.dbName, doc: fakeDoc(makeProject({ recipe })), provide: false, page: null });
+  await second.clearData();
+  await until(() => first.projects.saveStatus().state === "not-saved");
+  expect((await first.projects.createProject(recipe, "Fresh")).ok).toBe(false);
+  expect((await first.projects.openProject("missing")).ok).toBe(false);
+  expect(doc.get()).toBe(before);
+});
+
+test("an unchanged locally deleted project can start fresh", async () => {
+  const store = testPersistence();
+  const a = await created("A");
+  expect((await store.deleteProject(a.id)).ok).toBe(true);
+  expect((await store.projects.createProject(recipe, "Fresh")).ok).toBe(true);
+});
+
+test("a failed clear grants no acknowledgement", async () => {
+  const store = testPersistence({ quietMs: 60_000 });
+  await created("A");
+  rename("Pending");
+  const before = doc.get();
+  vi.spyOn(IDBObjectStore.prototype, "clear").mockImplementation(() => { throw new DOMException("Clear refused", "UnknownError"); });
+  await expect(store.clearData()).rejects.toThrow("Clear refused");
+  refuseProjectWrites("QuotaExceededError");
+  expect((await store.projects.createProject(recipe, "Fresh")).ok).toBe(false);
+  expect(doc.get()).toBe(before);
+});
+
+test("an untouched boot is excluded from backup, but never-stored edited boot is recovered under quota", async () => {
+  const store = testPersistence({ quietMs: 60_000 });
+  expect(await store.exportAll()).toEqual([]);
+  rename("Never stored work");
+  const before = doc.get();
+  refuseProjectWrites("QuotaExceededError");
+  const files = await store.exportAll();
+  expect(files).toHaveLength(1);
+  expect((JSON.parse(files[0]!.text) as { project: Project }).project).toEqual(before);
+  expect(await store.listProjects()).toEqual([]);
+  expect(store.projects.saveStatus().state).toBe("not-saved");
+});
+
+test("a stale clean read-only tab exports the latest stored owner save", async () => {
+  const first = testPersistence({ quietMs: 60_000 });
+  const a = await created("A");
+  const { tab: second, tabDoc } = await otherTab(first, a);
+  // Do not deliver the owner's live change: this tab genuinely retains the old loaded object.
+  const connection = await openStudioDb(first.dbName, { onVersionChange: () => {} });
+  await connection.put("projects", { id: a.id, savedAt: 3, project: { ...a, name: "Latest owner save" } });
+  connection.close();
+  expect(tabDoc.get().name).toBe("A");
+  const files = await second.exportAll();
+  expect(files).toHaveLength(1);
+  expect((JSON.parse(files[0]!.text) as { project: Project }).project.name).toBe("Latest owner save");
+});
+
+test("a detached unsaved document gets a recovery file while trash and its records stay intact", async () => {
+  const first = testPersistence({ quietMs: 60_000 });
+  const a = await created("A");
+  await putDeployment(deployment(a.id, 1));
+  rename("Pending detached work");
+  const second = testPersistence({ dbName: first.dbName, doc: fakeDoc(makeProject({ recipe })), provide: false, page: null });
+  await second.deleteProject(a.id);
+  await until(() => first.projects.saveStatus().state === "not-saved");
+  const files = await first.exportAll();
+  expect(files).toHaveLength(2);
+  const recovery = files.find((file) => file.filename.endsWith("-recovery.lattice.json"));
+  expect(recovery).toBeDefined();
+  const values = files.map((file) => JSON.parse(file.text) as { project: Project; deployments: Deployment[] });
+  expect(values.map((file) => file.project.name).sort()).toEqual(["A", "Pending detached work"]);
+  expect(values.every((file) => file.deployments.length === 1)).toBe(true);
+});
+
+test("backup retains its captured object when edits arrive during the stored snapshot read", async () => {
+  const store = testPersistence({ quietMs: 60_000 });
+  await created("Captured");
+  const transaction = IDBDatabase.prototype.transaction;
+  let injected = false;
+  vi.spyOn(IDBDatabase.prototype, "transaction").mockImplementation(function (this: IDBDatabase, ...args: Parameters<IDBDatabase["transaction"]>) {
+    const tx = transaction.apply(this, args);
+    const stores = Array.isArray(args[0]) ? args[0] : [args[0]];
+    if (!injected && args[1] === "readonly" && stores.includes("deployments") && stores.includes("trash")) {
+      injected = true;
+      queueMicrotask(() => rename("After capture"));
+    }
+    return tx;
+  });
+  const files = await store.exportAll();
+  expect(injected).toBe(true);
+  expect((JSON.parse(files[0]!.text) as { project: Project }).project.name).toBe("Captured");
+  expect(doc.get().name).toBe("After capture");
+});
+
+
+test("atomic rename reads the latest queued row and preserves every other field", async () => {
+  const store = testPersistence();
+  const a = await created("A");
+  const latest = { ...a, recipe: { ...a.recipe, exclude: ["0x12345678"] }, futureField: { kept: true } };
+  const connection = await openStudioDb(store.dbName, { onVersionChange: () => {} });
+  try {
+    const write = connection.put("projects", { id: a.id, savedAt: 123, project: latest });
+    const result = await renameLatestProject(connection, a.id, "Renamed");
+    await write;
+    expect(result).toMatchObject({ ok: true, value: { savedAt: 123, name: "Renamed" } });
+    expect(await connection.get("projects", a.id)).toEqual({ id: a.id, savedAt: 123, project: { ...latest, name: "Renamed" } });
+    expect(await renameLatestProject(connection, "missing", "No")).toMatchObject({ ok: false });
+    await connection.put("projects", { id: "unreadable", savedAt: 1, project: { schemaVersion: 999 } });
+    expect(await renameLatestProject(connection, "unreadable", "No")).toMatchObject({ ok: false });
+  } finally {
+    connection.close();
+  }
+});
+
+test.each(["unavailable", "rejected"] as const)("remote rename refuses %s coordination", async (kind) => {
+  const first = testPersistence();
+  const a = await created("A");
+  const second = testPersistence({
+    dbName: first.dbName, doc: fakeDoc(makeProject({ recipe })), provide: false, page: null,
+    locks: kind === "unavailable" ? null : { request: () => Promise.reject(new Error("Lock service refused")), query: async () => ({ held: [], pending: [] }) } as unknown as LockManager,
+  });
+  const beforeLock = second.editLock();
+  const result = await second.renameProject(a.id, "No");
+  expect(result.ok).toBe(false);
+  if (result.ok) throw new Error("Expected coordination refusal");
+  expect(result.error).toContain(kind === "unavailable" ? "can't coordinate" : "Lock service refused");
+  expect(second.editLock()).toEqual(beforeLock);
+  expect(await storedName(first, a.id)).toBe("A");
+});
+
+test("remote rename settles promptly while an external editor keeps the lock", async () => {
+  const store = testPersistence();
+  const a = await created("A");
+  await created("B");
+  let release: () => void = () => {};
+  let acquired: () => void = () => {};
+  const ready = new Promise<void>((resolve) => { acquired = resolve; });
+  const held = navigator.locks.request(`${store.dbName}:edit:${a.id}`, async () => {
+    acquired();
+    await new Promise<void>((resolve) => { release = resolve; });
+  });
+  await ready;
+  try {
+    const result = await Promise.race([
+      store.renameProject(a.id, "No"),
+      new Promise<never>((_resolve, reject) => realTimeout(() => reject(new Error("Rename waited on the owner")), 500)),
+    ]);
+    expect(result).toMatchObject({ ok: false });
+  } finally {
+    release();
+    await held;
+  }
+});
+
+test("losing the edit lock during snapshot read preserves both stored and recovery files", async () => {
+  let loseLock: (error: DOMException) => void = () => {};
+  const locks = {
+    request: (_name: string, _options: LockOptions, callback: LockGrantedCallback<unknown>) => {
+      const lost = new Promise<never>((_resolve, reject) => { loseLock = reject; });
+      const released = callback({ name: _name, mode: "exclusive" } as Lock);
+      return Promise.race([Promise.resolve(released), lost]);
+    },
+    query: async () => ({ held: [], pending: [] }),
+  } as unknown as LockManager;
+  const store = testPersistence({ quietMs: 60_000, locks });
+  const a = await created("Stored");
+  rename("Unsaved owner work");
+  refuseProjectWrites("QuotaExceededError");
+  const transaction = IDBDatabase.prototype.transaction;
+  let injected = false;
+  vi.spyOn(IDBDatabase.prototype, "transaction").mockImplementation(function (this: IDBDatabase, ...args: Parameters<IDBDatabase["transaction"]>) {
+    const tx = transaction.apply(this, args);
+    const stores = Array.isArray(args[0]) ? args[0] : [args[0]];
+    if (!injected && args[1] === "readonly" && stores.includes("deployments") && stores.includes("trash")) {
+      injected = true;
+      loseLock(new DOMException("Lock stolen", "AbortError"));
+    }
+    return tx;
+  });
+  const files = await store.exportAll();
+  expect(injected).toBe(true);
+  expect(store.editLock()).toEqual({ state: "handed-over", projectId: a.id });
+  expect(files).toHaveLength(2);
+  expect(files.some((file) => file.filename.endsWith("-recovery.lattice.json"))).toBe(true);
+  expect(files.map((file) => (JSON.parse(file.text) as { project: Project }).project.name).sort()).toEqual(["Stored", "Unsaved owner work"]);
+});
+
+test("backup reserves raw and orphan suffix chains after normalizing ids", async () => {
+  const store = testPersistence();
+  await created("Vault");
+  const connection = await openStudioDb(store.dbName, { onVersionChange: () => {} });
+  try {
+    for (const id of ["A!", "A?", "a-", "A--2", "A--3"]) {
+      await connection.put("projects", { id, savedAt: 1, project: { schemaVersion: 999, id } });
+    }
+    for (const [i, id] of ["A!", "A?", "a-", "A--2", "A--3"].entries()) {
+      await connection.put("deployments", deployment(id, i + 10));
+    }
+    const files = await store.exportAll();
+    expect(files).toHaveLength(6);
+    expect(new Set(files.map((file) => file.filename.toLowerCase())).size).toBe(6);
+    expect(files.flatMap((file) => (JSON.parse(file.text) as { deployments: Deployment[] }).deployments).map((record) => record.address).sort()).toEqual([10, 11, 12, 13, 14].map(address).sort());
+    for (const id of ["A!", "A?", "a-", "A--2", "A--3"]) await connection.delete("projects", id);
+    const orphans = await store.exportAll();
+    expect(orphans).toHaveLength(6);
+    expect(new Set(orphans.map((file) => file.filename.toLowerCase())).size).toBe(6);
+  } finally {
+    connection.close();
+  }
+});
+
+test("an aborted backup snapshot rejects without hiding the transaction failure", async () => {
+  const store = testPersistence();
+  await created("A");
+  const transaction = IDBDatabase.prototype.transaction;
+  let aborted = false;
+  vi.spyOn(IDBDatabase.prototype, "transaction").mockImplementation(function (this: IDBDatabase, ...args: Parameters<IDBDatabase["transaction"]>) {
+    const tx = transaction.apply(this, args);
+    const stores = Array.isArray(args[0]) ? args[0] : [args[0]];
+    if (!aborted && args[1] === "readonly" && stores.includes("deployments") && stores.includes("trash")) {
+      aborted = true;
+      queueMicrotask(() => tx.abort());
+    }
+    return tx;
+  });
+  await expect(store.exportAll()).rejects.toMatchObject({ name: "AbortError" });
+  expect(aborted).toBe(true);
+  expect(await store.listProjects()).toHaveLength(1);
+});
+
+test("clearing untouched boot reports local clear truthfully and permits New", async () => {
+  const store = testPersistence();
+  await store.clearData();
+  expect(store.projects.saveStatus()).toEqual({
+    state: "not-saved", text: "Not saved", detail: "Studio's data in this browser was cleared. Start a new project or open a project file to continue.", action: { id: "project.new" },
+  });
+  expect((await store.projects.createProject(recipe, "Fresh")).ok).toBe(true);
 });

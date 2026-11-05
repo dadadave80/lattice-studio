@@ -14,6 +14,7 @@ export const newProjectCommand = command({
   enabled: () => OK,
   async run() {
     const { startNewProject } = await import("../actions");
-    await startNewProject();
+    const result = await startNewProject();
+    if (!result.ok) throw new Error(result.error);
   },
 });

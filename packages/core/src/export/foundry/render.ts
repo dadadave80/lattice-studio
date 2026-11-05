@@ -21,8 +21,8 @@ import { addressLiteral, assignLines, callLines, declarationLines, fixedBytesLit
 /** keccak256 of the CREATE3 proxy CreateX deploys first (CreateX `_PROXY_CHILD_BYTECODE`, as C5b uses it). */
 export const CREATE3_PROXY_CHILD_HASH: Hex = "0x21c35dbe1b344a2488cf3321d6ce542f8e9f305544ff09e4993a62319a497c1f";
 
-/** Where to deploy missing shared contracts until Lattice re-pins (D2): Studio or its CLI, never DeployRelease. */
-export const MISSING_HELP = "Deploy them first with Deploy missing contracts… in Lattice Studio or with the lattice-studio CLI.";
+/** Studio deploys missing shared contracts at this catalog's deterministic addresses. */
+export const MISSING_HELP = "Deploy them first with Deploy missing contracts… in Lattice Studio.";
 
 /** One chain's constants: its LatticeFactory (chain-specific or canonical) and the proxy build it predicts with. */
 export type ChainConstants = {
@@ -156,7 +156,7 @@ function headerLines(input: ScriptInput): string[] {
   add();
   add("Leaves out:");
   // Template text, not escaped: the spec's own label keeps its ellipsis.
-  lines.push("//   Deploying missing shared contracts: use Deploy missing contracts… in Lattice Studio or the lattice-studio CLI.");
+  lines.push("//   Deploying missing shared contracts: use Deploy missing contracts… in Lattice Studio.");
   if (input.omitted.length > 0) item(`Facets that route no selector: ${input.omitted.join(", ")}`);
   if (input.excluded.length > 0) item(`Excluded selectors: ${input.excluded.join(", ")}`);
   return lines;

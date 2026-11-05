@@ -18,9 +18,11 @@
 import { expect, test } from "../_support/fixtures.ts";
 import { seedProject } from "../_support/seed.ts";
 import { expectTier, viewportAt } from "../_support/viewports.ts";
+import { modifierKey } from "../_support/keys.ts";
 import { ConsolePage } from "./pages/console-page.ts";
 import { SheetPage } from "./pages/sheet-page.ts";
 import { StructurePage } from "./pages/structure-page.ts";
+import { InspectorPage } from "./pages/inspector-page.ts";
 import { blankConvention, twoWayCollision, seamRecipe } from "./fixtures.ts";
 
 const RECEIVE = "receive()";
@@ -34,20 +36,23 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     const sheet = new SheetPage(page);
     await sheet.fit();
     const console_ = new ConsolePage(page);
-    const pin = sheet.pinLike("Receive", new RegExp(`${RECEIVE.replace(/[().]/g, "\\$&")} ${RECEIVE_HEX},`));
-
     await expect(sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`)).toBeVisible();
-    await expect(pin).toHaveAccessibleDescription(`${RECEIVE}: routes here. Click to leave it out of the diamond.`);
+    await sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`).click();
+    const inspector = new InspectorPage(page);
+    await expect(inspector.selectorRow(/^receive.*0x00000000 routed$/i)).toBeFocused();
+    await expect(sheet.routePin("Receive", "Leave out of the diamond: receive()"))
+      .toHaveAccessibleDescription(`${RECEIVE}: routes here. Click to leave it out of the diamond.`);
 
-    await pin.click();
+    await sheet.routePin("Receive", "Leave out of the diamond: receive()").click();
 
     await expect(sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, not in the diamond`)).toBeVisible();
-    await expect(pin).toHaveAccessibleDescription("Not in the diamond. Click to route here.");
+    await expect(sheet.routePin("Receive", "Bring back: receive()"))
+      .toHaveAccessibleDescription("Not in the diamond. Click to route here.");
     await expect(console_.line(`Left ${RECEIVE.replace("()", "")} · ${RECEIVE_HEX} out of the diamond`)).toBeVisible();
     await expect(console_.line(`Note ${SEL03_MESSAGE}`)).toBeVisible();
     await expect(console_.line(new RegExp(CORE04_MESSAGE.replace(/[().]/g, "\\$&")))).toBeVisible();
 
-    await pin.click();
+    await sheet.routePin("Receive", "Bring back: receive()").click();
 
     await expect(sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`)).toBeVisible();
     await expect(console_.line("Resolved: Receive cuts nothing: its only selector is excluded.")).toBeVisible();
@@ -60,7 +65,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     await sheet.fit();
     const structure = new StructurePage(page);
 
-    await sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`).click();
+    await sheet.routePin("Receive", "Leave out of the diamond: receive()").click();
 
     await structure.open();
     await expect(structure.problem(`Warning: ${SEL03_MESSAGE}`)).toBeVisible();
@@ -70,18 +75,21 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     await seedProject(page, { project: twoWayCollision() });
     const sheet = new SheetPage(page);
     await sheet.fit();
-    const hyperlanePin = sheet.pinLike(
-      "HyperlaneGatewayAdapter",
-      "sendMessage(bytes,bytes,bytes[]) 0xcdfe7f5c, contested with AxelarGatewayAdapter",
-    );
+    // This recipe fits below compact zoom; frame the card before using its detailed controls.
+    await sheet.zoomToCard("HyperlaneGatewayAdapter");
     await sheet.expandCard("HyperlaneGatewayAdapter");
-    await expect(hyperlanePin).toHaveAccessibleDescription("Collides with AxelarGatewayAdapter. Click to route here.");
+    const route = sheet.routePin("HyperlaneGatewayAdapter", "Route here: sendMessage(bytes,bytes,bytes[])");
+    await expect(route).toHaveAccessibleDescription("Collides with AxelarGatewayAdapter. Click to route here.");
+    await expect(route).toBeInViewport({ ratio: 0.9999 });
 
-    await hyperlanePin.click();
+    await route.click();
 
     await expect(
       sheet.pinLike("HyperlaneGatewayAdapter", "sendMessage(bytes,bytes,bytes[]) 0xcdfe7f5c, routes here"),
     ).toBeVisible();
+    await sheet.root.getByRole("button", { name: "Fit", exact: true }).click();
+    await expect(sheet.card("AxelarGatewayAdapter")).toBeInViewport({ ratio: 0.9999 });
+    await sheet.zoomToCard("AxelarGatewayAdapter");
     await expect(
       sheet.pinLike("AxelarGatewayAdapter", "sendMessage(bytes,bytes,bytes[]) 0xcdfe7f5c, served by HyperlaneGatewayAdapter"),
     ).toBeVisible();
@@ -99,10 +107,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     await sheet.zoomToCard("ERC20Pausable");
     const pin = sheet.pinLike("ERC20Pausable", "transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault");
 
-    // A seam pin is `aria-disabled` (no action), which is legitimate — a real right-click still opens the
-    // context menu regardless (only left-click/Enter/Space are blocked by the disabled-control pattern), so
-    // this bypasses Playwright's actionability check that otherwise treats `aria-disabled` as not clickable.
-    await pin.click({ button: "right", force: true });
+    await pin.click({ button: "right" });
 
     const menu = page.getByRole("menu");
     await expect(menu).toBeVisible();
@@ -132,7 +137,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
 
-    await pin.click();
+    await sheet.routePin("Receive", "Leave out of the diamond: receive()").click();
     await expect(sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, not in the diamond`)).toBeVisible();
 
     await pin.click({ button: "right" });
@@ -144,6 +149,28 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
   });
 
   test.describe("keyboard-only", () => {
+    test("Sheet Enter reaches inspection, ArrowDown reaches routing, Space edits once and Escape returns", async ({ page }) => {
+      await seedProject(page, { project: blankConvention() });
+      const sheet = new SheetPage(page);
+      await sheet.fit();
+      const card = sheet.card("Receive");
+      await card.focus();
+      await page.keyboard.press("Enter");
+      await expect(sheet.pinLike("Receive", /^Inspect receive /)).toBeFocused();
+      await page.keyboard.press("ArrowDown");
+      await expect(sheet.routePin("Receive", "Leave out of the diamond: receive()")).toBeFocused();
+      await page.keyboard.press("Space");
+      await expect(sheet.routePin("Receive", "Bring back: receive()")).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(card).toBeFocused();
+      await page.keyboard.press(`${await modifierKey(page)}+z`);
+      await expect(sheet.routePin("Receive", "Leave out of the diamond: receive()")).toBeVisible();
+      await page.keyboard.press("Enter");
+      await expect(sheet.pinLike("Receive", /^Inspect receive /)).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(sheet.root.getByRole("toolbar", { name: "Sheet tools" }).getByRole("button", { name: /^Select(?: |$)/ })).toBeFocused();
+    });
+
     test("Structure tree: expand a facet, arrow to its selector, Space toggles it", async ({ page }) => {
       await seedProject(page, { project: blankConvention() });
       const sheet = new SheetPage(page);
@@ -218,7 +245,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
       await expectTier(page, "narrow");
       await sheet.fit();
 
-      await sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`).click();
+      await sheet.routePin("Receive", "Leave out of the diamond: receive()").click();
 
       const expandConsole = page.getByRole("button", { name: "Expand console" });
       if (await expandConsole.isVisible()) await expandConsole.click();
@@ -232,7 +259,7 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
   test.describe("at 375 px (phone: Sheet, Structure, Catalog, Inspector, Console as tabs)", () => {
     test.use({ viewport: viewportAt(375) });
 
-    test("the pin toggle still works from the Sheet tab", async ({ page }) => {
+    test("a name tap opens Inspector without routing, then the larger selector control routes", async ({ page }) => {
       await seedProject(page, { project: blankConvention() });
       const sheet = new SheetPage(page);
       const console_ = new ConsolePage(page);
@@ -241,6 +268,16 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
       await page.getByRole("tab", { name: "Sheet" }).click();
       await sheet.fit();
       await sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, routes here`).click();
+      await expect(page.getByRole("tab", { name: "Inspector", exact: true })).toHaveAttribute("aria-selected", "true");
+      const inspector = new InspectorPage(page);
+      const selector = inspector.selectorRow(/^receive.*0x00000000 routed$/i);
+      await expect(selector).toBeFocused();
+      const target = await selector.boundingBox();
+      expect(target?.height).toBeGreaterThanOrEqual(24);
+      expect(target?.width).toBeGreaterThanOrEqual(24);
+      await selector.click();
+      await expect(inspector.selectorRow(/receive.*0x00000000.*not in the diamond/i)).toBeVisible();
+      await page.getByRole("tab", { name: /^Sheet(?: ·|$)/ }).click();
       await expect(
         sheet.pinLike("Receive", `${RECEIVE} ${RECEIVE_HEX}, not in the diamond`),
       ).toBeVisible();

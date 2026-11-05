@@ -2,9 +2,13 @@
 
 Check, plan, predict and export [Lattice](https://github.com/dadadave80/lattice) diamond recipes from the command line, with the same analysis Lattice Studio runs in the browser. Built for CI and coding agents: `--json` output and stable exit codes.
 
+Run from the repository root:
+
 ```sh
-bunx lattice-studio check recipe.json
+bun packages/cli/src/main.ts check docs/examples/erc20.recipe.json
 ```
+
+The CLI is run from a checkout until its npm release. The command reference below uses `lattice-studio` as shorthand for `bun packages/cli/src/main.ts`.
 
 The package bundles the catalog it checks against (the Lattice release its version was built with), so it needs nothing else and never touches the network unless you ask for readiness probes.
 

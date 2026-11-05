@@ -197,7 +197,7 @@ test.describe("Flow 4: resolve a collision", () => {
         "transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault",
       );
       await expect(pin).toBeVisible();
-      await expect(pin).toHaveAttribute("aria-disabled", "true");
+      await expect(pin).not.toHaveAttribute("aria-disabled", "true");
       await expect(pin).toHaveAccessibleDescription(
         "Seam: stays on GovernedVault because its version updates vote checkpoints.",
       );

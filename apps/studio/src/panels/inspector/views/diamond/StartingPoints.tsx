@@ -23,7 +23,7 @@ export function StartingPoints() {
     return STARTING_RECIPES.filter((name) => loadable.has(name));
   }, [catalog]);
   return (
-    <section className={sheet.section} aria-label="Start a diamond">
+    <section className={sheet.section} aria-label="Starting points">
       <p className={sheet.text}>{CORE_ONLY}</p>
       <div className={styles.starts}>
         <CommandButton command={commandRef("recipe.load", { name: BLANK_DIAMOND })} block>

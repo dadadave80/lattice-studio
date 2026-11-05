@@ -134,7 +134,7 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
           <>
             <div className={styles.rows} data-keyctx="card-rows">
               {view.rows.map((pin) => (
-                <PinRow key={pin.selector} pin={pin} side={view.pins} />
+                <PinRow key={pin.selector} facet={name} pin={pin} side={view.pins} />
               ))}
               {showMore ? (
                 <MoreButton facet={name} expanded={view.expanded} hidden={view.hidden} side={view.pins} />

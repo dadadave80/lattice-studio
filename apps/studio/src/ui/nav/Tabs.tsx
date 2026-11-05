@@ -56,6 +56,7 @@ export function Tabs<V extends string = string>({
     >
       <BaseTabs.List
         aria-label={label}
+        aria-orientation={orientation}
         activateOnFocus
         className={cx(styles.list, size === "compact" && styles.compact, fill && styles.fill, listClassName)}
       >

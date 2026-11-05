@@ -35,8 +35,11 @@ describe("resolveView", () => {
       facet: "ERC20",
     });
   });
-  test("a problem view whose problem was resolved falls back", () => {
-    expect(resolveView({ ...base, view: { kind: "problem", id: "DEP-01:VaultCore+ERC4626" } })).toEqual({ kind: "diamond" });
+  test("an explicit resolved problem view stays available for navigation", () => {
+    const resolved = { kind: "problem", id: "DEP-01:VaultCore+ERC4626" } as const;
+    expect(resolveView({ ...base, view: resolved })).toBe(resolved);
+    expect(resolveView({ ...base, view: resolved, problems: [], selection: ["ERC20"] })).toBe(resolved);
+    expect(resolveView({ ...base, view: resolved, problems: [], coreSelected: true })).toBe(resolved);
     const open = { kind: "problem", id: "SEL-01:0xcdfe7f5c" } as const;
     expect(resolveView({ ...base, view: open })).toBe(open);
   });

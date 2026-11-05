@@ -1,7 +1,8 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { openDialog, runCommand, session } from "@/contracts";
 import { Button, DialogHost } from "@/ui";
+import { axeViolations, emulateForcedColors } from "@/ui/testing/axe";
 import { renderWithStudio } from "../../test/harness";
 
 function App() {
@@ -16,6 +17,96 @@ function App() {
 const dialog = () => page.getByRole("dialog", { name: "Settings" });
 const tab = (name: string) => page.getByRole("tab", { name });
 const opener = () => page.getByRole("button", { name: "Settings" });
+
+afterEach(async () => {
+  await emulateForcedColors(false);
+  await page.viewport(1440, 900);
+});
+
+function fits(button: HTMLElement, panel: HTMLElement): void {
+  const box = button.getBoundingClientRect();
+  const bounds = panel.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(button);
+  const text = range.getBoundingClientRect();
+  expect(text.left).toBeGreaterThanOrEqual(box.left - 0.5);
+  expect(text.right).toBeLessThanOrEqual(box.right + 0.5);
+  expect(text.top).toBeGreaterThanOrEqual(box.top - 0.5);
+  expect(text.bottom).toBeLessThanOrEqual(box.bottom + 0.5);
+  expect(box.left).toBeGreaterThanOrEqual(bounds.left - 0.5);
+  expect(box.right).toBeLessThanOrEqual(bounds.right + 0.5);
+}
+
+for (const width of [320, 375, 768, 1440]) {
+  test(`${width}px: Settings actions fit and tabs match their keyboard orientation`, async () => {
+    await page.viewport(width, 900);
+    await renderWithStudio(<App />);
+    openDialog("settings");
+    const list = page.getByRole("tablist", { name: "Settings groups" });
+    await expect.element(list).toHaveAttribute("aria-orientation", width < 768 ? "horizontal" : "vertical");
+    await expect.element(tab("Appearance")).toHaveFocus();
+    await userEvent.keyboard(width < 768 ? "{ArrowRight}" : "{ArrowDown}");
+    await expect.element(tab("Canvas")).toHaveAttribute("aria-selected", "true");
+    await expect.element(tab("Canvas")).toHaveFocus();
+    await tab("Data").click();
+    const panel = page.getByRole("tabpanel", { name: "Data" }).element() as HTMLElement;
+    const buttons = [...panel.querySelectorAll<HTMLButtonElement>("button")];
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) {
+      fits(button, panel);
+      expect(button.getBoundingClientRect().top).toBeGreaterThanOrEqual(panel.getBoundingClientRect().top - 0.5);
+      expect(button.getBoundingClientRect().bottom).toBeLessThanOrEqual(panel.getBoundingClientRect().bottom + 0.5);
+    }
+    const [first, second] = buttons.map((button) => button.getBoundingClientRect());
+    expect(first && second && (first.right <= second.left + 0.5 || first.bottom <= second.top + 0.5)).toBe(true);
+    await page.viewport(width < 768 ? 1440 : 375, 500);
+    await expect.element(tab("Data")).toHaveAttribute("aria-selected", "true");
+    expect(page.getByRole("tabpanel", { name: "Data" }).element()).toBe(panel);
+    await expect.poll(() => {
+      const selected = tab("Data").element().getBoundingClientRect();
+      const listBox = list.element().getBoundingClientRect();
+      return selected.left >= listBox.left - 0.5 && selected.right <= listBox.right + 0.5;
+    }).toBe(true);
+    await page.viewport(width, 900);
+    await tab("Networks").click();
+    const networks = page.getByRole("tabpanel", { name: "Networks" }).element() as HTMLElement;
+    const checks = [...networks.querySelectorAll<HTMLButtonElement>("button")];
+    expect(checks.length).toBeGreaterThan(0);
+    for (const check of checks) fits(check, networks);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
+  });
+}
+
+test("phone Settings scrolls its panel while Close remains reachable at short and landscape heights", async () => {
+  await page.viewport(375, 500);
+  await renderWithStudio(<App />);
+  openDialog("settings", { group: "networks" });
+  for (const [width, height] of [[375, 500], [600, 256]]) {
+    await page.viewport(width!, height!);
+    const panel = page.getByRole("tabpanel", { name: "Networks" }).element() as HTMLElement;
+    expect(panel.scrollHeight).toBeGreaterThan(panel.clientHeight);
+    panel.scrollTop = panel.scrollHeight;
+    await expect.element(page.getByRole("button", { name: "Close", exact: true })).toBeInViewport();
+    expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(height!);
+  }
+});
+
+for (const theme of ["light", "dark"] as const) {
+  for (const forced of [false, true]) {
+    test(`phone Settings accessibility in ${theme}${forced ? " forced colors" : ""} with reduced motion`, async () => {
+      await page.viewport(375, 900);
+      await emulateForcedColors(forced);
+      await renderWithStudio(<App />, { theme, settings: { reduceMotion: "on" } });
+      await opener().click();
+      for (const group of ["Data", "Networks"]) {
+        await tab(group).click();
+        expect(await axeViolations(dialog().element(), { forced, bestPractice: true })).toEqual([]);
+      }
+      await userEvent.keyboard("{Escape}");
+      await expect.element(opener()).toHaveFocus();
+    });
+  }
+}
 
 describe("Settings dialog (Flow 16, IR L183)", () => {
   test("settings.open shows it with the first group's tab focused", async () => {

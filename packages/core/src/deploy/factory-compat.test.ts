@@ -48,18 +48,49 @@ describe("bundled factory ABI compatibility", () => {
       expect(result.value.registryEntries.length > 0).toBe(listed);
     });
 
-    test(`${id}: Foundry and Safe exports preserve its factory entry shape`, () => {
+    test.each([false, true])(`${id}: Foundry and Safe exports preserve its factory entry shape (listed=%s)`, (listed) => {
       const project = makeProject({ recipe });
       const foundry = exportFoundry({ project, analysis, catalog, studioVersion: "test", chainIds: [31337] });
       if (!foundry.ok) throw new Error(foundry.error);
       const entry = /struct RecipeEntry \{([\s\S]*?)\}/.exec(foundry.value.text)?.[1] ?? "";
       expect(entry.includes("bytes4[] exclude;")).toBe(id === "v0.5.0");
-      const safe = exportSafeBatch({ recipe, catalog, safe: ALICE, chainId: 31337, entropy: ENTROPY, scope: "every-chain", path: "factory", now: 0, studioVersion: "test" });
+      expect(foundry.value.text).toContain(".deploy(");
+      expect(foundry.value.text).not.toContain(".deployStrict(");
+      const records = Object.fromEntries(analysis.plan.map((entry) => [`${entry.facet}@${entry.version}`, { facet: entry.address, codehash: entry.codehash }]));
+      const chain = listed ? {
+        chainId: 31337, name: "Anvil", online: true, probedAt: "2026-11-05T00:00:00Z",
+        deployer: { present: true }, shared: {}, simulate: true, codeAt: {}, registry: { records },
+      } : undefined;
+      const safe = exportSafeBatch({
+        recipe, catalog, safe: ALICE, chainId: 31337, entropy: ENTROPY, scope: "every-chain", path: "factory", now: 0, studioVersion: "test",
+        ...(chain === undefined ? {} : { chain }),
+      });
       if (!safe.ok) throw new Error(safe.error);
       const batch = JSON.parse(safe.value.text) as { transactions: { data: Hex }[] };
       const data = batch.transactions[0]?.data;
       if (data === undefined) throw new Error("the Safe export has no transaction");
-      expect(decodeFunctionData({ abi, data }).functionName).toBe("deploy");
+      const decoded = decodeFunctionData({ abi, data });
+      expect(decoded.functionName).toBe(id === "v0.5.0" ? "deployStrict" : "deploy");
+      const direct = buildDiamondDeploy({
+        recipe, catalog, plan: analysis.plan, init: init.value,
+        path: "factory", from: ALICE, salt, chainId: 31337,
+        ...(chain === undefined ? {} : { chain }),
+      });
+      if (!direct.ok) throw new Error(direct.error);
+      expect(decodeFunctionData({ abi, data: direct.value.tx.data }).functionName).toBe("deploy");
+      expect(decoded.args).toEqual(decodeFunctionData({ abi, data: direct.value.tx.data }).args);
+      const entries = decoded.args?.[0] as readonly { version: bigint }[];
+      expect(entries.length > 0).toBe(listed);
+      expect(entries.every((entry) => entry.version > 0n)).toBe(true);
+      expect(decoded.args?.slice(2)).toEqual([init.value.target, init.value.data, salt]);
+      expect(data.slice(10)).toBe(direct.value.tx.data.slice(10));
+      expect(data.slice(0, 10)).toBe(id === "v0.5.0" ? "0x5c472e92" : "0x533677de");
+      expect(direct.value.address).toBe(address);
+      expect(safe.value.text).toContain(address);
+      expect(recipe.catalog.hash).toBe(catalog.hash);
+      if (id === "v0.5.0") {
+        expect(safe.value.text).toContain("Requires a fresh diamond: execution reverts if this Safe and salt already deployed one.");
+      }
     });
   }
 });

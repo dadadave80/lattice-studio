@@ -36,31 +36,24 @@ test.describe("prool's busy-port detection @smoke", () => {
     expect(isPortBusyReason("some other error entirely")).toBe(false);
   });
 
-  test("classifies a live two-way race on the port as busy, whichever shape prool reports it", async ({ anvil }) => {
-    const port = anvil.port;
-    await anvil.stop();
-    let winner: AnvilNode | undefined;
-    // A genuine race: two `startAnvil`s for the same port at once, no `acquireAnvil` retry. Exactly one binds; the
-    // loser's rejection, in whatever shape prool gives it (Q1e found both "address already in use" and its own
-    // reasonless one), must classify as `PortBusyError`. If neither of ours wins (another worker's fixture slipped
-    // in between `stop()` and here), that's nobody's fault: try again.
-    for (let attempt = 0; !winner && attempt < 5; attempt += 1) {
-      const settled = await Promise.allSettled([startAnvil(port), startAnvil(port)]);
-      const fulfilled = settled.filter((r): r is PromiseFulfilledResult<AnvilNode> => r.status === "fulfilled");
-      const rejected = settled.filter((r): r is PromiseRejectedResult => r.status === "rejected");
-      const [win] = fulfilled;
-      const [loss] = rejected;
-      if (win && loss && fulfilled.length === 1 && rejected.length === 1) {
-        const raw = loss.reason instanceof Error && loss.reason.cause instanceof Error ? loss.reason.cause : loss.reason;
-        console.log(`prool's loser (attempt ${attempt}): ${raw instanceof Error ? `${raw.name}: ${raw.message}` : String(raw)}`);
-        expect(loss.reason).toBeInstanceOf(PortBusyError);
-        winner = win.value;
-      } else {
-        for (const r of fulfilled) await r.value.stop().catch(() => undefined);
-      }
+  test("classifies a competing start on the fixture's occupied port as busy", async ({ anvil }) => {
+    let contender: AnvilNode | undefined;
+    let failure: unknown;
+    // Keep the fixture's port lock: releasing it lets another worker own the port before either contender starts.
+    try {
+      contender = await startAnvil(anvil.port);
+    } catch (error) {
+      failure = error;
+    } finally {
+      await contender?.stop();
     }
-    if (!winner) throw new Error("Couldn't force a two-way race on the port after 5 attempts.");
-    await winner.stop();
+    expect(failure).toBeInstanceOf(PortBusyError);
+    const raw = failure instanceof Error ? failure.cause : undefined;
+    expect(raw).toBeInstanceOf(Error);
+    const reason = raw instanceof Error ? raw.message : String(raw);
+    expect(reason).toMatch(/^Failed to start process "anvil":/);
+    expect(isPortBusyReason(reason)).toBe(true);
+    expect(await anvil.client.getChainId()).toBe(ANVIL_CHAIN_ID);
   });
 });
 

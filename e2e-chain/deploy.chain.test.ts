@@ -6,9 +6,9 @@
  * init that reverts with no reason (Arachnid's reasonless reverts are in shared.chain.test.ts).
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { decodeEventLog, type Address, type Hex } from "viem";
+import { decodeEventLog, decodeFunctionData, decodeFunctionResult, parseAbi, type Address, type Hex } from "viem";
 import {
-  LATTICE_FACTORY_ABI, analyze, decodeInit, decodeRevert, type Arg, type DecodedRevert, type RevertContext,
+  LATTICE_FACTORY_ABI, analyze, decodeInit, decodeRevert, exportSafeBatch, type Arg, type DecodedRevert, type RevertContext,
 } from "@lattice-studio/core";
 import { builtCatalog, revertDetails } from "./harness/catalog";
 import { ANVIL_SKIP_REASON, PORT, anvilPort, announceSkip } from "./harness/env";
@@ -105,6 +105,49 @@ describe.skipIf(ANVIL_SKIP_REASON !== undefined)("the deploy calldata core build
     const comparison = await compareLoupe(node, deploy.address, other.analysis.plan);
     expect(comparison.matches).toBe(false);
     expect(comparison.missing.length).toBeGreaterThan(0);
+  }, 60_000);
+
+  test("a current Safe batch creates once and refuses same routes with changed initialization", async () => {
+    const entropy = entropyFor("safe-strict-same-routes-changed-name");
+    const first = fixture(catalog, "ERC20", "factory", entropy, { name_: "First batch" });
+    const second = fixture(catalog, "ERC20", "factory", entropy, { name_: "Second batch" });
+    const details = revertDetails();
+    const factoryAbi = details["LatticeFactory"]?.abi;
+    if (!factoryAbi) throw new Error("missing pinned factory ABI");
+    const batch = (f: Fixture) => {
+      const exported = exportSafeBatch({
+        recipe: f.recipe, catalog, safe: BOB, chainId: node.chainId,
+        entropy, scope: "every-chain", path: "factory", now: 0, studioVersion: "test",
+      });
+      if (!exported.ok) throw new Error(exported.error);
+      const file = JSON.parse(exported.value.text) as { transactions: { to: Address; data: Hex }[] };
+      const tx = file.transactions[0];
+      if (!tx || file.transactions.length !== 1) throw new Error("expected one Safe transaction");
+      return tx;
+    };
+    const a = batch(first);
+    const b = batch(second);
+    const decodedA = decodeFunctionData({ abi: factoryAbi, data: a.data });
+    const decodedB = decodeFunctionData({ abi: factoryAbi, data: b.data });
+    expect(decodedA.functionName).toBe("deployStrict");
+    expect(decodedB.functionName).toBe("deployStrict");
+    expect(decodedA.args?.slice(0, 3)).toEqual(decodedB.args?.slice(0, 3));
+    expect(decodedA.args?.[3]).not.toEqual(decodedB.args?.[3]);
+    expect(decodedA.args?.[4]).toEqual(decodedB.args?.[4]);
+    const direct = coreDeploy(first, BOB, node.chainId);
+    expect(a.data.slice(10)).toBe(direct.tx.data.slice(10));
+    expect(decodeFunctionData({ abi: factoryAbi, data: direct.tx.data }).functionName).toBe("deploy");
+    await send(node, { from: BOB, to: a.to, data: a.data, gas: GAS_CAP });
+    const failed = await node.call({ from: BOB, to: b.to, data: b.data, gas: GAS_CAP });
+    expect(failed.ok).toBe(false);
+    expect(decodeRevert(failed.data, catalog, {
+      details, placed: second.recipe.facets, path: "factory",
+    }).error).toBe("LatticeFactory__AlreadyDeployed");
+    const tokenAbi = parseAbi(["function name() view returns (string)", "function totalSupply() view returns (uint256)"]);
+    const name = await node.rpc<Hex>("eth_call", [{ to: direct.address, data: "0x06fdde03" }, "latest"]);
+    const supply = await node.rpc<Hex>("eth_call", [{ to: direct.address, data: "0x18160ddd" }, "latest"]);
+    expect(decodeFunctionResult({ abi: tokenAbi, functionName: "name", data: name })).toBe("First batch");
+    expect(decodeFunctionResult({ abi: tokenAbi, functionName: "totalSupply", data: supply })).toBe(0n);
   }, 60_000);
 
   test("a used salt on CreateX reverts FailedContractCreation; the decoder says to check the salt's addresses, which hold the diamond", async () => {

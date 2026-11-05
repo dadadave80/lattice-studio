@@ -1,6 +1,7 @@
 import { Menu as BaseMenu } from "@base-ui/react/menu";
-import type { ReactElement, ReactNode } from "react";
+import { useRef, type ReactElement, type ReactNode } from "react";
 import { KEY_CONTEXT_ATTRIBUTE } from "@/contracts";
+import { rememberMenuInvoker } from "../shared/menu-invoker";
 import styles from "../overlays/Menu.module.css";
 
 export type MenuProps = {
@@ -26,15 +27,17 @@ export type MenuProps = {
  * `menu` key context, so single-key shortcuts stay inert inside it.
  */
 export function Menu({ trigger, label, children, side = "bottom", align = "start", open, onOpenChange }: MenuProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
   return (
     <BaseMenu.Root
       {...(open === undefined ? {} : { open })}
       {...(onOpenChange ? { onOpenChange: (next: boolean) => onOpenChange(next) } : {})}
     >
-      <BaseMenu.Trigger render={trigger} />
+      <BaseMenu.Trigger ref={triggerRef} render={trigger} />
       <BaseMenu.Portal>
         <BaseMenu.Positioner className={styles.positioner} side={side} align={align} sideOffset={4} collisionPadding={8}>
           <BaseMenu.Popup
+            ref={(popup) => rememberMenuInvoker(popup, triggerRef.current)}
             className={styles.popup}
             aria-label={label}
             // Base UI names the popup after the active trigger by default (`aria-labelledby`), which wins over

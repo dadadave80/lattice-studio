@@ -2,13 +2,15 @@
  * The facet card in React Flow (brief S4a): accessible name and description, what a pin click does, "+ n more"
  * and Collapse, the compact form, handles at C9's geometry, size and paint containment, and 1/zoom strokes.
  */
-import { cardSize, contestedSelectors, type Hex4, type Project } from "@lattice-studio/core";
+import { cardSize, contestedSelectors, type CommandRef, type Hex4, type Project } from "@lattice-studio/core";
 import type { ReactFlowInstance } from "@xyflow/react";
 import { describe, expect, test } from "vitest";
 import { cdp, page, userEvent } from "vitest/browser";
-import { doc, getAnalysis, getCommand, history, layoutMetrics, runCommand, session, useSession } from "@/contracts";
-import { fixtureCatalog, overrideCommands, renderWithStudio } from "../../../test/harness";
+import { doc, getAnalysis, getCommand, history, layoutMetrics, onCommandRun, runCommand, session, useSession } from "@/contracts";
+import { fixtureCatalog, onCleanup, overrideCommands, renderWithStudio } from "../../../test/harness";
 import { cardNameId, type FacetNode } from "./node";
+import { pinView } from "./card-model";
+import { PinRow } from "./PinRow";
 import { CardSheet } from "./testing/CardSheet";
 import { cardProject, GALLERY_FACETS } from "./testing/projects";
 
@@ -29,6 +31,12 @@ function row(facet: string, selector: Hex4): HTMLElement {
   const el = card(facet).querySelector<HTMLElement>(`[data-selector="${selector}"]`);
   if (!el) throw new Error(`${facet} draws no row for ${selector}.`);
   return el;
+}
+
+function route(facet: string, name: string): HTMLElement {
+  const button = card(facet).querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`);
+  if (!button) throw new Error(`No route button for ${facet}: ${name}.`);
+  return button;
 }
 
 function wrapper(facet: string): HTMLElement {
@@ -75,7 +83,7 @@ describe("accessible name and description (spec L745-L746)", () => {
 
   test("the name follows an edit", async () => {
     await sheet(gallery());
-    await userEvent.click(row("ERC20", "0xdd62ed3e"));
+    await userEvent.click(route("ERC20", "Leave out of the diamond: allowance(address,address)"));
     await expect
       .element(page.getByRole("group", { name: "ERC20, 9 selectors, 3 served by other facets, 2 not in the diamond" }))
       .toBeInTheDocument();
@@ -84,12 +92,12 @@ describe("accessible name and description (spec L745-L746)", () => {
 
   test("pin rows are named by signature, hex and state, and described by what a click does", async () => {
     await sheet(gallery());
-    const allowance = page.getByRole("button", { name: "allowance 0xdd62ed3e, allowance(address,address) 0xdd62ed3e, routes here" });
+    const allowance = page.getByRole("button", { name: "Leave out of the diamond: allowance(address,address)" });
     await expect.element(allowance).toHaveAccessibleDescription(
       "allowance(address,address): routes here. Click to leave it out of the diamond.",
     );
     await expect
-      .element(page.getByRole("button", { name: "name → GovernedVault, name() 0x06fdde03, served by GovernedVault" }))
+      .element(page.getByRole("button", { name: "Route here: name()" }))
       .toHaveAccessibleDescription("Served by GovernedVault. Click to route here instead.");
   });
 });
@@ -100,12 +108,85 @@ describe("the receive pin (spec L64)", () => {
     const receive = row("Receive", "0x00000000");
     expect(receive.querySelector("[class*='name']")?.textContent).toBe("receive");
     expect(receive.querySelector("[class*='mark']")?.textContent).toBe("0x00000000");
-    expect(receive.getAttribute("aria-label")?.startsWith("receive 0x00000000, receive() 0x00000000")).toBe(true);
-    await expect.element(page.getByRole("button", { name: /^receive 0x00000000, receive\(\) 0x00000000/ })).toBeInTheDocument();
+    expect(receive.getAttribute("aria-label")?.startsWith("Inspect receive 0x00000000, receive() 0x00000000")).toBe(true);
+    await expect.element(page.getByRole("button", { name: /^Inspect receive 0x00000000, receive\(\) 0x00000000/ })).toBeInTheDocument();
   });
 });
 
 describe("what a pin does (Flow 6, IR L47, L104)", () => {
+  test("inspection opens the facet's Selectors list without editing the document, undo or viewport", async () => {
+    await sheet(gallery({ expanded: ["GovernedVault"] }));
+    const before = doc.get();
+    const undo = doc.state();
+    const viewport = session.get().viewports;
+    const ran: CommandRef[] = [];
+    onCleanup(onCommandRun((ref) => void ran.push(ref)));
+    for (const [facet, selector, state] of [
+      ["ERC20", "0xdd62ed3e", "routed"],
+      ["ERC20", SYMBOL, "excluded"],
+      ["ERC20", "0x06fdde03", "elsewhere"],
+      ["AxelarGatewayAdapter", "0xcdfe7f5c", "contested"],
+      ["GovernedVault", "0x06fdde03", "default"],
+      ["ERC20", "0xa9059cbb", "seam"],
+    ] as const) {
+      expect(row(facet, selector).dataset.state).toBe(state);
+      await userEvent.click(row(facet, selector));
+      expect(ran.at(-1)).toEqual({ id: "inspector.focusSelectors", args: { facet } });
+      expect(session.get().panes.inspector.view).toEqual({ kind: "facet", facet, focus: "selectors" });
+    }
+    expect(ran).toHaveLength(6);
+    expect(doc.get()).toBe(before);
+    expect(doc.state()).toEqual(undo);
+    expect(session.get().viewports).toBe(viewport);
+  });
+
+  test("an unchecked pin still inspects and exposes a static status instead of a route", async () => {
+    const pin = pinView({
+      facet: "ERC20", selector: { hex: "0xdd62ed3e", signature: "allowance(address,address)" },
+      route: undefined, excluded: false, catalog,
+    });
+    await renderWithStudio(<PinRow facet="ERC20" pin={pin} side="left" />, { project: gallery() });
+    const before = doc.get();
+    const inspect = page.getByRole("button", { name: `Inspect ${pin.rowLabel}`, exact: true });
+    await expect.element(inspect).toHaveAccessibleDescription("Not checked yet.");
+    expect(inspect.element().parentElement?.querySelectorAll("button")).toHaveLength(1);
+    expect(inspect.element().parentElement?.querySelector('[data-icon="more"]')).not.toBeNull();
+    await inspect.click();
+    expect(session.get().panes.inspector.view).toEqual({ kind: "facet", facet: "ERC20", focus: "selectors" });
+    expect(doc.get()).toBe(before);
+    expect(doc.state().canUndo).toBe(false);
+  });
+
+  test.each([
+    ["ERC20", "Route here: name()"],
+    ["GovernedVault", "Change owner: name()"],
+  ])("%s preserves its owner-changing route action", async (facet, label) => {
+    await sheet(gallery({ expanded: ["GovernedVault"] }));
+    const ran: CommandRef[] = [];
+    onCleanup(onCommandRun((ref) => void ran.push(ref)));
+    await userEvent.click(route(facet, label));
+    expect(ran).toEqual([{ id: "selector.route", args: { selector: "0x06fdde03", facet: "ERC20" } }]);
+    expect(doc.get().recipe.owners["0x06fdde03"]).toBe("ERC20");
+    expect(doc.state().canUndo).toBe(true);
+  });
+
+  test("a default owner with several rivals keeps the owner-choice command", async () => {
+    const pin = pinView({
+      facet: "ERC20", selector: { hex: "0x06fdde03", signature: "name()" },
+      route: { owner: "ERC20", via: "default", contenders: ["ERC20", "GovernedVault", "ERC20Votes"] },
+      excluded: false, catalog,
+    });
+    await renderWithStudio(<PinRow facet="ERC20" pin={pin} side="left" />, { project: gallery() });
+    const ran: CommandRef[] = [];
+    onCleanup(onCommandRun((ref) => void ran.push(ref)));
+    const action = page.getByRole("button", { name: "Change owner: name()", exact: true });
+    expect(action.element().getAttribute("aria-pressed")).toBeNull();
+    expect(action.element().getAttribute("role")).toBeNull();
+    await action.click();
+    expect(ran).toEqual([{ id: "collision.choosePerSelector", args: { selectors: ["0x06fdde03"] } }]);
+    expect(doc.state().canUndo).toBe(false);
+  });
+
   test("a click leaves a routed selector out, a second brings it back; the selection doesn't change", async () => {
     await renderWithStudio(
       <>
@@ -115,17 +196,17 @@ describe("what a pin does (Flow 6, IR L47, L104)", () => {
       { project: gallery(), session: { selection: ["VaultCore"] } },
     );
     await expect.poll(() => document.querySelectorAll("[data-facet]").length).toBe(GALLERY_FACETS.length);
-    await userEvent.click(row("ERC20", "0xdd62ed3e"));
+    await userEvent.click(route("ERC20", "Leave out of the diamond: allowance(address,address)"));
     await expect.poll(() => row("ERC20", "0xdd62ed3e").dataset.state).toBe("excluded");
     expect(doc.get().recipe.exclude).toContain("0xdd62ed3e");
     await expect.element(page.getByTestId("selection")).toHaveTextContent("VaultCore");
-    await userEvent.click(row("ERC20", "0xdd62ed3e"));
+    await userEvent.click(route("ERC20", "Bring back: allowance(address,address)"));
     await expect.poll(() => row("ERC20", "0xdd62ed3e").dataset.state).toBe("routed");
   });
 
   test("Space on a focused row does what a click does", async () => {
     await sheet(gallery());
-    row("ERC20", SYMBOL).focus();
+    route("ERC20", "Bring back: symbol()").focus();
     await userEvent.keyboard(" ");
     await expect.poll(() => row("ERC20", SYMBOL).dataset.state).toBe("routed");
     expect(doc.get().recipe.exclude).not.toContain(SYMBOL);
@@ -134,8 +215,8 @@ describe("what a pin does (Flow 6, IR L47, L104)", () => {
   test("a click on a contested pin routes it here and the conflict clears", async () => {
     await sheet(gallery({ expanded: ["HyperlaneGatewayAdapter"] }));
     expect(card("AxelarGatewayAdapter").dataset.border).toBe("conflict");
-    await userEvent.click(row("AxelarGatewayAdapter", "0xcdfe7f5c"));
-    await userEvent.click(row("AxelarGatewayAdapter", "0xdc680a0f"));
+    await userEvent.click(route("AxelarGatewayAdapter", "Route here: sendMessage(bytes,bytes,bytes[])"));
+    await userEvent.click(route("AxelarGatewayAdapter", "Route here: supportsAttribute(bytes4)"));
     await expect.poll(() => row("AxelarGatewayAdapter", "0xcdfe7f5c").dataset.state).toBe("routed");
     expect(row("HyperlaneGatewayAdapter", "0xcdfe7f5c").dataset.state).toBe("elsewhere");
     expect(row("HyperlaneGatewayAdapter", "0xcdfe7f5c").textContent).toContain("→ AxelarGatewayAdapter");
@@ -143,12 +224,13 @@ describe("what a pin does (Flow 6, IR L47, L104)", () => {
     await expect.poll(() => card("AxelarGatewayAdapter").dataset.border).not.toBe("conflict");
   });
 
-  test("a seam offers no route: disabled with its reason, and a click changes nothing", async () => {
+  test("a seam offers inspection with its reason and a static lock instead of a route", async () => {
     await sheet(gallery());
     const transfer = row("ERC20", "0xa9059cbb");
-    expect(transfer.getAttribute("aria-disabled")).toBe("true");
+    expect(transfer.getAttribute("aria-disabled")).toBeNull();
+    expect(transfer.parentElement?.querySelectorAll("button")).toHaveLength(1);
     await expect
-      .element(page.getByRole("button", { name: "transfer Seam: stays on GovernedVault, transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault" }).first())
+      .element(page.getByRole("button", { name: "Inspect transfer Seam: stays on GovernedVault, transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault" }).first())
       .toHaveAccessibleDescription("Seam: stays on GovernedVault because its version moves vote checkpoints with balances.");
     const before = doc.get().recipe;
     await userEvent.click(transfer, { force: true });
@@ -157,14 +239,18 @@ describe("what a pin does (Flow 6, IR L47, L104)", () => {
     expect(transfer.querySelector('[data-icon="lock"]')).not.toBeNull();
   });
 
-  test("read-only: every pin says why and changes nothing", async () => {
+  test("read-only: routing says why and changes nothing while inspection still opens", async () => {
     await renderWithStudio(<CardSheet />, { project: gallery(), session: { readOnly: "Read-only: open in one tab at a time" } });
     await expect.poll(() => document.querySelectorAll("[data-facet]").length).toBe(GALLERY_FACETS.length);
-    const allowance = row("ERC20", "0xdd62ed3e");
+    const allowance = route("ERC20", "Leave out of the diamond: allowance(address,address)");
     expect(allowance.getAttribute("aria-disabled")).toBe("true");
     await userEvent.click(allowance, { force: true });
     expect(doc.get().recipe.exclude).not.toContain("0xdd62ed3e");
     expect(allowance.dataset.state).toBe("routed");
+    await expect.element(page.elementLocator(allowance)).toHaveAccessibleDescription(/Read-only: open in one tab at a time/);
+    await userEvent.click(row("ERC20", "0xdd62ed3e"));
+    expect(session.get().panes.inspector.view).toEqual({ kind: "facet", facet: "ERC20", focus: "selectors" });
+    expect(doc.state().canUndo).toBe(false);
   });
 });
 
@@ -174,10 +260,10 @@ describe("disabled commands (spec L661)", () => {
     const reason = "Not built yet · WP-S5c";
     const real = getCommand("selector.exclude");
     overrideCommands([{ ...real, enabled: () => ({ ok: false, reason }) }]);
-    const allowance = row("ERC20", "0xdd62ed3e");
+    const allowance = route("ERC20", "Leave out of the diamond: allowance(address,address)");
     await expect.poll(() => allowance.getAttribute("aria-disabled")).toBe("true");
     await expect
-      .element(page.getByRole("button", { name: "allowance 0xdd62ed3e, allowance(address,address) 0xdd62ed3e, routes here" }))
+      .element(page.getByRole("button", { name: "Leave out of the diamond: allowance(address,address)" }))
       .toHaveAccessibleDescription(new RegExp(reason));
     await userEvent.click(allowance, { force: true });
     expect(doc.get().recipe.exclude).not.toContain("0xdd62ed3e");
@@ -187,7 +273,7 @@ describe("disabled commands (spec L661)", () => {
 describe("the footer (IR L103)", () => {
   test("a namespace too long for the card ends in an ellipsis and keeps the whole string", async () => {
     await sheet(gallery());
-    const footer = card("ERC20").querySelector<HTMLElement>("[title]");
+    const footer = card("ERC20").querySelector<HTMLElement>("[class*='footerText']");
     expect(footer?.title).toBe("erc7201:lattice.storage.ERC20");
     expect(footer?.textContent).toBe("erc7201:lattice.storage.ERC20");
     if (!footer) throw new Error("No footer.");
@@ -223,7 +309,7 @@ describe("+ n more and Collapse (spec L479)", () => {
   test("a card over 9 selectors shows 6 rows, its contested ones kept, and + n more", async () => {
     await sheet(gallery());
     const hyperlane = card("HyperlaneGatewayAdapter");
-    expect(hyperlane.querySelectorAll("[data-selector]")).toHaveLength(6);
+    expect(hyperlane.querySelectorAll('[aria-label^="Inspect "]')).toHaveLength(6);
     expect(row("HyperlaneGatewayAdapter", "0xcdfe7f5c").dataset.state).toBe("contested");
     const more = page.getByRole("button", { name: "+ 6 more" });
     await expect.element(more).toHaveAttribute("aria-expanded", "false");
@@ -237,19 +323,37 @@ describe("+ n more and Collapse (spec L479)", () => {
   test("expanding is one undo step that shows every row, and Collapse puts it back", async () => {
     await sheet(gallery());
     await userEvent.click(page.getByRole("button", { name: "+ 6 more" }));
-    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll("[data-selector]").length).toBe(12);
+    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll('[aria-label^="Inspect "]').length).toBe(12);
     expect(doc.get().layout["HyperlaneGatewayAdapter"]?.expanded).toBe(true);
     await expect.element(page.getByRole("button", { name: "Collapse" })).toHaveAttribute("aria-expanded", "true");
     history.undo();
-    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll("[data-selector]").length).toBe(6);
+    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll('[aria-label^="Inspect "]').length).toBe(6);
     history.redo();
-    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll("[data-selector]").length).toBe(12);
+    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll('[aria-label^="Inspect "]').length).toBe(12);
     await userEvent.click(page.getByRole("button", { name: "Collapse" }));
-    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll("[data-selector]").length).toBe(6);
+    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll('[aria-label^="Inspect "]').length).toBe(6);
   });
 });
 
 describe("size, paint containment and handles (spec L824-L825)", () => {
+  test.each([0.4, 1])("sibling actions and flipped pin centers keep frozen geometry at %s zoom", async (zoom) => {
+    await sheet(gallery({ pinsRight: ["GovernedVault"], expanded: ["GovernedVault"] }), zoom);
+    for (const facet of ["ERC20", "GovernedVault"]) {
+      const face = card(facet);
+      expect(face.getBoundingClientRect().width).toBeCloseTo(232 * zoom);
+      for (const inspect of face.querySelectorAll<HTMLElement>('button[aria-label^="Inspect "]')) {
+        const box = inspect.parentElement?.getBoundingClientRect();
+        const node = inspect.querySelector<HTMLElement>("[class*='node']")?.getBoundingClientRect();
+        const handle = face.querySelector<HTMLElement>(`.react-flow__handle[data-handleid="${inspect.dataset.selector}"]`)?.getBoundingClientRect();
+        expect(box?.height).toBeCloseTo(20 * zoom);
+        expect(inspect.getBoundingClientRect().height).toBeCloseTo(20 * zoom);
+        expect((node?.left ?? 0) + (node?.width ?? 0) / 2).toBeCloseTo((handle?.left ?? 0) + (handle?.width ?? 0) / 2);
+        expect((handle?.top ?? 0) + (handle?.height ?? 0) / 2).toBeCloseTo((box?.top ?? 0) + (box?.height ?? 0) / 2);
+      }
+      expect(face.querySelector("button button")).toBeNull();
+    }
+  });
+
   test("each card is drawn at C9's cardSize, with contain-intrinsic-size to match", async () => {
     const project = gallery({ expanded: ["GovernedVault"] });
     await sheet(project);
@@ -324,9 +428,9 @@ describe("compact below 40% zoom (spec L481)", () => {
     const compactTop = handle()?.style.top;
     await flow.zoomTo?.(0.5);
     await expect.poll(() => card("ERC20").dataset.compact).toBeUndefined();
-    expect(card("ERC20").querySelectorAll("[data-selector]")).toHaveLength(9);
+    expect(card("ERC20").querySelectorAll('[aria-label^="Inspect "]')).toHaveLength(9);
     await expect.poll(() => handle()?.style.top).not.toBe(compactTop);
-    const index = [...card("ERC20").querySelectorAll<HTMLElement>("[data-selector]")].findIndex((r) => r.dataset.selector === ALLOWANCE);
+    const index = [...card("ERC20").querySelectorAll<HTMLElement>('[aria-label^="Inspect "]')].findIndex((r) => r.dataset.selector === ALLOWANCE);
     expect(index).toBeGreaterThanOrEqual(0);
     const expectedTop = layoutMetrics.headerHeight + layoutMetrics.grid + index * layoutMetrics.rowHeight + layoutMetrics.rowHeight / 2;
     expect(handle()?.style.top).toBe(`${expectedTop}px`);
@@ -349,12 +453,12 @@ describe("handles follow an expand or a pin flip (spec L825, batch-3 #36)", () =
     expect(hasBound()).toBe(false);
 
     await userEvent.click(page.getByRole("button", { name: "+ 6 more" }));
-    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll("[data-selector]").length).toBe(12);
+    await expect.poll(() => card("HyperlaneGatewayAdapter").querySelectorAll('[aria-label^="Inspect "]').length).toBe(12);
     const handle = () => card("HyperlaneGatewayAdapter").querySelector<HTMLElement>(`.react-flow__handle[data-handleid="${HIDDEN}"]`);
     await expect.poll(() => handle() !== null).toBe(true);
     // updateNodeInternals ran: React Flow's store, not just the DOM, now has a bound for the new handle.
     await expect.poll(hasBound).toBe(true);
-    const index = [...card("HyperlaneGatewayAdapter").querySelectorAll<HTMLElement>("[data-selector]")].findIndex(
+    const index = [...card("HyperlaneGatewayAdapter").querySelectorAll<HTMLElement>('[aria-label^="Inspect "]')].findIndex(
       (r) => r.dataset.selector === HIDDEN,
     );
     expect(index).toBeGreaterThanOrEqual(0);
@@ -379,7 +483,7 @@ describe("handles follow an expand or a pin flip (spec L825, batch-3 #36)", () =
     await expect.poll(() => handle()?.classList.contains("react-flow__handle-right")).toBe(true);
     expect(handle()?.classList.contains("react-flow__handle-left")).toBe(false);
     // Its top on the row's middle doesn't change: only the side does, in the DOM and in React Flow's bounds.
-    const index = [...card("ERC20").querySelectorAll<HTMLElement>("[data-selector]")].findIndex((r) => r.dataset.selector === ALLOWANCE);
+    const index = [...card("ERC20").querySelectorAll<HTMLElement>('[aria-label^="Inspect "]')].findIndex((r) => r.dataset.selector === ALLOWANCE);
     const expectedTop = layoutMetrics.headerHeight + layoutMetrics.grid + index * layoutMetrics.rowHeight + layoutMetrics.rowHeight / 2;
     expect(handle()?.style.top).toBe(`${expectedTop}px`);
     await expect.poll(boundX).not.toBe(leftX);

@@ -3,6 +3,7 @@ import { formatProblemSummary, planInit, plural } from "@lattice-studio/core";
 import { useMemo } from "react";
 import { commandRef, useAnalysis, useCatalog, useDocument } from "@/contracts";
 import { CommandButton } from "@/ui";
+import { planFields } from "@/panels/init/navigation";
 import { SpecRow } from "../../shared/SpecRow";
 import { SpecRows } from "../../shared/SpecRows";
 import sheet from "../../shared/sheet.module.css";
@@ -35,6 +36,7 @@ export function DiamondSummary() {
   const namespaces = useMemo(() => namespaceIds(recipe, catalog), [recipe, catalog]);
   const init = useMemo<InitPlan | null>(() => (catalog ? planInit(recipe, catalog) : null), [recipe, catalog]);
   const missing = init && counts.initMissing ? missingArgs(init) : 0;
+  const hasSetup = init !== null && planFields(init).length > 0;
 
   return (
     <>
@@ -64,9 +66,9 @@ export function DiamondSummary() {
         </SpecRows>
       </section>
       <div className={styles.actionBar}>
-        {counts.initMissing ? (
+        {counts.initMissing || hasSetup ? (
           <CommandButton command={commandRef("init.open")} variant="primary" size="small">
-            Fill in
+            {counts.initMissing ? "Fill in" : "Edit setup"}
           </CommandButton>
         ) : null}
         <CommandButton command={commandRef("problem.next")} size="small">

@@ -1,6 +1,7 @@
 import { ContextMenu as BaseContextMenu } from "@base-ui/react/context-menu";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
 import { KEY_CONTEXT_ATTRIBUTE } from "@/contracts";
+import { rememberMenuInvoker } from "../shared/menu-invoker";
 import { isContextMenuKey } from "../overlays/context-menu-key";
 import styles from "../overlays/Menu.module.css";
 
@@ -22,6 +23,8 @@ export type ContextMenuProps = {
    * menu: below this element, with focus on the first item. Unset, it's placed below the target.
    */
   anchor?: Element | null;
+  /** The persistent opener when a programmatic menu's trigger is only a positioning anchor. */
+  invoker?: HTMLElement | null;
   /**
    * No menu for now: a right click or long press reaches the browser (its own menu shows), Shift+F10 and the
    * Menu key pass through to the target, an open menu closes (asking an owner that controls `open` to close),
@@ -45,7 +48,7 @@ type Origin = { kind: "pointer" } | { kind: "element"; element: Element } | null
  * opened from elsewhere below `anchor`.
  */
 export function ContextMenu({
-  children, items, label, open: openProp, onOpenChange, anchor, disabled = false,
+  children, items, label, open: openProp, onOpenChange, anchor, invoker, disabled = false,
 }: ContextMenuProps) {
   const [innerOpen, setInnerOpen] = useState(false);
   const open = !disabled && (openProp ?? innerOpen);
@@ -123,7 +126,10 @@ export function ContextMenu({
           {...(anchorElement ? { anchor: anchorElement, side: "bottom" as const, align: "start" as const, sideOffset: 4 } : {})}
         >
           <BaseContextMenu.Popup
-            ref={popupRef}
+            ref={(popup) => {
+              popupRef.current = popup;
+              rememberMenuInvoker(popup, invoker ?? trigger);
+            }}
             className={styles.popup}
             aria-label={label}
             {...{ [KEY_CONTEXT_ATTRIBUTE]: "menu" }}

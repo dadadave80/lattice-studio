@@ -169,6 +169,8 @@ export const MULTICALL3_ABI = [
 
 /** `LatticeFactory.deploy((bytes32,uint64,bytes4[])[],(address,uint8,bytes4[])[],address,bytes,bytes32)`. */
 export const FACTORY_DEPLOY_SELECTOR: Hex = "0xc381576d";
+/** Current LatticeFactory.deployStrict has the same arguments as deploy. */
+export const FACTORY_DEPLOY_STRICT_SELECTOR: Hex = "0x5c472e92";
 /** `CreateX.deployCreate3AndInit(bytes32,bytes,bytes,(uint256,uint256))`. */
 export const CREATEX_DEPLOY_SELECTOR: Hex = "0x00d84acb";
 /** `Multicall3.aggregate3((address,bool,bytes)[])`. */

@@ -2,15 +2,18 @@
 import { commandRef, runCommand, type InspectorViewProps } from "@/contracts";
 import { HelpIndex } from "./HelpIndex";
 import { ProblemDoc } from "./ProblemDoc";
+import { ProblemNavigation } from "@/panels/inspector/shared/ProblemNavigation";
 
 export function DocView({ view }: InspectorViewProps<"doc">) {
-  if (!view.code) return <HelpIndex />;
   return (
-    <ProblemDoc
+    <>
+      <ProblemNavigation />
+      {!view.code ? <HelpIndex /> : <ProblemDoc
       code={view.code}
       onBack={() => {
         void runCommand(commandRef("help.open"), "button");
       }}
-    />
+      />}
+    </>
   );
 }

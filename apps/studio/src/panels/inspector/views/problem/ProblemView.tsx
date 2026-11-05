@@ -5,6 +5,7 @@ import {
 } from "@/contracts";
 import { Button, CommandButton, Icon, VisuallyHidden, type IconName } from "@/ui";
 import { Section } from "../../shared/Section";
+import { ProblemNavigation } from "../../shared/ProblemNavigation";
 import { ViewHeader } from "../../shared/ViewHeader";
 import sheet from "../../shared/sheet.module.css";
 import { chainNameOf, useChainService, useChains } from "../../shared/use-chain";
@@ -40,6 +41,7 @@ export function ProblemView({ view }: InspectorViewProps<"problem">) {
     return (
       <div className={sheet.view} data-view="problem">
         <ViewHeader title={code} kind="Problem" />
+        <ProblemNavigation />
         <Section label="Problem">
           <p className={sheet.muted}>This problem no longer applies.</p>
         </Section>
@@ -55,6 +57,7 @@ export function ProblemView({ view }: InspectorViewProps<"problem">) {
   return (
     <div className={sheet.view} data-view="problem">
       <ViewHeader title={problem.code} kind="Problem" />
+      <ProblemNavigation />
       <Section label="Problem">
         <span className={problem.severity === "blocker" ? `${styles.severity} ${styles.blocker}` : styles.severity}>
           <Icon name={severity.icon} />

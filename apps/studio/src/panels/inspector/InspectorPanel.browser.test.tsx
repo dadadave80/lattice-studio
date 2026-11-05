@@ -1,16 +1,18 @@
 import type { Deployment, Project, Recipe } from "@lattice-studio/core";
 import { analyze, CORE_FACETS, formatAddress, loadTemplate } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import {
-  command, commandRef, commandState, doc, inspectorViewComponent, putDeployment, runCommand, session, type InspectorView,
+  command, commandRef, commandState, doc, getAnalysis, initialSession, inspectorViewComponent, putDeployment, runCommand, session, setCatalogStatus, type InspectorView,
 } from "@/contracts";
 import { bufferedServices, fakeChainService, fixtureCatalog, overrideCommands, renderWithStudio } from "../../../test/harness";
 import { clearInspectorFocus, pendingInspectorFocus, requestInspectorFocus } from "./focus-request";
 import { InspectorPanel } from "./InspectorPanel";
 
 const SEPOLIA = 11155111;
+
+beforeEach(clearInspectorFocus);
 
 afterEach(() => {
   clearInspectorFocus();
@@ -260,6 +262,29 @@ describe("commands", () => {
     await expect.element(page.getByRole("heading", { level: 3, name: "Deployments" })).toHaveFocus();
   });
 
+  test("deployments.show focuses history before the catalog arrives and preserves that section after release", async () => {
+    await renderWithStudio(<InspectorPanel />, {
+      project: project(["ERC20"]), catalog: null, session: { selection: ["ERC20"] },
+    });
+    expect(commandState(commandRef("deployments.show"))).toMatchObject({ ok: true });
+    await runCommand(commandRef("deployments.show"), "button");
+    const deployments = page.getByRole("region", { name: "Deployments" });
+    const heading = deployments.getByRole("heading", { level: 3, name: "Deployments" });
+    await expect.element(heading).toHaveFocus();
+    await expect.element(page.getByRole("region", { name: "Core" }).getByText("Loading the catalog…")).toBeVisible();
+    const sectionElement = deployments.element();
+    const headingElement = heading.element();
+    expect(pendingInspectorFocus()).toBeNull();
+
+    const catalog = fixtureCatalog();
+    setCatalogStatus({ status: "ready", id: catalog.lattice.tag, catalog, manifest: null });
+    await expect.element(page.getByRole("region", { name: "Summary" })).toBeVisible();
+    expect(deployments.elements()).toHaveLength(1);
+    expect(deployments.element()).toBe(sectionElement);
+    expect(heading.element()).toBe(headingElement);
+    await expect.element(heading).toHaveFocus();
+  });
+
   test("a focus request that never finds its element expires, so it can't steal focus later", () => {
     clearInspectorFocus();
     requestInspectorFocus({ kind: "heading" });
@@ -274,6 +299,40 @@ describe("commands", () => {
 });
 
 describe("keeping focus when an action inside replaces the view", () => {
+  for (const scenario of [
+    { facets: ["ERC20"], id: "CORE-02:diamond", severity: "warning", fix: "Keep immutable" },
+    { facets: ["AxelarGatewayAdapter", "HyperlaneGatewayAdapter"], id: "SEL-01:0xcdfe7f5c", severity: "blocker", fix: "Keep AxelarGatewayAdapter" },
+  ] as const) {
+    test(`a resolved ${scenario.severity} keeps its task and resolution navigation`, async () => {
+      await renderWithStudio(<InspectorPanel />, { project: project([...scenario.facets]) });
+      expect(getAnalysis().problems.find((problem) => problem.id === scenario.id)?.severity).toBe(scenario.severity);
+      setView({ kind: "problem", id: scenario.id });
+      await viewShown("problem");
+      await page.getByRole("button", { name: scenario.fix, exact: true }).click();
+      await vi.waitFor(() => expect(getAnalysis().problems.some((problem) => problem.id === scenario.id)).toBe(false));
+      expect(inspectorView()).toEqual({ kind: "problem", id: scenario.id });
+      expect(shownKind()).toBe("problem");
+      await expect.element(page.getByText("This problem no longer applies.", { exact: true })).toBeVisible();
+      await expect.element(page.getByRole("navigation", { name: "Problem navigation" })).toBeVisible();
+      await expect.element(page.getByRole("heading", { level: 2, name: scenario.id.split(":")[0] ?? scenario.id })).toHaveFocus();
+    });
+  }
+
+  test("stale restored problem tasks keep resolution navigation without stealing focus", async () => {
+    const initial = initialSession();
+    await renderWithStudio(<InspectorPanel />, {
+      project: project(["ERC20"]),
+      session: {
+        ...initial,
+        panes: { ...initial.panes, inspector: { ...initial.panes.inspector, view: { kind: "problem", id: "SEL-01:0x00000000" } } },
+      },
+    });
+    await viewShown("problem");
+    await expect.element(page.getByText("This problem no longer applies.", { exact: true })).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Back to composition", exact: true })).toBeVisible();
+    expect(document.activeElement).toBe(document.body);
+  });
+
   test("Remove in the Facet view: focus lands on the next view's heading", async () => {
     await renderWithStudio(<InspectorPanel />, { project: project(["ERC20", "Receive"]), session: { selection: ["Receive"] } });
     await viewShown("facet");
@@ -563,6 +622,22 @@ describe("identifiers and labels in a 316 px inspector (IN-03, IN-04)", () => {
 });
 
 describe("narrow windows", () => {
+  test("valid starter examples keep Edit setup at the top of the phone Inspector", async () => {
+    await page.viewport(375, 812);
+    try {
+      const loaded = loadTemplate(fixtureCatalog(), "ERC20");
+      if (!loaded.ok) throw new Error(loaded.error);
+      await renderWithStudio(<InspectorPanel />, { project: makeProject({ recipe: loaded.value }) });
+      const bar = document.querySelector("[data-narrow-fill-in]");
+      expect(bar).not.toBeNull();
+      await page.getByRole("button", { name: "Edit setup" }).first().click();
+      await expect.poll(() => inspectorView()?.kind).toBe("init");
+      await expect.element(page.getByRole("heading", { name: "Init plan", exact: true })).toBeVisible();
+    } finally {
+      await page.viewport(1440, 900);
+    }
+  });
+
   test("under 768 px, Fill in sits at the top of the pane while arguments are missing", async () => {
     const init = vi.fn();
     overrideCommands([

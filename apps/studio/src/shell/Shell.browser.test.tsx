@@ -1,13 +1,18 @@
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import type { Problem } from "@lattice-studio/core";
+import { CORE_FACETS, type Problem } from "@lattice-studio/core";
 import {
-  commandRef, doc, emptyAnalysis, hideBanner, provideAnalysis, provideServices, runCommand, session, showBanner,
+  commandRef, doc, emptyAnalysis, getAnalysis, hideBanner, provideAnalysis, provideServices, runCommand, session, showBanner,
   type ProjectsService, type SaveStatus,
 } from "@/contracts";
 import { erc20Project } from "@/panels/console/test-support";
 import { keyContextOf } from "@/commands/keys/key-context";
+import { currentRegion } from "@/a11y/regions";
+import { SkipLink } from "@/a11y/SkipLink";
+import { axeViolations } from "@/ui/testing/axe";
+import { problemCursor, resetProblemCursor, setProblemCursor } from "@/sheet/overlays/navigate";
+import { stepProblem } from "@/sheet/overlays/problem-order";
 import { fixtureCatalog, onCleanup, renderWithStudio, seedDeployState } from "../../test/harness";
 import { Shell } from "./Shell";
 
@@ -36,6 +41,7 @@ function saveStatusOf(status: SaveStatus): void {
 }
 
 afterEach(async () => {
+  resetProblemCursor();
   await page.viewport(1440, 900);
 });
 
@@ -76,7 +82,7 @@ function tierOf(width: number): string {
   return "phone";
 }
 
-const bar = () => page.getByRole("region", { name: "Title bar", exact: true });
+const bar = () => page.getByRole("banner", { name: "Title bar", exact: true });
 
 /** The title bar's controls sit side by side: none overlaps the next, and all stay inside the window. */
 function expectNoOverlap(titlebar: HTMLElement): void {
@@ -93,6 +99,118 @@ function expectNoOverlap(titlebar: HTMLElement): void {
 }
 
 describe("regions at each width", () => {
+  for (const scenario of [
+    { facets: ["ERC20"], id: "CORE-02:diamond", fix: "Keep immutable" },
+    { facets: ["AxelarGatewayAdapter", "HyperlaneGatewayAdapter"], id: "SEL-01:0xcdfe7f5c", fix: "Keep AxelarGatewayAdapter" },
+  ] as const) {
+    test(`phone resolution navigation retains ${scenario.id} and returns to composition`, async () => {
+      const recipe = makeRecipe({ facets: [...CORE_FACETS, ...scenario.facets] }, fixtureCatalog());
+      await renderAt(375, { project: makeProject({ recipe }) });
+      await expect.poll(() => pane("sheet").querySelector(".react-flow")).not.toBeNull();
+      const sheet = canvas();
+      expect(getAnalysis().problems.some((problem) => problem.id === scenario.id)).toBe(true);
+      session.set((s) => ({
+        panes: { ...s.panes, narrow: "inspector", inspector: { ...s.panes.inspector, open: true, view: { kind: "problem", id: scenario.id } } },
+      }));
+      setProblemCursor(scenario.id);
+      const cursor = problemCursor();
+      await page.getByRole("button", { name: scenario.fix, exact: true }).click();
+      await expect.poll(() => getAnalysis().problems.some((problem) => problem.id === scenario.id)).toBe(false);
+      expect(session.get().panes.inspector.view).toEqual({ kind: "problem", id: scenario.id });
+      await expect.element(page.getByText("This problem no longer applies.", { exact: true })).toBeVisible();
+      const next = stepProblem(getAnalysis().problems.map((problem) => problem.id), cursor, 1);
+      expect(next).toBeDefined();
+      await page.getByRole("button", { name: "Next problem", exact: true }).click();
+      await expect.poll(() => problemCursor()?.id).toBe(next);
+      await page.getByRole("button", { name: "Back to composition", exact: true }).click();
+      await expect.poll(() => session.get().panes.narrow).toBe("sheet");
+      expect(session.get().panes.inspector.view).toBeNull();
+      expect(session.get().coreSelected).toBe(true);
+      expect(pane("sheet").contains(document.activeElement)).toBe(true);
+      expect(canvas()).toBe(sheet);
+    });
+  }
+
+  test("native landmarks keep the existing F6 order and Skip to sheet destination", async () => {
+    await page.viewport(1440, 900);
+    await renderWithStudio(<><SkipLink /><Shell /></>);
+    for (const width of [1440, 375]) {
+      await page.viewport(width, 900);
+      await expect.poll(() => document.querySelector("[data-layout]")?.getAttribute("data-layout")).toBe(tierOf(width));
+      await runCommand(commandRef("pane.show", { pane: "sheet" }), "api");
+      (bar().element() as HTMLElement).focus();
+      const stops = width === 1440 ? ["left", "sheet", "inspector", "console", "titlebar"] : ["sheet", "titlebar"];
+      for (const stop of stops) {
+        await userEvent.keyboard("{F6}");
+        expect(currentRegion()).toBe(stop);
+      }
+      for (const stop of stops.slice(0, -1).reverse().concat("titlebar")) {
+        await userEvent.keyboard("{Shift>}{F6}{/Shift}");
+        expect(currentRegion()).toBe(stop);
+      }
+      const skip = page.getByRole("link", { name: "Skip to sheet" });
+      (skip.element() as HTMLElement).focus();
+      await userEvent.keyboard("{Enter}");
+      expect(currentRegion()).toBe("sheet");
+    }
+  });
+
+  test("one native main and banner survive every pane, maximize and reflow without remounting the canvas", async () => {
+    await renderAt(1440);
+    await expect.poll(() => pane("sheet").querySelector(".react-flow")).not.toBeNull();
+    const sheet = canvas();
+    const main = page.getByRole("main").element();
+    expect(main.tagName).toBe("MAIN");
+    expect(page.getByRole("banner", { name: "Title bar" }).element().tagName).toBe("HEADER");
+    for (const width of [320, 375, 768, 1024, 1440]) {
+      await page.viewport(width, 900);
+      await expect.poll(() => document.querySelector("[data-layout]")?.getAttribute("data-layout")).toBe(tierOf(width));
+      const panes = width < 768 ? ["catalog", "structure", "sheet", "inspector", "console"] as const : ["sheet", "console"] as const;
+      for (const active of panes) {
+        await runCommand(commandRef("pane.show", { pane: active }), "api");
+        if (active === "console") session.set((s) => ({ panes: { ...s.panes, console: { ...s.panes.console, maximized: true } } }));
+        for (const height of [900, 256]) {
+          await page.viewport(width, height);
+          await expect.element(page.getByRole("main")).toBeVisible();
+          expect(document.querySelectorAll("main")).toHaveLength(1);
+          expect(page.getByRole("main").element()).toBe(main);
+          expect(page.getByRole("banner", { name: "Title bar" }).elements()).toHaveLength(1);
+          expect(canvas()).toBe(sheet);
+          expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
+          expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(height);
+          for (const id of ["sheet", "console"] as const) {
+            if (pane(id).checkVisibility()) expect(pane(id).getBoundingClientRect().bottom).toBeLessThanOrEqual(height + 0.5);
+          }
+        }
+        await page.viewport(width, 900);
+        if (width === 375 || width === 1440) expect(await axeViolations(document.body, { bestPractice: true })).toEqual([]);
+      }
+    }
+  });
+
+  test("phone Console collapse returns to Sheet and selecting it restores the same body", async () => {
+    await renderAt(375);
+    await expect.poll(() => pane("sheet").querySelector(".react-flow")).not.toBeNull();
+    const sheet = canvas();
+    const viewport = session.get().viewports;
+    for (const menu of [false, true]) {
+      await bar().getByRole("tab", { name: "Console", exact: true }).click();
+      await expect.element(page.getByRole("textbox", { name: "Command line" })).toBeVisible();
+      await page.getByRole("tab", { name: /^Log/ }).click();
+      if (menu) {
+        await page.getByRole("button", { name: "Console menu" }).click();
+        await page.getByRole("menuitem", { name: "Collapse", exact: true }).click();
+      } else await page.getByRole("button", { name: "Collapse console" }).click();
+      await expect.poll(showing).toEqual(["sheet"]);
+      await expect.element(bar().getByRole("tab", { name: /^Sheet(?: ·|$)/ })).toHaveAttribute("aria-selected", "true");
+      await bar().getByRole("tab", { name: "Console", exact: true }).click();
+      await expect.element(page.getByRole("textbox", { name: "Command line" })).toBeVisible();
+      await expect.element(page.getByRole("tabpanel", { name: /^Log/ })).toBeVisible();
+      expect(canvas()).toBe(sheet);
+      expect(session.get().viewports).toEqual(viewport);
+    }
+  });
+
   for (const width of WIDTHS) {
     test(`${width} px`, async () => {
       await renderAt(width);

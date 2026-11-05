@@ -10,7 +10,7 @@ import { ANVIL_CHAIN_ID } from "../../_support/anvil.ts";
 import { MOCK_ACCOUNT, shortAddress } from "../../_support/wallet.ts";
 import { runConsoleLine, runPalette } from "./keys.ts";
 
-type RpcCall = { method?: string; params?: unknown[] };
+type RpcCall = { id?: number; method?: string; params?: unknown[] };
 
 const ANVIL_HEX = `0x${ANVIL_CHAIN_ID.toString(16)}`;
 
@@ -57,32 +57,28 @@ export async function rejectMockSends(page: Page): Promise<() => number> {
   return () => rejected;
 }
 
-type SimulateResult = { gasUsed?: string; calls?: { gasUsed?: string }[] }[];
-
 /**
- * Makes the node's `eth_simulateV1` answers report `gas` for every call, as a recipe too large for the chain's
+ * Makes the node's `eth_estimateGas` answers report `gas`, as a recipe too large for the chain's
  * per-transaction cap would. Anvil's cap is fixed in Studio's chain table (30M) and a v1 recipe needs about 7M, so
- * this stub is the only local way to reach NET-06 (spec L339). Everything else the node answers is untouched.
+ * this stub reaches NET-06 (spec L339). The actual successful simulation and other answers are untouched.
  */
-export async function inflateSimulatedGas(page: Page, anvilUrl: string, gas: bigint): Promise<void> {
+export async function inflateEstimatedGas(page: Page, anvilUrl: string, gas: bigint): Promise<void> {
   const hex = `0x${gas.toString(16)}`;
   await page.route(
     (url) => url.href.startsWith(anvilUrl),
     async (route: Route) => {
-      const body = route.request().postData() ?? "";
-      if (!body.includes("eth_simulateV1")) {
+      const parsed = JSON.parse(route.request().postData() ?? "{}") as RpcCall | RpcCall[];
+      const calls = Array.isArray(parsed) ? parsed : [parsed];
+      const estimates = new Set(calls.filter((call) => call.method === "eth_estimateGas").map((call) => call.id));
+      if (estimates.size === 0) {
         await route.fallback();
         return;
       }
       const response = await route.fetch();
       const payload = (await response.json()) as unknown;
-      const answers = (Array.isArray(payload) ? payload : [payload]) as { result?: SimulateResult }[];
+      const answers = (Array.isArray(payload) ? payload : [payload]) as { id?: number; result?: unknown }[];
       for (const answer of answers) {
-        if (!Array.isArray(answer.result)) continue;
-        for (const block of answer.result) {
-          if (block.gasUsed !== undefined) block.gasUsed = hex;
-          for (const call of block.calls ?? []) call.gasUsed = hex;
-        }
+        if (estimates.has(answer.id) && typeof answer.result === "string") answer.result = hex;
       }
       await route.fulfill({ response, json: payload });
     },

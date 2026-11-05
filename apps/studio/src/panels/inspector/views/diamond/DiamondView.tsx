@@ -1,6 +1,6 @@
 import { isCoreOnly } from "@lattice-studio/core";
 import type { InspectorViewProps } from "@/contracts";
-import { useDocument, useSession } from "@/contracts";
+import { useCatalog, useDocument, useSession } from "@/contracts";
 import { CORE_TITLE } from "../../../core-copy";
 import { ViewHeader } from "../../shared/ViewHeader";
 import styles from "../../shared/sheet.module.css";
@@ -19,6 +19,7 @@ import { UnknownFields } from "./UnknownFields";
  * lands on the matching Section heading.
  */
 export function DiamondView({ view }: InspectorViewProps<"diamond">) {
+  const catalog = useCatalog();
   const name = useDocument((s) => s.project.name);
   const empty = useDocument((s) => isCoreOnly(s.project.recipe));
   const coreSelected = useSession((s) => s.coreSelected);
@@ -26,17 +27,22 @@ export function DiamondView({ view }: InspectorViewProps<"diamond">) {
     <div className={styles.view} data-view="diamond">
       <ViewHeader title={coreSelected ? CORE_TITLE : name} kind="Assembly" />
       <CoreSection />
-      {empty ? (
-        <StartingPoints />
-      ) : (
+      {/* Reveal the complete readout together: expanding Core must not move controls already on screen. */}
+      {catalog ? (
         <>
-          <DiamondSummary />
-          <AuthoritySection />
+          {empty ? (
+            <StartingPoints />
+          ) : (
+            <>
+              <DiamondSummary />
+              <AuthoritySection />
+            </>
+          )}
+          <UnknownFields />
+          <ChainReadiness />
         </>
-      )}
-      <UnknownFields />
-      <ChainReadiness />
-      <DeploymentsList autoCheck={view.section === "deployments"} />
+      ) : null}
+      {catalog || view.section === "deployments" ? <DeploymentsList autoCheck={view.section === "deployments"} /> : null}
     </div>
   );
 }

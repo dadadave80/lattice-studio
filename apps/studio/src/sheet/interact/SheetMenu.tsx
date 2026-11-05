@@ -55,6 +55,7 @@ function OpenMenu({ request }: { request: MenuRequest }) {
     <ContextMenu
       open={point !== null}
       anchor={point}
+      invoker={request.invoker}
       label={label}
       onOpenChange={(open) => {
         if (open) return;

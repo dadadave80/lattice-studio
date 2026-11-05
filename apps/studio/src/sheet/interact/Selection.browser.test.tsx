@@ -132,7 +132,7 @@ describe("selecting never expands a card (spec L479; xref §18 #63)", () => {
     await marquee({ x: 10, y: 600 }, { x: position(MANY).x + 10, y: bottom });
     expect(selection()).toContain(MANY);
     expect(doc.get().layout[MANY]?.expanded).toBeUndefined();
-    expect(cardNode(MANY).querySelectorAll("[data-selector]").length).toBe(6);
+    expect(cardNode(MANY).querySelectorAll('[aria-label^="Inspect "]').length).toBe(6);
   });
 });
 

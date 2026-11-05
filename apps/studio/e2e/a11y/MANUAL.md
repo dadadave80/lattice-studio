@@ -57,7 +57,11 @@ Start: **ERC20**. Reload the page and don't touch it with the mouse.
    Expect: hear "Selected the core." The inspector's heading reads "Core · the diamond's fixed part".
 7. Press ↓ to "Collapse the core cell" and press Enter, then Enter again.
    Expect: the cell folds to one line and focus moves to "Expand the core cell"; the second Enter unfolds it with focus back on "Collapse the core cell".
-8. Open a new **Empty** project, reload, press Tab and Enter.
+8. Return focus to a facet card and press Enter.
+   Expect: focus lands on **Inspect** followed by the selector's drawn name, signature, hex and state. ↓ reaches its separate route action, such as **Leave out of the diamond: allowance(address,address)**; Space changes routing once. Esc returns to the card. Seams and unchecked selectors have inspection and a static status icon, with no route button. Shift+F10 on either action opens the selector menu; Esc restores the invoking button.
+9. Click a selector's name, or focus its Inspect action and press Enter.
+   Expect: the Inspector opens with the first row of the facet's Selectors list focused. Routing and undo remain unchanged. In a read-only project inspection still works; the separate route control remains unavailable with its reason. At phone width, tap the name and use the larger Inspector selector row to route. Canvas rows stay 20 px high and shrink with sheet zoom; their larger Inspector and Structure equivalents are the touch and accessibility path.
+10. Open a new **Empty** project, reload, press Tab and Enter.
    Expect: on an empty sheet the Start block takes the card grid's place: focus lands on **Blank diamond**, and Tab goes on to **GovernedVault**, **ERC20**, **SafeDiamondCut**, **Browse all recipes** and **Take the 60-second tour** before the tool strip.
 
 Pass when the link is first, visible on focus, lands in the sheet, and Tab leaves the sheet in the order above.

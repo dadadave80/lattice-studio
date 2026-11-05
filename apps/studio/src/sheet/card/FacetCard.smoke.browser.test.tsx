@@ -45,7 +45,7 @@ test("30 cards render under budget, and a pin edit re-renders a fraction of the 
   const facet = catalog.facets.find((f) => f.name === first);
   const own = facet?.selectors.find((s) => !catalog.facets.some((o) => o.name !== first && facets.includes(o.name) && o.selectors.some((x) => x.hex === s.hex)));
   if (!own) throw new Error(`${first} has no selector of its own.`);
-  const pin = document.querySelector<HTMLElement>(`[data-facet="${first}"] [data-selector="${own.hex}"]`);
+  const pin = document.querySelector<HTMLElement>(`[data-facet="${first}"] button[aria-label="Leave out of the diamond: ${own.signature}"]`);
   if (!pin) throw new Error("No pin.");
   await userEvent.click(pin);
   await expect.poll(() => pin.dataset.state).toBe("excluded");

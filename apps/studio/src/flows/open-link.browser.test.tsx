@@ -305,7 +305,7 @@ describe("a name from a link is text (spec L859)", () => {
     expect(opened.ok).toBe(true);
     const name = `${hostile} (shared)`;
     expect(doc.get().name).toBe(name);
-    const titlebar = page.getByRole("region", { name: "Title bar", exact: true });
+    const titlebar = page.getByRole("banner", { name: "Title bar", exact: true });
     await expect.element(titlebar.getByText(name, { exact: true })).toBeVisible();
     await expect.poll(() => document.title.startsWith(name)).toBe(true);
     // Let an error handler have its chance, then check nothing was parsed as markup.

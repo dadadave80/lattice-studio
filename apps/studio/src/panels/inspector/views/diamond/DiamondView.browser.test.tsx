@@ -4,11 +4,12 @@ import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { etherscanOutcomes } from "@/chain/verify/etherscan-outcomes";
-import { command, getCatalogStatus, provideServices, putDeployment, session, setCatalogStatus, settings } from "@/contracts";
+import { command, doc, getCatalogStatus, provideServices, putDeployment, session, setCatalogStatus, settings } from "@/contracts";
 import { BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
 import {
   bufferedServices, fakeChainService, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio,
 } from "../../../../../test/harness";
+import { clearInspectorFocus, requestInspectorFocus } from "../../focus-request";
 import { DiamondView } from "./DiamondView";
 
 const SEPOLIA = 11155111;
@@ -70,6 +71,31 @@ function coreOnly(id: string, name = "My diamond"): Project {
 }
 
 describe("DiamondView: a core-only sheet", () => {
+  test("keeps the heading and Core loading state stable until the complete catalog readout is ready", async () => {
+    onCleanup(clearInspectorFocus);
+    await renderWithStudio(view, { project: coreOnly("delayed-catalog"), catalog: null });
+    const heading = page.getByRole("heading", { level: 2, name: "My diamond" });
+    const core = page.getByRole("region", { name: "Core" });
+    const headingElement = heading.element();
+    const coreElement = core.element();
+    await expect.element(core.getByText("Loading the catalog…")).toBeVisible();
+    requestInspectorFocus({ kind: "heading" });
+    await expect.element(heading).toHaveFocus();
+    await expect.element(page.getByRole("region", { name: "Starting points" })).not.toBeInTheDocument();
+    await expect.element(page.getByRole("heading", { name: "Chain readiness" })).not.toBeInTheDocument();
+    await expect.element(page.getByRole("heading", { name: "Deployments" })).not.toBeInTheDocument();
+
+    const catalog = fixtureCatalog();
+    setCatalogStatus({ status: "ready", id: catalog.lattice.tag, catalog, manifest: null });
+    await expect.element(core.getByRole("list", { name: "Loupe selectors" })).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Browse all recipes" })).toBeVisible();
+    await expect.element(page.getByText("Choose a chain to check readiness.")).toBeVisible();
+    await expect.element(page.getByText("Not deployed yet.")).toBeVisible();
+    expect(heading.element()).toBe(headingElement);
+    expect(core.element()).toBe(coreElement);
+    await expect.element(heading).toHaveFocus();
+  });
+
   test("shows the core's rows, says Core only and offers the starting points", async () => {
     const load = spyOn("recipe.load");
     const browse = spyOn("recipe.browse");
@@ -172,11 +198,36 @@ describe("DiamondView: summary, actions and authority", () => {
     expect(tidy).toHaveBeenCalledTimes(1);
   });
 
-  test("Fill in hides when no required argument is missing", async () => {
+  test("Edit setup stays available for valid starter examples", async () => {
+    const edit = spyOn("init.open");
     await renderWithStudio(view, { project: makeProject({ id: "erc20-actions", recipe: template("ERC20") }) });
     await expect.element(page.getByRole("button", { name: "Next problem" })).toBeVisible();
     await expect.element(page.getByRole("button", { name: "Fill in" })).not.toBeInTheDocument();
+    await page.getByRole("button", { name: "Edit setup" }).click();
+    expect(edit).toHaveBeenCalledTimes(1);
     await expect.element(page.getByText("2 steps", { exact: true })).toBeVisible();
+  });
+
+  test("Edit setup remains after customizing inputs and is absent without editable inputs", async () => {
+    const recipe = template("ERC20");
+    if (recipe.init.kind !== "steps") throw new Error("ERC20 has step initialization");
+    const customized: Recipe = {
+      ...recipe,
+      init: {
+        kind: "steps",
+        steps: recipe.init.steps.map((step) => step.spec === "ERC20Init" ? {
+          ...step,
+          args: Object.fromEntries(Object.keys(step.args).map((key) => [key, key.toLowerCase().includes("symbol") ? "LIB" : "Library credits"])),
+        } : step),
+      },
+    };
+    expect(analyze(customized, fixtureCatalog()).problems.some((problem) => problem.code === "INIT-05")).toBe(false);
+    await renderWithStudio(view, { project: makeProject({ recipe: customized }) });
+    await expect.element(page.getByRole("button", { name: "Edit setup", exact: true })).toBeVisible();
+    const plain = makeRecipe({ facets: [...CORE_FACETS, "Receive"], immutable: true }, fixtureCatalog());
+    doc.load(makeProject({ recipe: plain }));
+    await expect.element(page.getByRole("button", { name: "Edit setup", exact: true })).not.toBeInTheDocument();
+    await expect.element(page.getByRole("button", { name: "Fill in", exact: true })).not.toBeInTheDocument();
   });
 
   test("lists who holds each role: This diamond, anyone, none", async () => {
