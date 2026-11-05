@@ -34,6 +34,25 @@ function safeCut() {
 }
 const linked = writeRecipe(dir, safeCut(), BUILT, "safe-cut.json");
 
+test("check and plan reject a recipe salt project before probing", async () => {
+  for (const command of ["check", "plan"]) {
+    let randomCalls = 0;
+    let rpcCalls = 0;
+    const result = await runCli([
+      command, "--project", erc20, "--deployer", SAFE, "--chain", "11155111", "--json",
+    ], {
+      random: (bytes) => { randomCalls += 1; return new Uint8Array(bytes); },
+      transport: () => { rpcCalls += 1; throw new Error("unexpected RPC"); },
+    });
+    expect(result.code).toBe(2);
+    expect(JSON.parse(result.stdout)).toEqual({ error: {
+      exit: 2, message: `--project takes a .lattice.json project file; ${erc20} is a recipe.`,
+    } });
+    expect(randomCalls).toBe(0);
+    expect(rpcCalls).toBe(0);
+  }
+});
+
 describe("check", () => {
   test("no blockers: exit 0, the stats and the problems chip in C10's formats", async () => {
     const { code, stdout, stderr } = await spawnCli(["check", erc20]);

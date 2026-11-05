@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSaveStatus, type SaveStatus as SaveStatusValue } from "@/contracts";
+import { commandRef, useSaveStatus, type SaveStatus as SaveStatusValue } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { IconButton } from "@/ui/buttons/IconButton";
@@ -47,7 +47,11 @@ export function SaveStatus({ compact }: { compact: boolean }) {
           open={open}
           onOpenChange={setOpen}
         >
-          {status.action ? <CommandButton command={status.action} size="small" /> : undefined}
+          <p>Studio saves edits in this browser. Save a copy to keep a file outside this browser. Clearing browser data removes local projects.</p>
+          <p>Check persistent storage in Settings → Data.</p>
+          {status.action ? <CommandButton command={status.action} size="small" /> : null}
+          {status.action?.id !== "project.saveCopy" ? <CommandButton command={commandRef("project.saveCopy")} size="small" /> : null}
+          <CommandButton command={commandRef("project.open")} size="small" />
         </Popover>
       </LazyPart>
       {status.action && !compact ? <CommandButton command={status.action} size="small" /> : null}

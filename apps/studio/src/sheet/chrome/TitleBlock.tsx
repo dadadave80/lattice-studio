@@ -10,6 +10,7 @@ import { findChain } from "@/chain/infra/chains";
 import { useLayoutTier } from "@/shell/layout-tier";
 import { chipWords, useProjectStatus, type StatusChipWords } from "@/shell/status";
 import { usePrediction } from "@/state";
+import { planFields, planOf } from "@/panels/init/navigation";
 import { Button } from "@/ui/buttons/Button";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { IconButton } from "@/ui/buttons/IconButton";
@@ -199,6 +200,7 @@ function AddressView({ line, short }: { line: AddressLine; short?: boolean }) {
 /** Everything the title block shows, in one place, so each form draws the same facts. */
 function useTitleBlockFacts() {
   const name = useDocument((s) => s.project.name);
+  const recipe = useDocument((s) => s.project.recipe);
   const empty = useDocument((s) => isCoreOnly(s.project.recipe));
   const { status, chainName } = useProjectStatus();
   const phase = useDeployState((s) => s.phase);
@@ -223,12 +225,13 @@ function useTitleBlockFacts() {
   const at = useTicking(deploy.phase === "pending");
 
   const stamp = stampWords(status, deploy, chainName, wallet, at);
+  const hasSetup = useMemo(() => catalog !== null && planFields(planOf(recipe, catalog)).length > 0, [recipe, catalog]);
   const counts = useMemo(() => {
     const blockers = problems.filter((p) => p.severity === "blocker").length;
     const warnings = problems.filter((p) => p.severity === "warning").length;
     const toFillCount = problems.filter((p) => p.code === "INIT-01").length;
-    return { blockers, problems: formatProblemSummary({ blockers, warnings }), toFillCount, stats };
-  }, [problems, stats]);
+    return { blockers, problems: formatProblemSummary({ blockers, warnings }), toFillCount, hasSetup, stats };
+  }, [problems, stats, hasSetup]);
 
   let address: AddressLine;
   const deployed = status.deployment;
@@ -305,11 +308,11 @@ function FullBlock({ facts, toggle }: { facts: Facts; toggle: Toggle }) {
           </span>
         </div>
       )}
-      {!empty && counts.toFillCount > 0 ? (
-        <div className={styles.fillRow}>
-          <span data-to-fill="">{toFill(counts.toFillCount)}</span>
+      {!empty && (counts.toFillCount > 0 || counts.hasSetup) ? (
+        <div className={styles.fillRow} data-tour="setup">
+          {counts.toFillCount > 0 ? <span data-to-fill="">{toFill(counts.toFillCount)}</span> : null}
           <CommandButton command={commandRef("init.open")} size="small">
-            Fill in
+            {counts.toFillCount > 0 ? "Fill in" : "Edit setup"}
           </CommandButton>
         </div>
       ) : null}

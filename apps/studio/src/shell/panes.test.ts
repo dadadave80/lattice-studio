@@ -57,6 +57,15 @@ describe("pane visibility", () => {
 });
 
 describe("show and toggle", () => {
+  test("showing phone Console restores its body even from a closed active pane", () => {
+    const closed = { ...fresh(), narrow: "console" as const, console: { ...fresh().console, open: false } };
+    const restored = showPane(closed, "phone", "console");
+    expect(restored.console.open).toBe(true);
+    expect(restored.narrow).toBe("console");
+    expect(showPane(restored, "phone", "console")).toBe(restored);
+    expect(showPane(showPane(closed, "phone", "sheet"), "phone", "console").console.open).toBe(true);
+  });
+
   test("show returns the same object when the pane already shows", () => {
     const panes = fresh();
     expect(showPane(panes, "wide", "catalog")).toBe(panes);

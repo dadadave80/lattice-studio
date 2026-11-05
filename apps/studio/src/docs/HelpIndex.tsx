@@ -49,6 +49,17 @@ export function HelpIndex() {
       <h2 ref={headingRef} tabIndex={-1} className={styles.heading}>
         Problem docs
       </h2>
+      <section className={styles.family} aria-label="Getting started">
+        <h3 className={styles.familyHeading}>Getting started</h3>
+        <p className={styles.intro}>Build one contract from smaller contracts called facets. The diamond is its shared address. A selector identifies a function, and routing chooses the facet that handles it.</p>
+        <ol className={styles.steps}>
+          <li>Choose a starter or add facets from the catalog.</li>
+          <li>Open Edit setup to review the values used when the diamond deploys.</li>
+          <li>Resolve blockers and review warnings in Problems.</li>
+          <li>Save a copy for a portable backup, or export a Foundry script or Safe batch.</li>
+        </ol>
+        <p className={styles.intro}>Studio checks composition and deployment inputs. It does not prove the contract's economic behavior or external integrations.</p>
+      </section>
       <p className={styles.intro}>
         Every problem code the composer can raise: what it means, why Lattice or Studio enforces it, and how to fix it. Available offline,
         precached with the app.

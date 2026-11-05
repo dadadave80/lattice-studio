@@ -5,7 +5,7 @@
  * load (contracts §6, the size gate).
  */
 import {
-  CORE_FACETS, exportProjectFile, isCoreFacet, lines, plural, type CommandRef, type Deployment, type Project, type Recipe,
+  CORE_FACETS, exportProjectFile, isCoreFacet, lines, plural, type CommandRef, type Deployment, type Project, type Recipe, type Result,
 } from "@lattice-studio/core";
 import {
   announce, commandRef, createProject as createProjectService, getCatalog, listDeployments, log,
@@ -32,25 +32,26 @@ function emptyRecipe(): Recipe {
 }
 
 /** New project (App menu, `new`): a blank sheet, modes, selection and viewport reset (PA #5, #16). */
-export async function startNewProject(): Promise<void> {
+export async function startNewProject(): Promise<Result<void, string>> {
   const created = await createProjectService(emptyRecipe(), "Untitled");
   if (!created.ok) {
     sayError(`Couldn't start a new project. ${created.error}`);
-    return;
+    return created;
   }
   resetForProjectSwitch();
   sayNote("New project.");
+  return { ok: true, value: undefined };
 }
 
 /** Opens a stored project by id, logging "Opened X · N facets · saved 2 min ago." through core's own line
  * builder (spec L708), so the relative time matches every other line that reports one. */
-export async function openStoredProject(id: string): Promise<void> {
+export async function openStoredProject(id: string): Promise<Result<void, string>> {
   const store = await persistence();
   const before = (await store.listProjects()).find((p) => p.id === id);
   const opened = await openProjectService(id);
   if (!opened.ok) {
     reportOpenFailure(opened.error);
-    return;
+    return opened;
   }
   resetForProjectSwitch();
   const now = new Date().toISOString();
@@ -58,6 +59,7 @@ export async function openStoredProject(id: string): Promise<void> {
   const line = lines.projectOpened({ name: opened.value.name, facets: opened.value.recipe.facets.filter((name) => !isCoreFacet(name)).length, savedAt, now });
   log(line);
   announce(line.text);
+  return { ok: true, value: undefined };
 }
 
 async function currentDeployments(project: Project): Promise<readonly Deployment[]> {
@@ -105,14 +107,18 @@ const SAFARI_BANNER = "projects.safari-tip";
 
 /** After ⌘S or Save a copy: asks for persistent storage once, and shows Safari's one-time tip (spec L500). */
 async function afterExplicitSave(): Promise<void> {
-  const store = await persistence();
-  const { safariTip } = await store.markExplicitSave();
-  if (safariTip) {
-    showBanner(SAFARI_BANNER, {
-      text: "Safari can clear site data after 7 days without a visit, so keep a file copy.",
-      tone: "info",
-      dismissible: true,
-    });
+  try {
+    const store = await persistence();
+    const { safariTip } = await store.markExplicitSave();
+    if (safariTip) {
+      showBanner(SAFARI_BANNER, {
+        text: "Safari can clear site data after 7 days without a visit, so keep a file copy.",
+        tone: "info",
+        dismissible: true,
+      });
+    }
+  } catch (error) {
+    sayError(`Couldn't update browser storage settings. ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -123,16 +129,24 @@ async function afterExplicitSave(): Promise<void> {
  * storage right away, then notifying `list-refresh`'s own subscribers, keeps the row live instead.
  */
 export async function renameStoredProject(id: string, name: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const store = await persistence();
-  if (store.documentId() === id) {
-    const result = await runCommand({ id: "project.rename", args: { name } }, "menu");
-    if (!result.ok) return { ok: false, error: result.reason };
-    await flushPendingSave();
-    notifyProjectsRefresh();
-    return { ok: true };
+  try {
+    const store = await persistence();
+    if (store.documentId() === id) {
+      const result = await runCommand({ id: "project.rename", args: { name } }, "menu");
+      if (!result.ok) return { ok: false, error: result.reason };
+      await flushPendingSave();
+      notifyProjectsRefresh();
+      return { ok: true };
+    }
+    const renamed = await store.renameProject(id, name);
+    if (renamed.ok) return { ok: true };
+    sayError(`Couldn't rename this project. ${renamed.error}`);
+    return renamed;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    sayError(`Couldn't rename this project. ${reason}`);
+    return { ok: false, error: reason };
   }
-  const renamed = await store.renameProject(id, name);
-  return renamed.ok ? { ok: true } : { ok: false, error: renamed.error };
 }
 
 export async function duplicateProject(id: string): Promise<void> {
@@ -151,19 +165,9 @@ export async function duplicateProject(id: string): Promise<void> {
  * store no longer indexes them by that project id, so `listDeployments` alone would export none.
  */
 export async function exportStoredProject(id: string): Promise<void> {
-  const store = await persistence();
-  const rows = await store.listProjects();
-  const row = rows.find((p) => p.id === id);
-  if (row) {
-    downloadFile(exportProjectFile(row.project, await store.deployments.listDeployments(id)));
-    return;
-  }
-  const trashed = (await store.listTrash()).find((t) => t.id === id);
-  if (!trashed) {
-    sayError("Couldn't export this project. It's no longer stored here.");
-    return;
-  }
-  downloadFile(exportProjectFile(trashed.project, trashed.deployments));
+  const file = await (await persistence()).exportProject(id);
+  if (file) downloadFile(file);
+  else sayError("Couldn't export this project. It's no longer stored here.");
 }
 
 /** Extends a `CommandRef` with a display label a toast's action button can show instead of the command's own title. */
@@ -217,28 +221,46 @@ export async function deleteProjectForGood(id: string): Promise<{ ok: true } | {
 
 /** Export all (Settings → Data): one directory pick through the File System Access API where it exists,
  * else a download per stored file (spec L637). */
-export async function exportAllData(): Promise<void> {
-  const store = await persistence();
-  const files = await store.exportAll();
-  if (files.length === 0) {
-    sayNote("There's nothing stored to export.");
-    return;
+export type ExportAllDataResult =
+  | { ok: true; via: "directory" | "downloads"; source: Project; count: number }
+  | { ok: false; cancelled: true }
+  | { ok: false; empty: true }
+  | { ok: false; error: string };
+
+export async function exportAllData(): Promise<ExportAllDataResult> {
+  try {
+    const store = await persistence();
+    const source = store.document();
+    const files = await store.exportAll();
+    if (files.length === 0) {
+      sayNote("There's nothing stored to export.");
+      return { ok: false, empty: true };
+    }
+    const outcome = await saveAllTo(files);
+    if (!outcome.ok) return outcome;
+    if (outcome.via === "directory") sayNote(`Exported ${plural(files.length, "file")}.`);
+    else sayNote(`Downloading ${plural(files.length, "file")}. If the browser asks, allow multiple downloads.`);
+    return { ok: true, via: outcome.via, source, count: files.length };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const message = `Couldn't export all projects. ${reason} Save a copy to recover the current project.`;
+    sayError(message);
+    return { ok: false, error: message };
   }
-  const outcome = await saveAllTo(files);
-  if (!outcome.ok) return; // Cancelled the directory picker: say nothing, as Save a copy does.
-  if (outcome.via === "directory") sayNote(`Exported ${plural(files.length, "file")}.`);
-  else sayNote(`Downloading ${plural(files.length, "file")}. If the browser asks, allow multiple downloads.`);
 }
 
-export async function clearAllData(): Promise<{ ok: true } | { ok: false; error: string }> {
-  const store = await persistence();
+export async function clearAllData(exportedFrom: Project | null = null): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    await store.clearData();
+    const store = await persistence();
+    if (exportedFrom !== null && store.document() !== exportedFrom) {
+      return { ok: false, error: "The current project changed after export. Export again before deleting." };
+    }
+    await store.clearData(exportedFrom ?? undefined);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     sayError(`Couldn't clear Studio's data. ${reason}`);
     return { ok: false, error: reason };
   }
-  sayNote("Cleared Studio's data in this browser.");
+  sayNote("Cleared Studio's data in this browser. Start a new project or open a project file to continue.");
   return { ok: true };
 }

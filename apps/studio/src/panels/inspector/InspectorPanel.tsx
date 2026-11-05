@@ -27,7 +27,8 @@ export function InspectorPanel() {
   );
   const key = viewKey(resolved);
   const body = useRef<HTMLDivElement>(null);
-  useFocusRecovery(body, key);
+  const focusKey = resolved.kind === "problem" && !problemIds.split("\n").includes(resolved.id) ? `${key}:resolved` : key;
+  useFocusRecovery(body, focusKey);
 
   return (
     <div className={styles.panel} data-inspector-view={resolved.kind}>

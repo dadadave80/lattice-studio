@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { Address, Catalog, Deployment, FacetDetail, Hex, Project } from "@lattice-studio/core";
-import { CREATEX, createxProxy, formatAddress, loadTemplate, multicallGas, recipeHash } from "@lattice-studio/core";
+import { analyze, buildSalt, CREATEX, createxProxy, formatAddress, loadTemplate, multicallGas, recipeHash } from "@lattice-studio/core";
 import { encodeErrorResult, parseAbi } from "viem";
 import { filledTemplate, loadBuiltCatalog, makeProject } from "@lattice-studio/core/testing";
 import { CANCELED_IN_WALLET, DEPLOY_BANNER_ID, MISMATCH, notSeenFor, OFFLINE_TRACKING } from "./copy";
@@ -108,6 +108,33 @@ async function submit({ h, m }: Rig): Promise<Hex> {
 }
 
 describe("review and simulation", () => {
+  test("an estimate over the chain cap blocks signing", async () => {
+    const { h, m } = rig();
+    const read = await h.port.probe(SEPOLIA_ID);
+    if (!read.ok) throw new Error(read.error);
+    let gasEstimate: string | undefined;
+    h.port.noteEstimate = (_chainId, gas) => { gasEstimate = gas?.toString(); };
+    h.inputs.analysis = () => analyze(h.inputs.project().recipe, catalog, {
+      known: [], unconfirmed: [],
+      refs: { self: predicted(h), deployer: ALICE },
+      deploy: {
+        chainId: SEPOLIA_ID, path: "factory", from: ALICE,
+        salt: buildSalt(ALICE, "every-chain", h.inputs.project().deploy.entropy),
+      },
+      chain: { ...read.value, ...(gasEstimate === undefined ? {} : { gasEstimate }) },
+    });
+    h.port.simulation = { kind: "ok", block: 50, gas: 16_862_182n, events: 0, method: "simulate" };
+    m.open();
+    await flush();
+    expect(h.inputs.analysis().problems.find((p) => p.code === "NET-06")?.severity).toBe("blocker");
+    h.inputs.setAck(h.inputs.analysis().problems.map((p) => p.id));
+    await m.sign();
+    await m.sign({ withoutSimulation: true });
+    await flush();
+    expect(h.port.sent).toEqual([]);
+    expect(h.records.all()).toEqual([]);
+  });
+
   test("open snapshots the recipe, says Review, simulates by itself and is ready", async () => {
     const { h, m } = rig();
     m.open();

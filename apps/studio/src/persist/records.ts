@@ -66,6 +66,30 @@ export async function readProject(db: StudioDb, id: string): Promise<Result<{ pr
   return project.ok ? { ok: true, value: { project: project.value, savedAt: record.savedAt } } : project;
 }
 
+/** Renames the latest row in the same transaction that reads it. */
+export async function renameProject(db: StudioDb, id: string, name: string): Promise<Result<ProjectSummary, string>> {
+  const tx = db.transaction("projects", "readwrite");
+  try {
+    const record = await tx.store.get(id);
+    if (!record) {
+      await tx.done;
+      return { ok: false, error: "This project isn't in this browser's storage." };
+    }
+    const parsed = readProjectValue(record.project);
+    if (!parsed.ok) {
+      await tx.done;
+      return parsed;
+    }
+    const project = { ...parsed.value, name };
+    await tx.store.put({ ...record, project });
+    await tx.done;
+    return { ok: true, value: { id, name, savedAt: record.savedAt, project } };
+  } catch (error) {
+    await tx.done.catch(() => {});
+    throw tx.error ?? error;
+  }
+}
+
 /** Told about a stored record that no longer parses; it stays stored, but isn't listed. */
 export type Unreadable = (id: string, reason: string) => void;
 
@@ -314,32 +338,33 @@ export async function clearDataCounts(db: StudioDb): Promise<ClearDataCounts> {
 /** Everything stored, for Export all: nothing Clear data would delete is left out. */
 export type StoredEntry =
   /** A project that reads, live or in Recently deleted, with its records. */
-  | { kind: "project"; project: Project; deployments: Deployment[] }
+  | { kind: "project"; project: Project; deployments: Deployment[]; trashed: boolean }
   /** A project that doesn't read (a newer schema): exported as stored. */
   | { kind: "raw"; id: string; project: unknown; deployments: Deployment[] }
   /** Records whose project is gone (expired from Recently deleted), by project id. */
   | { kind: "orphans"; projectId: string; deployments: Deployment[] };
 
 export async function listEverything(db: StudioDb, unreadable?: Unreadable): Promise<StoredEntry[]> {
+  const tx = db.transaction(["projects", "trash", "deployments"], "readonly");
   const [projects, trash, deployments] = await Promise.all([
-    db.getAll("projects"), db.getAll("trash"), db.getAll("deployments"),
+    tx.objectStore("projects").getAll(), tx.objectStore("trash").getAll(), tx.objectStore("deployments").getAll(), tx.done,
   ]);
   const byProject = new Map<string, Deployment[]>();
   for (const d of deployments) byProject.set(d.projectId, [...(byProject.get(d.projectId) ?? []), d]);
   const out: StoredEntry[] = [];
-  const add = (id: string, value: unknown, records: Deployment[]) => {
+  const add = (id: string, value: unknown, records: Deployment[], trashed: boolean) => {
     const project = readProjectValue(value);
-    if (project.ok) out.push({ kind: "project", project: project.value, deployments: records });
+    if (project.ok) out.push({ kind: "project", project: project.value, deployments: records, trashed });
     else {
       unreadable?.(id, project.error);
       out.push({ kind: "raw", id, project: value, deployments: records });
     }
   };
   for (const record of projects) {
-    add(record.id, record.project, byProject.get(record.id) ?? []);
+    add(record.id, record.project, byProject.get(record.id) ?? [], false);
     byProject.delete(record.id);
   }
-  for (const entry of trash) add(entry.id, entry.project, entry.deployments);
+  for (const entry of trash) add(entry.id, entry.project, entry.deployments, true);
   for (const [projectId, records] of byProject) out.push({ kind: "orphans", projectId, deployments: records });
   return out;
 }

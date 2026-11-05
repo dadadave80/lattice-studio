@@ -36,19 +36,16 @@ export type RegionName = (typeof REGIONS)[number] | "Notifications";
 
 /** A region landmark by its name. */
 export function region(page: Page, name: RegionName): Locator {
-  return page.getByRole("region", { name, exact: true });
+  return page.getByRole(name === "Title bar" ? "banner" : "region", { name, exact: true });
 }
 
 /**
- * The name of the region that holds focus (the region itself after F6, or a control inside it), or null. Reads
- * the accessibility tree's role and label; no CSS.
+ * The name of the region that holds focus (the region itself after F6, or a control inside it), or null. Uses the
+ * same data-region registration as Studio's F6 navigation.
  */
 export async function focusedRegion(page: Page): Promise<string | null> {
   return page.evaluate(() => {
-    for (let node = document.activeElement; node; node = node.parentElement) {
-      if (node.getAttribute("role") === "region") return node.getAttribute("aria-label");
-    }
-    return null;
+    return document.activeElement?.closest("[data-region]")?.getAttribute("aria-label") ?? null;
   });
 }
 

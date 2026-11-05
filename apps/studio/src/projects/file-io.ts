@@ -175,7 +175,6 @@ export async function pickProjectFile(): Promise<PickedFile | null> {
 }
 
 /** A file dropped on the window (Flow 10 step 4). */
-export function pickDroppedFile(transfer: DataTransfer): Promise<PickedFile | null> {
-  const file = transfer.files[0];
-  return file ? readFile(file) : Promise.resolve(null);
+export function pickDroppedFile(file: File): Promise<PickedFile> {
+  return readFile(file);
 }

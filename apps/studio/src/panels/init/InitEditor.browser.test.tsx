@@ -147,6 +147,7 @@ describe("field types (spec L461-L466)", () => {
     await page.getByRole("combobox", { name: "Min delay unit" }).click();
     await page.getByRole("option", { name: "seconds" }).click();
     await expect.poll(() => argAt(doc.get(), "bundle.p.minDelay")).toBe("2");
+    await expect.element(page.getByRole("listbox")).not.toBeInTheDocument();
     const voting = page.getByRole("textbox", { name: "Voting period", exact: true });
     await voting.fill("600");
     await page.getByRole("combobox", { name: "Voting period unit" }).click();

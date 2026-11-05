@@ -58,6 +58,7 @@ export function Shell() {
   const panes = useSession((s) => s.panes);
   const height = useWindowHeight();
   const regions = useRegions();
+  const { role: _titlebarRole, ...titlebarProps } = regionProps(regions.titlebar, styles.titlebar);
   usePaneFollow();
   useDrawerEscape(isDrawerTier(tier) ? panes.drawer : null);
 
@@ -85,88 +86,90 @@ export function Shell() {
       data-drawer={drawers && seen.left ? "left" : drawers && seen.inspector ? "inspector" : undefined}
       style={style}
     >
-      <header {...regionProps(regions.titlebar, styles.titlebar)}>
+      <header {...titlebarProps}>
         <TitleBar />
         {phone ? <PaneSwitcher /> : null}
       </header>
-      <div className={styles.banners} {...{ [KEY_CONTEXT_ATTRIBUTE]: "global" }}>
-        <BannerHost />
-      </div>
-      <div className={styles.body} hidden={!seen.left && !seen.sheet && !seen.inspector}>
-        <aside
-          {...regionProps(regions.left, styles.left)}
-          id={PANE_IDS.left}
-          hidden={!seen.left}
-        >
-          <LeftPane tier={tier} />
-        </aside>
-        {leftSplitter ? (
+      <main className={styles.workspace}>
+        <div className={styles.banners} {...{ [KEY_CONTEXT_ATTRIBUTE]: "global" }}>
+          <BannerHost />
+        </div>
+        <div className={styles.body} hidden={!seen.left && !seen.sheet && !seen.inspector}>
+          <aside
+            {...regionProps(regions.left, styles.left)}
+            id={PANE_IDS.left}
+            hidden={!seen.left}
+          >
+            <LeftPane tier={tier} />
+          </aside>
+          {leftSplitter ? (
+            <Splitter
+              label="Resize left pane"
+              controls={PANE_IDS.left}
+              orientation="vertical"
+              paneSide="before"
+              value={panes.left.size}
+              min={PANE_SIZES.left.min}
+              max={PANE_SIZES.left.max}
+              collapsed={!drawers && !panes.left.open}
+              onChange={setLeftSize}
+              onCollapsedChange={(collapsed) => (drawers ? collapsed && closeDrawer() : setPaneOpen("left", !collapsed))}
+              className={styles.leftSplitter}
+            />
+          ) : null}
+          {/* The sheet's key context covers the region itself, so its keys work as soon as F6 lands on it. */}
+          <section
+            {...regionProps(regions.sheet, styles.sheet)}
+            {...{ [KEY_CONTEXT_ATTRIBUTE]: "sheet" }}
+            id={PANE_IDS.sheet}
+            hidden={!seen.sheet}
+          >
+            <Sheet />
+          </section>
+          {inspectorSplitter ? (
+            <Splitter
+              label="Resize inspector"
+              controls={PANE_IDS.inspector}
+              orientation="vertical"
+              paneSide="after"
+              value={panes.inspector.size}
+              min={PANE_SIZES.inspector.min}
+              max={PANE_SIZES.inspector.max}
+              collapsed={!drawers && !panes.inspector.open}
+              onChange={setInspectorSize}
+              onCollapsedChange={(collapsed) =>
+                drawers ? collapsed && closeDrawer() : setPaneOpen("inspector", !collapsed)
+              }
+              className={styles.inspectorSplitter}
+            />
+          ) : null}
+          <aside
+            {...regionProps(regions.inspector, styles.inspector)}
+            id={PANE_IDS.inspector}
+            hidden={!seen.inspector}
+          >
+            <InspectorPane tier={tier} />
+          </aside>
+        </div>
+        {consoleSplitter ? (
           <Splitter
-            label="Resize left pane"
-            controls={PANE_IDS.left}
-            orientation="vertical"
-            paneSide="before"
-            value={panes.left.size}
-            min={PANE_SIZES.left.min}
-            max={PANE_SIZES.left.max}
-            collapsed={!drawers && !panes.left.open}
-            onChange={setLeftSize}
-            onCollapsedChange={(collapsed) => (drawers ? collapsed && closeDrawer() : setPaneOpen("left", !collapsed))}
-            className={styles.leftSplitter}
-          />
-        ) : null}
-        {/* The sheet's key context covers the region itself, so its keys work as soon as F6 lands on it. */}
-        <main
-          {...regionProps(regions.sheet, styles.sheet)}
-          {...{ [KEY_CONTEXT_ATTRIBUTE]: "sheet" }}
-          id={PANE_IDS.sheet}
-          hidden={!seen.sheet}
-        >
-          <Sheet />
-        </main>
-        {inspectorSplitter ? (
-          <Splitter
-            label="Resize inspector"
-            controls={PANE_IDS.inspector}
-            orientation="vertical"
+            label="Resize console"
+            controls={PANE_IDS.console}
+            orientation="horizontal"
             paneSide="after"
-            value={panes.inspector.size}
-            min={PANE_SIZES.inspector.min}
-            max={PANE_SIZES.inspector.max}
-            collapsed={!drawers && !panes.inspector.open}
-            onChange={setInspectorSize}
-            onCollapsedChange={(collapsed) =>
-              drawers ? collapsed && closeDrawer() : setPaneOpen("inspector", !collapsed)
-            }
-            className={styles.inspectorSplitter}
+            value={Math.min(panes.console.size, maxConsole)}
+            min={PANE_SIZES.console.min}
+            max={maxConsole}
+            collapsed={seen.console === "header"}
+            onChange={setConsoleSize}
+            onCollapsedChange={(collapsed) => setPaneOpen("console", !collapsed)}
+            className={styles.consoleSplitter}
           />
         ) : null}
-        <aside
-          {...regionProps(regions.inspector, styles.inspector)}
-          id={PANE_IDS.inspector}
-          hidden={!seen.inspector}
-        >
-          <InspectorPane tier={tier} />
-        </aside>
-      </div>
-      {consoleSplitter ? (
-        <Splitter
-          label="Resize console"
-          controls={PANE_IDS.console}
-          orientation="horizontal"
-          paneSide="after"
-          value={Math.min(panes.console.size, maxConsole)}
-          min={PANE_SIZES.console.min}
-          max={maxConsole}
-          collapsed={seen.console === "header"}
-          onChange={setConsoleSize}
-          onCollapsedChange={(collapsed) => setPaneOpen("console", !collapsed)}
-          className={styles.consoleSplitter}
-        />
-      ) : null}
-      <section {...regionProps(regions.console, styles.console)} id={PANE_IDS.console} hidden={seen.console === "hidden"}>
-        <ConsolePanel />
-      </section>
+        <section {...regionProps(regions.console, styles.console)} id={PANE_IDS.console} hidden={seen.console === "hidden"}>
+          <ConsolePanel />
+        </section>
+      </main>
     </div>
   );
 }

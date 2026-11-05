@@ -19,8 +19,7 @@ screenshot baseline in both themes (spec "Design stays in step with code"). Chec
 ## Budgets
 
 - [ ] `bun scripts/ci/size.ts --build` passes, or the table below explains what grew and why
-- [ ] No new dependency outside `.handoff/plan/contracts.md` §2 (a WP never adds one; say so in the PR body if
-      one is needed)
+- [ ] No dependency was added, removed or updated without David's approval
 
 ## Testing
 

@@ -5,7 +5,7 @@
  * Steps covered here (the shell's static paint and the service-worker catalog cache are S11b/S14's, tested in
  * `e2e/first-paint/` and the PWA suites, not repeated here):
  *   2. No projects yet: Studio opens an untitled project on the Start block. No modal. The tour hint. The tour
- *      itself: five coach marks that never block input; Esc or End tour leaves at any step.
+ *      itself: six coach marks that never block input; Esc or End tour leaves at any step.
  *   3. The console's first line names the catalog.
  *   4. A returning visitor lands in their last project.
  *   5. Under 768 px, the pane switcher, fully functional.
@@ -55,14 +55,14 @@ test.describe("Flow 1. First visit", () => {
     await console_.expectFirstLine(firstCatalogLine());
   });
 
-  test("the tour runs only on request: five coach marks that never block input", async ({ page }) => {
+  test("the tour runs only on request: six coach marks that never block input", async ({ page }) => {
     await openEmpty(page);
     const sheet = new SheetPage(page);
     await sheet.tourLink.click();
 
-    const titles = ["The catalog", "Placing a facet", "A collision note", "The console", "Deploy"];
+    const titles = ["The catalog", "Placing a facet", "Configure the recipe", "A collision note", "The console", "Deploy"];
     for (const [index, title] of titles.entries()) {
-      await expect(page.getByText(`Step ${index + 1} of 5`)).toBeVisible();
+      await expect(page.getByText(`Step ${index + 1} of 6`)).toBeVisible();
       await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
       if (index < titles.length - 1) await page.getByRole("button", { name: "Next", exact: true }).click();
     }
@@ -79,12 +79,12 @@ test.describe("Flow 1. First visit", () => {
     await openEmpty(page);
     const sheet = new SheetPage(page);
     await sheet.tourLink.click();
-    await expect(page.getByText("Step 1 of 5")).toBeVisible();
+    await expect(page.getByText("Step 1 of 6")).toBeVisible();
     await page.getByRole("button", { name: "Next", exact: true }).click();
-    await expect(page.getByText("Step 2 of 5")).toBeVisible();
+    await expect(page.getByText("Step 2 of 6")).toBeVisible();
 
     await page.keyboard.press("Escape");
-    await expect(page.getByText(/Step \d of 5/)).toHaveCount(0);
+    await expect(page.getByText(/Step \d of 6/)).toHaveCount(0);
     const console_ = new ConsolePage(page);
     await expect(console_.line("Ended the tour.")).toBeVisible();
   });
@@ -94,7 +94,7 @@ test.describe("Flow 1. First visit", () => {
     const sheet = new SheetPage(page);
     await sheet.tourLink.click();
     await page.getByRole("button", { name: "End tour" }).click();
-    await expect(page.getByText(/Step \d of 5/)).toHaveCount(0);
+    await expect(page.getByText(/Step \d of 6/)).toHaveCount(0);
     const console_ = new ConsolePage(page);
     await expect(console_.line("Ended the tour.")).toBeVisible();
   });
@@ -104,9 +104,9 @@ test.describe("Flow 1. First visit", () => {
     const sheet = new SheetPage(page);
     await sheet.tourLink.focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByText("Step 1 of 5")).toBeVisible();
+    await expect(page.getByText("Step 1 of 6")).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.getByText(/Step \d of 5/)).toHaveCount(0);
+    await expect(page.getByText(/Step \d of 6/)).toHaveCount(0);
   });
 
   test("a returning visitor lands in their last project", async ({ page }) => {

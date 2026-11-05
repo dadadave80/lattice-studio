@@ -138,6 +138,13 @@ describe("the Transaction Builder's checksum", () => {
 });
 
 describe("exportSafeBatch", () => {
+  test("missing contracts point to Studio's catalog-compatible deployment action", () => {
+    const description = exported().file.meta.description ?? "";
+    expect(description).toContain("Leaves out deploying missing shared contracts. Deploy them first with Deploy missing contracts… in Lattice Studio.");
+    expect(description).not.toContain("DeployRelease");
+    expect(description).not.toContain("CLI");
+  });
+
   test("snapshot: SafeDiamondCut on Sepolia through LatticeFactory", () => {
     const batch = exported();
     expect(batch.filename).toBe("SafeDiamondCut.safe.json");
@@ -242,6 +249,7 @@ describe("exportSafeBatch", () => {
     expect(head).toMatch(/^Lattice Studio 1\.0\.0-test · recipe 0x[0-9a-f]{64} · Lattice fixture$/);
     expect(head).toContain(recipeHash(normalizeRecipe(safeDiamondCut(), catalog)));
     expect(description).toContain("Leaves out deploying missing shared contracts");
+    expect(description).toContain("This factory returns an existing diamond for a reused Safe and salt; it would ignore this batch's cuts and initialization. Use a new salt for a fresh deployment.");
     expect(lintCopy(description)).toEqual([]);
     expect(lintCopy(file.meta.name)).toEqual([]);
     expect(exported({ studioVersion: "1.0.1" }).text).not.toBe(exported().text);
@@ -274,7 +282,7 @@ describe("exportSafeBatch", () => {
     expect(file.meta.name).toContain("Deploy Vault evil name end to ");
     expect(file.meta.name).toContain("· Sepo lia");
     expect(file.meta.description).toStartWith("Lattice Studio 1.0.0 beta · ");
-    expect(file.meta.description?.split("\n")).toHaveLength(5);
+    expect(file.meta.description?.split("\n")).toHaveLength(6);
     expect(hasValidChecksum(file)).toBe(true);
     expect(JSON.parse(text)).toEqual(file);
     expect(plainText("​\n", "fallback")).toBe("fallback");

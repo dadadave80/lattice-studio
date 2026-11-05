@@ -12,7 +12,7 @@ import type { Recipe } from "../model/recipe";
 import { buildPlan, loadTemplate } from "../plan";
 import { addr, loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe, makeShared } from "../testing";
 import {
-  CREATEX_ABI, CREATEX_DEPLOY_SELECTOR, FACTORY_DEPLOY_SELECTOR, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI, LEGACY_FACTORY_DEPLOY_ABI,
+  CREATEX_ABI, CREATEX_DEPLOY_SELECTOR, FACTORY_DEPLOY_SELECTOR, FACTORY_DEPLOY_STRICT_SELECTOR, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI, LEGACY_FACTORY_DEPLOY_ABI,
 } from "./abi";
 import { buildDiamondDeploy, packVersion, registryNameHash } from "./diamond";
 
@@ -80,6 +80,7 @@ function decodeFactory(data: Hex, legacy = false) {
 describe("selectors", () => {
   test("the ABIs carry the signatures the brief names", () => {
     expect(toFunctionSelector("deploy((bytes32,uint64,bytes4[])[],(address,uint8,bytes4[])[],address,bytes,bytes32)")).toBe(FACTORY_DEPLOY_SELECTOR);
+    expect(toFunctionSelector("deployStrict((bytes32,uint64,bytes4[])[],(address,uint8,bytes4[])[],address,bytes,bytes32)")).toBe(FACTORY_DEPLOY_STRICT_SELECTOR);
     expect(toFunctionSelector("deployCreate3AndInit(bytes32,bytes,bytes,(uint256,uint256))")).toBe(CREATEX_DEPLOY_SELECTOR);
     expect(build().tx.data.slice(0, 10)).toBe(FACTORY_DEPLOY_SELECTOR);
     expect(build({ path: "createx", proxyCreationCode: PROXY_CODE }).tx.data.slice(0, 10)).toBe(CREATEX_DEPLOY_SELECTOR);

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { catalogWithInitDocs, useInitDocs } from "@/catalog/parts";
 import { commandRef, useCatalog, useDocument, type InspectorViewProps } from "@/contracts";
 import { CommandButton } from "@/ui/buttons/CommandButton";
+import { ProblemNavigation } from "@/panels/inspector/shared/ProblemNavigation";
 import { AuthorityTable } from "./AuthorityTable";
 import { BundleOrder } from "./BundleOrder";
 import styles from "./InitEditor.module.css";
@@ -65,6 +66,7 @@ export function InitEditor({ view }: InspectorViewProps<"init">) {
     return (
       <section ref={rootRef} className={styles.root} aria-label="Init plan">
         <h2 className={styles.title}>Init plan</h2>
+        <ProblemNavigation />
         <p className={styles.empty}>The catalog hasn't loaded yet.</p>
       </section>
     );
@@ -92,6 +94,7 @@ export function InitEditor({ view }: InspectorViewProps<"init">) {
           {movable !== null && movable >= 2 ? <CommandButton size="small" command={commandRef("init.reorderAuto")} /> : null}
         </div>
       </header>
+      <ProblemNavigation />
       {docs.status === "error" ? <p className={styles.empty}>Couldn't load the help text. {docs.reason}</p> : null}
       {plan.kind === "none" ? <p className={styles.empty}>This recipe has no init: nothing runs when the diamond deploys.</p> : null}
       {plan.steps.length > 0 ? (

@@ -29,6 +29,15 @@ beforeEach(() => {
 });
 
 describe("HelpIndex (help.open with no code)", () => {
+  test("orientation explains setup and portable saving alongside resolution navigation", async () => {
+    await renderWithStudio(<DocView view={{ kind: "doc" }} />);
+    expect(page.getByRole("heading", { name: "Getting started" }).elements()).toHaveLength(1);
+    await expect.element(page.getByText("Open Edit setup to review the values used when the diamond deploys.", { exact: true })).toBeVisible();
+    await expect.element(page.getByRole("navigation", { name: "Problem navigation" })).toBeVisible();
+    await page.getByRole("button", { name: "Back to composition", exact: true }).click();
+    expect(session.get().panes.inspector.view).toBeNull();
+    expect(session.get().coreSelected).toBe(true);
+  });
   test("lists every family and every problem code", async () => {
     await renderWithStudio(<DocView view={{ kind: "doc" }} />);
     await expect.element(page.getByRole("heading", { name: "Problem docs" })).toBeVisible();
@@ -37,7 +46,7 @@ describe("HelpIndex (help.open with no code)", () => {
     }
     await expect.element(page.getByText("SEL-01")).toBeVisible();
     await expect.element(page.getByText("NET-08")).toBeVisible();
-    expect(page.getByRole("button").elements().length).toBe(PROBLEM_DOC_ENTRIES.length);
+    expect(page.getByRole("button").elements().filter((button) => /^[A-Z]+-\d{2}/.test(button.textContent ?? "")).length).toBe(PROBLEM_DOC_ENTRIES.length);
   });
 
   test("clicking a code in the index opens its page and moves focus to it", async () => {

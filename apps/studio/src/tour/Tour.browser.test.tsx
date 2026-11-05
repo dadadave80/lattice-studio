@@ -22,31 +22,39 @@ const back = () => page.getByRole("button", { name: "Back" });
 const endBtn = () => page.getByRole("button", { name: "End tour" });
 
 describe("Tour (spec L400, IR L188)", () => {
+  test("reviewing setup has its own tour step after placing a facet", async () => {
+    await renderWithStudio(<Tour />);
+    startTour();
+    await next().click();
+    await next().click();
+    expect(page.getByRole("heading", { name: "Configure the recipe", exact: true }).elements()).toHaveLength(1);
+    await expect.element(page.getByText("Open Edit setup to review names, addresses and other deployment inputs. Valid example values still need your review.", { exact: true })).toBeVisible();
+  });
   test("renders nothing when the tour isn't running", async () => {
     await renderWithStudio(<Tour />);
     await expect.element(card()).not.toBeInTheDocument();
   });
 
-  test("starting the tour shows step 1 of 5 with the first step's title and text", async () => {
+  test("starting the tour shows the first step with the first step's title and text", async () => {
     await renderWithStudio(<Tour />);
     startTour();
     await expect.element(card(TOUR_STEPS[0]!.title)).toBeVisible();
-    await expect.element(page.getByText("Step 1 of 5")).toBeVisible();
+    await expect.element(page.getByText(`Step 1 of ${TOUR_STEPS.length}`)).toBeVisible();
     await expect.element(page.getByText(TOUR_STEPS[0]!.text)).toBeVisible();
     expect(bufferedServices().announce.at(-1)?.[0]).toBe(`${TOUR_STEPS[0]!.title}. ${TOUR_STEPS[0]!.text}`);
   });
 
-  test("Next advances through all five steps, and the last one reads Done", async () => {
+  test("Next advances through all steps, and the last one reads Done", async () => {
     await renderWithStudio(<Tour />);
     startTour();
     for (let i = 0; i < TOUR_STEPS.length - 1; i++) {
-      await expect.element(page.getByText(`Step ${i + 1} of 5`)).toBeVisible();
+      await expect.element(page.getByText(`Step ${i + 1} of ${TOUR_STEPS.length}`)).toBeVisible();
       await expect.element(card(TOUR_STEPS[i]!.title)).toBeVisible();
       await next().click();
       const nextStep = TOUR_STEPS[i + 1]!;
       expect(bufferedServices().announce.at(-1)?.[0]).toBe(`${nextStep.title}. ${nextStep.text}`);
     }
-    await expect.element(page.getByText(`Step ${TOUR_STEPS.length} of 5`)).toBeVisible();
+    await expect.element(page.getByText(`Step ${TOUR_STEPS.length} of ${TOUR_STEPS.length}`)).toBeVisible();
     await expect.element(card(TOUR_STEPS.at(-1)!.title)).toBeVisible();
     await expect.element(done()).toBeVisible();
     await expect.element(next()).not.toBeInTheDocument();
@@ -57,9 +65,9 @@ describe("Tour (spec L400, IR L188)", () => {
     startTour();
     await expect.element(back()).not.toBeInTheDocument();
     await next().click();
-    await expect.element(page.getByText("Step 2 of 5")).toBeVisible();
+    await expect.element(page.getByText(`Step 2 of ${TOUR_STEPS.length}`)).toBeVisible();
     await back().click();
-    await expect.element(page.getByText("Step 1 of 5")).toBeVisible();
+    await expect.element(page.getByText(`Step 1 of ${TOUR_STEPS.length}`)).toBeVisible();
     await expect.element(back()).not.toBeInTheDocument();
   });
 

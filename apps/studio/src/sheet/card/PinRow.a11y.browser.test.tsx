@@ -54,10 +54,10 @@ describe("pin row words", () => {
       expect(name.toLowerCase()).toContain(drawn(el).toLowerCase());
     }
     await expect
-      .element(page.getByRole("button", { name: "transfer Seam: stays on GovernedVault, transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault" }).first())
+      .element(page.getByRole("button", { name: "Inspect transfer Seam: stays on GovernedVault, transfer(address,uint256) 0xa9059cbb, seam: stays on GovernedVault" }).first())
       .toBeInTheDocument();
     await expect
-      .element(page.getByRole("button", { name: "name → GovernedVault, name() 0x06fdde03, served by GovernedVault" }))
+      .element(page.getByRole("button", { name: "Inspect name → GovernedVault, name() 0x06fdde03, served by GovernedVault" }))
       .toBeInTheDocument();
   });
 
@@ -66,7 +66,9 @@ describe("pin row words", () => {
     expect(row("AxelarGatewayAdapter", SEND_MESSAGE).dataset.state).toBe("contested");
     expect(row("ERC20", TRANSFER).dataset.state).toBe("seam");
     expect(row("ERC20", "0x06fdde03").dataset.state).toBe("elsewhere");
-    const violations = await axeViolations(document.body, { rules: { "label-content-name-mismatch": { enabled: true } } });
+    const violations = await axeViolations(document.body, {
+      rules: { "label-content-name-mismatch": { enabled: true }, "target-size": { enabled: true } },
+    });
     expect(violations.filter((v) => v.startsWith("label-content-name-mismatch"))).toEqual([]);
   });
 });

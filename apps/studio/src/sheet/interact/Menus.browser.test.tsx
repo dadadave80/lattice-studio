@@ -121,7 +121,7 @@ describe("the pin menu", () => {
     await renderInteractSheet({ project: { ...cardProject(fixtureCatalog(), ["ERC20", "GovernedVault", "ERC20Pausable"]), id: ID }, ...VIEW });
     const seam = document.querySelector<HTMLElement>('[data-card-row][data-state="seam"]');
     if (!seam) throw new Error("No seam pin on the sheet.");
-    // A seam row is disabled for clicks (it offers no route), so its menu comes from the contextmenu itself.
+    // Inspection remains available on a seam, along with its selector context menu.
     const menuOn = (el: HTMLElement) => {
       const r = el.getBoundingClientRect();
       el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 2, clientX: r.left + 10, clientY: r.top + 5 }));
@@ -134,6 +134,20 @@ describe("the pin menu", () => {
     if (!elsewhere) throw new Error("No pin served by another facet on the sheet.");
     menuOn(elsewhere);
     expect(await items()).toEqual(["Route here", "Copy selector", "Copy signature", "Show owner"]);
+  });
+
+  test.each(["Inspect ", "Leave out of the diamond:"])("%s action restores invoking-button focus after its selector menu", async (prefix) => {
+    const [a] = await sheet();
+    const action = cardNode(a).querySelector<HTMLElement>(`button[aria-label^="${prefix}"]`);
+    if (!action) throw new Error("No selector action.");
+    action.focus();
+    press("F10", { shiftKey: true });
+    expect(await items()).toContain("Copy selector");
+    expect(menu()?.getAttribute("aria-label")).toContain(action.dataset.selector);
+    await expect.poll(() => document.activeElement?.getAttribute("role")).toBe("menuitem");
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(() => menu()).toBeNull();
+    await expect.poll(() => document.activeElement).toBe(action);
   });
 
   test("Copy selector copies the hex and says so", async () => {

@@ -6,7 +6,7 @@
 
 **The design environment for EIP-2535 diamonds.**
 
-Compose a contract system from facets, catch every mistake on the edit that makes it,<br />
+Compose a contract system from facets, check its structure on every edit,<br />
 and ship it as a Foundry script, a Safe batch or one verified transaction.
 
 [**Open the app**](https://lattice-studio-topaz.vercel.app) · [Watch the demo](https://youtu.be/Twkk9R-VbK0) · [Architecture](docs/architecture.md) · [Security model](SECURITY.md) · [CLI](packages/cli/README.md)
@@ -26,6 +26,8 @@ and ship it as a Foundry script, a Safe batch or one verified transaction.
 Lattice Studio is a static, local-first web app for building modular smart contracts. You place facets from the [Lattice](https://github.com/dadadave80/lattice) library on a sheet, and Studio re-checks the whole diamond on every edit: which facet answers each selector, whether storage namespaces overlap, whether the inits run in a valid order, and who ends up holding the authority to upgrade. When the recipe is clean it ships as a Foundry script, an agent brief, a `recipe.json` or a Safe Transaction Builder batch, or deploys in one transaction to an address Studio predicted first.
 
 Everything shown, checked or exported is a pure function of the recipe plus a catalog generated from a pinned Lattice release. No backend, no accounts, no analytics.
+
+The ERC20 starter is a composition foundation. It initializes the token's name and symbol with zero supply and exposes no minting or upgrade selectors. Creating a token with a positive initial supply requires a supported initializer that this starter does not provide.
 
 ## Proof on Monad testnet
 

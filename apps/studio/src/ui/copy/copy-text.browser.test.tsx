@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { bufferedServices, onCleanup, renderWithStudio } from "../../../test/harness";
 import { Button } from "../buttons/Button";
 import { Dialog } from "../overlays/Dialog";
+import { ContextMenu } from "../overlays/ContextMenu";
+import { Menu } from "../overlays/Menu";
+import { MenuItem } from "../overlays/MenuItem";
+import { Submenu } from "../overlays/Submenu";
 import { overridePlatform } from "../shared/platform";
 import { copyText, dismissCopyFallback } from "./copy-text";
 
@@ -17,7 +22,141 @@ function fakeClipboard(fails = false) {
   return { writeText };
 }
 
+function CopyMenu({ clipboard, nested }: { clipboard: Pick<Clipboard, "writeText">; nested: boolean }) {
+  const [open, setOpen] = useState(false);
+  const item = <MenuItem label="Share" keepOpen onSelect={() => {
+    void copyText("https://studio.lattice.dev/#s=1.link", { clipboard }).then(() => setOpen(false));
+  }} />;
+  return (
+    <Menu label="More" trigger={<Button>More</Button>} open={open} onOpenChange={setOpen}>
+      {nested ? <Submenu label="Copy">{item}</Submenu> : item}
+    </Menu>
+  );
+}
+
+function CopyFromPoint({ clipboard }: { clipboard: Pick<Clipboard, "writeText"> }) {
+  const [open, setOpen] = useState(false);
+  const [invoker, setInvoker] = useState<HTMLButtonElement | null>(null);
+  return <>
+    <Button ref={setInvoker} onClick={() => setOpen(true)}>Pin</Button>
+    <ContextMenu label="Pin actions" open={open} onOpenChange={setOpen} invoker={invoker} items={
+      <MenuItem label="Copy selector" keepOpen onSelect={() => {
+        void copyText("0xa9059cbb", { clipboard }).then(() => setOpen(false));
+      }} />
+    }><span data-menu-point="" /></ContextMenu>
+  </>;
+}
+
+function ClosingCopyDialog({ clipboard }: { clipboard: Pick<Clipboard, "writeText"> }) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button onClick={() => setOpen(true)}>Share</Button>
+    <Dialog open={open} onOpenChange={setOpen} title="Share" lossless>
+      <Button onClick={() => void copyText("link", { clipboard })}>Copy link</Button>
+      <Button onClick={() => setOpen(false)}>Cancel</Button>
+    </Dialog>
+  </>;
+}
+
+function HiddenCopyPane({ clipboard }: { clipboard: Pick<Clipboard, "writeText"> }) {
+  const [hidden, setHidden] = useState(false);
+  return <>
+    <Button onClick={() => setHidden(true)}>Sheet</Button>
+    <div hidden={hidden}>
+      <Button onClick={() => void copyText("plan", { clipboard })}>Copy plan as JSON</Button>
+    </div>
+  </>;
+}
+
 describe("copyText", () => {
+  for (const nested of [false, true]) test(`Escape restores the ${nested ? "nested " : ""}menu opener after clipboard rejection and menu detach`, async () => {
+    onCleanup(dismissCopyFallback);
+    let rejectClipboard: ((reason: Error) => void) | undefined;
+    const clipboard = { writeText: vi.fn(() => new Promise<void>((_resolve, reject) => { rejectClipboard = reject; })) };
+    await renderWithStudio(<CopyMenu clipboard={clipboard} nested={nested} />);
+    const opener = page.getByRole("button", { name: "More", exact: true });
+    (opener.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
+    if (nested) {
+      await expect.element(page.getByRole("menuitem", { name: "Copy", exact: true })).toHaveFocus();
+      await userEvent.keyboard("{ArrowRight}");
+    }
+    await expect.element(page.getByRole("menuitem", { name: "Share" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(clipboard.writeText).toHaveBeenCalledOnce();
+    rejectClipboard?.(new Error("Clipboard blocked"));
+    await expect.element(page.getByRole("textbox", { name: /to copy/ })).toHaveFocus();
+    await expect.poll(() => document.querySelector('[role="menu"]')).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(opener).toHaveFocus();
+  });
+
+  test("a positioned context menu restores its persistent invoker after clipboard rejection", async () => {
+    onCleanup(dismissCopyFallback);
+    let rejectClipboard: ((reason: Error) => void) | undefined;
+    const clipboard = { writeText: vi.fn(() => new Promise<void>((_resolve, reject) => { rejectClipboard = reject; })) };
+    await renderWithStudio(<CopyFromPoint clipboard={clipboard} />);
+    const opener = page.getByRole("button", { name: "Pin", exact: true });
+    await opener.click();
+    await expect.element(page.getByRole("menuitem", { name: "Copy selector" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(clipboard.writeText).toHaveBeenCalledOnce();
+    rejectClipboard?.(new Error("Clipboard blocked"));
+    await expect.element(page.getByRole("textbox", { name: /to copy/ })).toHaveFocus();
+    await expect.poll(() => document.querySelector('[role="menu"]')).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(opener).toHaveFocus();
+  });
+
+  test("a clipboard rejection after its dialog closes uses the current live origin", async () => {
+    onCleanup(dismissCopyFallback);
+    let rejectClipboard: ((reason: Error) => void) | undefined;
+    const clipboard = { writeText: vi.fn(() => new Promise<void>((_resolve, reject) => { rejectClipboard = reject; })) };
+    await renderWithStudio(<ClosingCopyDialog clipboard={clipboard} />);
+    const opener = page.getByRole("button", { name: "Share", exact: true });
+    await opener.click();
+    await page.getByRole("button", { name: "Copy link" }).click();
+    expect(clipboard.writeText).toHaveBeenCalledOnce();
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect.element(page.getByRole("dialog", { name: "Share" })).not.toBeInTheDocument();
+    await expect.element(opener).toHaveFocus();
+    rejectClipboard?.(new Error("Clipboard blocked"));
+    await expect.element(page.getByRole("textbox", { name: /to copy/ })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(opener).toHaveFocus();
+  });
+
+  test("a copy started in the body focus gap restores the later live origin", async () => {
+    onCleanup(dismissCopyFallback);
+    let rejectClipboard: ((reason: Error) => void) | undefined;
+    const clipboard = { writeText: vi.fn(() => new Promise<void>((_resolve, reject) => { rejectClipboard = reject; })) };
+    await renderWithStudio(<Button>Return target</Button>);
+    expect(document.activeElement).toBe(document.body);
+    const pending = copyText("link", { clipboard });
+    const opener = page.getByRole("button", { name: "Return target" });
+    await opener.click();
+    rejectClipboard?.(new Error("Clipboard blocked"));
+    await pending;
+    await expect.element(page.getByRole("textbox", { name: /to copy/ })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(opener).toHaveFocus();
+  });
+
+  test("a clipboard rejection after its pane hides restores the live tab", async () => {
+    onCleanup(dismissCopyFallback);
+    let rejectClipboard: ((reason: Error) => void) | undefined;
+    const clipboard = { writeText: vi.fn(() => new Promise<void>((_resolve, reject) => { rejectClipboard = reject; })) };
+    await renderWithStudio(<HiddenCopyPane clipboard={clipboard} />);
+    await page.getByRole("button", { name: "Copy plan as JSON" }).click();
+    expect(clipboard.writeText).toHaveBeenCalledOnce();
+    const tab = page.getByRole("button", { name: "Sheet", exact: true });
+    await tab.click();
+    rejectClipboard?.(new Error("Clipboard blocked"));
+    await expect.element(page.getByRole("textbox", { name: /to copy/ })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(tab).toHaveFocus();
+  });
+
   test("puts an address on the clipboard checksummed and echoes it in the toast", async () => {
     const clipboard = fakeClipboard();
     const result = await copyText(LOWER, { clipboard });
