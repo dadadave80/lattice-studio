@@ -11,6 +11,7 @@ import { keyContextOf } from "@/commands/keys/key-context";
 import { currentRegion } from "@/a11y/regions";
 import { SkipLink } from "@/a11y/SkipLink";
 import { axeViolations } from "@/ui/testing/axe";
+import { settled } from "@/sheet/canvas/testing/sheet-harness";
 import { problemCursor, resetProblemCursor, setProblemCursor } from "@/sheet/overlays/navigate";
 import { stepProblem } from "@/sheet/overlays/problem-order";
 import { fixtureCatalog, onCleanup, renderWithStudio, seedDeployState } from "../../test/harness";
@@ -106,7 +107,7 @@ describe("regions at each width", () => {
     test(`phone resolution navigation retains ${scenario.id} and returns to composition`, async () => {
       const recipe = makeRecipe({ facets: [...CORE_FACETS, ...scenario.facets] }, fixtureCatalog());
       await renderAt(375, { project: makeProject({ recipe }) });
-      await expect.poll(() => pane("sheet").querySelector(".react-flow")).not.toBeNull();
+      await settled();
       const sheet = canvas();
       expect(getAnalysis().problems.some((problem) => problem.id === scenario.id)).toBe(true);
       session.set((s) => ({
@@ -157,7 +158,7 @@ describe("regions at each width", () => {
 
   test("one native main and banner survive every pane, maximize and reflow without remounting the canvas", async () => {
     await renderAt(1440);
-    await expect.poll(() => pane("sheet").querySelector(".react-flow")).not.toBeNull();
+    await settled();
     const sheet = canvas();
     const main = page.getByRole("main").element();
     expect(main.tagName).toBe("MAIN");
@@ -190,7 +191,7 @@ describe("regions at each width", () => {
 
   test("phone Console collapse returns to Sheet and selecting it restores the same body", async () => {
     await renderAt(375);
-    await expect.poll(() => pane("sheet").querySelector(".react-flow")).not.toBeNull();
+    await settled();
     const sheet = canvas();
     const viewport = session.get().viewports;
     for (const menu of [false, true]) {
