@@ -429,8 +429,9 @@ export type FacetStorage = { storage?: { id: string; slot: Hex }; touches: strin
  * Every facet's storage and touches in one pass (contracts §4, spec L160-L161), plus the cross-facet check
  * contracts §4 requires: no two share a `storage.id`.
  *
- * A facet's own namespace is the struct its own library (`<Name>Lib.sol`, found by import) annotates; touches are
- * the namespaces that library calls into directly — one hop, not the full call graph, so a facet never inherits
+ * A facet's primary namespace is its own library's annotation matching the facet name, or the first annotation
+ * when none matches. Additional namespaces in that library appear in touches, along with namespaces it calls
+ * into directly — one hop, not the full call graph, so a facet never inherits
  * what a peer library it calls goes on to call itself. A facet with no library of its own (it delegates straight
  * into another facet's library, e.g. `ERC6900AccountView` into `ERC6900ModuleManagerLib`) instead touches that
  * library's namespace *and* everything that owning facet itself touches, since it's reading that facet's state
@@ -445,8 +446,8 @@ export async function allFacetStorage(
 ): Promise<Result<{ facets: Map<string, FacetStorage>; duplicateOwners: string[] }, string>> {
   const cache = new Map<string, string>();
   const strippedCache = new Map<string, string>();
-  const fileToId = new Map<string, string>();
-  for (const [id, info] of registry) fileToId.set(info.file, id);
+  const fileToIds = new Map<string, string[]>();
+  for (const [id, info] of registry) fileToIds.set(info.file, [...(fileToIds.get(info.file) ?? []), id]);
 
   type Direct = { ownId?: string; ids: string[] }; // branch 1's own-library one-hop result
   type Pending = { name: string; contractRefs: LibRef[] };
@@ -470,12 +471,14 @@ export async function allFacetStorage(
       pending.push({ name: facet.name, contractRefs });
       continue;
     }
-    const ownId = fileToId.get(own.file);
+    const ownIds = fileToIds.get(own.file) ?? [];
+    const ownId = ownIds.find((id) => id.endsWith(`.${facet.name}`)) ?? ownIds[0];
     const hopRefs = await calledLibRefs(latticeDir, own.file, cache, strippedCache);
-    const ids = new Set<string>();
+    const ids = new Set(ownIds.filter((id) => id !== ownId && !UNIVERSAL_IDS.has(id)));
     for (const ref of hopRefs) {
-      const id = fileToId.get(ref.file);
-      if (id !== undefined && id !== ownId && !UNIVERSAL_IDS.has(id)) ids.add(id);
+      for (const id of fileToIds.get(ref.file) ?? []) {
+        if (id !== ownId && !UNIVERSAL_IDS.has(id)) ids.add(id);
+      }
     }
     direct.set(facet.name, { ...(ownId !== undefined ? { ownId } : {}), ids: [...ids] });
     ownFileToFacet.set(own.file, facet.name);
@@ -484,8 +487,7 @@ export async function allFacetStorage(
   for (const { name, contractRefs } of pending) {
     const ids = new Set<string>();
     for (const ref of contractRefs) {
-      const id = fileToId.get(ref.file);
-      if (id !== undefined && !UNIVERSAL_IDS.has(id)) ids.add(id);
+      for (const id of fileToIds.get(ref.file) ?? []) if (!UNIVERSAL_IDS.has(id)) ids.add(id);
       const owner = ownFileToFacet.get(ref.file);
       if (owner !== undefined) for (const inherited of direct.get(owner)?.ids ?? []) ids.add(inherited);
     }

@@ -234,8 +234,22 @@ function init04(input: CheckInput, steps: readonly PlannedStep[]): Problem[] {
   const out: Problem[] = [];
   const placed = new Set(recipe.facets);
   for (const facet of catalog.facets) {
-    if (!placed.has(facet.name) || facet.init === undefined) continue;
-    const spec = findSpec(catalog, facet.init);
+    if (!placed.has(facet.name)) continue;
+    // The pin has no diamond initializer for VestingWallet; its zero schedule and owner can release funds to zero.
+    const vestingModule = facet.name === "VestingWallet"
+      ? ["VestingWallet", "Ownable"].find((module) => !initialized.has(module)) : undefined;
+    if (vestingModule !== undefined) {
+      if (reported.has(vestingModule)) continue;
+      reported.add(vestingModule);
+      const add = recipe.init.kind === "bundle" ? undefined : specFor(vestingModule, catalog);
+      out.push(problem("INIT-04", [{ kind: "facet", facet: facet.name }], {
+        module: vestingModule, spec: add?.name ?? "", facet: facet.name,
+        consequence: vestingModule === "VestingWallet"
+          ? "funds would be released without a vesting schedule" : "released funds would go to the zero address",
+      }, add ? [{ id: "init.addStep", args: { spec: add.name } }] : [], { id: problemId("INIT-04", vestingModule) }));
+      continue;
+    }
+    const spec = findSpec(catalog, facet.init ?? `${facet.name}Init`);
     if (!spec || planned.has(spec.name)) continue;
     // The facet's own module, not the init's last one: ERC20VotesInit ended with AccessControl even though
     // ERC20Votes was its own module, until Lattice 0.5.0 (FX23).

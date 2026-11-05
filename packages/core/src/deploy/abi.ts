@@ -1,4 +1,6 @@
 import type { Address, Hex } from "../model/hex";
+import type { Catalog } from "../model/catalog";
+import { parseAbi } from "viem";
 
 /**
  * Multicall3, the same address on every chain where its keyless deploy landed. Its deployer key is compromised
@@ -74,6 +76,17 @@ export const LATTICE_FACTORY_ABI = [
     ],
   },
 ] as const;
+
+/** Before Lattice 0.5.0, RecipeEntry had no selector exclusions. */
+export const LEGACY_FACTORY_DEPLOY_ABI = parseAbi([
+  "function deploy((bytes32 nameHash,uint64 version)[] entries,(address facetAddress,uint8 action,bytes4[] functionSelectors)[] customCuts,address init,bytes initCalldata,bytes32 salt) returns (address diamond)",
+]);
+
+/** Catalog tags can be fixture/dev tags; the factory's release version determines its entry shape. */
+export function factorySupportsExclusions(catalog: Pick<Catalog, "factory">): boolean {
+  const [major = 0, minor = 0] = catalog.factory.version.split(".").map(Number);
+  return major > 0 || minor >= 5;
+}
 
 /** `Lattice.initialize(FacetCut[], address, bytes)` (lattice/src/Lattice.sol): first-caller-wins (R6). */
 export const LATTICE_INITIALIZE_ABI = [

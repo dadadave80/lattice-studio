@@ -10,9 +10,9 @@ import type { ChainState, DiamondDeployArgs } from "../model/chain";
 import type { Address, Hex } from "../model/hex";
 import type { Recipe } from "../model/recipe";
 import { buildPlan, loadTemplate } from "../plan";
-import { addr, loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe } from "../testing";
+import { addr, loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe, makeShared } from "../testing";
 import {
-  CREATEX_ABI, CREATEX_DEPLOY_SELECTOR, FACTORY_DEPLOY_SELECTOR, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI,
+  CREATEX_ABI, CREATEX_DEPLOY_SELECTOR, FACTORY_DEPLOY_SELECTOR, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI, LEGACY_FACTORY_DEPLOY_ABI,
 } from "./abi";
 import { buildDiamondDeploy, packVersion, registryNameHash } from "./diamond";
 
@@ -29,6 +29,7 @@ const loupe = makeFacet({
 const erc20 = makeFacet({ name: "ERC20", selectors: ["transfer(address,uint256)", "approve(address,uint256)", "totalSupply()"] });
 const catalog: Catalog = makeCatalog({
   facets: [loupe, erc20],
+  factory: makeShared("LatticeFactory", "0.5.0"),
   proxy: {
     creationCode: { path: "code/Lattice.creation.hex", bytes: 16, hash: keccak256(PROXY_CODE) },
     initCodeHash: keccak256(PROXY_CODE),
@@ -66,11 +67,11 @@ function build(over: Partial<DiamondDeployArgs> = {}) {
   return result.value;
 }
 
-function decodeFactory(data: Hex) {
-  const decoded = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data });
+function decodeFactory(data: Hex, legacy = false) {
+  const decoded = decodeFunctionData({ abi: legacy ? LEGACY_FACTORY_DEPLOY_ABI : LATTICE_FACTORY_ABI, data });
   expect(decoded.functionName).toBe("deploy");
   const [entries, cuts, init, initCalldata, salt] = decoded.args as readonly [
-    readonly { nameHash: Hex; version: bigint; exclude: readonly Hex[] }[], readonly { facetAddress: Address; action: number; functionSelectors: readonly Hex[] }[],
+    readonly { nameHash: Hex; version: bigint; exclude?: readonly Hex[] }[], readonly { facetAddress: Address; action: number; functionSelectors: readonly Hex[] }[],
     Address, Hex, Hex,
   ];
   return { entries, cuts, init, initCalldata, salt };
@@ -313,7 +314,7 @@ describe("with the fixture catalog", () => {
     const result = buildDiamondDeploy({ recipe: recipe.value, catalog: cat, plan, init: init.value, path: "factory", from: ALICE, salt, chainId: 31337, chain: chain(records) });
     if (!result.ok) throw new Error(result.error);
     expect(result.value.address).toBe(refs.self);
-    const decoded = decodeFactory(result.value.tx.data);
+    const decoded = decodeFactory(result.value.tx.data, true);
     expect(decoded.init).toBe(init.value.target);
     expect(decoded.initCalldata).toBe(init.value.data);
     const whole = plan.filter((e) => e.selectors.length === cat.facets.find((f) => f.name === e.facet)?.selectors.length);

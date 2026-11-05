@@ -6,7 +6,7 @@ import type { Catalog } from "../model/catalog";
 import type { ChainState, DiamondDeployArgs } from "../model/chain";
 import { isAddress, isHexAnyCase, sameAddress, toChecksum, type Address, type Hex, type Hex4 } from "../model/hex";
 import { err, ok, type Result } from "../model/result";
-import { CREATEX_ABI, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI } from "./abi";
+import { CREATEX_ABI, factorySupportsExclusions, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI, LEGACY_FACTORY_DEPLOY_ABI } from "./abi";
 
 /** ERC-8153 `exportSelectors()`: LatticeFactory reverts `ExportSelectorForbidden` for it in a custom cut. */
 const EXPORT_SELECTOR: Hex4 = "0x0ef22643";
@@ -99,11 +99,12 @@ function checkInit(init: DiamondDeployArgs["init"]): Result<null, string> {
 /**
  * The one transaction that creates and initializes the diamond (spec decision 6, R6, Flow 12 step 5).
  *
- * **Factory path** (default): `LatticeFactory.deploy(entries, customCuts, init, initCalldata, salt)` (0xc381576d)
+ * **Factory path** (default): `LatticeFactory.deploy(entries, customCuts, init, initCalldata, salt)`
+ * (0xc381576d since 0.5.0, 0x533677de before it)
  * to the chain's own factory when `catalog.chains` lists one, else the release factory. Whole facets that the
  * chain's LatticeRegistry lists at the pinned version with the catalog's address and codehash go as `RecipeEntry`
- * `{ keccak256("lattice.<Name>"), major<<48 | minor<<24 | patch, [] }`, never version 0 and never with an
- * `exclude`; everything else goes as an `Add` custom cut. The factory applies registry cuts first, then custom
+ * `{ keccak256("lattice.<Name>"), major<<48 | minor<<24 | patch, [] }` (without the final field before 0.5.0),
+ * never version 0 and never excluding selectors; everything else goes as an `Add` custom cut. The factory applies registry cuts first, then custom
  * cuts, so `facets()` order differs from the plan's (C5a `comparePlan` compares per facet). The salt is the raw `from ‖ flag ‖ entropy`; the factory folds
  * `msg.sender` in, and the address comes from C5b `factoryPredict`.
  *
@@ -180,6 +181,8 @@ export const buildDiamondDeploy: BuildDiamondDeployFn = (args) => {
       registryEntries.push(entry.facet);
     }
   }
-  const data = encodeFunctionData({ abi: LATTICE_FACTORY_ABI, functionName: "deploy", args: [entries, cuts, initTarget, initData, raw] });
+  const data = factorySupportsExclusions(catalog)
+    ? encodeFunctionData({ abi: LATTICE_FACTORY_ABI, functionName: "deploy", args: [entries, cuts, initTarget, initData, raw] })
+    : encodeFunctionData({ abi: LEGACY_FACTORY_DEPLOY_ABI, functionName: "deploy", args: [entries, cuts, initTarget, initData, raw] });
   return ok({ tx: { to: factory, data, value: 0n }, address, registryEntries, customCuts });
 };

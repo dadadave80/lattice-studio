@@ -495,6 +495,44 @@ const built = loadBuiltCatalog();
 describe.skipIf(!built.ok)("INIT-04 against the built catalog (K3's real ERC20VotesInit and GovernedVaultInit)", () => {
   const realCatalog = built.ok ? built.value : catalog;
 
+  test("a facet's matching initializer is required even when the catalog omitted its init association", () => {
+    const facets = realCatalog.facets.filter((facet) => facet.init === undefined
+      && realCatalog.inits.some((spec) => spec.name === `${facet.name}Init`));
+    expect(facets.map((facet) => facet.name)).toContain("ERC721Votes");
+    for (const facet of facets) {
+      const recipe = makeRecipe({ facets: [facet.name] }, realCatalog);
+      const problems = only(run(recipe, realCatalog), "INIT-04");
+      expect([facet.name, problems.length]).toEqual([facet.name, 1]);
+      expect(problems[0]?.fixes).toEqual([{ id: "init.addStep", args: { spec: `${facet.name}Init` } }]);
+      const added = addInitStep(makeProject({ recipe }), realCatalog, `${facet.name}Init`);
+      expect(added.changed).toBe(true);
+      expect(only(run(added.project.recipe, realCatalog), "INIT-04")).toEqual([]);
+    }
+  });
+
+  test("VestingWallet is blocked when the catalog has no way to initialize its schedule", () => {
+    const recipe = makeRecipe({ facets: ["VestingWallet"] }, realCatalog);
+    const problems = only(run(recipe, realCatalog), "INIT-04");
+    expect(problems).toMatchObject([{
+      id: "INIT-04:VestingWallet", severity: "blocker",
+      params: { facet: "VestingWallet", module: "VestingWallet", spec: "" },
+      fixes: [],
+    }]);
+    expect(problems[0]?.message).toContain("without a vesting schedule");
+  });
+
+  test("VestingWallet also requires a beneficiary, and accepts a bundle that initializes both", () => {
+    for (const modules of [["VestingWallet"], ["VestingWallet", "Ownable"]]) {
+      const synthetic = makeCatalog({
+        facets: [makeFacet({ name: "VestingWallet" })],
+        inits: [makeInit({ name: "VestingBundle", kind: "bundle", initializes: modules.map((module) => ({ module })) })],
+      });
+      const recipe = makeRecipe({ facets: ["VestingWallet"], init: { kind: "bundle", spec: "VestingBundle", args: {} } }, synthetic);
+      const problems = only(run(recipe, synthetic), "INIT-04");
+      expect(problems.map((problem) => problem.id)).toEqual(modules.includes("Ownable") ? [] : ["INIT-04:Ownable"]);
+    }
+  });
+
   test("Blank diamond + ERC20Votes raises INIT-04 for EIP712, the first module ERC20VotesInit runs that the Blank diamond's AccessControlInit doesn't (Lattice 0.5.0 has no ERC20Votes module)", () => {
     const recipe = makeRecipe(
       { facets: [...BLANK_FACETS, "ERC20Votes"], init: { kind: "steps", steps: [{ spec: "AccessControlInit", args: { admin: DEPLOYER } }] } },

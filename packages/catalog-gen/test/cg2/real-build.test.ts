@@ -99,9 +99,8 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     return e;
   };
 
-  test("version 0.2.0 from LatticeVersion.sol; every facet, the registry, the factory and the stateless inits", () => {
-    expect(first?.version).toBe("0.2.0");
-    // Lattice pins no evm_version, so this is Foundry's default for solc 0.8.36: a change moves every address.
+  test("version 0.5.0 from LatticeVersion.sol; every facet, the registry, the factory and the stateless inits", () => {
+    expect(first?.version).toBe("0.5.0");
     expect(first?.compiler.evmVersion).toBe("osaka");
     expect(first?.compiler.version).toStartWith("0.8.36+commit.");
     expect(proxy?.compiler).toEqual(first?.compiler as ReleaseData["compiler"]);
@@ -145,8 +144,9 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
   test("PoseidonT3 is released first; only Semaphore and ShieldedPool link it, and they're flagged provisional", () => {
     const lib = entry("PoseidonT3");
     expect(first?.libraries.map((l) => l.name)).toEqual(["PoseidonT3"]);
-    expect(lib.salt).toBe(keccak256(stringToHex("lattice.PoseidonT3.0.2.0")));
-    const linking = first?.contracts.filter((c) => c.dependsOn !== undefined).map((c) => c.name);
+    expect(lib.salt).toBe(keccak256(stringToHex("lattice.PoseidonT3.0.5.0")));
+    expect(entry("LatticeFactory").dependsOn).toEqual(["LatticeRegistry"]);
+    const linking = first?.contracts.filter((c) => c.links !== undefined).map((c) => c.name);
     expect(linking).toEqual(["Semaphore", "ShieldedPool"]);
     for (const name of ["Semaphore", "ShieldedPool"]) {
       const e = entry(name);
