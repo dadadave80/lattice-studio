@@ -270,7 +270,7 @@ test.describe("Agent brief (spec L514, L920-L923)", () => {
     const [download] = await Promise.all([page.waitForEvent("download"), runConsole(page, "export brief")]);
     const text = await downloadText(download);
     // Nothing placed, yet the core is cut: its two Adds lead the plan.
-    expect(text).toContain("- Facets: DiamondLoupeFacet 0.2.0, ERC165Facet 0.2.0");
+    expect(text).toContain("- Facets: DiamondLoupeFacet 0.5.0, ERC165Facet 0.5.0");
     const plan = text.slice(text.indexOf("## Cut plan"));
     expect(plan).toContain("DiamondLoupeFacet");
     expect(plan).toContain("ERC165Facet");

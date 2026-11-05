@@ -107,10 +107,10 @@ test.describe("Flow 12. Deploy", () => {
         // Spec L563's readiness line, for Anvil.
         await expect(review.section("Network")).toContainText("Anvil · LatticeFactory ✓ · 15 of 15 facets and init contracts ✓");
         // The core's two Adds are named, not counted (GovernedVault: the core and 12 facets).
-        await expect(review.section("What gets cut")).toContainText("The core and 12 facets · 120 selectors");
+        await expect(review.section("What gets cut")).toContainText("The core and 12 facets · 122 selectors");
         const address = shortAddress(predictedAddress(recipeProject("GovernedVault", { filled: true })));
         await expect(review.section("Simulation")).toContainText(
-          new RegExp(`Simulated at block [\\d,]+: diamond at ${address} with the core and 12 facets, 120 selectors, \\d+ events\\.`),
+          new RegExp(`Simulated at block [\\d,]+: diamond at ${address} with the core and 12 facets, 122 selectors, \\d+ events\\.`),
         );
         const log = new ConsoleLog(page);
         await expect(log.line("Deploy", "Review: Anvil · LatticeFactory · the core and 12 facets.")).toBeVisible();
@@ -206,7 +206,7 @@ test.describe("Flow 12. Deploy", () => {
         expect(address).toBeDefined();
         await expect(review.section("Address")).toContainText(`Free: no code at this address on Anvil.`);
         await expect(review.section("Simulation")).toContainText(
-          new RegExp(`Simulated at block [\\d,]+: diamond at ${shortAddress(address)} with the core and 12 facets, 120 selectors`),
+          new RegExp(`Simulated at block [\\d,]+: diamond at ${shortAddress(address)} with the core and 12 facets, 122 selectors`),
         );
         // Sign & deploy enables once every acknowledgement is ticked (spec L573).
         await expect(review.sign()).toHaveAttribute("aria-disabled", "true");

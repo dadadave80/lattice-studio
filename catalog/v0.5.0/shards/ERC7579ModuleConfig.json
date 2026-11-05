@@ -1,0 +1,311 @@
+{
+  "name": "ERC7579ModuleConfig",
+  "abi": [
+    {
+      "type": "function",
+      "name": "accountId",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "executeFromExecutor",
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "executionCalldata",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "returnData",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "installModule",
+      "inputs": [
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "initData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "isModuleInstalled",
+      "inputs": [
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "additionalContext",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "supportsModule",
+      "inputs": [
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "uninstallModule",
+      "inputs": [
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "deInitData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "ModuleInstalled",
+      "inputs": [
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ModuleUninstalled",
+      "inputs": [
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "FallbackShadowsFacet",
+      "inputs": [
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidModuleForType",
+      "inputs": [
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ModuleAlreadyInstalled",
+      "inputs": [
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ModuleNotInstalled",
+      "inputs": [
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "module",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NotInstalledExecutor",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnauthorizedModuleConfig",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedExecutionMode",
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedFallbackCallType",
+      "inputs": [
+        {
+          "name": "callType",
+          "type": "bytes1",
+          "internalType": "bytes1"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedModuleType",
+      "inputs": [
+        {
+          "name": "moduleTypeId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x9cfd7cff": {
+        "notice": "ERC-7579 account identifier, `\"vendorname.accountname.semver\"`."
+      },
+      "0xd691c964": {
+        "notice": "Runs a batch on behalf of an installed executor module (caller must be a type-2 module)."
+      },
+      "0xf2dc691d": {
+        "notice": "Whether `moduleTypeId` is supported (v1: EXECUTOR, type 2)."
+      }
+    },
+    "notice": "ERC-7579 module-management facet: registers/uninstalls modules and runs batches submitted by an installed executor module. v1 supports EXECUTOR modules (type 2). Together with the `ERC7821Executor` facet (`execute` / `supportsExecutionMode`) the Diamond presents the ERC-7579 account surface.",
+    "dev": "Stateless delegator — logic/storage live in {ERC7579ModuleConfigLib}. \"Modules-as-facets\": `diamondCut` remains the selector authority; this registry tracks installed executor modules and gates `executeFromExecutor`. Validator/hook/fallback consumption is a planned v2."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/erc7579/ERC7579ModuleConfig.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/accounts/erc7579/ERC7579ModuleConfig.sol"
+  }
+}

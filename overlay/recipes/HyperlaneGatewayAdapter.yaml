@@ -1,27 +1,25 @@
 name: HyperlaneGatewayAdapter
 script: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol
 buildCuts: buildCuts(address,address)
-source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L28-L43
+source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L27-L41
 proxy: Lattice
 phase: v1.1
 cuts:
   - add: ERC165Facet
-    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L33-L33
+    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L32-L32
   - add: AccessControl
-    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L34-L34
+    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L33-L33
   - add: HyperlaneGatewayAdapter
-    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L35-L35
+    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L34-L34
   - add: DiamondLoupeFacet
-    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L36-L36
+    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L35-L35
   - add: AccessControlDiamondCut
-    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L37-L37
-  - add: Receive
-    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L38-L38
+    source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L36-L36
 init:
   kind: steps
   steps:
     - spec: HyperlaneGatewayAdapterInit
       args: {}  # the script passes (admin, mailbox)
-  source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L39-L42
+  source: script/base/crosschain/DeployHyperlaneGatewayAdapter.s.sol#L37-L40
 gaps: >-
   No example arguments yet: the script takes every init argument as a parameter (admin, mailbox).

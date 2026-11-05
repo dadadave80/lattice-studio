@@ -1,6 +1,6 @@
 AccountInit:
   kind: step
-  source: src/accounts/erc7579/AccountInit.sol#L35-L37
+  source: src/accounts/erc7579/AccountInit.sol#L36-L38
   registersInterfaces: true
   params:
     owner:
@@ -12,7 +12,7 @@ AccountInit:
 
 AccountInit6900:
   kind: step
-  source: src/accounts/erc6900/AccountInit6900.sol#L37-L51
+  source: src/accounts/erc6900/AccountInit6900.sol#L37-L53
   registersInterfaces: true
   params:
     owner:
@@ -21,7 +21,7 @@ AccountInit6900:
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
-      source: src/accounts/erc6900/AccountInit6900.sol#L45-L45
+      source: src/accounts/erc6900/AccountInit6900.sol#L47-L47
 
 HASSignatureVerifierInit:
   kind: step

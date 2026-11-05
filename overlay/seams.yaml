@@ -17,33 +17,33 @@ seams:
     reason: updates vote checkpoints
     source: script/base/tokens/DeployERC20Votes.s.sol#L21-L22
 
-  # Votes' own delegate passes 0 voting units, so checkpoints stay at zero (VOT-08).
+  # Lattice's scripts exclude Votes' own delegate for ERC20Votes' balance-aware one.
   - selectors: ["delegate(address)", "delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)"]
     when: [ERC20Votes]
     anyOf: [ERC20Votes]
     reason: counts the delegator's balance as votes
-    source: src/governance/Votes.sol#L43-L44
+    source: script/base/defi/DeployGovernedVault.s.sol#L40-L40
 
   - selectors: ["deposit(uint256,address)", "mint(uint256,address)", "withdraw(uint256,address,address)", "redeem(uint256,address,address)"]
     when: [GovernedVault]
     anyOf: [GovernedVault]
     reason: updates vote checkpoints when shares are minted or burned
-    source: script/base/defi/DeployGovernedVault.s.sol#L31-L32
+    source: script/base/defi/DeployGovernedVault.s.sol#L38-L39
 
   - selectors: ["castVoteBySig(uint256,uint8,address,bytes)"]
     when: [GovernedVault]
     anyOf: [GovernedVault]
     reason: uses the vault's own ballot nonce
-    source: script/base/defi/DeployGovernedVault.s.sol#L35-L35
+    source: script/base/defi/DeployGovernedVault.s.sol#L42-L42
 
   - selectors: ["totalAssets()"]
     when: [GovernedVault]
     anyOf: [VaultCore]
     reason: counts the assets strategies hold
-    source: script/base/defi/DeployGovernedVault.s.sol#L30-L30
+    source: script/base/defi/DeployGovernedVault.s.sol#L36-L36
 
   - selectors: ["decimals()"]
     when: [GovernedVault]
     anyOf: [ERC4626]
     reason: applies the ERC-4626 decimals offset
-    source: script/base/defi/DeployGovernedVault.s.sol#L28-L28
+    source: script/base/defi/DeployGovernedVault.s.sol#L34-L34

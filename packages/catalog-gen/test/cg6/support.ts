@@ -1,7 +1,8 @@
 /**
- * What the CG6 tests check the real recipe overlay against: the fixture catalog's 105 facets (names, selectors,
+ * What the CG6 tests check the real recipe overlay against: a catalog's facets (names, selectors,
  * signatures and families, which K3 checks against Lattice's source), every init spec name the overlay knows
  * (CG5) with the fixture's params where it has them, and the golden routing GT1 recorded from the scripts.
+ * The default is the fixture catalog (Lattice 6c8db45); tests of the pinned overlay pass the built catalog.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";

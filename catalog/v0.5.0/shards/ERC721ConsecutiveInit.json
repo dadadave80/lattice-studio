@@ -1,0 +1,135 @@
+{
+  "name": "ERC721ConsecutiveInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "firstId",
+          "type": "uint96",
+          "internalType": "uint96"
+        },
+        {
+          "name": "receivers",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "amounts",
+          "type": "uint96[]",
+          "internalType": "uint96[]"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "ConsecutiveTransfer",
+      "inputs": [
+        {
+          "name": "fromTokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "toTokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "fromAddress",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "toAddress",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "CheckpointUnorderedInsertion",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ERC721ConsecutiveBatchLengthMismatch",
+      "inputs": [
+        {
+          "name": "receivers",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amounts",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC721EnumerableForbiddenBatchMint",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ERC721ExceededMaxBatchMint",
+      "inputs": [
+        {
+          "name": "batchSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxBatch",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC721ForbiddenBatchMint",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ERC721InvalidReceiver",
+      "inputs": [
+        {
+          "name": "receiver",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC721VotesForbiddenBatchMint",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidInitialization",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for ERC-2309 batch minting: enables the extension from `firstId`, then mints `amounts[i]` consecutive tokens to `receivers[i]` for each `i`, emitting one `ConsecutiveTransfer` per non-empty batch. Delegatecalled by {Lattice.initialize} (through {MultiInit}) inside the diamond's first initialization, after the base {ERC721Init}; it must NOT open its own pre/postInitializer. Never single-mint in that window: after this init the mint reverts `ERC721ForbiddenMint`, and before it a batch covering the id counts the token twice. Mint after `initialize` returns (see {ERC721ConsecutiveLib})."
+  },
+  "source": {
+    "path": "src/tokens/ERC721/ERC721ConsecutiveInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/tokens/ERC721/ERC721ConsecutiveInit.sol"
+  }
+}

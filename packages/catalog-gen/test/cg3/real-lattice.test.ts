@@ -8,7 +8,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { studioEnv } from "../../src/anvil";
 import { readInventory } from "../../src/inventory";
-import { allFacetStorage, scanLatticeStorage, WAIVED_SLOT } from "../../src/storage";
+import { allFacetStorage, scanLatticeStorage } from "../../src/storage";
 import { realBuildGate } from "../cg1/real-build-gate";
 
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..", "..");
@@ -27,15 +27,14 @@ async function resolveSourcePath(entry: { name: string; file: string; basename: 
 }
 
 /**
- * Facets whose `touches` genuinely can't be found by following library calls (contracts §4's storage/touches
- * pairing is source-derived; these four instead reflect a compositional relationship documented only in the
- * deploy scripts spec R19 cites, e.g. `DeployGovernedVault.s.sol`, never as a call in the library file itself).
- * Verified by reading every library each of these facets' own library imports: none of them calls, or is called
- * by, a library that reaches the missing namespace.
+ * Differences from K3's historical touches: compositional relationships in the deploy scripts (R19) that
+ * current library calls don't reach, and the reviewed namespace additions and removals in Lattice 0.5.0.
  */
 const EXPLAINED_TOUCHES_DIFFERENCES: Record<string, { missing: string[]; extra: string[] }> = {
   // ERC20CappedLib only ever receives a pre-computed `newSupply` parameter; it never calls ERC20Lib.
   ERC20Capped: { missing: ["lattice.storage.ERC20"], extra: [] },
+  // Since 0.5.0, ERC721Lib checks the consecutive-mint configuration before minting.
+  ERC721: { missing: [], extra: ["lattice.storage.ERC721Consecutive"] },
   // GovernedVaultLib.sol imports nothing but its own interface: its composition with VaultCore, ERC4626,
   // Governor, ERC20, EIP712, Nonces and Votes is a seam relationship (spec R19), not a library call.
   GovernedVault: {
@@ -53,30 +52,31 @@ const EXPLAINED_TOUCHES_DIFFERENCES: Record<string, { missing: string[]; extra: 
   },
   // VaultCoreLib calls ERC4626Lib directly (one hop, correctly touched); ERC4626Lib itself calls ERC20Lib
   // (a second hop CG3 doesn't follow, matching every other case where a peer library's own further calls
-  // aren't inherited, e.g. BridgeERC20 doesn't touch AccessControl through CrosschainLinkLib).
-  VaultCore: { missing: ["lattice.storage.ERC20"], extra: [] },
-  // VotesLib is token-agnostic (`_getVotingUnits` is overridden by ERC20VotesLib); it never calls ERC20Lib.
-  Votes: { missing: ["lattice.storage.ERC20"], extra: [] },
+  // aren't inherited). Since 0.5.0 VaultCore also owns a separate recovery namespace.
+  VaultCore: { missing: ["lattice.storage.ERC20"], extra: ["lattice.storage.VaultCoreRecovery"] },
+  // Since 0.5.0, TimelockControllerLib checks the governor's pending proposals before changing its governor.
+  TimelockController: { missing: [], extra: ["lattice.storage.Governor"] },
+  // VotesLib is token-agnostic; since 0.5.0 its signature entry point delegates nonce handling to the token extension.
+  Votes: { missing: ["lattice.storage.ERC20", "lattice.storage.Nonces"], extra: [] },
 };
 
 const title = "against the pinned Lattice's real source";
 describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason})`, () => {
-  test("the registry has exactly the 92 pinned annotations, all verified, one waived", async () => {
+  test("the registry has exactly the 99 pinned annotations, all verified, none waived", async () => {
     const scan = await scanLatticeStorage(LATTICE);
     if (!scan.ok) throw new Error(scan.error);
-    expect(scan.value.registry.size).toBe(92);
+    expect(scan.value.registry.size).toBe(99);
     expect(scan.value.mismatches).toEqual([]);
     expect(scan.value.duplicateIds).toEqual([]);
     expect(scan.value.unverified).toEqual([]);
     expect(scan.value.unclassified).toEqual([]);
-    expect(scan.value.waived).toHaveLength(1);
-    expect(scan.value.waived[0]).toMatchObject({ file: WAIVED_SLOT.file, line: WAIVED_SLOT.line });
+    expect(scan.value.waived).toEqual([]);
   });
 
   test("every facet's storage and touches, cross-checked against K3's fixture catalog", async () => {
     const inventory = await readInventory(LATTICE);
     if (!inventory.ok) throw new Error(inventory.error);
-    expect(inventory.value).toHaveLength(105);
+    expect(inventory.value).toHaveLength(129);
 
     const facets = await Promise.all(
       inventory.value.map(async (e) => ({ name: e.name, sourcePath: await resolveSourcePath(e) })),
@@ -119,6 +119,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
       if (explained !== undefined) {
         const stillMissing = explained.missing.filter((id) => want.has(id) && !got.has(id));
         expect(stillMissing).toEqual(explained.missing);
+        expect(explained.extra.filter((id) => got.has(id) && !want.has(id))).toEqual(explained.extra);
       }
     }
     expect(unexplainedDiffs).toEqual([]);

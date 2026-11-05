@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { decodeFunctionData, keccak256, stringToHex } from "viem";
 import { buildSalt, CREATEX, createxPredict, factoryPredict } from "../../address";
-import { CREATEX_ABI, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI } from "../../deploy";
+import { CREATEX_ABI, LEGACY_FACTORY_DEPLOY_ABI, LATTICE_INITIALIZE_ABI } from "../../deploy";
 import { normalizeRecipe, recipeHash } from "../../canonical";
 import { lintCopy } from "../../format";
 import { decodeInit, UNSUPPORTED_IN_V1 } from "../../init/encode";
@@ -84,7 +84,7 @@ function only(file: BatchFile) {
 }
 
 function decodeFactory(data: Hex) {
-  const decoded = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data });
+  const decoded = decodeFunctionData({ abi: LEGACY_FACTORY_DEPLOY_ABI, data });
   expect(decoded.functionName).toBe("deploy");
   const [, , init, initCalldata, salt] = decoded.args as readonly [unknown, unknown, Address, Hex, Hex];
   return { init, initCalldata, salt };
@@ -306,12 +306,12 @@ describe("exportSafeBatch", () => {
   });
 
   test("registry records on this chain send whole facets as registry entries; a probe of another chain is ignored", () => {
-    const plain = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data: only(exported().file).data });
+    const plain = decodeFunctionData({ abi: LEGACY_FACTORY_DEPLOY_ABI, data: only(exported().file).data });
     const records = Object.fromEntries(
       catalog.facets.map((facet) => [`${facet.name}@${facet.release.version}`, { facet: facet.release.address, codehash: facet.release.codehash }]),
     );
-    const listed = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data: only(exported({ chain: sepolia({ registry: { records } }) }).file).data });
-    const stale = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data: only(exported({ chain: sepolia({ chainId: 1, registry: { records } }) }).file).data });
+    const listed = decodeFunctionData({ abi: LEGACY_FACTORY_DEPLOY_ABI, data: only(exported({ chain: sepolia({ registry: { records } }) }).file).data });
+    const stale = decodeFunctionData({ abi: LEGACY_FACTORY_DEPLOY_ABI, data: only(exported({ chain: sepolia({ chainId: 1, registry: { records } }) }).file).data });
     const entries = (d: typeof plain) => (d.args[0] as readonly unknown[]).length;
     expect(entries(plain)).toBe(0);
     expect(entries(listed)).toBeGreaterThan(0);

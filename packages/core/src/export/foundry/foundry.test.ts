@@ -125,8 +125,9 @@ describe("exportFoundry", () => {
     expect(JSON.stringify(fixture)).toBe(before);
   });
 
-  test("the inlined interfaces have the selectors Lattice and CreateX use (C5c's 0x533677de and 0x00d84acb)", () => {
+  test("the inlined interfaces follow the fixture's pre-0.5.0 factory and CreateX selectors", () => {
     expect(toFunctionSelector("deploy((bytes32,uint64)[],(address,uint8,bytes4[])[],address,bytes,bytes32)")).toBe("0x533677de");
+    expect(toFunctionSelector("deploy((bytes32,uint64,bytes4[])[],(address,uint8,bytes4[])[],address,bytes,bytes32)")).toBe("0xc381576d");
     expect(toFunctionSelector("deployCreate3AndInit(bytes32,bytes,bytes,(uint256,uint256))")).toBe("0x00d84acb");
     expect(toFunctionSelector("predict(address,bytes32)")).toBe("0x64fb6f5e");
     const factory = textOf(fixtureProject(catalog, "ERC20"));

@@ -1,25 +1,23 @@
 name: AccessControlTimed
 script: script/base/access/DeployAccessControlTimed.s.sol
 buildCuts: buildCuts(address)
-source: script/base/access/DeployAccessControlTimed.s.sol#L25-L35
+source: script/base/access/DeployAccessControlTimed.s.sol#L24-L33
 proxy: Lattice
 phase: v1.1
 cuts:
   - add: ERC165Facet
-    source: script/base/access/DeployAccessControlTimed.s.sol#L27-L27
+    source: script/base/access/DeployAccessControlTimed.s.sol#L26-L26
   - add: AccessControlTimed
-    source: script/base/access/DeployAccessControlTimed.s.sol#L28-L28
+    source: script/base/access/DeployAccessControlTimed.s.sol#L27-L27
   - add: DiamondLoupeFacet
-    source: script/base/access/DeployAccessControlTimed.s.sol#L29-L29
+    source: script/base/access/DeployAccessControlTimed.s.sol#L28-L28
   - add: AccessControlDiamondCut
-    source: script/base/access/DeployAccessControlTimed.s.sol#L30-L30
-  - add: Receive
-    source: script/base/access/DeployAccessControlTimed.s.sol#L31-L31
+    source: script/base/access/DeployAccessControlTimed.s.sol#L29-L29
 init:
   kind: steps
   steps:
     - spec: AccessControlTimedInit
       args: {}  # the script passes (admin)
-  source: script/base/access/DeployAccessControlTimed.s.sol#L32-L34
+  source: script/base/access/DeployAccessControlTimed.s.sol#L30-L32
 gaps: >-
   No example arguments yet: the script takes every init argument as a parameter (admin).

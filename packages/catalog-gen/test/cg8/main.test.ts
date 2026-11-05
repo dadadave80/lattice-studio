@@ -210,11 +210,11 @@ describe("the checkout's identity", () => {
     expect(catalogId({ commit: COMMIT, tag: "v0.4.0" })).toBe("v0.4.0");
   });
 
-  test("provisional whenever the pinned version isn't 0.4.0, in the contracts' words", () => {
-    expect(TARGET_VERSION).toBe("0.4.0");
-    expect(provisionalNote({ commit: COMMIT, version: "0.2.0" })).toBe("Lattice 0.2.0 at dev f4a32c8; v1 targets 0.4.0");
-    expect(provisionalNote({ commit: COMMIT, tag: "v0.3.0", version: "0.3.0" })).toBe("Lattice 0.3.0 at v0.3.0; v1 targets 0.4.0");
-    expect(provisionalNote({ commit: COMMIT, tag: "v0.4.0", version: "0.4.0" })).toBeUndefined();
+  test("provisional whenever the pinned version isn't 0.5.0, in the contracts' words", () => {
+    expect(TARGET_VERSION).toBe("0.5.0");
+    expect(provisionalNote({ commit: COMMIT, version: "0.2.0" })).toBe("Lattice 0.2.0 at dev f4a32c8; v1 targets 0.5.0");
+    expect(provisionalNote({ commit: COMMIT, tag: "v0.4.0", version: "0.4.0" })).toBe("Lattice 0.4.0 at v0.4.0; v1 targets 0.5.0");
+    expect(provisionalNote({ commit: COMMIT, tag: "v0.5.0", version: "0.5.0" })).toBeUndefined();
   });
 });
 

@@ -4,7 +4,7 @@
  * address through Arachnid's deterministic deployment proxy follow from core's `sharedSalt` and
  * `arachnidAddress`. `release.ts` does the half that needs a Lattice build and an Anvil.
  *
- * Rules at the pin (Lattice 6c8db45, `VERSION` "0.2.0"; every address here is provisional until the 0.4.0
+ * Rules at the pin (Lattice v0.5.0, `VERSION` "0.5.0"; every address here moves at each
  * re-pin, HANDOFF D2):
  * - Version: `LatticeVersion.VERSION`, read from `src/LatticeVersion.sol`, never hardcoded.
  * - Salts: `sharedSalt(name, version)`, `keccak256("lattice.<Name>.<version>")`; LatticeRegistry and

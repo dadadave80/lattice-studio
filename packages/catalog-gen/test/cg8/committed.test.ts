@@ -64,9 +64,9 @@ function shared(): { name: string; release: SharedContract }[] {
 }
 
 describe("catalog/manifest.json", () => {
-  test("is valid and makes the pinned dev catalog the default, so the app loads it instead of the fixture", () => {
+  test("is valid and makes the pinned release's catalog the default, so the app loads it instead of the fixture", () => {
     expect(validateCatalogManifest(manifestJson).ok).toBe(true);
-    expect(manifest.default).toBe(`dev-${index.lattice.commit.slice(0, 7)}`);
+    expect(manifest.default).toBe("v0.5.0");
     expect(manifest.catalogs).toContainEqual({
       id: manifest.default,
       tag: index.lattice.tag,
@@ -85,19 +85,19 @@ describe("the committed index", () => {
     expect(new TextDecoder().decode(indexBytes)).toBe(new TextDecoder().decode(sortedJsonFileBytes(index)));
   });
 
-  test("records the pin, Foundry 1.8.3, solc 0.8.36 and its long version, and is provisional at 0.2.0", () => {
-    expect(index.lattice).toEqual({ tag: manifest.default, commit: "6c8db45aa46986af2edb6a0d8fb02a4a92faef01" });
+  test("records the pin, Foundry 1.8.3, solc 0.8.36 and its long version, and isn't provisional at 0.5.0", () => {
+    expect(index.lattice).toEqual({ tag: manifest.default, commit: "cca133b07abda7fdde4468798d1dce3e36ea7849" });
     expect(index.toolchain.foundry).toBe("1.8.3");
     expect(index.toolchain.solc).toBe("0.8.36");
     // FX20: the catalog also carries solc's full version, which Sourcify's v2 API needs to resolve the compiler.
     expect(index.toolchain.solcLong).toMatch(/^0\.8\.36\+commit\.[0-9a-f]{8}$/);
-    expect(index.provisional).toBe("Lattice 0.2.0 at dev 6c8db45; v1 targets 0.4.0");
+    expect(index.provisional).toBeUndefined();
     expect(index.registryOwner).toBe(REGISTRY_OWNER_PLACEHOLDER);
     expect(index.chains).toEqual([]);
   });
 
-  test("105 facets, every init, 85 templates with v1 first, R19's 11 seams and PoseidonT3", () => {
-    expect(index.facets).toHaveLength(105);
+  test("129 facets, every init, 85 templates with v1 first, R19's 11 seams and PoseidonT3", () => {
+    expect(index.facets).toHaveLength(129);
     expect(index.recipes).toHaveLength(85);
     expect(index.recipes.slice(0, 3).map((r) => r.name)).toEqual(["GovernedVault", "ERC20", "SafeDiamondCut"]);
     for (const r of index.recipes) expect(recipes.ok && recipes.value[r.name]?.catalog.tag).toBe(index.lattice.tag);

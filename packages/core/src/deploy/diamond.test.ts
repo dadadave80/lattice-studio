@@ -10,9 +10,9 @@ import type { ChainState, DiamondDeployArgs } from "../model/chain";
 import type { Address, Hex } from "../model/hex";
 import type { Recipe } from "../model/recipe";
 import { buildPlan, loadTemplate } from "../plan";
-import { addr, loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe } from "../testing";
+import { addr, loadFixtureCatalog, makeCatalog, makeFacet, makeRecipe, makeShared } from "../testing";
 import {
-  CREATEX_ABI, CREATEX_DEPLOY_SELECTOR, FACTORY_DEPLOY_SELECTOR, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI,
+  CREATEX_ABI, CREATEX_DEPLOY_SELECTOR, FACTORY_DEPLOY_SELECTOR, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI, LEGACY_FACTORY_DEPLOY_ABI,
 } from "./abi";
 import { buildDiamondDeploy, packVersion, registryNameHash } from "./diamond";
 
@@ -29,6 +29,7 @@ const loupe = makeFacet({
 const erc20 = makeFacet({ name: "ERC20", selectors: ["transfer(address,uint256)", "approve(address,uint256)", "totalSupply()"] });
 const catalog: Catalog = makeCatalog({
   facets: [loupe, erc20],
+  factory: makeShared("LatticeFactory", "0.5.0"),
   proxy: {
     creationCode: { path: "code/Lattice.creation.hex", bytes: 16, hash: keccak256(PROXY_CODE) },
     initCodeHash: keccak256(PROXY_CODE),
@@ -66,11 +67,11 @@ function build(over: Partial<DiamondDeployArgs> = {}) {
   return result.value;
 }
 
-function decodeFactory(data: Hex) {
-  const decoded = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data });
+function decodeFactory(data: Hex, legacy = false) {
+  const decoded = decodeFunctionData({ abi: legacy ? LEGACY_FACTORY_DEPLOY_ABI : LATTICE_FACTORY_ABI, data });
   expect(decoded.functionName).toBe("deploy");
   const [entries, cuts, init, initCalldata, salt] = decoded.args as readonly [
-    readonly { nameHash: Hex; version: bigint }[], readonly { facetAddress: Address; action: number; functionSelectors: readonly Hex[] }[],
+    readonly { nameHash: Hex; version: bigint; exclude?: readonly Hex[] }[], readonly { facetAddress: Address; action: number; functionSelectors: readonly Hex[] }[],
     Address, Hex, Hex,
   ];
   return { entries, cuts, init, initCalldata, salt };
@@ -78,7 +79,7 @@ function decodeFactory(data: Hex) {
 
 describe("selectors", () => {
   test("the ABIs carry the signatures the brief names", () => {
-    expect(toFunctionSelector("deploy((bytes32,uint64)[],(address,uint8,bytes4[])[],address,bytes,bytes32)")).toBe(FACTORY_DEPLOY_SELECTOR);
+    expect(toFunctionSelector("deploy((bytes32,uint64,bytes4[])[],(address,uint8,bytes4[])[],address,bytes,bytes32)")).toBe(FACTORY_DEPLOY_SELECTOR);
     expect(toFunctionSelector("deployCreate3AndInit(bytes32,bytes,bytes,(uint256,uint256))")).toBe(CREATEX_DEPLOY_SELECTOR);
     expect(build().tx.data.slice(0, 10)).toBe(FACTORY_DEPLOY_SELECTOR);
     expect(build({ path: "createx", proxyCreationCode: PROXY_CODE }).tx.data.slice(0, 10)).toBe(CREATEX_DEPLOY_SELECTOR);
@@ -124,7 +125,7 @@ describe("factory path", () => {
   test("a whole facet the registry lists with the catalog's address and codehash goes as a RecipeEntry", () => {
     const deploy = build({ chain: chain({ "ERC20@0.4.0": listed(erc20), "DiamondLoupeFacet@0.4.0": null }) });
     const decoded = decodeFactory(deploy.tx.data);
-    expect(decoded.entries).toEqual([{ nameHash: keccak256(stringToHex("lattice.ERC20")), version: 67108864n }]);
+    expect(decoded.entries).toEqual([{ nameHash: keccak256(stringToHex("lattice.ERC20")), version: 67108864n, exclude: [] }]);
     expect(decoded.cuts.map((cut) => cut.facetAddress)).toEqual([loupe.release.address]);
     expect(deploy.registryEntries).toEqual(["ERC20"]);
     expect(deploy.customCuts).toEqual(["DiamondLoupeFacet"]);
@@ -313,7 +314,7 @@ describe("with the fixture catalog", () => {
     const result = buildDiamondDeploy({ recipe: recipe.value, catalog: cat, plan, init: init.value, path: "factory", from: ALICE, salt, chainId: 31337, chain: chain(records) });
     if (!result.ok) throw new Error(result.error);
     expect(result.value.address).toBe(refs.self);
-    const decoded = decodeFactory(result.value.tx.data);
+    const decoded = decodeFactory(result.value.tx.data, true);
     expect(decoded.init).toBe(init.value.target);
     expect(decoded.initCalldata).toBe(init.value.data);
     const whole = plan.filter((e) => e.selectors.length === cat.facets.find((f) => f.name === e.facet)?.selectors.length);

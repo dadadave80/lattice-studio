@@ -49,6 +49,29 @@ describe("allFacetStorage", () => {
     });
   });
 
+  test("a library's secondary namespace is retained for its owning facet and callers", async () => {
+    const scan = await scanLatticeStorage(LATTICE);
+    if (!scan.ok) throw new Error(scan.error);
+    const primary = scan.value.registry.get("fixture.storage.AccessControl");
+    if (!primary) throw new Error("AccessControl's namespace is missing");
+    const registry = new Map(scan.value.registry);
+    registry.set("fixture.storage.AccessControlRecovery", { ...primary, slot: `0x${"44".repeat(32)}` });
+    for (const ordered of [registry, new Map([...registry].reverse())]) {
+      const all = await allFacetStorage(LATTICE, FACETS, ordered);
+      if (!all.ok) throw new Error(all.error);
+      expect(all.value.facets.get("AccessControl")).toEqual({
+        storage: { id: "fixture.storage.AccessControl", slot: primary.slot },
+        touches: ["fixture.storage.AccessControlRecovery"],
+      });
+      expect(all.value.facets.get("ERC20Votes")?.touches).toEqual([
+        "fixture.storage.AccessControl", "fixture.storage.AccessControlRecovery", "fixture.storage.ERC20",
+      ]);
+      expect(all.value.facets.get("ModuleView")?.touches).toEqual([
+        "fixture.storage.AccessControl", "fixture.storage.AccessControlRecovery", "fixture.storage.ModuleManager",
+      ]);
+    }
+  });
+
   test("diamond-lib's pass-through facets own nothing and touch only diamond.lib.storage (contracts §4)", async () => {
     const { facets } = await compute();
     expect(facets.get("DiamondCutFacet")).toEqual({ touches: ["diamond.lib.storage"] });

@@ -324,6 +324,8 @@ export async function releaseData(
     }
     const entry = await release(name, artifact, args.value);
     if (!entry.ok) return entry;
+    // Since Lattice 0.5.0 the factory's constructor reverts InvalidRegistry while the registry has no code.
+    if (name === FACTORY) entry.value.dependsOn = [REGISTRY];
     done.set(name, entry.value);
   }
 

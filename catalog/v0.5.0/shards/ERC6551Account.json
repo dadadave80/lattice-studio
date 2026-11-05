@@ -1,0 +1,147 @@
+{
+  "name": "ERC6551Account",
+  "abi": [
+    {
+      "type": "function",
+      "name": "execute",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "operation",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "isValidSigner",
+      "inputs": [
+        {
+          "name": "signer",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "context",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "state",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "token",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "chainId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tokenContract",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "InvalidSigner",
+      "inputs": [
+        {
+          "name": "signer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedOperation",
+      "inputs": [
+        {
+          "name": "operation",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x51945447": {
+        "notice": "Executes a low-level operation if the caller is a valid signer. `operation` 0 = CALL."
+      },
+      "0x523e3260": {
+        "notice": "Returns the magic value `0x523e3260` if `signer` is authorized to act for the account in `context`, else `bytes4(0)`."
+      },
+      "0xc19d93fb": {
+        "notice": "A value that changes every time the account state changes (e.g. after each execution)."
+      },
+      "0xfc0c546a": {
+        "notice": "The token that owns this account: `(chainId, tokenContract, tokenId)`."
+      }
+    },
+    "notice": "ERC-6551 token-bound account facet. The Diamond becomes an account owned by a specific ERC-721 token; the token's current owner is the sole valid signer and the only caller of `execute`.",
+    "dev": "Stateless delegator — logic/storage live in {ERC6551AccountLib}. v1 supports `operation == 0` (CALL) and resolves ownership only on the token's home chain. The bound token is set once at initialization."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/accounts/ERC6551Account.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/accounts/ERC6551Account.sol"
+  }
+}

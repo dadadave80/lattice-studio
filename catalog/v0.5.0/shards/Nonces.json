@@ -1,0 +1,44 @@
+{
+  "name": "Nonces",
+  "abi": [
+    {
+      "type": "function",
+      "name": "nonces",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x7ecebe00": {
+        "notice": "Returns the current nonce for the given owner.",
+        "params": {
+          "owner": "The address to query."
+        }
+      }
+    },
+    "notice": "Thin facet exposing the `nonces(address)` view for per-account nonce tracking.",
+    "dev": "Other nonce operations (useNonce, useCheckedNonce) are internal helpers consumed by other modules (e.g. ERC20Permit). Only the query function needs a public entry point."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/utils/Nonces.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/utils/Nonces.sol"
+  }
+}

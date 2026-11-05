@@ -8,6 +8,7 @@
 import { CREATEX } from "../../address/diamond";
 import { CREATEX_CODEHASH } from "../../checks/net";
 import { SCOPE_FLAG } from "../../address/salt";
+import { factorySupportsExclusions } from "../../deploy/abi";
 import type { PlanEntry } from "../../model/analysis";
 import type { Catalog, InitSpec } from "../../model/catalog";
 import type { DeployPath, Scope } from "../../model/chain";
@@ -245,6 +246,7 @@ export function renderScript(input: ScriptInput): string {
       "struct RecipeEntry {",
       "    bytes32 nameHash;",
       "    uint64 version;",
+      ...(factorySupportsExclusions(catalog) ? ["    bytes4[] exclude;"] : []),
       "}",
       "",
       "interface ILatticeFactory {",
