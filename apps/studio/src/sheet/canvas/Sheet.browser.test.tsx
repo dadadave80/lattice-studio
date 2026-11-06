@@ -8,9 +8,10 @@ import { bufferedServices } from "@/contracts/services";
 import { focusCard } from "@/a11y/focus";
 import { runConsoleLine } from "@/commands/console/router";
 import { installShortcuts } from "@/commands/keys/dispatcher";
-import { fixtureCatalog, onCleanup } from "../../../test/harness";
+import { fixtureCatalog, onCleanup, renderWithStudio } from "../../../test/harness";
 import { cardProject } from "../card/testing/projects";
 import { BACK_TO_CONTENT_DELAY_MS } from "./BackToContent";
+import { Sheet } from "./Sheet";
 import { ZOOM_RANGE } from "./commands";
 import { ensureVisible, panSheet, sheetViewport, storeSheetViewport } from "./sheet-view";
 import {
@@ -38,6 +39,35 @@ function close(a: Viewport, b: Viewport | undefined): boolean {
 }
 
 describe("the sheet", () => {
+  test("cards stay hidden and measured until the initial viewport is restored", async () => {
+    const project = sheetProject(4);
+    const name = project.recipe.facets.find((facet) => !isCoreFacet(facet));
+    if (!name) throw new Error("The project has no placed facet.");
+    let release: (viewport: Viewport | null) => void = () => {};
+    const held = new Promise<Viewport | null>((resolve) => { release = resolve; });
+    const projects: ProjectsService = {
+      createProject: () => Promise.reject(new Error("not in this test")),
+      openProject: () => Promise.reject(new Error("not in this test")),
+      saveStatus: () => ({ state: "saved", text: "Saved" }),
+      subscribeSaveStatus: () => () => undefined,
+      loadViewport: () => held,
+      saveViewport: () => undefined,
+    };
+    onCleanup(provideServices({ projects }));
+    onCleanup(() => release(null));
+    await renderWithStudio(
+      <div data-region="sheet" style={{ position: "relative", width: SHEET_WIDTH, height: SHEET_HEIGHT }}><Sheet /></div>,
+      { project },
+    );
+    await expect.poll(() => document.querySelector(`.react-flow__node[data-id="${name}"]`)).not.toBeNull();
+    expect(getComputedStyle(cardNode(name)).visibility).toBe("hidden");
+    expect(cardNode(name).getBoundingClientRect().width).toBeGreaterThan(0);
+    release({ x: 135, y: 84, zoom: 0.5 });
+    await settled();
+    await expect.element(page.getByRole("group", { name: new RegExp(`^${name}, `) })).toBeVisible();
+    expect(close(drawnViewport(), { x: 135, y: 84, zoom: 0.5 })).toBe(true);
+  });
+
   test("is React Flow's application, labelled, with one Tab stop in the card grid", async () => {
     const project = sheetProject(6);
     await renderSheet({ project });

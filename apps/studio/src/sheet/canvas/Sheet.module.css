@@ -29,9 +29,10 @@
   cursor: grabbing;
 }
 
-/* Until the project's viewport is applied, the cards wait rather than flash at the origin. */
-.restoring :global(.react-flow__viewport) {
-  visibility: hidden;
+/* React Flow sets node visibility inline; keep measured cards hidden until the initial viewport is applied. */
+.restoring :global(.react-flow__viewport),
+.restoring :global(.react-flow__node) {
+  visibility: hidden !important;
 }
 
 .grid {
