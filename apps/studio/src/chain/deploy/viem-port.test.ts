@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { Address, Hex } from "@lattice-studio/core";
-import { createClient, custom, defineChain, numberToHex, type Chain } from "viem";
+import { createClient, custom, defineChain, encodeErrorResult, numberToHex, parseAbi, type Chain } from "viem";
 import { createViemPort, NOT_ENOUGH_FUNDS, type ViemPortOptions } from "./viem-port";
 
 const FROM = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as Address;
@@ -16,9 +16,10 @@ const CHAIN = defineChain({ id: 11155111, name: "Sepolia", nativeCurrency: { nam
 type Failure = { code: number; message: string; data?: Hex };
 
 /** A port whose RPC answers eth_blockNumber and fails `method` as given. */
-function port(fail: Partial<Record<"eth_call" | "eth_estimateGas", Failure>>, gas = 21_000n) {
+function port(fail: Partial<Record<"eth_call" | "eth_estimateGas", Failure>>, gas = 21_000n, ccip?: { request: () => Promise<never> }) {
   const client = createClient({
     chain: CHAIN,
+    ...(ccip === undefined ? {} : { ccipRead: ccip }),
     transport: custom({
       async request({ method }: { method: string }) {
         if (method === "eth_simulateV1") {
@@ -40,7 +41,7 @@ function port(fail: Partial<Record<"eth_call" | "eth_estimateGas", Failure>>, ga
       },
     }, { retryCount: 0 }),
   });
-  return createViemPort({
+  return Object.assign(createViemPort({
     service: {
       chains: () => [{ id: CHAIN.id, name: "Sepolia", testnet: true }],
       probe: async () => ({ ok: false, error: "unused" }),
@@ -56,7 +57,7 @@ function port(fail: Partial<Record<"eth_call" | "eth_estimateGas", Failure>>, ga
       waitCalls: async () => ({ kind: "aborted" }),
     },
     noteEstimate: () => {},
-  });
+  }), { sourceClient: client });
 }
 
 const simulate = (p: ReturnType<typeof port>) => p.simulate(CHAIN.id, { from: FROM, tx: TX, simulateV1: false });
@@ -99,6 +100,17 @@ describe("estimating after eth_simulateV1", () => {
 });
 
 describe("simulating without eth_simulateV1", () => {
+  test("simulation and raw calls retain OffchainLookup reverts without contract-directed HTTP", async () => {
+    const abi = parseAbi(["error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData)"]);
+    const data = encodeErrorResult({ abi, errorName: "OffchainLookup", args: [TX.to, ["https://untrusted.example/{data}"], "0x1234", "0x11223344", "0x"] });
+    let offchain = 0;
+    const policy = { request: async (): Promise<never> => { offchain++; throw new Error("Contract-directed HTTP ran."); } };
+    const p = port({ eth_call: { code: 3, message: "execution reverted", data } }, 21_000n, policy);
+    expect(await simulate(p)).toMatchObject({ kind: "reverted", data });
+    expect(await p.call(CHAIN.id, { from: FROM, tx: TX })).toMatchObject({ ok: false, data });
+    expect(offchain).toBe(0);
+    expect(p.sourceClient.ccipRead).toBe(policy);
+  });
   test("eth_call and eth_estimateGas both answer: ok, at the block read first", async () => {
     expect(await simulate(port({}))).toEqual({ kind: "ok", block: 16, gas: 21_000n, method: "call" });
   });

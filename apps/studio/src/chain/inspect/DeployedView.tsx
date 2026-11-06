@@ -13,6 +13,7 @@ import { useInspection } from "./use-inspection";
 import { useInspectionCatalogs } from "./use-inspection-catalogs";
 import styles from "./DeployedView.module.css";
 import { FacetFunctions } from "./FacetFunctions";
+import { invalidateTransactionReview } from "./transaction-review-state";
 
 type Props = InspectorViewProps<"deployed"> & { engine?: InspectionEngine };
 
@@ -50,7 +51,14 @@ function FacetDetails({ facet, value }: { facet: PassportIdentifiedFacet; value:
       </ul>
       <p className={sheet.muted}>{`Observed on ${value.chainName} at block ${value.snapshot.block}.`}</p>
     </Section>
-    {metadata && catalog ? <FacetFunctions value={value} facet={facet} metadata={metadata} catalog={catalog}    /> : <Section label="Functions"><p className={sheet.muted}>Functions can't be called without a verified ABI.</p></Section>}
+    {metadata && catalog ? <FacetFunctions value={value} facet={facet} metadata={metadata} catalog={catalog}
+      onEdit={invalidateTransactionReview}
+      onReview={async (prepared, fn, abi, current) => {
+        const { openTransactionReview } = await import("./transaction-review-actions");
+        if (!current()) return;
+        await openTransactionReview({ intent: { chainId: value.target.chainId, tx: { to: value.target.address, data: prepared.data, value: prepared.value }, snapshot: value.snapshot }, label: fn.signature, fn: fn.abi, abi });
+      }}
+    /> : <Section label="Functions"><p className={sheet.muted}>Functions can't be called without a verified ABI.</p></Section>}
   </>;
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { commandRef } from "@/contracts";
 import { Button, CommandButton, TextField, copyText } from "@/ui";
 import sheet from "@/panels/inspector/shared/sheet.module.css";
@@ -17,22 +17,29 @@ function Outputs({ values }: { values: readonly CallOutput[] }) {
 export type CallFormProps = {
   context: CallContext;
   controller?: CallController;
-  onReview?(prepared: PreparedCall): void | Promise<void>;
+  onReview?(prepared: PreparedCall, current: () => boolean): void | Promise<void>;
   onEdit?(): void;
 };
 
 /** Typed calls have their own drafts, validation and result cache; they never edit init arguments. */
 export function CallForm({ context, controller = getCallController(), onReview, onEdit }: CallFormProps) {
   const state = useSyncExternalStore(controller.subscribe, () => controller.get(context));
+  const reviewIntent = useRef(0);
+  const [reviewError, setReviewError] = useState<{ key: string; message: string } | null>(null);
   const key = `${context.chainId}:${context.address}:${context.fn.signature}:${context.identity}`;
-  useEffect(() => () => { controller.cancel(context); }, [controller, key, context]);
+  useEffect(() => () => { reviewIntent.current++; controller.cancel(context); }, [controller, key, context]);
   const busy = state.phase === "resolving" || state.phase === "calling";
-  const patch = (change: Parameters<CallController["patch"]>[1]) => { controller.patch(context, change); onEdit?.(); };
+  const patch = (change: Parameters<CallController["patch"]>[1]) => { reviewIntent.current++; setReviewError(null); controller.patch(context, change); onEdit?.(); };
   const run = async () => {
     if (context.fn.readOnly) await controller.run(context);
     else {
+      const generation = ++reviewIntent.current;
+      const current = () => reviewIntent.current === generation;
       const prepared = await controller.prepare(context);
-      if (prepared) await onReview?.(prepared);
+      if (prepared && current()) {
+        try { await onReview?.(prepared, current); }
+        catch { if (current()) setReviewError({ key, message: "Transaction review couldn't be opened. Try again." }); }
+      }
     }
   };
   return <div className={styles.form}>
@@ -55,6 +62,7 @@ export function CallForm({ context, controller = getCallController(), onReview, 
     </div>
     {busy ? <output className={sheet.text}>{state.phase === "resolving" ? "Resolving call fields…" : "Calling the diamond…"}</output> : null}
     {state.message ? <output className={sheet.text}>{state.message}</output> : null}
+    {reviewError?.key === key ? <output className={sheet.text}>{reviewError.message}</output> : null}
     {state.result ? <div aria-label="Call result" className={styles.result}>
       <p className={sheet.muted}>{`Result at block ${state.result.block}`}</p>
       <Outputs values={state.result.outputs} />
@@ -64,6 +72,6 @@ export function CallForm({ context, controller = getCallController(), onReview, 
       <p className={sheet.strong}>{state.revert.errorName ?? "Unknown revert"}</p>
       <Outputs values={state.revert.args} />
     </div> : null}
-    {state.raw ?? state.result?.raw ? <details><summary>Raw return data</summary><pre className={styles.raw}>{state.raw ?? state.result?.raw}</pre></details> : null}
+    {state.raw ?? state.result?.raw ? <details><summary>{state.revert ? "Raw revert data" : "Raw return data"}</summary><pre className={styles.raw}>{state.raw ?? state.result?.raw}</pre></details> : null}
   </div>;
 }

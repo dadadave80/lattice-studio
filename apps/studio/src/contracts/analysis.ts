@@ -1,18 +1,18 @@
 /**
  * The analysis of the open document (contracts §5.1 `useAnalysis`). S1 provides the real one (memoized on
  * the recipe hash, catalog hash and context digest, with narration). K2's default runs core's `analyze`
- * without a context and degrades to an empty analysis while `analyze` is still a stub or no catalog is loaded.
+ * without a context after its lazy module loads. It stays empty while that loads or no catalog is available.
  *
  * The analysis is an external store: `getAnalysis()` must return the same object until it changes, and
  * `subscribe` calls back when it does. `useAnalysis(selector, equal)` re-renders only when the selected
  * value changes, so a memoized card can read just its own routing and problems (spec L825).
  */
-import type { Analysis, Catalog, Recipe } from "@lattice-studio/core";
-import { analyze, isNotImplemented } from "@lattice-studio/core";
+import type { Analysis } from "@lattice-studio/core";
 import { useRef, useSyncExternalStore } from "react";
 import { getCatalog, subscribeCatalog } from "./catalog";
 import { listenerSet } from "./relay";
 import { doc } from "./stores";
+import { createFallbackAnalysisProvider } from "./analysis-fallback";
 
 export type AnalysisProvider = {
   /** The current analysis; the same object until it changes. */
@@ -36,34 +36,16 @@ export function emptyAnalysis(): Analysis {
 const EMPTY = emptyAnalysis();
 
 function minimalProvider(): AnalysisProvider {
-  let cache: { recipe: Recipe; catalog: Catalog; analysis: Analysis } | null = null;
-  const compute = (): Analysis => {
-    const recipe = doc.get().recipe;
-    const catalog = getCatalog();
-    if (!catalog) return EMPTY;
-    if (cache && cache.recipe === recipe && cache.catalog === catalog) return cache.analysis;
-    let analysis = EMPTY;
-    try {
-      analysis = analyze(recipe, catalog);
-    } catch (error) {
-      if (!isNotImplemented(error)) throw error;
-    }
-    cache = { recipe, catalog, analysis };
-    return analysis;
-  };
-  return {
-    getAnalysis: compute,
-    subscribe(listener) {
-      const stopDoc = doc.subscribe((state, previous) => {
+  return createFallbackAnalysisProvider({
+    empty: EMPTY,
+    recipe: () => doc.get().recipe,
+    catalog: getCatalog,
+    load: () => import("./analysis-core").then((module) => module.analyze),
+    subscribeRecipe: (listener) => doc.subscribe((state, previous) => {
         if (state.project.recipe !== previous.project.recipe) listener();
-      });
-      const stopCatalog = subscribeCatalog(() => listener());
-      return () => {
-        stopDoc();
-        stopCatalog();
-      };
-    },
-  };
+    }),
+    subscribeCatalog,
+  });
 }
 
 let provider: AnalysisProvider = minimalProvider();

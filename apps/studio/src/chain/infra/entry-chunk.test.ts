@@ -24,16 +24,39 @@ const PROBE_MARKERS = ["610025803803809160003960005b"];
 let out = "";
 let firstLoad = "";
 let lazy: { name: string; text: string }[] = [];
+let runtimeFile = "";
+const imports = new Map<string, readonly string[]>();
+
+function staticFiles(roots: readonly string[]): string[] {
+  const files = new Set<string>();
+  const queue = [...roots];
+  for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
+    if (files.has(file)) continue;
+    files.add(file);
+    queue.push(...(imports.get(file) ?? []));
+  }
+  return [...files];
+}
 
 beforeAll(async () => {
   out = mkdtempSync(join(tmpdir(), "studio-entry-"));
-  await build({ configFile: join(appDir, "vite.config.ts"), logLevel: "silent", build: { outDir: out, emptyOutDir: true } });
+  await build({ configFile: join(appDir, "vite.config.ts"), logLevel: "silent", build: { outDir: out, emptyOutDir: true }, plugins: [{
+    name: "trace-chain-boundary",
+    generateBundle(_options, bundle) {
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== "chunk") continue;
+        imports.set(chunk.fileName, chunk.imports);
+        if (Object.keys(chunk.modules).some((id) => id.replace(/\\/g, "/").endsWith("/src/chain/infra/runtime.ts"))) runtimeFile = chunk.fileName;
+      }
+    },
+  }] });
   const html = readFileSync(join(out, "index.html"), "utf8");
   const first = [...html.matchAll(/(?:src|href)="\.?\/?(assets\/[^"]+\.js)"/g)].map((m) => m[1] ?? "");
   expect(first.length).toBeGreaterThan(0);
-  firstLoad = first.map((path) => readFileSync(join(out, path), "utf8")).join("\n");
+  const initial = staticFiles(first);
+  firstLoad = initial.map((path) => readFileSync(join(out, path), "utf8")).join("\n");
   lazy = readdirSync(join(out, "assets"))
-    .filter((name) => name.endsWith(".js") && !first.includes(`assets/${name}`))
+    .filter((name) => name.endsWith(".js") && !initial.includes(`assets/${name}`))
     .map((name) => ({ name, text: readFileSync(join(out, "assets", name), "utf8") }));
 }, 120_000);
 
@@ -42,11 +65,13 @@ afterAll(() => {
 });
 
 /**
- * The chain module's chunk: named runtime-*, and other modules name theirs runtime.ts too (S4e), so pick by content,
- * the probes' program. (wagmi's core moves to a chunk it shares with WalletConnect when a build carries it.)
+ * Chunk names and shared-module placement vary with other lazy consumers. Follow the actual chain entry's
+ * static import graph; its wallet and probe code must remain behind that boundary together.
  */
 function chainRuntime(): { name: string; text: string } | undefined {
-  return lazy.find((chunk) => chunk.name.startsWith("runtime-") && PROBE_MARKERS.every((marker) => chunk.text.includes(marker)));
+  return runtimeFile && lazy.some((chunk) => `assets/${chunk.name}` === runtimeFile)
+    ? { name: runtimeFile, text: staticFiles([runtimeFile]).map((path) => readFileSync(join(out, path), "utf8")).join("\n") }
+    : undefined;
 }
 
 describe("the entry chunk", () => {
@@ -54,10 +79,11 @@ describe("the entry chunk", () => {
     for (const marker of [...WALLET_MARKERS, ...PROBE_MARKERS]) expect({ marker, found: firstLoad.includes(marker) }).toEqual({ marker, found: false });
   });
 
-  test("a lazy chunk named for the chain module carries them", () => {
+  test("the actual chain module loads its wallet and probes through lazy static dependencies", () => {
     const runtime = chainRuntime();
     expect(runtime).toBeDefined();
     expect(runtime?.text.includes("eip6963:requestProvider")).toBe(true);
+    for (const marker of PROBE_MARKERS) expect(runtime?.text.includes(marker)).toBe(true);
     expect(lazy.some((chunk) => chunk.text.includes("@wagmi/core@"))).toBe(true);
   });
 

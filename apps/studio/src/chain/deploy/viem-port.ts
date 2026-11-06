@@ -132,7 +132,9 @@ type SeenTx = { hash: Hex; nonce: number; from: Address; to: Address | null; val
 
 export function createViemPort(options: ViemPortOptions): DeployChainPort {
   const { service, wallet } = options;
-  const clientOf = (chainId: number): ChainClient => options.client(chainId);
+  // Simulation, replay and contract calls must reflect the chain, never URLs chosen by a reverting contract.
+  // Keep ENS's separately configured shared client unchanged.
+  const clientOf = (chainId: number): ChainClient => ({ ...options.client(chainId), ccipRead: false });
   const nameOf = (chainId: number): string => service.chains().find((c) => c.id === chainId)?.name ?? `Chain ${chainId}`;
   const unreachable = (chainId: number): string => `${nameOf(chainId)}'s public RPC isn't answering.`;
 

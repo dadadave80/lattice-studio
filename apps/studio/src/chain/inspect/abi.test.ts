@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { decodeFunctionData, encodeAbiParameters, encodeErrorResult, parseAbi, toFunctionSelector, type Abi, type AbiFunction } from "viem";
-import { callValue, decodeCallOutputs, decodeCallRevert, encodeCall, routedFunctions } from "./abi";
+import { callValue, decodeCallInputs, decodeCallOutputs, decodeCallRevert, encodeCall, routedFunctions } from "./abi";
 
 function fn(signature: string): AbiFunction {
   const abi: Abi = parseAbi([signature]);
@@ -10,6 +10,15 @@ function fn(signature: string): AbiFunction {
 }
 
 const ADDRESS = "0x1234567890123456789012345678901234567890";
+
+test("decodes transaction-review arguments without losing precision or prototype-sensitive tuple members", () => {
+  const item: AbiFunction = { type: "function", name: "set", stateMutability: "nonpayable", inputs: [{ name: "row", type: "tuple", components: [{ name: "__proto__", type: "uint256" }, { name: "safe", type: "uint256" }] }], outputs: [] };
+  const encoded = encodeCall(item, ['["9007199254740993","10"]']);
+  expect(encoded.ok).toBe(true);
+  if (!encoded.ok) return;
+  expect(decodeCallInputs(item, encoded.value.data)).toEqual({ ok: true, value: [{ name: "row", type: "tuple", value: ["9007199254740993", "10"] }] });
+  expect(decodeCallInputs(item, "0x12345678").ok).toBe(false);
+});
 
 describe("routed ABI functions", () => {
   test("keeps actual selectors, full overload signatures and mutability", () => {

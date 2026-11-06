@@ -1,0 +1,34 @@
+import { parseAbi } from "viem";
+import { expect, test } from "../_support/fixtures";
+import { ALICE, BOB } from "../_support/anvil";
+import { recipeProject } from "../_support/projects";
+import { expectProject, seedProject } from "../_support/seed";
+import { deployOnAnvil } from "../q1e/pages/chain";
+import { connectOnAnvil } from "../q1e/pages/wallet";
+
+test("a deployed write simulates, waits for explicit signing, confirms and refreshes @smoke", async ({ page, anvil }) => {
+  const live = await deployOnAnvil(anvil, recipeProject("ERC20", { filled: true }));
+  const composition = recipeProject("GovernedVault", { name: "Work kept while writing" });
+  await seedProject(page, { project: composition }, `/#d=31337:${live.address}`);
+  await connectOnAnvil(page);
+  const inspector = page.locator('[data-inspector-view="deployed"]');
+  await inspector.getByRole("button", { name: "Inspect ERC20", exact: true }).click();
+  const approve = inspector.locator("details").filter({ has: page.locator("summary").filter({ hasText: /^approve\(address,uint256\) · nonpayable$/ }) });
+  await approve.locator("summary").click();
+  await approve.getByRole("textbox", { name: /^spender \(address\)$/ }).fill(BOB);
+  await approve.getByRole("textbox", { name: /^value \(uint256\)$/ }).fill("23");
+  const allowance = () => anvil.client.readContract({ address: live.address, abi: parseAbi(["function allowance(address,address) view returns(uint256)"]), functionName: "allowance", args: [ALICE, BOB] });
+  expect(await allowance()).toBe(0n);
+  const nonce = await anvil.client.getTransactionCount({ address: ALICE });
+  await approve.getByRole("button", { name: "Review transaction", exact: true }).click();
+  const review = page.getByRole("dialog", { name: "Review transaction", exact: true });
+  await expect(review.getByText("Ready for your review. Nothing has been sent.", { exact: true })).toBeVisible();
+  expect(await anvil.client.getTransactionCount({ address: ALICE })).toBe(nonce);
+  await review.getByRole("button", { name: "Sign transaction", exact: true }).click();
+  await expect(review.locator("output")).toContainText("Confirmed at block");
+  expect(await allowance()).toBe(23n);
+  expect(await anvil.client.getTransactionCount({ address: ALICE })).toBe(nonce + 1);
+  await review.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(inspector.getByRole("heading", { name: "ERC20", exact: true })).toBeVisible();
+  await expectProject(page, composition.name);
+});

@@ -1,5 +1,6 @@
 import { isAddress } from "@lattice-studio/core";
 import { command, defineCommands, type CommandArgsOf, type Enablement } from "@/contracts";
+import { hasTransactionReview } from "./transaction-review-state";
 
 const OK: Enablement = { ok: true };
 const runs = () => import("./command-runs");
@@ -7,6 +8,11 @@ const target = ({ chainId, address }: { chainId: number; address: string }): Ena
   Number.isSafeInteger(chainId) && chainId > 0 && isAddress(address) ? OK : { ok: false, reason: "Choose a chain and valid diamond address." };
 
 export const INSPECTION_COMMANDS = [
+  command({
+    id: "inspect.showProgress", title: () => "Transaction progress", category: "Chain", palette: true,
+    enabled: () => hasTransactionReview() ? OK : { ok: false, reason: "No transaction has been reviewed in this session." },
+    run: async () => (await import("./transaction-review-actions")).showTransactionProgress(),
+  }),
   command<CommandArgsOf<"inspect.open">>({
     id: "inspect.open", title: () => "Open deployed diamond…", category: "Session", palette: true,
     console: { verb: "open", syntax: "open <chainId:address-or-name>", parse: (argv) => argv.length === 1 ? { ok: true, value: { target: argv[0]! } } : { ok: false, error: "Open takes a diamond link, or chain id and address separated by a colon." } },
