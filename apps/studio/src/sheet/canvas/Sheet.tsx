@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from "react";
+import { lazy, Suspense, use, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { announce, KEY_CONTEXT_ATTRIBUTE, log, registerDropTarget } from "@/contracts";
 import { handOverStartFocus, StartBlock } from "@/sheet/chrome/StartBlock";
 import { SHEET_LOADING } from "./copy";
@@ -17,6 +17,12 @@ const SheetCanvas = lazy(() =>
 );
 
 const KEY_CONTEXT = { [KEY_CONTEXT_ATTRIBUTE]: "sheet" };
+type StartActivation = KeyboardEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>;
+
+function CanvasAfterActivation({ pending }: { pending: Promise<void> | null }) {
+  if (pending) use(pending);
+  return <SheetCanvas />;
+}
 
 /**
  * The sheet while its canvas loads: the region's ground and, on an empty sheet, the Start block, which is the
@@ -24,7 +30,7 @@ const KEY_CONTEXT = { [KEY_CONTEXT_ATTRIBUTE]: "sheet" };
  * takes over when it mounts, and the control that had focus here keeps it there. A catalog row dropped here places
  * nothing, so the drop says why (Q28) rather than vanishing.
  */
-function SheetLoading() {
+function SheetLoading({ hold }: { hold: (event: StartActivation) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const element = ref.current;
@@ -45,7 +51,7 @@ function SheetLoading() {
     };
   }, []);
   return (
-    <div ref={ref} className={styles.sheet} data-sheet-loading="" {...KEY_CONTEXT}>
+    <div ref={ref} className={styles.sheet} role="presentation" data-sheet-loading="" onPointerDownCapture={hold} onKeyDown={hold} {...KEY_CONTEXT}>
       <StartBlock />
     </div>
   );
@@ -53,9 +59,49 @@ function SheetLoading() {
 
 /** The sheet (WP-S4b): see `SheetCanvas.tsx`. */
 export function Sheet() {
+  const [pending, setPending] = useState<Promise<void> | null>(null);
+  const active = useRef<AbortController | null>(null);
+  useEffect(() => () => active.current?.abort(), []);
+  const hold = (event: StartActivation): void => {
+    const pointer = "pointerId" in event;
+    if (pointer ? event.button !== 0 || !event.isPrimary : event.key !== " " || event.repeat || event.defaultPrevented) return;
+    const button = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!button || button.matches(":disabled, [aria-disabled='true']") || active.current) return;
+    const controller = new AbortController();
+    active.current = controller;
+    let timer: number | undefined;
+    const waiting = new Promise<void>((resolve) => controller.signal.addEventListener("abort", () => {
+      window.clearTimeout(timer);
+      resolve();
+    }, { once: true }));
+    const release = (): void => {
+      controller.abort();
+      active.current = null;
+      setPending(null);
+    };
+    // Native activation may follow pointerup/keyup; keep its original target through click dispatch.
+    const afterDispatch = (): void => { timer ??= window.setTimeout(release, 0); };
+    const options = { capture: true, signal: controller.signal };
+    window.addEventListener("click", (click) => {
+      if (click.target instanceof Node && button.contains(click.target)) afterDispatch();
+    }, options);
+    if (pointer) {
+      const pointerId = event.pointerId;
+      window.addEventListener("pointerup", (up) => {
+        if (up.pointerId !== pointerId) return;
+        const rect = button.getBoundingClientRect();
+        if (up.clientX < rect.left || up.clientX > rect.right || up.clientY < rect.top || up.clientY > rect.bottom) afterDispatch();
+      }, options);
+      window.addEventListener("pointercancel", (cancel) => { if (cancel.pointerId === pointerId) afterDispatch(); }, options);
+    } else {
+      window.addEventListener("keyup", (up) => { if (up.key === " ") afterDispatch(); }, options);
+    }
+    window.addEventListener("blur", release, { signal: controller.signal });
+    setPending(waiting);
+  };
   return (
-    <Suspense fallback={<SheetLoading />}>
-      <SheetCanvas />
+    <Suspense fallback={<SheetLoading hold={hold} />}>
+      <CanvasAfterActivation pending={pending} />
     </Suspense>
   );
 }
