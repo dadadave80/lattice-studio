@@ -6,7 +6,7 @@ import { EventEmitter } from "node:events";
 import { playwright, PlaywrightBrowserProvider } from "@vitest/browser-playwright";
 import type { BrowserContext, CDPSession, Page } from "playwright";
 import type { TestProject } from "vitest/node";
-import { closeCode, createDiagnosticWriter, socketKind, withBrowserTransportDiagnostics } from "./browser-transport-diagnostics";
+import { closeCode, createDiagnosticWriter, hmrReloadType, mainPageLifecycle, socketKind, withBrowserTransportDiagnostics } from "./browser-transport-diagnostics";
 
 const temporary: string[] = [];
 afterEach(() => { for (const path of temporary.splice(0)) rmSync(path, { recursive: true, force: true }); });
@@ -26,6 +26,42 @@ test("classifies the orchestrator and HMR sockets without exposing query values"
   expect(socketKind("https://localhost:63463/?token=secret")).toBe("other");
   expect(socketKind("ws://elsewhere.test/private?token=secret")).toBe("other");
   expect(socketKind("invalid")).toBe("other");
+});
+
+test("HMR observation retains only the full-reload type", () => {
+  expect(hmrReloadType('{"type":"full-reload","path":"/secret?token=private"}')).toBe("full-reload");
+  expect(hmrReloadType('{"type":"update","updates":["private"]}')).toBeNull();
+  expect(hmrReloadType('{"type":"error","err":{"message":"private"}}')).toBeNull();
+  expect(hmrReloadType("invalid")).toBeNull();
+});
+
+test("main frame lifecycle excludes child frames and isolated worlds", () => {
+  const records: Readonly<Record<string, unknown>>[] = [];
+  const lifecycle = mainPageLifecycle((event) => records.push(event));
+  const mainFrame = { frame: { id: "main", url: "http://localhost/private?token=secret" } };
+  lifecycle.frameNavigated(mainFrame);
+  lifecycle.contextCreated({ context: { id: 1, auxData: { frameId: "child", isDefault: true } } });
+  lifecycle.contextCreated({ context: { id: 2, auxData: { frameId: "main", isDefault: false } } });
+  lifecycle.contextCreated({ context: { id: 3, auxData: { frameId: "main", isDefault: true } } });
+  lifecycle.frameLoading({ frameId: "child" });
+  lifecycle.frameLoading({ frameId: "main" });
+  lifecycle.contextDestroyed({ executionContextId: 1 });
+  lifecycle.contextDestroyed({ executionContextId: 2 });
+  lifecycle.contextDestroyed({ executionContextId: 3 });
+  lifecycle.contextCreated({ context: { id: 4, auxData: { frameId: "main", isDefault: true } } });
+  lifecycle.contextsCleared();
+  lifecycle.frameDetached({ frameId: "child", reason: "remove" });
+  lifecycle.frameDetached({ frameId: "main", reason: "swap" });
+  expect(records.map((record) => record.event)).toEqual(["main-frame-observed", "main-context-created", "main-frame-loading", "main-context-destroyed", "main-context-created", "main-contexts-cleared", "main-frame-detached"]);
+  expect(JSON.stringify(records)).not.toContain("secret");
+  expect(JSON.stringify(records)).not.toContain("private");
+  const beforeFrame: Readonly<Record<string, unknown>>[] = [];
+  const deferred = mainPageLifecycle((event) => beforeFrame.push(event));
+  deferred.contextCreated({ context: { id: 9, uniqueId: "default", auxData: { frameId: "main", isDefault: true } } });
+  expect(deferred.mainFrameKnown()).toBe(false);
+  deferred.frameNavigated({ frame: { id: "main" } });
+  deferred.contextDestroyed({ executionContextUniqueId: "default" });
+  expect(beforeFrame.map((record) => record.event)).toEqual(["main-frame-observed", "main-context-observed", "main-context-destroyed"]);
 });
 
 test("caps the entire JSONL file and writes a final truncation marker", () => {
@@ -68,7 +104,9 @@ test.each(["session", "enable", "sample", "detach"])("a hung CDP %s cannot block
   let detachCalls = 0;
   const cdp = Object.assign(new EventEmitter(), {
     send: (method: string) => {
-      if (stage === "enable" && method.endsWith(".enable") || stage === "sample" && method.includes("get")) { markReached(); return never(); }
+      if (stage === "enable" && method.endsWith(".enable") || stage === "sample" && (method === "Memory.getDOMCounters" || method === "Runtime.getHeapUsage")) { markReached(); return never(); }
+      if (method === "Page.getFrameTree") return Promise.resolve({ frameTree: { frame: { id: "main" } } });
+      if (method === "Runtime.evaluate") return Promise.resolve({ result: { type: "boolean", value: true } });
       return Promise.resolve(method === "Memory.getDOMCounters" ? { documents: 1, nodes: 1, jsEventListeners: 0 } : { usedSize: 1, totalSize: 1 });
     },
     detach: () => { detachCalls++; if (stage === "detach") { markReached(); return never(); } return Promise.resolve(); },
@@ -93,6 +131,15 @@ test.each(["session", "enable", "sample", "detach"])("a hung CDP %s cannot block
   const wrapped = withBrowserTransportDiagnostics({ ...playwright(), providerFactory: () => instance }, root).providerFactory(project);
   await expect(within(wrapped.openPage("session", frame.url(), { parallel: false }))).resolves.toBeUndefined();
   if (stage !== "detach") await within(reached);
+  if (stage === "sample") {
+    const socket = new EventEmitter();
+    (project.vite.ws as unknown as EventEmitter).emit("connection", socket, { headers: { "sec-websocket-key": "controlled" } });
+    (cdp as unknown as EventEmitter).emit("Network.webSocketCreated", { requestId: "hmr", url: "ws://localhost:63463/" });
+    (cdp as unknown as EventEmitter).emit("Network.webSocketWillSendHandshakeRequest", { requestId: "hmr", request: { headers: { "Sec-WebSocket-Key": "controlled" } } });
+    socket.emit("close", 1001);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(readFileSync(join(root, "lifecycle.jsonl"), "utf8")).toContain('"event":"main-js-liveness","available":true,"runner":true,"afterDisposal":false');
+  }
   openingFailure = new Error("Original provider open failure.");
   await expect(within(wrapped.openPage("session", frame.url(), { parallel: false }))).rejects.toBe(openingFailure);
   if (stage === "session") {

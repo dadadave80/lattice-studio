@@ -35,6 +35,54 @@ export function socketKind(raw: string): "orchestrator" | "tester" | "hmr" | "ot
   } catch { return "other"; }
 }
 
+export function hmrReloadType(payload: string): "full-reload" | null {
+  if (payload.length > 4_096) return null;
+  try {
+    const value: unknown = JSON.parse(payload);
+    return typeof value === "object" && value !== null && "type" in value && value.type === "full-reload" ? "full-reload" : null;
+  } catch { return null; }
+}
+
+/** Track only the main frame's default world; never retain context origins, names or frame URLs. */
+export function mainPageLifecycle(write: WriteEvent) {
+  let mainFrame: string | undefined;
+  const contexts = new Map<number, { frameId: string; uniqueId: string | undefined }>();
+  return {
+    mainFrameKnown: () => mainFrame !== undefined,
+    frameNavigated({ frame }: { frame: { id: string; parentId?: string } }) {
+      if (frame.parentId) return;
+      if (mainFrame !== frame.id) {
+        write({ event: "main-frame-observed" });
+        if ([...contexts.values()].some((context) => context.frameId === frame.id)) write({ event: "main-context-observed" });
+      }
+      mainFrame = frame.id;
+    },
+    contextCreated({ context }: { context: { id: number; uniqueId?: string; auxData?: { frameId?: string; isDefault?: boolean } } }) {
+      const frameId = context.auxData?.frameId;
+      if (!context.auxData?.isDefault || !frameId) return;
+      contexts.set(context.id, { frameId, uniqueId: context.uniqueId });
+      if (frameId === mainFrame) write({ event: "main-context-created" });
+    },
+    contextDestroyed({ executionContextId, executionContextUniqueId }: { executionContextId?: number; executionContextUniqueId?: string }) {
+      for (const [id, context] of contexts) {
+        if (id !== executionContextId && (!executionContextUniqueId || context.uniqueId !== executionContextUniqueId)) continue;
+        contexts.delete(id);
+        if (context.frameId === mainFrame) write({ event: "main-context-destroyed" });
+      }
+    },
+    contextsCleared() {
+      if (mainFrame) write({ event: "main-contexts-cleared" });
+      contexts.clear();
+    },
+    frameLoading({ frameId }: { frameId: string }) {
+      if (frameId === mainFrame) write({ event: "main-frame-loading" });
+    },
+    frameDetached({ frameId, reason }: { frameId: string; reason: string }) {
+      if (frameId === mainFrame) write({ event: "main-frame-detached", reason: reason === "remove" || reason === "swap" ? reason : "unknown" });
+    },
+  };
+}
+
 /** One bounded file per invocation, including its final marker. Existing evidence is never overwritten. */
 export function createDiagnosticWriter(path: string, maximumBytes = 96_000): WriteEvent {
   const marker = `${JSON.stringify({ event: "output-limit" })}\n`;
@@ -67,7 +115,7 @@ function pathOnly(raw: string): string {
   try { return new URL(raw).pathname; } catch { return "unknown"; }
 }
 
-function observePage(page: Page, session: string, write: WriteEvent, primaryHandshakes: Set<string>): () => void {
+function observePage(page: Page, session: string, write: WriteEvent, primaryHandshakes: Map<string, () => void>): () => void {
   let active = true;
   let sampling = false;
   let cdp: CDPSession | undefined;
@@ -123,6 +171,12 @@ function observePage(page: Page, session: string, write: WriteEvent, primaryHand
     const sockets = new Map<string, ReturnType<typeof socketKind>>();
     const primarySockets = new Set<string>();
     const observedKinds = new Set<string>();
+    const probeMain = () => {
+      if (!active) { emit({ event: "main-js-liveness", available: false, runner: false, afterDisposal: true }); return; }
+      void bounded(cdp!.send("Runtime.evaluate", { expression: "!!window.__vitest_browser_runner__ && typeof document.readyState === 'string'", returnByValue: true })).then((result) => {
+        emit({ event: "main-js-liveness", available: result?.value.result.type === "boolean", runner: result?.value.result.value === true, afterDisposal: !active });
+      });
+    };
     const socketCreated = ({ requestId, url }: { requestId: string; url: string }) => {
       const kind = socketKind(url);
       sockets.set(requestId, kind);
@@ -138,7 +192,7 @@ function observePage(page: Page, session: string, write: WriteEvent, primaryHand
       if (!primarySockets.has(requestId)) return;
       const id = fingerprint(request.headers["Sec-WebSocket-Key"] ?? request.headers["sec-websocket-key"]);
       if (id) {
-        primaryHandshakes.add(id);
+        if (sockets.get(requestId) === "hmr") primaryHandshakes.set(id, probeMain);
         emit({ event: "socket-handshake", kind: sockets.get(requestId), id });
       }
     };
@@ -160,6 +214,10 @@ function observePage(page: Page, session: string, write: WriteEvent, primaryHand
     cdp.on("Network.webSocketFrameSent", frameSent);
     cdpListeners.push(() => cdp!.off("Network.webSocketFrameSent", frameSent));
     const frameReceived = ({ requestId, response }: FrameEvent) => {
+      if (response.opcode === 1 && primarySockets.has(requestId) && sockets.get(requestId) === "hmr") {
+        const type = hmrReloadType(response.payloadData);
+        if (type) emit({ event: "hmr-payload", type });
+      }
       if (response.opcode !== 8) return;
       const kind = sockets.get(requestId) ?? "unknown";
       if (primarySockets.has(requestId)) emit({ event: "socket-close-frame", direction: "received", kind, code: closeCode(response.payloadData) });
@@ -169,9 +227,30 @@ function observePage(page: Page, session: string, write: WriteEvent, primaryHand
     const targetCrashed = () => emit({ event: "target-crash" });
     cdp.on("Inspector.targetCrashed", targetCrashed);
     cdpListeners.push(() => cdp!.off("Inspector.targetCrashed", targetCrashed));
-    const enabled = await bounded(Promise.all([cdp.send("Network.enable"), cdp.send("Inspector.enable")]));
+    const lifecycle = mainPageLifecycle(emit);
+    cdp.on("Page.frameNavigated", lifecycle.frameNavigated);
+    cdp.on("Page.frameStartedLoading", lifecycle.frameLoading);
+    cdp.on("Page.frameDetached", lifecycle.frameDetached);
+    cdp.on("Runtime.executionContextCreated", lifecycle.contextCreated);
+    cdp.on("Runtime.executionContextDestroyed", lifecycle.contextDestroyed);
+    cdp.on("Runtime.executionContextsCleared", lifecycle.contextsCleared);
+    cdpListeners.push(() => {
+      cdp!.off("Page.frameNavigated", lifecycle.frameNavigated);
+      cdp!.off("Page.frameStartedLoading", lifecycle.frameLoading);
+      cdp!.off("Page.frameDetached", lifecycle.frameDetached);
+      cdp!.off("Runtime.executionContextCreated", lifecycle.contextCreated);
+      cdp!.off("Runtime.executionContextDestroyed", lifecycle.contextDestroyed);
+      cdp!.off("Runtime.executionContextsCleared", lifecycle.contextsCleared);
+    });
+    const enabled = await bounded(Promise.all([cdp.send("Network.enable"), cdp.send("Inspector.enable"), cdp.send("Page.enable"), cdp.send("Runtime.enable")]));
     if (!active) return;
     if (!enabled) { emit({ event: "cdp-enable-unavailable" }); dispose(); return; }
+    if (!lifecycle.mainFrameKnown()) {
+      const tree = await bounded(cdp.send("Page.getFrameTree"));
+      if (!active) return;
+      if (tree) lifecycle.frameNavigated({ frame: tree.value.frameTree.frame });
+      else emit({ event: "main-frame-unavailable" });
+    }
     const sample = async () => {
       if (!active || sampling) return;
       sampling = true;
@@ -210,14 +289,17 @@ export function withBrowserTransportDiagnostics(provider: BrowserProviderOption<
       const instance = provider.providerFactory(project);
       if (!(instance instanceof PlaywrightBrowserProvider)) throw new Error("Browser transport diagnostics require the Playwright provider.");
       const observed = new Map<Page, () => void>();
-      const primaryHandshakes = new Set<string>();
+      const primaryHandshakes = new Map<string, () => void>();
       const server = project.browser?.vite ?? project.vite;
       const closeListeners = new Map<ViteWebSocket, (code: number) => void>();
       const onConnection = (socket: ViteWebSocket, request: IncomingMessage) => {
         const id = fingerprint(request.headers["sec-websocket-key"]);
         const onClose = (code: number) => {
           closeListeners.delete(socket);
-          if (id && primaryHandshakes.has(id)) write({ event: "hmr-close-code", id, code });
+          if (id && primaryHandshakes.has(id)) {
+            write({ event: "hmr-close-code", id, code });
+            primaryHandshakes.get(id)?.();
+          }
         };
         socket.once("close", onClose);
         closeListeners.set(socket, onClose);
