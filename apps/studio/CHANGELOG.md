@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.0](https://github.com/dadadave80/lattice-studio/compare/lattice-studio-app-v0.1.0...lattice-studio-app-v0.2.0) (2026-10-24)
+
+
+### Features
+
+* **chain:** Monad Testnet (10143) as a deploy target ([8197972](https://github.com/dadadave80/lattice-studio/commit/81979724562a83eb4e23e88dc2ee29fe94d09009))
+* **inspector:** Verify on Etherscan for diamonds deployed before a key ([#28](https://github.com/dadadave80/lattice-studio/issues/28)) ([#47](https://github.com/dadadave80/lattice-studio/issues/47)) ([21ed32e](https://github.com/dadadave80/lattice-studio/commit/21ed32e1a4501b3eb5d294ab8564aa17f97c3091))
+* **shell:** title bar search field, segmented theme switch, Share in the overflow menu ([#40](https://github.com/dadadave80/lattice-studio/issues/40)) ([31846f5](https://github.com/dadadave80/lattice-studio/commit/31846f5da0dccd8f7ad3a4738eab80254d6d7d72)), closes [#36](https://github.com/dadadave80/lattice-studio/issues/36)
+
+
+### Bug Fixes
+
+* **chain:** resolve ENS names with a coin type and registry fallback ([#49](https://github.com/dadadave80/lattice-studio/issues/49)) ([3090506](https://github.com/dadadave80/lattice-studio/commit/309050637d62c886a4fc1cf03a3bb2089bd1bcce))
+* **chain:** simulate through eth_call when a node refuses eth_simulateV1 ([31d621d](https://github.com/dadadave80/lattice-studio/commit/31d621d5a14961ee9adb864dcc5a41f5c79b3e95))
+* **sheet:** drawer-aware sheet insets and the narrow-layout squeezes ([#50](https://github.com/dadadave80/lattice-studio/issues/50)) ([1f5a2df](https://github.com/dadadave80/lattice-studio/commit/1f5a2df6d2847a2bf6db273ce6af46b7739cdd0c))
+* **shell:** search field tooltip, disabled ink and stale Share paths after [#40](https://github.com/dadadave80/lattice-studio/issues/40) ([#41](https://github.com/dadadave80/lattice-studio/issues/41)) ([e790f7c](https://github.com/dadadave80/lattice-studio/commit/e790f7ccd6cb42f6dc57f47a16f0adff76c8860e))
+* **verify:** Sourcify on Monad Testnet goes through BlockVision's instance ([819cdd5](https://github.com/dadadave80/lattice-studio/commit/819cdd557f3325ca23e6fa829874b3e529c490af))
+
 ## 0.1.0 (2026-10-10)
 
 
