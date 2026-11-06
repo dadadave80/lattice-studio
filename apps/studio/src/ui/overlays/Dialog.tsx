@@ -19,6 +19,8 @@ export type DialogProps = {
    * heading (made focusable with tabIndex -1), for a dialog that is read before it's acted on (Deploy review).
    */
   initialFocus?: RefObject<HTMLElement | null> | (() => HTMLElement | null) | "title";
+  /** Return false when a successful navigation takes ownership of focus after the dialog closes. */
+  restoreFocus?: () => boolean;
   /**
    * True when closing loses nothing: a click on the scrim then closes it too. Esc always closes (IR L187).
    */
@@ -49,7 +51,7 @@ function firstFocusable(root: HTMLElement | null): HTMLElement | null {
  * A click on the scrim closes it only when `lossless`. Declares the `dialog` key context.
  */
 export function Dialog({
-  open, onOpenChange, title, description, initialFocus, lossless = false, top = true, size = "medium", footer,
+  open, onOpenChange, title, description, initialFocus, restoreFocus, lossless = false, top = true, size = "medium", footer,
   children, className,
 }: DialogProps) {
   const popupRef = useRef<HTMLDivElement>(null);
@@ -87,7 +89,8 @@ export function Dialog({
     return typeof initialFocus === "function" ? initialFocus() : initialFocus.current;
   };
 
-  const final = (): HTMLElement | null => {
+  const final = (): HTMLElement | null | false => {
+    if (restoreFocus?.() === false) return false;
     const opener = openerRef.current;
     return opener?.isConnected ? opener : null;
   };

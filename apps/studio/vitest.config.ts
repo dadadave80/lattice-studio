@@ -15,6 +15,7 @@ export default defineConfig(async (env) => {
   const base: UserConfig = typeof viteConfig === "function" ? await viteConfig(env) : await viteConfig;
   const port = localPort("VITEST_BROWSER_PORT");
   const out = `test-results/${port}`;
+  const diagnostics = process.env.STUDIO_BROWSER_DIAGNOSTICS_DIR;
 
   return mergeConfig(base, {
     server: { port, strictPort: true },
@@ -46,7 +47,11 @@ export default defineConfig(async (env) => {
         // a looser per-pixel threshold and up to 3% differing pixels absorb that without hiding a real change.
         expect: { toMatchScreenshot: { comparatorOptions: { threshold: 0.3, allowedMismatchedPixelRatio: 0.03 } } },
         headless: true,
-        provider: playwright(),
+        provider: playwright(diagnostics ? {
+          launchOptions: {
+            args: [`--log-net-log=${join(diagnostics, "chromium-netlog.json")}`, "--net-log-capture-mode=Default"],
+          },
+        } : undefined),
         instances: [{ browser: "chromium" }],
         // The desktop reference (spec L349); tests that need a narrower window set their own.
         viewport: { width: 1440, height: 900 },

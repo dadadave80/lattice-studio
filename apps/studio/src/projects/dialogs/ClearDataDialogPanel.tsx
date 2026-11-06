@@ -1,6 +1,6 @@
-import { plural } from "@lattice-studio/core";
+import { plural, type Project } from "@lattice-studio/core";
 import { useEffect, useRef, useState } from "react";
-import { closeDialog, type DialogComponentProps } from "@/contracts";
+import { closeDialog, doc, type DialogComponentProps } from "@/contracts";
 import { persistence, type ClearDataCounts } from "@/persist";
 import { Button, Dialog, Icon } from "@/ui";
 import errorStyles from "./confirm-error.module.css";
@@ -18,6 +18,7 @@ function countsLine(counts: ClearDataCounts | null): string {
 export function ClearDataDialogPanel({ top }: DialogComponentProps<"clear-data">) {
   const [counts, setCounts] = useState<ClearDataCounts | null>(null);
   const [busy, setBusy] = useState(false);
+  const [exportedFrom, setExportedFrom] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
   const exportFirstRef = useRef<HTMLButtonElement>(null);
 
@@ -38,18 +39,34 @@ export function ClearDataDialogPanel({ top }: DialogComponentProps<"clear-data">
   const close = () => closeDialog("clear-data");
 
   const exportFirst = async () => {
-    const { exportAllData } = await import("../actions");
-    await exportAllData();
+    setBusy(true);
+    setError(null);
+    try {
+      const { exportAllData } = await import("../actions");
+      const result = await exportAllData();
+      if (result.ok) setExportedFrom(result.source);
+      else if ("error" in result) setError(result.error);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const clear = async () => {
+    const expected = exportedFrom ?? doc.get();
     setBusy(true);
     setError(null);
-    const { clearAllData } = await import("../actions");
-    const result = await clearAllData();
-    setBusy(false);
-    if (result.ok) close();
-    else setError(result.error);
+    try {
+      const { clearAllData } = await import("../actions");
+      const result = await clearAllData(expected);
+      if (result.ok) close();
+      else setError(result.error);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const counting = counts === null;
@@ -66,14 +83,14 @@ export function ClearDataDialogPanel({ top }: DialogComponentProps<"clear-data">
       initialFocus={exportFirstRef}
       footer={
         <>
-          <Button ref={exportFirstRef} onClick={() => void exportFirst()}>
+          <Button ref={exportFirstRef} onClick={() => void exportFirst()} disabledReason={busy ? "Working…" : null}>
             Export first
           </Button>
           <Button onClick={close}>Cancel</Button>
           <Button
             variant="primary"
             onClick={() => void clear()}
-            disabledReason={busy ? "Deleting…" : counting ? "Counting records…" : null}
+            disabledReason={busy ? "Working…" : counting ? "Counting records…" : null}
           >
             Delete everything
           </Button>

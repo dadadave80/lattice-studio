@@ -18,7 +18,7 @@ const STATE_WORD: Partial<Record<string, string>> = {
 export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; descriptionId?: string | undefined }) {
   switch (meta.kind) {
     case "core":
-      return <span className={styles.group}>Core</span>;
+      return <span className={styles.group}>{meta.label}</span>;
     case "fallback":
       return (
         <>
@@ -31,7 +31,7 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
       return (
         <>
           <span className={styles.name} title={meta.facet}>
-            {meta.facet}
+            {meta.kind === "facet" ? meta.displayName ?? meta.facet : meta.facet}
           </span>
           {meta.count ? <span className={styles.aside}>{meta.count.replace(/ selectors?$/, "")}</span> : null}
           {meta.description && descriptionId ? <VisuallyHidden id={descriptionId}>{meta.description}</VisuallyHidden> : null}
@@ -39,6 +39,7 @@ export function StructureItem({ meta, descriptionId }: { meta: StructureMeta; de
       );
     case "selector": {
       const { view } = meta;
+      if (meta.raw) return <><span className={styles.code}>{view.selector}</span><span className={styles.aside}>Locked raw selector</span></>;
       const word = STATE_WORD[view.state];
       return (
         <>

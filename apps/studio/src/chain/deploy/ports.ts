@@ -12,7 +12,7 @@ import type { AnnounceOptions, BannerProps } from "@/contracts";
 
 /** What a simulation of the diamond deploy found. */
 export type SimulationOutcome =
-  /** `events` only from `eth_simulateV1`; `eth_call` can't count them. */
+  /** `gas` is the required transaction limit from `eth_estimateGas`, never simulated gasUsed. `events` only from `eth_simulateV1`. */
   | { kind: "ok"; block: number; gas: bigint; events?: number; method: "simulate" | "call" }
   | { kind: "reverted"; block: number; data: Hex; method: "simulate" | "call" }
   /** The RPC answers but can't simulate at all: no eth_simulateV1, and eth_call or eth_estimateGas refused (spec L575). */
@@ -65,7 +65,7 @@ export type DeployChainPort = {
   probe(chainId: number, options?: { refresh?: boolean; path?: DeployPath; codeAt?: readonly Address[] }): Promise<Result<ChainState, string>>;
   codeAt(chainId: number, address: Address): Promise<Result<Hex | "0x", string>>;
   readFacets(chainId: number, address: Address): Promise<Result<LoupeFacet[], string>>;
-  /** `eth_simulateV1` when `simulateV1`, else `eth_call` plus `eth_estimateGas`. */
+  /** `eth_simulateV1` when `simulateV1`, else `eth_call`; both successful paths then use `eth_estimateGas`. */
   simulate(chainId: number, request: { from: Address; tx: TxRequest; simulateV1: boolean }): Promise<SimulationOutcome>;
   /** `eth_call` at `block` (default latest). */
   call(chainId: number, request: { from: Address; tx: TxRequest; block?: number }): Promise<CallOutcome>;

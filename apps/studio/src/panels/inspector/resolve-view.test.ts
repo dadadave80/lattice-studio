@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isOwnKind, resolveView, SEAM_OWNERS, selectionView } from "./resolve-view";
+import { isOwnKind, resolveView, SEAM_OWNERS, selectionView, viewKey } from "./resolve-view";
 
 const placed = ["ERC20", "ERC4626", "VaultCore"];
 
@@ -35,8 +35,11 @@ describe("resolveView", () => {
       facet: "ERC20",
     });
   });
-  test("a problem view whose problem was resolved falls back", () => {
-    expect(resolveView({ ...base, view: { kind: "problem", id: "DEP-01:VaultCore+ERC4626" } })).toEqual({ kind: "diamond" });
+  test("an explicit resolved problem view stays available for navigation", () => {
+    const resolved = { kind: "problem", id: "DEP-01:VaultCore+ERC4626" } as const;
+    expect(resolveView({ ...base, view: resolved })).toBe(resolved);
+    expect(resolveView({ ...base, view: resolved, problems: [], selection: ["ERC20"] })).toBe(resolved);
+    expect(resolveView({ ...base, view: resolved, problems: [], coreSelected: true })).toBe(resolved);
     const open = { kind: "problem", id: "SEL-01:0xcdfe7f5c" } as const;
     expect(resolveView({ ...base, view: open })).toBe(open);
   });
@@ -46,6 +49,14 @@ describe("resolveView", () => {
   test("seam views pass through untouched", () => {
     const view = { kind: "init", focus: "bundle.p.asset" } as const;
     expect(resolveView({ ...base, view })).toBe(view);
+  });
+  test("an inspected diamond keeps its task and separates target identities", () => {
+    const address = "0x00000000000000000000000000000000000000aa" as const;
+    const view = { kind: "deployed", chainId: 11155111, address } as const;
+    expect(resolveView({ ...base, view, selection: ["ERC20"], coreSelected: true })).toBe(view);
+    expect(viewKey(view)).toBe(`deployed:11155111:${address}`);
+    expect(viewKey({ ...view, facetAddress: address })).toBe(viewKey(view));
+    expect(viewKey({ ...view, chainId: 84532 })).not.toBe(viewKey(view));
   });
 
   test("the core selected shows the Diamond view, and a view that no longer applies falls back to it", () => {
@@ -61,6 +72,6 @@ describe("kinds", () => {
   test("S5c draws its own six and names the owner of every seam view", () => {
     expect(["diamond", "facet", "selection", "preview", "problem", "comparison"].every((k) => isOwnKind(k as "diamond"))).toBe(true);
     expect(isOwnKind("doc")).toBe(false);
-    expect(SEAM_OWNERS).toEqual({ init: "S5d", doc: "S12", "confirm-addresses": "S13" });
+    expect(SEAM_OWNERS).toEqual({ init: "S5d", doc: "S12", "confirm-addresses": "S13", deployed: "S8a" });
   });
 });

@@ -262,6 +262,19 @@ export const SKIPPED_SCRIPTS: Record<string, string> = {
   "script/base/defi/GrantExample.s.sol": "a testnet example that deploys the GovernedVault recipe with a test asset (its source of examples)",
   "script/base/tokens/DeployERC20Wrapper.s.sol": "cuts ERC20Wrapper, which isn't in FacetInventory, so the catalog has no release of it (R18)",
   "script/base/tokens/DeployERC721URIStorage.s.sol": "cuts ERC721URIStorage, which isn't in FacetInventory, so the catalog has no release of it (R18)",
+  "script/base/oracles/DeployOracleGuard.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC1155Burnable.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC1155Pausable.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC1155Supply.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC1155URIStorage.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC1363.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC721Burnable.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC721Consecutive.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC721Enumerable.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC721Pausable.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC721Royalty.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC721Votes.s.sol": "new in Lattice 0.5.0; no template yet",
+  "script/base/tokens/DeployERC721Wrapper.s.sol": "new in Lattice 0.5.0; no template yet",
 };
 
 // ── facts ──────────────────────────────────────────────────────────────────────────────────────────

@@ -2,8 +2,8 @@ import type { Analysis, Problem } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
-import { doc, emptyAnalysis, isPlaceholder, provideAnalysis, provideServices, session } from "@/contracts";
-import { bufferedServices, fixtureCatalog, onCleanup, renderWithStudio } from "../../test/harness";
+import { command, doc, emptyAnalysis, isPlaceholder, provideAnalysis, provideServices, session } from "@/contracts";
+import { bufferedServices, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio } from "../../test/harness";
 import { App } from "./App";
 
 function go(hash: string): void {
@@ -84,11 +84,18 @@ describe("routes", () => {
     else await expect.poll(() => bufferedServices().log.some((l) => l.text === placeholder)).toBe(false);
   });
 
-  test("#open= is v2", async () => {
-    go("#open=eip155:11155111:0x5FbDB2315678afecb367f032d93F642f64180aa3");
-    await renderWithStudio(<App />);
-    // Among the lines, not the last one: the previous test's app can still log after this one boots.
-    await expect.poll(() => bufferedServices().log.some((l) => l.text === "Open diamond… arrives in v2.")).toBe(true);
+  test.each([
+    ["#open=eip155:11155111:0x5FbDB2315678afecb367f032d93F642f64180aa3", "eip155:11155111:0x5FbDB2315678afecb367f032d93F642f64180aa3"],
+    ["#d=84532:alice.eth", "84532:alice.eth"],
+    ["#d=alice.eth", "alice.eth"],
+  ])("%s routes the exact target without supplying the selected chain", async (hash, target) => {
+    const opened: unknown[] = [];
+    overrideCommands([command({ id: "inspect.open", title: () => "Inspect diamond", category: "Session", enabled: () => ({ ok: true }), run: (_ctx, args) => { opened.push(args); } })]);
+    go(hash);
+    await renderWithStudio(<App />, { session: { chainId: 11155111 } });
+    const before = doc.get();
+    await expect.poll(() => opened).toEqual([{ target }]);
+    expect(doc.get()).toBe(before);
   });
 
   test("an unknown route says there's nothing there", async () => {
@@ -101,7 +108,7 @@ describe("routes", () => {
   test("#/__ui shows the primitives gallery in dev", async () => {
     go("#/__ui");
     await renderWithStudio(<App />);
-    await expect.element(page.getByRole("region", { name: "Title bar", exact: true })).not.toBeInTheDocument();
+    await expect.element(page.getByRole("banner", { name: "Title bar", exact: true })).not.toBeInTheDocument();
     // The gallery is a lazy chunk the dev server compiles on first request.
     await expect.poll(() => document.querySelectorAll("section, h1, h2").length, { timeout: 10_000 }).toBeGreaterThan(0);
   });

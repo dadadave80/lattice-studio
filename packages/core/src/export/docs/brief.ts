@@ -170,6 +170,7 @@ export function leavesOutSection(blockers: number): string {
  * "Do not redeploy facets; check their codehashes." and what the brief leaves out.
  */
 export const exportBrief: ExportBriefFn = (args) => {
+  if (args.recipe.mode === "upgrade") throw new Error("An upgrade plan needs its pinned on-chain baseline. Export the full project file instead of a deployment brief.");
   const { catalog, analysis, studioVersion } = args;
   const recipe = normalizeRecipe(args.recipe, catalog);
   const byName = new Map(catalog.facets.map((f) => [f.name, f]));

@@ -7,6 +7,7 @@ import { fakeClock, overrideCommands, renderWithStudio, type FakeClock } from ".
 import { Button } from "../buttons/Button";
 import { createToasts, toastTimeout, WAITING_LIMIT, type ToastsOptions, type Toasts } from "./toasts";
 import { ToastRegion } from "./ToastRegion";
+import { Dialog } from "./Dialog";
 
 describe("toastTimeout", () => {
   test("6 s, 10 s with an action, and errors stay", () => {
@@ -79,6 +80,22 @@ describe("ToastRegion", () => {
     expect(undo).toHaveBeenCalledTimes(1);
     expect(undo.mock.calls[0]?.[0]).toMatchObject({ source: "toast" });
     await expect.element(page.getByText("Removed 2 facets")).not.toBeInTheDocument();
+  });
+
+  test("toast Undo and Close remain pointer-accessible while a modal stays open", async () => {
+    const undo = undoCommand();
+    await renderWithStudio(<><Dialog open title="Projects" onOpenChange={() => {}}><p>Saved projects</p></Dialog><ToastRegion manager={toasts.manager} /></>);
+    toasts.add({ text: "Deleted Vault", action: { id: "history.undo" } });
+    await expect.element(page.getByRole("dialog", { name: "Projects", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    expect(undo).toHaveBeenCalledTimes(1);
+    await expect.element(page.getByRole("dialog", { name: "Projects", exact: true })).toBeVisible();
+    toasts.add({ text: "A retained error", kind: "error" });
+    const error = page.getByRole("dialog", { name: "A retained error", exact: true });
+    await expect.element(error).toBeVisible();
+    await error.getByRole("button", { name: "Close", exact: true }).click();
+    await expect.element(page.getByText("A retained error", { exact: true })).not.toBeInTheDocument();
+    await expect.element(page.getByRole("dialog", { name: "Projects", exact: true })).toBeVisible();
   });
 
   test("a toast's action shows action.label when set, else the command's title", async () => {

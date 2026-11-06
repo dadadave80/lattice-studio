@@ -17,7 +17,7 @@ describe("App", () => {
     test(`renders the five regions by name (${theme})`, async () => {
       await renderWithStudio(<App />, { theme });
       for (const name of REGIONS) {
-        await expect.element(page.getByRole("region", { name, exact: true })).toBeVisible();
+        await expect.element(page.getByRole(name === "Title bar" ? "banner" : "region", { name, exact: true })).toBeVisible();
       }
       expect(document.documentElement.dataset.theme).toBe(theme);
     });
@@ -25,7 +25,7 @@ describe("App", () => {
 
   test("each region's view that isn't built yet says which work package builds it", async () => {
     await renderWithStudio(<App />);
-    for (const name of REGIONS) await expect.element(page.getByRole("region", { name, exact: true })).toBeVisible();
+    for (const name of REGIONS) await expect.element(page.getByRole(name === "Title bar" ? "banner" : "region", { name, exact: true })).toBeVisible();
     // Whichever neighbors have landed: every placeholder still showing in a region names its work package.
     const placeholders = [...document.querySelectorAll<HTMLElement>("[data-region] [data-placeholder]")].filter((el) =>
       el.checkVisibility(),
@@ -60,7 +60,7 @@ describe("App", () => {
     const banner = page.getByText("Offline. Composing works; deploy needs a connection.");
     await expect.element(banner).toBeVisible();
     const top = (banner.element() as HTMLElement).getBoundingClientRect().top;
-    const titlebar = page.getByRole("region", { name: "Title bar", exact: true }).element() as HTMLElement;
+    const titlebar = page.getByRole("banner", { name: "Title bar", exact: true }).element() as HTMLElement;
     expect(top).toBeGreaterThanOrEqual(titlebar.getBoundingClientRect().bottom);
     expect(top).toBeLessThan(window.innerHeight);
     const sheet = page.getByRole("region", { name: "Sheet", exact: true }).element() as HTMLElement;

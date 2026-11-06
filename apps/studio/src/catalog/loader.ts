@@ -25,6 +25,8 @@ export type CatalogLoaderInstance = CatalogLoader & {
   warm(name: string): void;
   /** Retries the last manifest fetch (if it failed) or the last index fetch (if the manifest was fine). */
   retry(): Promise<void>;
+  /** Retries only a failed detail shard; cached ready/loading entries stay intact. */
+  retryDetail(name: string): void;
   /** Loads a bundled, non-default manifest entry as "the loaded catalog" (a project pinned to it, spec L290). */
   switchTo(entry: ManifestEntry, manifest: CatalogManifest): Promise<void>;
   /** @internal Tests: drops every cached shard. */
@@ -196,6 +198,15 @@ export function createCatalogLoader(): CatalogLoaderInstance {
     loadShard: fetchShard,
     loadCode: fetchCode,
     warm: ensureDetail,
+    retryDetail(name) {
+      const id = readyId();
+      if (id === null) return;
+      const key = `${id}/${name}`;
+      if (details.get(key)?.status !== "error") return;
+      details.delete(key);
+      ensureDetail(name);
+      emit();
+    },
     async retry() {
       if (!lastManifestResult || !lastManifestResult.ok) {
         await openManifest(await fetchManifest());

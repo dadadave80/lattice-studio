@@ -264,6 +264,10 @@ describe("recipeJsonSchema", () => {
 describe("exportBrief", () => {
   const brief = exportBrief({ recipe, catalog, analysis, studioVersion });
 
+  test("upgrade plans require a project file to retain their observed baseline", () => {
+    expect(() => exportBrief({ recipe: { ...recipe, mode: "upgrade" }, catalog, analysis, studioVersion })).toThrow("project file");
+  });
+
   test("names the file after the recipe", () => {
     expect(brief.filename).toBe("test-vault.brief.md");
     expect(brief.mime).toBe("text/markdown");

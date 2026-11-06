@@ -13,19 +13,20 @@
  *   5. INIT-01 for a required argument with no safe default: "1 parameter to fill" and Fill in; focus isn't moved.
  */
 import { analyze, loadTemplate, plural, recipeStats, templateList } from "@lattice-studio/core";
+import type { Project } from "@lattice-studio/core";
 import type { Page } from "@playwright/test";
 import { catalog } from "../_support/catalog.ts";
 import { expect, test } from "../_support/fixtures.ts";
 import { commandLine, region, runInPalette } from "../_support/keys.ts";
 import { recipeProject } from "../_support/projects.ts";
-import { expectProject, openEmpty, seedProject } from "../_support/seed.ts";
+import { DB_NAME, expectProject, openEmpty, seedProject } from "../_support/seed.ts";
 import { expectTier, tierAt, viewportAt } from "../_support/viewports.ts";
 import { BrowseRecipesPage } from "./pages/browse-recipes-page.ts";
 import { ConsolePage } from "./pages/console-page.ts";
 import { ProjectsPage } from "./pages/projects-page.ts";
 import { SheetPage } from "./pages/sheet-page.ts";
 
-/** "Loaded GovernedVault · 12 facets · 120 selectors · from script/base/defi/DeployGovernedVault.s.sol." (L410): cards, the core aside. */
+/** "Loaded GovernedVault · 12 facets · 122 selectors · from script/base/defi/DeployGovernedVault.s.sol." (L410): cards, the core aside. */
 function loadedLine(name: string): string {
   const built = catalog();
   const loaded = loadTemplate(built, name);
@@ -56,6 +57,28 @@ async function waitForSaved(page: Page): Promise<void> {
   await expect(region(page, "Title bar").getByRole("button", { name: "Saved" })).toBeVisible();
 }
 
+/** Phone hides ordinary Saved status; observe the committed copy before testing a reload. */
+async function waitForStoredToken(page: Page): Promise<void> {
+  await expect.poll(() => page.evaluate(async (dbName) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(dbName);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const rows = await new Promise<{ project: Project }[]>((resolve, reject) => {
+        const request = db.transaction("projects", "readonly").objectStore("projects").getAll();
+        request.onsuccess = () => resolve(request.result as { project: Project }[]);
+        request.onerror = () => reject(request.error);
+      });
+      return rows.some(({ project }) => project.recipe.init.kind === "steps" && project.recipe.init.steps.some((step) =>
+        Object.values(step.args).includes("Library credits") && Object.values(step.args).includes("LIB")));
+    } finally {
+      db.close();
+    }
+  }, DB_NAME)).toBe(true);
+}
+
 /**
  * A facet that's on GovernedVault's sheet but on neither ERC20's nor SafeDiamondCut's (checked against the built
  * catalog below), so a card by this name tells the two recipes apart without hardcoding either's full facet list.
@@ -79,6 +102,30 @@ if (
 }
 
 test.describe("Flow 2. Start from a recipe", () => {
+  for (const width of [375, 1440] as const) {
+    test(`Edit setup configures and restores ERC20 values at ${width}px @smoke`, async ({ page }) => {
+      await page.setViewportSize(viewportAt(width));
+      await openEmpty(page);
+      await new SheetPage(page).recipeCard("ERC20").click();
+      if (width < 768) await page.getByRole("tablist", { name: "Panes" }).getByRole("tab", { name: "Inspector", exact: true }).click();
+      await page.getByRole("button", { name: "Edit setup", exact: true }).first().click();
+      const plan = page.getByRole("region", { name: "Init plan", exact: true });
+      await plan.getByRole("textbox", { name: "Name", exact: true }).fill("Library credits");
+      await plan.getByRole("textbox", { name: "Name", exact: true }).press("Enter");
+      await plan.getByRole("textbox", { name: "Symbol", exact: true }).fill("LIB");
+      await plan.getByRole("textbox", { name: "Symbol", exact: true }).press("Enter");
+      await page.getByRole("button", { name: "Back to composition", exact: true }).click();
+      if (width < 768) await waitForStoredToken(page);
+      else await waitForSaved(page);
+      await page.reload({ waitUntil: "domcontentloaded" });
+      if (width < 768) await page.getByRole("tablist", { name: "Panes" }).getByRole("tab", { name: "Inspector", exact: true }).click();
+      await page.getByRole("button", { name: "Edit setup", exact: true }).first().click();
+      await expect(plan.getByRole("textbox", { name: "Name", exact: true })).toHaveValue("Library credits");
+      await expect(plan.getByRole("textbox", { name: "Symbol", exact: true })).toHaveValue("LIB");
+      await expect(page.getByRole("navigation", { name: "Problem navigation" })).toBeVisible();
+    });
+  }
+
   // ── Step 1: the three routes ──────────────────────────────────────────────────────────────────────────────
 
   test("loads GovernedVault from its recipe card, in place on an empty sheet @smoke", async ({ page }) => {

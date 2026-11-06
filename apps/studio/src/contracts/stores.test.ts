@@ -103,6 +103,15 @@ describe("subscriptions survive provideStores", () => {
     expect(session.get().selection).toEqual([]);
   });
 
+  test("upgrade projects can select newly added core releases as ordinary cards", () => {
+    doc.load({ ...doc.get(), recipe: { ...doc.get().recipe, mode: "upgrade" } });
+    session.set({ coreSelected: true, selection: ["ERC165Facet"] });
+    expect(session.get().selection).toEqual(["ERC165Facet"]);
+    session.set(() => ({ selection: ["DiamondLoupeFacet"] }));
+    expect(session.get().selection).toEqual(["DiamondLoupeFacet"]);
+    expect(session.get().coreSelected).toBe(false);
+  });
+
   test("a card selection deselects the core; core.select's own patch keeps it", () => {
     session.set({ coreSelected: true });
     session.set({ selection: ["ERC20"] });

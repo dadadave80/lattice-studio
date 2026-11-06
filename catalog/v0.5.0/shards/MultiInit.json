@@ -1,0 +1,63 @@
+{
+  "name": "MultiInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "multiInit",
+      "inputs": [
+        {
+          "name": "_initAddresses",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "_initData",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "AddressAndCalldataLengthMismatch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InitializeReverted",
+      "inputs": [
+        {
+          "name": "initAddress",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "initCalldata",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NoBytecodeAtAddress",
+      "inputs": [
+        {
+          "name": "initAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "Provides a utility function to perform multiple delegatecall initializations in a single transaction, with robust error handling and validation."
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/initializers/MultiInit.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/initializers/MultiInit.sol"
+  }
+}

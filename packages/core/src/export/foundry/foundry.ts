@@ -27,6 +27,7 @@ export function scriptContractName(projectName: string): string {
 }
 
 export const exportFoundry: ExportFoundryFn = ({ project, catalog, analysis, studioVersion, chainIds, proxyCreationCode }) => {
+  if (project.recipe.mode === "upgrade") return err("This is an upgrade plan. Export its diamondCut instead of a deployment script.");
   const recipe = normalizeRecipe(project.recipe, catalog);
   const hash = recipeHash(recipe, catalog);
   if (analysis.recipeHash.toLowerCase() !== hash.toLowerCase()) {

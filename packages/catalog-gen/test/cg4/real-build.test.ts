@@ -152,6 +152,21 @@ function docs(params: Param[], prefix: string, out: Map<string, string>): Map<st
   return out;
 }
 
+/** Source changes since K3's fixture: diamond-lib seeds ERC165, and the ERC20Votes module initializer was removed. */
+function atCurrentPin(spec: InitSkeleton): InitSkeleton {
+  const initializes = spec.initializes.filter((entry) => spec.name !== "GovernedVaultInit" || entry.module !== "ERC20Votes");
+  const seedsErc165 = [
+    "DiamondIntrospectionInit.initImmutable", "DiamondIntrospectionInit.initUpgradeable",
+    "AccountInit", "AccountInit6900", "SafeDiamondCutInit", "GovernedSafeDiamondCutInit",
+    "GovernedDiamondCutInit", "GovernedVaultInit",
+  ];
+  if (seedsErc165.includes(spec.name)) {
+    const after = initializes.findIndex((entry) => entry.module === "Ownable" || entry.module === "EmergencyStop");
+    initializes.splice(after + 1, 0, { module: "ERC165" });
+  }
+  return { ...spec, initializes };
+}
+
 const title = "every init at the pin, from the ci build";
 describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason})`, () => {
   let inits: InitFacts[] = [];
@@ -174,21 +189,24 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     fixture = await fixtureInits();
   }, BUILD_TIMEOUT_MS);
 
-  test("89 init contracts give 90 specs, sorted by name; every internal call was followed", () => {
-    expect(new Set(inits.map((f) => f.spec.contract)).size).toBe(89);
-    expect(inits).toHaveLength(90);
+  test("101 init contracts give 102 specs, sorted by name; only checkpoint overload resolution is uncertain", () => {
+    expect(new Set(inits.map((f) => f.spec.contract)).size).toBe(101);
+    expect(inits).toHaveLength(102);
     const names = inits.map((f) => f.spec.name);
     expect(names).toEqual([...names].sort());
-    expect(new Set(names).size).toBe(90);
-    expect(notes).toEqual([]);
+    expect(new Set(names).size).toBe(102);
+    // Both Checkpoints.push overloads only write checkpoints, so no module initializer is omitted here.
+    expect(notes).toEqual([
+      "src/tokens/ERC721/libraries/ERC721ConsecutiveLib.sol#L124: couldn't tell which overload of Checkpoints.push this call reaches.",
+    ]);
     // Calls into other code, which aren't init code: pinned so a new one gets looked at.
     expect(externalCalls).toEqual([
       "lib/diamond-lib/src/initializers/MultiInit.sol#L25: initAddress.delegatecall",
-      "src/defi/GovernedVaultENSInit.sol#L104: IReverseRegistrar(p.reverseRegistrar).setName",
-      "src/governance/libraries/GovernedSafeDiamondCutLib.sol#L140: ISafe(_safe).getThreshold",
+      "src/defi/GovernedVaultENSInit.sol#L105: IReverseRegistrar(p.reverseRegistrar).setName",
+      "src/governance/libraries/GovernedSafeDiamondCutLib.sol#L157: ISafe(_safe).getThreshold",
       "src/governance/libraries/SafeDiamondCutLib.sol#L129: ISafe(_safe).getThreshold",
-      "src/tokens/ERC20/libraries/ERC20WrapperLib.sol#L65: underlying_.staticcall",
-      "src/tokens/ERC4626/libraries/ERC4626Lib.sol#L81: asset_.staticcall",
+      "src/tokens/ERC20/libraries/ERC20WrapperLib.sol#L67: underlying_.staticcall",
+      "src/tokens/ERC4626/libraries/ERC4626Lib.sol#L118: asset_.staticcall",
     ]);
   });
 
@@ -249,12 +267,12 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
       ["AccountInit6900", [{ name: "entryPoint_", type: "address" }]],
     ]);
     const stateless = statelessInitContracts(inits).map((c) => c.contract);
-    expect(stateless).toHaveLength(87);
+    expect(stateless).toHaveLength(99);
     expect(stateless).not.toContain("AccountInit");
     expect(stateless).toContain("DiamondIntrospectionInit");
   });
 
-  test("with K3's overlay, every fixture init equals the fixture's", () => {
+  test("with K3's overlay, every historical fixture init matches except the pinned module changes", () => {
     const merged = mergeInitOverlay(
       inits.map((f) => f.spec),
       k3Overlay(true),
@@ -262,7 +280,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     expect(merged.conflicts).toEqual([]);
     expect(merged.unknownOverlay).toEqual([]);
     const byName = new Map(merged.inits.map((s) => [s.name, s]));
-    for (const want of fixture) expect(byName.get(want.name)).toEqual(want);
+    for (const want of fixture) expect(byName.get(want.name)).toEqual(atCurrentPin(want));
     for (const s of merged.inits) expect(InitSpecSchema.safeParse(s).success).toBe(true);
     // Each place K3's docs replace a different, non-empty NatSpec doc reaches the lint.
     const replaced = Object.entries(DOC_DIFFERENCES)
@@ -288,8 +306,8 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
         if (source.get(path) !== doc) differences[path] = { fixture: doc, source: source.get(path) ?? "(missing)" };
       }
       // Everything but the docs is equal.
-      const strip = (s: InitSkeleton) => JSON.stringify(s, (k, v) => (k === "doc" ? undefined : v));
-      expect(strip(got)).toBe(strip(want));
+      const strip = (s: InitSkeleton) => JSON.parse(JSON.stringify(s, (k, v) => (k === "doc" ? undefined : v))) as InitSkeleton;
+      expect(strip(got)).toEqual(strip(atCurrentPin(want)));
     }
     const expected = Object.fromEntries(Object.entries(DOC_DIFFERENCES).map(([k, { fixture: f, source: s }]) => [k, { fixture: f, source: s }]));
     expect(differences).toEqual(expected);
@@ -302,7 +320,7 @@ describe.skipIf(!gate.run)(gate.run ? title : `${title} (skipped: ${gate.reason}
     );
     const covered = new Set(fixture.map((s) => s.name));
     expect(merged.withoutOverlay).toEqual(inits.map((f) => f.spec.name).filter((n) => !covered.has(n)));
-    expect(merged.withoutOverlay).toHaveLength(73);
+    expect(merged.withoutOverlay).toHaveLength(85);
     expect(merged.withoutOverlay).not.toContain("AccountInit");
   });
 });

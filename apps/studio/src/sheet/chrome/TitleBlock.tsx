@@ -3,13 +3,16 @@ import { formatAddress, formatProblemSummary, isCoreOnly, recipeStats } from "@l
 import { spacing } from "@lattice-studio/tokens";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
-  chainService, commandRef, env, now, useAnalysis, useCatalog, useDeployState, useDocument, useOnline, useSession,
+  chainService, commandRef, env, now, useAnalysis, useDeployState, useDocument, useOnline, useSession,
   type DeployState,
 } from "@/contracts";
 import { findChain } from "@/chain/infra/chains";
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
+import { chainNameOf } from "@/panels/inspector/shared/use-chain";
 import { useLayoutTier } from "@/shell/layout-tier";
 import { chipWords, useProjectStatus, type StatusChipWords } from "@/shell/status";
 import { usePrediction } from "@/state";
+import { planFields, planOf } from "@/panels/init/navigation";
 import { Button } from "@/ui/buttons/Button";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { IconButton } from "@/ui/buttons/IconButton";
@@ -30,7 +33,7 @@ export type TitleBlockForm = "full" | "collapsed" | "strip";
 /** What the address line shows. */
 export type AddressLine =
   | { kind: "none"; text: string }
-  | { kind: "address"; address: Address; label: "Predicted" | "Deployed"; href?: string; offline: boolean };
+  | { kind: "address"; address: Address; label: "Predicted" | "Deployed" | "Target"; href?: string; offline: boolean };
 
 /**
  * A sheet shorter than this, in px, opens with the title block collapsed (David's decision on SH-01/SH-02):
@@ -151,6 +154,8 @@ export function localDeployReason(empty: boolean, phase: DeployState["phase"], r
  */
 function DeployAction({ again, empty, phase, size }: { again: boolean; empty: boolean; phase: DeployState["phase"]; size?: "small" }) {
   const readOnly = useSession((s) => s.readOnly);
+  const upgrade = useDocument((state) => state.project.recipe.mode === "upgrade");
+  if (upgrade) return <span data-deploy="" className={styles.deploy}><CommandButton command={commandRef("deploy.upgrade")} variant="primary" {...(size ? { size } : {})}>Upgrade…</CommandButton></span>;
   const local = localDeployReason(empty, phase, readOnly);
   const label = again && !empty ? "Deploy again…" : "Deploy…";
   if (local !== null) {
@@ -199,7 +204,9 @@ function AddressView({ line, short }: { line: AddressLine; short?: boolean }) {
 /** Everything the title block shows, in one place, so each form draws the same facts. */
 function useTitleBlockFacts() {
   const name = useDocument((s) => s.project.name);
-  const empty = useDocument((s) => isCoreOnly(s.project.recipe));
+  const recipe = useDocument((s) => s.project.recipe);
+  const origin = useDocument((state) => state.project.upgrade);
+  const empty = useDocument((s) => s.project.recipe.mode !== "upgrade" && isCoreOnly(s.project.recipe));
   const { status, chainName } = useProjectStatus();
   const phase = useDeployState((s) => s.phase);
   const deployChain = useDeployState((s) => s.chainId);
@@ -216,23 +223,27 @@ function useTitleBlockFacts() {
   );
   const prediction = usePrediction();
   const online = useOnline();
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const problems = useAnalysis((a) => a.problems);
   const stats = useAnalysis((a) => (catalog ? recipeStats(a, catalog).text : null));
   const wallet = useWalletName(deploy.phase === "awaitingSignature");
   const at = useTicking(deploy.phase === "pending");
 
   const stamp = stampWords(status, deploy, chainName, wallet, at);
+  const hasSetup = useMemo(() => catalog !== null && planFields(planOf(recipe, catalog)).length > 0, [recipe, catalog]);
   const counts = useMemo(() => {
     const blockers = problems.filter((p) => p.severity === "blocker").length;
     const warnings = problems.filter((p) => p.severity === "warning").length;
     const toFillCount = problems.filter((p) => p.code === "INIT-01").length;
-    return { blockers, problems: formatProblemSummary({ blockers, warnings }), toFillCount, stats };
-  }, [problems, stats]);
+    return { blockers, problems: formatProblemSummary({ blockers, warnings }), toFillCount, hasSetup, stats };
+  }, [problems, stats, hasSetup]);
 
   let address: AddressLine;
   const deployed = status.deployment;
-  if (empty) {
+  if (recipe.mode === "upgrade") {
+    const href = origin ? explorerLink(origin.chainId, origin.address) : undefined;
+    address = origin ? { kind: "address", address: origin.address, label: "Target", offline: !online, ...(href ? { href } : {}) } : { kind: "none", text: "This upgrade plan has no stored target." };
+  } else if (empty) {
     address = { kind: "none", text: NO_ADDRESS };
   } else if (deploy.address && deploy.chainId !== undefined && IN_FLIGHT_PHASES.has(deploy.phase) && deploy.phase !== "proposed") {
     // Once the transaction lands (confirmed, verifying) the address is the diamond's own.
@@ -254,7 +265,7 @@ function useTitleBlockFacts() {
         ? { chainId: deployed.chainId, address: deployed.address }
         : null;
 
-  return { name, empty, status, deploy, stamp, counts, address, mismatch };
+  return { name, empty, status, deploy, stamp, counts, address, mismatch, upgrade: recipe.mode === "upgrade", targetChain: origin ? chainNameOf(null, origin.chainId) : null };
 }
 
 type Facts = ReturnType<typeof useTitleBlockFacts>;
@@ -282,7 +293,7 @@ function FullBlock({ facts, toggle }: { facts: Facts; toggle: Toggle }) {
         />
       </div>
       <div className={styles.cell}>
-        <ChainPathPicker />
+        {facts.upgrade ? <span className={styles.label}>{`Upgrade target · ${facts.targetChain ?? "Unknown chain"}`}</span> : <ChainPathPicker />}
         <div className={styles.addressRow}>
           {address.kind === "address" ? <span className={styles.label}>{address.label}</span> : null}
           <AddressView line={address} />
@@ -305,11 +316,11 @@ function FullBlock({ facts, toggle }: { facts: Facts; toggle: Toggle }) {
           </span>
         </div>
       )}
-      {!empty && counts.toFillCount > 0 ? (
-        <div className={styles.fillRow}>
-          <span data-to-fill="">{toFill(counts.toFillCount)}</span>
+      {!empty && (counts.toFillCount > 0 || counts.hasSetup) ? (
+        <div className={styles.fillRow} data-tour="setup">
+          {counts.toFillCount > 0 ? <span data-to-fill="">{toFill(counts.toFillCount)}</span> : null}
           <CommandButton command={commandRef("init.open")} size="small">
-            Fill in
+            {counts.toFillCount > 0 ? "Fill in" : "Edit setup"}
           </CommandButton>
         </div>
       ) : null}

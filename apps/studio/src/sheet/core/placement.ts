@@ -15,5 +15,5 @@ export const FLASH_MS = 1600;
 export function placedBetween(before: Project, after: Project, change: DocumentChange["kind"] | undefined): string[] {
   if (change === "load" || before.id !== after.id || before.recipe.facets === after.recipe.facets) return [];
   const had = new Set(before.recipe.facets);
-  return after.recipe.facets.filter((name) => !had.has(name) && !isCoreFacet(name) && after.layout[name] !== undefined);
+  return after.recipe.facets.filter((name) => !had.has(name) && (after.recipe.mode === "upgrade" || !isCoreFacet(name)) && after.layout[name] !== undefined);
 }

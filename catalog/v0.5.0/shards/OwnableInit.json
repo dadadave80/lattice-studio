@@ -1,0 +1,35 @@
+{
+  "name": "OwnableInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "_owner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x19ab453c": {
+        "notice": "Initialize the contract owner.",
+        "dev": "This function is called during the diamond cut process to set up the owner.",
+        "params": {
+          "_owner": "The address to set as the contract owner."
+        }
+      }
+    },
+    "notice": "Provides an initializer to set the contract owner",
+    "dev": "Intended to be called as a standalone initializer via diamond cut or through MultiInit"
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/initializers/OwnableInit.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/initializers/OwnableInit.sol"
+  }
+}

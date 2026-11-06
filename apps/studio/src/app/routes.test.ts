@@ -20,6 +20,15 @@ describe("routes", () => {
     });
   });
 
+  test("deployed diamond links carry their chain and decoded target in hash-only builds", () => {
+    expect(parseRoute({ hash: "#d=84532:alice.eth", pathname: "/ipfs/app/" }, hashOnly)).toEqual({
+      kind: "open", target: "84532:alice.eth",
+    });
+    expect(parseRoute({ hash: "#d=11155111%3Ab%C3%BCcher.eth", pathname: "/" }, withPaths)).toEqual({
+      kind: "open", target: "11155111:bücher.eth",
+    });
+  });
+
   test("problem docs: a code opens its page, anything else the index", () => {
     expect(routeForPath("/docs/problems/SEL-01")).toEqual({ kind: "docs", code: "SEL-01" });
     expect(routeForPath("/docs/problems/sel-01")).toEqual({ kind: "docs", code: "SEL-01" });

@@ -18,6 +18,7 @@ function isCore(name: string): boolean {
  * keeps its order, and a name the catalog lacks is never added); without one, the missing ones are appended.
  */
 export function withCore(recipe: Recipe, catalog: Catalog | null): Recipe {
+  if (recipe.mode === "upgrade") return recipe;
   const present = new Set(recipe.facets);
   const index = catalog === null ? null : new Map(catalog.facets.map((facet, at) => [facet.name, at]));
   const missing = CORE_FACETS.filter((name) => !present.has(name) && (index === null || index.has(name)));

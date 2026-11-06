@@ -78,6 +78,8 @@ export type NewProjectOptions = {
   layout?: Layout;
   /** Per argument path: "link" for a share link, "file" for an opened file (LINK-01). Default: empty. */
   provenance?: Project["provenance"];
+  /** Pinned on-chain origin; creates an upgrade project and its observed record atomically. */
+  upgrade?: Project["upgrade"];
 };
 
 export type ProjectsService = {
@@ -94,6 +96,10 @@ export type ProjectsService = {
 
 export type DeploymentsService = {
   listDeployments(projectId: string): Promise<Deployment[]>;
+  /** Address lookup preserves the original record owner when another project creates an upgrade plan. */
+  getDeployment?(chainId: number, address: Address): Promise<Deployment | null>;
+  /** Synchronous update inside one storage transaction; refuses identity/ownership changes. */
+  updateDeployment?(chainId: number, address: Address, update: (current: Deployment | null) => Result<Deployment, string>): Promise<Result<Deployment, string>>;
   putDeployment(deployment: Deployment): Promise<void>;
   /**
    * Drops one record (Discard proposal, spec Flow 12). Optional until S7a's persistence implements it
@@ -247,14 +253,32 @@ function memoryDeployments(): DeploymentsService & { clear(): void } {
   const changed = listeners<string>();
   return {
     listDeployments: async (projectId) => [...records.values()].filter((d) => d.projectId === projectId),
+    getDeployment: async (chainId, address) => records.get(`${chainId}:${address.toLowerCase()}`) ?? null,
+    async updateDeployment(chainId, address, update) {
+      const key = `${chainId}:${address.toLowerCase()}`;
+      const current = records.get(key) ?? null;
+      const result = update(current);
+      if (!result.ok) return result;
+      if (result.value.chainId !== chainId || result.value.address.toLowerCase() !== address.toLowerCase() || (current && result.value.projectId !== current.projectId)) {
+        return { ok: false, error: "A deployment update can't change its address, chain or original project." };
+      }
+      records.set(key, result.value);
+      changed.emit(result.value.projectId);
+      return result;
+    },
     putDeployment: async (d) => {
-      records.set(`${d.chainId}:${d.address.toLowerCase()}`, d);
+      const key = `${d.chainId}:${d.address.toLowerCase()}`;
+      const current = records.get(key);
+      if (current && current.projectId !== d.projectId) throw new Error("That address belongs to another project's deployment record.");
+      if (current?.pendingUpgrade || (current?.revision ?? 0) > d.revision) return;
+      records.set(key, d);
       changed.emit(d.projectId);
     },
     deleteDeployment: async (chainId, address) => {
       const key = `${chainId}:${address.toLowerCase()}`;
       const gone = records.get(key);
       if (gone === undefined) return;
+      if (gone.pendingUpgrade) throw new Error("This diamond has an unresolved upgrade. Check it before deleting its record.");
       records.delete(key);
       changed.emit(gone.projectId);
     },
@@ -282,6 +306,7 @@ function minimalProjects(): ProjectsService {
         deploy: { path: settings.get().defaultPath, entropy: hex(randomBytes(11)), scope: "every-chain" },
         provenance: options?.provenance ?? {},
         predicted: [],
+        ...(options?.upgrade === undefined ? {} : { upgrade: options.upgrade }),
       };
       doc.load(project);
       return { ok: true, value: project };
@@ -591,6 +616,26 @@ export function listDeployments(projectId: string): Promise<Deployment[]> {
   return impl.deployments.listDeployments(projectId);
 }
 
+export function getDeployment(chainId: number, address: Address): Promise<Deployment | null> {
+  const read = impl.deployments.getDeployment;
+  if (!read) return Promise.reject(new Error("The deployment store can't look up an address."));
+  return read(chainId, address);
+}
+
+export function updateDeployment(chainId: number, address: Address, update: (current: Deployment | null) => Result<Deployment, string>): Promise<Result<Deployment, string>> {
+  const apply = impl.deployments.updateDeployment;
+  return apply ? apply(chainId, address, update) : Promise.resolve({ ok: false, error: "The deployment store can't update an address atomically." });
+}
+
+/** Upgrade plans observe the address record without taking ownership from the project that deployed it. */
+export async function projectDeployments(project: Pick<Project, "id" | "upgrade">): Promise<Deployment[]> {
+  const records = await listDeployments(project.id);
+  const origin = project.upgrade;
+  if (!origin || records.some((record) => record.chainId === origin.chainId && record.address.toLowerCase() === origin.address.toLowerCase())) return records;
+  const target = await getDeployment(origin.chainId, origin.address);
+  return target ? [...records, target] : records;
+}
+
 export function putDeployment(deployment: Deployment): Promise<void> {
   return impl.deployments.putDeployment(deployment);
 }
@@ -616,15 +661,16 @@ const deploymentCache = new Map<string, DeploymentsSnapshot>();
 const deploymentListeners = listeners<string>();
 const LOADING: DeploymentsSnapshot = { status: "loading" };
 
-function refreshDeployments(projectId: string): void {
-  impl.deployments.listDeployments(projectId).then(
+function refreshDeployments(projectId: string, upgrade?: Project["upgrade"]): void {
+  const key = `${projectId}:${upgrade?.chainId ?? ""}:${upgrade?.address.toLowerCase() ?? ""}`;
+  projectDeployments({ id: projectId, ...(upgrade === undefined ? {} : { upgrade }) }).then(
     (deployments) => {
-      deploymentCache.set(projectId, { status: "ready", deployments });
-      deploymentListeners.emit(projectId);
+      deploymentCache.set(key, { status: "ready", deployments });
+      deploymentListeners.emit(key);
     },
     () => {
-      deploymentCache.set(projectId, { status: "ready", deployments: [] });
-      deploymentListeners.emit(projectId);
+      deploymentCache.set(key, { status: "ready", deployments: [] });
+      deploymentListeners.emit(key);
     },
   );
 }
@@ -633,22 +679,23 @@ function refreshDeployments(projectId: string): void {
  * A project's deployment records, re-rendering after every write. Each mount reads them again (records
  * written while nothing watched still show); until the first read returns it's `loading`, or the last list read.
  */
-export function useDeployments(projectId: string): DeploymentsSnapshot {
+export function useDeployments(projectId: string, upgrade?: Project["upgrade"]): DeploymentsSnapshot {
+  const key = `${projectId}:${upgrade?.chainId ?? ""}:${upgrade?.address.toLowerCase() ?? ""}`;
   return useSyncExternalStore(
     (onChange) => {
       const stopWrites = deploymentsRelay.subscribe((changed) => {
-        if (changed === projectId) refreshDeployments(projectId);
+        if (changed === projectId || upgrade !== undefined) refreshDeployments(projectId, upgrade);
       });
       const stopCache = deploymentListeners.add((changed) => {
-        if (changed === projectId) onChange();
+        if (changed === key) onChange();
       });
-      refreshDeployments(projectId);
+      refreshDeployments(projectId, upgrade);
       return () => {
         stopWrites();
         stopCache();
       };
     },
-    () => deploymentCache.get(projectId) ?? LOADING,
+    () => deploymentCache.get(key) ?? LOADING,
   );
 }
 

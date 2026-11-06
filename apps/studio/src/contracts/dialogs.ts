@@ -11,7 +11,7 @@ import type { ComponentType } from "react";
 export const DIALOG_IDS = [
   "deploy-review", "missing-contracts", "choose-mechanism", "choose-per-selector", "remove-facets", "migrate",
   "share", "safe-batch", "save-copy", "open-diamond", "settings", "delete-for-good", "clear-data",
-  "keyboard-shortcuts", "projects", "about", "browse-recipes",
+  "keyboard-shortcuts", "projects", "about", "browse-recipes", "inspect-transaction", "upgrade-plan-review",
 ] as const;
 
 export type DialogId = (typeof DIALOG_IDS)[number];
@@ -40,7 +40,10 @@ export type DialogPropsMap = {
   /** S7b · Save a copy (⌘S with no linked file). */
   "save-copy": { filename?: string };
   /** v2 · Open diamond (App menu). */
-  "open-diamond": { address?: Address; chainId?: number };
+  "open-diamond": { address?: Address; target?: string; chainId?: number };
+  /** An independent on-chain call or upgrade review; no fresh-deployment state. */
+  "inspect-transaction": Record<string, never>;
+  "upgrade-plan-review": Record<string, never>;
   /** S10 · Settings. */
   "settings": { group?: SettingsGroup };
   /** S7b · Delete for good (Recently deleted). */

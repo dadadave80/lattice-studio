@@ -1,3 +1,4 @@
+import { getCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 /**
  * Going to a problem (IR L17, spec L300, L437): F8 and ⇧F8 in problem order, `problem.focus` from the Structure
  * tree and the deploy review, and Resolve collision…. Loaded with the command that runs it, never in the entry.
@@ -11,7 +12,7 @@
 import type { Anchor, Problem } from "@lattice-studio/core";
 import { isCoreFacet } from "@lattice-studio/core";
 import {
-  announce, doc, getAnalysis, getCatalog, log, runCommand, session, type CommandSource,
+  announce, doc, getAnalysis, log, runCommand, session, type CommandSource,
 } from "@/contracts";
 import { ensureVisible } from "@/sheet/canvas";
 import { NO_PROBLEMS } from "./commands";
@@ -74,9 +75,9 @@ export function focusProblem(problemId: string, options: { open?: boolean; sourc
   // Typed in the console (`next`), the answer is a line there too (IR L153).
   if (options.source === "console") log({ tag: "Note", text: spoken(problem) });
   const placed = doc.get().recipe.facets;
-  const note = noteOf(buildNotes(getAnalysis(), getCatalog()), problem.id);
+  const note = noteOf(buildNotes(getAnalysis(), getCompositionCatalog()), problem.id);
   // A card: the core's facets are in the recipe but never on the sheet, so a problem anchored on one selects no card.
-  const card = [...(note?.facets ?? []), ...anchorFacets(problem)].find((facet) => placed.includes(facet) && !isCoreFacet(facet));
+  const card = [...(note?.facets ?? []), ...anchorFacets(problem)].find((facet) => placed.includes(facet) && (doc.get().recipe.mode === "upgrade" || !isCoreFacet(facet)));
 
   session.set((s) => ({
     ...(card !== undefined ? { selection: [card] } : {}),
@@ -119,7 +120,7 @@ export function stepToProblem(dir: 1 | -1, source: CommandSource = "keys"): void
 
 /** Resolve collision…: the first unresolved collision's note, with its choice open (spec L437). */
 export function resolveCollision(source: CommandSource = "palette"): void {
-  const first = buildNotes(getAnalysis(), getCatalog()).find((note) => note.kind === "collision");
+  const first = buildNotes(getAnalysis(), getCompositionCatalog()).find((note) => note.kind === "collision");
   const problemId = first?.problemIds[0];
   if (problemId === undefined) {
     say(NO_COLLISIONS);

@@ -34,7 +34,7 @@ function say(ctx: CommandContext, text: string): void {
 /** Why init order mode can't open now, or null. Leaving it is always possible. */
 export function initOrderBlock(ctx: Pick<CommandContext, "project" | "catalog" | "session">): string | null {
   if (ctx.session.modes.initOrder) return null;
-  if (isCoreOnly(ctx.project.recipe)) return PLACE_FACETS_FIRST;
+  if (ctx.project.recipe.mode !== "upgrade" && isCoreOnly(ctx.project.recipe)) return PLACE_FACETS_FIRST;
   if (!ctx.catalog) return CATALOG_LOADING;
   return initOrderModel(ctx.project.recipe, ctx.catalog).kind === "none" ? NO_INIT_STEPS : null;
 }

@@ -4,9 +4,11 @@ import type { TidyFn } from "../model/api";
 import type { Catalog, Facet } from "../model/catalog";
 import type { Hex4 } from "../model/hex";
 import type { Layout, LayoutMetrics, Point, Rect, Size, Sizes } from "../model/layout";
+import type { Recipe } from "../model/recipe";
+import { projectUpgradeCatalog } from "../upgrade/projection";
 import { cardRects, center, compareText, fallbackSize, nearestFree, snapUp, unionRect } from "./geometry";
 import { collisions, contestedByFacet } from "./rows";
-import { cardSize } from "./size";
+import { cardSize, rawFacetCardSize } from "./size";
 
 /**
  * Tidy's spacing, in grid units (the board's `COL_STEP 304`, `ROW_GAP 40`, `COLUMN_MAX 1040`, origin 96):
@@ -91,6 +93,7 @@ function arrange(cards: readonly Card[], band: ReadonlyMap<string, number>, orig
 /** Sizes as the sheet draws them at full size: `cardSize` with each card's expanded flag and contested rows. */
 function tidySizes(
   names: readonly string[],
+  recipe: Recipe,
   layout: Layout,
   facets: ReadonlyMap<string, Facet>,
   contested: ReadonlyMap<string, readonly Hex4[]>,
@@ -100,6 +103,11 @@ function tidySizes(
   for (const name of names) {
     const facet = facets.get(name);
     const entry = layout[name];
+    const instance = recipe.mode === "upgrade" ? recipe.facetInstances?.[name] : undefined;
+    if (instance && instance.kind !== "known") {
+      sizes[name] = rawFacetCardSize(instance.selectors, entry?.expanded === true, metrics);
+      continue;
+    }
     sizes[name] = facet
       ? cardSize(facet, {
           metrics,
@@ -122,17 +130,23 @@ function tidySizes(
  * gets one with pins on the right. The core's facets never get one: they aren't cards.
  */
 export const tidy: TidyFn = (project, catalog, analysis, metrics, selection) => {
+  if (project.recipe.mode === "upgrade") {
+    const projected = projectUpgradeCatalog(project.recipe, catalog);
+    if (!projected.ok) throw new Error(projected.error);
+    catalog = projected.value.catalog;
+  }
   // The core is never on the sheet: its facets get no card, and a stale entry for one is dropped.
-  const layout = withoutCore(project.layout);
+  const layout = project.recipe.mode === "upgrade" ? project.layout : withoutCore(project.layout);
   const facets = new Map(catalog.facets.map((f) => [f.name, f]));
   const contested = contestedByFacet(collisions(analysis));
 
-  const all = [...new Set([...project.recipe.facets, ...Object.keys(layout)])].filter((n) => !isCoreFacet(n)).sort(catalogOrder(catalog));
+  const all = [...new Set([...project.recipe.facets, ...Object.keys(layout)])]
+    .filter((n) => project.recipe.mode === "upgrade" || !isCoreFacet(n)).sort(catalogOrder(catalog));
   const picked = selection === undefined ? null : new Set(selection);
   const chosen = picked ? all.filter((n) => layout[n] !== undefined && picked.has(n)) : all;
   if (chosen.length === 0) return picked ? { ...layout } : layout;
 
-  const sizes = tidySizes(all, layout, facets, contested, metrics);
+  const sizes = tidySizes(all, project.recipe, layout, facets, contested, metrics);
   const cards = chosen.map((name, order): Card => ({ name, order, size: sizes[name] ?? fallbackSize(metrics) }));
   const origin = { x: ORIGIN * metrics.grid, y: ORIGIN * metrics.grid };
   let positions = arrange(cards, bands(chosen, facets), origin, metrics);

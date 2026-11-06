@@ -1,0 +1,51 @@
+{
+  "name": "ERC721PausableInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "admin_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "RoleGranted",
+      "inputs": [
+        {
+          "name": "role",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-721 Pausable extension recipe — registers IPausable (ERC-165; `_paused` starts at the zero default) and grants `admin_` the DEFAULT_ADMIN_ROLE that gates `pause()`/`unpause()`. Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC721Init}; it must NOT open its own pre/postInitializer."
+  },
+  "source": {
+    "path": "src/tokens/ERC721/ERC721PausableInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/tokens/ERC721/ERC721PausableInit.sol"
+  }
+}

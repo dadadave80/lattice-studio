@@ -179,11 +179,18 @@ describe("a card's rows", () => {
 
     const ran: CommandRef[] = [];
     onCleanup(onCommandRun((ref) => void ran.push(ref)));
-    const pin = rows.find((row) => row.dataset.selector && row.dataset.state !== "seam");
-    pin?.focus();
+    const before = doc.get();
+    await userEvent.keyboard("{Enter}");
+    expect(ran).toEqual([{ id: "inspector.focusSelectors", args: { facet: a } }]);
+    expect(doc.get()).toBe(before);
+    expect(doc.state().canUndo).toBe(false);
+    press("ArrowDown");
+    expect(document.activeElement).toBe(rows[1]);
+    expect(rows[1]?.getAttribute("aria-label")).toMatch(/^Leave out of the diamond:/);
     await userEvent.keyboard(" ");
-    await expect.poll(() => ran.length).toBeGreaterThan(0);
-    expect(ran[0]?.args?.selector).toBe(pin?.dataset.selector);
+    expect(ran).toHaveLength(2);
+    expect(ran[1]).toEqual({ id: "selector.exclude", args: { selector: rows[1]?.dataset.selector } });
+    expect(doc.get().recipe.exclude).toEqual([rows[1]?.dataset.selector]);
 
     press("Escape", {}, document.activeElement);
     await expect.poll(() => focusedCard() === a && document.activeElement === cardNode(a as string)).toBe(true);

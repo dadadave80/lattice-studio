@@ -246,8 +246,34 @@ const SchemaVersionSchema = z.literal(1, {
   },
 });
 
-/** The recipe (spec L209-L223). */
-export const RecipeSchema = z.looseObject({
+const uniqueSelectors = z.array(Hex4Schema).refine((values) => new Set(values.map((value) => value.toLowerCase())).size === values.length, {
+  error: "has duplicate selectors.",
+});
+const FacetInstanceSchema = z.discriminatedUnion("kind", [
+  z.looseObject({ kind: z.literal("known"), address: AddressSchema, codehash: Hash32Schema, catalogFacet: text, extraSelectors: uniqueSelectors }),
+  z.looseObject({ kind: z.literal("foreign"), address: AddressSchema, codehash: Hash32Schema, selectors: uniqueSelectors }),
+  z.looseObject({ kind: z.literal("self"), address: AddressSchema, codehash: Hash32Schema, selectors: uniqueSelectors }),
+]);
+
+function checkInstances(recipe: Recipe, context: z.RefinementCtx): void {
+  const instances = recipe.facetInstances ?? {};
+  if (recipe.facetInstances !== undefined && recipe.mode !== "upgrade") {
+    context.addIssue({ code: "custom", path: ["facetInstances"], message: "requires upgrade mode." });
+  }
+  for (const [id, instance] of Object.entries(instances)) {
+    if (id !== `onchain:${instance.address.toLowerCase()}`) {
+      context.addIssue({ code: "custom", path: ["facetInstances", id], message: "must use onchain: followed by its lowercase address." });
+    }
+    if (!recipe.facets.includes(id)) context.addIssue({ code: "custom", path: ["facetInstances", id], message: "isn't placed in facets." });
+  }
+  recipe.facets.forEach((id, index) => {
+    if (id.startsWith("onchain:") && !Object.hasOwn(instances, id)) {
+      context.addIssue({ code: "custom", path: ["facets", index], message: "needs an on-chain facet descriptor." });
+    }
+  });
+}
+
+const RecipeShape = z.looseObject({
   $schema: opt(text),
   schemaVersion: SchemaVersionSchema,
   name: opt(text),
@@ -258,16 +284,62 @@ export const RecipeSchema = z.looseObject({
   exclude: z.array(Hex4Schema),
   init: RecipeInitSchema,
   immutable: opt(z.literal(true)),
-}) satisfies z.ZodType<Recipe>;
+  mode: opt(z.literal("upgrade")),
+  facetInstances: opt(z.record(text, FacetInstanceSchema)),
+});
+
+/** The recipe (spec L209-L223), including optional portable upgrade intent. */
+export const RecipeSchema = RecipeShape.superRefine(checkInstances) satisfies z.ZodType<Recipe>;
 
 /** The share payload: the full recipe minus `$schema`, with no layout (spec L291). */
-export const SharePayloadSchema = RecipeSchema.omit({ $schema: true }) satisfies z.ZodType<Omit<Recipe, "$schema">>;
+export const SharePayloadSchema = RecipeShape.omit({ $schema: true }).superRefine(checkInstances) satisfies z.ZodType<Omit<Recipe, "$schema">>;
 
 const CardLayoutSchema = z.looseObject({
   x: z.number(),
   y: z.number(),
   pins: z.enum(["left", "right"]),
   expanded: opt(z.literal(true)),
+});
+
+const LoupeFacetSchema = z.looseObject({ facetAddress: AddressSchema, functionSelectors: uniqueSelectors.min(1) });
+const LoupeFacetsSchema = z.array(LoupeFacetSchema).superRefine((facets, context) => {
+  const addresses = new Set<string>();
+  const selectors = new Set<string>();
+  facets.forEach((facet, index) => {
+    const address = facet.facetAddress.toLowerCase();
+    if (addresses.has(address)) context.addIssue({ code: "custom", path: [index, "facetAddress"], message: "duplicates a facet address." });
+    addresses.add(address);
+    facet.functionSelectors.forEach((selector, at) => {
+      const lower = selector.toLowerCase();
+      if (selectors.has(lower)) context.addIssue({ code: "custom", path: [index, "functionSelectors", at], message: "is routed more than once." });
+      selectors.add(lower);
+    });
+  });
+});
+const CodehashesSchema = z.record(AddressSchema, Hash32Schema).superRefine((hashes, context) => {
+  const known = new Map<string, string>();
+  for (const [address, hash] of Object.entries(hashes)) {
+    const previous = known.get(address.toLowerCase());
+    if (previous !== undefined && previous !== hash.toLowerCase()) {
+      context.addIssue({ code: "custom", path: [address], message: "conflicts with another spelling of this address." });
+    }
+    known.set(address.toLowerCase(), hash.toLowerCase());
+  }
+});
+const UpgradeBaselineShape = {
+  block: z.int().nonnegative(), blockHash: Hash32Schema,
+  facets: LoupeFacetsSchema, codehashes: CodehashesSchema,
+};
+const UpgradeOriginSchema = z.looseObject({
+  ...UpgradeBaselineShape, chainId: z.int().positive(), address: AddressSchema, owner: z.union([AddressSchema, z.null()]),
+});
+const PendingUpgradeSchema = z.looseObject({
+  phase: z.enum(["signing", "proposed", "pending", "verifying"]), reviewId: opt(text.min(1)), desiredRecipeHash: Hash32Schema, catalogHash: Hash32Schema,
+  baseline: z.looseObject(UpgradeBaselineShape), expectedFacets: LoupeFacetsSchema,
+  expectedCodehashes: CodehashesSchema, from: AddressSchema, since: text,
+  call: opt(z.looseObject({ data: HexSchema, value: text.refine((value) => /^(?:0|[1-9]\d*)$/.test(value)
+    && value.length <= 78 && BigInt(value) < 1n << 256n, { error: "must be a canonical uint256 wei amount." }) })),
+  tx: opt(Hash32Schema), safeTxHash: opt(Hash32Schema), callsId: opt(text),
 });
 
 /** The project (spec L233-L243). */
@@ -284,16 +356,23 @@ export const ProjectSchema = z.looseObject({
   provenance: z.record(text, z.enum(["link", "file", "confirmed"])),
   predicted: z.array(z.looseObject({ chainId: z.int().positive(), address: AddressSchema })),
   labels: opt(z.record(text, text)),
+  upgrade: opt(UpgradeOriginSchema),
+}).superRefine((project, context) => {
+  if ((project.recipe.mode === "upgrade") !== (project.upgrade !== undefined)) {
+    context.addIssue({ code: "custom", path: ["upgrade"], message: "must accompany an upgrade recipe and its pinned origin." });
+  }
+  for (const [id, instance] of Object.entries(project.recipe.facetInstances ?? {})) {
+    if (instance.kind === "self" && instance.address.toLowerCase() !== project.upgrade?.address.toLowerCase()) {
+      context.addIssue({ code: "custom", path: ["recipe", "facetInstances", id], message: "self functions must belong to the origin diamond." });
+    }
+  }
 }) satisfies z.ZodType<Project>;
 
 /** A deployment record (spec L244-L253). */
-export const DeploymentSchema = z.looseObject({
+const DeploymentShape = {
   projectId: text,
   chainId: z.int().positive(),
   address: AddressSchema,
-  path: z.enum(["factory", "createx"]),
-  deployer: AddressSchema,
-  salt: Hash32Schema,
   status: z.enum(["pending", "proposed", "confirmed", "mismatch", "failed"]),
   tx: opt(Hash32Schema),
   safeTxHash: opt(Hash32Schema),
@@ -306,7 +385,12 @@ export const DeploymentSchema = z.looseObject({
   verificationReason: opt(text),
   revision: z.int().positive(),
   fromFile: opt(z.literal(true)),
-}) satisfies z.ZodType<Deployment>;
+  pendingUpgrade: opt(PendingUpgradeSchema),
+};
+export const DeploymentSchema = z.union([
+  z.looseObject({ ...DeploymentShape, kind: opt(z.literal("deployed")), path: z.enum(["factory", "createx"]), deployer: AddressSchema, salt: Hash32Schema }),
+  z.looseObject({ ...DeploymentShape, kind: z.literal("imported"), path: opt(z.never()), deployer: opt(z.never()), salt: opt(z.never()) }),
+]) satisfies z.ZodType<Deployment>;
 
 /** A `.lattice.json` file (spec L254). */
 export const ProjectFileSchema = z.looseObject({

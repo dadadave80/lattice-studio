@@ -1,4 +1,5 @@
 import type { Facet } from "@lattice-studio/core";
+import { facetDisplayName } from "@/chain/inspect/upgrade/catalog";
 import { commandRef, useDocument } from "@/contracts";
 import { CommandButton, cx } from "@/ui";
 import { Section } from "../../shared/Section";
@@ -13,6 +14,7 @@ import { breakIdentifier } from "@/ui/text/Identifier";
  */
 export function RequiresSection({ facet, readOnly }: { facet: Facet; readOnly: boolean }) {
   const placed = useDocument((s) => s.project.recipe.facets);
+  const recipe = useDocument((s) => s.project.recipe);
   return (
     <Section label="Requires">
       {facet.requires.length === 0 ? (
@@ -23,11 +25,11 @@ export function RequiresSection({ facet, readOnly }: { facet: Facet; readOnly: b
             const status = requirementStatus(requirement, placed);
             const key = requirement.anyOf.join("|");
             const word =
-              status.status === "met" ? `Met by ${status.by}` : status.convention ? "Convention" : "Missing";
+              status.status === "met" ? `Met by ${facetDisplayName(recipe, status.by)}` : status.convention ? "Convention" : "Missing";
             return (
               <li key={key} className={cx(sheet.item, styles.requirement)} data-requirement={key}>
                 <div className={sheet.itemLine}>
-                  <span className={sheet.mono}>{breakIdentifier(requirement.anyOf.join(" or "))}</span>
+                  <span className={sheet.mono}>{breakIdentifier(requirement.anyOf.map((name) => facetDisplayName(recipe, name)).join(" or "))}</span>
                   <span className={cx(sheet.muted, status.status === "missing" && !status.convention && styles.contested)}>
                     {word}
                   </span>

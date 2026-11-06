@@ -192,21 +192,22 @@ export type SpecTypeAssertions = [
   Assert<Mutual<Omit<Present<M.ChainRelease["factory"]>, "proxyInitCodeHash">, Present<ChainRelease["factory"]>>>,
   Assert<Equals<Present<M.ChainRelease["factory"]>["proxyInitCodeHash"], Hex>>,
   // Recipe and Arg (L209-L227)
-  Assert<Equals<Keys<M.Recipe>, Keys<Recipe>>>,
-  Assert<Mutual<M.Recipe, Recipe>>,
+  Assert<Equals<Keys<M.Recipe>, Keys<Recipe> | "mode" | "facetInstances">>,
+  Assert<Mutual<Omit<M.Recipe, "mode" | "facetInstances">, Recipe>>,
   Assert<Mutual<M.Recipe["init"], Recipe["init"]>>,
   Assert<Mutual<M.Arg, Arg>>,
   // Project, Deployment, ProjectFile (L233-L254)
   // + labels (contract addition, FX42: ENS names kept with the project, spec L462)
-  Assert<Equals<Keys<M.Project>, Keys<Project> | "labels">>,
-  Assert<Mutual<Omit<M.Project, "labels">, Project>>,
+  Assert<Equals<Keys<M.Project>, Keys<Project> | "labels" | "upgrade">>,
+  Assert<Mutual<Omit<M.Project, "labels" | "upgrade">, Project>>,
   Assert<Equals<Keys<Value<M.Project["layout"]>>, Keys<Value<Project["layout"]>>>>,
   Assert<Equals<Keys<M.Project["deploy"]>, Keys<Project["deploy"]>>>,
   // + verificationReason (contract addition, FX21: spec L606's reason survives a reload)
-  Assert<Equals<Keys<M.Deployment>, Keys<Deployment> | "verificationReason">>,
-  Assert<Mutual<Omit<M.Deployment, "verificationReason">, Deployment>>,
+  Assert<Equals<Keys<M.CreatedDeployment>, Keys<Deployment> | "verificationReason" | "kind" | "pendingUpgrade">>,
+  Assert<Mutual<Omit<M.CreatedDeployment, "verificationReason" | "kind" | "pendingUpgrade">, Deployment>>,
   Assert<Equals<Keys<M.ProjectFile>, Keys<ProjectFile>>>,
-  Assert<Mutual<M.ProjectFile, ProjectFile>>,
+  Assert<Equals<M.ProjectFile["project"], M.Project>>,
+  Assert<Equals<M.ProjectFile["deployments"], M.Deployment[]>>,
   // Analysis (L260-L267); plan rows are PlanEntry: the spec's fields plus codehash and version (contracts §3.1)
   Assert<Equals<Keys<M.Analysis>, Keys<Analysis>>>,
   Assert<Mutual<Omit<M.Analysis, "plan" | "problems">, Omit<Analysis, "plan" | "problems">>>,

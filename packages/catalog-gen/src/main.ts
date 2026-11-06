@@ -99,7 +99,7 @@ import {
 /** The Foundry release every catalog is built with (David, QUESTIONS Q1; contracts §2). */
 export const FOUNDRY_VERSION = "1.8.3";
 /** The Lattice release v1 targets (spec L15, L49). Any other pinned version marks the catalog provisional. */
-export const TARGET_VERSION = "0.4.0";
+export const TARGET_VERSION = "0.5.0";
 /** Where Lattice's own sources live, for shard `source.url`s at the pinned commit. */
 export const LATTICE_REPO_URL = "https://github.com/dadadave80/lattice";
 

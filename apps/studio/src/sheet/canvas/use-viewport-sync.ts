@@ -1,7 +1,8 @@
+import { getCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import type { Hex4 } from "@lattice-studio/core";
 import { useReactFlow, useStoreApi, type OnMove } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { doc, getAnalysis, getCatalog, loadViewport, session, useDocument, type Viewport } from "@/contracts";
+import { doc, getAnalysis, loadViewport, session, useDocument, type Viewport } from "@/contracts";
 import { cardSizes, cardsBounds } from "./geometry";
 import { attachSheet, fitInRoom, floatsDrawn, sheetSize, storeViewport, takeFitOnMount } from "./sheet-view";
 import { clampViewport, FIT_MAX_ZOOM, isViewport, sameViewport } from "./viewport-math";
@@ -11,7 +12,7 @@ const START: Viewport = { x: 0, y: 0, zoom: 1 };
 /** Where a project with no stored viewport opens: every card in view, or the origin for an empty sheet. */
 function firstViewport(): Viewport {
   const layout = doc.get().layout;
-  const bounds = cardsBounds(layout, cardSizes(layout, getCatalog(), getAnalysis()));
+  const bounds = cardsBounds(layout, cardSizes(layout, getCompositionCatalog(), getAnalysis(), doc.get().recipe));
   return bounds ? fitInRoom(bounds, FIT_MAX_ZOOM) : START;
 }
 

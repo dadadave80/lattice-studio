@@ -13,6 +13,8 @@ import { awaitConsoleBody, captureDownloads, erc20Project, resetConsole } from "
 
 describe("lazy chunks", () => {
   test("nothing heavy loads with the console; each piece loads on first use", async () => {
+    // A reused browser pointer must not arrive over a code tab as the console mounts.
+    await userEvent.hover(document.documentElement, { position: { x: 0, y: 0 } });
     resetConsole();
     const files = captureDownloads();
     // Hold Shiki's chunk so the plain text shows first.

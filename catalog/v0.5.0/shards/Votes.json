@@ -1,0 +1,344 @@
+{
+  "name": "Votes",
+  "abi": [
+    {
+      "type": "function",
+      "name": "CLOCK_MODE",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "clock",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "delegate",
+      "inputs": [
+        {
+          "name": "delegatee",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "delegateBySig",
+      "inputs": [
+        {
+          "name": "delegatee",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "expiry",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "v",
+          "type": "uint8",
+          "internalType": "uint8"
+        },
+        {
+          "name": "r",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "s",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "delegates",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPastTotalSupply",
+      "inputs": [
+        {
+          "name": "timepoint",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPastVotes",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "timepoint",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getVotes",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "DelegateChanged",
+      "inputs": [
+        {
+          "name": "delegator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "fromDelegate",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "toDelegate",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "DelegateVotesChanged",
+      "inputs": [
+        {
+          "name": "delegate",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "previousVotes",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "newVotes",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "CheckpointUnorderedInsertion",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ECDSAInvalidSignature",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ECDSAInvalidSignatureLength",
+      "inputs": [
+        {
+          "name": "length",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ECDSAInvalidSignatureS",
+      "inputs": [
+        {
+          "name": "s",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC5805FutureLookup",
+      "inputs": [
+        {
+          "name": "timepoint",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "clock",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC6372InconsistentClock",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidAccountNonce",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "currentNonce",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "VotesExpiredSignature",
+      "inputs": [
+        {
+          "name": "expiry",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "VotesOverflowedVotingUnits",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x4bf5d7e9": {
+        "notice": "Returns a machine-readable string describing the clock mode.",
+        "dev": "See ERC-6372 for defined values. Default is \"mode=timestamp\"."
+      },
+      "0x91ddadf4": {
+        "notice": "Returns the current timepoint (block timestamp or block number)."
+      },
+      "0x5c19a95c": {
+        "notice": "Delegates votes from the caller to `delegatee`."
+      },
+      "0xc3cda520": {
+        "notice": "Delegates votes from the signer to `delegatee` via an EIP-712 signature.",
+        "dev": "Delegates the signer's {ERC20Lib} balance through {ERC20VotesLib.delegateBySig}, the same path {ERC20Votes} takes."
+      },
+      "0x587cde1e": {
+        "notice": "Returns the current delegate of `account`."
+      },
+      "0x8e539e8c": {
+        "notice": "Returns the total token supply checkpointed at `timepoint` (in the past)."
+      },
+      "0x3a46b1a8": {
+        "notice": "Returns the voting power of `account` at `timepoint` (in the past)."
+      },
+      "0x9ab24eb0": {
+        "notice": "Returns the current voting power of `account`."
+      }
+    },
+    "notice": "Stateless Diamond facet implementing ERC-5805 delegation + ERC-6372 clock.",
+    "dev": "All logic lives in VotesLib. This contract is a pure delegator. `delegate` and `delegateBySig` read the delegator's {ERC20Lib} balance at delegation time as its voting units. This facet never moves those units when tokens move, so an ERC-20 token recipe cuts {ERC20Votes}, whose transfer, mint and burn paths do. Differences from OpenZeppelin v5.6.1: - The clock is `block.timestamp` and `CLOCK_MODE()` returns `mode=timestamp`; OpenZeppelin defaults to the block number. - Voting units are the {ERC20Lib} balance, not an overridable `_getVotingUnits`, and this facet does not move them when tokens move; OpenZeppelin's token extension does that in `_update`. - Voting-unit casts revert {IVotes.VotesOverflowedVotingUnits}, not the `SafeCast` downcast error, and `clock()` narrows with a plain `uint48` cast rather than `SafeCast`. - `getPastVotes`/`getPastTotalSupply` inline the future-timepoint check that OpenZeppelin v5.2 moved into `_validateTimepoint`; both revert {IVotes.ERC5805FutureLookup}. - Registers {IVotes} for ERC-165 in its init ({VotesLib.__Votes_init}); OpenZeppelin's Votes has no ERC-165."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/governance/Votes.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/governance/Votes.sol"
+  }
+}

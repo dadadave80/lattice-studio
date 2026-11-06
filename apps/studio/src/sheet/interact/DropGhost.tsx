@@ -1,15 +1,16 @@
+import { getCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import type { Size } from "@lattice-studio/core";
 import { cardSize, contestedSelectors, isNotImplemented } from "@lattice-studio/core";
 import { ViewportPortal } from "@xyflow/react";
 import { useMemo } from "react";
-import { getAnalysis, getCatalog, layoutMetrics } from "@/contracts";
+import { getAnalysis, layoutMetrics } from "@/contracts";
 import { useDropPreview } from "./drop-target";
 import styles from "./interact.module.css";
 
 /** The card a catalog row would become, at full size: its header, rows and footer (C9's `cardSize`). */
 function ghostSize(facet: string): Size {
   const fallback = { width: layoutMetrics.cardWidth, height: layoutMetrics.headerHeight + layoutMetrics.footerHeight };
-  const entry = getCatalog()?.facets.find((f) => f.name === facet);
+  const entry = getCompositionCatalog()?.facets.find((f) => f.name === facet);
   if (!entry) return fallback;
   try {
     const size = cardSize(entry, {

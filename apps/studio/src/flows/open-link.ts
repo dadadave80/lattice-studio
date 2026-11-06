@@ -15,6 +15,7 @@ import {
   runCommand, showBanner, subscribeCatalog, toast, type CatalogStatus,
 } from "@/contracts";
 import { findEntry, loadCatalogById, type ManifestEntry } from "@/catalog/lookup";
+import { resetForProjectSwitch } from "@/projects/cmd/shared";
 import { sharedLinkBanner, SHARED_LINK_BANNER } from "./copy";
 
 export type OpenLinkDeps = {
@@ -121,6 +122,7 @@ export async function openShareLink(link: string, deps: OpenLinkDeps = {}): Prom
   const provenance = argProvenance(shared.recipe, shared.catalog, "link");
   const created = await createProject(shared.recipe, sharedName(shared.recipe), { layout, provenance });
   if (!created.ok) return refuse(`This link couldn't be opened: ${created.error}`);
+  resetForProjectSwitch();
 
   const toConfirm = shared.unconfirmed.length;
   const line = lines.linkOpened({ recipeHash: shared.hash, toConfirm });

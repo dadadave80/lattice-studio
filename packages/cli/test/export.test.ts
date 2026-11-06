@@ -4,7 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { buildSalt, exportBrief, exportFoundry, exportRecipeJson, exportSafeBatch, factoryPredict, type Project, toChecksum } from "@lattice-studio/core";
 import { STUDIO_VERSION } from "../src/version";
 import { BUILT, coreRead, ENTROPY, makeProject, REPO_ROOT, runCli, SAFE, spawnCli, tempDir, template, writeProject, writeRecipe } from "./support";
@@ -12,7 +12,46 @@ import { BUILT, coreRead, ENTROPY, makeProject, REPO_ROOT, runCli, SAFE, spawnCl
 const dir = tempDir();
 const erc20 = writeRecipe(dir, template(BUILT, "ERC20"), BUILT, "erc20.json");
 const vault = writeRecipe(dir, template(BUILT, "GovernedVault"), BUILT, "vault.json");
-const PROXY_CODE = readFileSync(join(REPO_ROOT, "catalog", "dev-6c8db45", BUILT.proxy.creationCode.path), "utf8").trim() as `0x${string}`;
+const PROXY_CODE = readFileSync(join(REPO_ROOT, "catalog", "v0.5.0", BUILT.proxy.creationCode.path), "utf8").trim() as `0x${string}`;
+
+test("salt-bearing exports reject a recipe passed as --project, independent of path spelling", async () => {
+  const rel = relative(REPO_ROOT, erc20);
+  for (const kind of ["safe", "foundry"] as const) {
+    for (const file of [erc20, rel, `./${rel}`]) {
+      for (const positional of [[], [file], [erc20]] as string[][]) {
+        let randomCalls = 0;
+        const result = await runCli([
+          "export", kind, ...positional, "--project", file,
+          "--chain", "11155111", ...(kind === "safe" ? ["--safe", SAFE] : []), "--json",
+        ], { random: (bytes) => { randomCalls += 1; return new Uint8Array(bytes); } });
+        expect(result.code).toBe(2);
+        expect(JSON.parse(result.stdout)).toEqual({ error: {
+          exit: 2, message: `--project takes a .lattice.json project file; ${file} is a recipe.`,
+        } });
+        expect(randomCalls).toBe(0);
+        expect(result.stderr).not.toContain("Drew new salt entropy");
+      }
+    }
+  }
+});
+
+test("equivalent project spellings retain saved entropy", async () => {
+  const savedEntropy = "0x0b0a090807060504030201";
+  const file = writeProject(dir, makeProject(coreRead(erc20, BUILT).recipe, { entropy: savedEntropy }), [], "saved-salt.lattice.json");
+  const rel = relative(REPO_ROOT, file);
+  const outputs: string[] = [];
+  for (const path of [file, rel, `./${rel}`]) {
+    let randomCalls = 0;
+    const result = await runCli([
+      "export", "safe", "--project", path, "--safe", SAFE, "--chain", "11155111", "--json",
+    ], { random: (bytes) => { randomCalls += 1; return new Uint8Array(bytes); } });
+    expect(result.code).toBe(0);
+    expect(randomCalls).toBe(0);
+    expect((JSON.parse(result.stdout) as { salt: string }).salt).toBe(buildSalt(SAFE, "every-chain", savedEntropy));
+    outputs.push(result.stdout);
+  }
+  expect(new Set(outputs).size).toBe(1);
+});
 
 /** The project the CLI makes from a recipe and the command line's salt. */
 function cliProject(path: Project["deploy"]["path"] = "factory"): Project {

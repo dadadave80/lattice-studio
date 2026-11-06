@@ -1,7 +1,8 @@
+import { getCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import type { NotePlacement } from "@lattice-studio/core";
 import { useReactFlow, useStore, useStoreApi } from "@xyflow/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { doc, getAnalysis, getCatalog, layoutMetrics, subscribeAnalysis, subscribeCatalog } from "@/contracts";
+import { doc, getAnalysis, layoutMetrics, subscribeAnalysis, subscribeCatalog } from "@/contracts";
 import { reducedMotion, useReducedMotion } from "@/a11y/preferences";
 import type { SheetEdge } from "./edge-data";
 import { Note } from "./Note";
@@ -64,7 +65,7 @@ export function OverlayLayer() {
       frame = 0;
       const project = doc.get();
       const inputs = {
-        layout: project.layout, recipe: project.recipe, catalog: getCatalog(), analysis: getAnalysis(), compact,
+        layout: project.layout, recipe: project.recipe, catalog: getCompositionCatalog(), analysis: getAnalysis(), compact,
         heights: heights.current,
       };
       const next = placed ? model.follow(placed, inputs) : (placed = model.place(inputs));

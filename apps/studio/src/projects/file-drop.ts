@@ -16,13 +16,16 @@ export function installFileDrop(target: DropTarget): () => void {
   const onDrop = (event: Event) => {
     if (!(event instanceof DragEvent) || !hasFiles(event)) return;
     event.preventDefault();
-    const transfer = event.dataTransfer;
-    if (!transfer) return;
+    const file = event.dataTransfer?.files[0];
+    if (!file) return;
     void (async () => {
       const [{ pickDroppedFile }, { openImportedFile }] = await Promise.all([import("./file-io"), import("./actions")]);
-      const picked = await pickDroppedFile(transfer);
-      if (picked) await openImportedFile(picked.filename, picked.text);
-    })();
+      const picked = await pickDroppedFile(file);
+      await openImportedFile(picked.filename, picked.text);
+    })().catch(async (error: unknown) => {
+      const { reportOpenFailure } = await import("./cmd/shared");
+      reportOpenFailure(`${file.name}: ${error instanceof Error ? error.message : String(error)}`);
+    });
   };
   target.addEventListener("dragover", onDragOver);
   target.addEventListener("drop", onDrop);

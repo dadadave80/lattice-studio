@@ -1,0 +1,52 @@
+{
+  "name": "ERC721VotesInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidName",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "EIP712InvalidVersion",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ERC721VotesForbiddenBatchMint",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StringTooLong",
+      "inputs": [
+        {
+          "name": "str",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-721 Votes extension recipe — seeds the EIP-712 domain (name `name_`, version \"1\") and nonce storage the `delegateBySig` digest reads, and the checkpoint/clock state (which registers IVotes). Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC721Init}; it must NOT open its own pre/postInitializer. Reverts `ERC721VotesForbiddenBatchMint` on a diamond that initialized batch minting ({ERC721ConsecutiveLib}), whose batches the vote checkpoints would miss, including in a later upgrade cut."
+  },
+  "source": {
+    "path": "src/tokens/ERC721/ERC721VotesInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/tokens/ERC721/ERC721VotesInit.sol"
+  }
+}

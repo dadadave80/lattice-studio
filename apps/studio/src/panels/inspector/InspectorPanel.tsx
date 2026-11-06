@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useRef } from "react";
+import { lazy, Suspense, useMemo, useRef } from "react";
 import { useAnalysis, useDocument, useSession } from "@/contracts";
 import { useFocusRecovery } from "./focus-recovery";
 import { CutPlanFooter, NarrowFillIn } from "./lazy-views";
@@ -8,6 +8,7 @@ import { ViewSwitch } from "./ViewSwitch";
 import styles from "./InspectorPanel.module.css";
 
 const joinIds = (ids: readonly string[]): string => ids.join("\n");
+const UpgradePlanFooter = lazy(() => import("@/chain/inspect/upgrade/UpgradePlanFooter").then((module) => ({ default: module.UpgradePlanFooter })));
 
 /**
  * The inspector (spec L358, IR L115-L126): the spec sheet for whatever is selected (Diamond, Facet, Selection),
@@ -20,6 +21,7 @@ export function InspectorPanel() {
   const selection = useSession((s) => s.selection);
   const coreSelected = useSession((s) => s.coreSelected);
   const placed = useDocument((s) => s.project.recipe.facets);
+  const upgrade = useDocument((state) => state.project.recipe.mode === "upgrade");
   const problemIds = useAnalysis((a) => joinIds(a.problems.map((p) => p.id)));
   const resolved = useMemo(
     () => resolveView({ view, selection, placed, problems: problemIds === "" ? [] : problemIds.split("\n"), coreSelected }),
@@ -27,13 +29,14 @@ export function InspectorPanel() {
   );
   const key = viewKey(resolved);
   const body = useRef<HTMLDivElement>(null);
-  useFocusRecovery(body, key);
+  const focusKey = resolved.kind === "problem" && !problemIds.split("\n").includes(resolved.id) ? `${key}:resolved` : key;
+  useFocusRecovery(body, focusKey);
 
   return (
     <div className={styles.panel} data-inspector-view={resolved.kind}>
-      <Suspense fallback={null}>
+      {resolved.kind !== "deployed" ? <Suspense fallback={null}>
         <NarrowFillIn />
-      </Suspense>
+      </Suspense> : null}
       <div ref={body} className={styles.body}>
         <ViewBoundary key={key}>
           <Suspense fallback={<p className={styles.placeholder}>Loading…</p>}>
@@ -42,11 +45,11 @@ export function InspectorPanel() {
         </ViewBoundary>
       </div>
       {/* Stays mounted across views; an error in it clears when the view changes. */}
-      <ViewBoundary resetKey={key}>
+      {resolved.kind !== "deployed" ? <ViewBoundary resetKey={key}>
         <Suspense fallback={null}>
-          <CutPlanFooter />
+          {upgrade ? <UpgradePlanFooter /> : <CutPlanFooter />}
         </Suspense>
-      </ViewBoundary>
+      </ViewBoundary> : null}
     </div>
   );
 }

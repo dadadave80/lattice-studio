@@ -1,10 +1,10 @@
 /**
  * Open (⌘/Ctrl O, the app menu's Open…, and a Projects row): with an `id` it opens that stored project
- * (Flow 10 step 5); without one it picks a file from disk (Flow 10 step 4). One command covers both, so
- * ⌘O stays in the keymap (IR L14) even though the file-picker path needs no argument ahead of time.
+ * (Flow 10 step 5); without one it opens the address, link and file dialog. The existing guarded import
+ * path still owns files, and opening the dialog never replaces the current project.
  */
-import { command, KEY_CONTEXTS, type CommandArgsOf } from "@/contracts";
-import { OK } from "./shared";
+import { command, KEY_CONTEXTS, openDialog, session, type CommandArgsOf } from "@/contracts";
+import { OK, sayNote } from "./shared";
 
 type OpenArgs = CommandArgsOf<"project.open">;
 
@@ -19,14 +19,12 @@ export const openCommand = command<OpenArgs>({
   async run(_ctx, args) {
     if (args.id !== undefined) {
       const { openStoredProject } = await import("../actions");
-      await openStoredProject(args.id);
+      const result = await openStoredProject(args.id);
+      if (!result.ok) throw new Error(result.error);
       return;
     }
-    const [{ pickProjectFile }, { openImportedFile }] = await Promise.all([
-      import("../file-io"),
-      import("../actions"),
-    ]);
-    const picked = await pickProjectFile();
-    if (picked) await openImportedFile(picked.filename, picked.text);
+    const chainId = session.get().chainId;
+    openDialog("open-diamond", chainId === null ? {} : { chainId });
+    sayNote("Opened Open.");
   },
 });

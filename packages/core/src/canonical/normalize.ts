@@ -152,7 +152,7 @@ function normalizeExclude(exclude: readonly Hex4[]): Hex4[] {
 }
 
 const RECIPE_ORDER = [
-  "$schema", "schemaVersion", "name", "catalog", "template", "facets", "owners", "exclude", "init", "immutable",
+  "$schema", "schemaVersion", "name", "catalog", "template", "facets", "owners", "exclude", "init", "immutable", "mode", "facetInstances",
 ] as const;
 
 /**
@@ -178,6 +178,13 @@ export function normalizeWith(recipe: Recipe, catalog: Catalog | null): Recipe {
     );
   }
   if (recipe.immutable === true) known.immutable = true;
+  if (recipe.mode !== undefined) known.mode = recipe.mode;
+  if (recipe.facetInstances !== undefined) {
+    known.facetInstances = Object.fromEntries(Object.entries(recipe.facetInstances).sort(([a], [b]) => a.localeCompare(b)).map(([id, instance]) => [id, {
+      ...instance, address: toChecksum(instance.address), codehash: toLowerHex(instance.codehash),
+      ...(instance.kind === "known" ? { extraSelectors: normalizeExclude(instance.extraSelectors) } : { selectors: normalizeExclude(instance.selectors) }),
+    }]));
+  }
   return withRest(known, recipe, RECIPE_ORDER);
 }
 

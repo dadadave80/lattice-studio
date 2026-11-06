@@ -1,0 +1,385 @@
+{
+  "name": "LatticeFactory",
+  "abi": [
+    {
+      "type": "function",
+      "name": "deploy",
+      "inputs": [
+        {
+          "name": "entries",
+          "type": "tuple[]",
+          "internalType": "struct RecipeEntry[]",
+          "components": [
+            {
+              "name": "nameHash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "version",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "exclude",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "customCuts",
+          "type": "tuple[]",
+          "internalType": "struct FacetCut[]",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "init",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "initCalldata",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "diamond",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "deployStrict",
+      "inputs": [
+        {
+          "name": "entries",
+          "type": "tuple[]",
+          "internalType": "struct RecipeEntry[]",
+          "components": [
+            {
+              "name": "nameHash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "version",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "exclude",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "customCuts",
+          "type": "tuple[]",
+          "internalType": "struct FacetCut[]",
+          "components": [
+            {
+              "name": "facetAddress",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "action",
+              "type": "uint8",
+              "internalType": "enum FacetCutAction"
+            },
+            {
+              "name": "functionSelectors",
+              "type": "bytes4[]",
+              "internalType": "bytes4[]"
+            }
+          ]
+        },
+        {
+          "name": "init",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "initCalldata",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "diamond",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "diamondInitCodeHash",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "predict",
+      "inputs": [
+        {
+          "name": "deployer",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "diamond",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "registry",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract ILatticeRegistry"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "DiamondDeployed",
+      "inputs": [
+        {
+          "name": "diamond",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "deployer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "recipeHash",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "salt",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "init",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__AlreadyDeployed",
+      "inputs": [
+        {
+          "name": "diamond",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__EmptyRecipe",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__ExcludedSelectorNotExported",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__ExportSelectorForbidden",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__IncompleteENSConfiguration",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__InitCalldataWithoutInit",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__InvalidRegistry",
+      "inputs": [
+        {
+          "name": "registry",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__InvalidReverseRegistrar",
+      "inputs": [
+        {
+          "name": "registrar",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__LoupeSelectorNotReplaceable",
+      "inputs": [
+        {
+          "name": "loupeSelector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__MissingLoupeCoverage",
+      "inputs": [
+        {
+          "name": "missingSelector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "LatticeFactory__UnpinnedEntry",
+      "inputs": [
+        {
+          "name": "nameHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xc381576d": {
+        "notice": "Deploys (or returns the existing) {Diamond} for `(msg.sender, salt)` and initializes it with the registry-resolved recipe cuts, the appended custom cuts, and the recipe's init.",
+        "dev": "Recipe entries resolve through {ILatticeRegistry.getCut}, which live-re-verifies the code and selector pins and returns an `Add` cut; a `version` of `0` first resolves the curator's `latest(nameHash)` pointer, and each entry's `exclude` selectors are then dropped from its cut. Custom cuts are appended AFTER the registry cuts, order preserved — a deliberate custom `Replace` may therefore re-point a selector a registry cut just added. Argument validation ({LatticeFactory__EmptyRecipe}, {LatticeFactory__InitCalldataWithoutInit}, {LatticeFactory__ExportSelectorForbidden}) runs on every call, including idempotent re-calls; registry resolution, exclusion, LOUPE-COVERAGE validation ({LatticeFactory__MissingLoupeCoverage} — every fresh deploy must route the four EIP-2535 loupe selectors; the registered `lattice.DiamondLoupeFacet` entry is the one-line way) and initialization run only when the diamond is actually deployed. INIT AUTHORITY: `Lattice.initialize` is called by THIS FACTORY, so inside `init` `msg.sender` is the factory, not the deployer. An init that grants `msg.sender` a role or ownership grants it to the factory, which has no way to use it: pass the admin explicitly in `initCalldata` (every shipped Init does).",
+        "params": {
+          "customCuts": "Classic cuts appended verbatim after the registry cuts (may be empty).",
+          "entries": "The registry recipe lines to resolve into cuts (may be empty).",
+          "init": "Initializer delegatecalled during the diamond's initialization (`address(0)` to skip, with empty `initCalldata`).",
+          "initCalldata": "Calldata for `init`.",
+          "salt": "Caller-chosen salt; distinct salts yield distinct diamonds for the same sender."
+        }
+      },
+      "0x5c472e92": {
+        "notice": "{deploy}, but it reverts {LatticeFactory__AlreadyDeployed} instead of returning an existing diamond, and {LatticeFactory__UnpinnedEntry} for any entry with version `0`.",
+        "dev": "Every successful call deploys a fresh diamond from exactly this recipe and emits {DiamondDeployed}, so a double-submitted or replayed transaction fails loudly instead of \"succeeding\" with another recipe. Same validation, resolution, exclusion and init-authority rules as {deploy}.",
+        "params": {
+          "customCuts": "Classic cuts appended verbatim after the registry cuts (may be empty).",
+          "entries": "The registry recipe lines to resolve into cuts (may be empty; versions must be non-zero).",
+          "init": "Initializer delegatecalled during the diamond's initialization (`address(0)` to skip).",
+          "initCalldata": "Calldata for `init`.",
+          "salt": "Caller-chosen salt; distinct salts yield distinct diamonds for the same sender."
+        }
+      },
+      "0x097f70a9": {
+        "notice": "The CREATE2 initcode hash of every diamond this factory deploys: `keccak256(type(Lattice).creationCode)` of the {Lattice} build compiled into the factory."
+      },
+      "0x64fb6f5e": {
+        "notice": "The counterfactual address `deploy(..., salt)` will land at when called by `deployer`.",
+        "params": {
+          "deployer": "The prospective `msg.sender`.",
+          "salt": "The prospective salt."
+        }
+      },
+      "0x7b103999": {
+        "notice": "The deploy-once {ILatticeRegistry} recipe entries are resolved against."
+      }
+    },
+    "notice": "Stateless factory that assembles a complete EIP-2535 {Diamond} in ONE transaction from cuts resolved out of the deploy-once {ILatticeRegistry} (issue #120). Recipe entries become live-verified `Add` cuts straight off the registry — no facet re-`CREATE`, no FFI — classic custom cuts are appended for facets outside the curated catalog, and the proxy is CREATE2-deployed and initialized atomically.",
+    "dev": "The proxy has no constructor args, so its initcode hash ({diamondInitCodeHash}) is constant and every diamond address depends only on `(factory, keccak256(msg.sender, salt))`. Because the initcode commits to nothing, a raw salt alone would let anyone front-run a counterfactual address with arbitrary cuts; folding the sender into the salt binds each address to its deployer, which also makes the idempotent already-deployed return of {deploy} sound (only the same sender can have occupied it, with cuts of their own choosing). The flip side: the address never commits to the RECIPE — a repeat {deploy} for an occupied `(sender, salt)` returns the existing diamond unchanged and ignores the call's entries/cuts/init, while {deployStrict} reverts. {DiamondDeployed} carries the applied recipe's hash. Registry reverts (drift, missing records, unset `latest`) bubble unchanged — the factory adds no drift handling of its own. Not a Diamond facet — a standalone, stateless singleton."
+  },
+  "source": {
+    "path": "src/LatticeFactory.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/LatticeFactory.sol"
+  }
+}

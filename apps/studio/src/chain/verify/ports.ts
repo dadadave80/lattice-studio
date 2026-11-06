@@ -3,7 +3,7 @@
  * Etherscan and the catalog's standard JSON, a clock for polling, and the deployment records. Plain interfaces, so
  * `engine.ts` stays free of the DOM and the network: unit tests pass fakes; `app-deps.ts` wires the real ones.
  */
-import type { Deployment, Result } from "@lattice-studio/core";
+import type { Address, Deployment, DeployPath, Result } from "@lattice-studio/core";
 
 /** A fetch-shaped call: the real `fetch` in the app, a scripted fake in tests. */
 export type VerifyFetch = (input: string, init?: RequestInit) => Promise<Response>;
@@ -16,8 +16,8 @@ export type VerifyClock = {
 
 export type VerifyRecords = {
   list(projectId: string): Promise<Deployment[]>;
-  /** Rejects when the browser refuses the write; the engine says so and leaves the record as it was. */
-  put(deployment: Deployment): Promise<void>;
+  /** Reads and changes verification in one transaction, preserving concurrent upgrade metadata. */
+  update(chainId: number, address: Address, update: (current: Deployment | null) => Result<Deployment, string>): Promise<Result<Deployment, string>>;
 };
 
 /** The proxy's standard JSON and the compiler version to submit it with (spec L577). */
@@ -32,7 +32,7 @@ export type VerifyDeps = {
   projectId(): string;
   /** The standard JSON for `chainId`'s proxy on the given deploy path: the catalog tag's build, or a
    * chain-specific factory's build commit (spec L577). */
-  proxyBuild(chainId: number, path: Deployment["path"]): Promise<Result<ProxyBuild, string>>;
+  proxyBuild(chainId: number, path: DeployPath): Promise<Result<ProxyBuild, string>>;
   /** Sourcify's base URL; overridable for tests. Default `https://sourcify.dev/server`. */
   baseUrl?: string;
   /** The Etherscan API key to verify with, or undefined when Etherscan verification isn't set up (`key.ts`). */

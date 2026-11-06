@@ -571,7 +571,7 @@ for (const width of NARROW_WIDTHS) {
         const sheet = new SheetPage(page);
         await expect(sheet.toolStrip).toHaveCount(0);
 
-        await page.getByRole("region", { name: "Title bar" }).getByRole("button", { name: "More" }).click();
+        await page.getByRole("banner", { name: "Title bar" }).getByRole("button", { name: "More" }).click();
         await page.getByRole("menuitem", { name: "Tools" }).click();
         await page.getByRole("menuitem", { name: "Tidy" }).click();
 

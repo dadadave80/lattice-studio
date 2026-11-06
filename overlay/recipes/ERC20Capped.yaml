@@ -1,4 +1,4 @@
-# The default, immutable overload: DeployERC20's four cuts (script/base/tokens/DeployERC20.s.sol#L60-L63), then ERC20Capped, with ERC20Init and
+# The default, immutable overload: DeployERC20's three cuts (script/base/tokens/DeployERC20.s.sol#L59-L61), then ERC20Capped, with ERC20Init and
 # ERC20CappedInit in one MultiInit. The script nests DeployERC20's MultiInit, so its introspection step runs
 # between the two; Studio's planner appends the same step at the end instead.
 name: ERC20Capped
@@ -10,13 +10,11 @@ phase: v1.1
 immutable: true
 cuts:
   - add: ERC165Facet
-    source: script/base/tokens/DeployERC20.s.sol#L60-L60
+    source: script/base/tokens/DeployERC20.s.sol#L59-L59
   - add: ERC20
-    source: script/base/tokens/DeployERC20.s.sol#L61-L61
+    source: script/base/tokens/DeployERC20.s.sol#L60-L60
   - add: DiamondLoupeFacet
-    source: script/base/tokens/DeployERC20.s.sol#L62-L62
-  - add: Receive
-    source: script/base/tokens/DeployERC20.s.sol#L63-L63
+    source: script/base/tokens/DeployERC20.s.sol#L61-L61
   - add: ERC20Capped
     source: script/base/tokens/DeployERC20Capped.s.sol#L41-L41
 init:
@@ -24,7 +22,7 @@ init:
   steps:
     - spec: ERC20Init
       args: {}  # the script passes (name_, symbol_)
-      source: script/base/tokens/DeployERC20.s.sol#L35-L36
+      source: script/base/tokens/DeployERC20.s.sol#L34-L35
     - spec: ERC20CappedInit
       args: {}  # the script passes (cap_)
   source: script/base/tokens/DeployERC20Capped.s.sol#L43-L49

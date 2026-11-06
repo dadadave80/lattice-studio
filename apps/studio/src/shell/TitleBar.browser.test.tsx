@@ -2,6 +2,7 @@ import type { Analysis, Deployment, Hex } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
+import { DialogHost } from "@/ui/overlays/DialogHost";
 import {
   commandRef, commandState, doc, emptyAnalysis, provideAnalysis, putDeployment, runCommand, session, settings,
 } from "@/contracts";
@@ -11,7 +12,7 @@ import { CommandPalette } from "@/palette/CommandPalette";
 import { resetPaletteState } from "@/palette/palette-state";
 import { Shell } from "./Shell";
 
-const bar = () => page.getByRole("region", { name: "Title bar", exact: true });
+const bar = () => page.getByRole("banner", { name: "Title bar", exact: true });
 /** The shell with the palette mounted, as the app has it, so the search field has something to open. */
 const withPalette = (
   <>
@@ -161,9 +162,17 @@ describe("the App menu", () => {
         (el) => document.getElementById(el.getAttribute("aria-labelledby") ?? "")?.textContent,
       );
     await expect.poll(labels).toEqual(items);
-    await expect.element(menu.getByRole("menuitem", { name: "Open diamond…" })).toHaveAccessibleDescription("Arrives in v2");
+    await expect.element(menu.getByRole("menuitem", { name: "Open diamond…" })).not.toHaveAttribute("aria-disabled", "true");
     await menu.getByRole("menuitem", { name: "Help" }).click();
     await expect.poll(() => session.get().panes.inspector.view).toEqual({ kind: "doc" });
+  });
+
+  test("Open diamond opens the shared address, link and file dialog", async () => {
+    await renderWithStudio(<><Shell /><DialogHost /></>);
+    await bar().getByRole("button", { name: "Lattice Studio" }).click();
+    await page.getByRole("menuitem", { name: "Open diamond…" }).click();
+    await expect.element(page.getByRole("dialog", { name: "Open", exact: true })).toBeVisible();
+    await expect.element(page.getByRole("textbox", { name: "Address, name or link" })).toHaveFocus();
   });
 
   test("app.menu opens it from anywhere", async () => {

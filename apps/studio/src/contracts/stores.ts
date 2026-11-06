@@ -114,6 +114,8 @@ export type InspectorView =
   | { kind: "doc"; code?: ProblemCode }
   /** Comparison: the plan beside a deployed diamond's `facets()` (spec L576, IR L120; deploy.compare). */
   | { kind: "comparison"; chainId: number; address: Address }
+  /** An independently inspected on-chain diamond; never changes the current composition. */
+  | { kind: "deployed"; chainId: number; address: Address; facetAddress?: Address }
   /** Confirm addresses… stepping through each From link or From file field in full (LINK-01, S13). */
   | { kind: "confirm-addresses"; path?: string };
 
@@ -435,7 +437,8 @@ export const history: {
  */
 function clearingCore(patch: Partial<SessionState>): Partial<SessionState> {
   if (!("selection" in patch) || patch.selection === undefined) return patch;
-  const cards = patch.selection.some(isCoreFacet) ? patch.selection.filter((name) => !isCoreFacet(name)) : patch.selection;
+  const cards = doc.get().recipe.mode !== "upgrade" && patch.selection.some(isCoreFacet)
+    ? patch.selection.filter((name) => !isCoreFacet(name)) : patch.selection;
   return { ...patch, selection: cards, ...("coreSelected" in patch ? {} : { coreSelected: false }) };
 }
 

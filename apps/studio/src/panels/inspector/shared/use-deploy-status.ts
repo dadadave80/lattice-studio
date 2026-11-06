@@ -28,7 +28,7 @@ export function useDeployStatus(options: { recordChains?: boolean } = {}): Deplo
   const project = useDocument((s) => s.project);
   const chainId = useSession((s) => s.chainId);
   const recipeHash = useAnalysis((a) => a.recipeHash);
-  const records = useDeployments(project.id);
+  const records = useDeployments(project.id, project.upgrade);
   const deployments = records.status === "ready" ? records.deployments : null;
   const chain = useChainService(chainId !== null || (options.recordChains === true && (deployments?.length ?? 0) > 0));
   const chains = useChains(chain);

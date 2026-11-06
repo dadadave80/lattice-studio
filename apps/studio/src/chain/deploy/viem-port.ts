@@ -132,7 +132,9 @@ type SeenTx = { hash: Hex; nonce: number; from: Address; to: Address | null; val
 
 export function createViemPort(options: ViemPortOptions): DeployChainPort {
   const { service, wallet } = options;
-  const clientOf = (chainId: number): ChainClient => options.client(chainId);
+  // Simulation, replay and contract calls must reflect the chain, never URLs chosen by a reverting contract.
+  // Keep ENS's separately configured shared client unchanged.
+  const clientOf = (chainId: number): ChainClient => ({ ...options.client(chainId), ccipRead: false });
   const nameOf = (chainId: number): string => service.chains().find((c) => c.id === chainId)?.name ?? `Chain ${chainId}`;
   const unreachable = (chainId: number): string => `${nameOf(chainId)}'s public RPC isn't answering.`;
 
@@ -213,7 +215,12 @@ export function createViemPort(options: ViemPortOptions): DeployChainPort {
           const number = Number(block?.number ?? 0n);
           if (!result) return { kind: "error", message: unreachable(chainId) };
           if (result.status === "success") {
-            return { kind: "ok", block: number, gas: result.gasUsed, events: result.logs?.length ?? 0, method: "simulate" };
+            try {
+              const gas = await estimateGas(client, { account: from, to: tx.to, data: tx.data, value: tx.value });
+              return { kind: "ok", block: number, gas, events: result.logs?.length ?? 0, method: "simulate" };
+            } catch (error) {
+              return simulationFailure(error, { simulateV1: true, block: number, unreachable: unreachable(chainId) });
+            }
           }
           return { kind: "reverted", block: number, data: result.data, method: "simulate" };
         } catch (error) {

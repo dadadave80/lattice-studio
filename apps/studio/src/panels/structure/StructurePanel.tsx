@@ -1,7 +1,8 @@
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import type { Catalog, CommandRef, InitPlan, Recipe } from "@lattice-studio/core";
 import { isCoreOnly, isNotImplemented, planInit } from "@lattice-studio/core";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { commandState, runCommand, session, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { commandState, runCommand, session, useAnalysis, useDocument, useSession } from "@/contracts";
 import { isContextMenuKey, Tree, type TreeItemProps, type TreeNode } from "@/ui";
 import { CORE_ONLY } from "../core-copy";
 import { activate, facetsToRemove, isCoreMeta, locate, moveStep, pressSpace, say, selectCore, selectForMenu } from "./actions";
@@ -46,9 +47,16 @@ function areaOfRow(structure: Structure, id: string): string | undefined {
  * with the sheet (the Core group shows selected while the core is); every action runs a command, so what can't
  * run says why.
  */
+const LazyDeployedStructure = lazy(() => import("@/chain/inspect/DeployedStructure").then((module) => ({ default: module.DeployedStructure })));
+
 export function StructurePanel() {
+  const view = useSession((state) => state.panes.inspector.view);
+  return view?.kind === "deployed" ? <Suspense fallback={<p className={styles.empty}>Inspecting diamond…</p>}><LazyDeployedStructure view={view} /></Suspense> : <CompositionStructurePanel />;
+}
+
+function CompositionStructurePanel() {
   const recipe = useDocument((s) => s.project.recipe);
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const analysis = useAnalysis();
   const selection = useSession((s) => s.selection);
   const coreSelected = useSession((s) => s.coreSelected);
@@ -128,6 +136,8 @@ export function StructurePanel() {
   };
 
   const remove = (meta: StructureMeta) => {
+    if (recipe.mode === "upgrade" && (meta.kind === "core" || meta.kind === "fallback")) { say("The stored diamond target cannot be removed."); return; }
+    if (meta.kind === "selector" && meta.raw) { say(meta.view.tooltip.text); return; }
     const facets = facetsToRemove(meta, session.get().selection);
     const ref: CommandRef = { id: "facet.remove", args: { facets } };
     // The core stays: `facet.remove` refuses and says why, so the focused row isn't leaving.
@@ -208,7 +218,7 @@ export function StructurePanel() {
         return <FacetMenu facet={meta.facet} contested={contested} />;
       }
       case "selector":
-        return <SelectorMenu facet={meta.facet} view={meta.view} />;
+        return <SelectorMenu facet={meta.facet} view={meta.view} raw={meta.raw === true} />;
       case "problem": {
         const { problem } = meta;
         const hasCard = problem.where.some((a) => (a.kind === "facet" || a.kind === "selector") && a.facet !== undefined);
@@ -228,7 +238,7 @@ export function StructurePanel() {
 
   return (
     <div ref={container} className={styles.panel}>
-      {isCoreOnly(recipe) ? <p className={styles.empty}>{CORE_ONLY}</p> : null}
+      {recipe.mode !== "upgrade" && isCoreOnly(recipe) ? <p className={styles.empty}>{CORE_ONLY}</p> : null}
       <Tree
         label="Structure"
         className={styles.tree}

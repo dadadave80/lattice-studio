@@ -27,5 +27,5 @@ export type { ClearDataCounts, ProjectSummary, RecordCounts, Restored, TrashSumm
 
 /** Writes the pending autosave now (Save and reload, spec L605). */
 export async function flushPendingSave(): Promise<void> {
-  await (await persistence()).flush();
+  await (await persistence()).flushUntilClean();
 }

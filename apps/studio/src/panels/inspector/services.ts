@@ -9,7 +9,7 @@
  */
 import { session, type InspectorView } from "@/contracts";
 
-const STAYS: ReadonlySet<NonNullable<InspectorView>["kind"]> = new Set(["init", "confirm-addresses"]);
+const STAYS: ReadonlySet<NonNullable<InspectorView>["kind"]> = new Set(["init", "confirm-addresses", "deployed"]);
 
 /** Set while the view was routed during the current task; cleared once the task's updates are done. */
 let routedThisTask = false;

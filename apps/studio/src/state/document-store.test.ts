@@ -245,6 +245,21 @@ describe("read-only", () => {
 });
 
 describe("load", () => {
+  test("an upgrade keeps newly added core cards through load, edit, undo and redo", () => {
+    const address = "0x0000000000000000000000000000000000000011";
+    const hash = `0x${"ab".repeat(32)}` as const;
+    const project = makeProject({ recipe: makeRecipe({ mode: "upgrade", facets: ["ERC165Facet"] }, kit.catalog),
+      upgrade: { chainId: 11155111, address, block: 1, blockHash: hash, facets: [], codehashes: { [address]: hash }, owner: null },
+      layout: { ERC165Facet: { x: 0, y: 0, pins: "right" } } });
+    doc.load(project);
+    expect(doc.get().layout.ERC165Facet).toBeDefined();
+    session.set({ selection: ["ERC165Facet"] });
+    doc.apply("Rename", rename("Upgraded"));
+    doc.undo(); doc.redo();
+    expect(doc.get().layout.ERC165Facet).toEqual(project.layout.ERC165Facet);
+    expect(session.get().selection).toEqual(["ERC165Facet"]);
+  });
+
   test("replaces the document, clears history and logs the reason", () => {
     doc.apply("Renamed", rename("A"));
     doc.load(makeProject({ id: "other", name: "Other" }), "Took over editing: undo history starts here.");

@@ -7,6 +7,8 @@
  */
 import type { Address, Catalog, ChainState, Hex, LoupeFacet, Result } from "@lattice-studio/core";
 import { CREATEX_CODEHASH, MULTICALL3_CODEHASH } from "@lattice-studio/core";
+import { keccak256 } from "viem";
+import type { ChainCallError, DiamondCutHistory, DiamondSnapshot } from "@/contracts/chain";
 import {
   getCatalog, provideServices, type ChainInfo, type ChainReadiness, type ChainService, type WalletAccount,
   type WalletConnector,
@@ -30,6 +32,12 @@ export type FakeChainOptions = {
   code?: Record<string, Hex | "0x">;
   /** `facets()` by diamond address, for `readFacets`. */
   facets?: Record<string, LoupeFacet[]>;
+  /** Explicit coherent on-chain observations, by diamond address. */
+  snapshots?: Record<string, DiamondSnapshot>;
+  /** Raw call result or failure, keyed by "<lowercase address>:<lowercase calldata>". */
+  callResults?: Record<string, Hex | ChainCallError>;
+  /** Verified history fixtures by diamond address. Tokens are never part of these facts. */
+  history?: Record<string, DiamondCutHistory>;
   /** ENS names → addresses. */
   ens?: Record<string, Address>;
   /** Chain ids whose RPC isn't answering: every read fails with the spec's sentence. */
@@ -107,6 +115,8 @@ export function fakeChainService(options: FakeChainOptions = {}): FakeChain {
     new Map(Object.entries(record ?? {}).map(([a, v]) => [a.toLowerCase(), v]));
   const code = lower(options.code);
   const facets = lower(options.facets);
+  const snapshots = lower(options.snapshots);
+  const histories = lower(options.history);
   const ens = new Map(Object.entries(options.ens ?? {}));
   const down = new Set(options.down ?? []);
   let account = options.account ?? null;
@@ -165,6 +175,33 @@ export function fakeChainService(options: FakeChainOptions = {}): FakeChain {
       if (down.has(chainId)) return fail(unreachable(chainId));
       const found = facets.get(address.toLowerCase());
       return found ? { ok: true, value: found } : fail(`There's no diamond at ${address} on ${nameOf(chainId)}.`);
+    },
+    async inspectDiamond(chainId, address, inspectOptions) {
+      record("inspectDiamond", [chainId, address, inspectOptions]);
+      if (inspectOptions?.signal?.aborted) return { ok: false, error: { kind: "aborted", reason: "Inspection was cancelled." } };
+      if (down.has(chainId)) return { ok: false, error: { kind: "rpc", reason: unreachable(chainId) } };
+      const found = snapshots.get(address.toLowerCase());
+      if (found) return { ok: true, value: found };
+      const rows = facets.get(address.toLowerCase()) ?? null;
+      const codehashes: Record<string, Hex> = {};
+      for (const row of rows ?? []) {
+        const facet = (options.catalog ?? getCatalog())?.facets.find((item) => item.release.address.toLowerCase() === row.facetAddress.toLowerCase());
+        codehashes[row.facetAddress.toLowerCase()] = facet?.release.codehash ?? keccak256(code.get(row.facetAddress.toLowerCase()) ?? "0x");
+      }
+      return { ok: true, value: { block: 1, blockHash: `0x${"ab".repeat(32)}`, code: code.get(address.toLowerCase()) ?? (rows ? "0x6080" : "0x"), facets: rows, codehashes, ownerRouted: false, owner: null } };
+    },
+    async call(chainId, to, data, callOptions) {
+      record("call", [chainId, to, data, callOptions]);
+      if (down.has(chainId)) return { ok: false, error: { reason: unreachable(chainId), data: null } };
+      const result = options.callResults?.[`${to.toLowerCase()}:${data.toLowerCase()}`] ?? "0x";
+      return typeof result === "string" ? { ok: true, value: result } : { ok: false, error: result };
+    },
+    async cutHistory(chainId, address, historyOptions) {
+      record("cutHistory", [chainId, address, { ...historyOptions, ...(historyOptions.token === undefined ? {} : { token: "<redacted>" }) }]);
+      if (historyOptions.signal?.aborted) return { ok: false, error: { kind: "aborted", reason: "History read was canceled." } };
+      if (down.has(chainId)) return { ok: false, error: { kind: "rpc", reason: unreachable(chainId) } };
+      const value = histories.get(address.toLowerCase());
+      return value ? { ok: true, value } : { ok: false, error: { kind: "not-read", reason: "History not read: choose a start block or add a HyperRPC token." } };
     },
     async resolveEns(name, chainId) {
       record("resolveEns", [name, chainId]);

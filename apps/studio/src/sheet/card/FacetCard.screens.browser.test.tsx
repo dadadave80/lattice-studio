@@ -104,6 +104,9 @@ describe.each(["dark", "light"] as const)("%s", (theme) => {
     await gallery(theme);
     await emulateForcedColors(true);
     expect(matchMedia("(forced-colors: active)").matches).toBe(true);
+    const route = card("AxelarGatewayAdapter").querySelector<HTMLButtonElement>('button[aria-label="Route here: sendMessage(bytes,bytes,bytes[])"]');
+    if (!route) throw new Error("No contested route button.");
+    expect(getComputedStyle(route).forcedColorAdjust).toBe("auto");
     await expect.element(page.elementLocator(sheetElement())).toMatchScreenshot(`gallery-forced-${theme}`);
   });
 
@@ -134,7 +137,7 @@ describe.each(["dark", "light"] as const)("%s", (theme) => {
       })
       .toEqual(["solid", "2px", "2px"]);
     await expect.element(page.elementLocator(sheetElement())).toMatchScreenshot(`focus-card-${theme}`);
-    const pin = card("ERC20").querySelector<HTMLElement>('[data-selector="0xdd62ed3e"]');
+    const pin = card("ERC20").querySelector<HTMLElement>('button[aria-label^="Inspect allowance "]');
     pin?.focus();
     expect(pin?.matches(":focus-visible")).toBe(true);
     // Focus may open the pin's tooltip; Esc closes it (the pin keeps focus), so the baseline shows the ring alone.
@@ -142,6 +145,13 @@ describe.each(["dark", "light"] as const)("%s", (theme) => {
     await expect.poll(() => document.querySelector("[data-tooltip]")).toBeNull();
     expect(document.activeElement).toBe(pin);
     await expect.element(page.elementLocator(card("ERC20"))).toMatchScreenshot(`focus-pin-${theme}`);
+    const route = page.getByRole("group", { name: /^ERC20,/ }).getByRole("button", { name: "Leave out of the diamond: allowance(address,address)", exact: true });
+    await userEvent.keyboard("{Shift}");
+    (route.element() as HTMLElement).focus();
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(() => document.querySelector("[data-tooltip]")).toBeNull();
+    await expect.element(route).toHaveFocus();
+    await expect.element(page.elementLocator(card("ERC20"))).toMatchScreenshot(`focus-route-${theme}`);
   });
 
   test("compact below 40%", async () => {

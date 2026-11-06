@@ -1,7 +1,8 @@
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import type { Hex4 } from "@lattice-studio/core";
 import { formatSelector } from "@lattice-studio/core";
 import { useEffect, useState } from "react";
-import { commandRef, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
+import { commandRef, useAnalysis, useDocument, useSession } from "@/contracts";
 import { pinView } from "@/sheet/card/card-model";
 import { ContextMenu } from "@/ui/overlays/ContextMenu";
 import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
@@ -40,7 +41,7 @@ function restoreFocus(invoker: HTMLElement | null): void {
 
 function OpenMenu({ request }: { request: MenuRequest }) {
   const [point, setPoint] = useState<HTMLSpanElement | null>(null);
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const pin =
     request.kind === "pin"
       ? catalog?.facets.find((f) => f.name === request.facet)?.selectors.find((s) => s.hex === request.selector)
@@ -55,6 +56,7 @@ function OpenMenu({ request }: { request: MenuRequest }) {
     <ContextMenu
       open={point !== null}
       anchor={point}
+      invoker={request.invoker}
       label={label}
       onOpenChange={(open) => {
         if (open) return;
@@ -80,6 +82,14 @@ function CardItems({ facet }: { facet: string }) {
   const selection = useSession((s) => s.selection);
   const count = selection.filter((name) => Object.hasOwn(layout, name)).length;
   const several = count >= 2;
+  const instance = useDocument((state) => state.project.recipe.mode === "upgrade" ? state.project.recipe.facetInstances?.[facet] : undefined);
+  if (instance && instance.kind !== "known") return <>
+    <MenuCommandItem command={commandRef("inspector.show", { facet })} label="Open in inspector" />
+    <MenuCommandItem command={commandRef("sheet.locate", { facet })} label="Locate" />
+    <MenuCommandItem command={commandRef("sheet.moveTo")} label="Move to…" />
+    {instance.selectors.length > 3 ? <MenuCommandItem command={commandRef("layout.toggleExpand", { facet })} label={expanded ? "Collapse" : "Expand"} /> : null}
+    {instance.kind === "foreign" ? <><MenuSeparator /><MenuCommandItem command={commandRef("facet.remove", { facets: [facet] })} label="Remove whole facet" /></> : null}
+  </>;
   return (
     <>
       <MenuCommandItem command={commandRef("inspector.show", { facet })} label="Open in inspector" />
@@ -102,7 +112,7 @@ function CardItems({ facet }: { facet: string }) {
  * it's out. A seam offers no route (spec L441), and a selector the analysis hasn't checked yet none of these.
  */
 function PinItems({ facet, selector }: { facet: string; selector: Hex4 }) {
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const excluded = useDocument((s) => s.project.recipe.exclude.some((x) => x.toLowerCase() === selector));
   const route = useAnalysis((a) => a.routing[selector]);
   const entry = catalog?.facets.find((f) => f.name === facet)?.selectors.find((s) => s.hex === selector);

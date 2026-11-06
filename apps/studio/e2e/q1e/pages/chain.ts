@@ -9,7 +9,7 @@
 import { encodeAbiParameters, keccak256, toHex, type Address, type Hex } from "viem";
 import {
   analyze, buildDiamondDeploy, buildSalt, encodeInit, factoryPredict, packVersion, planInit, recipeHash, registryNameHash,
-  type Deployment, type Project,
+  type CreatedDeployment as Deployment, type Project,
 } from "@lattice-studio/core";
 import { ALICE, ANVIL_CHAIN_ID, type AnvilNode } from "../../_support/anvil.ts";
 import { catalog, sharedContracts } from "../../_support/catalog.ts";
@@ -133,7 +133,7 @@ export async function unstick(node: AnvilNode, name: string): Promise<void> {
 }
 
 /**
- * LatticeRegistry's `_records[keccak256(abi.encode(nameHash, version))]` (storage slot 3; LatticeRegistry.sol L36-L46)
+ * LatticeRegistry's `_records[keccak256(abi.encode(nameHash, version))]` (storage slot 3; LatticeRegistry.sol L52-L61)
  * and its `Record` fields: facet and version share the first word, then registeredAt, codehash, selectorsHash.
  */
 const RECORDS_SLOT = 3n;

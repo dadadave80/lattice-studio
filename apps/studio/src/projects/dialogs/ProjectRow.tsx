@@ -1,11 +1,11 @@
 import { formatTime, type Deployment } from "@lattice-studio/core";
 import { useEffect, useRef, useState } from "react";
-import { runCommand } from "@/contracts";
 import { persistence, type ProjectSummary } from "@/persist";
-import { Button, StatusChip, TextField, Tooltip } from "@/ui";
+import { Button, Icon, StatusChip, TextField, Tooltip } from "@/ui";
 import { focusList } from "./list-focus";
 import { projectRowStatus } from "../status";
 import styles from "./ProjectRow.module.css";
+import errorStyles from "./confirm-error.module.css";
 
 export type ProjectRowProps = {
   summary: ProjectSummary;
@@ -20,6 +20,7 @@ export function ProjectRow({ summary, onClose, chainNames }: ProjectRowProps) {
   const { id, project } = summary;
   const [deployments, setDeployments] = useState<readonly Deployment[]>([]);
   const [renaming, setRenaming] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
   const [name, setName] = useState(project.name);
   const renameRef = useRef<HTMLInputElement>(null);
   const nameButtonRef = useRef<HTMLButtonElement>(null);
@@ -47,7 +48,8 @@ export function ProjectRow({ summary, onClose, chainNames }: ProjectRowProps) {
   const saved = formatTime(new Date(summary.savedAt).toISOString(), new Date().toISOString());
 
   const open = async () => {
-    const result = await runCommand({ id: "project.open", args: { id } }, "button");
+    const { openStoredProject } = await import("../actions");
+    const result = await openStoredProject(id);
     if (result.ok) onClose();
   };
 
@@ -59,6 +61,7 @@ export function ProjectRow({ summary, onClose, chainNames }: ProjectRowProps) {
 
   const submitRename = async () => {
     const trimmed = name.trim();
+    setRenameError(null);
     stopRenaming();
     if (trimmed === "" || trimmed === project.name) {
       setName(project.name);
@@ -66,7 +69,10 @@ export function ProjectRow({ summary, onClose, chainNames }: ProjectRowProps) {
     }
     const { renameStoredProject } = await import("../actions");
     const result = await renameStoredProject(id, trimmed);
-    if (!result.ok) setName(project.name);
+    if (!result.ok) {
+      setName(project.name);
+      setRenameError(result.error);
+    }
   };
 
   const cancelRename = () => {
@@ -142,6 +148,12 @@ export function ProjectRow({ summary, onClose, chainNames }: ProjectRowProps) {
           Delete
         </Button>
       </span>
+      {renameError ? (
+        <p className={errorStyles.error} role="alert">
+          <Icon name="error" className={errorStyles.errorIcon} />
+          <span>{renameError}</span>
+        </p>
+      ) : null}
     </li>
   );
 }

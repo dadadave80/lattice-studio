@@ -5,7 +5,7 @@
  */
 import { CORE_FACETS, lines, toChecksum, type Deployment } from "@lattice-studio/core";
 import { makeRecipe } from "@lattice-studio/core/testing";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   createProject, doc, loadViewport, openDialog, putDeployment, runCommand, saveViewport, session, setCatalogStatus,
 } from "@/contracts";
@@ -52,6 +52,7 @@ async function until(check: () => boolean | Promise<boolean>, what = "condition"
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   const w = window as unknown as FsWindow;
   delete w.showSaveFilePicker;
   delete w.showOpenFilePicker;
@@ -373,9 +374,12 @@ describe("export", () => {
 
   test("Export all writes straight to a picked directory when the File System Access API offers one", async () => {
     readyCatalog();
-    testPersistence();
+    const store = testPersistence();
     const created = await createProject(makeRecipe({}, catalog), "Vault");
     if (!created.ok) throw new Error(created.error);
+    await createProject(makeRecipe({}, catalog), "Vault");
+    await createProject(makeRecipe({}, catalog), "Vault-2");
+    const ids = (await store.listProjects()).map((row) => row.id).sort();
 
     const written = new Map<string, string>();
     (window as unknown as FsWindow).showDirectoryPicker = async () => ({
@@ -395,7 +399,8 @@ describe("export", () => {
 
     const { exportAllData } = await import("./actions");
     await exportAllData();
-    expect(written.size).toBeGreaterThan(0);
+    expect(written.size).toBe(3);
+    expect([...written.values()].map((text) => (JSON.parse(text) as { project: { id: string } }).project.id).sort()).toEqual(ids);
     const line = bufferedServices().log.at(-1);
     expect(line?.text).toMatch(/^Exported \d+ files?\.$/);
   });
@@ -455,4 +460,151 @@ describe("the Safari tip", () => {
     expect(again.ok).toBe(true);
     expect(bufferedServices().banners.has("projects.safari-tip")).toBe(false);
   });
+});
+
+
+test("failed saving keeps New's session, document and history with no success line", async () => {
+  readyCatalog();
+  const store = testPersistence({ quietMs: 60_000 });
+  const made = await createProject(makeRecipe({}, catalog), "Vault");
+  if (!made.ok) throw new Error(made.error);
+  session.set({ selection: ["ERC20"], modes: { initOrder: true, moveTo: true, rows: "ERC20" } });
+  doc.apply("Pending work", (project) => ({ project: { ...project, name: "Pending" }, changed: true, summary: "Pending work" }));
+  const before = doc.get();
+  const state = session.get();
+  const put = IDBObjectStore.prototype.put;
+  vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>) {
+    if (this.name === "projects") throw new DOMException("Full", "QuotaExceededError");
+    return put.apply(this, args);
+  });
+  const { startNewProject } = await import("./actions");
+  const result = await startNewProject();
+  expect(result).toMatchObject({ ok: false });
+  expect(doc.get()).toBe(before);
+  expect(session.get().selection).toEqual(state.selection);
+  expect(session.get().modes).toEqual(state.modes);
+  expect(bufferedServices().log.at(-1)?.text).toContain("Couldn't start a new project.");
+  expect(store.projects.saveStatus()).toMatchObject({ action: { id: "project.saveCopy" } });
+});
+
+test("Save a copy keeps file success when explicit-save bookkeeping fails", async () => {
+  readyCatalog();
+  testPersistence();
+  const made = await createProject(makeRecipe({}, catalog), "Vault");
+  if (!made.ok) throw new Error(made.error);
+  let written = "";
+  (window as unknown as FsWindow).showSaveFilePicker = async () => ({ name: "vault.lattice.json", createWritable: async () => ({
+    write: async (text) => { written = text; }, close: async () => {},
+  }) });
+  const put = IDBObjectStore.prototype.put;
+  vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>) {
+    if (this.name === "meta") throw new DOMException("Full", "QuotaExceededError");
+    return put.apply(this, args);
+  });
+  const { saveCopy } = await import("./actions");
+  expect(await saveCopy(doc.get(), "vault.lattice.json")).toEqual({ ok: true });
+  expect(JSON.parse(written).project.id).toBe(doc.get().id);
+  expect(bufferedServices().log.some((line) => line.text === "Saved to vault.lattice.json")).toBe(true);
+  expect(bufferedServices().log.at(-1)?.text).toContain("Couldn't update browser storage settings. Full");
+});
+
+
+test("export all reports read failure with recovery guidance and no output success", async () => {
+  readyCatalog();
+  const store = testPersistence();
+  await createProject(makeRecipe({}, catalog), "Vault");
+  await store.close();
+  const { exportAllData } = await import("./actions");
+  const before = bufferedServices().log.length;
+  const result = await exportAllData();
+  expect(result).toMatchObject({ ok: false, error: expect.stringContaining("Save a copy to recover the current project.") });
+  expect(bufferedServices().log.slice(before).some((line) => /Exported|Downloading/.test(line.text))).toBe(false);
+});
+
+test("a cancelled directory picker is a cancelled export with no success note", async () => {
+  readyCatalog();
+  testPersistence();
+  await createProject(makeRecipe({}, catalog), "Vault");
+  (window as unknown as FsWindow).showDirectoryPicker = async () => { throw new DOMException("Cancelled", "AbortError"); };
+  onCleanup(() => { delete (window as unknown as FsWindow).showDirectoryPicker; });
+  const { exportAllData } = await import("./actions");
+  const before = bufferedServices().log.length;
+  expect(await exportAllData()).toEqual({ ok: false, cancelled: true });
+  expect(bufferedServices().log.slice(before)).toEqual([]);
+});
+
+test("directory write refusal reports downloads without claiming a directory export", async () => {
+  readyCatalog();
+  testPersistence();
+  await createProject(makeRecipe({}, catalog), "Vault");
+  (window as unknown as FsWindow).showDirectoryPicker = async () => { throw new Error("Directory refused"); };
+  onCleanup(() => { delete (window as unknown as FsWindow).showDirectoryPicker; });
+  const { exportAllData } = await import("./actions");
+  expect(await exportAllData()).toMatchObject({ ok: true, via: "downloads", source: doc.get(), count: 1 });
+  expect(bufferedServices().log.at(-1)?.text).toBe("Downloading 1 file. If the browser asks, allow multiple downloads.");
+});
+
+test("Save a copy under quota does not authorize replacing pending browser work", async () => {
+  readyCatalog();
+  const store = testPersistence({ quietMs: 60_000 });
+  await createProject(makeRecipe({}, catalog), "Vault");
+  doc.apply("Pending work", (project) => ({ project: { ...project, name: "Pending" }, changed: true, summary: "Pending work" }));
+  const before = doc.get();
+  const put = IDBObjectStore.prototype.put;
+  vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>) {
+    if (this.name === "projects") throw new DOMException("Full", "QuotaExceededError");
+    return put.apply(this, args);
+  });
+  const { saveCopy } = await import("./actions");
+  expect(await saveCopy(before, "recovered.lattice.json")).toEqual({ ok: true });
+  expect((await store.projects.createProject(makeRecipe({}, catalog), "Fresh")).ok).toBe(false);
+  expect(doc.get()).toBe(before);
+});
+
+
+test("current-project Export serializes live owner work under quota", async () => {
+  readyCatalog();
+  const store = testPersistence({ quietMs: 60_000 });
+  const made = await createProject(makeRecipe({}, catalog), "Stored");
+  if (!made.ok) throw new Error(made.error);
+  await putDeployment(deployment(made.value.id, 1));
+  doc.apply("Pending work", (project) => ({ project: { ...project, name: "Live owner work" }, changed: true, summary: "Pending work" }));
+  const before = doc.get();
+  const put = IDBObjectStore.prototype.put;
+  vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>) {
+    if (this.name === "projects") throw new DOMException("Full", "QuotaExceededError");
+    return put.apply(this, args);
+  });
+  let captured: Blob | null = null;
+  const original = URL.createObjectURL.bind(URL);
+  vi.spyOn(URL, "createObjectURL").mockImplementation((value: Blob | MediaSource) => { captured = value as Blob; return original(value); });
+  const { exportStoredProject } = await import("./actions");
+  await exportStoredProject(made.value.id);
+  expect(captured).not.toBeNull();
+  const exported = JSON.parse(await captured!.text()) as { project: unknown; deployments: Deployment[] };
+  expect(exported.project).toEqual(before);
+  expect(exported.deployments).toHaveLength(1);
+  expect(store.projects.saveStatus().state).toBe("not-saved");
+  expect((await store.listProjects())[0]?.name).toBe("Stored");
+});
+
+test("directory backup includes pending quota work and preserves its unsaved status", async () => {
+  readyCatalog();
+  const store = testPersistence({ quietMs: 60_000 });
+  await createProject(makeRecipe({}, catalog), "Stored");
+  doc.apply("Pending work", (project) => ({ project: { ...project, name: "Recover this" }, changed: true, summary: "Pending work" }));
+  const source = doc.get();
+  const put = IDBObjectStore.prototype.put;
+  vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>) {
+    if (this.name === "projects") throw new DOMException("Full", "QuotaExceededError");
+    return put.apply(this, args);
+  });
+  const written = new Map<string, string>();
+  (window as unknown as FsWindow).showDirectoryPicker = async () => ({ getFileHandle: async (name) => ({ name, createWritable: async () => ({ write: async (text) => { written.set(name, text); }, close: async () => {} }) }) });
+  onCleanup(() => { delete (window as unknown as FsWindow).showDirectoryPicker; });
+  const { exportAllData } = await import("./actions");
+  expect(await exportAllData()).toEqual({ ok: true, via: "directory", source, count: 1 });
+  expect([...written.values()].map((text) => (JSON.parse(text) as { project: unknown }).project)).toEqual([source]);
+  expect(store.projects.saveStatus().state).toBe("not-saved");
+  expect((await store.listProjects())[0]?.name).toBe("Stored");
 });

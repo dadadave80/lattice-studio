@@ -19,7 +19,7 @@ function ToastList() {
     const error = toast.data?.kind === "error";
     const action = toast.data?.action;
     return (
-      <Toast.Root key={toast.id} toast={toast} className={styles.toast}>
+      <Toast.Root key={toast.id} toast={toast} className={styles.toast} data-has-action={action ? "" : undefined}>
         <Toast.Content className={styles.content}>
           {error ? <Icon name="error" label="Error" className={styles.icon} /> : null}
           {/* The text names the toast (a paragraph, not a heading). */}
@@ -28,7 +28,7 @@ function ToastList() {
           </Toast.Title>
           {action ? (
             <Toast.Action
-              render={<Button size="small">{action.title}</Button>}
+              render={<Button size="small" data-toast-control="">{action.title}</Button>}
               onClick={() => {
                 close(toast.id);
                 void runCommand(action.ref, "toast");
@@ -37,7 +37,7 @@ function ToastList() {
           ) : null}
           {/* Base UI hides Close from assistive technology until the region is hovered or focused, but it stays
               focusable; keep it exposed so nothing focusable is hidden. */}
-          <Toast.Close aria-hidden={false} render={<IconButton icon="close" label="Close" size="small" />} />
+          <Toast.Close aria-hidden={false} render={<IconButton icon="close" label="Close" size="small" data-toast-control="" />} />
         </Toast.Content>
       </Toast.Root>
     );

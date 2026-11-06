@@ -112,13 +112,15 @@ export const S5E_COMMANDS: readonly Command[] = [
     run: async (ctx, args) => {
       if (!ctx.catalog) return;
       const { findOnSheet, findSummary, firstAnchor, foundFacets, locatable, selectAndLocate } = await loadConsoleBody();
+      const { compositionCatalog, facetDisplayName } = await import("@/chain/inspect/upgrade/catalog");
       const placed = ctx.project.recipe.facets;
-      const result = findOnSheet(args.query ?? "", placed, ctx.catalog);
-      const anchor = firstAnchor(result);
-      const text = findSummary(result, placed);
+      const result = findOnSheet(args.query ?? "", placed, compositionCatalog(ctx.project.recipe, ctx.catalog) ?? ctx.catalog, (name) => facetDisplayName(ctx.project.recipe, name));
+      const upgrade = ctx.project.recipe.mode === "upgrade";
+      const anchor = firstAnchor(result, upgrade);
+      const text = findSummary(result, placed, upgrade);
       log(anchor ? { tag: "Note", text, anchor } : { tag: "Note", text });
       announce(text);
-      selectAndLocate(foundFacets(result, placed), locatable(anchor ?? undefined, ctx.analysis), "console");
+      selectAndLocate(foundFacets(result, placed, upgrade), locatable(anchor ?? undefined, ctx.analysis), "console");
     },
   }),
   command({

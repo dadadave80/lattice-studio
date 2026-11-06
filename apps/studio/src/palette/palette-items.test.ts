@@ -107,6 +107,12 @@ describe("palette groups (IR L164, PA bug 15)", () => {
     expect(core?.items.find((i) => i.ref.args?.facet === "DiamondLoupeFacet")?.note).toBe(CORE_NOTE);
   });
 
+  test("upgrade plans treat canonical core releases as ordinary placeable facets", () => {
+    const facets = paletteGroups(sources({ upgrade: true, placed: new Set(["DiamondLoupeFacet"]) })).find((group) => group.id === "facets");
+    expect(facets?.items.find((entry) => entry.ref.args?.facet === "DiamondLoupeFacet")?.note).toBe(ON_SHEET);
+    expect(facets?.items.find((entry) => entry.ref.args?.facet === "ERC165Facet")?.note).not.toBe(CORE_NOTE);
+  });
+
   test("Recipes: every recipe as Recipe: <name>; on a sheet with facets the v1 ones also replace it", () => {
     const empty = paletteGroups(sources()).find((g) => g.id === "recipes");
     expect(empty?.items.map((i) => i.title)).toEqual(catalog.recipes.map((r) => `Recipe: ${r.name}`));

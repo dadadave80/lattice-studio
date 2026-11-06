@@ -38,12 +38,14 @@ export function nextProblemKey(view: KeyView): string | null {
 const OK: Enablement = { ok: true };
 
 /** Enabled when the catalog is in; the brief and recipe.json export whatever the sheet holds (spec L514-L515). */
-export function alwaysExportable(ctx: Pick<CommandContext, "catalog">): Enablement {
+export function alwaysExportable(ctx: Pick<CommandContext, "catalog" | "project">): Enablement {
+  if (ctx.project.recipe.mode === "upgrade") return { ok: false, reason: "Upgrade plans need their on-chain baseline. Export the project file." };
   return ctx.catalog ? OK : { ok: false, reason: CATALOG_NOT_LOADED };
 }
 
 /** The Foundry script and the Safe batch: facets placed and no blockers (spec L513, L517). */
 export function deployableExport(ctx: Pick<CommandContext, "catalog" | "project" | "analysis" | "settings">): Enablement {
+  if (ctx.project.recipe.mode === "upgrade") return { ok: false, reason: "This is an upgrade plan. Use its upgrade review and project file." };
   if (!ctx.catalog) return { ok: false, reason: CATALOG_NOT_LOADED };
   if (isCoreOnly(ctx.project.recipe)) return { ok: false, reason: PLACE_FACETS_FIRST };
   const blockers = blockerCount(ctx.analysis);

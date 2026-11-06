@@ -1,4 +1,6 @@
 import type { CardSizeFn } from "../model/api";
+import type { Hex4 } from "../model/hex";
+import type { LayoutMetrics, Size } from "../model/layout";
 import { collapsible, pinsPad, visibleSelectors } from "./rows";
 
 /**
@@ -25,3 +27,10 @@ export const cardSize: CardSizeFn = (facet, opts) => {
     metrics.headerHeight + 2 * pinsPad(metrics) + (rows + control) * metrics.rowHeight + metrics.footerHeight;
   return { width: metrics.cardWidth, height, rows, hidden };
 };
+
+/** Raw instances show three selectors until expanded, with a control row whenever there are more. */
+export function rawFacetCardSize(selectors: readonly Hex4[], expanded: boolean, metrics: LayoutMetrics): Size {
+  const rows = expanded ? selectors.length : Math.min(selectors.length, 3);
+  return { width: metrics.cardWidth, height: metrics.headerHeight + metrics.footerHeight + metrics.grid * 2
+    + (rows + (selectors.length > 3 ? 1 : 0)) * metrics.rowHeight };
+}

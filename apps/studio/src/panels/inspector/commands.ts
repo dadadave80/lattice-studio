@@ -2,7 +2,7 @@
  * S5c's commands (contracts §5.3): routing the inspector and copying the cut plan. Registration and session
  * writes only: this file is in the entry chunk and in every browser test (contracts/discover.ts).
  */
-import { isCoreFacet } from "@lattice-studio/core";
+import { isCoreFacet, upgradeFacetMetadata } from "@lattice-studio/core";
 import type { InspectorView, SessionState } from "@/contracts";
 import { command, defineCommands, session, type CommandArgsMap, type Enablement } from "@/contracts";
 import { requestInspectorFocus, type FocusTarget } from "./focus-request";
@@ -19,8 +19,8 @@ function show(view: InspectorView, focus: FocusTarget, selection?: string[]): vo
 }
 
 /** A card's view selects its card; a core facet's view leaves the selection alone (the core is never a card). */
-function selecting(facet: string): string[] | undefined {
-  return isCoreFacet(facet) ? undefined : [facet];
+function selecting(facet: string, upgrade: boolean): string[] | undefined {
+  return !upgrade && isCoreFacet(facet) ? undefined : [facet];
 }
 
 const OK: Enablement = { ok: true };
@@ -43,7 +43,7 @@ defineCommands([
       }
       // An explicit facet view, so narrow layouts that open the inspector on a routed view show it; a later
       // selection change elsewhere still moves the inspector on (services.ts).
-      show({ kind: "facet", facet }, { kind: "heading" }, selecting(facet));
+      show({ kind: "facet", facet }, { kind: "heading" }, selecting(facet, ctx.project.recipe.mode === "upgrade"));
     },
   }),
   command<CommandArgsMap["inspector.focusSelectors"]>({
@@ -52,8 +52,8 @@ defineCommands([
     title: ({ facet, verb }) => (verb === "route" ? "Route a selector…" : `Show ${facet}'s selectors`),
     category: "Build",
     enabled: (ctx, { facet }) => onSheet(ctx.project.recipe.facets, facet),
-    run: (_ctx, { facet }) => {
-      show({ kind: "facet", facet, focus: "selectors" }, { kind: "selectors", facet }, selecting(facet));
+    run: (ctx, { facet }) => {
+      show({ kind: "facet", facet, focus: "selectors" }, { kind: "selectors", facet }, selecting(facet, ctx.project.recipe.mode === "upgrade"));
     },
   }),
   command<CommandArgsMap["dependency.compare"]>({
@@ -63,8 +63,7 @@ defineCommands([
     enabled: (ctx, { options }) => {
       if (!ctx.catalog) return { ok: false, reason: CATALOG_LOADING };
       if (options.length < 2) return { ok: false, reason: "Compare needs two or more options. Select another option to compare." };
-      const known = new Set(ctx.catalog.facets.map((facet) => facet.name));
-      const missing = options.find((name) => !known.has(name));
+      const missing = options.find((name) => !upgradeFacetMetadata(ctx.project.recipe, ctx.catalog!, name));
       return missing === undefined ? OK : { ok: false, reason: `${missing} isn't in the catalog.` };
     },
     run: (_ctx, { options }) => {

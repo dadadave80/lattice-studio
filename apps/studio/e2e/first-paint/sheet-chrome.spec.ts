@@ -93,7 +93,7 @@ async function expectNoSidewaysScroll(page: Page): Promise<void> {
 
 /** Clicks a title bar pane toggle (768-1279 px) or switcher tab (under 768 px). */
 async function showPane(page: Page, name: "Catalog" | "Inspector", phone: boolean): Promise<Locator> {
-  const bar = page.getByRole("region", { name: "Title bar", exact: true });
+  const bar = page.getByRole("banner", { name: "Title bar", exact: true });
   if (phone) await bar.getByRole("tab", { name, exact: true }).click();
   else await bar.getByRole("button", { name, exact: true }).click();
   const region = page.locator(`[data-region="${name === "Catalog" ? "left" : "inspector"}"]`);
@@ -135,7 +135,7 @@ for (const width of WIDTHS) {
 
       if (phone) {
         // The name shows a few letters or none at all (the Sheet tab carries it then): never one letter.
-        const name = page.getByRole("region", { name: "Title bar", exact: true }).getByRole("button", { name: /GovernedVault/ });
+        const name = page.getByRole("banner", { name: "Title bar", exact: true }).getByRole("button", { name: /GovernedVault/ });
         if (await name.count()) {
           const text = await name.locator("span").first().evaluate((el) => (el as HTMLElement).clientWidth);
           expect(text).toBeGreaterThanOrEqual(32);

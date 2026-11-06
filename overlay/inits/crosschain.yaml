@@ -71,13 +71,13 @@ CCTPBridgeAdapterInit:
       source: src/crosschain/circle/CCTPBridgeAdapterInit.sol#L24-L24
     tokenMessenger:
       rule: nonzero
-      source: src/crosschain/circle/CCTPBridgeAdapterLib.sol#L154-L156
+      source: src/crosschain/circle/CCTPBridgeAdapterLib.sol#L173-L175
     messageTransmitter:
       rule: nonzero
-      source: src/crosschain/circle/CCTPBridgeAdapterLib.sol#L154-L156
+      source: src/crosschain/circle/CCTPBridgeAdapterLib.sol#L173-L175
     usdc:
       rule: nonzero
-      source: src/crosschain/circle/CCTPBridgeAdapterLib.sol#L154-L156
+      source: src/crosschain/circle/CCTPBridgeAdapterLib.sol#L173-L175
 
 ChainRegistryInit:
   kind: step
@@ -115,21 +115,21 @@ CrosschainTimelockHandlerInit:
     minDelay:
       unit: seconds
       # Operations become ready at block.timestamp + delay, and delay must be at least minDelay.
-      source: src/governance/libraries/TimelockControllerLib.sol#L299-L303
+      source: src/governance/libraries/TimelockControllerLib.sol#L300-L304
   after:
     - module: AccessControl
-      source: src/governance/libraries/TimelockControllerLib.sol#L87-L87
+      source: src/governance/libraries/TimelockControllerLib.sol#L88-L88
 
 ERC7786OpenBridgeInit:
   kind: step
-  source: src/crosschain/ERC7786OpenBridgeInit.sol#L19-L22
+  source: src/crosschain/ERC7786OpenBridgeInit.sol#L21-L24
   params:
     admin:
       # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
-      source: src/crosschain/ERC7786OpenBridgeInit.sol#L20-L20
+      source: src/crosschain/ERC7786OpenBridgeInit.sol#L22-L22
 
 HyperbridgeGatewayAdapterInit:
   kind: step

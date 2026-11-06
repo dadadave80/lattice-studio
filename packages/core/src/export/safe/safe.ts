@@ -1,7 +1,7 @@
 import { buildSalt, CREATEX, createxPredict, factoryPredict } from "../../address";
 import { analyze } from "../../analysis";
 import { normalizeRecipe } from "../../canonical";
-import { buildDiamondDeploy } from "../../deploy";
+import { buildDiamondDeploy, FACTORY_DEPLOY_STRICT_SELECTOR, factorySupportsExclusions } from "../../deploy";
 import { plural } from "../../format";
 import { encodeInit } from "../../init/encode";
 import { planInit } from "../../init/plan";
@@ -77,6 +77,7 @@ export function safeBatchTarget(args: SafeBatchTargetArgs): Result<{ salt: Hex; 
  * any account deploys them through Arachnid's proxy (spec L566), and the description says so.
  */
 export const exportSafeBatch: ExportSafeBatchFn = (args) => {
+  if (args.recipe.mode === "upgrade") return err("This is an upgrade plan. Export its diamondCut batch instead of a deployment batch.");
   const { catalog, safe, chainId, scope, path, now } = args;
   const target = safeBatchTarget(args);
   if (!target.ok) return target;
@@ -124,6 +125,9 @@ export const exportSafeBatch: ExportSafeBatchFn = (args) => {
   }
 
   const { tx } = deploy.value;
+  const strict = path === "factory" && factorySupportsExclusions(catalog);
+  // Both current entry points share arguments; Safe proposals must create a fresh diamond.
+  const data: Hex = strict ? `${FACTORY_DEPLOY_STRICT_SELECTOR}${tx.data.slice(10)}` : tx.data;
   const chainName = chain === undefined ? "" : plainText(chain.name, "");
   const own = ownFactory(catalog, chainId);
   const text = describe({
@@ -133,6 +137,7 @@ export const exportSafeBatch: ExportSafeBatchFn = (args) => {
     chainName: chainName === "" ? undefined : chainName,
     scope,
     path,
+    strict,
     to: toChecksum(tx.to),
     chainFactory: path === "factory" && own !== undefined && !sameAddress(own.address, catalog.factory.address),
     self,
@@ -151,7 +156,7 @@ export const exportSafeBatch: ExportSafeBatchFn = (args) => {
       createdFromSafeAddress: toChecksum(safe),
       createdFromOwnerAddress: "",
     },
-    transactions: [{ to: toChecksum(tx.to), value: tx.value.toString(), data: tx.data }],
+    transactions: [{ to: toChecksum(tx.to), value: tx.value.toString(), data }],
   } satisfies BatchFile);
 
   return ok({ filename: `${fileStem(recipe.name)}.safe.json`, mime: SAFE_BATCH_MIME, text: `${JSON.stringify(file, null, 2)}\n` });
@@ -170,6 +175,7 @@ type Described = {
   chainName: string | undefined;
   scope: Scope;
   path: DeployPath;
+  strict: boolean;
   to: Address;
   /** The call goes to a chain-specific LatticeFactory rather than the release one. */
   chainFactory: boolean;
@@ -203,9 +209,14 @@ function describe(d: Described): { name: string; description: string } {
   if (d.chainFactory && d.scope === "every-chain") {
     lines.push(`${d.to} is ${chainShort}'s own LatticeFactory: on another chain that address may have no code, and the call would do nothing.`);
   }
+  if (d.path === "factory") {
+    lines.push(d.strict
+      ? "Requires a fresh diamond: execution reverts if this Safe and salt already deployed one."
+      : "This factory returns an existing diamond for a reused Safe and salt; it would ignore this batch's cuts and initialization. Use a new salt for a fresh deployment.");
+  }
   // The agent brief's words for the same facets (export/docs/brief.ts).
   if (d.omitted.length > 0) lines.push(`Placed but routes nothing, so no Add is cut for it: ${d.omitted.join(", ")}.`);
-  lines.push(`Leaves out deploying missing shared contracts: use Deploy missing contracts… in Studio, or Lattice's DeployRelease at ${d.tag}, which any account may run.`);
+  lines.push("Leaves out deploying missing shared contracts. Deploy them first with Deploy missing contracts… in Lattice Studio.");
   return { name, description: lines.join("\n") };
 }
 

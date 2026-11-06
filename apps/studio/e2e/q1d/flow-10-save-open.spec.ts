@@ -27,6 +27,9 @@
  *   already run at `size="wide"` regardless of viewport), so no other narrow variant is written for this slice.
  */
 import { readFileSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { exportProjectFile, formatParseIssue, importFile, isCoreFacet, plural, type Recipe } from "@lattice-studio/core";
 import { expect, test } from "../_support/fixtures.ts";
@@ -313,6 +316,34 @@ test.describe("Flow 10 step 4: Open (spec L501)", () => {
     await disableFileSystemAccess(context);
   });
 
+  test("native file drop opens projects with cold and warm lazy imports", async ({ page, browserName }) => {
+    test.skip(browserName !== "chromium", "Native file drag uses Chromium CDP");
+    await openEmpty(page);
+    const directory = await mkdtemp(join(tmpdir(), "lattice-native-drop-"));
+    const cdp = await page.context().newCDPSession(page);
+    try {
+      const sheet = await region(page, "Sheet").boundingBox();
+      if (!sheet) throw new Error("The sheet has no drop target.");
+      for (const name of ["NativeDropVault", "WarmNativeDropVault"]) {
+        const project = vault(name);
+        const file = projectFile(project, []);
+        const path = join(directory, file.filename);
+        await writeFile(path, file.text);
+        for (const type of ["dragEnter", "dragOver", "drop"] as const) {
+          await cdp.send("Input.dispatchDragEvent", {
+            type, x: sheet.x + sheet.width / 2, y: sheet.y + sheet.height / 2,
+            data: { items: [], files: [path], dragOperationsMask: 1 },
+          });
+        }
+        await expectProject(page, name);
+        await expectLogLine(page, `Opened ${name} · ${plural(cards(project.recipe), "facet")}.`);
+      }
+    } finally {
+      await cdp.detach();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   test("the App menu's Open… opens a .lattice.json project file", async ({ page }) => {
     await openEmpty(page);
     const project = vault("MenuOpenedVault");
@@ -321,6 +352,7 @@ test.describe("Flow 10 step 4: Open (spec L501)", () => {
     const chooser = page.waitForEvent("filechooser");
     const menu = await openAppMenu(page);
     await appMenuItem(menu, "Open…").click();
+    await page.getByRole("dialog", { name: "Open", exact: true }).getByRole("button", { name: "Open file…", exact: true }).click();
     (await chooser).setFiles(filePayload(file));
 
     await expectProject(page, "MenuOpenedVault");

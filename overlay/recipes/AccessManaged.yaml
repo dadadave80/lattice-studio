@@ -1,24 +1,22 @@
 name: AccessManaged
 script: script/base/access/DeployAccessManaged.s.sol
 buildCuts: buildCuts(address)
-source: script/base/access/DeployAccessManaged.s.sol#L29-L37
+source: script/base/access/DeployAccessManaged.s.sol#L28-L36
 proxy: Lattice
 phase: v1.1
 immutable: true
 cuts:
   - add: ERC165Facet
-    source: script/base/access/DeployAccessManaged.s.sol#L60-L60
+    source: script/base/access/DeployAccessManaged.s.sol#L59-L59
   - add: AccessManaged
-    source: script/base/access/DeployAccessManaged.s.sol#L61-L61
+    source: script/base/access/DeployAccessManaged.s.sol#L60-L60
   - add: DiamondLoupeFacet
-    source: script/base/access/DeployAccessManaged.s.sol#L62-L62
-  - add: Receive
-    source: script/base/access/DeployAccessManaged.s.sol#L63-L63
+    source: script/base/access/DeployAccessManaged.s.sol#L61-L61
 init:
   kind: steps
   steps:
     - spec: AccessManagedInit
       args: {}  # the script passes (authority)
-  source: script/base/access/DeployAccessManaged.s.sol#L34-L36
+  source: script/base/access/DeployAccessManaged.s.sol#L33-L35
 gaps: >-
   No example arguments yet: the script takes every init argument as a parameter (authority).

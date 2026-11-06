@@ -4,9 +4,9 @@
  * fetch than this chunk, so the analysis is never later for it. `analysis-engine.ts` asks for it when it starts and
  * reads it once it's here; until then the analysis is empty, as it is while the catalog loads.
  */
-import type { analyze, narrate } from "@lattice-studio/core";
+import type { analyze, analyzeUpgrade, narrate } from "@lattice-studio/core";
 
-export type Analyzer = { analyze: typeof analyze; narrate: typeof narrate };
+export type Analyzer = { analyze: typeof analyze; analyzeUpgrade: typeof analyzeUpgrade; narrate: typeof narrate };
 
 let loaded: Analyzer | null = null;
 let loading: Promise<Analyzer> | null = null;

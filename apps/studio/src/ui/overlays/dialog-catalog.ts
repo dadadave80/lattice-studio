@@ -10,6 +10,8 @@ export type DialogCatalogEntry = {
 /** Every dialog's title and owner: what `DialogHost` shows while an owner hasn't registered its component. */
 export const DIALOG_CATALOG: Readonly<Record<DialogId, DialogCatalogEntry>> = {
   "deploy-review": { title: "Deploy review", owner: "S8b" },
+  "inspect-transaction": { title: "Review transaction", owner: "S8c" },
+  "upgrade-plan-review": { title: "Review upgrade", owner: "S8c" },
   "missing-contracts": { title: "Deploy missing contracts", owner: "S8c" },
   "choose-mechanism": { title: "Choose an upgrade mechanism", owner: "S5d" },
   "choose-per-selector": { title: "Choose per selector", owner: "S4c" },
@@ -18,7 +20,7 @@ export const DIALOG_CATALOG: Readonly<Record<DialogId, DialogCatalogEntry>> = {
   "share": { title: "Share", owner: "S13" },
   "safe-batch": { title: "Safe batch", owner: "S5e" },
   "save-copy": { title: "Save a copy", owner: "S7b" },
-  "open-diamond": { title: "Open diamond", owner: "v2" },
+  "open-diamond": { title: "Open", owner: "S8c" },
   "settings": { title: "Settings", owner: "S10" },
   "delete-for-good": { title: "Delete for good", owner: "S7b" },
   "clear-data": { title: "Clear data", owner: "S7b" },

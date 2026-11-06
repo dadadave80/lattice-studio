@@ -20,7 +20,7 @@ const SECTION_5_3: Record<string, string> = {
   S7b: "project.new, project.open, project.save, project.saveCopy, project.list, project.duplicate, project.exportFile, project.delete, project.restore, project.deleteForGood, data.exportAll, data.clear",
   S8a: "chain.select, chain.retryRead, chain.useAnotherRpc, wallet.connect, wallet.switchNetwork",
   S8b: "deploy.open, deploy.again, deploy.newSalt, deploy.usePath, deploy.setScope, deploy.previewFor, deploy.copyAddress, deploy.removeFacets, deploy.downloadSafeBatch, chain.focusPicker",
-  S8c: "deploy.missingContracts, deploy.sign, deploy.keepWaiting, deploy.checkWallet, deploy.reviewAgain, deploy.discardProposal, deploy.showProgress",
+  S8c: "deploy.missingContracts, deploy.sign, deploy.keepWaiting, deploy.checkWallet, deploy.reviewAgain, deploy.discardProposal, deploy.showProgress, inspect.open, inspect.close, inspect.refresh, inspect.copyAddress, inspect.exportPassport, inspect.selectFacet, inspect.showProgress, inspect.editAsPlan, deploy.upgrade",
   S8d: "deploy.retryVerification",
   S9: "region.next, region.prev, region.focus",
   S10: "settings.open, theme.set, tour.start, tour.end, about.open",
@@ -35,8 +35,8 @@ const expectedOwners = Object.fromEntries(
 
 describe("COMMAND_OWNERS", () => {
   test("covers every id in contracts §5.3 with its owner, and nothing else", () => {
-    expect(COMMAND_IDS.length).toBe(134);
-    expect(Object.keys(expectedOwners).length).toBe(134);
+    expect(COMMAND_IDS.length).toBe(143);
+    expect(Object.keys(expectedOwners).length).toBe(143);
     expect({ ...COMMAND_OWNERS } as Record<string, string>).toEqual(expectedOwners);
   });
 

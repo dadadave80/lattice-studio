@@ -1,7 +1,7 @@
 /**
  * Which view the inspector shows (IR L115-L126, spec L358): the session's explicit view, or, while it's null,
  * the one the selection implies: Diamond for none, Facet for one card, Selection for several. An explicit view
- * that no longer applies (its facet was removed, its problem resolved) falls back to the selection's view.
+ * for a removed facet falls back to selection. Resolved problem tasks stay open with their navigation.
  */
 import type { InspectorView } from "@/contracts";
 import type { WpId } from "@lattice-studio/core";
@@ -17,6 +17,7 @@ export const SEAM_OWNERS: Record<Exclude<ResolvedView["kind"], OwnKind>, WpId> =
   init: "S5d",
   doc: "S12",
   "confirm-addresses": "S13",
+  deployed: "S8a",
 };
 
 export function isOwnKind(kind: ResolvedView["kind"]): kind is OwnKind {
@@ -59,19 +60,19 @@ export function viewKey(view: ResolvedView): string {
       return `doc:${view.code ?? ""}`;
     case "comparison":
       return `comparison:${view.chainId}:${view.address.toLowerCase()}`;
+    case "deployed":
+      return `deployed:${view.chainId}:${view.address.toLowerCase()}`;
     default:
       return view.kind;
   }
 }
 
-export function resolveView({ view, selection, placed, problems, coreSelected = false }: ViewInputs): ResolvedView {
+export function resolveView({ view, selection, placed, coreSelected = false }: ViewInputs): ResolvedView {
   const fallback = (): ResolvedView => (coreSelected ? { kind: "diamond" } : selectionView(selection, placed));
   if (view === null) return fallback();
   switch (view.kind) {
     case "facet":
       return placed.includes(view.facet) ? view : fallback();
-    case "problem":
-      return problems.includes(view.id) ? view : fallback();
     case "selection":
       return selection.filter((name) => placed.includes(name)).length > 1 ? view : fallback();
     default:

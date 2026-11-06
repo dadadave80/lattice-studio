@@ -191,9 +191,9 @@ function analysisOf(recipe: Recipe, catalog: Catalog): Analysis | null {
 export function remapLayout(
   project: Project, after: Recipe, catalog: Catalog, metrics: LayoutMetrics,
 ): Project["layout"] {
-  const cards = after.facets.filter((name) => !isCoreFacet(name));
+  const cards = after.facets.filter((name) => after.mode === "upgrade" || !isCoreFacet(name));
   const keep = new Set(cards);
-  const removed = project.recipe.facets.filter((name) => !keep.has(name) && !isCoreFacet(name));
+  const removed = project.recipe.facets.filter((name) => !keep.has(name) && (project.recipe.mode === "upgrade" || !isCoreFacet(name)));
   const layout: Project["layout"] = {};
   for (const [name, entry] of Object.entries(project.layout)) if (keep.has(name)) layout[name] = { ...entry };
   const placed = cards.filter((name) => layout[name] === undefined);

@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { Address, Hex } from "@lattice-studio/core";
-import { createClient, custom, defineChain, numberToHex, type Chain } from "viem";
+import { createClient, custom, defineChain, encodeErrorResult, numberToHex, parseAbi, type Chain } from "viem";
 import { createViemPort, NOT_ENOUGH_FUNDS, type ViemPortOptions } from "./viem-port";
 
 const FROM = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as Address;
@@ -16,11 +16,18 @@ const CHAIN = defineChain({ id: 11155111, name: "Sepolia", nativeCurrency: { nam
 type Failure = { code: number; message: string; data?: Hex };
 
 /** A port whose RPC answers eth_blockNumber and fails `method` as given. */
-function port(fail: Partial<Record<"eth_call" | "eth_estimateGas", Failure>>) {
+function port(fail: Partial<Record<"eth_call" | "eth_estimateGas", Failure>>, gas = 21_000n, ccip?: { request: () => Promise<never> }) {
   const client = createClient({
     chain: CHAIN,
+    ...(ccip === undefined ? {} : { ccipRead: ccip }),
     transport: custom({
       async request({ method }: { method: string }) {
+        if (method === "eth_simulateV1") {
+          return [{
+            number: "0x10",
+            calls: [{ status: "0x1", returnData: "0x", gasUsed: numberToHex(16_628_438n), logs: [] }],
+          }];
+        }
         if (method === "eth_blockNumber") return "0x10";
         if (method === "eth_call") {
           if (fail.eth_call) throw Object.assign(new Error(fail.eth_call.message), fail.eth_call);
@@ -28,13 +35,13 @@ function port(fail: Partial<Record<"eth_call" | "eth_estimateGas", Failure>>) {
         }
         if (method === "eth_estimateGas") {
           if (fail.eth_estimateGas) throw Object.assign(new Error(fail.eth_estimateGas.message), fail.eth_estimateGas);
-          return "0x5208";
+          return numberToHex(gas);
         }
         throw Object.assign(new Error("unexpected"), { code: -32601 });
       },
     }, { retryCount: 0 }),
   });
-  return createViemPort({
+  return Object.assign(createViemPort({
     service: {
       chains: () => [{ id: CHAIN.id, name: "Sepolia", testnet: true }],
       probe: async () => ({ ok: false, error: "unused" }),
@@ -50,12 +57,60 @@ function port(fail: Partial<Record<"eth_call" | "eth_estimateGas", Failure>>) {
       waitCalls: async () => ({ kind: "aborted" }),
     },
     noteEstimate: () => {},
-  });
+  }), { sourceClient: client });
 }
 
 const simulate = (p: ReturnType<typeof port>) => p.simulate(CHAIN.id, { from: FROM, tx: TX, simulateV1: false });
 
+describe("estimating after eth_simulateV1", () => {
+  const simulated = (p: ReturnType<typeof port>) =>
+    p.simulate(CHAIN.id, { from: FROM, tx: TX, simulateV1: true });
+
+  test("returns the required limit, even when consumed gas fits the cap", async () => {
+    expect(await simulated(port({}, 16_862_182n))).toEqual({
+      kind: "ok", block: 16, gas: 16_862_182n, events: 0, method: "simulate",
+    });
+  });
+
+  test.each([
+    [{ code: -32005, message: "rate limit exceeded" }, "Sepolia's public RPC isn't answering."],
+    [{ code: -32000, message: "insufficient funds for gas * price + value" }, NOT_ENOUGH_FUNDS],
+  ] satisfies [Failure, string][])("an estimate failure stays an error: %p", async (failure, message) => {
+    expect(await simulated(port({ eth_estimateGas: failure }))).toEqual({ kind: "error", message });
+  });
+
+  test("a node gas-cap error never falls back to consumed gas", async () => {
+    const outcome = await simulated(port({ eth_estimateGas: { code: -32000, message: "transaction gas limit exceeds cap" } }));
+    expect(outcome.kind).toBe("error");
+  });
+
+  test.each([
+    { code: -32601, message: "the method eth_estimateGas does not exist/is not available" },
+    { code: -32602, message: "Missing or invalid parameters" },
+  ] satisfies Failure[])("refusing the estimate never enables signing without simulation: %p", async (failure) => {
+    expect((await simulated(port({ eth_estimateGas: failure }))).kind).toBe("error");
+  });
+
+  test("an estimate revert retains its data and the simulation block", async () => {
+    const data: Hex = "0xc05cee7a000000000000000000000000ba5ed099633d3b313e4d5f7bdc1305d3c28ba5ed";
+    expect(await simulated(port({ eth_estimateGas: { code: 3, message: "execution reverted", data } }))).toEqual({
+      kind: "reverted", block: 16, data, method: "simulate",
+    });
+  });
+});
+
 describe("simulating without eth_simulateV1", () => {
+  test("simulation and raw calls retain OffchainLookup reverts without contract-directed HTTP", async () => {
+    const abi = parseAbi(["error OffchainLookup(address sender, string[] urls, bytes callData, bytes4 callbackFunction, bytes extraData)"]);
+    const data = encodeErrorResult({ abi, errorName: "OffchainLookup", args: [TX.to, ["https://untrusted.example/{data}"], "0x1234", "0x11223344", "0x"] });
+    let offchain = 0;
+    const policy = { request: async (): Promise<never> => { offchain++; throw new Error("Contract-directed HTTP ran."); } };
+    const p = port({ eth_call: { code: 3, message: "execution reverted", data } }, 21_000n, policy);
+    expect(await simulate(p)).toMatchObject({ kind: "reverted", data });
+    expect(await p.call(CHAIN.id, { from: FROM, tx: TX })).toMatchObject({ ok: false, data });
+    expect(offchain).toBe(0);
+    expect(p.sourceClient.ccipRead).toBe(policy);
+  });
   test("eth_call and eth_estimateGas both answer: ok, at the block read first", async () => {
     expect(await simulate(port({}))).toEqual({ kind: "ok", block: 16, gas: 21_000n, method: "call" });
   });

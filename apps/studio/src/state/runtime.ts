@@ -31,6 +31,7 @@ export type StudioStateOptions = {
   /** Default: the browser's localStorage; null keeps settings in memory. */
   storage?: SettingsStorage | null;
   analyze?: AnalysisEngineDeps["analyze"];
+  analyzeUpgrade?: AnalysisEngineDeps["analyzeUpgrade"];
   narrate?: AnalysisEngineDeps["narrate"];
 };
 
@@ -41,6 +42,7 @@ export function createStudioState(options: StudioStateOptions = {}): StudioState
   const prediction = createPredictionMirror(chain);
   const deps: AnalysisEngineDeps = { chain, deployments, prediction };
   if (options.analyze) deps.analyze = options.analyze;
+  if (options.analyzeUpgrade) deps.analyzeUpgrade = options.analyzeUpgrade;
   if (options.narrate) deps.narrate = options.narrate;
   return {
     // Whatever ran before S1's stores (K2's, a test's seed) carries over: the open project and the session.

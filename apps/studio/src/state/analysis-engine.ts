@@ -17,7 +17,7 @@
  * when narration had nothing to say, so no edit is ever silent.
  */
 import type {
-  analyze as coreAnalyze, Analysis, AnalysisContext, Catalog, Hex, LineDraft, NarrateCause, narrate as coreNarrate, Project,
+  analyze as coreAnalyze, analyzeUpgrade as coreAnalyzeUpgrade, Analysis, AnalysisContext, Catalog, Hex, LineDraft, NarrateCause, narrate as coreNarrate, Project,
   Recipe,
 } from "@lattice-studio/core";
 import { canonicalJson, isNotImplemented, recipeHash } from "@lattice-studio/core";
@@ -36,6 +36,7 @@ export type AnalysisEngineDeps = {
   prediction: PredictionMirror;
   /** Core's `analyze`, loaded with `analyzer.ts` unless given; tests inject fakes, or core's own to run at once. */
   analyze?: typeof coreAnalyze;
+  analyzeUpgrade?: typeof coreAnalyzeUpgrade;
   narrate?: typeof coreNarrate;
 };
 
@@ -59,6 +60,7 @@ const EMPTY = emptyAnalysis();
 
 type Memo = {
   recipe: Recipe;
+  origin: Project["upgrade"];
   catalog: Catalog;
   context: AnalysisContext;
   key: string;
@@ -69,6 +71,7 @@ type ContextMemo = {
   predicted: Project["predicted"];
   provenance: Project["provenance"];
   deploy: Project["deploy"];
+  upgrade: Project["upgrade"];
   chainId: number | null;
   prediction: unknown;
   account: unknown;
@@ -102,7 +105,7 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
     const chain = chainId === null ? undefined : deps.chain.chainState(chainId);
     const m = contextMemo;
     if (
-      m && m.predicted === project.predicted && m.provenance === project.provenance && m.deploy === project.deploy
+      m && m.predicted === project.predicted && m.provenance === project.provenance && m.deploy === project.deploy && m.upgrade === project.upgrade
       && m.chainId === chainId && m.prediction === prediction && m.account === account && m.deployments === deployments
       && m.chain === chain
     ) return m.context;
@@ -112,7 +115,7 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
     // Equal contexts keep one identity, so the analysis memo's fast path holds.
     const next = m && digest(m.context) === digest(built) ? m.context : built;
     contextMemo = {
-      predicted: project.predicted, provenance: project.provenance, deploy: project.deploy, chainId, prediction, account,
+      predicted: project.predicted, provenance: project.provenance, deploy: project.deploy, upgrade: project.upgrade, chainId, prediction, account,
       deployments, chain, context: next,
     };
     return next;
@@ -134,13 +137,15 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
     const catalog = getCatalog();
     if (!catalog) return EMPTY;
     const analyze = analyzeFn();
-    if (!analyze) {
+    const project = doc.get();
+    const upgrade = deps.analyzeUpgrade ?? loadedAnalyzer()?.analyzeUpgrade;
+    if (!analyze || (project.recipe.mode === "upgrade" && !upgrade)) {
       void loadAnalyzer().catch(() => undefined);
       return EMPTY;
     }
-    const { recipe } = doc.get();
+    const { recipe } = project;
     const ctx = context();
-    if (memo && memo.recipe === recipe && memo.catalog === catalog && memo.context === ctx) return memo.analysis;
+    if (memo && memo.recipe === recipe && memo.origin === project.upgrade && memo.catalog === catalog && memo.context === ctx) return memo.analysis;
     let hash: Hex | string;
     try {
       hash = recipeHash(recipe, catalog);
@@ -148,18 +153,23 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
       if (!isNotImplemented(error)) return fail(error);
       hash = digest(recipe);
     }
-    const key = `${hash}|${catalog.hash}|${digest(ctx)}`;
+    const key = `${hash}|${catalog.hash}|${digest(ctx)}|${digest(project.upgrade ?? null)}`;
     if (memo && memo.key === key) {
-      memo = { ...memo, recipe, catalog, context: ctx };
+      memo = { ...memo, recipe, origin: project.upgrade, catalog, context: ctx };
       return memo.analysis;
     }
     let analysis: Analysis;
     try {
-      analysis = analyze(recipe, catalog, ctx);
+      if (recipe.mode === "upgrade") {
+        if (!project.upgrade || !upgrade) throw new Error("This upgrade plan needs its pinned on-chain origin.");
+        const checked = upgrade(recipe, catalog, project.upgrade, ctx);
+        if (!checked.ok) throw new Error(checked.error);
+        analysis = checked.value;
+      } else analysis = analyze(recipe, catalog, ctx);
     } catch (error) {
       analysis = fail(error);
     }
-    memo = { recipe, catalog, context: ctx, key, analysis };
+    memo = { recipe, origin: project.upgrade, catalog, context: ctx, key, analysis };
     return analysis;
   };
 
@@ -169,7 +179,7 @@ export function createAnalysisEngine(deps: AnalysisEngineDeps): AnalysisEngine {
         const a = state.project;
         const b = previous.project;
         // The deploy path is in the context even before a wallet connects (NET-01 is CreateX's only).
-        if (a.recipe !== b.recipe || a.predicted !== b.predicted || a.provenance !== b.provenance || a.deploy !== b.deploy) listener();
+        if (a.recipe !== b.recipe || a.predicted !== b.predicted || a.provenance !== b.provenance || a.deploy !== b.deploy || a.upgrade !== b.upgrade) listener();
       }),
       session.subscribe((state, previous) => {
         if (state.chainId !== previous.chainId) listener();

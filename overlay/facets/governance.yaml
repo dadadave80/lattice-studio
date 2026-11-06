@@ -28,7 +28,7 @@ GovernedDiamondCut:
     source: src/governance/GovernedDiamondCut.sol#L13-L15
   init:
     name: GovernedDiamondCutInit
-    source: src/governance/GovernedDiamondCutInit.sol#L23-L28
+    source: src/governance/GovernedDiamondCutInit.sol#L24-L30
   seamReview: >-
     diamondCut and the registry, frozen-selector and emergency surface are shared only with the other upgrade
     mechanisms (CORE-03), so no seam applies.
@@ -38,13 +38,13 @@ GovernedSafeDiamondCut:
     - anyOf: [EmergencyStop]
       strength: convention
       reason: a guardian can halt upgrades
-      source: src/governance/libraries/GovernedSafeDiamondCutLib.sol#L67-L67
+      source: src/governance/libraries/GovernedSafeDiamondCutLib.sol#L75-L75
   family:
     name: upgrade
     source: src/governance/GovernedSafeDiamondCut.sol#L14-L21
   init:
     name: GovernedSafeDiamondCutInit
-    source: src/governance/GovernedSafeDiamondCutInit.sol#L27-L32
+    source: src/governance/GovernedSafeDiamondCutInit.sol#L28-L34
   seamReview: >-
     Its registry, frozen-selector, emergency and Safe selectors are shared with GovernedDiamondCut and
     SafeDiamondCut (CORE-03). getTimestamp, isOperationDone, isOperationPending and isOperationReady are also
@@ -55,7 +55,7 @@ Governor:
   requires: []
   seamReview: >-
     In GovernedVault, name, clock, CLOCK_MODE and castVoteBySig are excluded from Governor and served by
-    GovernedVault (script/base/defi/DeployGovernedVault.s.sol#L27-L35); castVoteBySig is a seam (seams.yaml),
+    GovernedVault (script/base/defi/DeployGovernedVault.s.sol#L33-L42); castVoteBySig is a seam (seams.yaml),
     the others are GovernedVault's defaults. token() is also BridgeERC20's and BridgeERC7802's, with a different
     meaning; no script cuts them together, so the user chooses (SEL-01).
   notes: >-
@@ -67,13 +67,13 @@ SafeDiamondCut:
     - anyOf: [EmergencyStop]
       strength: convention
       reason: a guardian can halt upgrades
-      source: script/base/governance/DeploySafeDiamondCut.s.sol#L20-L20
+      source: script/base/governance/DeploySafeDiamondCut.s.sol#L19-L19
   family:
     name: upgrade
     source: src/governance/SafeDiamondCut.sol#L14-L16
   init:
     name: SafeDiamondCutInit
-    source: src/governance/SafeDiamondCutInit.sol#L25-L30
+    source: src/governance/SafeDiamondCutInit.sol#L26-L32
   seamReview: >-
     diamondCut and the registry, frozen-selector, emergency and Safe selectors are shared only with the other
     upgrade mechanisms (CORE-03), so no seam applies.
@@ -96,10 +96,11 @@ TimelockController:
 Votes:
   requires: []
   seamReview: >-
-    delegate and delegateBySig must be ERC20Votes' once ERC20Votes is placed, because Votes' own versions leave
-    checkpoints at zero (src/governance/Votes.sol#L43-L44; a seam in seams.yaml). clock and CLOCK_MODE are
-    GovernedVault's by default: it owns the shared clock (docs/guides/compose-your-own-diamond.md#L41-L42) and
+    delegate and delegateBySig must be ERC20Votes' once ERC20Votes is placed: Lattice's scripts exclude Votes' own
+    versions for the balance-aware ones (script/base/defi/DeployGovernedVault.s.sol#L40-L40; a seam in seams.yaml). clock and CLOCK_MODE are
+    GovernedVault's by default: it owns the shared clock (docs/guides/compose-your-own-diamond.md#L55-L56) and
     serves it from VotesLib.
   notes: >-
-    Used alone, voting units are 0: use ERC20Votes to tie voting power to balances
-    (src/governance/Votes.sol#L12-L13). No init contract ships for Votes.
+    delegate counts the ERC-20 balance at delegation time, but Votes never moves votes when tokens move: an
+    ERC-20 token recipe cuts ERC20Votes for that (src/governance/Votes.sol#L13-L15). No init contract ships for
+    Votes.

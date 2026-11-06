@@ -1,0 +1,119 @@
+{
+  "name": "OwnableFacet",
+  "abi": [
+    {
+      "type": "function",
+      "name": "cancelOwnershipHandover",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "completeOwnershipHandover",
+      "inputs": [
+        {
+          "name": "_pendingOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "ownershipHandoverExpiresAt",
+      "inputs": [
+        {
+          "name": "_pendingOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "renounceOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "requestOwnershipHandover",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferOwnership",
+      "inputs": [
+        {
+          "name": "_newOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf2fde38b": {
+        "dev": "Allows the owner to transfer the ownership to `newOwner`."
+      },
+      "0x715018a6": {
+        "dev": "Allows the owner to renounce their ownership."
+      },
+      "0x25692962": {
+        "dev": "Request a two-step ownership handover to the caller. The request will automatically expire in 48 hours (172800 seconds) by default."
+      },
+      "0x54d1f13d": {
+        "dev": "Cancels the two-step ownership handover to the caller, if any."
+      },
+      "0xf04e283e": {
+        "dev": "Allows the owner to complete the two-step ownership handover to `pendingOwner`. Reverts if there is no existing ownership handover requested by `pendingOwner`."
+      },
+      "0x8da5cb5b": {
+        "dev": "Returns the owner of the contract."
+      },
+      "0xfee81cf4": {
+        "dev": "Returns the expiry timestamp for the two-step ownership handover to `pendingOwner`."
+      }
+    },
+    "notice": "Simple single owner and multiroles authorization mixin.",
+    "dev": "Note: This implementation does NOT auto-initialize the owner to `msg.sender`. You MUST call the `_initializeOwner` in the constructor / initializer. While the ownable portion follows [EIP-173](https://eips.ethereum.org/EIPS/eip-173) for compatibility, the nomenclature for the 2-step ownership handover may be unique to this codebase."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/facets/OwnableFacet.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/facets/OwnableFacet.sol"
+  }
+}

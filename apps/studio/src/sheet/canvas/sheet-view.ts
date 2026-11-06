@@ -1,3 +1,4 @@
+import { getCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 /**
  * The sheet's view, for commands and the modules built beside the canvas (S4c, S4d, S4e). The viewport
  * belongs to the project (spec L402, PA L14): it lives in the session per project id and is saved through
@@ -17,7 +18,7 @@
  * found by their regions.
  */
 import type { Hex4, Point, Rect, Size } from "@lattice-studio/core";
-import { doc, getAnalysis, getCatalog, saveViewport, session, type Viewport } from "@/contracts";
+import { doc, getAnalysis, saveViewport, session, type Viewport } from "@/contracts";
 import { reducedMotion } from "@/a11y/preferences";
 import { currentTier } from "@/shell/layout-tier";
 import { paneVisibility } from "@/shell/panes";
@@ -140,7 +141,7 @@ export function storeSheetViewport(): Viewport {
 }
 
 function sizes() {
-  return cardSizes(doc.get().layout, getCatalog(), getAnalysis());
+  return cardSizes(doc.get().layout, getCompositionCatalog(), getAnalysis(), doc.get().recipe);
 }
 
 /** A float's box relative to the sheet's top-left corner, while it shows. */

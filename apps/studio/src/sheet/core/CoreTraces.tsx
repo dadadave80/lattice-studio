@@ -1,7 +1,8 @@
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import type { Layout, Sizes } from "@lattice-studio/core";
 import { useStoreApi } from "@xyflow/react";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { doc, useAnalysis, useCatalog, useDocument } from "@/contracts";
+import { doc, useAnalysis, useDocument } from "@/contracts";
 import { cardSizes } from "@/sheet/canvas/geometry";
 import { createPainter, type Painter, type Pads, type TraceTarget } from "./painter";
 import styles from "./core.module.css";
@@ -56,7 +57,11 @@ export function shapeKey(layout: Layout): string {
 export function shapeOf(key: string): Layout {
   const layout: Layout = {};
   for (const part of key ? key.split("|") : []) {
-    const [name = "", pins, expanded] = part.split(":");
+    const last = part.lastIndexOf(":");
+    const before = part.lastIndexOf(":", last - 1);
+    const name = part.slice(0, before);
+    const pins = part.slice(before + 1, last);
+    const expanded = part.slice(last + 1);
     layout[name] = { x: 0, y: 0, pins: pins === "right" ? "right" : "left", ...(expanded === "1" ? { expanded: true } : {}) };
   }
   return layout;
@@ -65,9 +70,10 @@ export function shapeOf(key: string): Layout {
 /** Every placed card's token-computed size, reused across a drag. */
 export function useCardSizes(): Sizes {
   const key = useDocument((s) => shapeKey(s.project.layout));
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const analysis = useAnalysis();
-  return useMemo(() => cardSizes(shapeOf(key), catalog, analysis), [key, catalog, analysis]);
+  const recipe = useDocument((state) => state.project.recipe);
+  return useMemo(() => cardSizes(shapeOf(key), catalog, analysis, recipe), [key, catalog, analysis, recipe]);
 }
 
 /**
