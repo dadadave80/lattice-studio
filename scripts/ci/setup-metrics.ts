@@ -48,6 +48,7 @@ if (import.meta.main) {
       foundry: env.SETUP_FOUNDRY === "true" ? tool("forge", ["forge", "--version"]) : null,
     },
     os: `${field("ID")}-${field("VERSION_ID")}`,
+    runnerImage: { os: env.ImageOS ?? null, version: env.ImageVersion ?? null },
     browsers: (env.SETUP_BROWSERS ?? "").split(/\s+/).filter(Boolean),
     playwright: { version, cacheKey: env.SETUP_CACHE_KEY ?? "", cacheOutcome: env.SETUP_CACHE_OUTCOME ?? "skipped", cacheHit: env.SETUP_BROWSERS && env.SETUP_CACHE_OUTCOME === "success" ? env.SETUP_CACHE_HIT === "true" : null },
     aptMirror: { requested: env.SETUP_APT_MIRROR ?? "system", state: env.SETUP_BROWSERS ? env.SETUP_MIRROR_STATE || (env.SETUP_APT_MIRROR === "ubuntu-archive" ? "not-completed" : "system") : "not-requested" },
