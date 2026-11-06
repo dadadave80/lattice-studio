@@ -79,6 +79,9 @@ test.describe("seeding @smoke", () => {
   test("creates the database exactly as the app does", async ({ page }) => {
     expect(DB_VERSION, "seeding creates S7a's version-1 stores").toBe(SEEDED_DB_VERSION);
     await openEmpty(page);
+    // Opening IndexedDB before persistence is ready would create an empty database.
+    await expect.poll(() => page.evaluate(async (name) =>
+      (await indexedDB.databases()).some((database) => database.name === name), DB_NAME)).toBe(true);
     const byApp = await databaseLayout(page);
     // Away from the app (its connection closes), delete what it made, and let seeding create the database.
     await page.goto(QUIET_URL);
