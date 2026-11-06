@@ -21,3 +21,4 @@ export * from "./layout";
 export * from "./narrate";
 export * from "./format";
 export * from "./edit";
+export * from "./passport";

@@ -5,7 +5,12 @@
  */
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { type Address, type Catalog, CREATEX, type Hex, sameAddress } from "@lattice-studio/core";
+import {
+  buildPassport, compareRouting, CREATEX, identifyFacets, passportFailed, sameAddress, summarizeHistory,
+  type Address, type Catalog, type Hex, type Hex4, type LoupeFacet,
+  type PassportCatalogPin as CatalogPin, type PassportChainFacts as ChainFacts, type PassportCutAction as CutAction,
+  type PassportCutEvent as CutEvent, type PassportDeployment as Deployment, type PassportRecipeFacts as RecipeFacts,
+} from "@lattice-studio/core";
 import { createPublicClient, http, keccak256, parseAbiItem, type Transport } from "viem";
 import type { Parsed } from "../args";
 import { parseAddress, parseChainId } from "../deploy";
@@ -13,11 +18,6 @@ import type { Deps } from "../deps";
 import { EXIT, errorMessage, invalid } from "../failure";
 import { readInput } from "../input";
 import { fail, note, writeJson, writeLines } from "../output";
-import { buildPassport, failed } from "../passport/build";
-import { compareRouting } from "../passport/compare";
-import { summarizeHistory } from "../passport/history";
-import { identifyFacets } from "../passport/identify";
-import type { CatalogPin, ChainFacts, CutAction, CutEvent, Deployment, LoupeFacet, RecipeFacts } from "../passport/types";
 import { chainName, chooseRpc, httpTransport, readingNote, scrub } from "../probe";
 import { analyzeInput, loadCatalogs } from "../session";
 
@@ -180,15 +180,15 @@ async function readFacts(
         () => client.readContract({ address, abi: LOUPE_ABI, functionName: "facets" }),
       );
       loupe = rows.map((row) => ({
-        address: row.facetAddress as Address,
-        selectors: row.functionSelectors.map((selector) => selector.toLowerCase() as Hex),
+        facetAddress: row.facetAddress as Address,
+        functionSelectors: row.functionSelectors.map((selector) => selector.toLowerCase() as Hex4),
       }));
     } catch {
       loupe = null;
     }
   }
 
-  const facetAddresses = [...new Set((loupe ?? []).map((row) => row.address.toLowerCase()))].filter((key) => key !== address.toLowerCase());
+  const facetAddresses = [...new Set((loupe ?? []).map((row) => row.facetAddress.toLowerCase()))].filter((key) => key !== address.toLowerCase());
   const codes = await Promise.all(
     facetAddresses.map((key) =>
       pinned(
@@ -203,7 +203,7 @@ async function readFacts(
     if (facetCode !== undefined && facetCode !== "0x") codehashes[key] = keccak256(facetCode);
   }
 
-  const ownerRouted = (loupe ?? []).some((row) => row.selectors.some((selector) => selector === OWNER_SELECTOR));
+  const ownerRouted = (loupe ?? []).some((row) => row.functionSelectors.some((selector) => selector === OWNER_SELECTOR));
   let owner: Address | null = null;
   if (ownerRouted) {
     try {
@@ -296,5 +296,5 @@ export async function runPassport(parsed: Parsed, deps: Deps): Promise<number> {
   }
   if (json) writeJson(deps, passport);
   else writeLines(deps, passport.claims.map((item) => `${item.status.toUpperCase().padEnd(4)} ${item.id}  ${item.message}`));
-  return failed(passport) ? EXIT.blockers : EXIT.ok;
+  return passportFailed(passport) ? EXIT.blockers : EXIT.ok;
 }

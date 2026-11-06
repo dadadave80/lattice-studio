@@ -2,11 +2,11 @@ import { keccak256, stringToHex } from "viem";
 import { canonicalJson } from "./canonical";
 import { differenceCount } from "./compare";
 import { summarizeHistory } from "./history";
-import type { CatalogPin, ChainFacts, ClaimId, ClaimStatus, IdentifiedFacet, Passport, PassportClaim, RecipeFacts } from "./types";
+import type { PassportCatalogPin, PassportChainFacts, PassportClaimId, PassportClaimStatus, PassportIdentifiedFacet, Passport, PassportClaim, PassportRecipeFacts } from "./types";
 
 const HISTORY_NOT_READ = "History not read: set ENVIO_API_TOKEN or pass --from-block.";
 
-function claim(id: ClaimId, status: ClaimStatus, message: string): PassportClaim {
+function claim(id: PassportClaimId, status: PassportClaimStatus, message: string): PassportClaim {
   return { id, status, message };
 }
 
@@ -25,7 +25,7 @@ function list(items: readonly string[], max = 5): string {
 }
 
 /** PP-03: every facet is a release in a bundled catalog, or the diamond itself. */
-function identityClaim(facets: readonly IdentifiedFacet[]): PassportClaim {
+function identityClaim(facets: readonly PassportIdentifiedFacet[]): PassportClaim {
   const unknown = facets.filter((facet) => facet.kind === "unknown");
   if (unknown.length > 0) {
     return claim("PP-03", "fail", `${count(unknown.length, "facet")} with no match in a bundled catalog: ${list(unknown.map((facet) => facet.address))}.`);
@@ -36,7 +36,7 @@ function identityClaim(facets: readonly IdentifiedFacet[]): PassportClaim {
 }
 
 /** PP-04: the chain routes every selector exactly as the recipe's plan does. */
-function routingClaim(facts: ChainFacts, recipe: RecipeFacts): PassportClaim {
+function routingClaim(facts: PassportChainFacts, recipe: PassportRecipeFacts): PassportClaim {
   if (facts.loupe === null) return claim("PP-04", "fail", "The recipe routes selectors, but facets() didn't answer.");
   const differences = differenceCount(recipe.diff);
   if (differences === 0) {
@@ -51,7 +51,7 @@ function routingClaim(facts: ChainFacts, recipe: RecipeFacts): PassportClaim {
 }
 
 /** PP-07: the earliest cut's transaction, and what it went through. */
-function deploymentClaim(facts: ChainFacts, deploymentCuts: number): PassportClaim {
+function deploymentClaim(facts: PassportChainFacts, deploymentCuts: number): PassportClaim {
   const d = facts.deployment;
   if (d === null && deploymentCuts === 0) return claim("PP-07", "warn", "No DiamondCut event in the blocks read, so the deployment wasn't found.");
   if (d === null) return claim("PP-07", "warn", "The deployment transaction couldn't be read.");
@@ -62,7 +62,7 @@ function deploymentClaim(facts: ChainFacts, deploymentCuts: number): PassportCla
 }
 
 /** PP-06 and PP-07, from the cut history when it was read. */
-function historyClaims(facts: ChainFacts): PassportClaim[] {
+function historyClaims(facts: PassportChainFacts): PassportClaim[] {
   if (facts.history === null) return [claim("PP-06", "skip", HISTORY_NOT_READ), claim("PP-07", "skip", HISTORY_NOT_READ)];
   const { initial, later } = summarizeHistory(facts.history);
   let upgrades: PassportClaim;
@@ -77,21 +77,21 @@ function historyClaims(facts: ChainFacts): PassportClaim[] {
 }
 
 /** PP-08: who holds owner(), when the diamond routes it. */
-function ownerClaim(facts: ChainFacts): PassportClaim {
+function ownerClaim(facts: PassportChainFacts): PassportClaim {
   if (!facts.ownerRouted) return claim("PP-08", "skip", "The diamond doesn't route owner().");
   if (facts.owner === null) return claim("PP-08", "warn", "owner() is routed but didn't answer.");
   return claim("PP-08", "pass", `owner() is ${facts.owner}.`);
 }
 
 /** The eight claims and the digest, from facts alone: no client, no clock, no randomness. */
-export function buildPassport(facts: ChainFacts, facets: readonly IdentifiedFacet[], recipe: RecipeFacts | null, catalog: CatalogPin | null): Passport {
+export function buildPassport(facts: PassportChainFacts, facets: readonly PassportIdentifiedFacet[], recipe: PassportRecipeFacts | null, catalog: PassportCatalogPin | null): Passport {
   const where = `${facts.address} on ${facts.chainName}`;
   const claims: PassportClaim[] = [facts.hasCode ? claim("PP-01", "pass", `Code is deployed at ${where}.`) : claim("PP-01", "fail", `No code at ${where}.`)];
   if (facts.loupe === null) {
     claims.push(claim("PP-02", "fail", "facets() didn't answer, so this isn't an EIP-2535 diamond or its loupe isn't routed."));
     claims.push(claim("PP-03", "skip", "No facets to identify: facets() didn't answer."));
   } else {
-    const routed = facts.loupe.reduce((sum, row) => sum + row.selectors.length, 0);
+    const routed = facts.loupe.reduce((sum, row) => sum + row.functionSelectors.length, 0);
     claims.push(claim("PP-02", "pass", `The loupe lists ${count(facts.loupe.length, "facet")} routing ${count(routed, "selector")}.`));
     claims.push(identityClaim(facets));
   }
