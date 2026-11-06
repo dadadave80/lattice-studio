@@ -1,0 +1,39 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-3);
+  min-width: 0;
+  padding-block: var(--lx-space-3);
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-2);
+  min-width: 0;
+}
+
+.outputs {
+  margin: 0;
+}
+
+.output,
+.raw {
+  margin: 0;
+  min-width: 0;
+  font: var(--lx-font-code-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.function {
+  min-width: 0;
+  padding-block: var(--lx-space-2);
+  border-bottom: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+}
+
+.function > summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  font: var(--lx-font-code-sm);
+}
