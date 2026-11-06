@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { decodeFunctionData, keccak256, stringToHex } from "viem";
 import { buildSalt, CREATEX, createxPredict, factoryPredict } from "../../address";
-import { CREATEX_ABI, LATTICE_FACTORY_ABI, LATTICE_INITIALIZE_ABI } from "../../deploy";
+import { CREATEX_ABI, LEGACY_FACTORY_DEPLOY_ABI, LATTICE_INITIALIZE_ABI } from "../../deploy";
 import { normalizeRecipe, recipeHash } from "../../canonical";
 import { lintCopy } from "../../format";
 import { decodeInit, UNSUPPORTED_IN_V1 } from "../../init/encode";
@@ -84,7 +84,7 @@ function only(file: BatchFile) {
 }
 
 function decodeFactory(data: Hex) {
-  const decoded = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data });
+  const decoded = decodeFunctionData({ abi: LEGACY_FACTORY_DEPLOY_ABI, data });
   expect(decoded.functionName).toBe("deploy");
   const [, , init, initCalldata, salt] = decoded.args as readonly [unknown, unknown, Address, Hex, Hex];
   return { init, initCalldata, salt };
@@ -138,6 +138,13 @@ describe("the Transaction Builder's checksum", () => {
 });
 
 describe("exportSafeBatch", () => {
+  test("missing contracts point to Studio's catalog-compatible deployment action", () => {
+    const description = exported().file.meta.description ?? "";
+    expect(description).toContain("Leaves out deploying missing shared contracts. Deploy them first with Deploy missing contracts… in Lattice Studio.");
+    expect(description).not.toContain("DeployRelease");
+    expect(description).not.toContain("CLI");
+  });
+
   test("snapshot: SafeDiamondCut on Sepolia through LatticeFactory", () => {
     const batch = exported();
     expect(batch.filename).toBe("SafeDiamondCut.safe.json");
@@ -242,6 +249,7 @@ describe("exportSafeBatch", () => {
     expect(head).toMatch(/^Lattice Studio 1\.0\.0-test · recipe 0x[0-9a-f]{64} · Lattice fixture$/);
     expect(head).toContain(recipeHash(normalizeRecipe(safeDiamondCut(), catalog)));
     expect(description).toContain("Leaves out deploying missing shared contracts");
+    expect(description).toContain("This factory returns an existing diamond for a reused Safe and salt; it would ignore this batch's cuts and initialization. Use a new salt for a fresh deployment.");
     expect(lintCopy(description)).toEqual([]);
     expect(lintCopy(file.meta.name)).toEqual([]);
     expect(exported({ studioVersion: "1.0.1" }).text).not.toBe(exported().text);
@@ -274,7 +282,7 @@ describe("exportSafeBatch", () => {
     expect(file.meta.name).toContain("Deploy Vault evil name end to ");
     expect(file.meta.name).toContain("· Sepo lia");
     expect(file.meta.description).toStartWith("Lattice Studio 1.0.0 beta · ");
-    expect(file.meta.description?.split("\n")).toHaveLength(5);
+    expect(file.meta.description?.split("\n")).toHaveLength(6);
     expect(hasValidChecksum(file)).toBe(true);
     expect(JSON.parse(text)).toEqual(file);
     expect(plainText("​\n", "fallback")).toBe("fallback");
@@ -306,12 +314,12 @@ describe("exportSafeBatch", () => {
   });
 
   test("registry records on this chain send whole facets as registry entries; a probe of another chain is ignored", () => {
-    const plain = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data: only(exported().file).data });
+    const plain = decodeFunctionData({ abi: LEGACY_FACTORY_DEPLOY_ABI, data: only(exported().file).data });
     const records = Object.fromEntries(
       catalog.facets.map((facet) => [`${facet.name}@${facet.release.version}`, { facet: facet.release.address, codehash: facet.release.codehash }]),
     );
-    const listed = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data: only(exported({ chain: sepolia({ registry: { records } }) }).file).data });
-    const stale = decodeFunctionData({ abi: LATTICE_FACTORY_ABI, data: only(exported({ chain: sepolia({ chainId: 1, registry: { records } }) }).file).data });
+    const listed = decodeFunctionData({ abi: LEGACY_FACTORY_DEPLOY_ABI, data: only(exported({ chain: sepolia({ registry: { records } }) }).file).data });
+    const stale = decodeFunctionData({ abi: LEGACY_FACTORY_DEPLOY_ABI, data: only(exported({ chain: sepolia({ chainId: 1, registry: { records } }) }).file).data });
     const entries = (d: typeof plain) => (d.args[0] as readonly unknown[]).length;
     expect(entries(plain)).toBe(0);
     expect(entries(listed)).toBeGreaterThan(0);

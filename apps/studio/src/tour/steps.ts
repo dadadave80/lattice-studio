@@ -1,9 +1,9 @@
 /**
- * The tour's five coach marks (spec L400, Flow 1): "catalog, placing a facet, a collision note, the
- * console, Deploy". Each targets a `[data-tour="<id>"]` element elsewhere in the app; `Tour.tsx` falls back
+ * The tour's coach marks: catalog, placing, setup, collisions, console and deployment.
+ * Each targets a `[data-tour="<id>"]` element elsewhere in the app; `Tour.tsx` falls back
  * to a centered card when that module hasn't added the attribute yet.
  */
-export type TourStepId = "catalog" | "place-facet" | "collision" | "console" | "deploy";
+export type TourStepId = "catalog" | "place-facet" | "setup" | "collision" | "console" | "deploy";
 
 export type TourStep = {
   id: TourStepId;
@@ -21,6 +21,11 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: "place-facet",
     title: "Placing a facet",
     text: "Drop it anywhere on the sheet. It lands selected, and the checks run right away.",
+  },
+  {
+    id: "setup",
+    title: "Configure the recipe",
+    text: "Open Edit setup to review names, addresses and other deployment inputs. Valid example values still need your review.",
   },
   {
     id: "collision",

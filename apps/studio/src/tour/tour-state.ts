@@ -1,5 +1,5 @@
 /**
- * Whether the tour is running and which of its five coach marks (spec L400, Flow 1) is showing. Not part of
+ * Whether the tour is running and which of its coach marks (spec L400, Flow 1) is showing. Not part of
  * the session store (contracts §5.1 doesn't carry a tour field): the tour is a transient, single-purpose
  * overlay, never persisted and never undoable. `settings/commands.ts` starts and ends it (`tour.start`,
  * `tour.end`); `Tour.tsx` reads and steps it.

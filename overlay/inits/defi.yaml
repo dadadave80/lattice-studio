@@ -11,7 +11,7 @@ AggregatorExecAdapterInit:
 # The two whole-recipe inits: one call whose module order is fixed in Solidity (bundles, spec L178).
 GovernedVaultENSInit:
   kind: bundle
-  source: src/defi/GovernedVaultENSInit.sol#L48-L107
+  source: src/defi/GovernedVaultENSInit.sol#L48-L108
   registersInterfaces: true
   params:
     p:
@@ -26,7 +26,7 @@ GovernedVaultENSInit:
               # Studio's rule: the source stores the asset without rejecting zero or a codeless address.
               rule: nonzero&code(token)
               # Stored as the vault's asset; its decimals() is read at init.
-              source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L69-L81
+              source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L106-L118
             name:
               doc: Share-token name (also the EIP-712 domain name and governor name).
             symbol:
@@ -41,12 +41,12 @@ GovernedVaultENSInit:
               doc: Time between proposal creation and voting start.
               unit: seconds
               # The Votes clock is block.timestamp (ERC-6372 mode=timestamp).
-              source: src/governance/libraries/VotesLib.sol#L81-L91
+              source: src/governance/libraries/VotesLib.sol#L80-L90
             votingPeriod:
               doc: How long the vote stays open (must be more than 0).
               unit: seconds
               rule: gt(0)
-              source: src/governance/libraries/GovernorLib.sol#L159-L159
+              source: src/governance/libraries/GovernorLib.sol#L164-L164
             proposalThreshold:
               doc: Minimum votes to create a proposal.
               unit: wei
@@ -79,14 +79,14 @@ GovernedVaultENSInit:
       - Governor
       - GovernedVault
       - ENSReverseClaimer
-    source: src/defi/GovernedVaultENSInit.sol#L48-L107
+    source: src/defi/GovernedVaultENSInit.sol#L48-L108
   notes: >-
     Must not be combined with ENSReverseClaimerInit, which would re-run __AccessControl_init
     (src/defi/GovernedVaultENSInit.sol#L45-L46); INIT-03 catches it from `initializes`.
 
 GovernedVaultInit:
   kind: bundle
-  source: src/defi/GovernedVaultInit.sol#L44-L87
+  source: src/defi/GovernedVaultInit.sol#L45-L92
   registersInterfaces: true
   params:
     p:
@@ -97,7 +97,7 @@ GovernedVaultInit:
           # Studio's rule: the source stores the asset without rejecting zero or a codeless address.
           rule: nonzero&code(token)
           # Stored as the vault's asset; its decimals() is read at init.
-          source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L69-L81
+          source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L106-L118
         name:
           doc: Share-token name (also the EIP-712 domain name and governor name).
           example: Grant vault
@@ -120,14 +120,14 @@ GovernedVaultInit:
           doc: Time between proposal creation and voting start.
           unit: seconds
           # The Votes clock is block.timestamp (ERC-6372 mode=timestamp).
-          source: src/governance/libraries/VotesLib.sol#L81-L91
+          source: src/governance/libraries/VotesLib.sol#L80-L90
           example: "60"
           exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
         votingPeriod:
           doc: How long the vote stays open (must be more than 0).
           unit: seconds
           rule: gt(0)
-          source: src/governance/libraries/GovernorLib.sol#L159-L159
+          source: src/governance/libraries/GovernorLib.sol#L164-L164
           example: "600"
           exampleSource: script/base/defi/GrantExample.s.sol#L26-L26
         proposalThreshold:
@@ -160,18 +160,18 @@ GovernedVaultInit:
       - TimelockController
       - Governor
       - GovernedVault
-    source: src/defi/GovernedVaultInit.sol#L44-L87
+    source: src/defi/GovernedVaultInit.sol#L45-L92
 
 StrategyManagerInit:
   kind: step
-  source: src/defi/StrategyManagerInit.sol#L18-L21
+  source: src/defi/StrategyManagerInit.sol#L19-L22
   params:
     admin:
       # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
-      source: src/defi/StrategyManagerInit.sol#L17-L19
+      source: src/defi/StrategyManagerInit.sol#L18-L20
 
 VaultCoreInit:
   kind: step
@@ -181,7 +181,7 @@ VaultCoreInit:
       # Studio's rule: the source stores the asset without rejecting zero or a codeless address.
       rule: nonzero&code(token)
       # Stored as the vault's asset; its decimals() is read at init.
-      source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L69-L81
+      source: src/tokens/ERC4626/libraries/ERC4626Lib.sol#L106-L118
     admin_:
       # Studio's rule: the source grants this without rejecting address(0), which would leave the authority unusable.
       rule: nonzero
@@ -191,6 +191,6 @@ VaultCoreInit:
   after:
     # Satisfied by VaultCoreInit itself, which runs AccessControl and ERC4626 first (contracts §4 `after`).
     - module: AccessControl
-      source: src/defi/libraries/VaultCoreLib.sol#L64-L65
+      source: src/defi/libraries/VaultCoreLib.sol#L95-L96
     - module: ERC4626
-      source: src/defi/libraries/VaultCoreLib.sol#L64-L65
+      source: src/defi/libraries/VaultCoreLib.sol#L95-L96

@@ -1,5 +1,5 @@
 /**
- * The real recipe overlay (`overlay/recipes/`, `overlay/seams.yaml`) against the fixture catalog's facets (K3), the
+ * The real recipe overlay (`overlay/recipes/`, `overlay/seams.yaml`) against the built catalog's facets, the
  * init overlay (CG5), the golden routing GT1 recorded from Lattice's scripts, and, when a checkout exists
  * (`LATTICE_DIR` or `lattice/`), the scripts themselves.
  */
@@ -37,13 +37,17 @@ import {
   verifyTemplateRouting,
   ZERO_HASH,
 } from "../../src/recipes";
-import { deployScripts, fixtureCatalog, goldenRouting, latticeDir, readerFor, recipeFacts, V1 } from "./support";
+import { loadBuiltCatalog } from "@lattice-studio/core/testing";
+import { deployScripts, goldenRouting, latticeDir, readerFor, recipeFacts, V1 } from "./support";
 
 const loaded = await loadRecipeOverlay();
 if (!loaded.ok) throw new Error(loaded.error.map((i) => `${i.file} ${i.path}: ${i.message}`).join("\n"));
 const overlay: RecipeOverlay = loaded.value;
-const fixture = fixtureCatalog();
-const facts = await recipeFacts(fixture);
+const builtCatalog = loadBuiltCatalog();
+if (!builtCatalog.ok) throw new Error(builtCatalog.error);
+/** The committed catalog at the pin: the overlay follows the pin, and K3's fixture stays at 6c8db45. */
+const pinned = builtCatalog.value;
+const facts = await recipeFacts(pinned);
 
 const seamsBuilt = buildSeams(overlay, facts);
 if (!seamsBuilt.ok) throw new Error(seamsBuilt.error.map((i) => `${i.path}: ${i.message}`).join("\n"));
@@ -52,8 +56,8 @@ const templatesBuilt = buildTemplates(overlay, facts);
 if (!templatesBuilt.ok) throw new Error(templatesBuilt.error.map((i) => `${i.file} ${i.path}: ${i.message}`).join("\n"));
 const built: BuiltTemplates = templatesBuilt.value;
 
-/** The fixture catalog with this overlay's seams and templates in place of K3's. */
-const catalog: Catalog = { ...fixture, seams, recipes: built.templates };
+/** The committed catalog with this overlay's seams and templates in place of its own. */
+const catalog: Catalog = { ...pinned, seams, recipes: built.templates };
 const template = (name: string): BuiltTemplate => {
   const found = built.templates.find((t) => t.name === name);
   if (found === undefined) throw new Error(`no template ${name}`);
@@ -83,7 +87,7 @@ describe("the recipe overlay", () => {
   test("every template is a valid RecipeTemplate with the zero hash, normalized and never the introspection step", () => {
     for (const t of built.templates) {
       expect(RecipeTemplateSchema.safeParse(t).success).toBe(true);
-      expect(t.recipe.catalog).toEqual({ tag: "fixture", hash: ZERO_HASH });
+      expect(t.recipe.catalog).toEqual({ tag: pinned.lattice.tag, hash: ZERO_HASH });
       expect(t.recipe.template).toBeUndefined();
       expect(normalizeRecipe(t.recipe, catalog)).toEqual(t.recipe);
       const specs = t.recipe.init.kind === "steps" ? t.recipe.init.steps.map((s) => s.spec) : t.recipe.init.kind === "bundle" ? [t.recipe.init.spec] : [];
@@ -129,7 +133,7 @@ describe.skipIf(dir === null)("against the Lattice checkout", () => {
   });
 
   test("each template cuts exactly the facets its script constructs", () => {
-    expect(checkScriptFacets(overlay, read, scripts, new Set(fixture.facets.map((f) => f.name)))).toEqual([]);
+    expect(checkScriptFacets(overlay, read, scripts, new Set(pinned.facets.map((f) => f.name)))).toEqual([]);
   });
 });
 
@@ -213,9 +217,10 @@ describe("v1 templates equal what Lattice's scripts build (golden/expected)", ()
     expect(call.value.data.slice(0, 10)).toBe(goldenRouting("SafeDiamondCut").init.steps[0]?.selector ?? "missing");
   });
 
-  test("the v1 templates equal K3's fixture templates: name, script, proxy, phase and recipe", () => {
+  test("the v1 templates equal the committed catalog's: name, script, proxy, phase and recipe", () => {
     for (const name of V1) {
-      expect(template(name)).toEqual(fixture.recipes.find((r) => r.name === name) as BuiltTemplate);
+      const { facetCount: _count, ...committed } = pinned.recipes.find((r) => r.name === name) ?? { facetCount: 0 };
+      expect(template(name)).toEqual(committed as BuiltTemplate);
     }
   });
 });
@@ -241,8 +246,8 @@ describe("seams equal R19", () => {
     expect(seams).toEqual(R19.map(([signature, when, anyOf, reason]) => ({ selector: selectorOf(signature), when, anyOf, reason })));
   });
 
-  test("the same seams K3's fixture has; only the copy follows the spec", () => {
-    expect(seams.map(({ reason: _r, ...s }) => s)).toEqual(fixture.seams.map(({ reason: _r, ...s }) => s));
+  test("the same seams the committed catalog has; only the copy follows the spec", () => {
+    expect(seams.map(({ reason: _r, ...s }) => s)).toEqual(pinned.seams.map(({ reason: _r, ...s }) => s));
   });
 
   test("clock, CLOCK_MODE and name aren't seams: they're GovernedVault's defaults (golden routing, compose guide)", () => {
@@ -274,7 +279,7 @@ describe("seams equal R19", () => {
   test("CG5's lint finds nothing wrong with them", async () => {
     const base = await loadOverlay();
     if (!base.ok) throw new Error("the init overlay doesn't load");
-    const lint = lintOverlay(base.value, { facets: fixture.facets.map((f) => ({ name: f.name, selectors: f.selectors.map((s) => s.hex) })), seams });
+    const lint = lintOverlay(base.value, { facets: pinned.facets.map((f) => ({ name: f.name, selectors: f.selectors.map((s) => s.hex) })), seams });
     expect([...lint.errors, ...lint.warnings].filter((i) => i.kind === "seam")).toEqual([]);
   });
 });
@@ -308,7 +313,7 @@ describe("v1 arguments are the overlay's examples", () => {
     if (!base.ok) throw new Error("the init overlay doesn't load");
     for (const name of V1) {
       for (const step of steps(template(name))) {
-        const spec = fixture.inits.find((i) => i.name === step.spec);
+        const spec = pinned.inits.find((i) => i.name === step.spec);
         expect(spec).toBeDefined();
         const want = examples(spec?.params ?? []);
         const have = leaves(step.args);
@@ -316,7 +321,7 @@ describe("v1 arguments are the overlay's examples", () => {
         for (const [path, value] of have) {
           if (typeof value === "string") expect([name, path, want.get(path)]).toEqual([name, path, value]);
         }
-        // The fixture's examples are CG5's: the same values in overlay/inits/.
+        // The committed catalog's examples are CG5's: the same values in overlay/inits/.
         const overlayParams = base.value.inits[step.spec]?.params ?? {};
         for (const [path, value] of want) {
           const [head, field] = path.split(".");
@@ -336,9 +341,9 @@ describe("v1 arguments are the overlay's examples", () => {
         p: { name: "Grant vault", symbol: "gVLT", decimalsOffset: "0", minDelay: "300", votingDelay: "60", votingPeriod: "600", proposalThreshold: "0", quorumNumerator: "4" },
       },
     });
-    const params = fixture.inits.find((i) => i.name === "GovernedVaultInit")?.params[0]?.components ?? [];
+    const params = pinned.inits.find((i) => i.name === "GovernedVaultInit")?.params[0]?.components ?? [];
     for (const p of params.filter((c) => c.example !== undefined)) expect(p.exampleSource).toBe("script/base/defi/GrantExample.s.sol#L26-L26");
-    const erc20 = fixture.inits.find((i) => i.name === "ERC20Init")?.params ?? [];
+    const erc20 = pinned.inits.find((i) => i.name === "ERC20Init")?.params ?? [];
     expect(erc20.map((p) => p.exampleSource)).toEqual(["studio", "studio"]);
   });
 });

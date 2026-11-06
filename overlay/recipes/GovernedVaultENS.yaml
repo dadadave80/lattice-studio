@@ -3,20 +3,20 @@
 name: GovernedVaultENS
 script: script/base/defi/DeployGovernedVaultENS.s.sol
 buildCuts: buildCutsWithENS(((address,string,string,uint8,uint256,uint48,uint32,uint256,uint256),address,string))
-source: script/base/defi/DeployGovernedVaultENS.s.sol#L134-L147
+source: script/base/defi/DeployGovernedVaultENS.s.sol#L135-L159
 proxy: Lattice
 phase: v1.1
 cuts:
   - add: ERC165Facet
-    source: script/base/defi/DeployGovernedVault.s.sol#L78-L78
+    source: script/base/defi/DeployGovernedVault.s.sol#L133-L133
   - add: AccessControl
-    source: script/base/defi/DeployGovernedVault.s.sol#L79-L79
+    source: script/base/defi/DeployGovernedVault.s.sol#L134-L134
   - add: TimelockController
-    source: script/base/defi/DeployGovernedVault.s.sol#L80-L80
+    source: script/base/defi/DeployGovernedVault.s.sol#L135-L135
   - add: ERC20
     except: ["name()", "decimals()", "transfer(address,uint256)", "transferFrom(address,address,uint256)"]
-    source: script/base/defi/DeployGovernedVault.s.sol#L81-L81
-    listSource: script/base/defi/DeployGovernedVault.s.sol#L117-L123
+    source: script/base/defi/DeployGovernedVault.s.sol#L136-L136
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L172-L178
   - add: ERC4626
     except:
       - "totalAssets()"
@@ -24,40 +24,42 @@ cuts:
       - "mint(uint256,address)"
       - "withdraw(uint256,address,address)"
       - "redeem(uint256,address,address)"
-    source: script/base/defi/DeployGovernedVault.s.sol#L82-L82
-    listSource: script/base/defi/DeployGovernedVault.s.sol#L126-L133
+      - "maxDeposit(address)"
+      - "maxMint(address)"
+    source: script/base/defi/DeployGovernedVault.s.sol#L137-L137
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L182-L191
   - add: VaultCore
     except: ["deposit(uint256,address)", "mint(uint256,address)", "withdraw(uint256,address,address)", "redeem(uint256,address,address)"]
-    source: script/base/defi/DeployGovernedVault.s.sol#L83-L83
-    listSource: script/base/defi/DeployGovernedVault.s.sol#L136-L142
+    source: script/base/defi/DeployGovernedVault.s.sol#L138-L138
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L194-L200
   - add: Votes
     except: ["delegate(address)", "delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)", "clock()", "CLOCK_MODE()"]
-    source: script/base/defi/DeployGovernedVault.s.sol#L84-L84
-    listSource: script/base/defi/DeployGovernedVault.s.sol#L145-L151
+    source: script/base/defi/DeployGovernedVault.s.sol#L139-L139
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L203-L209
   - add: ERC20Votes
     except: ["transfer(address,uint256)", "transferFrom(address,address,uint256)"]
-    source: script/base/defi/DeployGovernedVault.s.sol#L85-L85
-    listSource: script/base/defi/DeployGovernedVault.s.sol#L154-L158
+    source: script/base/defi/DeployGovernedVault.s.sol#L140-L140
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L212-L216
   - add: Governor
     except: ["name()", "clock()", "CLOCK_MODE()", "castVoteBySig(uint256,uint8,address,bytes)"]
-    source: script/base/defi/DeployGovernedVault.s.sol#L86-L86
-    listSource: script/base/defi/DeployGovernedVault.s.sol#L161-L167
+    source: script/base/defi/DeployGovernedVault.s.sol#L141-L141
+    listSource: script/base/defi/DeployGovernedVault.s.sol#L219-L225
   - add: GovernedVault
-    source: script/base/defi/DeployGovernedVault.s.sol#L87-L87
+    source: script/base/defi/DeployGovernedVault.s.sol#L142-L142
   - add: DiamondLoupeFacet
-    source: script/base/defi/DeployGovernedVault.s.sol#L88-L88
+    source: script/base/defi/DeployGovernedVault.s.sol#L143-L143
   - add: EmergencyStop
-    source: script/base/defi/DeployGovernedVault.s.sol#L89-L89
+    source: script/base/defi/DeployGovernedVault.s.sol#L144-L144
   - add: GovernedDiamondCut
-    source: script/base/defi/DeployGovernedVault.s.sol#L90-L90
+    source: script/base/defi/DeployGovernedVault.s.sol#L145-L145
   - add: Receive
-    source: script/base/defi/DeployGovernedVault.s.sol#L91-L91
+    source: script/base/defi/DeployGovernedVault.s.sol#L146-L146
   - add: ENSReverseClaimer
-    source: script/base/defi/DeployGovernedVaultENS.s.sol#L143-L143
+    source: script/base/defi/DeployGovernedVaultENS.s.sol#L145-L145
 init:
   kind: bundle
   spec: GovernedVaultENSInit
   args: {}  # the script passes (p)
-  source: script/base/defi/DeployGovernedVaultENS.s.sol#L145-L146
+  source: script/base/defi/DeployGovernedVaultENS.s.sol#L147-L148
 gaps: >-
   No example arguments yet: the script takes the vault, reverse registrar and ENS name as one parameter (p).

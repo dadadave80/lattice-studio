@@ -4,7 +4,7 @@ Receive:
   requires: []
   notes: >-
     Exports the zero selector 0x00000000 so empty-calldata calls reach its receive(); stateless, no init
-    (src/Receive.sol#L15-L17). Without it the diamond rejects plain ETH (CORE-04).
+    (src/Receive.sol#L18-L20). Without it the diamond rejects plain ETH (CORE-04).
 
 DiamondCutFacet:
   summary:

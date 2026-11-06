@@ -3,7 +3,7 @@ import { loadTemplate } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { command, provideServices, session } from "@/contracts";
+import { command, doc, provideServices, session } from "@/contracts";
 import { fakeChainService, fixtureCatalog, onCleanup, overrideCommands, renderWithStudio } from "../../../../../test/harness";
 import { clearInspectorFocus, requestInspectorFocus } from "../../focus-request";
 import { FacetView } from "./FacetView";
@@ -451,6 +451,46 @@ describe("init fields, key context and read-only rows", () => {
 });
 
 describe("storage, seams and release", () => {
+  test("Retry recovers the source and NatSpec in place without editing the recipe or viewport", async () => {
+    const source = fixtureCatalog("fixture-next");
+    // A shorter index summary exposes the additional notice from the recovered detail shard.
+    const catalog = { ...source, facets: source.facets.map((facet) => facet.name === "ERC4626" ? { ...facet, summary: "Vault module." } : facet) };
+    const original = globalThis.fetch.bind(globalThis);
+    let requests = 0;
+    let release: (() => void) | undefined;
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (!String(input).includes("shards/ERC4626.json")) return original(input, init);
+      requests += 1;
+      if (requests === 1) return new Response("Unavailable", { status: 503 });
+      await new Promise<void>((resolve) => { release = resolve; });
+      return original(input, init);
+    });
+    onCleanup(() => fetchSpy.mockRestore());
+    await renderWithStudio(<FacetView view={{ kind: "facet", facet: "ERC4626" }} />, {
+      project: project({ facets: ["ERC4626"] }, "facet-detail-retry", catalog),
+      catalog,
+      session: { readOnly: "Read-only preview", viewports: { "facet-detail-retry": { x: 40, y: 80, zoom: 0.75 } } },
+    });
+    await shown("ERC4626");
+    const recipe = doc.get().recipe;
+    const before = doc.state();
+    const viewport = session.get().viewports;
+    await expect.element(page.getByText(/Couldn't load the source link.*503/)).toBeVisible();
+    await page.getByRole("button", { name: "Retry", exact: true }).click();
+    await expect.element(page.getByText("Loading the source link…")).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Retry", exact: true })).not.toBeInTheDocument();
+    expect(requests).toBe(2);
+    release?.();
+    const facet = catalog.facets.find((item) => item.name === "ERC4626");
+    if (!facet) throw new Error("ERC4626 is missing from the fixture.");
+    await expect.element(page.getByRole("link", { name: facet.source })).toHaveAttribute("target", "_blank");
+    await expect.poll(() => document.querySelector("[data-natspec]")?.textContent?.trim()).toBeTruthy();
+    expect(doc.get().recipe).toBe(recipe);
+    expect(doc.state().lastChange).toBe(before.lastChange);
+    expect(doc.state().canUndo).toBe(before.canUndo);
+    expect(session.get().viewports).toBe(viewport);
+  });
+
   test("storage lists the placed facets that share its namespaces; seams it serves list selector and reason", async () => {
     await renderWithStudio(<FacetView view={{ kind: "facet", facet: "GovernedVault" }} />, { project: makeProject({ id: "facet-seams", recipe: governedVault() }) });
     await shown("GovernedVault");

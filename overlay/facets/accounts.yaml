@@ -21,7 +21,7 @@ ERC1271Signature:
     same account and no script pins an owner, so placing both raises SEL-01.
   notes: >-
     Convention, not hard: AccountInit seeds the signing owner through AccountSignerLib without the facet
-    (src/accounts/erc7579/AccountInit.sol#L60-L60), so signatures still verify; the AccountSigner facet adds owner()
+    (src/accounts/erc7579/AccountInit.sol#L66-L66), so signatures still verify; the AccountSigner facet adds owner()
     and owner rotation. The namespace rule doesn't cover this pairing (it fires only for access-family owners).
 
 ERC4337Validation:
@@ -35,7 +35,7 @@ ERC4337Validation:
     same account and no script pins an owner, so placing both raises SEL-01.
   notes: >-
     Convention, not hard: AccountInit seeds the signing owner through AccountSignerLib without the facet
-    (src/accounts/erc7579/AccountInit.sol#L60-L60), so user operations still validate; the AccountSigner facet adds
+    (src/accounts/erc7579/AccountInit.sol#L66-L66), so user operations still validate; the AccountSigner facet adds
     owner() and owner rotation. The namespace rule doesn't cover this pairing (it fires only for access-family owners).
 
 ERC6900AccountView:

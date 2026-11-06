@@ -177,7 +177,6 @@
   letter-spacing: var(--lx-tracking-code-sm);
   color: var(--lx-text);
   text-align: start;
-  cursor: pointer;
 }
 
 .pinRight {
@@ -185,8 +184,45 @@
   padding: 0 0 0 var(--lx-space-3);
 }
 
+.inspect {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-2);
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  block-size: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.pinRight .inspect {
+  flex-direction: row-reverse;
+}
+
+.route {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  inline-size: var(--lx-space-6);
+  block-size: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  border: var(--lx-stroke-hair) solid var(--lx-border-subtle);
+  background: var(--lx-panel);
+  color: var(--lx-text);
+  cursor: pointer;
+}
+
 /* The ring sits inside the row: the card clips anything outside it. */
-.pin:focus-visible,
+.inspect:focus-visible,
+.route:focus-visible,
 .more:focus-visible {
   outline-offset: calc(-1 * var(--lx-stroke-heavy));
 }
@@ -497,7 +533,8 @@
 
 /* Forced colors: the hatch keeps its stripes, and the contested name and hex get the system backplate again. */
 @media (forced-colors: active) {
-  .contested .label {
+  .contested .label,
+  .contested .route {
     forced-color-adjust: auto;
   }
 }

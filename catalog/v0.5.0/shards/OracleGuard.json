@@ -1,0 +1,365 @@
+{
+  "name": "OracleGuard",
+  "abi": [
+    {
+      "type": "function",
+      "name": "checkSequencerUptime",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getGuardedFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "oracle",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "minAnswer",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "maxAnswer",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getSequencerConfig",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "sequencerFeed",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gracePeriod",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "guardedAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "answerWad",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "removeGuardedFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setGuardedFeed",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "oracle",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "minAnswer",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "maxAnswer",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setSequencerConfig",
+      "inputs": [
+        {
+          "name": "sequencerFeed",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "gracePeriod",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "GuardedFeedRemoved",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "GuardedFeedSet",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "oracle",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "minAnswer",
+          "type": "int256",
+          "indexed": false,
+          "internalType": "int256"
+        },
+        {
+          "name": "maxAnswer",
+          "type": "int256",
+          "indexed": false,
+          "internalType": "int256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "SequencerConfigSet",
+      "inputs": [
+        {
+          "name": "sequencerFeed",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "gracePeriod",
+          "type": "uint48",
+          "indexed": false,
+          "internalType": "uint48"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OracleGuardAnswerOutOfBounds",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "answerWad",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "minAnswer",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "maxAnswer",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OracleGuardGracePeriodNotOver",
+      "inputs": [
+        {
+          "name": "startedAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "gracePeriod",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OracleGuardInvalidAnswer",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "answerWad",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OracleGuardInvalidConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OracleGuardKeyNotConfigured",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OracleGuardSequencerDown",
+      "inputs": [
+        {
+          "name": "status",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "startedAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x6244363c": {
+        "notice": "Reverts unless the sequencer is up and past its grace period. No-op while no feed is set.",
+        "dev": "For integrators that read something other than {guardedAnswer} (raw reads, TWAPs) on an L2."
+      },
+      "0x8ea079a7": {
+        "notice": "Returns the guard configuration of `key`.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0xb4eee64e": {
+        "notice": "Returns the sequencer-uptime configuration."
+      },
+      "0x12ac8379": {
+        "notice": "Returns the oracle's WAD answer for `key` after the sequencer and bounds checks.",
+        "dev": "Reverts with the oracle's own error when its checks fail, and with this interface's errors when the guard's checks fail.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x11bdc3e7": {
+        "notice": "Removes the guard configuration of `key`; {guardedAnswer} then reverts for it.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`.",
+        "params": {
+          "key": "The feed identifier."
+        }
+      },
+      "0x20c84cb8": {
+        "notice": "Configures `key`: the oracle to read and the accepted WAD range.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. `oracle` must be non-zero. `(0, 0)` disables the bounds; otherwise `0 <= minAnswer <= maxAnswer`.",
+        "params": {
+          "key": "The feed identifier, passed through to the oracle's `latestAnswer(key)`.",
+          "maxAnswer": "Highest accepted WAD answer.",
+          "minAnswer": "Lowest accepted WAD answer.",
+          "oracle": "The adapter (or adapter diamond) to read; the guard's own diamond when co-cut."
+        }
+      },
+      "0x487205e4": {
+        "notice": "Sets the Chainlink L2 sequencer-uptime feed and the grace period after a restart.",
+        "dev": "Caller must hold `DEFAULT_ADMIN_ROLE`. `sequencerFeed == address(0)` disables the check; a non-zero feed requires a non-zero `gracePeriod` (Chainlink's example uses 3600 seconds).",
+        "params": {
+          "gracePeriod": "Seconds after a restart during which reads revert.",
+          "sequencerFeed": "The uptime feed for this chain."
+        }
+      }
+    },
+    "notice": "Diamond facet that serves guarded price reads over any Lattice price adapter: an opt-in Chainlink L2 sequencer-uptime check with a grace period, plus per-key WAD bounds.",
+    "dev": "Stateless delegator — all logic and storage live in OracleGuardLib. Its selectors do not overlap the adapters', so it can be cut next to an adapter (reading its own diamond) or into a separate diamond."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/oracles/OracleGuard.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/oracles/OracleGuard.sol"
+  }
+}

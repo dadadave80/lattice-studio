@@ -27,6 +27,17 @@
   gap: var(--lx-space-2);
 }
 
+.steps {
+  margin: 0;
+  padding-inline-start: var(--lx-space-6);
+  font: var(--lx-font-body);
+  color: var(--lx-text);
+}
+
+.steps li + li {
+  margin-block-start: var(--lx-space-2);
+}
+
 .familyHeading {
   margin: 0;
   font: var(--lx-font-label);

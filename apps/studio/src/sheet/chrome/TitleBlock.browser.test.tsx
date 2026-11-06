@@ -1,5 +1,6 @@
 import type { Analysis, CommandRef, Deployment, Hex, Problem, ProblemCode, Severity } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
+import { loadTemplate } from "@lattice-studio/core";
 import { describe, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { command, emptyAnalysis, provideAnalysis, putDeployment } from "@/contracts";
@@ -173,6 +174,19 @@ describe("the title block in each state of the states table (spec L374-L389)", (
     await renderBlock();
     await expect.element(block().getByText("No problems")).toBeVisible();
     await expect.element(block().getByRole("button", { name: "Fill in" })).not.toBeInTheDocument();
+  });
+
+  test("valid starter examples keep Edit setup visible", async () => {
+    const loaded = loadTemplate(deployableCatalog(), "ERC20");
+    if (!loaded.ok) throw new Error(loaded.error);
+    const edit = vi.fn();
+    overrideCommands([
+      command({ id: "init.open", title: () => "Open init plan", category: "Build", enabled: () => ({ ok: true }), run: edit }),
+    ]);
+    await renderBlock({ project: makeProject({ recipe: loaded.value }) });
+    await block().getByRole("button", { name: "Edit setup" }).click();
+    expect(edit).toHaveBeenCalledTimes(1);
+    expect(block().element().querySelector("[data-tour='setup']")).not.toBeNull();
   });
 
   test("Deploying: Confirm in {wallet}, then Pending · 0:12; Deploy disabled while it's on its way", async () => {

@@ -1,0 +1,288 @@
+{
+  "name": "ERC1155Supply",
+  "abi": [
+    {
+      "type": "function",
+      "name": "burn",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "burnBatch",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ids",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        },
+        {
+          "name": "values",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "exists",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "totalSupply",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "totalSupply",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "TransferBatch",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "ids",
+          "type": "uint256[]",
+          "indexed": false,
+          "internalType": "uint256[]"
+        },
+        {
+          "name": "values",
+          "type": "uint256[]",
+          "indexed": false,
+          "internalType": "uint256[]"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "TransferSingle",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "from",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "id",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "value",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "ERC1155InsufficientBalance",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "balance",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "needed",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC1155InvalidArrayLength",
+      "inputs": [
+        {
+          "name": "idsLength",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "valuesLength",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC1155InvalidReceiver",
+      "inputs": [
+        {
+          "name": "receiver",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC1155InvalidSender",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ERC1155MissingApprovalForAll",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xf5298aca": {
+        "notice": "Destroys `value` tokens of type `id` from `account` and lowers the supply.",
+        "dev": "The caller must be `account` or an operator approved by `account`."
+      },
+      "0x6b20c454": {
+        "notice": "Batched version of {burn}.",
+        "dev": "The caller must be `account` or an operator approved by `account`."
+      },
+      "0x4f558e79": {
+        "notice": "Whether any token of type `id` exists, that is `totalSupply(id) > 0`."
+      },
+      "0x18160ddd": {
+        "notice": "Total value of tokens across every id.",
+        "dev": "Bounded by `type(uint256).max`: a mint that would push it past that reverts."
+      },
+      "0xbd85b039": {
+        "notice": "Total value of tokens of type `id` in existence."
+      }
+    },
+    "notice": "Stateless Diamond facet tracking the total supply of each ERC-1155 id and of all ids.",
+    "dev": "Owns ONLY its own selectors: the supply views `totalSupply(uint256)`, `totalSupply()` and `exists(uint256)`, and supply-tracking `burn`/`burnBatch`. Under decision D25(a) on #234 the base {ERC1155Lib} has no hook, so the burns that must lower the supply are served here, with {ERC1155Burnable}'s signatures and authorization. That makes this facet MUTUALLY EXCLUSIVE with {ERC1155Burnable} and {ERC1155Pausable}, which export the same `burn`/`burnBatch` selectors: cut exactly one of the three. Transfers do not change the supply, so the base {ERC1155} transfers stay. Mints come from an app-specific facet, which must mint through {ERC1155SupplyLib._mint}/{ERC1155SupplyLib._mintBatch}. To track supply without burning, cut this facet without its `burn`/`burnBatch` selectors. {DeployERC1155Supply} composes it with the base facet. See {ERC1155SupplyLib} for every difference from OpenZeppelin v5.6.1. Pure delegator."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/tokens/ERC1155/ERC1155Supply.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/tokens/ERC1155/ERC1155Supply.sol"
+  }
+}

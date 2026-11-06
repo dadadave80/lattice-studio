@@ -74,7 +74,12 @@ export async function deployMissing(node: Node, catalog: Catalog, names: readonl
       const release = all.find((item) => item.name === name)?.release;
       if (release === undefined || state.shared[name]?.present === true) continue;
       const data = `${release.salt}${(code[name] ?? "0x").slice(2)}` as Hex;
-      gas[name] = await node.client.estimateGas({ account: ALICE, to: ARACHNID_PROXY, data });
+      // Like the app: a contract whose estimate reverts (LatticeFactory before its registry) goes without one.
+      try {
+        gas[name] = await node.client.estimateGas({ account: ALICE, to: ARACHNID_PROXY, data });
+      } catch {
+        continue;
+      }
     }
   }
   const multicall3Canonical = state.multicall3?.codehash === MULTICALL3_CODEHASH;

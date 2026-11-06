@@ -18,5 +18,13 @@
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--lx-space-2);
+}
+
+@media (width < 768px) {
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

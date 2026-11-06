@@ -1,6 +1,6 @@
 GovernedDiamondCutInit:
   kind: step
-  source: src/governance/GovernedDiamondCutInit.sol#L23-L28
+  source: src/governance/GovernedDiamondCutInit.sol#L24-L30
   registersInterfaces: true
   params:
     admin:
@@ -8,15 +8,15 @@ GovernedDiamondCutInit:
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
-      source: src/governance/GovernedDiamondCutInit.sol#L22-L24
+      source: src/governance/GovernedDiamondCutInit.sol#L23-L25
   after:
     # Satisfied by GovernedDiamondCutInit itself, which runs AccessControl first (contracts §4 `after`).
     - module: AccessControl
-      source: src/governance/libraries/GovernedDiamondCutLib.sol#L113-L114
+      source: src/governance/libraries/GovernedDiamondCutLib.sol#L127-L128
 
 GovernedSafeDiamondCutInit:
   kind: step
-  source: src/governance/GovernedSafeDiamondCutInit.sol#L27-L32
+  source: src/governance/GovernedSafeDiamondCutInit.sol#L28-L34
   registersInterfaces: true
   params:
     admin:
@@ -24,23 +24,23 @@ GovernedSafeDiamondCutInit:
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
-      source: src/governance/GovernedSafeDiamondCutInit.sol#L23-L28
+      source: src/governance/GovernedSafeDiamondCutInit.sol#L24-L29
     safe:
       rule: nonzero&code(safe)
       authority: true
       role: scheduleCut
       # Zero reverts, and getThreshold() must answer: the address has to be a Safe.
-      source: src/governance/libraries/GovernedSafeDiamondCutLib.sol#L137-L143
+      source: src/governance/libraries/GovernedSafeDiamondCutLib.sol#L154-L160
     minThreshold:
       rule: gte(1)
-      source: src/governance/libraries/GovernedSafeDiamondCutLib.sol#L139-L139
+      source: src/governance/libraries/GovernedSafeDiamondCutLib.sol#L156-L156
     minDelay:
       unit: seconds
-      source: src/governance/GovernedSafeDiamondCutInit.sol#L26-L26
+      source: src/governance/GovernedSafeDiamondCutInit.sol#L27-L27
 
 SafeDiamondCutInit:
   kind: step
-  source: src/governance/SafeDiamondCutInit.sol#L25-L30
+  source: src/governance/SafeDiamondCutInit.sol#L26-L32
   registersInterfaces: true
   params:
     admin:
@@ -48,7 +48,7 @@ SafeDiamondCutInit:
       rule: nonzero
       authority: true
       role: DEFAULT_ADMIN_ROLE
-      source: src/governance/SafeDiamondCutInit.sol#L22-L26
+      source: src/governance/SafeDiamondCutInit.sol#L23-L27
     safe:
       rule: nonzero&code(safe)
       authority: true

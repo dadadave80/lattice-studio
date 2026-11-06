@@ -1,0 +1,284 @@
+{
+  "name": "VestingWallet",
+  "abi": [
+    {
+      "type": "function",
+      "name": "duration",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "end",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "releasable",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "releasable",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "release",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "release",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "released",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "released",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "start",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "vestedAmount",
+      "inputs": [
+        {
+          "name": "timestamp",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "vestedAmount",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "ERC20Released",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "EtherReleased",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "VestingWalletEtherTransferFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "VestingWalletTransferFailed",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x0fb5a6b4": {
+        "notice": "Returns the duration of the vesting schedule in seconds."
+      },
+      "0xefbe1c1c": {
+        "notice": "Returns the end timestamp of the vesting schedule."
+      },
+      "0xfbccedae": {
+        "notice": "Returns the amount of ETH that can currently be released."
+      },
+      "0xa3f8eace": {
+        "notice": "Returns the amount of a specific ERC20 token that can currently be released.",
+        "params": {
+          "token": "The ERC20 token contract address."
+        }
+      },
+      "0x86d1a69f": {
+        "notice": "Releases all currently releasable ETH to the beneficiary.",
+        "dev": "Anyone may call this; funds always go to the beneficiary (owner). Emits an {EtherReleased} event."
+      },
+      "0x19165587": {
+        "notice": "Releases all currently releasable tokens of a specific ERC20 to the beneficiary.",
+        "dev": "Anyone may call this; funds always go to the beneficiary (owner). Emits an {ERC20Released} event.",
+        "params": {
+          "token": "The ERC20 token contract address to release."
+        }
+      },
+      "0x96132521": {
+        "notice": "Returns the total amount of ETH already released."
+      },
+      "0x9852595c": {
+        "notice": "Returns the total amount of a specific ERC20 token already released.",
+        "params": {
+          "token": "The ERC20 token contract address."
+        }
+      },
+      "0xbe9a6555": {
+        "notice": "Returns the start timestamp of the vesting schedule."
+      },
+      "0x810ec23b": {
+        "notice": "Calculates the vested ERC20 token amount at a given timestamp.",
+        "params": {
+          "timestamp": "The Unix timestamp to evaluate the vesting schedule at.",
+          "token": "The ERC20 token contract address."
+        }
+      },
+      "0x0a17b06b": {
+        "notice": "Calculates the vested ETH amount at a given timestamp.",
+        "params": {
+          "timestamp": "The Unix timestamp to evaluate the vesting schedule at."
+        }
+      }
+    },
+    "notice": "A Diamond facet that holds ETH/ERC20 tokens and releases them linearly over time to the Ownable beneficiary.",
+    "dev": "Stateless delegator — all logic and storage live in VestingWalletLib. Consumers should deploy this as a facet within a Diamond proxy alongside OwnableFacet. CUSTODY: the vesting allocation is the diamond's WHOLE balance, `balanceOf(address(this)) + released`, and anyone may call `release`. Do not cut it next to a module that holds the same asset (an ERC-4626 vault, BridgeERC20 or ShieldedPool escrow): once vesting ends, that module's funds go to the owner. One custodian per asset per diamond (issue #240)."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/utils/VestingWallet.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/utils/VestingWallet.sol"
+  }
+}

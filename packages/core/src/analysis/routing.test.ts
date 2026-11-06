@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { Hex4 } from "../model/hex";
-import { makeCatalog, makeFacet, makeRecipe } from "../testing";
+import { loadBuiltCatalog, makeCatalog, makeFacet, makeRecipe, recipeOf } from "../testing";
 import { computeRouting } from "./routing";
 import { catalog, fixture, S, template } from "./test-support";
 
@@ -13,14 +13,20 @@ function golden(name: string): Golden {
   return JSON.parse(readFileSync(new URL(`${name}.routing.json`, GOLDEN), "utf8")) as Golden;
 }
 
+// The golden files follow the pin, so they're checked against the built catalog; the fixture stays at 6c8db45.
+const built = loadBuiltCatalog();
+
 describe("computeRouting against Lattice's deploy scripts (golden/expected)", () => {
-  test.skipIf(fixture === null).each([
-    ["GovernedVault", 120],
-    ["ERC20", 15],
-    ["SafeDiamondCut", 29],
+  test.skipIf(!built.ok).each([
+    ["GovernedVault", 122],
+    ["ERC20", 14],
+    ["SafeDiamondCut", 28],
   ])("%s routes exactly what its script cuts (%i selectors)", (name, count) => {
+    if (!built.ok) throw new Error(built.error);
     const expected = golden(name).routing;
-    const routing = computeRouting(template(name), catalog());
+    const found = built.value.recipes.find((r) => r.name === name);
+    if (found === undefined) throw new Error(`No template ${name} in the built catalog`);
+    const routing = computeRouting(recipeOf(found), built.value);
     const owned = Object.fromEntries(
       Object.entries(routing).flatMap(([selector, route]) => (route.owner === undefined ? [] : [[selector, route.owner]])),
     );

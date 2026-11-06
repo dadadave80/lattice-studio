@@ -363,7 +363,7 @@ test.describe("Flow 3. Add a facet", () => {
           await catalogPage.placeByKeyboard("ERC20");
           await switcher.getByRole("tab", { name: "Sheet" }).click();
         } else {
-          const catalogToggle = page.getByRole("region", { name: "Title bar" }).getByRole("button", { name: "Catalog" });
+          const catalogToggle = page.getByRole("banner", { name: "Title bar" }).getByRole("button", { name: "Catalog" });
           await catalogToggle.click();
           await catalogPage.placeByKeyboard("ERC20");
           // Placing from the drawer hides it again on its own (the live region announces "Hid the catalog." right

@@ -2,8 +2,9 @@
  * What the lint checks the real overlay against, read from a Lattice checkout at the pin (tests and authoring
  * only; `bun run catalog` passes CG1's and CG4's own results).
  *
- * - Facets: the fixture catalog's 105 facets (names, areas and selectors, which K3 checks against the source),
- *   with each summary from the contract's NatSpec: solc's metadata when the checkout is built, else the source.
+ * - Facets: the committed catalog's (names, areas and selectors, read from the pinned checkout by `bun run
+ *   catalog`), with each summary from the contract's NatSpec: solc's metadata when the checkout is built, else the
+ *   source. K3's fixture stays at 6c8db45, so it no longer has every facet at the pin.
  * - Inits: every init contract in `src/**` and diamond-lib's initializers (DiamondInit excluded, which Lattice
  *   can't use), one per usable external function (EIP-7702-only ones left out); params with types, components and `@param` docs from the build.
  * - Modules: every `__X_init` defined in the checkout, plus `Ownable` (OwnableLib.initializeOwner).
@@ -28,6 +29,14 @@ export function latticeDir(): string | null {
 
 export function fixtureCatalog(): Catalog {
   return JSON.parse(readFileSync(join(REPO_ROOT, "fixtures", "catalog", "fixture", "index.json"), "utf8")) as Catalog;
+}
+
+/** The committed catalog at the pin: `catalog/manifest.json`'s default. */
+export function pinnedCatalog(): Catalog {
+  const manifest = JSON.parse(readFileSync(join(REPO_ROOT, "catalog", "manifest.json"), "utf8")) as { default: string; catalogs: { id: string; path: string }[] };
+  const entry = manifest.catalogs.find((c) => c.id === manifest.default);
+  if (entry === undefined) throw new Error("catalog/manifest.json names no default catalog.");
+  return JSON.parse(readFileSync(join(REPO_ROOT, "catalog", entry.path), "utf8")) as Catalog;
 }
 
 /** A source path's area: `src/<area>/…`; diamond-lib and `src/*.sol` are `diamond`. */
@@ -125,7 +134,7 @@ export function lineCounter(dir: string): (path: string) => number | undefined {
 
 /** The facts for a checkout; init params need a build (`out/`), everything else reads the source. */
 export async function latticeFacts(dir: string): Promise<LintFacts & { built: boolean }> {
-  const catalog = fixtureCatalog();
+  const catalog = pinnedCatalog();
   const out = join(dir, "out");
   const built = existsSync(out);
 

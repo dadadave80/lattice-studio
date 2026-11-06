@@ -98,6 +98,8 @@ export type Persistence = {
   document(): Project;
   /** Writes the pending save now (hide, close, lock handover, Save and reload). Starts synchronously when it can. */
   flush(): Promise<void>;
+  /** Saves all protected edits, rejecting when browser storage cannot retain them. */
+  flushUntilClean(): Promise<void>;
   /**
    * Opens the project last opened in this browser (else the last saved); null when there's none, or when
    * `proceed` says no once it's known which (the document changed meanwhile). The boot's document, left
@@ -130,8 +132,10 @@ export type Persistence = {
    * (`records-<projectId>.json`). Nothing Clear data counts is left out.
    */
   exportAll(): Promise<ExportFile[]>;
+  /** Exports a stored project, using this tab's captured live work only while it owns editing. */
+  exportProject(id: string): Promise<ExportFile | null>;
   clearDataCounts(): Promise<ClearDataCounts>;
-  clearData(): Promise<void>;
+  clearData(expected?: Project): Promise<void>;
   /** Subscribes to changes of the projects list (delete, restore, import, clear, rename, duplicate), in any tab. */
   subscribeProjects(listener: () => void): () => void;
   /** After ⌘S or Save a copy: asks for persistent storage the first time (spec L500). */
@@ -151,6 +155,7 @@ const UPDATED_TEXT = "A new version of Studio is ready";
 const DELETED_DETAIL = "This project is in Recently deleted. Restore it to keep saving.";
 const GONE_DETAIL = "This project was deleted from this browser's storage.";
 const CLEARED_DETAIL = "Studio's data in this browser was cleared.";
+const LOCAL_CLEARED_DETAIL = `${CLEARED_DETAIL} Start a new project or open a project file to continue.`;
 /** Spec L494: taking over from another tab resets history, and the console says so. */
 const TAKEOVER_LINE = "Took over editing from another tab. Undo history starts here.";
 const UPDATED_BANNER = "persist.updated";
@@ -201,12 +206,16 @@ function exportEntry(entry: StoredEntry): ExportFile {
 }
 
 function uniqueNames(files: ExportFile[]): ExportFile[] {
-  const seen = new Map<string, number>();
+  const used = new Set<string>();
   return files.map((file) => {
-    const count = (seen.get(file.filename) ?? 0) + 1;
-    seen.set(file.filename, count);
-    if (count === 1) return file;
-    return { ...file, filename: file.filename.replace(/(\.lattice)?\.json$/, (ext) => `-${count}${ext}`) };
+    let filename = file.filename;
+    let suffix = 2;
+    while (used.has(filename.toLowerCase())) {
+      filename = file.filename.replace(/(\.lattice)?\.json$/, (ext) => `-${suffix}${ext}`);
+      suffix += 1;
+    }
+    used.add(filename.toLowerCase());
+    return filename === file.filename ? file : { ...file, filename };
   });
 }
 
@@ -216,6 +225,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   const now = options.now ?? kernelNow;
   const quietMs = options.quietMs ?? QUIET_MS;
   const nav: Navigator | undefined = typeof navigator === "undefined" ? undefined : navigator;
+  const locks = options.locks === undefined ? (nav?.locks ?? null) : options.locks;
   const storage = options.storage === undefined ? (nav?.storage ?? null) : options.storage;
   const userAgent = options.userAgent ?? nav?.userAgent ?? "";
   const page = options.page === undefined
@@ -296,7 +306,14 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
         action: commandRef("project.saveCopy"),
       };
     }
-    if (detached !== null) return unsaved() ? { state: "not-saved", text: "Not saved", detail: detached } : SAVED;
+    if (detached !== null) {
+      if (doc.get() === acknowledgedCleared) {
+        return { state: "not-saved", text: "Not saved", detail: LOCAL_CLEARED_DETAIL, action: commandRef("project.new") };
+      }
+      return unsaved()
+        ? { state: "not-saved", text: "Not saved", detail: detached, action: commandRef("project.saveCopy") }
+        : SAVED;
+    }
     if (failure?.quota) {
       const full: SaveStatus = { state: "not-saved", text: FULL_TEXT, action: commandRef("project.saveCopy") };
       return holdingBack === null ? full : { ...full, detail: holdingBack };
@@ -305,7 +322,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       return { state: "not-saved", text: "Not saved", detail: holdingBack, action: commandRef("project.saveCopy") };
     }
     if (timer !== null || inFlight > 0) return SAVING;
-    if (failure) return { state: "not-saved", text: "Not saved", detail: failure.reason };
+    if (failure) return { state: "not-saved", text: "Not saved", detail: failure.reason, action: commandRef("project.saveCopy") };
     return SAVED;
   }
 
@@ -313,6 +330,10 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   function unsaved(): boolean {
     const project = doc.get();
     return project.id === openId && project !== persisted && ownEdits(project);
+  }
+
+  function hasProtectedChanges(): boolean {
+    return unsaved() && doc.get() !== acknowledgedCleared;
   }
 
   function refreshStatus(): void {
@@ -328,6 +349,8 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   let openId: string | null = null;
   /** The value last written or read for `openId`; the document differs from it when there's something to save. */
   let persisted: Project | null = null;
+  /** Only this exact document was explicitly discarded by this tab's successful Clear data. */
+  let acknowledgedCleared: Project | null = null;
   /** This instance knows `openId` is stored: a save that finds it missing means another tab deleted it. */
   let stored = false;
   /** Why the open project isn't saved any more (deleted, cleared), or null. */
@@ -494,8 +517,10 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   async function flushUntilClean(): Promise<void> {
     for (let round = 0; round < 10; round++) {
       await flush();
+      if (!hasProtectedChanges()) return;
       if (failure) throw new Error(failure.quota ? `${FULL_TEXT}.` : `Not saved: ${failure.reason}`);
-      if (!dirty() || !holds(doc.get().id)) return;
+      if (detached !== null) throw new Error(detached);
+      if (!holds(doc.get().id)) throw new Error("Changes aren't saved. Save a copy before switching projects.");
     }
     throw new Error("Changes kept coming while it saved.");
   }
@@ -530,6 +555,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
    * previous project's pending save is written first, while its lock is still held.
    */
   function adopt(project: Project, previous: Project): void {
+    acknowledgedCleared = null;
     clearTimer();
     let before: Promise<unknown> = Promise.resolve();
     if (openId !== null && previous.id === openId && detached === null && !updated
@@ -572,7 +598,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   const lockListeners = new Set<(state: EditLockState) => void>();
   const lock = createEditLock({
     prefix: dbName,
-    locks: options.locks === undefined ? (nav?.locks ?? null) : options.locks,
+    locks,
     channel,
     peerId,
     ...(options.stealAfter === undefined ? {} : { stealAfter: options.stealAfter }),
@@ -730,6 +756,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     else if (msg.kind === "projects") {
       const id = openId;
       if (id !== null) {
+        if (msg.cleared || msg.trashed?.includes(id) || msg.gone?.includes(id)) acknowledgedCleared = null;
         if (msg.cleared) {
           persisted = null;
           detach(CLEARED_DETAIL);
@@ -765,6 +792,8 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
 
   /** Makes `project` the open document and claims its lock; writes it when `save` (a new project). */
   async function open(project: Project, save: boolean): Promise<void> {
+    if (hasProtectedChanges()) throw new Error("Changes aren't saved. Save a copy before switching projects.");
+    acknowledgedCleared = null;
     clearTimer();
     openId = project.id;
     boot = null;
@@ -781,7 +810,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   const projects: ProjectsService = {
     async createProject(recipe, name, opts) {
       try {
-        await flush();
+        await flushUntilClean();
         const project = newProject(recipe, name, opts);
         await open(project, true);
         emitProjects();
@@ -795,7 +824,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
         const current = doc.get();
         // Already open here, as read from or written to storage (never the boot's unsaved document).
         if (openId === id && current.id === id && detached === null && stored) return { ok: true, value: current };
-        await flush();
+        await flushUntilClean();
         const read = await records.readProject(await db(), id);
         if (!read.ok) return read;
         await open(read.value.project, false);
@@ -833,6 +862,30 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     },
   };
 
+  async function backupEntries(): Promise<{ entries: StoredEntry[]; recovery: ExportFile | null }> {
+    await flush().catch(() => {});
+    // Capture this tab's work once, alongside one coherent stored-record snapshot.
+    const captured = doc.get();
+    const hasOwnChanges = unsaved();
+    const canOverlay = captured.id === openId && detached === null && !updated && !closed && holds(captured.id);
+    const entries = await records.listEverything(await db(), unreadable);
+    const safeOwner = canOverlay && holds(captured.id) && detached === null && !updated && !closed && openId === captured.id;
+    const normal = entries.find((entry) => entry.kind === "project" && !entry.trashed && entry.project.id === captured.id);
+    const snapshot = entries.map((entry) =>
+      safeOwner && entry === normal && entry.kind === "project" ? { ...entry, project: captured } : entry,
+    );
+    let recovery: ExportFile | null = null;
+    if ((safeOwner && !normal && ownEdits(captured)) || (!safeOwner && hasOwnChanges)) {
+      const deployments = entries.flatMap((entry) =>
+        entry.kind === "project" && entry.project.id === captured.id ? entry.deployments
+          : entry.kind === "raw" && entry.id === captured.id ? entry.deployments
+            : entry.kind === "orphans" && entry.projectId === captured.id ? entry.deployments : []);
+      const file = exportProjectFile(captured, deployments);
+      recovery = safeOwner ? file : { ...file, filename: file.filename.replace(/\.lattice\.json$/, "-recovery.lattice.json") };
+    }
+    return { entries: snapshot, recovery };
+  }
+
   const persistence: Persistence = {
     dbName,
     projects,
@@ -867,6 +920,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       return fresh.id;
     },
     flush,
+    flushUntilClean,
     documentId: () => doc.get().id,
     document: () => doc.get(),
     async openLastProject(proceed) {
@@ -917,17 +971,21 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       if (openId === id && doc.get().id === id && detached === null) {
         return { ok: false, error: "This project is open. Rename it in the title bar." };
       }
-      const connection = await db();
-      const read = await records.readProject(connection, id);
-      if (!read.ok) return read;
-      const project = { ...read.value.project, name };
-      await connection.put("projects", { id, savedAt: read.value.savedAt, project });
-      emitProjects();
-      return { ok: true, value: { id, name, savedAt: read.value.savedAt, project } };
+      try {
+        if (!locks) return { ok: false, error: "Open this project here and rename it in the title bar. This browser can't coordinate editing between tabs." };
+        const result = await locks.request(`${dbName}:edit:${id}`, { ifAvailable: true }, async (held) => {
+          if (!held) return { ok: false as const, error: "Another tab is editing this project. Rename it there, or open it here and take over editing." };
+          return records.renameProject(await db(), id, name);
+        });
+        if (result.ok) emitProjects();
+        return result;
+      } catch (error) {
+        return { ok: false, error: message(error) };
+      }
     },
     async duplicateProject(id) {
       try {
-        if (openId === id) await flush();
+        if (openId === id) await flushUntilClean();
         const connection = await db();
         const read = await records.readProject(connection, id);
         if (!read.ok) return read;
@@ -948,7 +1006,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     },
     async deleteProject(id) {
       try {
-        if (openId === id) await flush();
+        if (openId === id) await flushUntilClean();
         const moved = await records.trashProject(await db(), id, now());
         if (moved.ok) {
           if (openId === id) detach(DELETED_DETAIL);
@@ -1003,33 +1061,46 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
     },
     async importProject(project, imported) {
       try {
-        await flush();
+        await flushUntilClean();
         const id = newId();
         const renamed: Project = { ...project, id };
         const marked = imported.map((d): Deployment => ({ ...d, projectId: id, fromFile: true }));
         const counts = await records.storeImport(await db(), renamed, marked, now());
-        await open(renamed, false);
         emitProjects();
         if (counts.added > 0) emitDeployments(id);
+        try {
+          await open(renamed, false);
+        } catch (error) {
+          return { ok: false, error: `Imported the project, but couldn't open it. ${message(error)}` };
+        }
         return { ok: true, value: { project: renamed, ...counts } };
       } catch (error) {
         return { ok: false, error: message(error) };
       }
     },
     async exportAll() {
-      await flush().catch(() => {});
-      const entries = await records.listEverything(await db(), unreadable);
-      return uniqueNames(entries.map(exportEntry));
+      const { entries, recovery } = await backupEntries();
+      return uniqueNames([...entries.map(exportEntry), ...(recovery ? [recovery] : [])]);
+    },
+    async exportProject(id) {
+      const { entries } = await backupEntries();
+      const entry = entries.find((entry) => entry.kind === "project" && entry.project.id === id);
+      return entry ? exportEntry(entry) : null;
     },
     async clearDataCounts() {
       return records.clearDataCounts(await db());
     },
-    async clearData() {
+    async clearData(expected) {
+      const cleared = doc.get();
+      if (expected !== undefined && cleared !== expected) {
+        throw new Error("The current project changed after export. Export again before deleting.");
+      }
       clearTimer();
       pendingViewports.clear();
       await records.clearAll(await db());
       persisted = null;
-      detach(CLEARED_DETAIL);
+      acknowledgedCleared = cleared;
+      detach(LOCAL_CLEARED_DETAIL);
       emitProjects({ cleared: true });
       if (openId !== null) emitDeployments(openId);
     },

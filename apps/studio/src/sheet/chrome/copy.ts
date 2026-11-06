@@ -33,7 +33,7 @@ export const DETAILS_LABEL = "details";
 /** Spec L405: what each of v1's recipe cards is. */
 export const RECIPE_BLURBS: Readonly<Record<string, string>> = {
   GovernedVault: "Self-governed ERC-4626 vault",
-  ERC20: "A fixed token, immutable by default",
+  ERC20: "Zero supply; no minting or upgrades",
   SafeDiamondCut: "A diamond only your Safe can upgrade",
 };
 /** Spec L405: v1's three recipe cards, in order. */

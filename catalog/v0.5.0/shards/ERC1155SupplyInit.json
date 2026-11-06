@@ -1,0 +1,20 @@
+{
+  "name": "ERC1155SupplyInit",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {},
+    "notice": "One-shot initializer for the ERC-1155 Supply extension — registers IERC1155Supply via ERC-165 (the counters start at zero). Delegatecalled by {Diamond.initialize} (through {MultiInit}) inside the initializing window opened by the diamond, alongside the base {ERC1155Init}; it must NOT open its own pre/postInitializer. Run it only on a diamond that holds no balances yet (see {ERC1155SupplyLib})."
+  },
+  "source": {
+    "path": "src/tokens/ERC1155/ERC1155SupplyInit.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/tokens/ERC1155/ERC1155SupplyInit.sol"
+  }
+}

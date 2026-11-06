@@ -109,6 +109,9 @@ function uncovered(panes: Panes): Panes {
 
 /** Shows a pane (`pane.show`): opens it, its drawer or its switcher tab. Returns `panes` when it already shows. */
 export function showPane(panes: Panes, tier: LayoutTier, pane: ShownPane): Panes {
+  if (tier === "phone" && pane === "console" && !panes.console.open) {
+    return { ...panes, narrow: "console", console: { ...panes.console, open: true } };
+  }
   if (paneShowing(panes, tier, pane)) return panes;
   if (tier === "phone") {
     const next: Panes = { ...panes, narrow: pane };

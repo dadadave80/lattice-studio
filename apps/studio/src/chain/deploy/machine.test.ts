@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { Address, Catalog, Deployment, FacetDetail, Hex, Project } from "@lattice-studio/core";
-import { CREATEX, createxProxy, formatAddress, loadTemplate, multicallGas, recipeHash } from "@lattice-studio/core";
+import { analyze, buildSalt, CREATEX, createxProxy, formatAddress, loadTemplate, multicallGas, recipeHash } from "@lattice-studio/core";
 import { encodeErrorResult, parseAbi } from "viem";
 import { filledTemplate, loadBuiltCatalog, makeProject } from "@lattice-studio/core/testing";
 import { CANCELED_IN_WALLET, DEPLOY_BANNER_ID, MISMATCH, notSeenFor, OFFLINE_TRACKING } from "./copy";
@@ -108,6 +108,33 @@ async function submit({ h, m }: Rig): Promise<Hex> {
 }
 
 describe("review and simulation", () => {
+  test("an estimate over the chain cap blocks signing", async () => {
+    const { h, m } = rig();
+    const read = await h.port.probe(SEPOLIA_ID);
+    if (!read.ok) throw new Error(read.error);
+    let gasEstimate: string | undefined;
+    h.port.noteEstimate = (_chainId, gas) => { gasEstimate = gas?.toString(); };
+    h.inputs.analysis = () => analyze(h.inputs.project().recipe, catalog, {
+      known: [], unconfirmed: [],
+      refs: { self: predicted(h), deployer: ALICE },
+      deploy: {
+        chainId: SEPOLIA_ID, path: "factory", from: ALICE,
+        salt: buildSalt(ALICE, "every-chain", h.inputs.project().deploy.entropy),
+      },
+      chain: { ...read.value, ...(gasEstimate === undefined ? {} : { gasEstimate }) },
+    });
+    h.port.simulation = { kind: "ok", block: 50, gas: 16_862_182n, events: 0, method: "simulate" };
+    m.open();
+    await flush();
+    expect(h.inputs.analysis().problems.find((p) => p.code === "NET-06")?.severity).toBe("blocker");
+    h.inputs.setAck(h.inputs.analysis().problems.map((p) => p.id));
+    await m.sign();
+    await m.sign({ withoutSimulation: true });
+    await flush();
+    expect(h.port.sent).toEqual([]);
+    expect(h.records.all()).toEqual([]);
+  });
+
   test("open snapshots the recipe, says Review, simulates by itself and is ready", async () => {
     const { h, m } = rig();
     m.open();
@@ -118,8 +145,8 @@ describe("review and simulation", () => {
     expect(s.phase).toBe("ready");
     expect(s.simulation?.ok).toBe(true);
     expect(s.simulation?.block).toBe(9_123_456);
-    expect(s.simulation?.summary).toMatch(/^Simulated at block 9,123,456: diamond at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} with the core and 2 facets, \d+ selectors, 7 events\.$/);
-    expect(h.said.texts()).toContain("Review: Sepolia · LatticeFactory · the core and 2 facets.");
+    expect(s.simulation?.summary).toMatch(/^Simulated at block 9,123,456: diamond at 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} with the core and 1 facet, \d+ selectors, 7 events\.$/);
+    expect(h.said.texts()).toContain("Review: Sepolia · LatticeFactory · the core and 1 facet.");
     expect(h.said.texts()).toContain("Simulated at block 9,123,456: succeeded, 7 events.");
     expect(h.port.calls.find((c) => c.method === "noteEstimate")?.args).toEqual([SEPOLIA_ID, 3_000_000n]);
   });
@@ -458,7 +485,7 @@ describe("signing", () => {
     // Re-probed with refresh right before the send.
     const probes = h.port.calls.filter((c) => c.method === "probe");
     expect(probes.some((c) => (c.args[1] as { refresh?: boolean } | undefined)?.refresh === true)).toBe(true);
-    expect(h.port.sent[0]?.tx.data.slice(0, 10)).toBe("0x533677de");
+    expect(h.port.sent[0]?.tx.data.slice(0, 10)).toBe("0xc381576d");
   });
 
   test("refuses to sign with unticked acknowledgements, and says why", async () => {
@@ -665,19 +692,19 @@ describe("tracking", () => {
   test("a reverted receipt is decoded against the facets on the sheet when it was signed, not the sheet now", async () => {
     const r = rig();
     const { h, m } = r;
-    h.details.set("Receive", {
-      name: "Receive",
-      abi: parseAbi(["error ReceiveStudioTestError(uint256 x)"]),
+    h.details.set("ERC20", {
+      name: "ERC20",
+      abi: parseAbi(["error ERC20StudioTestError(uint256 x)"]),
       natspec: { functions: {} },
-      source: { path: "src/Receive.sol", url: "https://example.invalid/Receive.sol" },
+      source: { path: "src/tokens/ERC20/ERC20.sol", url: "https://example.invalid/ERC20.sol" },
     } as unknown as FacetDetail);
     const hash = await submit(r);
     const p = h.inputs.project();
-    h.inputs.setProject({ ...p, recipe: { ...p.recipe, facets: p.recipe.facets.filter((f) => f !== "Receive") } });
-    h.port.replayData = encodeErrorResult({ abi: parseAbi(["error ReceiveStudioTestError(uint256 x)"]), errorName: "ReceiveStudioTestError", args: [7n] });
+    h.inputs.setProject({ ...p, recipe: { ...p.recipe, facets: p.recipe.facets.filter((f) => f !== "ERC20") } });
+    h.port.replayData = encodeErrorResult({ abi: parseAbi(["error ERC20StudioTestError(uint256 x)"]), errorName: "ERC20StudioTestError", args: [7n] });
     h.port.mine(hash, { kind: "receipt", hash, status: "reverted", block: 41 });
     await flush();
-    expect(m.state().error).toBe("Deploy reverted in Receive: `ReceiveStudioTestError(7)`.");
+    expect(m.state().error).toBe("Deploy reverted in ERC20: `ERC20StudioTestError(7)`.");
   });
 
   test("CreateX's FailedContractCreation: code read at the salt's CREATE3 proxy and the diamond address, then the replay", async () => {

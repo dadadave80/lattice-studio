@@ -34,18 +34,38 @@ function safeCut() {
 }
 const linked = writeRecipe(dir, safeCut(), BUILT, "safe-cut.json");
 
+test("check and plan reject a recipe salt project before probing", async () => {
+  for (const command of ["check", "plan"]) {
+    let randomCalls = 0;
+    let rpcCalls = 0;
+    const result = await runCli([
+      command, "--project", erc20, "--deployer", SAFE, "--chain", "11155111", "--json",
+    ], {
+      random: (bytes) => { randomCalls += 1; return new Uint8Array(bytes); },
+      transport: () => { rpcCalls += 1; throw new Error("unexpected RPC"); },
+    });
+    expect(result.code).toBe(2);
+    expect(JSON.parse(result.stdout)).toEqual({ error: {
+      exit: 2, message: `--project takes a .lattice.json project file; ${erc20} is a recipe.`,
+    } });
+    expect(randomCalls).toBe(0);
+    expect(rpcCalls).toBe(0);
+  }
+});
+
 describe("check", () => {
   test("no blockers: exit 0, the stats and the problems chip in C10's formats", async () => {
     const { code, stdout, stderr } = await spawnCli(["check", erc20]);
     expect(code).toBe(0);
     const { analysis } = coreRead(erc20, BUILT);
     const lines = stdout.trimEnd().split("\n");
-    expect(lines[0]).toBe(`ERC20 · recipe ${analysis.recipeHash} · Lattice dev-6c8db45`);
+    expect(lines[0]).toBe(`ERC20 · recipe ${analysis.recipeHash} · Lattice 0.5.0`);
     expect(lines[1]).toBe(recipeStats(analysis, BUILT).text);
-    expect(lines[2]).toBe("1 warning");
-    expect(lines[3]).toBe(`  Warning  INIT-05  ${analysis.problems[0]?.message}`);
-    // The provisional catalog note goes to stderr, so stdout stays the command's output.
-    expect(stderr).toContain("Provisional catalog: Lattice 0.2.0 at dev 6c8db45");
+    expect(lines[2]).toBe("2 warnings");
+    expect(lines[3]).toBe(`  Warning  CORE-04  ${analysis.problems[0]?.message}`);
+    expect(lines[4]).toBe(`  Warning  INIT-05  ${analysis.problems[1]?.message}`);
+    // The catalog is the release v1 targets, so no provisional note.
+    expect(stderr).not.toContain("Provisional catalog");
   });
 
   test("blockers: exit 1, listed first", async () => {
@@ -90,7 +110,7 @@ describe("check", () => {
     writeFileSync(file, JSON.stringify(recipe));
     const { code, stderr } = await runCli(["check", file]);
     expect(code).toBe(2);
-    expect(stderr).toContain("unknown-facet.json: facets[4] ‘ERC20X’ isn't in Lattice dev-6c8db45.");
+    expect(stderr).toContain("unknown-facet.json: facets[3] ‘ERC20X’ isn't in Lattice 0.5.0.");
   });
 
   test("a missing file, no file, too many files: exit 2", async () => {
@@ -197,12 +217,12 @@ describe("plan", () => {
     expect(code).toBe(0);
     const { analysis } = coreRead(erc20, BUILT);
     const lines = stdout.split("\n");
-    // Facets count the cards (ERC20 and Receive; the core's two aren't cards), selectors count the core's five too.
-    expect(lines[1]).toBe("Cut plan · the core and 2 facets · 15 selectors");
+    // Facets count the cards (ERC20 alone; the core's two aren't cards), selectors count the core's five too.
+    expect(lines[1]).toBe("Cut plan · the core and 1 facet · 14 selectors");
     // The core's entries lead the plan, then the rest in catalog order.
     expect(lines[2]).toMatch(/^\[00\] ADD DiamondLoupeFacet 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} · 4\/4 selectors · \d+\.\d+\.\d+$/);
     expect(lines[3]).toMatch(/^\[01\] ADD ERC165Facet 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} · 1\/1 selector · \d+\.\d+\.\d+$/);
-    expect(lines[4]).toMatch(/^\[02\] ADD ERC20 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} · 9\/9 selectors · 0\.2\.0$/);
+    expect(lines[4]).toMatch(/^\[02\] ADD ERC20 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} · 9\/9 selectors · 0\.5\.0$/);
     expect(lines.filter((line) => line.startsWith("["))).toHaveLength(analysis.plan.length);
     expect(stdout).toContain("Init: calls MultiInit");
   });

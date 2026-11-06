@@ -11,7 +11,7 @@ import { CommandPalette } from "@/palette/CommandPalette";
 import { resetPaletteState } from "@/palette/palette-state";
 import { Shell } from "./Shell";
 
-const bar = () => page.getByRole("region", { name: "Title bar", exact: true });
+const bar = () => page.getByRole("banner", { name: "Title bar", exact: true });
 /** The shell with the palette mounted, as the app has it, so the search field has something to open. */
 const withPalette = (
   <>

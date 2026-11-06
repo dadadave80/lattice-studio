@@ -1,4 +1,4 @@
-# DeployERC20's four cuts, Votes, then ERC20Votes as a mixed cut: Add its checkpoint accessors, Replace ERC20's
+# DeployERC20's three cuts, Votes, then ERC20Votes as a mixed cut: Add its checkpoint accessors, Replace ERC20's
 # transfer and transferFrom and Votes' delegate and delegateBySig (the R19 seams), then AccessControl and
 # AccessControlDiamondCut. The script's init runs DeployERC20's MultiInit (ERC20Init and initImmutable),
 # ERC20VotesInit and initUpgradeable; Studio's planner appends initUpgradeable alone, which sets both flags.
@@ -10,13 +10,11 @@ proxy: Lattice
 phase: v1.1
 cuts:
   - add: ERC165Facet
-    source: script/base/tokens/DeployERC20.s.sol#L60-L60
+    source: script/base/tokens/DeployERC20.s.sol#L59-L59
   - add: ERC20
-    source: script/base/tokens/DeployERC20.s.sol#L61-L61
+    source: script/base/tokens/DeployERC20.s.sol#L60-L60
   - add: DiamondLoupeFacet
-    source: script/base/tokens/DeployERC20.s.sol#L62-L62
-  - add: Receive
-    source: script/base/tokens/DeployERC20.s.sol#L63-L63
+    source: script/base/tokens/DeployERC20.s.sol#L61-L61
   - add: Votes
     source: script/base/tokens/DeployERC20Votes.s.sol#L63-L63
   - add: ERC20Votes
@@ -40,7 +38,7 @@ init:
   steps:
     - spec: ERC20Init
       args: {}  # the script passes (name_, symbol_)
-      source: script/base/tokens/DeployERC20.s.sol#L35-L36
+      source: script/base/tokens/DeployERC20.s.sol#L34-L35
     - spec: ERC20VotesInit
       args: {}  # the script passes (name_, admin)
   source: script/base/tokens/DeployERC20Votes.s.sol#L71-L80

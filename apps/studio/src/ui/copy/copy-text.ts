@@ -7,6 +7,7 @@
 import { formatAddress, formatKeys, isAddress, toChecksum } from "@lattice-studio/core";
 import { toast } from "@/contracts";
 import { platform } from "../shared/platform";
+import { menuReturnTarget } from "../shared/menu-invoker";
 import styles from "./copy-fallback.module.css";
 
 export type CopyOptions = {
@@ -68,10 +69,12 @@ function fallbackHost(from: Element | null): HTMLElement {
   return open.at(-1) ?? document.body;
 }
 
-function showFallback(text: string, toastText: string): void {
+function showFallback(text: string, toastText: string, captured: Element | null): void {
   if (typeof document === "undefined") return;
+  const restore = captured?.isConnected && captured !== document.body && !captured.closest("[hidden], [inert]")
+    ? captured
+    : menuReturnTarget(document.activeElement);
   dismissCopyFallback();
-  const restore = document.activeElement;
   const anchor = restore instanceof HTMLElement && restore !== document.body ? restore.getBoundingClientRect() : null;
 
   const element = document.createElement("div");
@@ -137,6 +140,7 @@ function showFallback(text: string, toastText: string): void {
  * blocked, the value is shown selected under the control with "Press ⌘C to copy".
  */
 export async function copyText(value: string, options: CopyOptions = {}): Promise<CopyResult> {
+  const restore = typeof document === "undefined" ? null : menuReturnTarget(document.activeElement);
   const text = copyValue(value);
   const toastText = options.message ?? `Copied ${copyLabel(text, options.label)}`;
   const clipboard = options.clipboard === undefined ? globalThis.navigator?.clipboard : options.clipboard;
@@ -144,7 +148,7 @@ export async function copyText(value: string, options: CopyOptions = {}): Promis
     if (!clipboard) throw new Error("No clipboard.");
     await clipboard.writeText(text);
   } catch {
-    showFallback(text, toastText);
+    showFallback(text, toastText, restore);
     return { ok: false, text, reason: "blocked" };
   }
   toast({ text: toastText });

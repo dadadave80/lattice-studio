@@ -1,7 +1,7 @@
 import type { CommandArgs, CommandCategory } from "@/contracts";
-import { command, doc, provideServices, session } from "@/contracts";
+import { command, doc, getAnalysis, provideServices, session } from "@/contracts";
 import type { CommandId, Recipe } from "@lattice-studio/core";
-import { loadTemplate } from "@lattice-studio/core";
+import { CORE_FACETS, loadTemplate } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
@@ -23,6 +23,20 @@ const catalog = fixtureCatalog();
 const CONTESTED = makeRecipe({ facets: ["HyperlaneGatewayAdapter", "AxelarGatewayAdapter"] }, catalog);
 
 describe("ProblemView", () => {
+  test("resolution navigation remains usable when no problems remain", async () => {
+    const recipe = makeRecipe({ facets: [...CORE_FACETS, "Receive"], immutable: true }, catalog);
+    await renderWithStudio(<ProblemView view={{ kind: "problem", id: "CORE-02:diamond" }} />, {
+      project: project("no-problems-navigation", recipe),
+    });
+    expect(getAnalysis().problems).toEqual([]);
+    await expect.element(page.getByText("This problem no longer applies.", { exact: true })).toBeVisible();
+    for (const name of ["Previous problem", "Next problem"]) {
+      await expect.element(page.getByRole("button", { name, exact: true })).toHaveAttribute("aria-disabled", "true");
+      await expect.element(page.getByRole("button", { name, exact: true })).toHaveAccessibleDescription("No problems");
+    }
+    await expect.element(page.getByRole("button", { name: "Back to composition", exact: true })).not.toHaveAttribute("aria-disabled");
+  });
+
   test("SEL-01: the message, both selector anchors with Locate, and both fixes", async () => {
     const locate = spyOn("sheet.locate", () => "Locate", "Sheet");
     const route = spyOn("selector.route", (args) => (args.verb === "keep" ? `Keep ${String(args.facet)}` : `Route to ${String(args.facet)}`));

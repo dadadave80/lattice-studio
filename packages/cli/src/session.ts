@@ -53,8 +53,9 @@ function inputNotes(input: Input, deps: Deps): void {
 /** The project whose deploy block holds the salt: `--project`, else the input when it's a project file. */
 export async function saltProject(values: Values, input: Input | undefined, deps: Deps, set: CatalogSet): Promise<Result<Project | undefined, Failure>> {
   if (values.project === undefined) return ok(input?.project);
-  if (input !== undefined && input.file === values.project) return ok(input.project);
-  const read = await readInput(values.project, deps.cwd, set);
+  const read = input !== undefined && input.file === values.project
+    ? ok(input)
+    : await readInput(values.project, deps.cwd, set);
   if (!read.ok) return read;
   if (read.value.project === undefined) {
     return err(invalid(`--project takes a .lattice.json project file; ${values.project} is a recipe.`));

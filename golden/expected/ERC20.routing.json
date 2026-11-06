@@ -5,11 +5,9 @@
   "facets": [
     "ERC165Facet",
     "ERC20",
-    "DiamondLoupeFacet",
-    "Receive"
+    "DiamondLoupeFacet"
   ],
   "routing": {
-    "0x00000000": "Receive",
     "0x01ffc9a7": "ERC165Facet",
     "0x06fdde03": "ERC20",
     "0x095ea7b3": "ERC20",
@@ -26,7 +24,6 @@
     "0xdd62ed3e": "ERC20"
   },
   "signatures": {
-    "0x00000000": "receive()",
     "0x01ffc9a7": "supportsInterface(bytes4)",
     "0x06fdde03": "name()",
     "0x095ea7b3": "approve(address,uint256)",

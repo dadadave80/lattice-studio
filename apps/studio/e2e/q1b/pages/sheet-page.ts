@@ -1,7 +1,7 @@
 /**
  * The Sheet region for Flows 4-6 (spec L432-L455, IR "Sheet"): cards, pins, margin notes and the title block's
  * Deploy control. Roles and accessible names only (`_support/README.md`): a card is `role="group"` named
- * "{facet}, {n} selectors[, …]" (S4a's `cardName`); a pin is `role="button"` named "{signature} {hex}, {state}"
+ * "{facet}, {n} selectors[, …]" (S4a's `cardName`); inspection is a button named "Inspect {drawn words}, {signature} {hex}, {state}"
  * on the sheet, or "{signature} · {hex} {state}" in the inspector's Selectors list (`InspectorPage`); a note is
  * `role="note"` named its caption ("Selector collision · 2", "Missing dependency", "Convention").
  */
@@ -28,8 +28,7 @@ export class SheetPage {
   }
 
   /**
-   * A pin row on the sheet, by its exact accessible name, which starts with the drawn words (FX52):
-   * "sendMessage 0xcdfe7f5c, sendMessage(bytes,bytes,bytes[]) 0xcdfe7f5c, routed". Prefer `pinLike` with a fragment.
+   * An inspection button on the sheet, by its exact accessible name. Prefer `pinLike` with a fragment.
    */
   pin(name: string): Locator {
     return this.root.getByRole("button", { name, exact: true });
@@ -39,6 +38,11 @@ export class SheetPage {
    * full hex/parens when a test only cares that the row exists in some state, e.g. "contested"). */
   pinLike(facet: string, fragment: string | RegExp): Locator {
     return this.card(facet).getByRole("button", { name: fragment });
+  }
+
+  /** The separate routing action, by its exact action and signature label. */
+  routePin(facet: string, name: string): Locator {
+    return this.card(facet).getByRole("button", { name, exact: true });
   }
 
   /** A margin note, by its exact caption: "Selector collision · 2", "Missing dependency", "Convention", "Seam".
@@ -78,6 +82,7 @@ export class SheetPage {
    * while collapsed. */
   async expandCard(facet: string): Promise<void> {
     await this.card(facet).getByRole("button", { name: /^\+ \d+ more$/ }).click();
+    await expect(this.card(facet).getByRole("button", { name: "Collapse", exact: true })).toBeVisible();
   }
 
   /** ⇧1, Fit (IR "Keyboard"): brings every card into view. Tidy's layout can otherwise place a fixture's cards
@@ -119,6 +124,7 @@ export class SheetPage {
    */
   async revealNote(caption: string): Promise<Locator> {
     const note = this.note(caption);
+    await expect(note).toBeVisible();
     // `problem.next`'s run half is a dynamic import (S4c's `navigate.ts`, loaded on first use): the first F8 on
     // a fresh page waits on that chunk before it does anything, which can run past a short poll under load.
     // Pressing F8 again before a press's own note-focus request settles would skip a problem instead of
@@ -127,10 +133,22 @@ export class SheetPage {
       await this.page.keyboard.press("F8");
       try {
         await expect(note).toBeFocused({ timeout: 8000 });
-        return note;
       } catch {
         // Not this problem (or the chunk was still loading): try the next F8.
+        continue;
       }
+      // Focus lands before the reveal glide ends; let the pointer target settle inside the clipped sheet.
+      // Scaled rectangles can report a fully visible intersection as 0.9999997.
+      await expect(note).toBeInViewport({ ratio: 0.9999 });
+      let last = "";
+      await expect.poll(async () => {
+        const box = await note.boundingBox();
+        const now = JSON.stringify(box);
+        const still = box !== null && now === last;
+        last = now;
+        return still;
+      }, { intervals: [100] }).toBe(true);
+      return note;
     }
     throw new Error(`F8 never focused the note "${caption}" within 15 presses.`);
   }

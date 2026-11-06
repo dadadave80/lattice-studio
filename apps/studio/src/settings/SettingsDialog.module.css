@@ -12,6 +12,11 @@
   min-block-size: 0;
 }
 
+.tabs {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
 .tabList {
   flex: none;
   inline-size: calc(var(--lx-space-8) * 5); /* 160px */
@@ -27,4 +32,23 @@
   display: flex;
   flex-direction: column;
   gap: var(--lx-space-4);
+}
+
+@media (width < 768px) {
+  .tabList {
+    inline-size: auto;
+    max-inline-size: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-block: 0;
+  }
+
+  .tabList > button {
+    flex: 0 0 auto;
+  }
+
+  .panel {
+    padding-inline-start: 0;
+    padding-block-start: var(--lx-space-4);
+  }
 }

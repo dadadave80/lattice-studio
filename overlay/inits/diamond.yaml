@@ -1,5 +1,5 @@
 # diamond-lib's initializers (lib/diamond-lib/src/initializers). DiamondInit is left out: Lattice can't use it
-# (src/utils/DiamondIntrospectionInit.sol#L15-L17).
+# (src/utils/DiamondIntrospectionInit.sol#L17-L19).
 
 ERC165Init:
   kind: step

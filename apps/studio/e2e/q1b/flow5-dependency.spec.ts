@@ -206,6 +206,7 @@ test.describe("Flow 5: meet a missing dependency", () => {
 
       const note = await sheet.revealNote(MISSING_CAPTION); // notes stay on the sheet at every width (IR "Sheet")
       await sheet.fixButton(note, "Place ERC4626").click();
+      await expect(sheet.card("ERC4626")).toBeVisible();
 
       // F8's own selection change opens the inspector overlay at this width, which (one drawer at a time)
       // closes the console: reopen it, as a returning visitor at this width would, before reading the log.

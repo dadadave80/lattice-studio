@@ -5,6 +5,8 @@
  */
 import { session, type ConsoleTab } from "@/contracts";
 import { setPaneOpen } from "@/shell/sizes";
+import { currentTier } from "@/shell/layout-tier";
+import { hidePane } from "@/shell/panes";
 
 export { consoleMax, PANE_SIZES } from "@/shell/panes";
 export { setConsoleSize } from "@/shell/sizes";
@@ -22,6 +24,12 @@ function patch(change: (pane: ConsolePane) => Partial<ConsolePane>): void {
 /** Collapses to the header, or opens the body. Collapsing also leaves Maximize. */
 export function setConsoleOpen(open: boolean): void {
   if (!open) patch(() => ({ maximized: false }));
+  if (!open && currentTier() === "phone") {
+    session.set((s) => {
+      const panes = hidePane(s.panes, "phone", "console");
+      return panes === s.panes ? s : { panes };
+    });
+  }
   setPaneOpen("console", open);
 }
 

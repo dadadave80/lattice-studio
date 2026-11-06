@@ -1,0 +1,25 @@
+{
+  "name": "ERC165Init",
+  "abi": [
+    {
+      "type": "function",
+      "name": "init",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xe1c7392a": {
+        "notice": "Initialize ERC165 interface registration",
+        "dev": "Registers support for the ERC165 interface"
+      }
+    },
+    "notice": "Provides an initializer to register ERC165 interface support"
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/initializers/ERC165Init.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/initializers/ERC165Init.sol"
+  }
+}

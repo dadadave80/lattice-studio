@@ -1,5 +1,5 @@
 /**
- * The tour's coach mark (spec L400, Flow 1; IR L188): five steps that never block input. It's explicitly
+ * The tour's coach mark (spec L400, Flow 1; IR L188): steps that never block input. It's explicitly
  * not a dialog — no trap and no backdrop, so Tab or a click still reaches the app underneath at any time —
  * but it does take focus once, on start and on every step, so it's never silent to someone tabbing from
  * there; whatever had focus before is restored the moment the tour ends. It renders a small floating card

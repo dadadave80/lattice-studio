@@ -12,6 +12,10 @@ import { setCatalogPin } from "./pin-store";
 const loader = createCatalogLoader();
 provideCatalogLoader(loader);
 
+export function retryFacetDetail(name: string): void {
+  loader.retryDetail(name);
+}
+
 function warmPlaced(): void {
   for (const name of doc.get().recipe.facets) loader.warm(name);
 }

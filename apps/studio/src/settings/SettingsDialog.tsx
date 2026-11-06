@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { closeDialog, type DialogComponentProps, type SettingsGroup } from "@/contracts";
 import { Button, Dialog, Tabs, TabPanel, type TabItem } from "@/ui";
+import { useLayoutTier } from "@/shell/layout-tier";
 import { AboutGroup } from "./groups/AboutGroup";
 import { AppearanceGroup } from "./groups/AppearanceGroup";
 import { CanvasGroup } from "./groups/CanvasGroup";
@@ -30,7 +31,11 @@ const GROUPS: readonly TabItem<SettingsGroup>[] = [
 export function SettingsDialog({ entry, top }: DialogComponentProps<"settings">) {
   const [group, setGroup] = useState<SettingsGroup>(entry.props.group ?? "appearance");
   const tabsRef = useRef<HTMLDivElement>(null);
+  const phone = useLayoutTier() === "phone";
   const close = () => closeDialog("settings");
+  useEffect(() => {
+    tabsRef.current?.querySelector('[role="tab"][aria-selected="true"]')?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [phone, group]);
 
   return (
     <Dialog
@@ -51,7 +56,8 @@ export function SettingsDialog({ entry, top }: DialogComponentProps<"settings">)
       <div ref={tabsRef} className={styles.layout}>
         <Tabs
           label="Settings groups"
-          orientation="vertical"
+          orientation={phone ? "horizontal" : "vertical"}
+          className={styles.tabs}
           value={group}
           onValueChange={setGroup}
           tabs={GROUPS}

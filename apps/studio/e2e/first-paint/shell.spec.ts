@@ -126,8 +126,16 @@ test.describe("the static Start block", () => {
   });
 });
 
-test.describe("layout stability while React mounts", () => {
-  test(`keeps cumulative layout shift under ${CLS_BUDGET} (spec L821)`, async ({ page }) => {
+function layoutStability(delayedCatalog: boolean) {
+  test(`keeps cumulative layout shift under ${CLS_BUDGET}${delayedCatalog ? " when the catalog arrives after first paint" : ""} (spec L821)`, async ({ page }) => {
+    let releaseCatalog: () => void = () => {};
+    if (delayedCatalog) {
+      const held = new Promise<void>((resolve) => { releaseCatalog = resolve; });
+      await page.route("**/catalog/**", async (route) => {
+        await held;
+        await route.continue();
+      });
+    }
     await page.addInitScript(() => {
       const w = window as unknown as { __lxCls: number };
       w.__lxCls = 0;
@@ -154,7 +162,21 @@ test.describe("layout stability while React mounts", () => {
 
     // Let any pending font swap (font-display: swap) and layout settle before reading the score.
     await page.evaluate(() => document.fonts.ready);
-    await page.waitForTimeout(300);
+    if (delayedCatalog) {
+      const inspector = page.locator("#shell-inspector");
+      await expect(inspector.getByRole("region", { name: "Core" }).getByText("Loading the catalog…")).toBeVisible();
+      // Paint the loading state before releasing the catalog, then score the completed readout's first paint.
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      releaseCatalog();
+      await expect(inspector.getByRole("list", { name: "Loupe selectors" }).getByRole("listitem")).toHaveCount(4);
+      await expect(inspector.getByRole("region", { name: "Starting points" })).toBeAttached();
+      await expect(inspector.getByRole("button", { name: "Browse all recipes" })).toBeAttached();
+      await expect(inspector.getByRole("heading", { name: "Chain readiness" })).toBeAttached();
+      await expect(inspector.getByRole("heading", { name: "Deployments" })).toBeAttached();
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    } else {
+      await page.waitForTimeout(300);
+    }
 
     // The Layout Instability API only scores elements that were on screen in a previous frame and moved: the
     // static markup was destroyed and the real shell is new, so neither scores, whatever size either one is.
@@ -171,4 +193,9 @@ test.describe("layout stability while React mounts", () => {
     const cls = await page.evaluate(() => (window as unknown as { __lxCls: number }).__lxCls);
     expect(cls).toBeLessThan(CLS_BUDGET);
   });
+}
+
+test.describe("layout stability while React mounts", () => {
+  layoutStability(false);
+  layoutStability(true);
 });

@@ -19,7 +19,8 @@ export const openCommand = command<OpenArgs>({
   async run(_ctx, args) {
     if (args.id !== undefined) {
       const { openStoredProject } = await import("../actions");
-      await openStoredProject(args.id);
+      const result = await openStoredProject(args.id);
+      if (!result.ok) throw new Error(result.error);
       return;
     }
     const [{ pickProjectFile }, { openImportedFile }] = await Promise.all([

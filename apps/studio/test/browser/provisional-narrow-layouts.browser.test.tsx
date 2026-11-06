@@ -24,7 +24,7 @@ afterEach(async () => {
   await page.viewport(1440, 900);
 });
 
-const bar = () => page.getByRole("region", { name: "Title bar", exact: true });
+const bar = () => page.getByRole("banner", { name: "Title bar", exact: true });
 
 function tierOf(width: number): string {
   if (width >= 1280) return "wide";

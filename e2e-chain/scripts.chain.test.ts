@@ -168,7 +168,7 @@ describe.skipIf(SKIP_REASON !== undefined)("exported Foundry scripts on Anvil", 
           const before = await standing(node, BOB);
           const result = project.broadcast(script.filename, script.contract, node.url, BOB);
           expect(result.code).not.toBe(0);
-          expect(result.out).toContain('MissingSharedContracts("ERC20Init", "Deploy them first with Deploy missing contracts… in Lattice Studio or with the lattice-studio CLI.")');
+          expect(result.out).toContain('MissingSharedContracts("ERC20Init", "Deploy them first with Deploy missing contracts… in Lattice Studio.")');
           expect(result.out).not.toContain("ONCHAIN EXECUTION COMPLETE");
           expect(await standing(node, BOB)).toEqual(before);
           table.record("ERC20 (ERC20Init missing)", path, `refused: ${revertIn(result, "MissingSharedContracts")}`);

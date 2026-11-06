@@ -100,7 +100,7 @@ describe("the Start block (spec L378, Flows 1-2)", () => {
     const start = page.getByRole("region", { name: "Start a diamond" });
     const blurbs: [string, string][] = [
       ["GovernedVault", "Self-governed ERC-4626 vault"],
-      ["ERC20", "A fixed token, immutable by default"],
+      ["ERC20", "Zero supply; no minting or upgrades"],
       ["SafeDiamondCut", "A diamond only your Safe can upgrade"],
     ];
     for (const [name, blurb] of blurbs) {

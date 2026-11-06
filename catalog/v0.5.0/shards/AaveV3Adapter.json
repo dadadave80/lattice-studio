@@ -1,0 +1,736 @@
+{
+  "name": "AaveV3Adapter",
+  "abi": [
+    {
+      "type": "function",
+      "name": "aToken",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "addressesProvider",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "asset",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "delever",
+      "inputs": [
+        {
+          "name": "collateralToPull",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "repaid",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "deploy",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "deployed",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "eModeCategory",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "emergencyWithdraw",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "recovered",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "harvest",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "healthFactor",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isPaused",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "lever",
+      "inputs": [
+        {
+          "name": "borrowAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "minHealthFactor",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "operator",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "reentrancyGuardEntered",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "rewardRecipient",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "rewardsController",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setEMode",
+      "inputs": [
+        {
+          "name": "categoryId",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setMinHealthFactor",
+      "inputs": [
+        {
+          "name": "minHealthFactorWad",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setOperator",
+      "inputs": [
+        {
+          "name": "operator_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setRewardRecipient",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setRewardsController",
+      "inputs": [
+        {
+          "name": "controller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "totalAssetsManaged",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "vault",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "withdraw",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "withdrawn",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "AaveV3AdapterConfigured",
+      "inputs": [
+        {
+          "name": "provider",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "vault",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Delevered",
+      "inputs": [
+        {
+          "name": "repaid",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Deployed",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "EModeSet",
+      "inputs": [
+        {
+          "name": "categoryId",
+          "type": "uint8",
+          "indexed": false,
+          "internalType": "uint8"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "EmergencyWithdrawn",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "toVault",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "recovered",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Levered",
+      "inputs": [
+        {
+          "name": "borrowed",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MinHealthFactorSet",
+      "inputs": [
+        {
+          "name": "minHealthFactorWad",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OperatorSet",
+      "inputs": [
+        {
+          "name": "operator",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RewardRecipientSet",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RewardsControllerSet",
+      "inputs": [
+        {
+          "name": "controller",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RewardsForwarded",
+      "inputs": [
+        {
+          "name": "rewardToken",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AaveV3AdapterInvalidMinHealthFactor",
+      "inputs": [
+        {
+          "name": "supplied",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AaveV3AdapterReserveNotListed",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AaveV3AdapterZeroLeverAmount",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AccessControlUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "neededRole",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "AdapterSafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterHealthFactorBreached",
+      "inputs": [
+        {
+          "name": "resulting",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "floor",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterInvalidOraclePrice",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterInvalidRecipient",
+      "inputs": [
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterNothingToDeploy",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterPaused",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterRewardForwardFailed",
+      "inputs": [
+        {
+          "name": "rewardToken",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterUnauthorized",
+      "inputs": [
+        {
+          "name": "caller",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolAdapterZeroAddress",
+      "inputs": []
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0xa0c1f15e": {
+        "notice": "Returns the live aToken for the configured asset (resolved via the provider)."
+      },
+      "0xc72c4d10": {
+        "notice": "Returns the Aave PoolAddressesProvider this adapter resolves the Pool from."
+      },
+      "0x38d52e0f": {
+        "notice": "Returns the address of the underlying asset this strategy manages."
+      },
+      "0xcf60112b": {
+        "notice": "Withdraws `collateralToPull` of the asset from supply and repays that much debt, decreasing leverage and restoring HF."
+      },
+      "0x775c300c": {
+        "notice": "Sweeps the adapter's idle asset balance into the external protocol.",
+        "dev": "Required because the vault PUSHES funds via a bare ERC-20 transfer (no callback). Reverts `ProtocolAdapterNothingToDeploy` if the idle balance is zero."
+      },
+      "0xa6e40bec": {
+        "notice": "Returns the current eMode category id set on the Pool for this adapter."
+      },
+      "0xdb2e21bc": {
+        "notice": "Fully exits the protocol position and returns all recovered assets to the vault.",
+        "dev": "Intended for the emergency path; callable by an authorized guardian/admin even when the adapter is paused."
+      },
+      "0x4641257d": {
+        "notice": "Claims reward tokens from the protocol and forwards them RAW (no swap) to the configured recipient.",
+        "dev": "Safe against zero-claim and fee-on-transfer reward tokens; never reverts `withdraw`."
+      },
+      "0x22841f01": {
+        "notice": "Returns the current health factor (WAD, 1e18 == 1.0) of the adapter's position.",
+        "dev": "Supply-only adapters return `type(uint256).max` (no debt). Leverage adapters return collateralValue * liquidationThreshold / debtValue."
+      },
+      "0xb187bd26": {
+        "notice": "Returns true when the adapter is paused or emergency-stopped, or the external protocol reports the asset paused/frozen. When true, `deploy()` must be a no-op path (revert), so a paused protocol cannot brick `rebalance()`."
+      },
+      "0x9dcc380a": {
+        "notice": "Borrows `borrowAmount` of the asset and re-supplies it, increasing leverage.",
+        "dev": "Reverts `ProtocolAdapterHealthFactorBreached` if the resulting HF < the floor."
+      },
+      "0xe1b4264c": {
+        "notice": "Returns the configured minimum health factor (WAD) the adapter must not breach."
+      },
+      "0x570ca735": {
+        "notice": "Returns the authorized operator (zero until wired)."
+      },
+      "0xd2c725e0": {
+        "notice": "True while a guarded op is executing — mirrors StrategyManager so VaultCore can reject share-price-sensitive ops mid-deploy/withdraw (read-only reentrancy guard)."
+      },
+      "0x17f33340": {
+        "notice": "Returns the address rewards are forwarded to."
+      },
+      "0x6bb65f53": {
+        "notice": "Returns the configured Aave rewards controller (address(0) if unset)."
+      },
+      "0xb94e11c6": {
+        "notice": "Sets the Aave eMode category (admin only). Used to enable correlated-asset looping."
+      },
+      "0x01b08d58": {
+        "notice": "Sets the minimum health-factor floor in WAD (admin only). Must be >= 1e18."
+      },
+      "0xb3ab15fb": {
+        "notice": "Sets the authorized operator permitted to call `deploy`/`withdraw`/`harvest`.",
+        "dev": "Admin-gated (`DEFAULT_ADMIN_ROLE`). Rejects `address(0)`; emits `IProtocolAdapter.OperatorSet`.",
+        "params": {
+          "operator_": "The new operator (typically the StrategyManager diamond)."
+        }
+      },
+      "0xe521136f": {
+        "notice": "Sets the reward recipient (admin only)."
+      },
+      "0xbee36bb3": {
+        "notice": "Sets the Aave rewards controller (admin only)."
+      },
+      "0x613c822b": {
+        "notice": "Returns the current total asset balance managed by this strategy.",
+        "dev": "This value is trusted by the StrategyManager and VaultCore for accounting. Strategy implementations MUST report accurate balances to avoid mispricing vault shares."
+      },
+      "0xfbfa77cf": {
+        "notice": "Returns the vault this adapter returns withdrawn funds to."
+      },
+      "0x00f714ce": {
+        "notice": "Withdraws `amount` of the underlying asset to `to`.",
+        "dev": "Called by the StrategyManager during rebalancing to recall excess allocations. The strategy is responsible for executing the ERC-20 transfer.",
+        "params": {
+          "amount": "Amount of underlying asset to withdraw.",
+          "to": "Recipient address (typically the vault)."
+        }
+      }
+    },
+    "notice": "Diamond facet adapting an Aave v3 supply (+ optional leverage) position into a Lattice vault strategy. Implements `IStrategy` (funds routing), `IProtocolAdapter` (sidecar), and `IAaveV3Adapter` (Aave config). All logic lives in AaveV3AdapterLib."
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "src/defi/AaveV3Adapter.sol",
+    "url": "https://github.com/dadadave80/lattice/blob/cca133b07abda7fdde4468798d1dce3e36ea7849/src/defi/AaveV3Adapter.sol"
+  }
+}

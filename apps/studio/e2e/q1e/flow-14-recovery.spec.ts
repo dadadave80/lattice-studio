@@ -6,7 +6,7 @@
  * deploy, an address already used, Arachnid's proxy missing, CreateX's code wrong, a shared contract's code that
  * isn't Lattice's, a registry that doesn't list the pinned versions, a receipt that doesn't arrive in time and then
  * does, a diamond that doesn't match the sheet, Studio updated under the tab, a failed verification, and in the
- * review: a wallet on another chain, not enough funds, the gas cap (the node's simulation stubbed to report more
+ * review: a wallet on another chain, not enough funds, the gas cap (the node's estimate stubbed to report more
  * gas), a rejection in the wallet, a simulation that reverts, and the chain changing while the review is open.
  *
  * "No wallet in the browser" can't be forced: the e2e build always carries the mock connector.
@@ -25,7 +25,7 @@ import { DeployReview, SettingsDialog, watchReactErrors } from "./pages/dialogs.
 import { expect, test } from "../_support/fixtures.ts";
 import { activate, pressMod, runConsoleLine, runPalette, runPaletteWith, tabTo, type InputMode } from "./pages/keys.ts";
 import { ConsoleLog, Inspector, TitleBar, TitleBlock, expectAnnounced, expectDisabledWith } from "./pages/regions.ts";
-import { connectOnAnvil, inflateSimulatedGas, rejectMockSends } from "./pages/wallet.ts";
+import { connectOnAnvil, inflateEstimatedGas, rejectMockSends } from "./pages/wallet.ts";
 
 const MODES: readonly InputMode[] = ["pointer", "keyboard"];
 
@@ -93,7 +93,7 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
     test("Deploy is disabled with \"Deploy needs a connection\" and ⌘/Ctrl+Enter only announces it, keyboard only @smoke", async ({ page, context }) => {
       await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
       const block = new TitleBlock(page);
-      await expect(block.root).toContainText("12 facets · 120 selectors");
+      await expect(block.root).toContainText("12 facets · 122 selectors");
       await runConsoleLine(page, "chain anvil");
       await context.setOffline(true);
       // Spec L385 and L561 write it without a period.
@@ -287,7 +287,7 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
 
   test("Studio updated while this tab needed a new piece of it: \"Save and reload\" gets it back", async ({ page }) => {
     await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
-    await expect(new TitleBlock(page).root).toContainText("12 facets · 120 selectors");
+    await expect(new TitleBlock(page).root).toContainText("12 facets · 122 selectors");
     // The deploy review's chunk is gone from the server, as after a release.
     const gone = (route: import("@playwright/test").Route) => route.abort();
     await page.route("**/assets/**", gone);
@@ -360,8 +360,9 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
     ]) {
       test(`over the gas cap (NET-06, a ${severity}) with the estimate; Remove facets… opens the checklist, keyboard only`, async ({ page, anvil }) => {
         const crashed = watchReactErrors(page);
-        // Anvil's per-transaction cap is 30M in Studio's chain table; the node's simulation reports `gas` used.
-        await inflateSimulatedGas(page, anvil.url, gas);
+        // Anvil's per-transaction cap is 30M in Studio's chain table; required gas comes from eth_estimateGas.
+        await inflateEstimatedGas(page, anvil.url, gas);
+        const sends = await rejectMockSends(page);
         await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
         await connectOnAnvil(page);
         await runPalette(page, "Deploy…");
@@ -372,12 +373,16 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
         await expect(cost).toContainText(`This deploy needs about ${millions}M gas; Anvil allows 30M per transaction.`);
         await expect(cost.getByRole("img", { name: words, exact: true })).toBeVisible();
         await expect(cost).toContainText(`${Math.round((millions / 30) * 100)}% of Anvil's 30M per-transaction cap`);
+        await expect(review.section("Simulation")).toHaveAccessibleDescription("Ready");
         if (severity === "blocker") {
           await expect(cost).toHaveAccessibleDescription("Blocks deploy");
+          await review.tickAll("keyboard");
           await expectDisabledWith(review.sign(), "Resolve 1 blocker · F8");
+          await activate(page, "keyboard", review.sign());
         }
         await activate(page, "keyboard", cost.getByRole("button", { name: "Remove facets…", exact: true }));
         await expect(page.getByRole("dialog", { name: "Remove facets", exact: true })).toBeVisible();
+        expect(sends()).toBe(0);
       });
     }
 

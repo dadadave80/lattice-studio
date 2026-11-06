@@ -1,0 +1,45 @@
+{
+  "name": "ERC165Facet",
+  "abi": [
+    {
+      "type": "function",
+      "name": "supportsInterface",
+      "inputs": [
+        {
+          "name": "_interfaceId",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ],
+  "natspec": {
+    "functions": {
+      "0x01ffc9a7": {
+        "notice": "Query if a contract implements an interface",
+        "dev": "Interface identification is specified in ERC-165. This function uses less than 30,000 gas.",
+        "params": {
+          "_interfaceId": "The interface identifier, as specified in ERC-165"
+        }
+      }
+    },
+    "notice": "Diamond facet that implements the ERC-165 standard interface detection",
+    "dev": "Delegates to ERC165Lib which hardcodes support for ERC-165, ERC-173, IDiamondCut, and IDiamondLoupe"
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": {}
+  },
+  "source": {
+    "path": "lib/diamond-lib/src/facets/ERC165Facet.sol",
+    "url": "https://github.com/dadadave80/diamond-lib/blob/393435fbd01a85f9626cd62f436cdebf90ecdfdf/src/facets/ERC165Facet.sol"
+  }
+}
