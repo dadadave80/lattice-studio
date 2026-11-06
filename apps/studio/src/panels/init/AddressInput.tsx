@@ -1,7 +1,7 @@
 import type { Arg, Catalog, FieldModel } from "@lattice-studio/core";
 import { formatAddress, isAddress, isNotImplemented, lines, toChecksum } from "@lattice-studio/core";
 import { useState } from "react";
-import { chainService, env, getCatalog, session, useOnline, useSession } from "@/contracts";
+import { chainService, doc, env, getCatalog, session, useOnline, useSession } from "@/contracts";
 import { ensRegistryNames } from "@/chain/infra/chains";
 import { noEnsRecord } from "@/chain/infra/copy";
 import { edit } from "@/state";
@@ -53,7 +53,7 @@ export function AddressInput({ field, value, description, error, disabledReason,
   useEnsLabels();
   const online = useOnline();
   const chainId = useSession((s) => s.chainId);
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ text: string } | null>(null);
   const ref = refOf(value);
   const label = ensLabel(projectId, field.path, value, chainId);
 
@@ -77,13 +77,15 @@ export function AddressInput({ field, value, description, error, disabledReason,
     return failed;
   };
 
-  const resolveName = async (name: string): Promise<string | null> => {
+  const resolveName = async (name: string, isCurrent: () => boolean): Promise<string | null> => {
     if (!online) return ENS_OFFLINE;
     if (chainId === null) return ENS_NO_CHAIN;
-    setStatus(`Resolving ${name}…`);
+    const resolving = { text: `Resolving ${name}…` };
+    setStatus(resolving);
     try {
       const service = await chainService();
       const resolved = await service.resolveEns(name, chainId);
+      if (!isCurrent() || doc.get().id !== projectId) return null;
       if (session.get().chainId !== chainId) return ensChainChanged(name);
       if (!resolved.ok) return resolved.error;
       if (resolved.value === null) return noEnsRecord(name, ensRegistryNames(chainId, env.e2e));
@@ -92,13 +94,13 @@ export function AddressInput({ field, value, description, error, disabledReason,
       if (isNotImplemented(caught)) return caught.message;
       throw caught;
     } finally {
-      setStatus(null);
+      setStatus((current) => current === resolving ? null : current);
     }
   };
 
-  const draft = useDraft(displayText(value), async (text) => {
+  const draft = useDraft(displayText(value), async (text, isCurrent) => {
     const trimmed = text.trim();
-    if (isEnsName(trimmed)) return resolveName(trimmed);
+    if (isEnsName(trimmed)) return resolveName(trimmed, isCurrent);
     const parsed = parseFieldText(field, trimmed);
     if (!parsed.ok) return parsed.error;
     return store(parsed.value);
@@ -129,7 +131,7 @@ export function AddressInput({ field, value, description, error, disabledReason,
         autoComplete="off"
         mono
       />
-      {status ? <output className={styles.status}>{status}</output> : null}
+      {status ? <output className={styles.status}>{status.text}</output> : null}
       {ref && !draft.editing ? <span className={styles.resolved}>{refLine(ref)}</span> : null}
       {label && !draft.editing ? <span className={styles.resolved}>{`${label} (${String(value)})`}</span> : null}
       <fieldset className={styles.picks}>

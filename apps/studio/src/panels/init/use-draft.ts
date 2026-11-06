@@ -2,7 +2,7 @@
  * A field's edit cycle (spec L466): typing keeps a draft, Enter or blur commits it, Esc reverts to what's stored.
  * `commit` returns an error to keep on the field (the draft stays) or null once the value went to the document.
  */
-import { useState, type FocusEvent, type KeyboardEvent } from "react";
+import { useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import type { Arg } from "@lattice-studio/core";
 import { commandRef, runCommand } from "@/contracts";
 
@@ -20,25 +20,43 @@ export type Draft = {
   onBlur(event: FocusEvent<HTMLElement>): void;
 };
 
-export function useDraft(stored: string, commitText: (text: string) => Promise<string | null> | string | null): Draft {
+export function useDraft(stored: string, commitText: (text: string, isCurrent: () => boolean) => Promise<string | null> | string | null): Draft {
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState(0);
+  const revision = useRef(0);
+  const mounted = useRef(true);
+
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      revision.current += 1;
+    };
+  }, []);
 
   const commit = async (): Promise<void> => {
-    if (draft === null) return;
+    if (draft === null || !mounted.current) return;
+    const mine = ++revision.current;
+    const isCurrent = () => mounted.current && revision.current === mine;
     if (draft === stored) {
       setDraft(null);
       setError(null);
       return;
     }
-    setBusy(true);
-    const failed = await commitText(draft);
-    setBusy(false);
-    setError(failed);
-    if (failed === null) setDraft(null);
+    setPending((count) => count + 1);
+    try {
+      const failed = await commitText(draft, isCurrent);
+      // Later typing, Escape or another commit owns the draft and its error now.
+      if (!isCurrent()) return;
+      setError(failed);
+      if (failed === null) setDraft(null);
+    } finally {
+      setPending((count) => count - 1);
+    }
   };
   const revert = () => {
+    revision.current += 1;
     setDraft(null);
     setError(null);
   };
@@ -46,8 +64,9 @@ export function useDraft(stored: string, commitText: (text: string) => Promise<s
     text: draft ?? stored,
     editing: draft !== null,
     error,
-    busy,
+    busy: pending > 0,
     change(text) {
+      revision.current += 1;
       setDraft(text);
       setError(null);
     },

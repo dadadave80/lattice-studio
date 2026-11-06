@@ -79,7 +79,7 @@ export function InitEditor({ view }: InspectorViewProps<"init">) {
   const summary = plan.kind === "bundle" ? "One bundle call" : plan.kind === "steps" ? plural(plan.steps.length, "step") : "No init";
 
   return (
-    <section ref={rootRef} className={styles.root} aria-label="Init plan">
+    <section key={projectId} ref={rootRef} className={styles.root} aria-label="Init plan">
       <header className={styles.header}>
         <div>
           <h2 className={styles.title}>Init plan</h2>
