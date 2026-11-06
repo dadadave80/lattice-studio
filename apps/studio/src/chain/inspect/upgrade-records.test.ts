@@ -65,3 +65,12 @@ test("Safe proposals are reservations without executions and cannot be erased by
   expect(proposed.ok).toBe(true); expect(r.get().pendingUpgrade?.phase).toBe("proposed"); expect(r.get().revision).toBe(4); expect(r.get().tx).toBe(hash);
   await r.tracker.unsent(review()); expect(r.get().pendingUpgrade?.phase).toBe("proposed");
 });
+
+test("only the owning unsent reservation may advance its final pre-wallet baseline", async () => {
+  const r = rig(); const reviewed = review(); await r.tracker.reserve(reviewed);
+  expect((await r.tracker.refreshBaseline(reviewed, { ...snapshot, block: 101 })).ok).toBe(true);
+  expect(r.get().pendingUpgrade?.baseline.block).toBe(101);
+  expect((await r.tracker.refreshBaseline(reviewed, snapshot)).ok).toBe(false);
+  expect((await r.tracker.refreshBaseline(review(), { ...snapshot, block: 102 })).ok).toBe(false);
+  await r.tracker.sent(reviewed, tx); expect((await r.tracker.refreshBaseline(reviewed, { ...snapshot, block: 102 })).ok).toBe(false);
+});

@@ -19,7 +19,7 @@ const original: Deployment = { projectId: "original-owner", chainId: target.chai
   status: "confirmed", tx: hash, block: 1, at: "2026-11-06T00:00:00Z", recipeHash: hash, catalogHash: hash, revision: 4, verification: "exact_match" };
 const saved: Deployment = { ...original, pendingUpgrade: { phase: "signing", reviewId: "review-1", from, since: original.at,
   desiredRecipeHash: next, catalogHash: next, baseline, expectedFacets: snapshot.facets, expectedCodehashes: baseline.codehashes, call: { data: "0x12345678", value: "0" } } };
-const transaction: UpgradeObservedTransaction = { hash: txHash, from, to: address, data: "0x12345678", value: 0n };
+const transaction: UpgradeObservedTransaction = { hash: txHash, from, to: address, data: "0x12345678", value: 0n, nonce: 7 };
 function rig(initial = saved) {
   let current = structuredClone(initial), reads = snapshot, tx = transaction, watched = 0, options: WatchOptions | null = null;
   let settle: (value: ReceiptOutcome) => void = () => {};
@@ -31,7 +31,7 @@ function rig(initial = saved) {
     },
     inspect: async () => ({ ok: true, value: reads }), catalogs: async () => ({ ok: true, value: [] }),
     call: async () => ({ ok: false, error: { reason: "Unused", data: null } }), codeAt: async () => ({ ok: false, error: "Unused" }), chainName: () => "Sepolia",
-    transaction: async () => ({ ok: true, value: tx }), receipt: async () => ({ ok: true, value: { hash: tx.hash, status: "success", block: 101, blockHash: hash, logs: [] } }),
+    transaction: async () => ({ ok: true, value: tx }), receipt: async (_id, queried) => ({ ok: true, value: { hash: queried, status: "success", block: 101, blockHash: hash, logs: [] } }),
     chain: async () => ({ ...fakePort({ catalog: () => makeCatalog() }), watch: async (_chainId: number, _hash: Hex, next: WatchOptions) => { watched++; options = next; return result; }, send: async () => { throw new Error("Observation must never send."); } }),
   };
   const observer = createUpgradeObserver(ports);
@@ -83,7 +83,10 @@ test("stop aborts observation without discarding an unknown wallet outcome; only
 });
 
 test("cancel/replacement clears only the unresolved attempt while preserving creation and confirmed facts", async () => {
-  const r = rig(); await r.observer.resume(target, { txHash }); r.settle({ kind: "replaced", reason: "cancelled", hash: next }); await finished(r);
+  const r = rig(); await r.observer.resume(target, { txHash });
+  r.ports.transaction = async (_id, hash) => ({ ok: true, value: hash === next ? { ...transaction, hash: next, to: from, data: "0x", block: 101, blockHash: hash === next ? next : hash } : transaction });
+  r.ports.receipt = async () => ({ ok: true, value: { hash: next, status: "success", block: 101, blockHash: next, logs: [] } });
+  r.settle({ kind: "replaced", reason: "cancelled", hash: next }); await finished(r);
   expect(r.get()).toEqual(original); expect(r.observer.get(target).reason).toContain("replaced"); r.observer.dispose();
 });
 
@@ -123,4 +126,25 @@ test("a historical initializer-only recovery hash is refused before saving or wa
   r.ports.receipt = async () => ({ ok: true, value: { hash: txHash, status: "success", block: 50, blockHash: hash, logs: [] } });
   expect((await r.observer.resume(target, { txHash })).ok).toBe(false);
   expect(r.get()).toEqual(initial); expect(r.watched()).toBe(0); expect(r.observer.get(target).reason).toContain("fresh baseline"); r.observer.dispose();
+});
+
+test("unrelated sender, wrong nonce or unavailable canonical replacement proof preserves pending tracking", async () => {
+  for (const failure of ["sender", "nonce", "receipt"] as const) {
+    const r = rig(); await r.observer.resume(target, { txHash }); const held = structuredClone(r.get());
+    r.ports.transaction = async () => ({ ok: true, value: { ...transaction, hash: next, from: failure === "sender" ? facet : from, nonce: failure === "nonce" ? 8 : 7, to: from, data: "0x", block: 101, blockHash: hash } });
+    r.ports.receipt = async () => failure === "receipt" ? { ok: false, error: "Unavailable" } : { ok: true, value: { hash: next, status: "success", block: 101, blockHash: hash, logs: [] } };
+    r.settle({ kind: "replaced", reason: "cancelled", hash: next }); await finished(r);
+    expect(r.get()).toEqual(held); expect(r.observer.get(target).reason).toContain("sender and nonce"); r.observer.dispose();
+  }
+});
+
+test("a verified same-nonce reprice stays observation-only while an unrelated nonce is refused", async () => {
+  for (const nonce of [7, 8]) {
+    const r = rig(); await r.observer.resume(target, { txHash });
+    r.ports.transaction = async () => ({ ok: true, value: { ...transaction, hash: next, nonce, block: 101, blockHash: hash } });
+    r.options()!.onRepriced(next); await Bun.sleep(1);
+    r.settle({ kind: "receipt", hash: next, status: "success", block: 101 }); await finished(r);
+    expect(r.observer.get(target).reason ?? "verified").toBe(nonce === 7 ? "verified" : "The repriced transaction couldn't be matched to the upgrade's sender, nonce and exact call.");
+    expect(r.get().revision).toBe(nonce === 7 ? 5 : 4); expect(r.observer.get(target).status).toBe(nonce === 7 ? "verified" : "error"); r.observer.dispose();
+  }
 });

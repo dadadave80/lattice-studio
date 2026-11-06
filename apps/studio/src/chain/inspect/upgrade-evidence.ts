@@ -6,14 +6,14 @@ import { UPGRADE_ABI } from "./upgrade-preflight";
 export const SAFE_EXEC_ABI = parseAbi(["function execTransaction(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,bytes signatures) returns(bool)"]);
 const SAFE_FAILURE_ABI = parseAbi(["event ExecutionFailure(bytes32 txHash,uint256 payment)"]);
 
-export type UpgradeObservedTransaction = { hash: Hex; from: Address; to: Address | null; data: Hex; value: bigint; block?: number | null; blockHash?: Hex | null };
+export type UpgradeObservedTransaction = { hash: Hex; from: Address; to: Address | null; data: Hex; value: bigint; nonce: number; block?: number | null; blockHash?: Hex | null };
 export type UpgradeObservedLog = { address: Address; data: Hex; topics: readonly Hex[]; logIndex: number };
 export type UpgradeObservedReceipt = UpgradeReceipt & { blockHash: Hex; logs: readonly UpgradeObservedLog[] };
 
 const hash32 = (value: unknown): value is Hex => typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
 function validTransaction(tx: UpgradeObservedTransaction): boolean {
   return hash32(tx.hash) && isAddress(tx.from) && (tx.to === null || isAddress(tx.to)) && isHexAnyCase(tx.data)
-    && typeof tx.value === "bigint" && tx.value >= 0n && tx.value < 2n ** 256n;
+    && typeof tx.value === "bigint" && tx.value >= 0n && tx.value < 2n ** 256n && Number.isSafeInteger(tx.nonce) && tx.nonce >= 0;
 }
 
 /** Exact direct transaction or single Safe Call envelope. No caller/name/ABI is inferred from a label. */
@@ -30,9 +30,22 @@ export function verifyUpgradeTransaction(record: Deployment, tx: UpgradeObserved
       const decoded = decodeFunctionData({ abi: SAFE_EXEC_ABI, data: tx.data });
       const [to, value, data, operation] = decoded.args;
       if (operation === 0 && sameAddress(to, record.address) && value.toString() === call.value && data.toLowerCase() === call.data.toLowerCase()) return ok("safe");
-    } catch { /* A router can only earn an alternate proof through authenticated execution events. */ }
+    } catch { /* An arbitrary router envelope can't establish the saved caller. */ }
   }
   return err("This transaction doesn't match the saved diamond caller, value and exact calldata.");
+}
+
+/** A canonical same-sender/nonce call consumes the intended transaction's nonce without executing it. */
+export function verifyUpgradeReplacement(record: Deployment, original: UpgradeObservedTransaction, replacement: UpgradeObservedTransaction, receipt: UpgradeObservedReceipt): Result<void, string> {
+  if (!verifyUpgradeTransaction(record, original).ok || !validTransaction(replacement) || original.hash.toLowerCase() === replacement.hash.toLowerCase()
+    || !sameAddress(original.from, replacement.from) || original.nonce !== replacement.nonce) return err("The replacement doesn't prove the intended upgrade's sender and nonce were consumed.");
+  if (!hash32(receipt.hash) || !hash32(receipt.blockHash) || receipt.hash.toLowerCase() !== replacement.hash.toLowerCase()
+    || !Number.isSafeInteger(receipt.block) || !record.pendingUpgrade || receipt.block <= record.pendingUpgrade.baseline.block
+    || (receipt.status !== "success" && receipt.status !== "reverted") || replacement.block !== receipt.block
+    || replacement.blockHash?.toLowerCase() !== receipt.blockHash.toLowerCase()) return err("The replacement needs an available canonical receipt after this upgrade's baseline.");
+  const rebound = { ...record, pendingUpgrade: { ...record.pendingUpgrade, tx: replacement.hash } };
+  if (verifyUpgradeTransaction(rebound, replacement).ok) return err("The replacement still contains the intended upgrade call and may have executed it. Its reservation must remain unresolved.");
+  return ok(undefined);
 }
 
 function matchingCut(log: UpgradeObservedLog, record: Deployment): boolean {

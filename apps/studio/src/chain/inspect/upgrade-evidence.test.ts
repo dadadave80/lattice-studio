@@ -3,7 +3,7 @@ import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, parseAbi, p
 import type { Deployment, Hex, PendingUpgrade } from "@lattice-studio/core";
 import { DIAMOND_CUT_EVENT } from "./history-codec";
 import { UPGRADE_ABI } from "./upgrade-preflight";
-import { SAFE_EXEC_ABI, verifyUpgradeEvidence, verifyUpgradeTransaction, type UpgradeObservedReceipt, type UpgradeObservedTransaction } from "./upgrade-evidence";
+import { SAFE_EXEC_ABI, verifyUpgradeEvidence, verifyUpgradeReplacement, verifyUpgradeTransaction, type UpgradeObservedReceipt, type UpgradeObservedTransaction } from "./upgrade-evidence";
 
 const diamond = "0x0000000000000000000000000000000000000011" as const;
 const safe = "0x0000000000000000000000000000000000000022" as const;
@@ -15,8 +15,8 @@ const pending: PendingUpgrade = { phase: "proposed", reviewId: "review-1", from:
   baseline: { block: 1, blockHash: hash, facets: [], codehashes: { [diamond]: hash } }, expectedFacets: [], expectedCodehashes: { [diamond]: hash }, call: { data, value: "0" } };
 const record: Deployment = { kind: "imported", projectId: "owner", chainId: 11155111, address: diamond, status: "confirmed", recipeHash: hash, catalogHash: hash, at: pending.since, revision: 1, verification: "failed", pendingUpgrade: pending };
 const receipt: UpgradeObservedReceipt = { hash, status: "success", block: 2, blockHash: hash, logs: [] };
-const direct: UpgradeObservedTransaction = { hash, from: safe, to: diamond, data, value: 0n };
-const safeTx: UpgradeObservedTransaction = { hash, from: alice, to: safe, value: 0n, data: encodeFunctionData({ abi: SAFE_EXEC_ABI, functionName: "execTransaction", args: [diamond, 0n, data, 0, 0n, 0n, 0n, diamond, diamond, "0x"] }) };
+const direct: UpgradeObservedTransaction = { hash, from: safe, to: diamond, data, value: 0n, nonce: 7 };
+const safeTx: UpgradeObservedTransaction = { hash, from: alice, to: safe, value: 0n, nonce: 7, data: encodeFunctionData({ abi: SAFE_EXEC_ABI, functionName: "execTransaction", args: [diamond, 0n, data, 0, 0n, 0n, 0n, diamond, diamond, "0x"] }) };
 const cutLog = { address: diamond, topics: encodeEventTopics({ abi: [DIAMOND_CUT_EVENT], eventName: "DiamondCut" }) as Hex[], data: encodeAbiParameters(parseAbiParameters("(address,uint8,bytes4[])[],address,bytes"), [cuts.map((cut) => [cut.facetAddress, cut.action, cut.functionSelectors] as const), diamond, "0x1234"]), logIndex: 0 };
 
 test("direct recovery binds exact hash, caller, destination, value and initializer calldata", () => {
@@ -61,4 +61,21 @@ test("historical or same-block identical initializer-only calls cannot verify a 
     expect(result.ok).toBe(false); if (!result.ok) expect(result.error).toContain("fresh baseline");
   }
   expect(verifyUpgradeEvidence(fresh, { ...direct, data: initOnly }, { ...receipt, block: 101 }).ok).toBe(true);
+});
+
+test("replacement proof binds the authenticated original to a canonical same-sender nonce", () => {
+  const replacement = { ...direct, hash: `0x${"cd".repeat(32)}` as Hex, to: safe, data: "0x" as Hex, block: 2, blockHash: hash };
+  const mined = { ...receipt, hash: replacement.hash };
+  expect(verifyUpgradeReplacement(record, direct, replacement, mined).ok).toBe(true);
+  for (const patch of [{ from: alice }, { nonce: direct.nonce + 1 }, { nonce: -1 }, { block: null }, { blockHash: `0x${"ef".repeat(32)}` as Hex }]) {
+    expect(verifyUpgradeReplacement(record, direct, { ...replacement, ...patch }, mined).ok).toBe(false);
+  }
+  expect(verifyUpgradeReplacement(record, { ...direct, data: "0x" }, replacement, mined).ok).toBe(false);
+});
+
+test("a Safe outer replacement retaining the intended Call cannot be cleared as cancellation", () => {
+  const replacement = { ...safeTx, hash: `0x${"cd".repeat(32)}` as Hex, block: 2, blockHash: hash,
+    data: encodeFunctionData({ abi: SAFE_EXEC_ABI, functionName: "execTransaction", args: [diamond, 0n, data, 0, 99n, 0n, 0n, diamond, diamond, "0x1234"] }) };
+  const proof = verifyUpgradeReplacement(record, safeTx, replacement, { ...receipt, hash: replacement.hash, logs: [cutLog] });
+  expect(proof.ok).toBe(false); if (!proof.ok) expect(proof.error).toContain("may have executed");
 });

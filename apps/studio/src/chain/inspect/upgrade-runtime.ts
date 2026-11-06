@@ -66,6 +66,7 @@ function executionPorts(): UpgradeExecutionPorts {
     clock: { now: () => Date.now(), setTimeout: (run, ms) => globalThis.setTimeout(run, ms), clearTimeout: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>) },
     receiptTimeout: () => settings.get().receiptTimeout,
     async receipt(chainId, hash) { const { loadChainRuntime } = await import("../infra"); return readUpgradeReceipt((await loadChainRuntime()).publicClient(chainId), chainId, hash); },
+    async transaction(chainId, hash) { const { loadChainRuntime } = await import("../infra"); return readUpgradeTransaction((await loadChainRuntime()).publicClient(chainId), chainId, hash); },
   };
 }
 

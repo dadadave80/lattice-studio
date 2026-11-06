@@ -107,6 +107,7 @@ describe.skipIf(!runnable)("upgrade orchestration on local Anvil", () => {
       cut = createUpgradeTransaction(prepared.value, record, { ...ports, chains: [{ id: local.chainId, testnet: true }], chain: async () => chain,
         context: () => ({ key: "upgrade-plan", online: true, readOnly: null }), subscribe: () => () => {}, clock, receiptTimeout: () => 10,
         receipt: (_id, hash) => readUpgradeReceipt(local.client, local.chainId, hash),
+        transaction: (_id, hash) => readUpgradeTransaction(local.client, local.chainId, hash),
         records: { update, now: () => Date.now(), reviewId: () => `anvil-review-${++serial}` },
       });
       await cut.controller.review(cut.intent); expect(cut.controller.get().phase).toBe("ready"); expect(current).toEqual(record); expect(sends).toBe(1);

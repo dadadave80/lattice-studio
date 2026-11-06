@@ -156,6 +156,10 @@ export function createTransactionController(deps: TransactionDeps) {
       try { await deps.onReceipt?.(review, receipt); } catch { hookFailed = true; }
       if (!active(generation)) return;
       if (receipt.kind === "replaced") {
+        if (hookFailed) {
+          publish({ ...state, phase: "stale", error: "A replacement was reported, but its tracking couldn't be verified. Keep the original hash and resume observation." });
+          return;
+        }
         publish({ ...state, phase: "cancelled", hash: receipt.hash, error: receipt.reason === "cancelled" ? "The transaction was canceled in the wallet." : "Another transaction replaced this call." });
         return;
       }

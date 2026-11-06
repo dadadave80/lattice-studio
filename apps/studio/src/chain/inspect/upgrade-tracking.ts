@@ -2,7 +2,7 @@ import { canonicalJson, err, ok, sameAddress, settleUpgradeRecord, type Address,
 import { validateDeployment } from "@lattice-studio/core/schema";
 import type { DeployChainPort } from "../deploy/ports";
 import type { InspectionTarget } from "./engine";
-import { verifyUpgradeEvidence, verifyUpgradeTransaction, type UpgradeObservedReceipt, type UpgradeObservedTransaction } from "./upgrade-evidence";
+import { verifyUpgradeEvidence, verifyUpgradeReplacement, verifyUpgradeTransaction, type UpgradeObservedReceipt, type UpgradeObservedTransaction } from "./upgrade-evidence";
 import { upgradeBaseline, type UpgradePreflightPorts } from "./upgrade-preflight";
 import type { UpgradeRecordPorts } from "./upgrade-records";
 
@@ -50,20 +50,33 @@ export function createUpgradeObserver(ports: UpgradeTrackingPorts) {
   });
   const follow = async (target: InspectionTarget, captured: Deployment, first: UpgradeObservedTransaction, controller: AbortController) => {
     let hash = first.hash;
+    let tracked = first;
     try {
       const chain = await ports.chain();
       let writes = Promise.resolve<Result<Deployment, string>>(ok(captured));
       const outcome = await chain.watch(target.chainId, hash, { from: first.from, signal: controller.signal, onRepriced(next) {
         if (controller.signal.aborted) return;
         const previous = hash; hash = next;
-        writes = writes.then((prior) => !prior.ok || controller.signal.aborted ? prior : bound(target, captured, (current) => current.pendingUpgrade?.tx?.toLowerCase() === previous.toLowerCase()
-          ? ok({ ...current, pendingUpgrade: { ...current.pendingUpgrade, tx: next, phase: "pending" } }) : err("The tracked upgrade hash changed in another tab.")));
+        writes = writes.then(async (prior) => {
+          if (!prior.ok || controller.signal.aborted) return prior;
+          const repriced = await ports.transaction(target.chainId, next);
+          const proof = { ...captured, pendingUpgrade: { ...captured.pendingUpgrade!, tx: next } };
+          if (!repriced.ok || !verifyUpgradeTransaction(proof, repriced.value).ok || !sameAddress(repriced.value.from, tracked.from) || repriced.value.nonce !== tracked.nonce) return err("The repriced transaction couldn't be matched to the upgrade's sender, nonce and exact call.");
+          tracked = repriced.value;
+          return bound(target, captured, (current) => current.pendingUpgrade?.tx?.toLowerCase() === previous.toLowerCase()
+            ? ok({ ...current, pendingUpgrade: { ...current.pendingUpgrade, tx: next, phase: "pending" } }) : err("The tracked upgrade hash changed in another tab."));
+        });
         publish(target, { status: "watching", hash: next });
       } });
       const saved = await writes;
       if (controller.signal.aborted || outcome.kind === "aborted") return;
       if (!saved.ok) throw new UpgradeObservationError(saved.error);
       if (outcome.kind === "replaced") {
+        const [replacement, canonical] = await Promise.all([ports.transaction(target.chainId, outcome.hash), ports.receipt(target.chainId, outcome.hash)]);
+        const proof = { ...captured, pendingUpgrade: { ...captured.pendingUpgrade!, tx: hash } };
+        if (!replacement.ok || !canonical.ok) throw new UpgradeObservationError("The replacement's canonical sender and nonce couldn't be proved. The unresolved upgrade is still saved.");
+        const verified = verifyUpgradeReplacement(proof, tracked, replacement.value, canonical.value);
+        if (!verified.ok) throw new UpgradeObservationError(verified.error);
         const cleared = await bound(target, captured, (current) => {
           if (current.pendingUpgrade?.tx?.toLowerCase() !== hash.toLowerCase()) return err("The upgrade hash changed before its replacement was recorded.");
           const { pendingUpgrade: _pending, ...confirmed } = current; return ok(confirmed);

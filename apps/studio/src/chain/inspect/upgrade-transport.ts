@@ -14,8 +14,9 @@ export async function readUpgradeTransaction(client: ChainClient, chainId: numbe
     const block = tx.blockNumber === null ? null : Number(tx.blockNumber);
     if (await getChainId(client) !== chainId || tx.hash.toLowerCase() !== hash.toLowerCase() || !isAddress(tx.from)
       || (tx.to !== null && !isAddress(tx.to)) || !isHexAnyCase(tx.input) || typeof tx.value !== "bigint" || tx.value < 0n || tx.value >= 2n ** 256n
+      || !Number.isSafeInteger(tx.nonce) || tx.nonce < 0
       || (block !== null && (!Number.isSafeInteger(block) || block < 0 || !hash32(tx.blockHash))) || (block === null && tx.blockHash !== null)) return err("The RPC returned a malformed upgrade transaction.");
-    return ok({ hash: tx.hash, from: tx.from, to: tx.to, data: tx.input, value: tx.value, block, blockHash: tx.blockHash });
+    return ok({ hash: tx.hash, from: tx.from, to: tx.to, data: tx.input, value: tx.value, nonce: tx.nonce, block, blockHash: tx.blockHash });
   } catch { return err("The RPC couldn't read this upgrade transaction. Check its hash and network, then retry observation."); }
 }
 

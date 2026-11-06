@@ -68,6 +68,17 @@ export function createUpgradeRecordTracker(input: UpgradeRecordIntent, original:
         return ok(confirmed);
       }));
     },
+    refreshBaseline(review: TransactionReview, snapshot: DiamondSnapshot): Promise<Result<Deployment, string>> {
+      const id = attempts.get(review);
+      const baseline = checkUpgradeBaseline(intent.origin, snapshot);
+      if (!baseline.ok) return Promise.resolve(baseline);
+      return atTarget((current) => {
+        const own = current.pendingUpgrade;
+        if (!id || own?.reviewId !== id || own.phase !== "signing" || own.tx !== undefined) return err("The upgrade reservation changed before the wallet request.");
+        if (baseline.value.block < own.baseline.block) return err("The final upgrade preflight moved behind its reserved baseline.");
+        return ok({ ...current, pendingUpgrade: { ...own, baseline: baseline.value } });
+      });
+    },
     async sent(review: TransactionReview, hash: Hex): Promise<void> {
       const id = attempts.get(review);
       if (!id) throw new Error("The upgrade's wallet reservation is unavailable. Keep its transaction hash.");
