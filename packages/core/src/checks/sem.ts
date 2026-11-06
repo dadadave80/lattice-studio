@@ -35,7 +35,7 @@ export const checkSem: Check = ({ recipe, catalog, routing }) => {
     const owner = view.owners.get(selector);
     if (owner === undefined || seam.anyOf.includes(owner) || !contenders.includes(owner)) continue;
     // One Route fix, to the facet the seam routes to: the first placed facet in `anyOf` (spec L302).
-    const to = routing[selector]?.owner ?? allowed[0] ?? "";
+    const to = recipe.mode === "upgrade" ? allowed[0] ?? "" : routing[selector]?.owner ?? allowed[0] ?? "";
     out.push(
       problem(
         "SEM-01",

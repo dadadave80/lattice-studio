@@ -1,5 +1,6 @@
 import type { Deployment, Hex } from "@lattice-studio/core";
 import { formatAddress, formatTime } from "@lattice-studio/core";
+import { lazy, Suspense } from "react";
 import { forgeVerifyCommand } from "@/chain/verify/copy";
 import { useEtherscanOutcome } from "@/chain/verify/etherscan-outcomes";
 import { useEtherscanInFlight } from "@/chain/verify/in-flight";
@@ -13,6 +14,8 @@ import { shortHash } from "@/app/format";
 import { etherscanFailureReason, etherscanOffer, etherscanWord, statusWord, verificationFailureReason, verificationWord } from "./diamond-words";
 import type { RecordCheck } from "./use-record-checks";
 import styles from "./diamond.module.css";
+
+const UpgradeRecovery = lazy(() => import("@/chain/inspect/upgrade/UpgradeRecovery").then((module) => ({ default: module.UpgradeRecovery })));
 
 export type DeploymentRecordProps = {
   record: Deployment;
@@ -126,12 +129,13 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, cha
             Compare with the sheet…
           </CommandButton>
         ) : null}
-        {record.status === "proposed" ? (
+        {record.status === "proposed" && !record.pendingUpgrade ? (
           <CommandButton command={commandRef("deploy.discardProposal")} size="small">
             Discard proposal
           </CommandButton>
         ) : null}
       </div>
+      {record.pendingUpgrade ? <Suspense fallback={<p className={sheet.muted}>Loading saved upgrade…</p>}><UpgradeRecovery record={record} online={online} /></Suspense> : null}
     </li>
   );
 }

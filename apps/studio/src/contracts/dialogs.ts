@@ -11,7 +11,7 @@ import type { ComponentType } from "react";
 export const DIALOG_IDS = [
   "deploy-review", "missing-contracts", "choose-mechanism", "choose-per-selector", "remove-facets", "migrate",
   "share", "safe-batch", "save-copy", "open-diamond", "settings", "delete-for-good", "clear-data",
-  "keyboard-shortcuts", "projects", "about", "browse-recipes", "inspect-transaction",
+  "keyboard-shortcuts", "projects", "about", "browse-recipes", "inspect-transaction", "upgrade-plan-review",
 ] as const;
 
 export type DialogId = (typeof DIALOG_IDS)[number];
@@ -21,7 +21,6 @@ export type SettingsGroup = "appearance" | "canvas" | "keyboard" | "networks" | 
 
 /** Each dialog's props. Optional fields default as each owner documents. */
 export type DialogPropsMap = {
-  "inspect-transaction": Record<string, never>;
   /** S8b · Deploy review (Deploy…, ⌘Enter). `at: "progress"` reopens at the deploy's progress (deploy.showProgress, IR L207). */
   "deploy-review": { at?: "review" | "progress"; chainId?: number };
   /** S8c · Deploy missing contracts… (opens from the review's Network section when NET-03 fires). */
@@ -42,6 +41,9 @@ export type DialogPropsMap = {
   "save-copy": { filename?: string };
   /** v2 · Open diamond (App menu). */
   "open-diamond": { address?: Address; target?: string; chainId?: number };
+  /** An independent on-chain call or upgrade review; no fresh-deployment state. */
+  "inspect-transaction": Record<string, never>;
+  "upgrade-plan-review": Record<string, never>;
   /** S10 · Settings. */
   "settings": { group?: SettingsGroup };
   /** S7b · Delete for good (Recently deleted). */

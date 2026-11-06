@@ -9,7 +9,8 @@
  */
 import type { CommandRef, Problem } from "@lattice-studio/core";
 import { isAddress, isCoreOnly } from "@lattice-studio/core";
-import { command, defineCommands, env, type CommandArgsOf, type CommandContext, type Enablement } from "@/contracts";
+import { command, commandRef, defineCommands, doc, env, runCommand, type CommandArgsOf, type CommandContext, type Enablement } from "@/contracts";
+import { upgradeEnablement } from "@/chain/inspect/upgrade/commands";
 import { chainFromText, chainName, findChain, pickerChains } from "@/chain/infra/chains";
 import { CHOOSE_A_CHAIN, unsupportedChain } from "@/chain/infra/copy";
 import { prediction } from "@/state";
@@ -74,7 +75,7 @@ function readOnly(ctx: CommandContext): Enablement | null {
 
 const open = command<CommandArgsOf<"deploy.open">>({
   id: "deploy.open",
-  title: () => "Deploy…",
+  title: () => doc.get().recipe.mode === "upgrade" ? "Upgrade…" : "Deploy…",
   category: "Deploy",
   keys: ["Mod+Enter"],
   // Everywhere except text fields and dialogs (IR L13): the focused Log and the menu context too. On an item of
@@ -92,6 +93,10 @@ const open = command<CommandArgsOf<"deploy.open">>({
     },
   },
   enabled(ctx, args) {
+    if (ctx.project.recipe.mode === "upgrade") {
+      if (args.chainId !== undefined && args.chainId !== ctx.project.upgrade?.chainId) return no("Upgrade uses the stored target's chain.");
+      return upgradeEnablement(ctx);
+    }
     const block = openBlock(ctx);
     if (block) return no(block);
     // Spec L389: read-only disables Deploy with the same reason.
@@ -111,15 +116,19 @@ const open = command<CommandArgsOf<"deploy.open">>({
     }
     return OK;
   },
-  run: async (ctx, args) => (await runs()).runOpen(ctx, typeof args.chainId === "number" ? args.chainId : undefined),
+  run: async (ctx, args) => {
+    if (ctx.project.recipe.mode === "upgrade") { await runCommand(commandRef("deploy.upgrade"), ctx.source); return; }
+    await (await runs()).runOpen(ctx, typeof args.chainId === "number" ? args.chainId : undefined);
+  },
 });
 
 const again = command({
   id: "deploy.again",
-  title: () => "Deploy again…",
+  title: () => doc.get().recipe.mode === "upgrade" ? "Upgrade…" : "Deploy again…",
   category: "Deploy",
   palette: true,
   enabled(ctx) {
+    if (ctx.project.recipe.mode === "upgrade") return upgradeEnablement(ctx);
     const block = openBlock(ctx);
     if (block) return no(block);
     if (ctx.deploy.phase === "proposed") return no(WAITING_FOR_SAFE);
@@ -132,7 +141,10 @@ const again = command({
     if (count > 0) return no(resolveBlockers(ctx, count), { id: "problem.next" });
     return readOnly(ctx) ?? OK;
   },
-  run: async (ctx) => (await runs()).runAgain(ctx),
+  run: async (ctx) => {
+    if (ctx.project.recipe.mode === "upgrade") { await runCommand(commandRef("deploy.upgrade"), ctx.source); return; }
+    await (await runs()).runAgain(ctx);
+  },
 });
 
 const newSalt = command({

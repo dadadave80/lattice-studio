@@ -42,7 +42,7 @@ export function FacetSheet({ facet, catalog, readOnly }: FacetSheetProps) {
       <RequiresSection facet={facet} readOnly={readOnly} />
       <SeamsSection facet={facet} catalog={catalog} />
       <InitSection spec={facet.init} placement={placement} catalog={catalog} readOnly={readOnly} />
-      <ReleaseSection facet={facet} chainStatus={!readOnly} />
+      <ReleaseSection facet={facet} chainStatus={!readOnly && !(recipe.mode === "upgrade" && recipe.facetInstances?.[facet.name])} />
     </>
   );
 }

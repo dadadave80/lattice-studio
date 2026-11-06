@@ -1,8 +1,9 @@
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import type { Hex4, Route } from "@lattice-studio/core";
 import { contestedSelectors, coreStatus, isCoreOnly, mechanismOptions } from "@lattice-studio/core";
 import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { layoutMetrics, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
+import { layoutMetrics, useAnalysis, useDocument, useSession } from "@/contracts";
 import { useLayoutTier } from "@/shell/layout-tier";
 import { visibleRows } from "@/sheet/card/card-model";
 import { CoreCell, type Pad, type PadTone } from "./CoreCell";
@@ -48,7 +49,7 @@ function CoreLayerBody() {
   const compact = useStore((s) => s.transform[2] < layoutMetrics.compactZoom);
   const recipe = useDocument((s) => s.project.recipe);
   const shape = useDocument((s) => shapeKey(s.project.layout));
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const analysis = useAnalysis();
   const selection = useSession((s) => s.selection);
   const selected = useSession((s) => s.coreSelected);
@@ -125,10 +126,11 @@ function CoreLayerBody() {
     <>
       <CoreTraces traces={traces} pads={pads} />
       <CoreCell
+        upgrade={recipe.mode === "upgrade"}
         status={status}
         mode={mode}
         selected={selected}
-        empty={isCoreOnly(recipe)}
+        empty={recipe.mode !== "upgrade" && isCoreOnly(recipe)}
         hot={hot}
         onHot={setHot}
         tones={{ fallback: toneAt("fallback"), cut: toneAt("cut") }}

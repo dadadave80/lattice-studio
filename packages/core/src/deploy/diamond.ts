@@ -128,6 +128,7 @@ function checkInit(init: DiamondDeployArgs["init"]): Result<null, string> {
  * export), a bad init, and on the CreateX path missing or wrong `Lattice` creation code.
  */
 export const buildDiamondDeploy: BuildDiamondDeployFn = (args) => {
+  if (args.recipe.mode === "upgrade") return err("This is an upgrade plan for an existing diamond. Review its upgrade instead of deploying a new diamond.");
   const { catalog, plan, init, path, from, salt, chainId } = args;
   const saltCheck = assertSaltSender(salt, from);
   if (!saltCheck.ok) return saltCheck;

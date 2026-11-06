@@ -19,6 +19,7 @@ export type Pad = "fallback" | "cut";
 export type PadTone = "soft" | "live" | null;
 
 export type CoreCellProps = {
+  upgrade?: boolean;
   status: CoreStatus;
   /** The upgrade mechanism's label ("Admin role", "Safe"), for the cut row; undefined without one. */
   mode: string | undefined;
@@ -83,7 +84,7 @@ function samePads(a: Pads | null, b: Pads | null): boolean {
  * and a click, Enter or Space on any of them runs `core.select`. The FALLBACK and CUT pads are where traces end.
  * The chevron folds it to one line (`session.panes.core.collapsed`).
  */
-export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onPads }: CoreCellProps) {
+export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onPads, upgrade = false }: CoreCellProps) {
   const root = useStore((s) => s.domNode);
   const sheetWidth = useStore((s) => s.width);
   const insets = useSheetInsets();
@@ -211,6 +212,7 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
         {...CORE_KEYS}
       >
         <CellRows
+          upgrade={upgrade}
           status={status}
           mode={mode}
           selected={selected}
@@ -226,6 +228,7 @@ export function CoreCell({ status, mode, selected, empty, hot, onHot, tones, onP
 }
 
 type CellRowsProps = {
+  upgrade: boolean;
   status: CoreStatus;
   mode: string | undefined;
   selected: boolean;
@@ -237,7 +240,7 @@ type CellRowsProps = {
 };
 
 /** The cell's rows, an APG toolbar: re-rendered only when what they say changes, never for a pad's tone. */
-const CellRows = memo(function CellRows({ status, mode, selected, collapsed, empty, onHot, fallbackPad, cutPad }: CellRowsProps) {
+const CellRows = memo(function CellRows({ status, mode, selected, collapsed, empty, onHot, fallbackPad, cutPad, upgrade }: CellRowsProps) {
   // Folding swaps the chevron for another button on another line: when the chevron had focus, the new one takes it.
   const refocus = useRef(false);
   const toggle = () => {
@@ -261,15 +264,15 @@ const CellRows = memo(function CellRows({ status, mode, selected, collapsed, emp
   });
   return (
     <Toolbar
-      label={CELL_LABEL}
+      label={upgrade ? "Upgrade target" : CELL_LABEL}
       orientation={collapsed ? "horizontal" : "vertical"}
       className={styles.rows}
       describedBy={empty && !collapsed ? HINT_ID : undefined}
     >
       <div className={cx(styles.line, styles.header)}>
-        <BaseToolbar.Button className={styles.row} aria-label={diamondName()} aria-pressed={selected} onClick={select}>
-          <span className={styles.key}>{CORE}</span>
-          {collapsed ? null : <> <span className={styles.tagline}>{CORE_TAGLINE}</span></>}
+        <BaseToolbar.Button className={styles.row} aria-label={upgrade ? "Diamond Stored target" : diamondName()} aria-pressed={selected} onClick={select}>
+          <span className={styles.key}>{upgrade ? "Diamond" : CORE}</span>
+          {collapsed ? null : <> <span className={styles.tagline}>{upgrade ? "Stored target" : CORE_TAGLINE}</span></>}
         </BaseToolbar.Button>
         {collapsed ? null : (
           <ToolbarButton icon="chevron-down" label={COLLAPSE_CELL} aria-expanded className={styles.chevron} onClick={toggle} />
@@ -300,15 +303,15 @@ const CellRows = memo(function CellRows({ status, mode, selected, collapsed, emp
       </div>
       <div className={styles.line}>
         <BaseToolbar.Button
-          className={cx(styles.row, cut.state === "conflict" && styles.conflict)}
-          aria-label={cutName(status, mode)}
-          data-cut={cut.state}
+          className={cx(styles.row, !upgrade && cut.state === "conflict" && styles.conflict)}
+          aria-label={upgrade ? "Cut Checked during upgrade review" : cutName(status, mode)}
+          data-cut={upgrade ? "review" : cut.state}
           onClick={select}
           {...padProps("cut")}
         >
           <span className={styles.key}>{CUT}</span>
-          {collapsed ? null : <> <span className={cx(styles.value, cut.state === "empty" && styles.empty)}>{cut.text}</span></>}
-          <span ref={cutPad} className={styles.pad} data-pad="cut" data-on={cut.state === "empty" ? undefined : ""} />
+          {collapsed ? null : <> <span className={cx(styles.value, !upgrade && cut.state === "empty" && styles.empty)}>{upgrade ? "Checked during review" : cut.text}</span></>}
+          <span ref={cutPad} className={styles.pad} data-pad="cut" data-on={upgrade || cut.state === "empty" ? undefined : ""} />
         </BaseToolbar.Button>
         {collapsed ? (
           <ToolbarButton icon="chevron-up" label={EXPAND_CELL} aria-expanded={false} className={styles.chevron} onClick={toggle} />

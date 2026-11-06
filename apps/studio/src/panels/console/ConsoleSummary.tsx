@@ -20,7 +20,7 @@ function counts(problems: readonly { severity: string }[]): string {
 /** The header's summary and its square (spec L376-L389, the Console summary column). */
 export function ConsoleSummary() {
   // Cards only: the core's facets are in every recipe, so they never make the sheet "not empty".
-  const facets = useDocument((s) => s.project.recipe.facets.filter((name) => !isCoreFacet(name)).length);
+  const facets = useDocument((s) => s.project.recipe.facets.filter((name) => s.project.recipe.mode === "upgrade" || !isCoreFacet(name)).length);
   const tally = useAnalysis((a) => counts(a.problems));
   const recipeHash = useAnalysis((a) => a.recipeHash);
   const online = useOnline();

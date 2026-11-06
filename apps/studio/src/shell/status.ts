@@ -58,7 +58,7 @@ const NOT_DEPLOYED: ProjectStatus = {
 /** The open project's status on the selected chain (C5a), re-rendering when records, chain or recipe change. */
 export function useProjectStatus(): { status: ProjectStatus; chainName: (chainId: number) => string } {
   const project = useDocument((s) => s.project);
-  const records = useDeployments(project.id);
+  const records = useDeployments(project.id, project.upgrade);
   const chainId = useSession((s) => s.chainId);
   const recipeHash = useAnalysis((a) => a.recipeHash);
   return useMemo(() => {

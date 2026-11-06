@@ -1,6 +1,7 @@
 import type { Anchor } from "@lattice-studio/core";
 import { formatSelector } from "@lattice-studio/core";
-import { commandRef } from "@/contracts";
+import { commandRef, useDocument } from "@/contracts";
+import { facetDisplayName } from "@/chain/inspect/upgrade/catalog";
 import { CommandButton, VisuallyHidden } from "@/ui";
 import sheet from "../../shared/sheet.module.css";
 import type { SignatureOf } from "../comparison/comparison-text";
@@ -17,6 +18,7 @@ export type AnchorItemProps = {
 
 /** One place a problem points at, in words, with a way to get there: Locate on the sheet, Fill in a field. */
 export function AnchorItem({ anchor, signatureOf, chainName }: AnchorItemProps) {
+  const label = useDocument((state) => "facet" in anchor && anchor.facet ? facetDisplayName(state.project.recipe, anchor.facet) : "");
   switch (anchor.kind) {
     case "diamond":
       return (
@@ -27,9 +29,9 @@ export function AnchorItem({ anchor, signatureOf, chainName }: AnchorItemProps) 
     case "facet":
       return (
         <li className={styles.anchor}>
-          <span className={`${sheet.text} ${sheet.strong}`}>{anchor.facet}</span>
+          <span className={`${sheet.text} ${sheet.strong}`}>{label}</span>
           <CommandButton size="small" icon="locate" command={commandRef("sheet.locate", { facet: anchor.facet })}>
-            Locate<VisuallyHidden> {anchor.facet}</VisuallyHidden>
+            Locate<VisuallyHidden> {label}</VisuallyHidden>
           </CommandButton>
         </li>
       );
@@ -43,7 +45,7 @@ export function AnchorItem({ anchor, signatureOf, chainName }: AnchorItemProps) 
             {anchor.facet === undefined ? null : (
               <>
                 {" on "}
-                <span className={sheet.strong}>{anchor.facet}</span>
+                <span className={sheet.strong}>{label}</span>
               </>
             )}
           </span>
@@ -53,7 +55,7 @@ export function AnchorItem({ anchor, signatureOf, chainName }: AnchorItemProps) 
               icon="locate"
               command={commandRef("sheet.locate", { facet: anchor.facet, selector: anchor.selector })}
             >
-              Locate<VisuallyHidden> {anchor.facet}</VisuallyHidden>
+              Locate<VisuallyHidden> {label}</VisuallyHidden>
             </CommandButton>
           )}
         </li>

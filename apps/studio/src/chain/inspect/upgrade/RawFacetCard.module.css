@@ -1,0 +1,11 @@
+.rows {
+  padding-block: var(--lx-grid);
+}
+
+.selector {
+  box-sizing: border-box;
+  height: var(--lx-row-height);
+  padding-inline: var(--lx-space-3);
+  font: var(--lx-font-code-sm);
+  color: var(--lx-text);
+}

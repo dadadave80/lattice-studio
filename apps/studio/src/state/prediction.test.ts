@@ -54,6 +54,20 @@ describe("usePrediction's mirror", () => {
     kit.dispose();
   });
 
+  test("an upgrade never predicts or records a new factory deployment", async () => {
+    const hash = `0x${"ab".repeat(32)}` as const;
+    doc.load(makeProject({
+      recipe: makeRecipe({ mode: "upgrade" }, kit.catalog),
+      upgrade: { chainId: SEPOLIA, address: ACCOUNT, block: 1, blockHash: hash, facets: [], codehashes: { [ACCOUNT.toLowerCase()]: hash }, owner: null },
+    }));
+    session.set({ chainId: SEPOLIA });
+    await flush();
+    expect(kit.state.prediction.get().status).toBe("none");
+    expect(doc.get().predicted).toEqual([]);
+    expect(kit.state.analysis.context().deploy).toBeUndefined();
+    expect(kit.state.analysis.context().refs?.self).toBe(ACCOUNT);
+  });
+
   test("records a new prediction once, through doc.record, with no undo step", async () => {
     expect(kit.state.prediction.get()).toMatchObject({ status: "none", reason: NEEDS_WALLET });
     session.set({ chainId: SEPOLIA });

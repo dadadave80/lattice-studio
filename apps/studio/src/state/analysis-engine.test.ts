@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Analysis, Hex, LineDraft, NarrateCause, Project } from "@lattice-studio/core";
-import { analyze, NotImplemented, placeFacet, recipeHash } from "@lattice-studio/core";
+import { analyze, analyzeUpgrade, NotImplemented, placeFacet, recipeHash } from "@lattice-studio/core";
 import { makeProject, makeRecipe } from "@lattice-studio/core/testing";
 import { doc, getAnalysis, session, setCatalogStatus, subscribeAnalysis } from "@/contracts";
 import { loadAnalyzer, loadedAnalyzer } from "./analyzer";
@@ -21,6 +21,38 @@ function kitCatalog() {
 }
 
 describe("memoized analysis", () => {
+  test("a new upgrade origin invalidates analysis even with an unchanged recipe and context", () => {
+    const catalog = fixtureCatalog();
+    const address = "0x0000000000000000000000000000000000000011";
+    const hash = `0x${"ab".repeat(32)}` as const;
+    let calls = 0;
+    kit = setupKit({ project: makeProject({ recipe: makeRecipe({ mode: "upgrade", facets: [] }, catalog),
+      upgrade: { chainId: 11155111, address, block: 1, blockHash: hash, facets: [], codehashes: { [address]: hash }, owner: null } }),
+      analyzeUpgrade: (...args) => { calls++; return analyzeUpgrade(...args); } });
+    const first = getAnalysis();
+    const before = calls;
+    doc.apply("Reimport origin", (project) => ({ project: { ...project, upgrade: { ...project.upgrade!, block: 2 } }, changed: true, summary: "Reimported origin" }));
+    expect(getAnalysis()).not.toBe(first);
+    expect(calls).toBeGreaterThan(before);
+  });
+
+  test("an upgrade is analyzed against its pinned origin without fresh-deployment repairs", async () => {
+    const catalog = fixtureCatalog();
+    const address = "0x0000000000000000000000000000000000000033";
+    const facet = "0x0000000000000000000000000000000000000011";
+    const hash = `0x${"ab".repeat(32)}` as const;
+    const id = `onchain:${facet}`;
+    const recipe = makeRecipe({ mode: "upgrade", facets: [id], owners: { "0x12345678": id },
+      facetInstances: { [id]: { kind: "foreign", address: facet, codehash: hash, selectors: ["0x12345678"] } } }, catalog);
+    kit = setupKit({ project: makeProject({ recipe, upgrade: { chainId: 11155111, address, block: 1, blockHash: hash,
+      facets: [{ facetAddress: facet, functionSelectors: ["0x12345678"] }], codehashes: { [address]: hash, [facet]: hash }, owner: null } }) });
+    await settle();
+    const analysis = getAnalysis();
+    expect(analysis.plan[0]?.address).toBe(facet);
+    expect(analysis.problems.filter((problem) => problem.code.startsWith("CORE-")).every((problem) => problem.severity === "info")).toBe(true);
+    expect(kit.state.analysis.context().refs?.self).toBe(address);
+    expect(kit.state.analysis.context().deploy).toBeUndefined();
+  });
   test("the same object until the recipe, catalog or context changes", () => {
     kit = setupKit();
     doc.apply("Placed ERC20", place("ERC20"));

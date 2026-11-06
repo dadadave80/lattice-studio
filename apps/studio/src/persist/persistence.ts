@@ -8,7 +8,8 @@
  * per test and two to play two tabs. Nothing opens until first used.
  */
 import {
-  exportProjectFile, newEntropy, type Address, type Deployment, type ExportFile, type Project, type Recipe, type Result,
+  exportProjectFile, newEntropy, recipeHash, toChecksum, validateProject,
+  type Address, type Deployment, type ExportFile, type Project, type Recipe, type Result,
 } from "@lattice-studio/core";
 import { openDB } from "idb";
 import {
@@ -76,6 +77,8 @@ export type StorageInfo = { usage: number | null; quota: number | null; persiste
 
 /** Deployment records, with the delete the contracts leave optional (Discard proposal, spec L580). */
 export type PersistedDeployments = DeploymentsService & {
+  getDeployment(chainId: number, address: Address): Promise<Deployment | null>;
+  updateDeployment(chainId: number, address: Address, update: (current: Deployment | null) => Result<Deployment, string>): Promise<Result<Deployment, string>>;
   /** Removes the record stored under `[chainId, address]` (any case) and tells subscribers; none there: nothing. */
   deleteDeployment(chainId: number, address: Address): Promise<void>;
 };
@@ -720,6 +723,15 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
   }
 
   const deployments: PersistedDeployments = {
+    async updateDeployment(chainId, address, update) {
+      if (updated || closed) return { ok: false, error: "Reload Studio before updating its deployment records. Keep the transaction hash." };
+      const result = await records.updateDeployment(await db(), chainId, address, update);
+      if (result.ok) emitDeployments(result.value.projectId);
+      return result;
+    },
+    async getDeployment(chainId, address) {
+      return (await (await db()).get("deployments", [chainId, toChecksum(address)])) ?? null;
+    },
     async listDeployments(projectId) {
       return records.listDeployments(await db(), projectId);
     },
@@ -787,6 +799,7 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       deploy: { path: settings.get().defaultPath, entropy: newEntropy(randomBytes), scope: "every-chain" },
       provenance: opts?.provenance ?? {},
       predicted: [],
+      ...(opts?.upgrade === undefined ? {} : { upgrade: opts.upgrade }),
     };
   }
 
@@ -812,7 +825,20 @@ export function createPersistence(options: PersistenceOptions = {}): Persistence
       try {
         await flushUntilClean();
         const project = newProject(recipe, name, opts);
-        await open(project, true);
+        const valid = validateProject(project);
+        if (!valid.ok) return { ok: false, error: valid.error.map((issue) => `${issue.path} ${issue.message}`).join(" ") };
+        if (project.upgrade !== undefined) {
+          const origin = project.upgrade;
+          const observed: Deployment = {
+            kind: "imported", projectId: project.id, chainId: origin.chainId, address: origin.address,
+            status: "confirmed", block: origin.block, recipeHash: recipeHash(project.recipe), catalogHash: project.recipe.catalog.hash,
+            at: new Date(now()).toISOString(), verification: "failed",
+            verificationReason: "The imported diamond's creation build is unknown.", revision: 1,
+          };
+          const counts = await records.storeImport(await db(), project, [observed], now());
+          if (counts.added > 0) emitDeployments(project.id);
+          await open(project, false);
+        } else await open(project, true);
         emitProjects();
         return { ok: true, value: project };
       } catch (error) {

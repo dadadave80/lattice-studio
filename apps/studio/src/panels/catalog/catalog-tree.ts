@@ -73,7 +73,7 @@ export type CatalogTreeResult = {
  * facets (DiamondLoupeFacet, ERC165Facet) are in every diamond already, so their rows are disabled with the
  * reason: focusable and readable, never placed, dragged or selected.
  */
-export function buildCatalogNodes(catalog: Catalog, query: string, include?: (facet: Facet) => boolean): CatalogTreeResult {
+export function buildCatalogNodes(catalog: Catalog, query: string, include?: (facet: Facet) => boolean, fixedCore = true): CatalogTreeResult {
   const byArea = new Map<Area, Facet[]>();
   let matchCount = 0;
   for (const facet of catalog.facets) {
@@ -90,7 +90,7 @@ export function buildCatalogNodes(catalog: Catalog, query: string, include?: (fa
     label: AREA_LABELS[area],
     children: [...(byArea.get(area) ?? [])]
       .sort((a, b) => a.name.localeCompare(b.name, "en"))
-      .map((facet) => (isCoreFacet(facet.name) ? { id: facet.name, label: facet.name, disabledReason: CORE_FACET_REASON } : { id: facet.name, label: facet.name })),
+      .map((facet) => (fixedCore && isCoreFacet(facet.name) ? { id: facet.name, label: facet.name, disabledReason: CORE_FACET_REASON } : { id: facet.name, label: facet.name })),
   }));
   return { nodes, matchCount, matchedAreaIds: areas.map(areaNodeId) };
 }

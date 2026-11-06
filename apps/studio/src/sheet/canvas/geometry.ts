@@ -2,9 +2,10 @@
  * Card rectangles for Fit, Locate and auto-pan, from token-computed sizes (C9's `cardSize`), never measured
  * ones, so where the view goes never depends on what the view currently shows (spec L824).
  */
-import type { Analysis, Catalog, Layout, Rect, Sizes } from "@lattice-studio/core";
+import type { Analysis, Catalog, Layout, Recipe, Rect, Sizes } from "@lattice-studio/core";
 import { cardSize, contestedSelectors, contentBounds, isNotImplemented } from "@lattice-studio/core";
 import { layoutMetrics } from "@/contracts";
+import { rawCardSize } from "@/chain/inspect/upgrade/raw-card";
 
 /** A card's size before the catalog knows it: the header and footer alone. */
 export function fallbackCardSize(): { width: number; height: number } {
@@ -12,11 +13,13 @@ export function fallbackCardSize(): { width: number; height: number } {
 }
 
 /** Every placed card's full-size dimensions (expanded flag, pins and contested rows included). */
-export function cardSizes(layout: Layout, catalog: Catalog | null, analysis: Analysis): Sizes {
+export function cardSizes(layout: Layout, catalog: Catalog | null, analysis: Analysis, recipe?: Recipe): Sizes {
   const sizes: Sizes = {};
   let contested: ((name: string) => ReturnType<typeof contestedSelectors>) | null = null;
   for (const name of Object.keys(layout)) {
     const entry = layout[name];
+    const instance = recipe?.mode === "upgrade" ? recipe.facetInstances?.[name] : undefined;
+    if (entry && instance && instance.kind !== "known") { sizes[name] = rawCardSize(instance, entry.expanded === true, layoutMetrics); continue; }
     const facet = catalog?.facets.find((f) => f.name === name);
     if (!entry || !facet) {
       sizes[name] = fallbackCardSize();

@@ -254,3 +254,31 @@ describe("tidy performance", () => {
     expect(runs[3] ?? Number.POSITIVE_INFINITY).toBeLessThan(10);
   });
 });
+
+test("tidy spaces raw and known on-chain cards using their rendered sizes", () => {
+  const addresses = ["0x0000000000000000000000000000000000000011", "0x0000000000000000000000000000000000000022"] as const;
+  const ids = addresses.map((address) => `onchain:${address}`);
+  const known = facetWith("Known", 15, 900);
+  const catalog = makeCatalog({ facets: [known] });
+  const selectors = Array.from({ length: 15 }, (_, index) => sel(1000 + index));
+  for (const expanded of [false, true]) {
+    const project = makeProject({ recipe: makeRecipe({ mode: "upgrade", facets: ids, facetInstances: {
+      [ids[0]!]: { kind: "foreign", address: addresses[0], codehash: known.release.codehash, selectors },
+      [ids[1]!]: { kind: "known", address: addresses[1], codehash: known.release.codehash, catalogFacet: "Known", extraSelectors: [] },
+    } }, catalog), layout: Object.fromEntries(ids.map((id) => [id, { x: 0, y: 0, pins: "right" as const, ...(expanded ? { expanded: true as const } : {}) }])) });
+    const out = tidy(project, catalog, analysisWith(), metrics);
+    const raw = out[ids[0]!]!, alias = out[ids[1]!]!;
+    const rawHeight = metrics.headerHeight + metrics.footerHeight + metrics.grid * 2 + ((expanded ? 15 : 3) + 1) * metrics.rowHeight;
+    const knownHeight = cardSize(known, { metrics, expanded, compact: false, pins: "right", contested: [] }).height;
+    expect(raw.x !== alias.x || raw.y >= alias.y + knownHeight || alias.y >= raw.y + rawHeight).toBe(true);
+    expect(out).toEqual(tidy(project, catalog, analysisWith(), metrics));
+  }
+});
+
+test("tidy preserves an explicitly added canonical core release in an upgrade", () => {
+  const facet = makeFacet({ name: "ERC165Facet", selectors: ["supportsInterface(bytes4)"] });
+  const catalog = makeCatalog({ facets: [facet] });
+  const project = makeProject({ recipe: makeRecipe({ mode: "upgrade", facets: [facet.name] }, catalog),
+    layout: { ERC165Facet: { x: 0, y: 0, pins: "right" } } });
+  expect(tidy(project, catalog, analysisWith(), metrics).ERC165Facet).toBeDefined();
+});

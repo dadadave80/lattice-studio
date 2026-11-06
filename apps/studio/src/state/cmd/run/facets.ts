@@ -21,9 +21,9 @@ function locate(facet: string): void {
 
 export function place(ctx: CommandContext, { facet, at }: PlaceArgs): void {
   const catalog = ctx.catalog;
-  const detail = catalog ? facetOf(catalog, facet) : undefined;
+  const detail = catalog ? facetOf(catalog, facet, ctx.project.recipe) : undefined;
   if (!catalog || !detail) return;
-  if (isCoreFacet(facet)) {
+  if (ctx.project.recipe.mode !== "upgrade" && isCoreFacet(facet)) {
     // The core is in every diamond, never as a card: say so and select the core instead (S4b's `core.select`).
     sayNote(`${facet} is part of every diamond's core.`);
     if (!isPlaceholder("core.select")) void runCommand({ id: "core.select" }, "api");
@@ -52,7 +52,7 @@ export function place(ctx: CommandContext, { facet, at }: PlaceArgs): void {
 export function remove(ctx: CommandContext, { facets }: RemoveArgs): void {
   const catalog = ctx.catalog;
   if (!catalog) return;
-  const removed = [...new Set(facets)].filter((name) => !isCoreFacet(name) && isPlaced(ctx.project, name));
+  const removed = [...new Set(facets)].filter((name) => (ctx.project.recipe.mode === "upgrade" || !isCoreFacet(name)) && isPlaced(ctx.project, name));
   const result = edit((p) => removeFacets(p, catalog, facets), { say: () => [lines.removed({ facets: removed })] });
   if (!result.changed) return;
   const selection = session.get().selection.filter((name) => !removed.includes(name));
@@ -71,7 +71,7 @@ function contestedFor(ctx: CommandContext, facet: string, own: readonly Hex4[]):
 
 export function routeContested(ctx: CommandContext, { facet }: RouteContestedArgs): void {
   const catalog = ctx.catalog;
-  const detail = catalog ? facetOf(catalog, facet) : undefined;
+  const detail = catalog ? facetOf(catalog, facet, ctx.project.recipe) : undefined;
   if (!catalog || !detail) return;
   const selectors = contestedFor(ctx, facet, detail.selectors.map((s) => s.hex));
   if (selectors.length === 0) {

@@ -4,6 +4,7 @@ import type { BuildPlanFn } from "../model/api";
 import type { Catalog, Facet } from "../model/catalog";
 import { CORE_FACETS } from "../model/diamond";
 import { toLowerHex } from "../model/hex";
+import { projectUpgradeCatalog } from "../upgrade/projection";
 
 /** The placed facets in cut order: the core's (in CORE_FACETS order) first, then the rest in catalog order. */
 function cutOrder(placed: ReadonlySet<string>, catalog: Catalog): Facet[] {
@@ -21,6 +22,9 @@ function cutOrder(placed: ReadonlySet<string>, catalog: Catalog): Facet[] {
  * plan, whatever the routing says. Facets the catalog lacks are skipped (parsing refuses them before they get here).
  */
 export const buildPlan: BuildPlanFn = (recipe, catalog, routing) => {
+  const upgrade = recipe.mode === "upgrade" ? projectUpgradeCatalog(recipe, catalog) : undefined;
+  if (upgrade !== undefined && !upgrade.ok) throw new Error(upgrade.error);
+  if (upgrade?.ok) catalog = upgrade.value.catalog;
   const placed = new Set(recipe.facets);
   const excluded = new Set(recipe.exclude.map(toLowerHex));
   const entries: PlanEntry[] = [];
@@ -40,6 +44,17 @@ export const buildPlan: BuildPlanFn = (recipe, catalog, routing) => {
       version: facet.release.version,
       selectors,
     });
+  }
+  for (const row of upgrade?.ok ? upgrade.value.raw : []) {
+    const selectors = row.selectors.filter((selector) => !excluded.has(selector) && routing[selector]?.owner === row.id);
+    const existing = entries.find((entry) => entry.facet === row.id);
+    if (existing) existing.selectors.push(...selectors.filter((selector) => !existing.selectors.includes(selector)));
+    else if (selectors.length > 0) entries.push({ facet: row.id, address: row.address, codehash: row.codehash,
+      version: row.kind === "extra" ? catalog.facets.find((facet) => facet.name === row.id)?.release.version ?? "unknown" : row.kind === "self" ? "self" : "unknown", selectors });
+    if (selectors.length > 0) {
+      const omittedAt = omitted.indexOf(row.id);
+      if (omittedAt >= 0) omitted.splice(omittedAt, 1);
+    } else if (!existing && !omitted.includes(row.id)) omitted.push(row.id);
   }
   return { entries, omitted };
 };

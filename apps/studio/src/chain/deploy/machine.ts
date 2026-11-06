@@ -29,7 +29,7 @@
  * takes a record's verification back to "pending".
  */
 import type {
-  Address, Analysis, Catalog, ChainState, Deployment, DeployPath, FacetDetail, Hex, LineDraft, LoupeFacet, PlanEntry, Recipe,
+  Address, Analysis, Catalog, ChainState, CreatedDeployment as Deployment, DeployPath, FacetDetail, Hex, LineDraft, LoupeFacet, PlanEntry, Recipe,
   Result, TxRequest,
 } from "@lattice-studio/core";
 import {
@@ -767,6 +767,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
   };
 
   const signable = (withoutSimulation: boolean): string | null => {
+    if (inputs.project().recipe.mode === "upgrade") return "This is an upgrade plan. Review its upgrade instead of deploying a new diamond.";
     const readOnly = inputs.readOnly();
     if (readOnly !== null) return readOnly;
     if (withoutSimulation) {
@@ -1401,7 +1402,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     const projectId = inputs.project().id;
     let list: Deployment[];
     try {
-      list = await deps.records.list(projectId);
+      list = (await deps.records.list(projectId)).filter((record): record is Deployment => record.kind !== "imported");
     } catch {
       list = [];
     }
@@ -1445,7 +1446,7 @@ export function createDeployMachine(deps: DeployDeps): DeployMachine {
     if (disposed || projectId !== recordsFor) return;
     void track(deps.records.list(projectId).then((list) => {
       if (disposed || projectId !== recordsFor) return;
-      records = [...list].sort(newestFirst);
+      records = list.filter((record): record is Deployment => record.kind !== "imported").sort(newestFirst);
       if (state.phase !== "verifying" || state.address === undefined) return;
       const address = state.address;
       const found = records.find((d) => d.chainId === state.chainId && sameAddress(d.address, address));

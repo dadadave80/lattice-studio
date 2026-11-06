@@ -437,7 +437,8 @@ export const history: {
  */
 function clearingCore(patch: Partial<SessionState>): Partial<SessionState> {
   if (!("selection" in patch) || patch.selection === undefined) return patch;
-  const cards = patch.selection.some(isCoreFacet) ? patch.selection.filter((name) => !isCoreFacet(name)) : patch.selection;
+  const cards = doc.get().recipe.mode !== "upgrade" && patch.selection.some(isCoreFacet)
+    ? patch.selection.filter((name) => !isCoreFacet(name)) : patch.selection;
   return { ...patch, selection: cards, ...("coreSelected" in patch ? {} : { coreSelected: false }) };
 }
 

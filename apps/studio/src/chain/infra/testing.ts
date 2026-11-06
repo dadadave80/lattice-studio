@@ -231,6 +231,8 @@ export function mockChain(options: MockChainOptions): MockChain {
         return "0x10";
       case "eth_getCode":
         return account(String(params[0]))?.code ?? "0x";
+      case "eth_getLogs":
+        return [];
       case "eth_getBalance":
         return numberToHex(account(String(params[0]))?.balance ?? 0n);
       case "eth_getBlockByNumber":

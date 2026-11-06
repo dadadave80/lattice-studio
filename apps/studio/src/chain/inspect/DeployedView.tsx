@@ -14,6 +14,7 @@ import { useInspectionCatalogs } from "./use-inspection-catalogs";
 import styles from "./DeployedView.module.css";
 import { FacetFunctions } from "./FacetFunctions";
 import { invalidateTransactionReview } from "./transaction-review-state";
+import { HistorySection } from "./HistorySection";
 
 type Props = InspectorViewProps<"deployed"> & { engine?: InspectionEngine };
 
@@ -90,6 +91,7 @@ function DiamondDetails({ value }: { value: ReadyInspection }) {
       </li>)}</ul>
       <p className={`${sheet.mono} ${styles.hex}`}>{`Digest ${passport.digest}`}</p>
     </Section>
+    <HistorySection value={value} />
   </>;
 }
 
@@ -113,6 +115,7 @@ export function DeployedView({ view, engine }: Props) {
         <CommandButton command={commandRef("inspect.refresh", view)} size="small">Refresh</CommandButton>
         {value?.explorer ? <a className={sheet.link} href={value.explorer} target="_blank" rel="noreferrer noopener">View on explorer</a> : null}
         {value ? <CommandButton command={commandRef("inspect.exportPassport", view)} size="small">Export passport</CommandButton> : null}
+        {ready ? <CommandButton command={commandRef("inspect.editAsPlan", { chainId: view.chainId, address: view.address })} size="small">Edit as upgrade plan</CommandButton> : null}
       </div>
     </Section>
     {state.status === "idle" || state.status === "loading" ? <Section label="Inspection"><output className={sheet.text}>Inspecting diamond…</output></Section> : null}

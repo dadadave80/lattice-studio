@@ -1,4 +1,9 @@
-import type { Hex, Hex4 } from "./hex";
+import type { Address, Hex, Hex4 } from "./hex";
+
+/** An actual runtime instance retained by an upgrade, keyed by `onchain:<lowercase-address>`. */
+export type FacetInstance =
+  | { kind: "known"; address: Address; codehash: Hex; catalogFacet: string; extraSelectors: Hex4[] }
+  | { kind: "foreign" | "self"; address: Address; codehash: Hex; selectors: Hex4[] };
 
 /** The only recipe schema version this Studio reads (spec L289, contracts §3.2). */
 export const RECIPE_SCHEMA_VERSION = 1;
@@ -27,6 +32,9 @@ export type Recipe = {
     | { kind: "none" };
   /** Acknowledged: no upgrade mechanism. */
   immutable?: true;
+  /** An existing diamond's desired routing; absent for all v1 compositions. */
+  mode?: "upgrade";
+  facetInstances?: Record<string, FacetInstance>;
 };
 
 /**

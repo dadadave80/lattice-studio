@@ -2,10 +2,12 @@
  * Where cards land and how big they are, from C9's geometry and the tokens' layout lengths (contracts §3.4:
  * C11 does no geometry, so S1 frees every position before placing).
  */
-import type { Analysis, Catalog, Point, Project, Size, Sizes } from "@lattice-studio/core";
+import type { Analysis, Catalog, Point, Project, Recipe, Size, Sizes } from "@lattice-studio/core";
 import { analyze, cardSize, contestedSelectors, freeSlot, isNotImplemented, placeFacet } from "@lattice-studio/core";
 import { layoutMetrics, log, type SessionState } from "@/contracts";
 import { facetOf } from "./shared";
+import { compositionCatalog } from "@/chain/inspect/upgrade/catalog";
+import { rawCardSize } from "@/chain/inspect/upgrade/raw-card";
 
 /** Where Tidy starts, and where the first card lands when there's no view to center on (C9's origin, 12 grid). */
 const ORIGIN_UNITS = 12;
@@ -18,17 +20,22 @@ const CONSOLE_HEADER = 36;
 /** Every card's size as the sheet draws it at full size: expanded flag, pins and contested rows. */
 export function cardSizes(project: Project, catalog: Catalog, analysis: Analysis): Sizes {
   const sizes: Sizes = {};
+  const effective = compositionCatalog(project.recipe, catalog) ?? catalog;
   for (const name of Object.keys(project.layout)) {
     const entry = project.layout[name];
-    const facet = facetOf(catalog, name);
+    const instance = project.recipe.mode === "upgrade" ? project.recipe.facetInstances?.[name] : undefined;
+    if (entry && instance && instance.kind !== "known") { sizes[name] = rawCardSize(instance, entry.expanded === true, layoutMetrics); continue; }
+    const facet = facetOf(effective, name);
     if (!entry || !facet) continue;
-    sizes[name] = sizeOf(facet.name, catalog, analysis, entry.expanded === true, entry.pins);
+    sizes[name] = sizeOf(facet.name, effective, analysis, entry.expanded === true, entry.pins);
   }
   return sizes;
 }
 
-export function sizeOf(name: string, catalog: Catalog, analysis: Analysis, expanded: boolean, pins: "left" | "right"): Size {
-  const facet = facetOf(catalog, name);
+export function sizeOf(name: string, catalog: Catalog, analysis: Analysis, expanded: boolean, pins: "left" | "right", recipe?: Recipe): Size {
+  const instance = recipe?.mode === "upgrade" ? recipe.facetInstances?.[name] : undefined;
+  if (instance && instance.kind !== "known") return rawCardSize(instance, expanded, layoutMetrics);
+  const facet = facetOf(catalog, name, recipe);
   if (!facet) return { width: layoutMetrics.cardWidth, height: layoutMetrics.headerHeight + layoutMetrics.footerHeight };
   const size = cardSize(facet, { metrics: layoutMetrics, expanded, pins, compact: false, contested: contestedSelectors(analysis, name) });
   return { width: size.width, height: size.height };
@@ -89,7 +96,7 @@ export function landing(input: LandingInput): Point {
   const metrics = layoutMetrics;
   const settled = afterPlacement(project, catalog, facet, analysis);
   const sizes = cardSizes(project, catalog, settled);
-  const size = sizeOf(facet, catalog, settled, false, "right");
+  const size = sizeOf(facet, catalog, settled, false, "right", project.recipe);
   let target: Point;
   if (at && Number.isFinite(at.x) && Number.isFinite(at.y)) {
     target = at;

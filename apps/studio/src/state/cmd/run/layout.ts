@@ -28,8 +28,8 @@ function toggle(project: Project, ctx: CommandContext, facet: string): EditResul
   const flagged = setExpanded(project, facet, expand);
   if (!flagged.changed || !expand) return flagged;
   const sizes = cardSizes(project, catalog, ctx.analysis);
-  const before = sizes[facet] ?? sizeOf(facet, catalog, ctx.analysis, false, entry.pins);
-  const after = sizeOf(facet, catalog, ctx.analysis, true, entry.pins);
+  const before = sizes[facet] ?? sizeOf(facet, catalog, ctx.analysis, false, entry.pins, project.recipe);
+  const after = sizeOf(facet, catalog, ctx.analysis, true, entry.pins, project.recipe);
   const pushed = pushBelow(flagged.project.layout, sizes, facet, after.height - before.height, layoutMetrics);
   if (pushed === flagged.project.layout) return flagged;
   const moved = applyLayout(flagged.project, pushed);

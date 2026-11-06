@@ -4,8 +4,8 @@
  * project changes and again after every write to its records. Nothing is read until `start()`, so module
  * evaluation never opens IndexedDB.
  */
-import type { Deployment } from "@lattice-studio/core";
-import { doc, listDeployments, subscribeDeployments } from "@/contracts";
+import type { Deployment, Project } from "@lattice-studio/core";
+import { doc, projectDeployments, subscribeDeployments } from "@/contracts";
 
 export type DeploymentsMirror = {
   /** The open project's records as last read; empty until the first read returns. */
@@ -18,6 +18,7 @@ const NONE: readonly Deployment[] = Object.freeze([]);
 
 export function createDeploymentsMirror(): DeploymentsMirror {
   let projectId: string | null = null;
+  let origin: Project["upgrade"];
   let records: readonly Deployment[] = NONE;
   /** Bumped per read, so a slow read for an earlier project never lands after a later one. */
   let generation = 0;
@@ -29,10 +30,11 @@ export function createDeploymentsMirror(): DeploymentsMirror {
     for (const listener of Array.from(listeners)) listener();
   };
 
-  const read = (id: string): void => {
+  const read = (project: Project): void => {
+    const id = project.id;
     generation += 1;
     const mine = generation;
-    listDeployments(id).then(
+    projectDeployments(project).then(
       (list) => {
         if (!started || mine !== generation || id !== projectId) return;
         records = list;
@@ -46,14 +48,16 @@ export function createDeploymentsMirror(): DeploymentsMirror {
     );
   };
 
-  const follow = (id: string): void => {
-    if (id === projectId) return;
+  const follow = (project: Project): void => {
+    const id = project.id;
+    if (id === projectId && origin === project.upgrade) return;
     projectId = id;
+    origin = project.upgrade;
     if (records.length > 0) {
       records = NONE;
       emit();
     }
-    read(id);
+    read(project);
   };
 
   return {
@@ -68,13 +72,13 @@ export function createDeploymentsMirror(): DeploymentsMirror {
       if (started) return () => {};
       started = true;
       stops.push(
-        doc.subscribe((state) => follow(state.project.id)),
+        doc.subscribe((state) => follow(state.project)),
         subscribeDeployments((changed) => {
-          if (changed === projectId) read(changed);
+          if (changed === projectId || origin !== undefined) read(doc.get());
         }),
       );
       // Only once a project has loaded: never a read at module evaluation (contracts/discover.ts).
-      if (doc.state().lastChange !== null) follow(doc.get().id);
+      if (doc.state().lastChange !== null) follow(doc.get());
       return () => {
         started = false;
         projectId = null;

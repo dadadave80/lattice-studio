@@ -240,6 +240,20 @@ describe("verifyRecord", () => {
     expect(written?.block).toBe(9_123_460);
   });
 
+  test("a stale list snapshot cannot erase a concurrent upgrade reservation or newer revision", async () => {
+    const hash = `0x${"ab".repeat(32)}` as const;
+    const pendingUpgrade = { phase: "signing" as const, reviewId: "new-review", desiredRecipeHash: hash, catalogHash: hash,
+      baseline: { block: 1, blockHash: hash, facets: [], codehashes: { [ADDRESS]: hash } }, expectedFacets: [], expectedCodehashes: { [ADDRESS]: hash },
+      from: ADDRESS, since: "2026-11-06T00:00:00Z" };
+    const current = confirmed({ revision: 2, recipeHash: hash, pendingUpgrade });
+    const records = memoryRecords([current]);
+    records.list = async () => [confirmed()];
+    const { fetchImpl } = scriptedFetch([() => json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } })]);
+    const clock = manualClock();
+    await run(verifyRecord(deps(fetchImpl, records, clock), confirmed()), clock, []);
+    expect(records.all()[0]).toMatchObject({ revision: 2, recipeHash: hash, pendingUpgrade, verification: "exact_match" });
+  });
+
   test("a record that moved off confirmed (mismatch, a new deploy) is left untouched, and nothing is logged", async () => {
     clearServiceBuffers();
     const { fetchImpl } = scriptedFetch([() => json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } })]);
@@ -299,7 +313,7 @@ describe("verifyRecord", () => {
     clearServiceBuffers();
     const { fetchImpl } = scriptedFetch([() => json(200, { isJobCompleted: true, contract: { runtimeMatch: "exact_match" } })]);
     const base = memoryRecords([confirmed()]);
-    const records = { ...base, put: async () => { throw new Error("storage full"); } };
+    const records = { ...base, update: async () => { throw new Error("storage full"); } };
     const clock = manualClock();
     await run(verifyRecord(deps(fetchImpl, records, clock), confirmed()), clock, []);
     expect(bufferedServices().log.at(-1)).toMatchObject({ tag: "Error", text: "The verification result wasn't saved: storage full" });

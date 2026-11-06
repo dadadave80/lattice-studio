@@ -87,7 +87,7 @@ export function createPredictionMirror(chain: ChainMirror): PredictionMirror {
   const stops: (() => void)[] = [];
 
   const compute = (): Prediction => {
-    const next = predict({
+    const next: Prediction = doc.get().upgrade !== undefined ? { status: "none", reason: "This upgrade targets an existing diamond." } : predict({
       deploy: doc.get().deploy,
       catalog: getCatalog(),
       chainId: session.get().chainId,
@@ -137,7 +137,7 @@ export function createPredictionMirror(chain: ChainMirror): PredictionMirror {
       stops.push(
         doc.subscribe((state, previous) => {
           if (state.project.deploy !== previous.project.deploy || state.project.predicted !== previous.project.predicted
-            || state.project.id !== previous.project.id) refresh();
+            || state.project.id !== previous.project.id || state.project.upgrade !== previous.project.upgrade) refresh();
         }),
         session.subscribe((state, previous) => {
           if (state.chainId !== previous.chainId || state.readOnly !== previous.readOnly) refresh();

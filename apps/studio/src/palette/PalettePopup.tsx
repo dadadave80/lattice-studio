@@ -68,12 +68,13 @@ function PaletteDialog({ open, mode, at, onClosed }: PaletteDialogProps) {
   const catalog = useCatalog();
   const problems = useAnalysis((a) => a.problems);
   const facets = useDocument((s) => s.project.recipe.facets);
+  const upgrade = useDocument((state) => state.project.recipe.mode === "upgrade");
   const recent = useRecentCommands();
   const [rows] = useState(listPaletteRows);
 
   const groups = useMemo(
-    () => paletteGroups({ mode, at, rows, recent, problems, catalog, placed: new Set(facets) }),
-    [mode, at, rows, recent, problems, catalog, facets],
+    () => paletteGroups({ mode, at, rows, recent, problems, catalog, placed: new Set(facets), upgrade }),
+    [mode, at, rows, recent, problems, catalog, facets, upgrade],
   );
   const shown = useMemo(() => filterGroups(groups, query), [groups, query]);
   const count = rowCount(shown);

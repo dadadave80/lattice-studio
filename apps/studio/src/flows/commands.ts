@@ -28,7 +28,8 @@ const share = command({
   category: "Session",
   palette: true,
   // Share doesn't edit the document, so a read-only project can still be shared.
-  enabled: (ctx) => (isCoreOnly(ctx.project.recipe) ? disabled(PLACE_FACETS_FIRST) : OK),
+  enabled: (ctx) => ctx.project.recipe.mode === "upgrade" ? disabled("Upgrade plans need their on-chain baseline. Export the project file.")
+    : isCoreOnly(ctx.project.recipe) ? disabled(PLACE_FACETS_FIRST) : OK,
   async run(ctx) {
     const { copyShareLink } = await import("./share-link");
     await copyShareLink(ctx.project);

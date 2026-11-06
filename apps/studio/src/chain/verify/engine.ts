@@ -71,19 +71,21 @@ async function writeVerification(
   verification: Deployment["verification"],
   reason?: string,
 ): Promise<Deployment | null> {
-  let fresh: Deployment | undefined;
+  let moved = false;
   try {
-    fresh = (await deps.records.list(target.projectId)).find((d) => recordKey(d) === recordKey(target));
-  } catch {
-    fresh = undefined;
-  }
-  if (!fresh || fresh.status !== "confirmed") return null;
-  const nextReason = verification === "failed" ? reason : undefined;
-  if (fresh.verification === verification && fresh.verificationReason === nextReason) return fresh;
-  const { verificationReason: _staleReason, ...rest } = fresh;
-  const next: Deployment = { ...rest, verification, ...(nextReason !== undefined ? { verificationReason: nextReason } : {}) };
-  try {
-    await deps.records.put(next);
+    const result = await deps.records.update(target.chainId, target.address, (fresh) => {
+      if (!fresh || fresh.projectId !== target.projectId || fresh.status !== "confirmed") {
+        moved = true;
+        return { ok: false, error: "The deployment record changed." };
+      }
+      const nextReason = verification === "failed" ? reason : undefined;
+      if (fresh.verification === verification && fresh.verificationReason === nextReason) return { ok: true, value: fresh };
+      const { verificationReason: _staleReason, ...rest } = fresh;
+      return { ok: true, value: { ...rest, verification, ...(nextReason !== undefined ? { verificationReason: nextReason } : {}) } };
+    });
+    if (moved) return null;
+    if (!result.ok) throw new Error(result.error);
+    return result.value;
   } catch (error) {
     const text = `The verification result wasn't saved: ${error instanceof Error ? error.message : String(error)}`;
     log({ tag: "Error", text });
@@ -93,7 +95,6 @@ async function writeVerification(
     if (settings.get().deployAnnouncements !== "none") announce(text, { politeness: "assertive" });
     return null;
   }
-  return next;
 }
 
 /**
@@ -121,6 +122,7 @@ function fail(deps: VerifyDeps, record: Deployment, reason: string): Promise<voi
  * starts the next watcher (a reload, a focus event) resumes it.
  */
 export async function verifyRecord(deps: VerifyDeps, record: Deployment, signal?: AbortSignal): Promise<void> {
+  if (record.kind === "imported") return fail(deps, record, "The imported diamond's creation build is unknown. Studio can't submit it for source verification.");
   if (!sourcifyServes(record.chainId)) {
     return fail(deps, record, `Sourcify doesn't verify contracts on ${unverifiableChainName(record.chainId)}.`);
   }
@@ -163,6 +165,7 @@ async function stillConfirmed(deps: VerifyDeps, target: Pick<Deployment, "projec
 }
 
 async function etherscanJob(deps: VerifyDeps, record: Deployment, key: string, signal?: AbortSignal): Promise<void> {
+  if (record.kind === "imported") return;
   const settle = async (): Promise<void> => {
     if (!(await stillConfirmed(deps, record))) return;
     etherscanOutcomes.set(record, { outcome: "verified" });
@@ -329,14 +332,9 @@ export async function retryVerification(target: { chainId: number; address: Addr
   }
   let next = found;
   if (retrySourcify) {
-    const { verificationReason: _staleReason, ...rest } = found;
-    next = { ...rest, verification: "pending" };
-    try {
-      await deps.records.put(next);
-    } catch (error) {
-      log({ tag: "Verify", text: `Couldn't start verification again: ${error instanceof Error ? error.message : String(error)}` });
-      return;
-    }
+    const restarted = await writeVerification(deps, found, "pending");
+    if (!restarted) return;
+    next = restarted;
   }
   if (retryEtherscan) etherscanOutcomes.clear(found);
   void verifyIfNeeded(deps, next);

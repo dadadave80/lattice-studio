@@ -11,6 +11,7 @@ export type DialogCatalogEntry = {
 export const DIALOG_CATALOG: Readonly<Record<DialogId, DialogCatalogEntry>> = {
   "deploy-review": { title: "Deploy review", owner: "S8b" },
   "inspect-transaction": { title: "Review transaction", owner: "S8c" },
+  "upgrade-plan-review": { title: "Review upgrade", owner: "S8c" },
   "missing-contracts": { title: "Deploy missing contracts", owner: "S8c" },
   "choose-mechanism": { title: "Choose an upgrade mechanism", owner: "S5d" },
   "choose-per-selector": { title: "Choose per selector", owner: "S4c" },

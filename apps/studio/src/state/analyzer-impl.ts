@@ -1,5 +1,5 @@
 /** The analyzer's chunk (`analyzer.ts`): core's analysis and narration, and every check they run. */
-import { analyze, narrate } from "@lattice-studio/core";
+import { analyze, analyzeUpgrade, narrate } from "@lattice-studio/core";
 import type { Analyzer } from "./analyzer";
 
-export const ANALYZER: Analyzer = { analyze, narrate };
+export const ANALYZER: Analyzer = { analyze, analyzeUpgrade, narrate };

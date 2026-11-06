@@ -24,7 +24,7 @@ export type FindResult = {
 
 const HEX_QUERY = /^0x[0-9a-f]{0,8}$/;
 
-export function findOnSheet(query: string, placed: readonly string[], catalog: Pick<Catalog, "facets">): FindResult {
+export function findOnSheet(query: string, placed: readonly string[], catalog: Pick<Catalog, "facets">, displayName: (name: string) => string = (name) => name): FindResult {
   const typed = query.trim();
   const lower = typed.toLowerCase();
   const result: FindResult = { query: typed, facets: [], pins: [] };
@@ -33,7 +33,7 @@ export function findOnSheet(query: string, placed: readonly string[], catalog: P
   for (const name of placed) {
     const facet = catalog.facets.find((f) => f.name === name);
     if (!facet) continue;
-    if (!hex && name.toLowerCase().includes(lower)) result.facets.push(name);
+    if (!hex && (name.toLowerCase().includes(lower) || displayName(name).toLowerCase().includes(lower))) result.facets.push(name);
     for (const s of facet.selectors) {
       const hit = hex ? s.hex.startsWith(lower) : s.signature.toLowerCase().includes(lower);
       if (hit) result.pins.push({ facet: name, selector: s.hex, signature: s.signature });
@@ -49,8 +49,8 @@ function hitFacets(result: FindResult, placed: readonly string[]): string[] {
 }
 
 /** Every card a match sits on, in sheet order: what `find` selects. The core's facets aren't cards. */
-export function foundFacets(result: FindResult, placed: readonly string[]): string[] {
-  return hitFacets(result, placed).filter((name) => !isCoreFacet(name));
+export function foundFacets(result: FindResult, placed: readonly string[], upgrade = false): string[] {
+  return hitFacets(result, placed).filter((name) => upgrade || !isCoreFacet(name));
 }
 
 /** Whether a match sits on the core (its facets or their pins). */
@@ -62,10 +62,10 @@ export function foundCore(result: FindResult): boolean {
  * Where `find` locates: the first matching card, else the first matching pin on a card, else the core (its
  * facet or pin), which `selectAndLocate` turns into `core.select`.
  */
-export function firstAnchor(result: FindResult): Anchor | null {
-  const card = result.facets.find((name) => !isCoreFacet(name));
+export function firstAnchor(result: FindResult, upgrade = false): Anchor | null {
+  const card = result.facets.find((name) => upgrade || !isCoreFacet(name));
   if (card !== undefined) return { kind: "facet", facet: card };
-  const cardPin = result.pins.find((pin) => !isCoreFacet(pin.facet));
+  const cardPin = result.pins.find((pin) => upgrade || !isCoreFacet(pin.facet));
   if (cardPin) return { kind: "selector", selector: cardPin.selector, facet: cardPin.facet };
   const facet = result.facets[0];
   if (facet !== undefined) return { kind: "facet", facet };
@@ -82,7 +82,7 @@ function listNames(names: readonly string[], max = 3): string {
 }
 
 /** What `find` says: how many facets and pins match, and which cards it selected (or that it selected the core). */
-export function findSummary(result: FindResult, placed: readonly string[]): string {
+export function findSummary(result: FindResult, placed: readonly string[], upgrade = false): string {
   const quoted = `‘${result.query}’`;
   if (!result.facets.length && !result.pins.length) {
     return `Nothing on the sheet matches ${quoted}.`;
@@ -93,7 +93,7 @@ export function findSummary(result: FindResult, placed: readonly string[]): stri
   const pins = result.pins.length > 0 && result.pins.length <= 2
     ? `: ${result.pins.map((p) => `${formatSelector({ hex: p.selector, signature: p.signature }, "dense")} on ${p.facet}`).join(" and ")}`
     : "";
-  const selected = foundFacets(result, placed);
-  const outcome = selected.length === 0 && foundCore(result) ? SELECTED_THE_CORE : `Selected ${listNames(selected)}.`;
+  const selected = foundFacets(result, placed, upgrade);
+  const outcome = !upgrade && selected.length === 0 && foundCore(result) ? SELECTED_THE_CORE : `Selected ${listNames(selected)}.`;
   return `Found ${parts.join(" and ")} matching ${quoted}${pins}. ${outcome}`;
 }

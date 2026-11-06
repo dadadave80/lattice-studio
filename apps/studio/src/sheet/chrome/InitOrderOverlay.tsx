@@ -1,6 +1,7 @@
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import { Panel, useStore, ViewportPortal, type ReactFlowState } from "@xyflow/react";
 import { useLayoutEffect, useState, type CSSProperties } from "react";
-import { commandRef, layoutMetrics, useCatalog, useDocument, useSession, useSettings } from "@/contracts";
+import { commandRef, layoutMetrics, useDocument, useSession, useSettings } from "@/contracts";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 import { bundleFixed, DRAG_TO_REORDER, INIT_ORDER_CHIP } from "./copy";
 import { badgeText, initOrderModel, type InitOrderModel } from "./init-order-model";
@@ -112,7 +113,7 @@ function Legend({ model }: { model: InitOrderModel }) {
 export function InitOrderOverlay() {
   const on = useSession((s) => s.modes.initOrder);
   const recipe = useDocument((s) => (on ? s.project.recipe : null));
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   if (!on || !recipe || !catalog) return null;
   const model = initOrderModel(recipe, catalog);
   return (

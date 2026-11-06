@@ -3,7 +3,8 @@
  * SEL-05), and leave a selector out of the diamond or bring it back (Flow 6, IR L145-L146). What they do is in
  * `run/selectors.ts`, loaded after the first paint.
  */
-import { command, getCatalog, type CommandArgsOf } from "@/contracts";
+import { upgradeSelectorRefusal } from "@lattice-studio/core";
+import { command, doc, getCatalog, type CommandArgsOf } from "@/contracts";
 import { lazyRun } from "./lazy";
 import {
   catalogName, disabled, err, facetOf, guard, isHex4, isPlaced, isString, notOnSheet, OK, ok, parseFacet,
@@ -29,7 +30,7 @@ export const routeCommand = command<RouteArgs>({
       const facet = parseFacet(argv[0], "route <facet> <selector or function>");
       if (!facet.ok) return facet;
       const catalog = getCatalog();
-      const own = catalog ? (facetOf(catalog, facet.value)?.selectors ?? []) : [];
+      const own = catalog ? (facetOf(catalog, facet.value, doc.get().recipe)?.selectors ?? []) : [];
       const selector = resolveSelector(argv[1] ?? "", own, facet.value);
       return selector.ok ? ok({ selector: selector.value, facet: facet.value }) : selector;
     },
@@ -38,6 +39,8 @@ export const routeCommand = command<RouteArgs>({
     const blocked = guard(ctx);
     if (blocked) return blocked;
     if (!isHex4(args.selector)) return disabled(NAME_A_SELECTOR);
+    const refusal = ctx.catalog ? upgradeSelectorRefusal(ctx.project, ctx.catalog, args.selector) : null;
+    if (refusal) return disabled(refusal);
     if (!isString(args.facet)) return disabled("Name the facet to route it to");
     if (!isPlaced(ctx.project, args.facet)) return disabled(notOnSheet([args.facet]));
     return OK;
@@ -54,6 +57,8 @@ export const clearOwnerCommand = command<ClearOwnerArgs>({
     const blocked = guard(ctx);
     if (blocked) return blocked;
     if (!isHex4(args.selector)) return disabled(NAME_A_SELECTOR);
+    const refusal = ctx.catalog ? upgradeSelectorRefusal(ctx.project, ctx.catalog, args.selector) : null;
+    if (refusal) return disabled(refusal);
     return OK;
   },
   run: lazyRun("clearOwner"),
@@ -84,6 +89,8 @@ export const excludeCommand = command<ExcludeArgs>({
     const blocked = guard(ctx);
     if (blocked) return blocked;
     if (!isHex4(args.selector)) return disabled(NAME_A_SELECTOR);
+    const refusal = ctx.catalog ? upgradeSelectorRefusal(ctx.project, ctx.catalog, args.selector) : null;
+    if (refusal) return disabled(refusal);
     return OK;
   },
   run: lazyRun("exclude"),
@@ -110,9 +117,11 @@ export const includeCommand = command<IncludeArgs>({
     const blocked = guard(ctx);
     if (blocked) return blocked;
     if (!isHex4(args.selector)) return disabled(NAME_A_SELECTOR);
+    const refusal = ctx.catalog ? upgradeSelectorRefusal(ctx.project, ctx.catalog, args.selector) : null;
+    if (refusal) return disabled(refusal);
     if (args.facet !== undefined) {
       if (!isString(args.facet)) return disabled("Name the facet to route it to");
-      if (ctx.catalog && !facetOf(ctx.catalog, args.facet)) return disabled(`‘${args.facet}’ isn't a facet in ${catalogName(ctx.catalog)}.`);
+      if (ctx.catalog && !facetOf(ctx.catalog, args.facet, ctx.project.recipe)) return disabled(`‘${args.facet}’ isn't a facet in ${catalogName(ctx.catalog)}.`);
     }
     return OK;
   },

@@ -53,7 +53,8 @@ const STATE_OF: Record<Exclude<Deployment["status"], "failed">, DiamondState> = 
  * ignored.
  */
 export const projectStatus: ProjectStatusFn = (project, deployments, chainId, recipeHash, chainName) => {
-  const ours = deployments.filter((d) => d.projectId === project.id).sort(newestFirst);
+  const ours = deployments.filter((d) => d.projectId === project.id || (project.upgrade !== undefined
+    && d.chainId === project.upgrade.chainId && d.address.toLowerCase() === project.upgrade.address.toLowerCase())).sort(newestFirst);
   const nameOf = (id: number): string => chainName?.(id) ?? `Chain ${id}`;
 
   const livePerChain = new Map<number, Deployment>();
@@ -68,15 +69,19 @@ export const projectStatus: ProjectStatusFn = (project, deployments, chainId, re
   const onChain = ours.filter((d) => d.chainId === chainId);
   const chain = nameOf(chainId);
   const liveHere = livePerChain.get(chainId);
+  const pendingHere = onChain.find((record) => record.pendingUpgrade !== undefined && record.fromFile !== true);
   const settled = onChain.find((d) => d.status === "confirmed" && d.fromFile !== true);
   if (liveHere === undefined && settled !== undefined) {
     status.modifiedSince = settled.revision;
-    status.deployAgain = true;
+    status.deployAgain = project.recipe.mode !== "upgrade";
   }
 
   let shown: Deployment | undefined;
   let state: DiamondState = "not-deployed";
-  if (liveHere !== undefined) {
+  if (pendingHere !== undefined) {
+    shown = pendingHere;
+    state = pendingHere.pendingUpgrade?.phase === "proposed" ? "proposed" : "pending";
+  } else if (liveHere !== undefined) {
     shown = liveHere;
     state = "live";
   } else if ((shown = onChain.find((d) => d.status !== "failed" && d.fromFile !== true)) !== undefined) {
@@ -125,7 +130,8 @@ export const recipeStats: RecipeStatsFn = (analysis, catalog) => {
     perFacet[name] = { routed: count, exported, text: formatCount(count, exported) };
   }
 
-  const cards = names.filter((name) => !isCoreFacet(name)).length;
+  // Full analysis also counts added core releases in upgrade plans and cards with no routed exports.
+  const cards = Math.max(names.filter((name) => !isCoreFacet(name)).length, analysis.stats.facets);
   return {
     facets: cards,
     selectors,

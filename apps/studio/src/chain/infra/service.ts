@@ -503,6 +503,21 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
       if (!isOnline()) return { ok: false, error: { reason: CHAIN_CHECKS_NEED_CONNECTION, data: null } };
       return readOnchainCall(clients.get(chain), to, data, callOptions);
     },
+    async cutHistory(chainId, address, historyOptions) {
+      const chain = spec(chainId);
+      if (!chain) return { ok: false, error: { kind: "unsupported", reason: unsupported(chainId) } };
+      if (!isOnline()) return { ok: false, error: { kind: "rpc", reason: "History not read: a connection is needed." } };
+      try {
+        const { readHistory } = await import("../inspect/history-provider");
+        return await readHistory(clients.get(chain), address, historyOptions, {
+          async loadCatalogs() {
+            const { inspectionCatalogs } = await import("../inspect/app");
+            const catalogs = await inspectionCatalogs();
+            return catalogs.ok ? catalogs.value : [];
+          },
+        });
+      } catch { return { ok: false, error: { kind: "rpc", reason: "History not read: its reader couldn't load. Retry history." } }; }
+    },
     resolveEns: resolve,
     reverseEns: reverse,
     connectors: () => wallet?.connectors() ?? [{ id: WALLETCONNECT_ID, name: WALLETCONNECT_NAME, kind: "walletconnect" }],

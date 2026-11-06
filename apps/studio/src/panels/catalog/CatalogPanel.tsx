@@ -105,6 +105,7 @@ function useKnownChains(chainId: number | null): readonly ChainInfo[] {
 export function CatalogPanel() {
   const status = useCatalogStatus();
   const placedFacets = useDocument((s) => s.project.recipe.facets);
+  const upgrade = useDocument((state) => state.project.recipe.mode === "upgrade");
   const online = useOnline();
   const chainId = useSession((s) => s.chainId);
   const readiness = useChainReadiness(chainId);
@@ -163,8 +164,8 @@ export function CatalogPanel() {
       availableOnly && availability
         ? (facet: Facet) => availability.get(facet.name)?.available === true
         : undefined;
-    return buildCatalogNodes(catalog, query, include);
-  }, [catalog, query, availableOnly, availability]);
+    return buildCatalogNodes(catalog, query, include, !upgrade);
+  }, [catalog, query, availableOnly, availability, upgrade]);
 
   const searching = query.trim().length > 0;
   const expanded = searching ? matchedAreaIds : manualExpanded;
@@ -183,7 +184,7 @@ export function CatalogPanel() {
   const onSelectedChange = (next: string[]) => {
     const id = next.at(-1);
     // A core facet's row is disabled, so the tree never selects it; it's never a card either way.
-    if (id !== undefined && isCoreFacet(id)) return;
+    if (id !== undefined && !upgrade && isCoreFacet(id)) return;
     if (id !== undefined && placedSet.has(id)) {
       setLocal(null);
       const current = session.get().selection;
@@ -196,7 +197,7 @@ export function CatalogPanel() {
   const onItemClick = (node: TreeNode) => {
     if (isAreaNodeId(node.id)) return;
     // A core facet's row: a click selects the core (the row itself is disabled, so it never places or selects).
-    if (isCoreFacet(node.id)) {
+    if (!upgrade && isCoreFacet(node.id)) {
       void runCommand(commandRef("core.select"), "button");
       return;
     }
@@ -209,14 +210,14 @@ export function CatalogPanel() {
   };
 
   const onActivate = (node: TreeNode) => {
-    if (isAreaNodeId(node.id) || isCoreFacet(node.id)) return;
+    if (isAreaNodeId(node.id) || (!upgrade && isCoreFacet(node.id))) return;
     void runCommand({ id: "facet.place", args: { facet: node.id } }, "button");
   };
 
   // The tree never activates a disabled row, so Enter on a core facet's row does what a click does: it selects the
   // core (whose readout names it), rather than placing nothing in silence.
   const onItemKeyDown = (event: KeyboardEvent<HTMLElement>, node: TreeNode) => {
-    if (event.key !== "Enter" || !isCoreFacet(node.id) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (event.key !== "Enter" || upgrade || !isCoreFacet(node.id) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     event.preventDefault();
     void runCommand(commandRef("core.select"), "keys");
   };
@@ -224,7 +225,7 @@ export function CatalogPanel() {
   const itemProps = (node: TreeNode): TreeItemProps => {
     if (isAreaNodeId(node.id)) return {};
     // No drag either: the tree ignores a double-click on a disabled row, so the row says why itself.
-    if (isCoreFacet(node.id)) return { onDoubleClick: () => say(CORE_FACET_REASON) };
+    if (!upgrade && isCoreFacet(node.id)) return { onDoubleClick: () => say(CORE_FACET_REASON) };
     if (placedSet.has(node.id)) return {};
     return {
       // Vertical swipes still scroll the list; a sideways touch drag reaches the sheet (spec L417).
@@ -247,7 +248,7 @@ export function CatalogPanel() {
       <FacetRow
         facet={facet}
         placed={placedSet.has(node.id)}
-        core={isCoreFacet(node.id)}
+        core={!upgrade && isCoreFacet(node.id)}
         availability={availability?.get(node.id)}
         chainName={chainName}
       />
@@ -260,7 +261,7 @@ export function CatalogPanel() {
     if (!facet || !catalog) return null;
     return (
       <>
-        {isCoreFacet(node.id) ? (
+        {!upgrade && isCoreFacet(node.id) ? (
           <>
             <MenuItem label="Place" onSelect={() => undefined} disabledReason={CORE_FACET_REASON} />
             <MenuCommandItem command={commandRef("core.select")} />

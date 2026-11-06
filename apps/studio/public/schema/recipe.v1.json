@@ -157,6 +157,117 @@
     "immutable": {
       "type": "boolean",
       "const": true
+    },
+    "mode": {
+      "type": "string",
+      "const": "upgrade"
+    },
+    "facetInstances": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "known"
+              },
+              "address": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{40}$"
+              },
+              "codehash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "catalogFacet": {
+                "type": "string"
+              },
+              "extraSelectors": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-fA-F]{8}$"
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "address",
+              "codehash",
+              "catalogFacet",
+              "extraSelectors"
+            ],
+            "additionalProperties": {}
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "foreign"
+              },
+              "address": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{40}$"
+              },
+              "codehash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "selectors": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-fA-F]{8}$"
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "address",
+              "codehash",
+              "selectors"
+            ],
+            "additionalProperties": {}
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "self"
+              },
+              "address": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{40}$"
+              },
+              "codehash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "selectors": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-fA-F]{8}$"
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "address",
+              "codehash",
+              "selectors"
+            ],
+            "additionalProperties": {}
+          }
+        ]
+      }
     }
   },
   "required": [

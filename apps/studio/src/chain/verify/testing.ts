@@ -52,9 +52,15 @@ export function memoryRecords(initial: readonly Deployment[] = []): FakeRecords 
   const history: Deployment["verification"][] = [];
   return {
     list: async (projectId) => [...map.values()].filter((d) => d.projectId === projectId),
-    put: async (d) => {
-      map.set(key(d), d);
-      history.push(d.verification);
+    async update(chainId, address, update) {
+      const id = `${chainId}:${address.toLowerCase()}`;
+      const current = map.get(id) ?? null;
+      const result = update(current);
+      if (result.ok && result.value !== current) {
+        map.set(id, result.value);
+        history.push(result.value.verification);
+      }
+      return result;
     },
     all: () => [...map.values()],
     set: (d) => void map.set(key(d), d),

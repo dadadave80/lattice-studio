@@ -112,6 +112,7 @@ export type CommandArgsMap = {
   "inspect.copyAddress": { chainId: number; address: Address };
   "inspect.exportPassport": { chainId: number; address: Address };
   "inspect.selectFacet": { chainId: number; address: Address; facetAddress?: Address; focus?: boolean };
+  "inspect.editAsPlan": { chainId: number; address: Address };
   // S8d
   "deploy.retryVerification": { chainId: number; address: Address };
   // S9

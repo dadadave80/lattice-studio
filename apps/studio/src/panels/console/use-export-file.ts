@@ -32,7 +32,7 @@ export function useExportFile(kind: CodeKind): ExportView {
   const catalog = useCatalog();
   const analysis = useAnalysis();
   const [view, setView] = useState<ExportView>(NOTHING);
-  const empty = isCoreOnly(recipe);
+  const empty = recipe.mode !== "upgrade" && isCoreOnly(recipe);
 
   useEffect(() => {
     if (!catalog || empty) return;

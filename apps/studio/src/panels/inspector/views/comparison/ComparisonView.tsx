@@ -1,6 +1,7 @@
 import { comparePlan } from "@lattice-studio/core";
 import { useMemo } from "react";
-import { commandRef, useAnalysis, useCatalog, useOnline, type InspectorViewProps } from "@/contracts";
+import { commandRef, useAnalysis, useDocument, useOnline, type InspectorViewProps } from "@/contracts";
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import { Button, CommandButton, copyText } from "@/ui";
 import { Section } from "../../shared/Section";
 import { SpecRow } from "../../shared/SpecRow";
@@ -27,7 +28,8 @@ export function ComparisonView({ view }: InspectorViewProps<"comparison">) {
   const known = chains.some((entry) => entry.id === chainId);
   const plan = useAnalysis((a) => a.plan);
   const sheetHash = useAnalysis((a) => a.recipeHash);
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
+  const upgrade = useDocument((state) => state.project.recipe.mode === "upgrade");
   const signatureOf = useMemo(() => signatureLookup(catalog), [catalog]);
   const { deployments } = useDeployStatus({ recordChains: true });
   const record = deployments?.find((d) => d.chainId === chainId && d.address.toLowerCase() === address.toLowerCase());
@@ -91,7 +93,7 @@ export function ComparisonView({ view }: InspectorViewProps<"comparison">) {
           <Button onClick={copyDetails} icon="copy">
             Copy details
           </Button>
-          <CommandButton command={commandRef("deploy.newSalt")}>Use a new salt</CommandButton>
+          {upgrade ? <CommandButton command={commandRef("inspect.open", { chainId, target: address })}>Open on chain</CommandButton> : <CommandButton command={commandRef("deploy.newSalt")}>Use a new salt</CommandButton>}
         </div>
       </Section>
     </div>

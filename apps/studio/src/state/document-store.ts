@@ -177,6 +177,7 @@ export function createDocumentStore(options: DocumentStoreOptions = {}): History
 
   /** The core is never a card: whatever an op or a load hands the store, its layout holds no entry for the core. */
   const cardsOnly = (project: Project): Project => {
+    if (project.recipe.mode === "upgrade") return project;
     const layout = withoutCore(project.layout);
     return layout === project.layout ? project : { ...project, layout };
   };

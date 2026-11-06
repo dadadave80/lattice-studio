@@ -11,14 +11,14 @@
  * resolve a binary from it, reported as an ordinary "Couldn't verify" once regenerating the catalog is the fix).
  */
 import { keccak256 } from "viem";
-import type { Catalog, Deployment, Result, ShardRef } from "@lattice-studio/core";
+import type { Catalog, DeployPath, Result, ShardRef } from "@lattice-studio/core";
 import { err, ok } from "@lattice-studio/core";
 import { catalogDirFor } from "@/catalog";
 import { getCatalogStatus } from "@/contracts";
 import type { ProxyBuild, VerifyFetch } from "./ports";
 
 /** The `Lattice` proxy's standard JSON ref for this chain and path (spec L577). */
-export function proxyRef(catalog: Catalog, chainId: number, path: Deployment["path"]): ShardRef {
+export function proxyRef(catalog: Catalog, chainId: number, path: DeployPath): ShardRef {
   if (path === "factory") {
     const chainSpecific = catalog.chains.find((c) => c.chainId === chainId)?.factory?.proxyStandardJson;
     if (chainSpecific) return chainSpecific;
@@ -43,7 +43,7 @@ async function fetchShard(fetchImpl: VerifyFetch, dir: string, ref: ShardRef): P
 }
 
 /** The real `VerifyDeps.proxyBuild`: reads the loaded catalog (`@/contracts`), never a project's own pin. */
-export async function loadProxyBuild(fetchImpl: VerifyFetch, chainId: number, path: Deployment["path"]): Promise<Result<ProxyBuild, string>> {
+export async function loadProxyBuild(fetchImpl: VerifyFetch, chainId: number, path: DeployPath): Promise<Result<ProxyBuild, string>> {
   const status = getCatalogStatus();
   if (status.status !== "ready") return err("The catalog hasn't loaded.");
   const ref = proxyRef(status.catalog, chainId, path);

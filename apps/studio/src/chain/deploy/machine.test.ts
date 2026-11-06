@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import type { Address, Catalog, Deployment, FacetDetail, Hex, Project } from "@lattice-studio/core";
+import type { Address, Catalog, CreatedDeployment as Deployment, FacetDetail, Hex, Project } from "@lattice-studio/core";
 import { analyze, buildSalt, CREATEX, createxProxy, formatAddress, loadTemplate, multicallGas, recipeHash } from "@lattice-studio/core";
 import { encodeErrorResult, parseAbi } from "viem";
 import { filledTemplate, loadBuiltCatalog, makeProject } from "@lattice-studio/core/testing";
@@ -50,7 +50,7 @@ function rig(options: { project?: Project; account?: { address: Address; chainId
 /** The record written for `hash`. */
 function recordOf(h: DeployHarness, hash: Hex): Deployment {
   const found = h.records.all().find((d) => d.tx === hash);
-  if (!found) throw new Error(`no record for ${hash}`);
+  if (!found || found.kind === "imported") throw new Error(`no created record for ${hash}`);
   return found;
 }
 
@@ -631,7 +631,8 @@ describe("tracking", () => {
     const r = rig();
     const { h, m } = r;
     await submit(r);
-    const salt = h.records.all()[0]?.salt;
+    const first = h.records.all()[0];
+    const salt = first?.kind === "imported" ? undefined : first?.salt;
     h.clock.advance(180_000);
     m.reviewAgain();
     await flush();

@@ -1,8 +1,9 @@
 import type { Severity } from "@lattice-studio/core";
 import { useMemo } from "react";
 import {
-  commandRef, openProblemDoc, useAnalysis, useCatalog, useSession, type InspectorViewProps,
+  commandRef, openProblemDoc, useAnalysis, useSession, type InspectorViewProps,
 } from "@/contracts";
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import { Button, CommandButton, Icon, VisuallyHidden, type IconName } from "@/ui";
 import { Section } from "../../shared/Section";
 import { ProblemNavigation } from "../../shared/ProblemNavigation";
@@ -29,7 +30,7 @@ const ACK_FIXES = new Set<string>(["ack.set", "recipe.keepImmutable"]);
  */
 export function ProblemView({ view }: InspectorViewProps<"problem">) {
   const problem = useAnalysis((a) => a.problems.find((p) => p.id === view.id));
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const signatureOf = useMemo(() => signatureLookup(catalog), [catalog]);
   const selectedChain = useSession((s) => s.chainId);
   const chains = useChains(useChainService(selectedChain !== null));

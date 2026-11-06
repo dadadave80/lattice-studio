@@ -51,7 +51,7 @@ export function activate(meta: StructureMeta, source: CommandSource): boolean {
       selectCore(source);
       return true;
     case "selector":
-      run({ id: "inspector.focusSelectors", args: { facet: meta.facet } }, source);
+      run({ id: meta.raw ? "inspector.show" : "inspector.focusSelectors", args: { facet: meta.facet } }, source);
       return true;
     case "problem":
       // As F8 does: focus the problem's note (S4c).

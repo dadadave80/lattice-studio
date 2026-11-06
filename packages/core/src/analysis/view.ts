@@ -14,6 +14,7 @@
 import type { Catalog, Facet, Seam } from "../model/catalog";
 import type { Hex4 } from "../model/hex";
 import type { Recipe } from "../model/recipe";
+import { projectUpgradeCatalog } from "../upgrade/projection";
 
 /** `exportSelectors()`: never cut into a diamond (R3, spec L55). */
 export const EXPORT_SELECTORS: Hex4 = "0x0ef22643";
@@ -22,6 +23,7 @@ export const EXPORT_SELECTORS: Hex4 = "0x0ef22643";
 export const EXPORT_SELECTORS_SIGNATURE = "exportSelectors()";
 
 export type RecipeView = {
+  recipeMode: Recipe["mode"];
   /** Placed facets the catalog knows, in catalog order (the recipe's own order never matters). */
   placed: Facet[];
   /** Names of `placed`. */
@@ -77,7 +79,9 @@ function catalogIndex(catalog: Catalog): CatalogIndex {
 
 /** Whether `recipe`'s view can be kept: nothing it reads can change in place. */
 function settled(recipe: Recipe): boolean {
-  return Object.isFrozen(recipe.facets) && Object.isFrozen(recipe.owners) && Object.isFrozen(recipe.exclude);
+  return Object.isFrozen(recipe.facets) && Object.isFrozen(recipe.owners) && Object.isFrozen(recipe.exclude)
+    && (recipe.facetInstances === undefined || (Object.isFrozen(recipe.facetInstances) && Object.values(recipe.facetInstances).every((instance) =>
+      Object.isFrozen(instance) && Object.isFrozen(instance.kind === "known" ? instance.extraSelectors : instance.selectors))));
 }
 
 /** The view of `recipe` against `catalog`: kept for a settled recipe (see the module doc), built otherwise. */
@@ -93,10 +97,14 @@ export function recipeView(recipe: Recipe, catalog: Catalog): RecipeView {
 }
 
 function buildView(recipe: Recipe, catalog: Catalog): RecipeView {
+  const upgrade = recipe.mode === "upgrade" ? projectUpgradeCatalog(recipe, catalog) : undefined;
+  if (upgrade !== undefined && !upgrade.ok) throw new Error(upgrade.error);
+  if (upgrade?.ok) catalog = upgrade.value.catalog;
   const shared = catalogIndex(catalog);
   const wanted = new Set(recipe.facets);
   const placed = catalog.facets.filter((facet) => wanted.has(facet.name));
   const placedNames = new Set(placed.map((facet) => facet.name));
+  for (const row of upgrade?.ok ? upgrade.value.raw : []) placedNames.add(row.id);
   const byName = new Map<string, Facet>();
   for (const facet of placed) if (!byName.has(facet.name)) byName.set(facet.name, facet);
   const found = new Map<Hex4, string[]>();
@@ -107,6 +115,13 @@ function buildView(recipe: Recipe, catalog: Catalog): RecipeView {
       const list = found.get(selector);
       if (list === undefined) found.set(selector, [facet.name]);
       else if (!list.includes(facet.name)) list.push(facet.name);
+    }
+  }
+  for (const row of upgrade?.ok ? upgrade.value.raw : []) {
+    for (const selector of row.selectors) {
+      const list = found.get(selector) ?? [];
+      if (!list.includes(row.id)) list.push(row.id);
+      found.set(selector, list);
     }
   }
   const contenders = new Map<Hex4, string[]>();
@@ -123,6 +138,7 @@ function buildView(recipe: Recipe, catalog: Catalog): RecipeView {
     if (active !== undefined) seams.set(selector, active);
   }
   return {
+    recipeMode: recipe.mode,
     placed,
     placedNames,
     contenders,

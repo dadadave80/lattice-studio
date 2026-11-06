@@ -1,6 +1,8 @@
 import type { Hex4, LoupeFacet, PlanComparison, PlanEntry } from "@lattice-studio/core";
 import { formatAddress, plural } from "@lattice-studio/core";
 import { useId } from "react";
+import { useDocument } from "@/contracts";
+import { facetDisplayName } from "@/chain/inspect/upgrade/catalog";
 import sheet from "../../shared/sheet.module.css";
 import { denseSelector, type SignatureOf } from "./comparison-text";
 import styles from "./ComparisonView.module.css";
@@ -31,6 +33,7 @@ function selectorList(selectors: readonly Hex4[], signatureOf: SignatureOf) {
  * in words and the accent.
  */
 export function CompareColumns({ plan, facets, comparison, signatureOf }: CompareColumnsProps) {
+  const recipe = useDocument((state) => state.project.recipe);
   const planId = useId();
   const loupeId = useId();
   const missingOf = new Map(comparison.missing.map((entry) => [entry.facet, entry.selectors]));
@@ -47,7 +50,7 @@ export function CompareColumns({ plan, facets, comparison, signatureOf }: Compar
               const missing = missingOf.get(entry.facet);
               return (
                 <li key={entry.facet} className={sheet.item}>
-                  <span className={`${sheet.text} ${sheet.strong}`}>{entry.facet}</span>
+                  <span className={`${sheet.text} ${sheet.strong}`}>{facetDisplayName(recipe, entry.facet)}</span>
                   <span className={sheet.mono} title={entry.address}>
                     {formatAddress(entry.address)}
                   </span>

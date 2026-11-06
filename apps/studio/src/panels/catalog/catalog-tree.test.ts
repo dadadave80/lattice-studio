@@ -84,6 +84,12 @@ describe("buildCatalogNodes", () => {
     expect(matchedAreaIds.sort()).toEqual([areaNodeId("access"), areaNodeId("diamond"), areaNodeId("tokens")].sort());
   });
 
+  test("upgrade catalog rows permit adding canonical core releases", () => {
+    const catalog = makeCatalog({ facets: [makeFacet({ name: "ERC165Facet", area: "diamond" })] });
+    const tree = buildCatalogNodes(catalog, "", undefined, false);
+    expect(tree.nodes[0]?.children?.[0]).toEqual({ id: "ERC165Facet", label: "ERC165Facet" });
+  });
+
   test("a core facet's row is disabled with the reason; the others aren't", () => {
     const { nodes } = buildCatalogNodes(catalog, "");
     const diamond = nodes.find((n) => n.id === areaNodeId("diamond"));
