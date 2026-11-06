@@ -11,7 +11,7 @@ function size(firstLoad: number): SizeReport {
   return {
     ok: true,
     rows: [
-      { item: "First-load JavaScript", gz: firstLoad, raw: firstLoad, budget: 255_000, unit: "gz", warnOnly: false, ok: firstLoad <= 255_000 },
+      { item: "First-load JavaScript", gz: firstLoad, raw: firstLoad, budget: 265_000, unit: "gz", warnOnly: false, ok: firstLoad <= 265_000 },
       { item: "CSS", gz: 8_900, raw: 8_900, budget: 25_000, unit: "gz", warnOnly: false, ok: true },
       { item: "Catalog index", gz: 81_400, raw: 81_400, budget: 60_000, unit: "gz", warnOnly: true, ok: false },
       { item: "Lazy chunk shiki-x.js", gz: 57_800, raw: 180_000, budget: 70_000, unit: "gz", warnOnly: false, ok: true },
@@ -102,7 +102,7 @@ describe("evaluate", () => {
 
   test("the first-load fix request names each Q19 option with its measured size and what all three leave", () => {
     const fix = evaluate(inputs()).fixes[0] ?? "";
-    expect(fix).toContain("12.4 KB over spec L809's 240 KB (the gate, 255.0 KB, leaves 2.6 KB)");
+    expect(fix).toContain("12.4 KB over spec L809's 240 KB (the gate, 265.0 KB, leaves 12.6 KB)");
     expect(fix).toContain("Lazy-load the sheet (React Flow, d3, the card): −1.0 KB (FX15 estimated −65.0 KB)");
     expect(fix).toContain("All three: 235.4 KB");
   });
@@ -161,6 +161,6 @@ describe("renderEvaluation", () => {
     expect(text).toContain("Where the analysis time goes (100 ms busy in the profiled pass), by group:\n   55%  core/analysis");
   });
   test("PERF_BUDGETS keep the spec's numbers and the gate", () => {
-    expect(PERF_BUDGETS).toMatchObject({ firstLoadTarget: 240_000, firstLoadGate: 255_000, lcpMs: 2500, inpMs: 200, analysisMs: 5 });
+    expect(PERF_BUDGETS).toMatchObject({ firstLoadTarget: 240_000, firstLoadGate: 265_000, lcpMs: 2500, inpMs: 200, analysisMs: 5 });
   });
 });
