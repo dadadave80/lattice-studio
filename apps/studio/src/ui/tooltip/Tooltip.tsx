@@ -1,13 +1,19 @@
+import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
 import type { TooltipProps, TooltipSide } from "../popups/Tooltip";
 import { usePopups } from "../popups/load";
 
 export type { TooltipProps, TooltipSide };
 
-/**
- * A tooltip on hover and focus: `ui/popups/Tooltip.tsx`. Until the popups chunk loads (`ui/popups/load.ts`) it's
- * its trigger alone; the trigger already carries its own name, and `ReasonTooltip` its reason.
- */
+/** The trigger keeps its element while the tooltip's popup contents load. */
 export function Tooltip(props: TooltipProps) {
   const popups = usePopups();
-  return popups ? <popups.Tooltip {...props} /> : props.children;
+  const { open, onOpenChange, disabled = false, closeOnClick = true, delay } = props;
+  const control = open === undefined ? {} : { open };
+  const handler = onOpenChange ? { onOpenChange: (next: boolean) => onOpenChange(next) } : {};
+  return (
+    <BaseTooltip.Root {...control} {...handler} disabled={disabled}>
+      <BaseTooltip.Trigger render={props.children} closeOnClick={closeOnClick} {...(delay === undefined ? {} : { delay })} />
+      {popups ? <popups.Tooltip {...props} /> : null}
+    </BaseTooltip.Root>
+  );
 }

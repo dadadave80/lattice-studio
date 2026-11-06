@@ -1,11 +1,4 @@
-/**
- * Base UI's popups (menus, context menus, tooltips) load in their own chunk, asked for as soon as the first one
- * renders (spec L822, Q19): Base UI's popup parts and Floating UI, about 40 KB gz that nothing needs before a
- * person hovers, focuses or opens something. `ui/overlays` and `ui/tooltip` keep their components' names and
- * props and render through here: until the chunk arrives a menu, context menu or tooltip renders its trigger
- * alone, as it is, and then the real one. The trigger elements are re-created then, so the one that had focus
- * hands it to the element that took its place.
- */
+/** Popup implementations load on first render; tooltip triggers stay mounted to preserve edits and gestures. */
 import { useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 

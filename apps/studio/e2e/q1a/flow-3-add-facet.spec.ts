@@ -25,7 +25,7 @@ import type { Page } from "@playwright/test";
 import { plural } from "@lattice-studio/core";
 import { catalog } from "../_support/catalog.ts";
 import { expect, test } from "../_support/fixtures.ts";
-import { commandLine, pagePlatform, region } from "../_support/keys.ts";
+import { activeEnabledOptionText, commandLine, pagePlatform, region } from "../_support/keys.ts";
 import { openEmpty } from "../_support/seed.ts";
 import { NARROW_WIDTHS, expectTier, tierAt, viewportAt } from "../_support/viewports.ts";
 import { CatalogPage } from "./pages/catalog-page.ts";
@@ -73,7 +73,7 @@ async function typeInPalette(page: Page, query: string): Promise<void> {
 
 /**
  * The palette is already open (route 7: a menu command opens it filtered to facets); type `query` and wait for it
- * to rank the right row before pressing Enter. The palette keeps the rows that match every typed word and ranks a
+ * to enable and rank the right row before pressing Enter. The palette keeps rows matching every typed word and ranks a
  * whole-word match in the title first, so the active row's title containing `query` is the row Enter runs.
  */
 async function chooseInPalette(page: Page, query: string): Promise<void> {
@@ -82,14 +82,10 @@ async function chooseInPalette(page: Page, query: string): Promise<void> {
   await expect
     .poll(
       async () => {
-        const text = await input.evaluate((el) => {
-          const id = el.getAttribute("aria-activedescendant");
-          const option = id ? document.getElementById(id) : null;
-          return option?.textContent ?? null;
-        });
+        const text = await activeEnabledOptionText(input);
         return text?.toLowerCase().includes(query.toLowerCase()) ?? false;
       },
-      { message: `the palette's active row should be "${query}"` },
+      { message: `the palette's active row should be "${query}" and enabled` },
     )
     .toBe(true);
   await page.keyboard.press("Enter");

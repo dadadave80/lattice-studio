@@ -9,6 +9,9 @@ import type { BrowserContext } from "@playwright/test";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
+// Playwright matches canonical URL.href values server-side with a RegExp, avoiding client RPCs for local modules.
+const NON_LOCAL_URL = /^(?!(?:about|blob|data):|[a-z][a-z\d+.-]*:\/\/(?:[^/?#]*@)?(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:[/?#]|$))/;
+
 /** Whether `url` stays on this machine (or never leaves the page: data:, blob:). */
 export function isLocalUrl(url: URL): boolean {
   if (url.protocol === "data:" || url.protocol === "blob:" || url.protocol === "about:") return true;
@@ -22,14 +25,14 @@ export function isLocalUrl(url: URL): boolean {
 export async function keepLocal(context: BrowserContext): Promise<string[]> {
   const blocked: string[] = [];
   await context.route(
-    (url) => !isLocalUrl(url),
+    NON_LOCAL_URL,
     async (route) => {
       blocked.push(route.request().url());
       await route.abort("blockedbyclient");
     },
   );
   await context.routeWebSocket(
-    (url) => !isLocalUrl(url),
+    NON_LOCAL_URL,
     async (socket) => {
       blocked.push(socket.url());
       // 1008: policy violation. The page sees the socket close; nothing reaches the server.

@@ -35,25 +35,18 @@ export type TooltipProps = {
  * WCAG 1.4.13). Tooltips are visual only: the trigger carries its own accessible name, and a disabled
  * control's reason reaches assistive technology through `ReasonTooltip`'s description.
  */
-export function Tooltip({
-  content, reason, shortcut, children, side = "top", open, onOpenChange, closeOnClick = true, delay, disabled = false,
-}: TooltipProps) {
-  const control = open === undefined ? {} : { open };
-  const handler = onOpenChange ? { onOpenChange: (next: boolean) => onOpenChange(next) } : {};
+export function Tooltip({ content, reason, shortcut, side = "top" }: TooltipProps) {
   return (
-    <BaseTooltip.Root {...control} {...handler} disabled={disabled}>
-      <BaseTooltip.Trigger render={children} closeOnClick={closeOnClick} {...(delay === undefined ? {} : { delay })} />
-      <BaseTooltip.Portal>
-        <BaseTooltip.Positioner className={styles.positioner} side={side} sideOffset={8} collisionPadding={8}>
-          <BaseTooltip.Popup className={styles.popup} data-tooltip="">
-            <span className={styles.line}>
-              <span>{content}</span>
-              {shortcut === undefined ? null : <ShortcutChip keys={shortcut} />}
-            </span>
-            {reason ? <span className={styles.reason}>{reason}</span> : null}
-          </BaseTooltip.Popup>
-        </BaseTooltip.Positioner>
-      </BaseTooltip.Portal>
-    </BaseTooltip.Root>
+    <BaseTooltip.Portal>
+      <BaseTooltip.Positioner className={styles.positioner} side={side} sideOffset={8} collisionPadding={8}>
+        <BaseTooltip.Popup className={styles.popup} data-tooltip="">
+          <span className={styles.line}>
+            <span>{content}</span>
+            {shortcut === undefined ? null : <ShortcutChip keys={shortcut} />}
+          </span>
+          {reason ? <span className={styles.reason}>{reason}</span> : null}
+        </BaseTooltip.Popup>
+      </BaseTooltip.Positioner>
+    </BaseTooltip.Portal>
   );
 }

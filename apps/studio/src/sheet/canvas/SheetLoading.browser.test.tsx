@@ -6,6 +6,7 @@
  * is held back here until the test releases it.
  */
 import { describe, expect, test, vi } from "vitest";
+import { act } from "react";
 import { doc, startCatalogDrag } from "@/contracts";
 import { bufferedServices, fixtureCatalog, renderWithStudio } from "../../../test/harness";
 import { BLANK_DIAMOND_LABEL } from "@/sheet/chrome/copy";
@@ -15,15 +16,21 @@ import { emptyProject } from "./testing/sheet-harness";
 
 const gate = vi.hoisted(() => {
   let release: () => void = () => {};
+  let imported: () => void = () => {};
   const opened = new Promise<void>((resolve) => {
     release = resolve;
   });
-  return { opened, release: () => release() };
+  const loaded = new Promise<void>((resolve) => {
+    imported = resolve;
+  });
+  return { opened, loaded, imported: () => imported(), release: () => release() };
 });
 
 vi.mock("./SheetCanvas", async (importOriginal) => {
   await gate.opened;
-  return importOriginal();
+  const module = await importOriginal();
+  gate.imported();
+  return module;
 });
 
 function pointer(type: "pointermove" | "pointerup", at: { clientX: number; clientY: number }): void {
@@ -66,7 +73,30 @@ describe("the sheet while its canvas loads", () => {
     before?.focus();
     expect(document.activeElement).toBe(before);
 
-    gate.release();
+    if (!before) throw new Error("The Start block has no Blank diamond button.");
+    await act(async () => {
+      before.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 31, pointerType: "touch", isPrimary: true, button: 0 }));
+    });
+    await act(async () => {
+      gate.release();
+      await gate.loaded;
+      await vi.dynamicImportSettled();
+    });
+    expect(before.isConnected, "A canvas becoming ready must not detach a pressed control before native activation.").toBe(true);
+    expect(loading()).not.toBeNull();
+    const pressed = before.getBoundingClientRect();
+    await act(async () => {
+      window.dispatchEvent(new PointerEvent("pointerup", {
+        pointerId: 31, pointerType: "touch", isPrimary: true,
+        clientX: pressed.left + pressed.width / 2, clientY: pressed.top + pressed.height / 2,
+      }));
+      await vi.dynamicImportSettled();
+    });
+    expect(before.isConnected, "A touch release can precede its click; pointerup alone must not replace the target.").toBe(true);
+    // Cancelling the gesture lets the canvas take over without activating the button.
+    await act(async () => {
+      window.dispatchEvent(new PointerEvent("pointercancel", { pointerId: 31, pointerType: "touch", isPrimary: true }));
+    });
     await expect.poll(() => document.querySelector(".react-flow"), { timeout: 10_000 }).not.toBeNull();
     expect(loading()).toBeNull();
     // The canvas's own Start block layer has taken over, and the same control has focus in it.

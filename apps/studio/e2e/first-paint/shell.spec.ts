@@ -96,7 +96,11 @@ function placement(viewport: Viewport) {
     await expect(real).toBeVisible();
     await expect(page.locator("[data-static-shell]")).toHaveCount(0);
     const realSheet = await page.locator("[data-region='sheet']").boundingBox();
-    const realBox = await real.boundingBox();
+    let realBox = await real.boundingBox();
+    // The canvas can replace the visible loading block between locator resolution and measurement.
+    if (realBox === null) {
+      await expect.poll(async () => { realBox = await real.boundingBox(); return realBox; }).not.toBeNull();
+    }
     for (const side of ["y", "height"] as const) expect(staticSheet?.[side]).toBeCloseTo(realSheet?.[side] ?? -1, 0);
     for (const side of ["x", "y", "width", "height"] as const) expect(staticBox?.[side]).toBeCloseTo(realBox?.[side] ?? -1, 0);
   });

@@ -7,6 +7,7 @@ import type { Page } from "@playwright/test";
 import { catalog } from "../catalog.ts";
 import { expect, test } from "../fixtures.ts";
 import { region } from "../keys.ts";
+import { keepLocal, recordCspViolations } from "../network.ts";
 import {
   collisionsProject, deploymentFor, filePayload, importedProject, projectFile, recipeProject, shareLink,
 } from "../projects.ts";
@@ -76,26 +77,28 @@ async function databaseLayout(page: Page): Promise<unknown> {
 }
 
 test.describe("seeding @smoke", () => {
-  test("creates the database exactly as the app does", async ({ page }) => {
+  test("creates the database exactly as the app does", async ({ page, browser }) => {
     expect(DB_VERSION, "seeding creates S7a's version-1 stores").toBe(SEEDED_DB_VERSION);
     await openEmpty(page);
+    // Opening IndexedDB before persistence is ready would create an empty database.
+    await expect.poll(() => page.evaluate(async (name) =>
+      (await indexedDB.databases()).some((database) => database.name === name), DB_NAME)).toBe(true);
     const byApp = await databaseLayout(page);
-    // Away from the app (its connection closes), delete what it made, and let seeding create the database.
-    await page.goto(QUIET_URL);
-    await page.evaluate(
-      (dbName) =>
-        new Promise<void>((resolve, reject) => {
-          const request = indexedDB.deleteDatabase(dbName);
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
-          request.onblocked = () => reject(new Error("The app still holds the database open."));
-        }),
-      DB_NAME,
-    );
-    await storeProject(page, { project: recipeProject("ERC20") });
-    // Read before the app loads, so its upgrade can't paper over a difference.
-    expect(page.url()).toContain(QUIET_URL);
-    expect(await databaseLayout(page)).toEqual(byApp);
+    // Compare a helper-created database without deleting the app's live one.
+    const seededContext = await browser.newContext({ baseURL: page.url(), serviceWorkers: "block" });
+    try {
+      const blocked = await keepLocal(seededContext);
+      const violations = await recordCspViolations(seededContext);
+      const seededPage = await seededContext.newPage();
+      await storeProject(seededPage, { project: recipeProject("ERC20") });
+      // Read before the app loads, so its upgrade can't paper over a difference.
+      expect(seededPage.url()).toContain(QUIET_URL);
+      expect(await databaseLayout(seededPage)).toEqual(byApp);
+      expect(blocked).toEqual([]);
+      expect(violations).toEqual([]);
+    } finally {
+      await seededContext.close();
+    }
   });
 
   test("empty: a first visit opens Untitled with no cards on the sheet", async ({ page }) => {

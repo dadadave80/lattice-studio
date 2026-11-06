@@ -46,7 +46,12 @@ function TitleBlockPanel() {
     if (!el) return;
     const root = el.closest(".react-flow");
     let watched: Element | null = null;
-    const sizes = new ResizeObserver(() => measure());
+    let frame = 0;
+    // Publishing a size can recreate a shallower observer; do it outside resize delivery.
+    const sizes = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    });
     const measure = () => {
       // The readout's chunk can land after this one: look for it each time, and watch it once it's there.
       const readout = root?.querySelector('[data-chrome="zoom-readout"]') ?? null;
@@ -64,6 +69,7 @@ function TitleBlockPanel() {
     sizes.observe(el);
     if (root) sizes.observe(root);
     return () => {
+      cancelAnimationFrame(frame);
       sizes.disconnect();
       publishTitleBlockSize(null);
     };

@@ -9,7 +9,7 @@
  *   itself, so Tab takes more than the kit's 20 presses to reach it once the console body has loaded.
  */
 import { expect, type Locator, type Page } from "@playwright/test";
-import { focusRegion, pagePlatform, region } from "../../_support/keys.ts";
+import { activeEnabledOptionText, focusRegion, pagePlatform, region } from "../../_support/keys.ts";
 
 /** "Meta" where Studio binds ⌘, "Control" where it binds Ctrl. */
 export async function modKey(page: Page): Promise<"Meta" | "Control"> {
@@ -26,17 +26,9 @@ export function paletteInput(page: Page): Locator {
   return page.getByRole("combobox", { name: "Search commands, facets and recipes" });
 }
 
-/** The text of the palette's active row, or null. */
-async function activeRow(input: Locator): Promise<string | null> {
-  return input.evaluate((el) => {
-    const id = el.getAttribute("aria-activedescendant");
-    return id ? (document.getElementById(id)?.textContent ?? null) : null;
-  });
-}
-
 /**
  * Runs a command through the palette, keyboard only: ⌘/Ctrl K, type `title`, wait until the active row starts with
- * it, Enter.
+ * it and is enabled, Enter.
  */
 export async function runPalette(page: Page, title: string): Promise<void> {
   await pressMod(page, "k");
@@ -44,7 +36,7 @@ export async function runPalette(page: Page, title: string): Promise<void> {
   await expect(input).toBeFocused();
   await input.fill(title);
   await expect
-    .poll(async () => (await activeRow(input))?.startsWith(title) ?? false, { message: `the palette's active row should be "${title}"` })
+    .poll(async () => (await activeEnabledOptionText(input))?.startsWith(title) ?? false, { message: `the palette's active row should be "${title}" and enabled` })
     .toBe(true);
   await page.keyboard.press("Enter");
   await expect(input).toBeHidden();

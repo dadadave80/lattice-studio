@@ -28,9 +28,17 @@ export function useCrowded(container: RefObject<HTMLElement | null>, content: st
       }
     };
     check();
-    const observer = new ResizeObserver(check);
+    let frame = 0;
+    // Crowding changes the observed header; publish it outside resize delivery.
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(check);
+    });
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [container, content, crowded]);
 
   return crowded;

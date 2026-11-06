@@ -1,5 +1,5 @@
 import type { Arg, Project } from "@lattice-studio/core";
-import { createElement, Suspense } from "react";
+import { act, createElement, Suspense } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
@@ -403,6 +403,116 @@ describe("field types (spec L461-L466)", () => {
     release();
     await expect.element(safe).toHaveAccessibleDescription(new RegExp(ensChainChanged("safe.eth").replace(/\./g, "\\.")));
     expect(argAt(doc.get(), "steps[0].safe")).toBeUndefined();
+  });
+
+  for (const newer of ["quick pick", "literal address", "Escape"] as const) {
+    test(`a late ENS result preserves a newer ${newer}`, async () => {
+      const { service, release } = gated(fakeChainService({ ens: { "safe.eth": SAFE } }));
+      await renderWithStudio(<InitEditor view={{ kind: "init" }} />, {
+        project: projectFor(templateRecipe("SafeDiamondCut")), session: { chainId: 11155111 }, chain: service,
+      });
+      const safe = page.getByRole("textbox", { name: "Safe", exact: true });
+      await safe.fill("safe.eth");
+      await userEvent.keyboard("{Enter}");
+      await expect.element(page.getByText("Resolving safe.eth…")).toBeVisible();
+      await expect.element(safe).not.toHaveAttribute("readonly");
+
+      const expected: Arg | undefined = newer === "quick pick" ? { $ref: "self" } : newer === "literal address" ? TOKEN : undefined;
+      if (newer === "quick pick") {
+        const pick = page.getByRole("group", { name: "Safe quick picks" }).getByRole("button", { name: "This diamond" });
+        await expect.element(pick).not.toHaveAttribute("aria-disabled", "true");
+        await pick.click();
+      } else if (newer === "literal address") {
+        await safe.fill(TOKEN);
+        await userEvent.keyboard("{Enter}");
+      } else {
+        await userEvent.keyboard("{Escape}");
+      }
+      await expect.poll(() => argAt(doc.get(), "steps[0].safe")).toEqual(expected);
+      await act(async () => { release(); });
+      await expect.element(page.getByText("Resolving safe.eth…")).not.toBeInTheDocument();
+      expect(argAt(doc.get(), "steps[0].safe")).toEqual(expected);
+    });
+  }
+
+  test("a late ENS result cannot change another project shown in the same editor", async () => {
+    const { service, release } = gated(fakeChainService({ ens: { "safe.eth": SAFE } }));
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, {
+      project: projectFor(templateRecipe("SafeDiamondCut")), session: { chainId: 11155111 }, chain: service,
+    });
+    const safe = page.getByRole("textbox", { name: "Safe", exact: true });
+    await safe.fill("safe.eth");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByText("Resolving safe.eth…")).toBeVisible();
+    const otherProject = projectFor(templateRecipe("SafeDiamondCut"), { id: "another-project" });
+    const init = otherProject.recipe.init;
+    if (init.kind !== "steps") throw new Error("SafeDiamondCut must use step inits.");
+    const other = { ...otherProject, recipe: { ...otherProject.recipe, init: { ...init, steps: init.steps.map((step, index) =>
+      index === 0 ? { ...step, args: { ...step.args, safe: TOKEN } } : step) } } };
+    await act(async () => { doc.load(other); });
+    try {
+      await expect.element(safe).toHaveValue(TOKEN);
+    } finally {
+      await act(async () => { release(); });
+    }
+    expect(doc.get().id).toBe(other.id);
+    expect(argAt(doc.get(), "steps[0].safe")).toBe(TOKEN);
+  });
+
+  for (const replacement of ["project", "step"] as const) {
+    test(`a late ENS result cannot change a replacement ${replacement} after the editor unmounts`, async () => {
+      const { service, release } = gated(fakeChainService({ ens: { "safe.eth": SAFE } }));
+      const original = projectFor(templateRecipe("SafeDiamondCut"));
+      const screen = await renderWithStudio(<InitEditor view={{ kind: "init" }} />, {
+        project: original, session: { chainId: 11155111 }, chain: service,
+      });
+      await page.getByRole("textbox", { name: "Safe", exact: true }).fill("safe.eth");
+      await userEvent.keyboard("{Enter}");
+      await expect.element(page.getByText("Resolving safe.eth…")).toBeVisible();
+      await screen.unmount();
+      const init = original.recipe.init;
+      if (init.kind !== "steps") throw new Error("SafeDiamondCut must use step inits.");
+      const other = replacement === "project"
+        ? projectFor(templateRecipe("SafeDiamondCut"), { id: "another-project" })
+        : { ...original, recipe: { ...original.recipe, init: { ...init, steps: init.steps.map((step, index) =>
+          index === 0 ? { ...step, args: { ...step.args, safe: TOKEN } } : step) } } };
+      await act(async () => { doc.load(other); release(); });
+      expect(doc.get().id).toBe(other.id);
+      expect(argAt(doc.get(), "steps[0].safe")).toBe(replacement === "project" ? undefined : TOKEN);
+    });
+  }
+
+  test("a late ENS result leaves the newer lookup pending until it completes", async () => {
+    let releaseOlder: () => void = () => {};
+    let releaseNewer: () => void = () => {};
+    const older = new Promise<void>((resolve) => { releaseOlder = resolve; });
+    const newer = new Promise<void>((resolve) => { releaseNewer = resolve; });
+    const fake = fakeChainService({ ens: { "safe.eth": SAFE, "second.eth": TOKEN } });
+    const service: ChainService = {
+      ...fake,
+      async resolveEns(name, chainId) {
+        await (name === "safe.eth" ? older : newer);
+        return fake.resolveEns(name, chainId);
+      },
+    };
+    await renderWithStudio(<InitEditor view={{ kind: "init" }} />, {
+      project: projectFor(templateRecipe("SafeDiamondCut")), session: { chainId: 11155111 }, chain: service,
+    });
+    const safe = page.getByRole("textbox", { name: "Safe", exact: true });
+    await safe.fill("safe.eth");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByText("Resolving safe.eth…")).toBeVisible();
+    await safe.fill("second.eth");
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByText("Resolving second.eth…")).toBeVisible();
+    await act(async () => { releaseOlder(); });
+    try {
+      expect({ pending: page.getByText("Resolving second.eth…").elements().length, safe: argAt(doc.get(), "steps[0].safe") })
+        .toEqual({ pending: 1, safe: undefined });
+    } finally {
+      await act(async () => { releaseNewer(); });
+    }
+    expect(argAt(doc.get(), "steps[0].safe")).toBe(TOKEN);
   });
 
   test("while the session is read-only, fields and picks say why and change nothing", async () => {
