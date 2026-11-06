@@ -167,8 +167,11 @@ test.describe("Flow 6: route or exclude a selector by hand", () => {
       await expect(sheet.routePin("Receive", "Leave out of the diamond: receive()")).toBeVisible();
       await page.keyboard.press("Enter");
       await expect(sheet.pinLike("Receive", /^Inspect receive /)).toBeFocused();
+      const select = sheet.root.getByRole("toolbar", { name: "Sheet tools" }).getByRole("button", { name: /^Select(?: |$)/ });
+      // The tool strip is a lazy layer; Tab cannot reach it before it mounts.
+      await expect(select).toBeVisible();
       await page.keyboard.press("Tab");
-      await expect(sheet.root.getByRole("toolbar", { name: "Sheet tools" }).getByRole("button", { name: /^Select(?: |$)/ })).toBeFocused();
+      await expect(select).toBeFocused();
     });
 
     test("Structure tree: expand a facet, arrow to its selector, Space toggles it", async ({ page }) => {
