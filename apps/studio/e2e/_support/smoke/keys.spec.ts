@@ -65,8 +65,9 @@ test.describe("keyboard helpers @smoke", () => {
   test("runInPalette fails on a disabled command, which keeps the palette open", async ({ page }) => {
     await openEmpty(page);
     // Nothing is placed, so Deploy… is disabled with its reason.
-    await expect(runInPalette(page, "Deploy…")).rejects.toThrow(/the palette should close and run "Deploy…"/);
+    await expect(runInPalette(page, "Deploy…")).rejects.toThrow(/the palette's active row should be "Deploy…" and enabled/);
     await expect(paletteDialog(page)).toBeVisible();
+    await expect(page.getByRole("option", { name: /^Deploy…/ })).toHaveAttribute("aria-disabled", "true");
   });
 
   test("the console runs a verb", async ({ page }) => {

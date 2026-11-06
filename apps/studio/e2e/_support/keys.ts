@@ -101,6 +101,7 @@ export async function openPalette(page: Page): Promise<Locator> {
   for (let i = 0; i < (await comboboxes.count()); i += 1) {
     const candidate = comboboxes.nth(i);
     if (await candidate.evaluate((el) => el === document.activeElement)) {
+      await expect(candidate).toHaveAccessibleName("Search commands, facets and recipes");
       await expect(candidate).toBeFocused();
       return candidate;
     }
@@ -108,12 +109,12 @@ export async function openPalette(page: Page): Promise<Locator> {
   throw new Error("⌘K focused a combobox that the accessibility tree doesn't list.");
 }
 
-/** The text of the palette's active row (the combobox's `aria-activedescendant`), or null. */
-async function activeOptionText(input: Locator): Promise<string | null> {
+/** The text of the palette's active, enabled row (the combobox's `aria-activedescendant`), or null. */
+export async function activeEnabledOptionText(input: Locator): Promise<string | null> {
   return input.evaluate((el) => {
     const id = el.getAttribute("aria-activedescendant");
     const option = id ? document.getElementById(id) : null;
-    return option?.textContent ?? null;
+    return option?.getAttribute("aria-disabled") === "true" ? null : option?.textContent ?? null;
   });
 }
 
@@ -133,15 +134,15 @@ export async function expectPaletteClosed(page: Page, query: string): Promise<vo
 
 /**
  * Runs a command through the palette: opens it, types `query`, waits until the active row is the one `query` names
- * (its title contains the query, case-insensitively), presses Enter and waits for the palette to close, which is when
+ * (its title contains the query, case-insensitively) and is enabled, presses Enter and waits for it to close, when
  * the command runs. Keyboard only. `query` should single out the row: a command's title, "Connect wallet".
  */
 export async function runInPalette(page: Page, query: string): Promise<void> {
   const input = await openPalette(page);
   await input.fill(query);
   await expect
-    .poll(async () => (await activeOptionText(input))?.toLowerCase().includes(query.toLowerCase()) ?? false, {
-      message: `the palette's active row should be "${query}"`,
+    .poll(async () => (await activeEnabledOptionText(input))?.toLowerCase().includes(query.toLowerCase()) ?? false, {
+      message: `the palette's active row should be "${query}" and enabled`,
     })
     .toBe(true);
   await page.keyboard.press("Enter");

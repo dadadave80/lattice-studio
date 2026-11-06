@@ -5,7 +5,9 @@
  * Windows and Studio binds Ctrl, so the kit's `MOD` misses there. See the report's follow-ups (Q0).
  */
 import { expect, type Locator, type Page } from "@playwright/test";
-import { expectPaletteClosed, focusRegion, focusedRegion, pagePlatform, region } from "../../_support/keys.ts";
+import { focusRegion, focusedRegion, pagePlatform, region } from "../../_support/keys.ts";
+
+export { runInPalette } from "../../_support/keys.ts";
 
 /** Studio's `Mod`: ⌘ where the page reports macOS, Ctrl elsewhere. */
 export async function mod(page: Page): Promise<"Meta" | "Control"> {
@@ -33,31 +35,6 @@ export async function openPalette(page: Page): Promise<Locator> {
   const input = paletteInput(page);
   await expect(input).toBeFocused();
   return input;
-}
-
-/** The text of the palette's active row, or null. */
-async function activeOption(input: Locator): Promise<string | null> {
-  return input.evaluate((el) => {
-    const id = el.getAttribute("aria-activedescendant");
-    return (id ? document.getElementById(id)?.textContent : null) ?? null;
-  });
-}
-
-/**
- * Opens the palette, types `query`, waits for the active row to name it (as `_support/keys.ts` does: the row
- * contains the query, since titles are a verb and its object: "Projects" finds "Open Projects"), presses Enter and
- * waits for it to close.
- */
-export async function runInPalette(page: Page, query: string): Promise<void> {
-  const input = await openPalette(page);
-  await input.fill(query);
-  await expect
-    .poll(async () => (await activeOption(input))?.toLowerCase().includes(query.toLowerCase()) ?? false, {
-      message: `the palette's active row should be "${query}"`,
-    })
-    .toBe(true);
-  await page.keyboard.press("Enter");
-  await expectPaletteClosed(page, query);
 }
 
 /** The console's command line. */
