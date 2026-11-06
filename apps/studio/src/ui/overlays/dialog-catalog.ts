@@ -10,6 +10,7 @@ export type DialogCatalogEntry = {
 /** Every dialog's title and owner: what `DialogHost` shows while an owner hasn't registered its component. */
 export const DIALOG_CATALOG: Readonly<Record<DialogId, DialogCatalogEntry>> = {
   "deploy-review": { title: "Deploy review", owner: "S8b" },
+  "inspect-transaction": { title: "Review transaction", owner: "S8c" },
   "missing-contracts": { title: "Deploy missing contracts", owner: "S8c" },
   "choose-mechanism": { title: "Choose an upgrade mechanism", owner: "S5d" },
   "choose-per-selector": { title: "Choose per selector", owner: "S4c" },

@@ -198,6 +198,13 @@ function positionalTuples(param: AbiParameter): AbiParameter {
 }
 
 /** Results are JSON-safe: ABI integers remain exact decimal strings, including nested values. */
+export function decodeCallInputs(fn: AbiFunction, data: Hex): Result<CallOutput[], string> {
+  if (!isHexAnyCase(data) || data.slice(0, 10).toLowerCase() !== toFunctionSelector(fn)) return err("The calldata doesn't match this function.");
+  try { return ok(outputs(fn.inputs, decodeAbiParameters(fn.inputs.map(positionalTuples), `0x${data.slice(10)}`), "Argument")); }
+  catch { return err("The calldata arguments couldn't be decoded with this ABI."); }
+}
+
+/** Results are JSON-safe: ABI integers remain exact decimal strings, including nested values. */
 export function decodeCallOutputs(fn: AbiFunction, data: Hex): Result<CallOutput[], string> {
   if (!isHexAnyCase(data)) return err("The function result isn't hex bytes.");
   try {

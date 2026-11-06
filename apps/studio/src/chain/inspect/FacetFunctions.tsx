@@ -16,7 +16,7 @@ type Props = {
   value: ReadyInspection; facet: PassportIdentifiedFacet; metadata: Facet; catalog: Catalog;
   controller?: CallController;
   loadDetail?(catalog: Catalog, facet: Facet): Promise<Result<FacetDetail, string>>;
-  onReview?(prepared: PreparedCall, fn: RoutedFunction, abi: Abi): void | Promise<void>;
+  onReview?(prepared: PreparedCall, fn: RoutedFunction, abi: Abi, current: () => boolean): void | Promise<void>;
   onEdit?(): void;
 };
 
@@ -28,7 +28,7 @@ function FunctionRow({ value, fn, abi, controller, onReview, onEdit }: Omit<Prop
   }), [value.target.chainId, value.target.address, value.snapshot.block, value.snapshot.blockHash, value.identity, fn, abi]);
   return <details className={styles.function} onToggle={(event) => setOpen(event.currentTarget.open)}>
     <summary><Identifier text={fn.signature} />{` · ${fn.abi.stateMutability}`}</summary>
-    {open ? <CallForm context={context} {...(controller ? { controller } : {})} {...(onReview ? { onReview: (prepared) => onReview(prepared, fn, abi) } : {})} {...(onEdit ? { onEdit } : {})} /> : null}
+    {open ? <CallForm context={context} {...(controller ? { controller } : {})} {...(onReview ? { onReview: (prepared, current) => onReview(prepared, fn, abi, current) } : {})} {...(onEdit ? { onEdit } : {})} /> : null}
   </details>;
 }
 

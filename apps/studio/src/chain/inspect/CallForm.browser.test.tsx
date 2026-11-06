@@ -69,7 +69,7 @@ test("decodes a custom revert and retains its complete raw bytes", async () => {
   await page.getByRole("textbox", { name: "account (address)" }).fill(USER);
   await page.getByRole("button", { name: "Call", exact: true }).click();
   await expect.element(page.getByText("Denied", { exact: true })).toBeVisible();
-  await page.getByText("Raw return data", { exact: true }).click();
+  await page.getByText("Raw revert data", { exact: true }).click();
   await expect.element(page.getByText(data, { exact: true })).toBeVisible();
 });
 
