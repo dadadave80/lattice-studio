@@ -9,8 +9,7 @@ import type { BrowserContext } from "@playwright/test";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
-// Playwright serializes RegExp matchers to its server; a function matcher sends every local module through a
-// client RPC before falling back. Match canonical URL.href values, preserving isLocalUrl's exact host boundary.
+// Playwright matches canonical URL.href values server-side with a RegExp, avoiding client RPCs for local modules.
 const NON_LOCAL_URL = /^(?!(?:about|blob|data):|[a-z][a-z\d+.-]*:\/\/(?:[^/?#]*@)?(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:[/?#]|$))/;
 
 /** Whether `url` stays on this machine (or never leaves the page: data:, blob:). */

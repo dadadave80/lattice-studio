@@ -75,7 +75,7 @@ describe("Log (IR L134)", () => {
     await expect.poll(() => rest.color).toBe(getComputedStyle(probe).color);
     expect(rest.fontWeight).toBe("400");
     const pressed = getComputedStyle(chip("Error"));
-    expect(pressed.borderTopColor).not.toBe("rgba(0, 0, 0, 0)");
+    await expect.poll(() => pressed.borderTopColor).not.toBe("rgba(0, 0, 0, 0)");
     expect(pressed.backgroundImage).toContain("linear-gradient");
   });
 
