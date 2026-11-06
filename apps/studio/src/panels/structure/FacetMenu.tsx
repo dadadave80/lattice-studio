@@ -1,4 +1,5 @@
-import { layoutMetrics, useCatalog, useDocument, useSession } from "@/contracts";
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
+import { layoutMetrics, useDocument, useSession } from "@/contracts";
 import { MenuCommandItem, MenuSeparator } from "@/ui";
 
 /**
@@ -8,9 +9,17 @@ import { MenuCommandItem, MenuSeparator } from "@/ui";
 export function FacetMenu({ facet, contested }: { facet: string; contested: boolean }) {
   const selection = useSession((s) => s.selection);
   const expanded = useDocument((s) => s.project.layout[facet]?.expanded ?? false);
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const selectors = catalog?.facets.find((f) => f.name === facet)?.selectors.length ?? 0;
   const several = selection.length > 1 && selection.includes(facet);
+  const instance = useDocument((state) => state.project.recipe.mode === "upgrade" ? state.project.recipe.facetInstances?.[facet] : undefined);
+  if (instance && instance.kind !== "known") return <>
+    <MenuCommandItem command={{ id: "inspector.show", args: { facet } }} label="Open in inspector" />
+    <MenuCommandItem command={{ id: "sheet.locate", args: { facet } }} label="Locate" icon="locate" />
+    <MenuCommandItem command={{ id: "sheet.moveTo" }} label="Move to…" />
+    {instance.selectors.length > 3 ? <MenuCommandItem command={{ id: "layout.toggleExpand", args: { facet } }} label={expanded ? "Collapse" : "Expand"} /> : null}
+    {instance.kind === "foreign" ? <><MenuSeparator /><MenuCommandItem command={{ id: "facet.remove", args: { facets: [facet] } }} label="Remove whole facet" icon="trash" /></> : null}
+  </>;
   return (
     <>
       <MenuCommandItem command={{ id: "inspector.show", args: { facet } }} label="Open in inspector" />

@@ -1,3 +1,4 @@
+import { getCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 /**
  * Owner choices that settle several selectors at once, as one undo step: a collision note's Keep {A} and
  * Route to {B} for its whole set, its owner menu, and Choose per selector's Apply owners (spec L435-L439).
@@ -10,7 +11,7 @@
  */
 import type { Catalog, EditResult, Hex4, Project } from "@lattice-studio/core";
 import { plural, routeSelector } from "@lattice-studio/core";
-import { announce, getCatalog, log, session } from "@/contracts";
+import { announce, log, session } from "@/contracts";
 import { edit, summaryLine } from "@/state";
 
 export type OwnerChoice = { selector: Hex4; facet: string };
@@ -57,7 +58,7 @@ export function applyOwners(choices: readonly OwnerChoice[]): boolean {
     say(readOnly);
     return false;
   }
-  const catalog = getCatalog();
+  const catalog = getCompositionCatalog();
   if (!catalog) {
     say("The catalog hasn't loaded yet.");
     return false;

@@ -3,7 +3,7 @@ import type { ParseProjectFileFn, ParseProjectFn, ParseRecipeFn } from "../model
 import type { Catalog } from "../model/catalog";
 import { toChecksum, toLowerHex, type Hex } from "../model/hex";
 import type { ParseIssue, ParseOptions, ParseSource, Parsed } from "../model/io";
-import type { Deployment, Project, ProjectFile } from "../model/project";
+import type { Deployment, Project, ProjectFile, UpgradeBaseline } from "../model/project";
 import type { Recipe } from "../model/recipe";
 import { err, ok, type Result } from "../model/result";
 import { formatPath, MAX_JSON_DEPTH } from "../model/path";
@@ -55,8 +55,18 @@ function semanticIssues(recipe: Recipe, catalog: Catalog, at: readonly string[],
   const lacks = (name: string): string => `‘${name}’ isn't in ${latticeName(catalog)}.`;
   const out: ParseIssue[] = [];
   recipe.facets.forEach((name, index) => {
-    if (!facets.has(name)) out.push(issue(formatPath([...at, "facets", index]), lacks(name), opts));
+    if (!facets.has(name) && !Object.hasOwn(recipe.facetInstances ?? {}, name)) out.push(issue(formatPath([...at, "facets", index]), lacks(name), opts));
   });
+  for (const [id, instance] of Object.entries(recipe.facetInstances ?? {})) {
+    if (instance.kind !== "known") continue;
+    const known = catalog.facets.find((facet) => facet.name === instance.catalogFacet);
+    if (known === undefined) out.push(issue(formatPath([...at, "facetInstances", id, "catalogFacet"]), lacks(instance.catalogFacet), opts));
+    else if (known.release.codehash.toLowerCase() !== instance.codehash.toLowerCase()) {
+      out.push(issue(formatPath([...at, "facetInstances", id, "codehash"]), "doesn't match the pinned catalog facet's runtime hash.", opts));
+    } else if (instance.extraSelectors.some((selector) => known.selectors.some((entry) => entry.hex.toLowerCase() === selector.toLowerCase()))) {
+      out.push(issue(formatPath([...at, "facetInstances", id, "extraSelectors"]), "includes selectors already described by the catalog facet.", opts));
+    }
+  }
   const { init } = recipe;
   if (init.kind === "bundle" && !inits.has(init.spec)) out.push(issue(formatPath([...at, "init", "spec"]), lacks(init.spec), opts));
   if (init.kind === "steps") {
@@ -98,14 +108,26 @@ function checksum(value: Hex): Hex {
   return toChecksum(value.toLowerCase());
 }
 
+function normalizeBaseline<T extends UpgradeBaseline>(baseline: T): T {
+  return {
+    ...baseline, blockHash: toLowerHex(baseline.blockHash),
+    facets: baseline.facets.map((facet) => ({ ...facet, facetAddress: checksum(facet.facetAddress), functionSelectors: facet.functionSelectors.map(toLowerHex) })),
+    codehashes: Object.fromEntries(Object.entries(baseline.codehashes).map(([address, hash]) => [address.toLowerCase(), toLowerHex(hash)])),
+  };
+}
+
 /** The core is never on the sheet: a layout entry for one of its facets is dropped, whatever wrote it. */
 function normalizeProject(project: Project, recipe: Recipe): Project {
   return {
     ...project,
     recipe,
-    layout: withoutCore(project.layout),
+    layout: project.recipe.mode === "upgrade" ? project.layout : withoutCore(project.layout),
     deploy: { ...project.deploy, entropy: toLowerHex(project.deploy.entropy) },
     predicted: project.predicted.map((entry) => ({ ...entry, address: checksum(entry.address) })),
+    ...(project.upgrade === undefined ? {} : { upgrade: {
+      ...normalizeBaseline(project.upgrade), address: checksum(project.upgrade.address),
+      owner: project.upgrade.owner === null ? null : checksum(project.upgrade.owner),
+    } }),
   };
 }
 
@@ -113,13 +135,24 @@ function normalizeDeployment(record: Deployment): Deployment {
   const out: Deployment = {
     ...record,
     address: checksum(record.address),
-    deployer: checksum(record.deployer),
-    salt: toLowerHex(record.salt),
+    ...(record.kind === "imported" ? {} : { deployer: checksum(record.deployer), salt: toLowerHex(record.salt) }),
     recipeHash: toLowerHex(record.recipeHash),
     catalogHash: toLowerHex(record.catalogHash),
   };
   if (record.tx !== undefined) out.tx = toLowerHex(record.tx);
   if (record.safeTxHash !== undefined) out.safeTxHash = toLowerHex(record.safeTxHash);
+  if (record.pendingUpgrade !== undefined) {
+    const pending = record.pendingUpgrade;
+    out.pendingUpgrade = {
+      ...pending, baseline: normalizeBaseline(pending.baseline), desiredRecipeHash: toLowerHex(pending.desiredRecipeHash),
+      catalogHash: toLowerHex(pending.catalogHash), from: checksum(pending.from),
+      expectedFacets: pending.expectedFacets.map((facet) => ({ ...facet, facetAddress: checksum(facet.facetAddress), functionSelectors: facet.functionSelectors.map(toLowerHex) })),
+      expectedCodehashes: Object.fromEntries(Object.entries(pending.expectedCodehashes).map(([address, hash]) => [address.toLowerCase(), toLowerHex(hash)])),
+      ...(pending.tx === undefined ? {} : { tx: toLowerHex(pending.tx) }),
+      ...(pending.safeTxHash === undefined ? {} : { safeTxHash: toLowerHex(pending.safeTxHash) }),
+      ...(pending.call === undefined ? {} : { call: { ...pending.call, data: toLowerHex(pending.call.data) } }),
+    };
+  }
   return out;
 }
 

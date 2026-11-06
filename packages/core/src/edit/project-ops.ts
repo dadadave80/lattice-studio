@@ -56,7 +56,7 @@ export const moveCards: MoveCardsFn = (project, facets, by) => {
 };
 
 export const setCardPosition: SetCardPositionFn = (project, facet, at) => {
-  if (isCoreFacet(facet)) return noOp(project, `${facet} is the diamond's core and has no card.`);
+  if (project.recipe.mode !== "upgrade" && isCoreFacet(facet)) return noOp(project, `${facet} is the diamond's core and has no card.`);
   if (!isFinitePoint(at)) return noOp(project, `${facet} didn't move: the position isn't a number.`);
   const entry = project.layout[facet];
   if (entry === undefined && !project.recipe.facets.includes(facet)) return noOp(project, notOnSheet([facet]));
@@ -104,7 +104,7 @@ function sameEntry(a: CardLayout, b: CardLayout): boolean {
 
 export const applyLayout: ApplyLayoutFn = (project, layout) => {
   // The core has no card: an entry for it is dropped, whoever computed the layout.
-  const cards = withoutCore(layout);
+  const cards = project.recipe.mode === "upgrade" ? layout : withoutCore(layout);
   const bad = Object.keys(cards).find((name) => {
     const entry = cards[name];
     return entry !== undefined && !isFinitePoint(entry);

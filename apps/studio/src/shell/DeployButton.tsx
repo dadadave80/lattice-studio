@@ -1,4 +1,4 @@
-import { commandRef } from "@/contracts";
+import { commandRef, useDocument } from "@/contracts";
 import { CommandButton } from "@/ui/buttons/CommandButton";
 
 /**
@@ -6,6 +6,8 @@ import { CommandButton } from "@/ui/buttons/CommandButton";
  * sheet differs from a live deploy it reads Deploy again… (spec L584). Disabled with its command's reason.
  */
 export function DeployButton({ again }: { again: boolean }) {
+  const upgrade = useDocument((state) => state.project.recipe.mode === "upgrade");
+  if (upgrade) return <CommandButton command={commandRef("deploy.upgrade")} variant="primary" size="small">Upgrade…</CommandButton>;
   return again ? (
     <CommandButton command={commandRef("deploy.again")} variant="primary" size="small">
       Deploy again…

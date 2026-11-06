@@ -1,8 +1,9 @@
 import {
-  buildPassport, identifyFacets, isAddress, toChecksum,
+  buildPassport, identifyFacets, isAddress, sameAddress, toChecksum,
   type Address, type Catalog, type Passport, type PassportIdentifiedFacet, type Result,
 } from "@lattice-studio/core";
 import type { ChainInfo } from "@/contracts";
+import type { DiamondCutHistory } from "@/contracts/chain";
 import type { DiamondSnapshot, SnapshotReadError } from "./snapshot";
 
 export type InspectionTarget = { chainId: number; address: Address };
@@ -116,6 +117,26 @@ export function createInspectionEngine(ports: InspectionPorts) {
     },
     ensure(target: InspectionTarget): Promise<void> { return load(target, false); },
     refresh(target: InspectionTarget): Promise<void> { return load(target, true); },
+    /** History changes claims, never the observed facts/ABI identity used by call and transaction reviews. */
+    attachHistory(target: InspectionTarget, history: DiamondCutHistory, identity: string): boolean {
+      const entry = entries.get(keyOf(target));
+      if (disposed || entry?.state.status !== "ready" || history.coverage !== "full" || history.fromBlock !== 0 || history.deployment === null) return false;
+      const value = entry.state.value;
+      const first = [...history.history].sort((a, b) => a.block - b.block || a.logIndex - b.logIndex)[0];
+      if (history.chainId !== value.target.chainId || !sameAddress(history.address, value.target.address)
+        || value.identity !== identity || value.snapshot.block !== history.toBlock || value.snapshot.blockHash.toLowerCase() !== history.blockHash.toLowerCase()
+        || first === undefined || first.txHash.toLowerCase() !== history.deployment.txHash.toLowerCase() || first.block !== history.deployment.block) return false;
+      const snapshot = value.snapshot;
+      const passport = buildPassport({
+        chainId: value.target.chainId, chainName: value.chainName, address: value.target.address, block: snapshot.block,
+        hasCode: snapshot.code !== "0x", loupe: snapshot.facets, codehashes: snapshot.codehashes,
+        history: history.history, historySource: history.source, deployment: history.deployment,
+        ownerRouted: snapshot.ownerRouted, owner: snapshot.owner,
+      }, value.facets, null, value.passport.catalog);
+      entry.state = { ...entry.state, value: { ...value, passport } };
+      notify();
+      return true;
+    },
     invalidate(target?: InspectionTarget): void {
       if (disposed) return;
       if (target) {

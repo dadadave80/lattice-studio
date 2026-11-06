@@ -58,7 +58,25 @@ describe("deployed inspection service", () => {
     expect((await service.call(SEPOLIA.id, SAFE, "0x")).ok).toBe(false);
     expect((await service.inspectDiamond(1, SAFE)).ok).toBe(false);
     expect((await service.call(1, SAFE, "0x")).ok).toBe(false);
+    expect((await service.cutHistory(SEPOLIA.id, SAFE, { fromBlock: 0, toBlock: 16, blockHash: `0x${"ab".repeat(32)}` })).ok).toBe(false);
     expect(chains[SEPOLIA.id]!.calls.length).toBe(before);
+  });
+
+  test("history needs an explicit start, then scans only through its pinned block", async () => {
+    start();
+    const mocked = chains[SEPOLIA.id]!;
+    const blockHash = `0x${"ab".repeat(32)}` as const;
+    const before = mocked.calls.length;
+    const missing = await service.cutHistory(SEPOLIA.id, SAFE, { toBlock: 16, blockHash });
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.error.kind).toBe("not-read");
+    expect(mocked.calls.length).toBe(before);
+    const read = await service.cutHistory(SEPOLIA.id, SAFE, { fromBlock: 1, toBlock: 16, blockHash });
+    expect(read.ok).toBe(true);
+    if (!read.ok) throw new Error(read.error.reason);
+    expect(read.value).toEqual({ chainId: SEPOLIA.id, address: SAFE, history: [], source: "rpc", fromBlock: 1, toBlock: 16, blockHash, coverage: "range", deployment: null });
+    const query = mocked.calls.find((call) => call.method === "eth_getLogs")?.params as { fromBlock: string; toBlock: string }[];
+    expect(query[0]).toMatchObject({ fromBlock: "0x1", toBlock: "0x10" });
   });
 });
 

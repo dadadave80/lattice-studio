@@ -6,7 +6,7 @@
  */
 import type { Analysis, Anchor, Hex4 } from "@lattice-studio/core";
 import { isCoreFacet } from "@lattice-studio/core";
-import { commandRef, commandState, runCommand, session, type CommandSource } from "@/contracts";
+import { commandRef, commandState, doc, runCommand, session, type CommandSource } from "@/contracts";
 
 export type Located = { facet: string; selector?: Hex4 };
 
@@ -25,7 +25,7 @@ export function locatable(anchor: Anchor | undefined, analysis: Pick<Analysis, "
 export function selectAndLocate(facets: readonly string[], target: Located | null, source: CommandSource): void {
   if (facets.length) session.set({ selection: [...facets] });
   if (!target) return;
-  if (isCoreFacet(target.facet)) {
+  if (doc.get().recipe.mode !== "upgrade" && isCoreFacet(target.facet)) {
     // The core and the cards are never selected together: with cards selected, the core stays as it is.
     if (facets.length === 0) void runCommand(commandRef("core.select"), "api");
     return;

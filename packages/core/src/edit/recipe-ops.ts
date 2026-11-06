@@ -19,6 +19,10 @@ import type { Project } from "../model/project";
 import type { Arg, InitStep, Recipe, RecipeInit } from "../model/recipe";
 import { dropProvenance, parseInitPath, remapStepProvenance, type InitPath } from "./paths";
 import { done, isFinitePoint, noOp, notOnSheet, unique } from "./shared";
+import { recipeView } from "../analysis/view";
+import { computeRouting } from "../analysis/routing";
+import { projectUpgradeCatalog } from "../upgrade/projection";
+import { upgradeSelectorRefusal } from "../upgrade/guards";
 
 /** Pins of a newly placed card: on the right, as C9's `tidy` gives new cards. */
 const DEFAULT_PINS = "right";
@@ -46,17 +50,21 @@ const EMPTY_INIT: RecipeInit = { kind: "steps", steps: [] };
 
 // ── Lookups ────────────────────────────────────────────────────────────────────────────────────────────
 
-function facetOf(catalog: Catalog, name: string): Facet | undefined {
+function facetOf(catalog: Catalog, name: string, recipe?: Recipe): Facet | undefined {
+  if (recipe?.mode === "upgrade") {
+    const resolved = projectUpgradeCatalog(recipe, catalog);
+    if (resolved.ok) catalog = resolved.value.catalog;
+  }
   return catalog.facets.find((facet) => facet.name === name);
 }
 
-function exports(catalog: Catalog, name: string, selector: Hex4): boolean {
-  return facetOf(catalog, name)?.selectors.some((s) => s.hex === selector) ?? false;
+function exports(recipe: Recipe, catalog: Catalog, name: string, selector: Hex4): boolean {
+  return recipeView(recipe, catalog).contenders.get(selector)?.includes(name) ?? false;
 }
 
 /** Placed facets that export `selector`, in recipe order. */
 function exportersOf(recipe: Recipe, catalog: Catalog, selector: Hex4): string[] {
-  return recipe.facets.filter((name) => exports(catalog, name, selector));
+  return recipe.facets.filter((name) => exports(recipe, catalog, name, selector));
 }
 
 /** `transfer · 0xa9059cbb` (spec L679, dense). A selector the catalog doesn't know shows as its hex. */
@@ -71,6 +79,10 @@ function selectorLabel(catalog: Catalog, selector: Hex4): string {
 
 /** The seam for `selector` once every facet in its `when` is placed (spec L302). */
 function activeSeam(recipe: Recipe, catalog: Catalog, selector: Hex4): Seam | undefined {
+  if (recipe.mode === "upgrade") {
+    const resolved = projectUpgradeCatalog(recipe, catalog);
+    if (resolved.ok) catalog = resolved.value.catalog;
+  }
   return catalog.seams.find((seam) => seam.selector === selector && seam.when.every((name) => recipe.facets.includes(name)));
 }
 
@@ -83,7 +95,7 @@ function currentOwner(recipe: Recipe, catalog: Catalog, selector: Hex4, exporter
   if (explicit !== undefined && exporters.includes(explicit)) return explicit;
   const seam = activeSeam(recipe, catalog, selector);
   if (seam) return seam.anyOf.find((name) => recipe.facets.includes(name));
-  const defaults = exporters.filter((name) => facetOf(catalog, name)?.defaultOwnerOf?.includes(selector) === true);
+  const defaults = exporters.filter((name) => facetOf(catalog, name, recipe)?.defaultOwnerOf?.includes(selector) === true);
   return defaults.length === 1 ? defaults[0] : undefined;
 }
 
@@ -94,7 +106,8 @@ function currentOwner(recipe: Recipe, catalog: Catalog, selector: Hex4, exporter
 function cannotServe(recipe: Recipe, catalog: Catalog, selector: Hex4, facet: string): string | null {
   const label = selectorLabel(catalog, selector);
   if (!recipe.facets.includes(facet)) return notOnSheet([facet]);
-  if (!exports(catalog, facet, selector)) return `${facet} doesn't export ${label}.`;
+  if (!exports(recipe, catalog, facet, selector)) return `${facet} doesn't export ${label}.`;
+  if (recipe.mode === "upgrade") return null; // Explicit choices are retained; SEM-01 reports any seam deviation.
   const seam = activeSeam(recipe, catalog, selector);
   if (seam && !seam.anyOf.includes(facet)) {
     const explicit = recipe.owners[selector];
@@ -155,9 +168,12 @@ function routedOwners(recipe: Recipe, catalog: Catalog, selector: Hex4, facet: s
 // ── Facets ─────────────────────────────────────────────────────────────────────────────────────────────
 
 export const placeFacet: PlaceFacetFn = (project, catalog, name, at) => {
-  if (isCoreFacet(name)) return noOp(project, coreSentence(name));
+  if (isCoreFacet(name) && project.recipe.mode !== "upgrade") return noOp(project, coreSentence(name));
   const facet = facetOf(catalog, name);
   if (facet === undefined) return noOp(project, `The catalog has no facet named ${name}.`);
+  if (project.recipe.mode === "upgrade" && Object.values(project.recipe.facetInstances ?? {}).some((instance) => instance.address.toLowerCase() === facet.release.address.toLowerCase())) {
+    return noOp(project, "That release is already represented by its actual on-chain instance.");
+  }
   if (project.recipe.facets.includes(facet.name)) return noOp(project, `${facet.name} is already on the sheet.`);
   if (!isFinitePoint(at)) return noOp(project, `${facet.name} wasn't placed: the position isn't a number.`);
   const previous = project.layout[facet.name];
@@ -170,10 +186,11 @@ export const removeFacets: RemoveFacetsFn = (project, catalog, names) => {
   const all = unique(names);
   if (all.length === 0) return noOp(project, "Select a facet to remove.");
   // The core never leaves: alone it's a no-op that says so; beside other names the rest go, and the label says so.
-  const core = all.filter(isCoreFacet);
-  const asked = all.filter((name) => !isCoreFacet(name));
+  const core = project.recipe.mode === "upgrade" ? [] : all.filter(isCoreFacet);
+  const asked = all.filter((name) => !core.includes(name));
   if (asked.length === 0) return noOp(project, coreStays(core[0] ?? ""));
   const { recipe } = project;
+  if (asked.some((name) => recipe.facetInstances?.[name]?.kind === "self")) return noOp(project, "Functions built into the diamond are immutable and cannot be removed.");
   const removed = asked.filter((name) => recipe.facets.includes(name));
   if (removed.length === 0) return noOp(project, notOnSheet(asked));
 
@@ -188,20 +205,25 @@ export const removeFacets: RemoveFacetsFn = (project, catalog, names) => {
     const owner = recipe.owners[key];
     if (owner === undefined || gone.has(owner)) continue;
     // Only selectors this removal touched; any other entry, stale or not, is left for its own problem to raise.
-    const touched = removed.some((name) => exports(catalog, name, key));
-    if (!touched || remaining.filter((name) => exports(catalog, name, key)).length > 1) owners[key] = owner;
+    const touched = removed.some((name) => exports(recipe, catalog, name, key));
+    if (recipe.mode === "upgrade" || !touched || remaining.filter((name) => exports(recipe, catalog, name, key)).length > 1) owners[key] = owner;
   }
 
   // An exclusion only a removed facet exported has nothing left to exclude.
   const exclude = recipe.exclude.filter((selector) => {
-    const fromRemoved = removed.some((name) => exports(catalog, name, selector));
-    return !fromRemoved || remaining.some((name) => exports(catalog, name, selector));
+    const fromRemoved = removed.some((name) => exports(recipe, catalog, name, selector));
+    return !fromRemoved || remaining.some((name) => exports(recipe, catalog, name, selector));
   });
+  if (recipe.mode === "upgrade") {
+    for (const [selector, route] of Object.entries(computeRouting(recipe, catalog))) {
+      if (route.owner !== undefined && gone.has(route.owner) && !exclude.includes(selector as Hex4)) exclude.push(selector as Hex4);
+    }
+  }
 
   // Their init steps, unless a facet still on the sheet uses the same init (OwnableInit serves two facets).
-  const stillUsed = new Set(remaining.map((name) => facetOf(catalog, name)?.init).filter((spec) => spec !== undefined));
+  const stillUsed = new Set(remaining.map((name) => facetOf(catalog, name, recipe)?.init).filter((spec) => spec !== undefined));
   const dropped = new Set(
-    removed.map((name) => facetOf(catalog, name)?.init).filter((spec): spec is string => spec !== undefined && !stillUsed.has(spec)),
+    removed.map((name) => facetOf(catalog, name, recipe)?.init).filter((spec): spec is string => spec !== undefined && !stillUsed.has(spec)),
   );
   const { init, move } = dropInitSpecs(recipe.init, dropped);
 
@@ -209,6 +231,7 @@ export const removeFacets: RemoveFacetsFn = (project, catalog, names) => {
   for (const name of removed) delete layout[name];
 
   const next: Recipe = { ...recipe, facets: remaining, owners, exclude, init };
+  if (recipe.facetInstances !== undefined) next.facetInstances = Object.fromEntries(Object.entries(recipe.facetInstances).filter(([id]) => !gone.has(id)));
   const kept = core.length > 0 ? ` (${coreStays(core[0] ?? "").replace(/\.$/, "")})` : "";
   return done(withRecipe(followPaths(project, move), catalog, next, { layout }), `Removed ${joinAnd(removed)}${kept}`);
 };
@@ -241,6 +264,8 @@ function dropInitSpecs(init: RecipeInit, specs: ReadonlySet<string>): { init: Re
 
 export const routeSelector: RouteSelectorFn = (project, catalog, selector, facet) => {
   const sel = toLowerHex(selector);
+  const locked = upgradeSelectorRefusal(project, catalog, sel);
+  if (locked !== null) return noOp(project, locked);
   const { recipe } = project;
   const refusal = cannotServe(recipe, catalog, sel, facet);
   if (refusal !== null) return noOp(project, refusal);
@@ -254,6 +279,8 @@ export const routeSelector: RouteSelectorFn = (project, catalog, selector, facet
 
 export const clearOwner: ClearOwnerFn = (project, catalog, selector) => {
   const sel = toLowerHex(selector);
+  const locked = upgradeSelectorRefusal(project, catalog, sel);
+  if (locked !== null) return noOp(project, locked);
   const { recipe } = project;
   const label = selectorLabel(catalog, sel);
   if (recipe.owners[sel] === undefined) return noOp(project, `${label} has no owner to clear.`);
@@ -263,10 +290,12 @@ export const clearOwner: ClearOwnerFn = (project, catalog, selector) => {
 
 export const excludeSelector: ExcludeSelectorFn = (project, catalog, selector) => {
   const sel = toLowerHex(selector);
+  const locked = upgradeSelectorRefusal(project, catalog, sel);
+  if (locked !== null) return noOp(project, locked);
   const { recipe } = project;
   const label = selectorLabel(catalog, sel);
   // The core's five (the loupe's four and supportsInterface) are what makes it a Lattice diamond.
-  if (CORE_SELECTORS.includes(sel)) return noOp(project, `${label} is part of the diamond's core and can't be left out.`);
+  if (CORE_SELECTORS.includes(sel) && recipe.mode !== "upgrade") return noOp(project, `${label} is part of the diamond's core and can't be left out.`);
   if (recipe.exclude.includes(sel)) return noOp(project, `${label} is already out.`);
   if (exportersOf(recipe, catalog, sel).length === 0) return noOp(project, `No facet on the sheet exports ${label}.`);
   // One encoding (spec L285): an excluded selector has no owner; bringing it back chooses again.
@@ -277,6 +306,8 @@ export const excludeSelector: ExcludeSelectorFn = (project, catalog, selector) =
 
 export const includeSelector: IncludeSelectorFn = (project, catalog, selector, facet) => {
   const sel = toLowerHex(selector);
+  const locked = upgradeSelectorRefusal(project, catalog, sel);
+  if (locked !== null) return noOp(project, locked);
   const { recipe } = project;
   const label = selectorLabel(catalog, sel);
   if (!recipe.exclude.includes(sel)) return noOp(project, `${label} is already in the diamond.`);
@@ -293,6 +324,7 @@ export const includeSelector: IncludeSelectorFn = (project, catalog, selector, f
 // ── Whole recipe ───────────────────────────────────────────────────────────────────────────────────────
 
 export const loadRecipe: LoadRecipeFn = (project, catalog, recipe, layout) => {
+  if (project.recipe.mode === "upgrade" || recipe.mode === "upgrade") return noOp(project, "Open an upgrade plan as its own project with its pinned origin.");
   // The core comes with every recipe (put back if the recipe lost it) and never has a card.
   const next = normalizeRecipe(withCore(recipe, catalog), catalog);
   const cards = withoutCore(layout);
@@ -323,6 +355,7 @@ function sameLayout(a: Project["layout"], b: Project["layout"]): boolean {
 
 export const setImmutable: SetImmutableFn = (project, immutable) => {
   const { recipe } = project;
+  if (recipe.mode === "upgrade") return noOp(project, "An upgrade changes its mechanisms through explicit cuts, not an immutable mark.");
   if ((recipe.immutable === true) === immutable) {
     return noOp(project, immutable ? "The diamond is already kept immutable." : "The diamond isn't marked immutable.");
   }

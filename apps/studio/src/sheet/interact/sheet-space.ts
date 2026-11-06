@@ -1,9 +1,10 @@
+import { getCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 /**
  * Screen and sheet coordinates for the interactions, from the view S4b keeps (`sheetViewport()`), and card
  * sizes from the tokens (spec L824). Works on the mounted sheet: the element is React Flow's root.
  */
 import type { Point, Sizes } from "@lattice-studio/core";
-import { doc, getAnalysis, getCatalog, layoutMetrics } from "@/contracts";
+import { doc, getAnalysis, layoutMetrics } from "@/contracts";
 import { cardSizes } from "@/sheet/canvas/geometry";
 import { sheetSize, sheetViewport } from "@/sheet/canvas/sheet-view";
 import { snapPoint } from "./geometry";
@@ -39,7 +40,7 @@ export function viewCenter(): Point {
 
 /** Every placed card's size as the sheet draws it at full size. */
 export function currentSizes(): Sizes {
-  return cardSizes(doc.get().layout, getCatalog(), getAnalysis());
+  return cardSizes(doc.get().layout, getCompositionCatalog(), getAnalysis(), doc.get().recipe);
 }
 
 /** A pointer or mouse event's client point; a touch event's first touch. */

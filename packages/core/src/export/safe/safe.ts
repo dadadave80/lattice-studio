@@ -77,6 +77,7 @@ export function safeBatchTarget(args: SafeBatchTargetArgs): Result<{ salt: Hex; 
  * any account deploys them through Arachnid's proxy (spec L566), and the description says so.
  */
 export const exportSafeBatch: ExportSafeBatchFn = (args) => {
+  if (args.recipe.mode === "upgrade") return err("This is an upgrade plan. Export its diamondCut batch instead of a deployment batch.");
   const { catalog, safe, chainId, scope, path, now } = args;
   const target = safeBatchTarget(args);
   if (!target.ok) return target;

@@ -18,7 +18,7 @@ import type { WalletAccount } from "@/contracts";
 import type { Prediction } from "./prediction";
 
 export type ContextInput = {
-  project: Pick<Project, "predicted" | "provenance" | "deploy">;
+  project: Pick<Project, "predicted" | "provenance" | "deploy" | "upgrade">;
   /** The selected chain, or null. */
   chainId: number | null;
   prediction: Prediction;
@@ -35,7 +35,9 @@ export function buildContext(input: ContextInput): AnalysisContext {
   const { project, chainId, prediction, account, deployments, chain, chainName } = input;
   const ctx: AnalysisContext = { known: [], unconfirmed: [] };
 
-  if (prediction.status === "ready") {
+  if (project.upgrade !== undefined) {
+    ctx.refs = { self: project.upgrade.address, ...(account ? { deployer: toChecksum(account.address) } : {}) };
+  } else if (prediction.status === "ready") {
     ctx.deploy = { chainId: prediction.chainId, path: prediction.path, from: prediction.from, salt: prediction.salt };
     ctx.refs = { self: prediction.address, deployer: prediction.from };
   } else {
@@ -43,7 +45,7 @@ export function buildContext(input: ContextInput): AnalysisContext {
     if (account) ctx.refs = { deployer: toChecksum(account.address) };
   }
 
-  const current = prediction.status === "ready" ? prediction.address : null;
+  const current = project.upgrade?.address ?? (prediction.status === "ready" ? prediction.address : null);
   const known: Address[] = [];
   const knownFrom: KnownFrom = {};
   const add = (address: Address, from: KnownFrom[string]): void => {
@@ -60,7 +62,10 @@ export function buildContext(input: ContextInput): AnalysisContext {
     if (current !== null && sameAddress(p.address, current)) continue;
     add(p.address, { source: "prediction", chainId: p.chainId, ...named(p.chainId) });
   }
-  for (const d of deployments) add(d.address, { source: "deployment", chainId: d.chainId, ...named(d.chainId) });
+  for (const d of deployments) {
+    if (project.upgrade !== undefined && current !== null && sameAddress(d.address, current)) continue;
+    add(d.address, { source: "deployment", chainId: d.chainId, ...named(d.chainId) });
+  }
   if (known.length > 0) {
     ctx.known = known;
     ctx.knownFrom = knownFrom;

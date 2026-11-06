@@ -1,7 +1,8 @@
 import type { Facet } from "@lattice-studio/core";
 import { plural } from "@lattice-studio/core";
 import { useId } from "react";
-import { commandRef } from "@/contracts";
+import { commandRef, useDocument } from "@/contracts";
+import { facetDisplayName } from "@/chain/inspect/upgrade/catalog";
 import { CommandButton } from "@/ui";
 import sheet from "../../shared/sheet.module.css";
 import styles from "./preview.module.css";
@@ -10,6 +11,8 @@ import { breakIdentifier } from "@/ui/text/Identifier";
 /** One option of Compare options… (Flow 5): name, summary, selectors, namespace, requires, init, Place {name}. */
 export function CompareColumn({ facet }: { facet: Facet }) {
   const nameId = useId();
+  const label = useDocument((state) => facetDisplayName(state.project.recipe, facet.name));
+  const instance = useDocument((state) => state.project.recipe.mode === "upgrade" ? state.project.recipe.facetInstances?.[facet.name] : undefined);
   const facts: [string, string][] = [
     ["Selectors", plural(facet.selectors.length, "selector")],
     ["Namespace", facet.storage?.id ?? "none"],
@@ -19,9 +22,10 @@ export function CompareColumn({ facet }: { facet: Facet }) {
   return (
     <section className={styles.column} aria-labelledby={nameId} data-option={facet.name}>
       <h3 id={nameId} className={styles.name}>
-        {breakIdentifier(facet.name)}
+        {breakIdentifier(label)}
       </h3>
       <p className={sheet.text}>{facet.summary}</p>
+      {instance ? <p className={sheet.mono} style={{ overflowWrap: "anywhere" }}>{instance.address}</p> : null}
       <dl className={styles.facts}>
         {facts.map(([label, value]) => (
           <div key={label} className={styles.fact}>

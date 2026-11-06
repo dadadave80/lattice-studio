@@ -24,7 +24,7 @@ export const NOT_READY = "The file isn't ready yet";
  */
 export function CodeTab({ kind }: CodeTabProps) {
   // Cards only: a core-only sheet has nothing to generate a script for.
-  const empty = useDocument((s) => isCoreOnly(s.project.recipe));
+  const empty = useDocument((s) => s.project.recipe.mode !== "upgrade" && isCoreOnly(s.project.recipe));
   const catalog = useCatalog();
   const blockers = useAnalysis((a) => blockerCount(a));
   const recipeHash = useAnalysis((a) => a.recipeHash);

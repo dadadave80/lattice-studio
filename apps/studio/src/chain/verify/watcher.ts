@@ -20,6 +20,7 @@ import type { VerifyDeps } from "./ports";
 function eligible(records: readonly Deployment[], etherscanSetUp: boolean): Deployment[] {
   return records.filter(
     (d) =>
+      d.kind !== "imported" &&
       d.status === "confirmed" &&
       d.fromFile !== true &&
       (d.verification === "pending" || (etherscanSetUp && etherscanServes(d.chainId) && etherscanOutcomes.get(d) === undefined)),

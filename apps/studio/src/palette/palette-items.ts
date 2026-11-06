@@ -90,6 +90,7 @@ export type PaletteSources = {
   catalog: Catalog | null;
   /** Facets on the sheet. */
   placed: ReadonlySet<string>;
+  upgrade?: boolean;
   describe?: Describe;
 };
 
@@ -188,7 +189,7 @@ function commands(rows: readonly PaletteRow[]): PaletteItem[] {
 }
 
 /** Place facet: every catalog facet in catalog order, as `place <facet>` teaches (IR L165). */
-function facets(catalog: Catalog | null, placed: ReadonlySet<string>, at: SheetPoint | null, describe: Describe): PaletteItem[] {
+function facets(catalog: Catalog | null, placed: ReadonlySet<string>, at: SheetPoint | null, describe: Describe, upgrade = false): PaletteItem[] {
   if (!catalog) return [];
   const where: Record<string, Json> = at ? { at: { x: at.x, y: at.y } } : {};
   return catalog.facets
@@ -197,7 +198,7 @@ function facets(catalog: Catalog | null, placed: ReadonlySet<string>, at: SheetP
       const shown = describe(ref);
       if (!shown) return null;
       return item("facets", ref, shown, {
-        ...(isCoreFacet(facet.name) ? { note: CORE_NOTE } : placed.has(facet.name) ? { note: ON_SHEET } : {}),
+        ...(!upgrade && isCoreFacet(facet.name) ? { note: CORE_NOTE } : placed.has(facet.name) ? { note: ON_SHEET } : {}),
         keywords: `${facet.name} ${facet.area}`,
       });
     })
@@ -224,14 +225,14 @@ export function paletteGroups(sources: PaletteSources): PaletteGroup[] {
   const placeAt = sources.mode === "facets" ? sources.at : null;
   const items: Record<GroupId, PaletteItem[]> =
     sources.mode === "facets"
-      ? { suggested: [], recent: [], commands: [], recipes: [], facets: facets(sources.catalog, sources.placed, placeAt, describe) }
+      ? { suggested: [], recent: [], commands: [], recipes: [], facets: facets(sources.catalog, sources.placed, placeAt, describe, sources.upgrade) }
       : {
           suggested: suggested(sources.problems, describe),
           recent: sources.recent.map((ref) => fromRef("recent", ref, describe)).filter(present),
           commands: commands(sources.rows),
-          facets: facets(sources.catalog, sources.placed, null, describe),
+          facets: facets(sources.catalog, sources.placed, null, describe, sources.upgrade),
           // Cards only: the core is in every recipe, so a core-only sheet is still empty.
-          recipes: recipes(sources.catalog, [...sources.placed].some((name) => !isCoreFacet(name)), describe),
+          recipes: recipes(sources.catalog, sources.upgrade === true || [...sources.placed].some((name) => !isCoreFacet(name)), describe),
         };
   return GROUP_ORDER.map((id) => ({ id, label: GROUP_LABELS[id], items: items[id] })).filter((g) => g.items.length > 0);
 }

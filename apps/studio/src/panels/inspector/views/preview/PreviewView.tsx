@@ -1,6 +1,8 @@
 import { isCoreFacet } from "@lattice-studio/core";
 import type { InspectorViewProps } from "@/contracts";
-import { commandRef, useCatalog } from "@/contracts";
+import { commandRef, useDocument } from "@/contracts";
+import { facetDisplayName } from "@/chain/inspect/upgrade/catalog";
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import { Button, CommandButton } from "@/ui";
 import { CORE_FACET_REASON } from "../../../core-copy";
 import { ViewHeader } from "../../shared/ViewHeader";
@@ -15,7 +17,8 @@ import styles from "./preview.module.css";
  * with Place on sheet (Flow 3). With two or more options (Compare options…, Flow 5), they sit side by side.
  */
 export function PreviewView({ view }: InspectorViewProps<"preview">) {
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
+  const recipe = useDocument((state) => state.project.recipe);
   const compare = view.compare ?? [];
 
   if (compare.length >= 2) {
@@ -47,10 +50,12 @@ export function PreviewView({ view }: InspectorViewProps<"preview">) {
   }
 
   const name = compare[0] ?? view.facet;
+  const displayName = facetDisplayName(recipe, name);
+  const instance = recipe.mode === "upgrade" ? recipe.facetInstances?.[name] : undefined;
   const facet = catalog?.facets.find((entry) => entry.name === name);
   return (
     <div className={sheet.view} data-view="preview">
-      <ViewHeader title={name} kind="Catalog preview" />
+      <ViewHeader title={displayName} kind="Catalog preview" />
       {!catalog ? (
         <div className={sheet.section}>
           <p className={sheet.muted}>Loading the catalog…</p>
@@ -63,7 +68,7 @@ export function PreviewView({ view }: InspectorViewProps<"preview">) {
         <>
           <div className={sheet.section}>
             <div className={sheet.actions}>
-              {isCoreFacet(facet.name) ? (
+              {recipe.mode !== "upgrade" && isCoreFacet(facet.name) ? (
                 // Never a card: the core is in every diamond already, so there's nothing to place.
                 <Button variant="primary" size="small" disabledReason={CORE_FACET_REASON}>
                   Place on sheet
@@ -76,7 +81,7 @@ export function PreviewView({ view }: InspectorViewProps<"preview">) {
             </div>
           </div>
           <FacetSheet facet={facet} catalog={catalog} readOnly />
-          <AvailabilitySection facet={facet.name} />
+          {instance ? <div className={sheet.section}><p className={sheet.muted}>Actual instance address</p><p className={sheet.mono} style={{ overflowWrap: "anywhere" }}>{instance.address}</p></div> : <AvailabilitySection facet={facet.name} />}
         </>
       )}
     </div>

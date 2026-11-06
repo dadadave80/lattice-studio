@@ -13,13 +13,13 @@ export function DiamondAddress() {
   const projectPath = useDocument((s) => s.project.deploy.path);
   const { status, chains } = useDeployStatus();
   const live = status.state === "live" ? status.deployment : undefined;
-  const path = live?.path ?? (prediction.status === "ready" ? prediction.path : projectPath);
+  const path = live?.kind === "imported" ? undefined : live?.path ?? (prediction.status === "ready" ? prediction.path : projectPath);
   const pathName = path === "createx" ? "CreateX" : "LatticeFactory";
 
   return (
     <div className={styles.addressBlock}>
       <div className={styles.head}>
-        <span className={styles.label}>{`${pathName} · deterministic`}</span>
+        <span className={styles.label}>{live?.kind === "imported" ? "Imported diamond" : `${pathName} · deterministic`}</span>
         <span className={live ? `${styles.aside} ${styles.live}` : styles.aside}>{live ? "Live" : "Predicted"}</span>
       </div>
       {live ? (

@@ -4,7 +4,7 @@
  * delete for good, and imports.
  */
 import {
-  formatParseIssue, parseProject, toChecksum, type Deployment, type Project, type Result,
+  formatParseIssue, parseProject, toChecksum, validateDeployment, type Address, type Deployment, type Project, type Result,
 } from "@lattice-studio/core";
 import type { Viewport } from "@/contracts";
 import { META, type StudioDb, type TrashRecord } from "./db";
@@ -165,7 +165,47 @@ export function listDeployments(db: StudioDb, projectId: string): Promise<Deploy
 }
 
 export async function putDeployment(db: StudioDb, deployment: Deployment): Promise<void> {
-  await db.put("deployments", normalizeRecord(deployment));
+  const tx = db.transaction("deployments", "readwrite");
+  try {
+    const next = normalizeRecord(deployment);
+    const current = await tx.store.get([next.chainId, next.address]);
+    if (current && current.projectId !== next.projectId) throw new Error("That address belongs to another project's deployment record.");
+    // Legacy deploy watchers replace whole records; upgrades own these fields through the atomic update API.
+    if (!current?.pendingUpgrade && (current?.revision ?? 0) <= next.revision) await tx.store.put(next);
+    await tx.done;
+  } catch (error) {
+    try { tx.abort(); } catch { /* A failed request may already have aborted it. */ }
+    await tx.done.catch(() => {});
+    throw error;
+  }
+}
+
+/** The read, compare and replacement share one IndexedDB transaction, including across tabs. */
+export async function updateDeployment(
+  db: StudioDb, chainId: number, address: Address, update: (current: Deployment | null) => Result<Deployment, string>,
+): Promise<Result<Deployment, string>> {
+  const tx = db.transaction("deployments", "readwrite");
+  try {
+    const key: [number, string] = [chainId, toChecksum(address)];
+    const stored = await tx.store.get(key);
+    if (stored && !validateDeployment(stored).ok) { await tx.done; return { ok: false, error: "The stored deployment record is malformed." }; }
+    const result = update(stored ?? null);
+    if (!result.ok) { await tx.done; return result; }
+    const valid = validateDeployment(result.value);
+    if (!valid.ok || result.value.chainId !== chainId || result.value.address.toLowerCase() !== address.toLowerCase()
+      || (stored && result.value.projectId !== stored.projectId)) {
+      await tx.done;
+      return { ok: false, error: "A deployment update must preserve its address, chain, original project and valid record format." };
+    }
+    const next = normalizeRecord(valid.value.value);
+    await tx.store.put(next);
+    await tx.done;
+    return { ok: true, value: next };
+  } catch {
+    try { tx.abort(); } catch { /* A failed request may already have aborted it. */ }
+    await tx.done.catch(() => {});
+    return { ok: false, error: "The deployment update couldn't be saved. Keep the transaction hash and retry verification." };
+  }
 }
 
 /** Deletes the record stored under `[chainId, address]` (any case); returns it, or undefined when there's none. */
@@ -173,6 +213,10 @@ export async function deleteDeployment(db: StudioDb, chainId: number, address: s
   const tx = db.transaction("deployments", "readwrite");
   const key: [number, string] = [chainId, toChecksum(address)];
   const found = await tx.store.get(key);
+  if (found?.pendingUpgrade) {
+    await tx.done;
+    throw new Error("This diamond has an unresolved upgrade. Check it before deleting its record.");
+  }
   if (found) await tx.store.delete(key);
   await tx.done;
   return found;
@@ -207,10 +251,16 @@ export async function storeImport(
   savedAt: number,
 ): Promise<{ added: number; skipped: number }> {
   const tx = db.transaction(["projects", "deployments"], "readwrite");
-  await tx.objectStore("projects").put({ id: project.id, savedAt, project });
-  const counts = await addRecords(tx.objectStore("deployments"), deployments);
-  await tx.done;
-  return counts;
+  try {
+    await tx.objectStore("projects").put({ id: project.id, savedAt, project });
+    const counts = await addRecords(tx.objectStore("deployments"), deployments);
+    await tx.done;
+    return counts;
+  } catch (error) {
+    try { tx.abort(); } catch { /* An IndexedDB request may already have aborted it. */ }
+    await tx.done.catch(() => {});
+    throw error;
+  }
 }
 
 /** Moves a project and its records to Recently deleted. Resolves the counts moved, or an error. */
@@ -224,10 +274,18 @@ export async function trashProject(db: StudioDb, id: string, deletedAt: number):
     return { ok: false, error: "This project isn't in this browser's storage." };
   }
   const records = await deployments.index("projectId").getAll(id);
+  const referenced = new Set((await projects.getAll()).flatMap((row) => {
+    if (row.id === id) return [];
+    const read = readProjectValue(row.project);
+    const origin = read.ok ? read.value.upgrade : undefined;
+    return origin ? [`${origin.chainId}:${origin.address.toLowerCase()}`] : [];
+  }));
   const entry: TrashRecord = { id, deletedAt, savedAt: record.savedAt, project: record.project, deployments: records };
   await tx.objectStore("trash").put(entry);
   await projects.delete(id);
-  for (const d of records) await deployments.delete([d.chainId, d.address]);
+  for (const d of records) {
+    if (!d.pendingUpgrade && !referenced.has(`${d.chainId}:${d.address.toLowerCase()}`)) await deployments.delete([d.chainId, d.address]);
+  }
   await tx.done;
   return { ok: true, value: countRecords(records) };
 }
@@ -354,7 +412,13 @@ export async function listEverything(db: StudioDb, unreadable?: Unreadable): Pro
   const out: StoredEntry[] = [];
   const add = (id: string, value: unknown, records: Deployment[], trashed: boolean) => {
     const project = readProjectValue(value);
-    if (project.ok) out.push({ kind: "project", project: project.value, deployments: records, trashed });
+    if (project.ok) {
+      const origin = project.value.upgrade;
+      const target = origin ? deployments.find((record) => record.chainId === origin.chainId && record.address.toLowerCase() === origin.address.toLowerCase()) : undefined;
+      const latest = records.map((record) => deployments.find((current) => current.chainId === record.chainId && current.address.toLowerCase() === record.address.toLowerCase()) ?? record);
+      if (target && !latest.some((record) => record.chainId === target.chainId && record.address.toLowerCase() === target.address.toLowerCase())) latest.push(target);
+      out.push({ kind: "project", project: project.value, deployments: latest, trashed });
+    }
     else {
       unreadable?.(id, project.error);
       out.push({ kind: "raw", id, project: value, deployments: records });
@@ -364,7 +428,10 @@ export async function listEverything(db: StudioDb, unreadable?: Unreadable): Pro
     add(record.id, record.project, byProject.get(record.id) ?? [], false);
     byProject.delete(record.id);
   }
-  for (const entry of trash) add(entry.id, entry.project, entry.deployments, true);
+  for (const entry of trash) {
+    add(entry.id, entry.project, entry.deployments, true);
+    byProject.delete(entry.id);
+  }
   for (const [projectId, records] of byProject) out.push({ kind: "orphans", projectId, deployments: records });
   return out;
 }

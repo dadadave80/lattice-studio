@@ -62,7 +62,7 @@ export const planInit: PlanInitFn = (recipe, catalog) => {
   }
   const steps = init.steps.map((step, i) => stepView(`steps[${i}]`, i, step.spec, findSpec(catalog, step.spec), step.args, false));
   const registers = init.steps.some((step) => findSpec(catalog, step.spec)?.registersInterfaces === true);
-  if (!registers) {
+  if (!registers && recipe.mode !== "upgrade") {
     const which = hasUpgradeMechanism(recipe.facets, catalog) ? "initUpgradeable" : "initImmutable";
     steps.push(automaticStep(steps.length, which, catalog));
   }

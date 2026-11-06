@@ -1,6 +1,7 @@
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 import type { Hex4 } from "@lattice-studio/core";
 import { useId, useRef, useState } from "react";
-import { closeDialog, useAnalysis, useCatalog, useSession, type DialogComponentProps } from "@/contracts";
+import { closeDialog, useAnalysis, useSession, type DialogComponentProps } from "@/contracts";
 import { Button } from "@/ui/buttons/Button";
 import { Icon } from "@/ui/icons/Icon";
 import { Dialog } from "@/ui/overlays/Dialog";
@@ -47,7 +48,7 @@ function OwnerChoice({ row, value, onChange }: { row: Row; value: string | undef
  * Choose owner…). Like every editing command, Apply owners says the read-only reason while one is set.
  */
 export function ChoosePerSelectorDialog({ entry, top }: DialogComponentProps<"choose-per-selector">) {
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const routing = useAnalysis((a) => a.routing);
   const readOnly = useSession((s) => s.readOnly);
   const bodyRef = useRef<HTMLUListElement>(null);

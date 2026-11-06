@@ -29,10 +29,10 @@ export type { CatalogLoader, CatalogStatus, FacetDetailState } from "./catalog";
 export { log, now, randomBytes } from "./kernel";
 
 export {
-  announce, chainService, closeDialog, createProject, hideBanner, isOnline, listDeployments, loadViewport,
-  deleteDeployment, openDialog, openProblemDoc, openProject, openShareLink, provideServices, pushEscape, putDeployment, registerDropTarget,
+  announce, chainService, closeDialog, createProject, getDeployment, hideBanner, isOnline, listDeployments, loadViewport,
+  deleteDeployment, openDialog, openProblemDoc, openProject, openShareLink, projectDeployments, provideServices, pushEscape, putDeployment, registerDropTarget,
   saveStatus, saveViewport, showBanner, startCatalogDrag, subscribeCatalogDrag, subscribeDeployments, toast,
-  subscribeOnline, subscribeSaveStatus, useDeployments, useOnline, useRegion, useSaveStatus,
+  subscribeOnline, subscribeSaveStatus, updateDeployment, useDeployments, useOnline, useRegion, useSaveStatus,
 } from "./services";
 export type {
   AnnounceOptions, BannerProps, CatalogDrag, ConnectionService, DeploymentsService, DndService, DropTarget,
@@ -40,8 +40,8 @@ export type {
 } from "./services";
 
 export type {
-  AccountKind, ChainCallError, ChainCallOptions, ChainInfo, ChainReadiness, ChainService, DiamondSnapshot,
-  ProbeOptions, SnapshotCallFailure, SnapshotReadError, WalletAccount, WalletConnector,
+  AccountKind, ChainCallError, ChainCallOptions, ChainInfo, ChainReadiness, ChainService, CutHistoryOptions,
+  DiamondCutHistory, DiamondSnapshot, HistoryReadError, ProbeOptions, SnapshotCallFailure, SnapshotReadError, WalletAccount, WalletConnector,
 } from "./chain";
 
 export { deployController, deployState, provideDeployController, subscribeDeployState, useDeployState } from "./deploy";

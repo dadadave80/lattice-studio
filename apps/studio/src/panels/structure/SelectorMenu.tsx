@@ -6,8 +6,9 @@ import { MenuCommandItem, MenuSeparator } from "@/ui";
  * Leave out of the diamond where it routes here; Bring back where it's out. A seam offers no route, and a
  * selector the analysis hasn't checked yet offers none of these.
  */
-export function SelectorMenu({ facet, view }: { facet: string; view: PinView }) {
+export function SelectorMenu({ facet, view, raw = false }: { facet: string; view: PinView; raw?: boolean }) {
   const { selector, state } = view;
+  if (raw) return <MenuCommandItem command={{ id: "selector.copy", args: { selector, facet } }} label="Copy selector" icon="copy" />;
   const routeHere = state === "elsewhere" || state === "contested";
   const leaveOut = state === "routed" || state === "default";
   const change = routeHere || leaveOut || state === "excluded";

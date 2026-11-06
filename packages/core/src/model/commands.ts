@@ -147,6 +147,8 @@ const OWNERS = {
   "inspect.exportPassport": "S8c",
   "inspect.selectFacet": "S8c",
   "inspect.showProgress": "S8c",
+  "inspect.editAsPlan": "S8c",
+  "deploy.upgrade": "S8c",
   // S8d
   "deploy.retryVerification": "S8d",
   // S9

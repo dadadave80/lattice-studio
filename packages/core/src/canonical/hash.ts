@@ -35,6 +35,14 @@ export function hashedRecipe(recipe: Recipe): Omit<Recipe, "$schema" | "name" | 
     init: hashedInit(recipe.init),
   };
   if (recipe.immutable === true) shape.immutable = true;
+  if (recipe.mode !== undefined) shape.mode = recipe.mode;
+  if (recipe.facetInstances !== undefined) {
+    shape.facetInstances = Object.fromEntries(Object.entries(recipe.facetInstances).map(([id, instance]) => [id,
+      instance.kind === "known"
+        ? { kind: instance.kind, address: instance.address, codehash: instance.codehash, catalogFacet: instance.catalogFacet, extraSelectors: instance.extraSelectors }
+        : { kind: instance.kind, address: instance.address, codehash: instance.codehash, selectors: instance.selectors },
+    ]));
+  }
   return shape;
 }
 

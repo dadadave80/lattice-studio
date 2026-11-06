@@ -8,8 +8,8 @@ import {
   CORE_FACETS, exportProjectFile, isCoreFacet, lines, plural, type CommandRef, type Deployment, type Project, type Recipe, type Result,
 } from "@lattice-studio/core";
 import {
-  announce, commandRef, createProject as createProjectService, getCatalog, listDeployments, log,
-  openProject as openProjectService, runCommand, showBanner, toast,
+  announce, commandRef, createProject as createProjectService, getCatalog, log,
+  openProject as openProjectService, projectDeployments, runCommand, showBanner, toast,
 } from "@/contracts";
 import { flushPendingSave, persistence } from "@/persist";
 import { downloadFile, forgetHandle, linkedHandle, saveAllTo, saveProjectAs, writeLinked } from "./file-io";
@@ -63,7 +63,7 @@ export async function openStoredProject(id: string): Promise<Result<void, string
 }
 
 async function currentDeployments(project: Project): Promise<readonly Deployment[]> {
-  return listDeployments(project.id);
+  return projectDeployments(project);
 }
 
 /**

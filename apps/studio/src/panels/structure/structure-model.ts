@@ -10,7 +10,8 @@
  * (spec L745-L746, Flow 6, IR L104). The core's facets read the same way, though they're never cards.
  */
 import type { Analysis, Area, Catalog, Facet, Hex4, InitPlan, InitStepView, Problem, Recipe, Severity } from "@lattice-studio/core";
-import { CORE_FACETS, isCoreFacet, plural } from "@lattice-studio/core";
+import { CORE_FACETS, formatAddress, isCoreFacet, plural } from "@lattice-studio/core";
+import { facetDisplayName } from "@/chain/inspect/upgrade/catalog";
 import { layoutMetrics } from "@/contracts/layout-metrics";
 import { cardAnalysis, cardView, type PinView, type TooltipCopy } from "@/sheet/card/card-model";
 import { AREA_LABELS } from "../catalog/catalog-tree";
@@ -119,8 +120,8 @@ export type StructureMeta =
   /** An area's group of placed facets ("DeFi"), named with how many it holds. */
   | { kind: "area"; area: Area; label: string; name: string; count: number }
   /** `area`: the id of the group it sits in; none while the catalog doesn't know the facet. */
-  | { kind: "facet"; facet: string; label: string; description: string; count: string; known: boolean; area?: string }
-  | { kind: "selector"; facet: string; view: PinView }
+  | { kind: "facet"; facet: string; label: string; description: string; count: string; known: boolean; area?: string; displayName?: string }
+  | { kind: "selector"; facet: string; view: PinView; raw?: true }
   | { kind: "problems"; label: string; count: number }
   | { kind: "problem"; problem: Problem; label: string }
   | { kind: "init"; label: string; summary: string }
@@ -198,7 +199,7 @@ export function buildStructure({ recipe, catalog, analysis, plan }: StructureInp
       return { id: child, label: view.signature };
     });
     return {
-      node: { id, label: facet.name, ...(children.length > 0 ? { children } : {}) },
+      node: { id, label: facetDisplayName(recipe, facet.name), ...(children.length > 0 ? { children } : {}) },
       words: { label: card.name, description: card.connections, count: card.count },
     };
   };
@@ -208,7 +209,7 @@ export function buildStructure({ recipe, catalog, analysis, plan }: StructureInp
   const routed = analysis.stats.routed;
   meta.set(FALLBACK_ID, { kind: "fallback", label: fallbackLabel(routed), routed });
   const core: TreeNode[] = [{ id: FALLBACK_ID, label: "Fallback" }];
-  for (const name of CORE_FACETS.filter((facet) => recipe.facets.includes(facet))) {
+  for (const name of recipe.mode === "upgrade" ? [] : CORE_FACETS.filter((facet) => recipe.facets.includes(facet))) {
     const id = coreFacetId(name);
     const facet = catalog?.facets.find((f) => f.name === name);
     if (!catalog || !facet) {
@@ -220,22 +221,34 @@ export function buildStructure({ recipe, catalog, analysis, plan }: StructureInp
     meta.set(id, { kind: "coreFacet", facet: name, ...row.words, known: true });
     core.push(row.node);
   }
-  meta.set(CORE_ID, { kind: "core", label: "Core" });
-  nodes.push({ id: CORE_ID, label: "Core", children: core });
+  const coreLabel = recipe.mode === "upgrade" ? "Stored diamond" : "Core";
+  meta.set(CORE_ID, { kind: "core", label: coreLabel });
+  nodes.push({ id: CORE_ID, label: coreLabel, children: core });
 
   const groups = new Map<Area, TreeNode[]>();
   const unknown: TreeNode[] = [];
   for (const name of recipe.facets) {
-    if (isCoreFacet(name)) continue;
+    if (recipe.mode !== "upgrade" && isCoreFacet(name)) continue;
     const id = facetId(name);
     const facet = catalog?.facets.find((f) => f.name === name);
+    const instance = recipe.mode === "upgrade" ? recipe.facetInstances?.[name] : undefined;
+    const displayName = instance ? `${facetDisplayName(recipe, name)} · ${formatAddress(instance.address)}` : name;
+    const rawSelectors = instance?.kind === "known" ? instance.extraSelectors : instance?.selectors ?? [];
+    const rawRows = rawSelectors.map((selector): TreeNode => {
+      const child = selectorId(name, selector);
+      const text = instance?.kind === "self" ? "Functions built into the diamond are immutable and cannot be edited." : "Raw selectors cannot be edited individually. Remove their whole facet instance instead.";
+      const view: PinView = { selector, signature: selector, name: selector, state: "unchecked", here: true, mark: "Locked", tooltip: { text }, label: `${selector}, locked raw selector`, rowLabel: `${selector}, locked raw selector`, action: null };
+      meta.set(child, { kind: "selector", facet: name, view, raw: true });
+      return { id: child, label: view.label };
+    });
     if (!catalog || !facet) {
-      meta.set(id, { kind: "facet", facet: name, label: name, description: "", count: "", known: false });
-      unknown.push({ id, label: name });
+      meta.set(id, { kind: "facet", facet: name, label: instance ? `${facetDisplayName(recipe, name)} at ${instance.address}` : name, ...(instance ? { displayName } : {}), description: instance ? "No trusted ABI or storage compatibility metadata." : "", count: instance ? `${rawSelectors.length} raw` : "", known: false });
+      unknown.push({ id, label: displayName, ...(rawRows.length ? { children: rawRows } : {}) });
       continue;
     }
     const row = facetRow(facet, catalog, id, (hex) => selectorId(name, hex));
-    meta.set(id, { kind: "facet", facet: name, ...row.words, known: true, area: areaId(facet.area) });
+    if (rawRows.length) row.node = { ...row.node, children: [...(row.node.children ?? []), ...rawRows] };
+    meta.set(id, { kind: "facet", facet: name, ...row.words, ...(instance ? { displayName, label: `${facetDisplayName(recipe, name)} at ${instance.address}`, count: `${row.words.count}${rawRows.length ? ` + ${rawRows.length} raw` : ""}` } : {}), known: true, area: areaId(facet.area) });
     const group = groups.get(facet.area);
     if (group) group.push(row.node);
     else groups.set(facet.area, [row.node]);

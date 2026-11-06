@@ -13,6 +13,7 @@ import { buildPlan } from "../plan";
 import { computeRouting } from "./routing";
 import { sortProblems } from "./sort";
 import { EXPORT_SELECTORS, recipeView } from "./view";
+import { projectUpgradeCatalog } from "../upgrade/projection";
 
 const EMPTY_CONTEXT: AnalysisContext = { known: [], unconfirmed: [] };
 
@@ -39,7 +40,10 @@ export const analyze: AnalyzeFn = (recipe, catalog, ctx, options) => {
   if (cached !== undefined) return cached;
 
   const routing = computeRouting(normalized, catalog);
-  const problems = sortProblems(runChecks({ recipe: normalized, catalog, routing, ctx: context }, options?.checks), catalog);
+  const upgrade = normalized.mode === "upgrade" ? projectUpgradeCatalog(normalized, catalog) : undefined;
+  if (upgrade !== undefined && !upgrade.ok) throw new Error(upgrade.error);
+  const checkCatalog = upgrade?.ok ? upgrade.value.catalog : catalog;
+  const problems = sortProblems(runChecks({ recipe: normalized, catalog: checkCatalog, routing, ctx: context }, options?.checks), checkCatalog);
   const analysis: Analysis = Object.freeze({
     recipeHash: hash,
     routing: freezeRouting(routing),
@@ -94,10 +98,12 @@ function statsOf(recipe: Recipe, catalog: Catalog, routing: Routing): Analysis["
     (sum, facet) => sum + facet.selectors.filter((s) => s.hex.toLowerCase() !== EXPORT_SELECTORS).length,
     0,
   );
+  const raw = recipe.mode === "upgrade" ? projectUpgradeCatalog(recipe, catalog) : undefined;
+  const rawRows = raw?.ok ? raw.value.raw : [];
   return {
-    facets: view.placed.filter((facet) => !isCoreFacet(facet.name)).length,
+    facets: new Set([...view.placed.filter((facet) => recipe.mode === "upgrade" || !isCoreFacet(facet.name)).map((facet) => facet.name), ...rawRows.map((row) => row.id)]).size,
     routed: Object.values(routing).filter((route) => route.owner !== undefined).length,
-    exported,
+    exported: exported + rawRows.reduce((sum, row) => sum + row.selectors.length, 0),
     excluded: [...view.contenders.keys()].filter((selector) => view.exclude.has(selector)).length,
     namespaces: new Set(view.placed.flatMap((facet) => (facet.storage ? [facet.storage.id] : []))).size,
   };
@@ -112,6 +118,13 @@ function settle(recipe: Recipe): Recipe {
   Object.freeze(recipe.facets);
   Object.freeze(recipe.owners);
   Object.freeze(recipe.exclude);
+  if (recipe.facetInstances !== undefined) {
+    for (const instance of Object.values(recipe.facetInstances)) {
+      Object.freeze(instance.kind === "known" ? instance.extraSelectors : instance.selectors);
+      Object.freeze(instance);
+    }
+    Object.freeze(recipe.facetInstances);
+  }
   return recipe;
 }
 

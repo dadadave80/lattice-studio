@@ -1,6 +1,9 @@
 import { isCoreFacet } from "@lattice-studio/core";
 import type { InspectorViewProps } from "@/contracts";
-import { commandRef, useCatalog } from "@/contracts";
+import { commandRef, useDocument } from "@/contracts";
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
+import { facetDisplayName } from "@/chain/inspect/upgrade/catalog";
+import { RawFacetView, RawSelectorSection } from "@/chain/inspect/upgrade/RawFacetView";
 import { CommandButton } from "@/ui";
 import { CORE_FACET_LINE } from "../../../core-copy";
 import { Section } from "../../shared/Section";
@@ -15,12 +18,15 @@ import { FacetSheet } from "./FacetSheet";
  * selects the core.
  */
 export function FacetView({ view }: InspectorViewProps<"facet">) {
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
+  const recipe = useDocument((state) => state.project.recipe);
+  const instance = recipe.mode === "upgrade" ? recipe.facetInstances?.[view.facet] : undefined;
   const facet = catalog?.facets.find((entry) => entry.name === view.facet);
-  const core = isCoreFacet(view.facet);
+  const core = recipe.mode !== "upgrade" && isCoreFacet(view.facet);
+  if (instance && instance.kind !== "known") return <RawFacetView name={view.facet} instance={instance} />;
   return (
     <div className={styles.view} data-view="facet" data-facet={view.facet}>
-      <ViewHeader title={view.facet} kind={core ? "Core facet" : "Facet"} />
+      <ViewHeader title={facet ? facetDisplayName(recipe, view.facet) : view.facet} kind={core ? "Core facet" : "Facet"} />
       {core ? (
         <div className={styles.section}>
           <p className={styles.text}>{CORE_FACET_LINE}</p>
@@ -37,6 +43,7 @@ export function FacetView({ view }: InspectorViewProps<"facet">) {
       ) : (
         <>
           <FacetSheet facet={facet} catalog={catalog} readOnly={false} />
+          {instance?.kind === "known" && instance.extraSelectors.length ? <RawSelectorSection selectors={instance.extraSelectors} /> : null}
           <Section label="Actions">
             <div className={styles.actions}>
               {core ? (

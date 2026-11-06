@@ -1,9 +1,12 @@
-import type { Hex4 } from "@lattice-studio/core";
-import { layoutMetrics, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
+import { formatAddress, type Hex4 } from "@lattice-studio/core";
+import { layoutMetrics, useAnalysis, useDocument, useSession } from "@/contracts";
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
+import { facetDisplayName } from "@/chain/inspect/upgrade/catalog";
+import { RawFacetCard } from "@/chain/inspect/upgrade/RawFacetCard";
 import { cx } from "@/ui/shared/cx";
 import { useStore, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import { memo, useEffect, useMemo, useRef } from "react";
-import { cardAnalysis, cardView, describeCard, sameCardAnalysis, wordNeighbours, type CardAnalysis } from "./card-model";
+import { cardAnalysis, cardName, cardView, describeCard, sameCardAnalysis, wordNeighbours, type CardAnalysis } from "./card-model";
 import { CardGround } from "./CardGround";
 import { CardHandles } from "./CardHandles";
 import { CardMarks } from "./CardMarks";
@@ -37,9 +40,12 @@ function sameNode(a: NodeProps<FacetNode>, b: NodeProps<FacetNode>): boolean {
  * narrow selectors, so an edit re-renders only the cards it touches. The focusable wrapper, its role, name and
  * description are React Flow's node wrapper, wired by `facetNodeA11y` (node.ts) to the hidden text here.
  */
-export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
+const KnownFacetCard = memo(function KnownFacetCard({ id }: NodeProps<FacetNode>) {
   const name = id;
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
+  const upgrade = useDocument((state) => state.project.recipe.mode === "upgrade");
+  const instance = useDocument((state) => state.project.recipe.mode === "upgrade" ? state.project.recipe.facetInstances?.[name] : undefined);
+  const displayName = useDocument((state) => state.project.recipe.mode === "upgrade" ? facetDisplayName(state.project.recipe, name) : name);
   const facet = useMemo(() => catalog?.facets.find((f) => f.name === name), [catalog, name]);
   const own = useMemo(() => new Set<string>(facet?.selectors.map((s) => s.hex) ?? []), [facet]);
   const near = useMemo(() => wordNeighbours(facet, catalog?.facets ?? []), [facet, catalog]);
@@ -115,18 +121,19 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
       data-pins={view.pins}
       style={{ width, height }}
     >
-      <span id={cardNameId(name)} hidden>{view.name}</span>
+      <span id={cardNameId(name)} hidden>{instance ? `${cardName(`${displayName} at ${instance.address}`, view.all)}${instance.kind === "known" && instance.extraSelectors.length ? `, ${instance.extraSelectors.length} additional raw selectors retained` : ""}` : view.name}</span>
       <span id={cardDescriptionId(name)} hidden>{describeCard(view, selected, stamp)}</span>
       <div className={styles.paint} style={{ containIntrinsicSize: `${width}px ${height}px` }}>
         <div className={styles.header}>
           <div className={styles.titleRow}>
-            <span className={styles.title}>{view.facet}</span>
+            <span className={styles.title}>{displayName}</span>
+            {instance?.kind === "known" && instance.extraSelectors.length ? <span className={styles.chip}>{`${instance.extraSelectors.length} raw`}</span> : null}
             {mark.badge}
             {view.chips.map((chip) => (
               <span key={chip} className={styles.chip}>{chip}</span>
             ))}
           </div>
-          <div className={styles.path}>{compact ? view.count : view.source}</div>
+          <div className={styles.path} title={instance?.address}>{compact ? view.count : instance ? formatAddress(instance.address) : view.source}</div>
         </div>
         {compact ? (
           <TickStrip pins={view.all} side={view.pins} />
@@ -148,8 +155,13 @@ export const FacetCard = memo(function FacetCard({ id }: NodeProps<FacetNode>) {
       </div>
       <CardMarks selected={selected} />
       <CardGround routed={view.routed} exported={view.exported} cut={view.cut} side={view.pins} compact={compact} live={selected} />
-      <CardStamp name={name} />
+      {!upgrade ? <CardStamp name={name} /> : null}
       <CardHandles rows={rowSelectors} side={view.pins} compact={compact} metrics={layoutMetrics} />
     </div>
   );
+}, sameNode);
+
+export const FacetCard = memo(function FacetCard(props: NodeProps<FacetNode>) {
+  const instance = useDocument((state) => state.project.recipe.mode === "upgrade" ? state.project.recipe.facetInstances?.[props.id] : undefined);
+  return instance && instance.kind !== "known" ? <RawFacetCard id={props.id} instance={instance} /> : <KnownFacetCard {...props} />;
 }, sameNode);

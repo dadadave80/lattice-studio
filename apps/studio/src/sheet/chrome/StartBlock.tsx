@@ -108,7 +108,7 @@ function useKeepFocusOnSheet(empty: boolean): void {
  * for the catalog: until the catalog loads it offers v1's three recipes, each saying why it can't load yet.
  */
 export function StartBlock() {
-  const empty = useDocument((s) => isCoreOnly(s.project.recipe));
+  const empty = useDocument((s) => s.project.recipe.mode !== "upgrade" && isCoreOnly(s.project.recipe));
   const catalog = useCatalog();
   const platform = usePlatform();
   const recipes = useMemo((): readonly string[] => {

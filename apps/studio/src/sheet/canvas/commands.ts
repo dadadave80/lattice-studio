@@ -242,11 +242,11 @@ const locate = command<LocateArgs>({
   enabled(ctx, { facet }) {
     if (typeof facet !== "string" || facet === "") return refuse(NAME_A_FACET);
     // The core's facets have no card: locating one selects the core instead.
-    if (isCoreFacet(facet)) return OK;
+    if (ctx.project.recipe.mode !== "upgrade" && isCoreFacet(facet)) return OK;
     return ctx.project.layout[facet] ? OK : refuse(`${facet} isn't on the sheet`);
   },
   run(ctx, { facet, selector }) {
-    if (isCoreFacet(facet)) {
+    if (ctx.project.recipe.mode !== "upgrade" && isCoreFacet(facet)) {
       void runCommand(commandRef("core.select"), ctx.source);
       return;
     }

@@ -1,7 +1,9 @@
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
+import { facetDisplayName } from "@/chain/inspect/upgrade/catalog";
 import { plural, recipeStats } from "@lattice-studio/core";
 import { useMemo } from "react";
 import type { InspectorViewProps } from "@/contracts";
-import { commandRef, emptyAnalysis, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
+import { commandRef, emptyAnalysis, useAnalysis, useDocument, useSession } from "@/contracts";
 import { CommandButton, cx } from "@/ui";
 import { Section } from "../../shared/Section";
 import { ViewHeader } from "../../shared/ViewHeader";
@@ -16,10 +18,11 @@ import { anchoredProblems } from "../facet/facet-model";
 export function SelectionView(_props: InspectorViewProps<"selection">) {
   const selection = useSession((s) => s.selection);
   const placed = useDocument((s) => s.project.recipe.facets);
+  const recipe = useDocument((s) => s.project.recipe);
   const plan = useAnalysis((a) => a.plan);
   const routing = useAnalysis((a) => a.routing);
   const allProblems = useAnalysis((a) => a.problems);
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   const selected = useMemo(() => selection.filter((name) => placed.includes(name)), [selection, placed]);
   // recipeStats reads only the plan and the routing.
   const perFacet = useMemo(
@@ -33,19 +36,23 @@ export function SelectionView(_props: InspectorViewProps<"selection">) {
       <ViewHeader title={`${plural(selected.length, "facet")} selected`} kind="Selection" />
       <Section label="Facets" aside={`${selected.length}`}>
         <ul className={sheet.list}>
-          {selected.map((name) => (
+          {selected.map((name) => {
+            const label = facetDisplayName(recipe, name);
+            const instance = recipe.mode === "upgrade" ? recipe.facetInstances?.[name] : undefined;
+            return (
             <li key={name} className={sheet.item} data-facet={name}>
               <div className={sheet.itemLine}>
-                <span className={cx(sheet.mono, sheet.strong)}>{name}</span>
+                <span className={cx(sheet.mono, sheet.strong)}>{label}</span>
                 <span className={sheet.muted}>{perFacet[name]?.text ?? ""}</span>
               </div>
+              {instance ? <span className={sheet.mono} style={{ overflowWrap: "anywhere" }}>{instance.address}</span> : null}
               <div className={sheet.actions}>
                 <CommandButton command={commandRef("inspector.show", { facet: name })} size="small" variant="quiet">
-                  {`Open ${name}`}
+                  {`Open ${label}`}
                 </CommandButton>
               </div>
             </li>
-          ))}
+          ); })}
         </ul>
       </Section>
       {problems.length === 0 ? null : (

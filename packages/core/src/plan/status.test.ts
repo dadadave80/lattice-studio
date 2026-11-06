@@ -225,6 +225,13 @@ describe("projectStatus: chains, order and revisions", () => {
 });
 
 describe("recipeStats", () => {
+  test("the analyzer's actual card count includes a newly added upgrade core release", () => {
+    const catalog = makeCatalog({ facets: [makeFacet({ name: "ERC165Facet", selectors: ["supportsInterface(bytes4)"] })] });
+    const result: Analysis = { recipeHash: "0x", routing: {}, problems: [], plan: [], init: null,
+      stats: { facets: 1, routed: 0, exported: 0, excluded: 0, namespaces: 0 } };
+    expect(recipeStats(result, catalog).text).toBe("1 facet · 0 selectors");
+  });
+
   const token = makeFacet({ name: "Token", selectors: ["transfer(address,uint256)", "approve(address,uint256)", "totalSupply()"] });
   const vault = makeFacet({ name: "Vault", selectors: ["transfer(address,uint256)", "deposit(uint256)"] });
   const shadow = makeFacet({ name: "Shadow", selectors: ["totalSupply()"] });

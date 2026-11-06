@@ -1,3 +1,4 @@
+import { useCompositionCatalog } from "@/chain/inspect/upgrade/use-composition-catalog";
 /**
  * The init badge S4a's card shows in init order mode (`provideInitMark`, spec L383): a step's number, or the
  * 35% dim for a card without a step. In the entry chunk, because every card calls it on every render: it
@@ -5,7 +6,7 @@
  * chrome (which adds dragging) has loaded.
  */
 import { lazy, Suspense } from "react";
-import { useCatalog, useDocument, useSession } from "@/contracts";
+import { useDocument, useSession } from "@/contracts";
 import type { InitMark } from "@/sheet/card/init-mark";
 import { BadgeFace, type BadgeProps } from "./BadgeFace";
 import { initOrderModel } from "./init-order-model";
@@ -27,7 +28,7 @@ function Badge(props: BadgeProps) {
 export function useChromeInitMark(facet: string): InitMark {
   const on = useSession((s) => s.modes.initOrder);
   const recipe = useDocument((s) => (on ? s.project.recipe : null));
-  const catalog = useCatalog();
+  const catalog = useCompositionCatalog();
   if (!on || !recipe || !catalog) return NONE;
   const model = initOrderModel(recipe, catalog);
   if (model.kind === "none") return NONE;

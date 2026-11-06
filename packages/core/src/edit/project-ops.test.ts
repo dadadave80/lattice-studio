@@ -204,3 +204,14 @@ describe("recordPrediction", () => {
     expectNoOp(recordPrediction(base, { chainId: 1, address: "0x1234" }), base, "0x1234 isn't an address.");
   });
 });
+
+test("upgrade core releases retain layout and can be positioned like other added cards", () => {
+  const project = { ...base, recipe: { ...base.recipe, mode: "upgrade" as const, facets: [...base.recipe.facets, "ERC165Facet"] } };
+  const layout = { ...project.layout, ERC165Facet: { x: 200, y: 400, pins: "right" as const } };
+  const arranged = applyLayout(project, layout);
+  expect(arranged.changed).toBe(true);
+  expect(arranged.project.layout.ERC165Facet).toEqual(layout.ERC165Facet);
+  const moved = setCardPosition(arranged.project, "ERC165Facet", { x: 300, y: 500 });
+  expect(moved.changed).toBe(true);
+  expect(moved.project.layout.ERC165Facet).toMatchObject({ x: 300, y: 500 });
+});

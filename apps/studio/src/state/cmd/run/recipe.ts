@@ -81,7 +81,7 @@ export async function load(ctx: CommandContext, { name }: LoadArgs): Promise<voi
   if (!catalog) return;
   const loaded = await loadRecipeNamed(catalog, name);
   if (!loaded) return;
-  if (isCoreOnly(ctx.project.recipe)) {
+  if (ctx.project.recipe.mode !== "upgrade" && isCoreOnly(ctx.project.recipe)) {
     // An empty sheet: the recipe loads in place (spec L408).
     replaceInPlace(loaded, catalog);
     return;

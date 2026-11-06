@@ -2,8 +2,8 @@
  * What S1's commands share: the read-only and catalog guards every document command starts with, the edit
  * helper that applies one undo step and narrates it, and the console parsers' name and selector lookups.
  */
-import type { Catalog, EditResult, Facet, Hex4, LineDraft, Project, Result } from "@lattice-studio/core";
-import { formatSelector } from "@lattice-studio/core";
+import type { Catalog, EditResult, Facet, Hex4, LineDraft, Project, Recipe, Result } from "@lattice-studio/core";
+import { formatSelector, upgradeFacetMetadata } from "@lattice-studio/core";
 import { announce, doc, getCatalog, log, type CommandContext, type EditOp, type Enablement } from "@/contracts";
 import { studioState } from "../runtime";
 
@@ -47,8 +47,8 @@ export function summaryLine(result: EditResult): LineDraft {
   return { tag: "Note", text: `${result.summary}.` };
 }
 
-export function facetOf(catalog: Catalog, name: string): Facet | undefined {
-  return catalog.facets.find((f) => f.name === name);
+export function facetOf(catalog: Catalog, name: string, recipe?: Recipe): Facet | undefined {
+  return recipe ? upgradeFacetMetadata(recipe, catalog, name) : catalog.facets.find((f) => f.name === name);
 }
 
 export function isPlaced(project: Project, name: string): boolean {
@@ -155,7 +155,7 @@ export function parseFacet(typed: string | undefined, usage: string): Result<str
   const catalog = getCatalog();
   if (!catalog) return err(`${CATALOG_NOT_LOADED}.`);
   const name = resolveFacetName(typed);
-  if (!facetOf(catalog, name)) return err(`‘${unquote(typed)}’ isn't a facet in ${catalogName(catalog)}.`);
+  if (!facetOf(catalog, name, doc.get().recipe)) return err(`‘${unquote(typed)}’ isn't a facet in ${catalogName(catalog)}.`);
   return ok(name);
 }
 
@@ -189,7 +189,8 @@ export function resolveSelector(typed: string, candidates: readonly SelectorEntr
 export function placedSelectors(): SelectorEntry[] {
   const catalog = getCatalog();
   if (!catalog) return [];
-  return doc.get().recipe.facets.flatMap((name) => facetOf(catalog, name)?.selectors ?? []);
+  const recipe = doc.get().recipe;
+  return recipe.facets.flatMap((name) => facetOf(catalog, name, recipe)?.selectors ?? []);
 }
 
 /** The typed args, checked at the boundary: commands run from menus, fixes and toasts as well as the console. */

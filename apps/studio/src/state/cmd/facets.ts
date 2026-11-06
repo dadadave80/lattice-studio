@@ -31,7 +31,7 @@ export const placeCommand = command<PlaceArgs>({
     const blocked = guard(ctx);
     if (blocked) return blocked;
     if (!isString(args.facet)) return disabled("Name a facet to place");
-    if (ctx.catalog && !facetOf(ctx.catalog, args.facet)) {
+    if (ctx.catalog && !facetOf(ctx.catalog, args.facet, ctx.project.recipe)) {
       return disabled(`‘${args.facet}’ isn't a facet in ${catalogName(ctx.catalog)}.`);
     }
     return OK;
@@ -54,8 +54,9 @@ export const removeCommand = command<RemoveArgs>({
     if (blocked) return blocked;
     const facets = Array.isArray(args.facets) ? args.facets.filter(isString) : [];
     if (facets.length === 0) return disabled("Select a facet to remove");
+    if (ctx.project.recipe.mode === "upgrade" && facets.some((name) => ctx.project.recipe.facetInstances?.[name]?.kind === "self")) return disabled("Functions built into the diamond are immutable and cannot be removed.");
     // The core never leaves the diamond (the op says the same when asked).
-    const cards = facets.filter((name) => !isCoreFacet(name));
+    const cards = facets.filter((name) => ctx.project.recipe.mode === "upgrade" || !isCoreFacet(name));
     if (cards.length === 0) return disabled(`${facets[0] ?? ""} is the diamond's core and stays`);
     if (!cards.some((name) => isPlaced(ctx.project, name))) return disabled(notOnSheet(cards));
     return OK;
@@ -81,6 +82,9 @@ export const routeContestedCommand = command<RouteContestedArgs>({
     if (blocked) return blocked;
     if (!isString(args.facet)) return disabled("Name a facet to route to");
     if (!isPlaced(ctx.project, args.facet)) return disabled(notOnSheet([args.facet]));
+    const instance = ctx.project.recipe.mode === "upgrade" ? ctx.project.recipe.facetInstances?.[args.facet] : undefined;
+    if (instance?.kind === "self") return disabled("Functions built into the diamond are immutable and cannot be edited.");
+    if (instance?.kind === "foreign") return disabled("Raw selectors cannot be rerouted. Remove their whole foreign facet instance instead.");
     return OK;
   },
   run: lazyRun("routeContested"),

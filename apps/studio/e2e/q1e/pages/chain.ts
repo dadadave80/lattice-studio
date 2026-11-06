@@ -9,7 +9,7 @@
 import { encodeAbiParameters, keccak256, toHex, type Address, type Hex } from "viem";
 import {
   analyze, buildDiamondDeploy, buildSalt, encodeInit, factoryPredict, packVersion, planInit, recipeHash, registryNameHash,
-  type Deployment, type Project,
+  type CreatedDeployment as Deployment, type Project,
 } from "@lattice-studio/core";
 import { ALICE, ANVIL_CHAIN_ID, type AnvilNode } from "../../_support/anvil.ts";
 import { catalog, sharedContracts } from "../../_support/catalog.ts";

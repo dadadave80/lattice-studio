@@ -181,6 +181,8 @@ export const projectsService: ProjectsService = {
 /** The deployments service registered with the contracts (§5.2). Records never wait for the edit lock. */
 export const deploymentsService: DeploymentsService = {
   listDeployments: async (projectId) => (await persistence()).deployments.listDeployments(projectId),
+  getDeployment: async (chainId, address) => (await persistence()).deployments.getDeployment(chainId, address),
+  updateDeployment: async (chainId, address, update) => (await persistence()).deployments.updateDeployment(chainId, address, update),
   putDeployment: async (deployment) => (await persistence()).deployments.putDeployment(deployment),
   deleteDeployment: async (chainId, address) => (await persistence()).deployments.deleteDeployment(chainId, address),
   subscribe(listener) {

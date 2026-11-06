@@ -10,7 +10,7 @@ import { startDivergenceWatch } from "./diverged";
 
 /** A record the controller has work for: tracking to resume, a proposal to re-check, a file record to re-read. */
 export function needsController(records: readonly Deployment[]): boolean {
-  return records.some((d) => (d.fromFile === true && d.status !== "failed") || d.status === "proposed" || (d.status === "pending" && d.tx !== undefined));
+  return records.some((d) => d.kind !== "imported" && ((d.fromFile === true && d.status !== "failed") || d.status === "proposed" || (d.status === "pending" && d.tx !== undefined)));
 }
 
 /**

@@ -15,7 +15,7 @@ import { scriptChainIds } from "./chains";
 import { ConsolePanel } from "./ConsolePanel";
 import { downloadFile } from "./download";
 import { S5E_COMMANDS } from "./definitions";
-import { safeExportable } from "./export-gates";
+import { alwaysExportable, deployableExport, safeExportable } from "./export-gates";
 import { logEntries } from "./log-store";
 import { DOWNLOAD_BATCH, NOT_AN_ADDRESS, SAFE_ADDRESS_LABEL } from "./SafeBatchDialog";
 import { awaitConsoleBody, captureDownloads, collisionProject, erc20Project, resetConsole } from "./test-support";
@@ -65,6 +65,14 @@ function tickAcknowledgements(): void {
 }
 
 describe("Export menu (spec L509-L518, IR L132)", () => {
+  test("upgrade exports require the portable project baseline and cannot create a fresh diamond", async () => {
+    await renderConsole();
+    const project = { ...doc.get(), recipe: { ...doc.get().recipe, mode: "upgrade" as const } };
+    const ctx = { catalog: catalog(), project, analysis: getAnalysis(), settings: DEFAULT_SETTINGS, session: initialSession() };
+    expect(alwaysExportable(ctx)).toMatchObject({ ok: false, reason: expect.stringContaining("project file") });
+    expect(deployableExport(ctx).ok).toBe(false);
+    expect(safeExportable(ctx).ok).toBe(false);
+  });
   test("lists every export; Image arrives in v1.1; blockers disable the script and the Safe batch with the reason", async () => {
     await renderConsole(collisionProject());
     await userEvent.click(exportMenu());

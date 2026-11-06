@@ -31,6 +31,9 @@ export const computeRouting: ComputeRoutingFn = (recipe, catalog) => {
 function resolve(view: RecipeView, selector: Hex4, contenders: string[]): Route {
   if (view.exclude.has(selector)) return { contenders: [...contenders], via: "chosen" };
   const owner = view.owners.get(selector);
+  if (view.recipeMode === "upgrade" && owner !== undefined && contenders.includes(owner)) {
+    return { owner, contenders: [...contenders], via: "chosen" };
+  }
   const seam = activeSeam(view, selector);
   if (seam !== undefined) {
     const pick = allowedServers(view, seam, selector)[0];
