@@ -53,7 +53,7 @@ export async function applyRoute(route: Route): Promise<void> {
       openShareLink(route.link);
       return;
     case "open":
-      say("Open diamond… arrives in v2.");
+      await runCommand(commandRef("inspect.open", { target: route.target }), "api");
       return;
     case "settings":
       await runCommand(commandRef("settings.open"), "api");

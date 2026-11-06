@@ -5,7 +5,6 @@ import { Button } from "@/ui/buttons/Button";
 import { Logomark } from "@/ui/icons/Logomark";
 import { Menu } from "@/ui/overlays/Menu";
 import { MenuCommandItem } from "@/ui/overlays/MenuCommandItem";
-import { MenuItem } from "@/ui/overlays/MenuItem";
 import { MenuSeparator } from "@/ui/overlays/MenuSeparator";
 import { cx } from "@/ui/shared/cx";
 import { VisuallyHidden } from "@/ui/shared/VisuallyHidden";
@@ -16,7 +15,7 @@ import styles from "./TitleBar.module.css";
 const ITEMS: readonly (readonly [label: string, ref: CommandRef])[] = [
   ["Projects", commandRef("project.list")],
   ["New project", commandRef("project.new")],
-  // Without an id, `project.open` picks a file (⌘O, spec L499).
+  // Without an id, `project.open` opens the unified address, link and file dialog.
   ["Open…", commandRef("project.open")],
   ["Save a copy…", commandRef("project.saveCopy")],
 ];
@@ -50,7 +49,7 @@ export function AppMenu({ compact }: { compact: boolean }) {
       {ITEMS.map(([label, ref]) => (
         <MenuCommandItem key={label} command={ref} label={label} />
       ))}
-      <MenuItem label="Open diamond…" disabledReason="Arrives in v2" onSelect={() => undefined} />
+      <MenuCommandItem command={commandRef("inspect.open")} label="Open diamond…" />
       <MenuSeparator />
       {HELP_ITEMS.map(([label, ref]) => (
         <MenuCommandItem key={label} command={ref} label={label} />

@@ -90,7 +90,7 @@ export type CommandArgsMap = {
   /** `help [verb]`; CCR from S5e. */
   "console.help": { verb?: string };
   // S7b
-  /** No id: pick a file (⌘O, App menu Open…). */
+  /** No id: open a file, share link or deployed diamond (⌘O, App menu Open…). */
   "project.open": { id?: string };
   "project.duplicate": { id: string };
   "project.delete": { id: string };
@@ -107,6 +107,11 @@ export type CommandArgsMap = {
   "deploy.previewFor": { address: Address };
   // S8c
   "deploy.missingContracts": { names?: string[] };
+  "inspect.open": { target?: string; chainId?: number };
+  "inspect.refresh": { chainId: number; address: Address };
+  "inspect.copyAddress": { chainId: number; address: Address };
+  "inspect.exportPassport": { chainId: number; address: Address };
+  "inspect.selectFacet": { chainId: number; address: Address; facetAddress?: Address; focus?: boolean };
   // S8d
   "deploy.retryVerification": { chainId: number; address: Address };
   // S9

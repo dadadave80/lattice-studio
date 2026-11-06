@@ -1,6 +1,6 @@
 import type { Catalog, CommandRef, InitPlan, Recipe } from "@lattice-studio/core";
 import { isCoreOnly, isNotImplemented, planInit } from "@lattice-studio/core";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { commandState, runCommand, session, useAnalysis, useCatalog, useDocument, useSession } from "@/contracts";
 import { isContextMenuKey, Tree, type TreeItemProps, type TreeNode } from "@/ui";
 import { CORE_ONLY } from "../core-copy";
@@ -46,7 +46,14 @@ function areaOfRow(structure: Structure, id: string): string | undefined {
  * with the sheet (the Core group shows selected while the core is); every action runs a command, so what can't
  * run says why.
  */
+const LazyDeployedStructure = lazy(() => import("@/chain/inspect/DeployedStructure").then((module) => ({ default: module.DeployedStructure })));
+
 export function StructurePanel() {
+  const view = useSession((state) => state.panes.inspector.view);
+  return view?.kind === "deployed" ? <Suspense fallback={<p className={styles.empty}>Inspecting diamond…</p>}><LazyDeployedStructure view={view} /></Suspense> : <CompositionStructurePanel />;
+}
+
+function CompositionStructurePanel() {
   const recipe = useDocument((s) => s.project.recipe);
   const catalog = useCatalog();
   const analysis = useAnalysis();

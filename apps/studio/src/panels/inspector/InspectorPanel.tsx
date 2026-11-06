@@ -32,9 +32,9 @@ export function InspectorPanel() {
 
   return (
     <div className={styles.panel} data-inspector-view={resolved.kind}>
-      <Suspense fallback={null}>
+      {resolved.kind !== "deployed" ? <Suspense fallback={null}>
         <NarrowFillIn />
-      </Suspense>
+      </Suspense> : null}
       <div ref={body} className={styles.body}>
         <ViewBoundary key={key}>
           <Suspense fallback={<p className={styles.placeholder}>Loading…</p>}>
@@ -43,11 +43,11 @@ export function InspectorPanel() {
         </ViewBoundary>
       </div>
       {/* Stays mounted across views; an error in it clears when the view changes. */}
-      <ViewBoundary resetKey={key}>
+      {resolved.kind !== "deployed" ? <ViewBoundary resetKey={key}>
         <Suspense fallback={null}>
           <CutPlanFooter />
         </Suspense>
-      </ViewBoundary>
+      </ViewBoundary> : null}
     </div>
   );
 }

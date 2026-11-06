@@ -18,7 +18,7 @@ export const DIALOG_CATALOG: Readonly<Record<DialogId, DialogCatalogEntry>> = {
   "share": { title: "Share", owner: "S13" },
   "safe-batch": { title: "Safe batch", owner: "S5e" },
   "save-copy": { title: "Save a copy", owner: "S7b" },
-  "open-diamond": { title: "Open diamond", owner: "v2" },
+  "open-diamond": { title: "Open", owner: "S8c" },
   "settings": { title: "Settings", owner: "S10" },
   "delete-for-good": { title: "Delete for good", owner: "S7b" },
   "clear-data": { title: "Clear data", owner: "S7b" },

@@ -1,0 +1,23 @@
+.hex {
+  overflow-wrap: anywhere;
+}
+
+.structure {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.status {
+  margin: 0;
+  padding: var(--lx-space-3);
+  font: var(--lx-font-body-sm);
+  color: var(--lx-text-muted);
+}
+
+.tree {
+  flex: 1;
+  min-height: 0;
+}

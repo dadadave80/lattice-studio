@@ -352,6 +352,7 @@ test.describe("Flow 10 step 4: Open (spec L501)", () => {
     const chooser = page.waitForEvent("filechooser");
     const menu = await openAppMenu(page);
     await appMenuItem(menu, "Open…").click();
+    await page.getByRole("dialog", { name: "Open", exact: true }).getByRole("button", { name: "Open file…", exact: true }).click();
     (await chooser).setFiles(filePayload(file));
 
     await expectProject(page, "MenuOpenedVault");

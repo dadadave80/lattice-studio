@@ -21,7 +21,9 @@ export async function pressSave(page: Page): Promise<void> {
   await page.keyboard.press(`${await modifierKey(page)}+s`);
 }
 
-/** `${Mod}+o`, resolved for this page: ⌘O / Ctrl+O (Open…). */
+/** Opens the unified dialog with `${Mod}+o`, then chooses its file path with the keyboard. */
 export async function pressOpen(page: Page): Promise<void> {
   await page.keyboard.press(`${await modifierKey(page)}+o`);
+  await page.getByRole("dialog", { name: "Open", exact: true }).getByRole("button", { name: "Open file…", exact: true }).focus();
+  await page.keyboard.press("Enter");
 }

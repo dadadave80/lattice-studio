@@ -20,6 +20,8 @@ import {
 } from "@/contracts";
 import { reportConnectionFailure } from "@/contracts/services";
 import { predict } from "@/state/prediction";
+import { readDiamondSnapshot } from "../inspect/reads";
+import { readOnchainCall } from "../inspect/call";
 import { accountBalance, accountKind } from "./account";
 import { chainInfo, chainName, findChain, findKnownChain, isRpcUrl, pickerChains, publicRpcUrls, type ChainSpec } from "./chains";
 import type { ChainClient, Clients } from "./clients";
@@ -486,6 +488,20 @@ export function createChainService(options: ServiceOptions): ChainRuntime {
         }
         return { ok: false, error: failure(chainId, error) };
       }
+    },
+    async inspectDiamond(chainId, address, inspectOptions) {
+      const chain = spec(chainId);
+      if (!chain) return { ok: false, error: { kind: "invalid", reason: unsupported(chainId) } };
+      if (!isOnline()) return { ok: false, error: { kind: "rpc", reason: CHAIN_CHECKS_NEED_CONNECTION } };
+      const result = await readDiamondSnapshot(clients.get(chain), address, inspectOptions?.signal);
+      if (!result.ok && result.error.kind === "rpc") reportConnectionFailure();
+      return result;
+    },
+    async call(chainId, to, data, callOptions) {
+      const chain = spec(chainId);
+      if (!chain) return { ok: false, error: { reason: unsupported(chainId), data: null } };
+      if (!isOnline()) return { ok: false, error: { reason: CHAIN_CHECKS_NEED_CONNECTION, data: null } };
+      return readOnchainCall(clients.get(chain), to, data, callOptions);
     },
     resolveEns: resolve,
     reverseEns: reverse,
