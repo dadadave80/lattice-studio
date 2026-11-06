@@ -1,0 +1,84 @@
+# Temporary paired experiment. Called only by CI's opt-in manual input and removed before the final PR.
+name: Browser setup benchmark
+
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    name: ${{ matrix.browser }} / ${{ matrix.mirror }} / ${{ matrix.sample }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        sample: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        mirror: [system, ubuntu-archive]
+        browser: [chromium]
+        include:
+          - { mirror: system, browser: webkit, sample: 1 }
+          - { mirror: ubuntu-archive, browser: webkit, sample: 1 }
+          - { mirror: system, browser: webkit, sample: 2 }
+          - { mirror: ubuntu-archive, browser: webkit, sample: 2 }
+          - { mirror: system, browser: webkit, sample: 3 }
+          - { mirror: ubuntu-archive, browser: webkit, sample: 3 }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: setup
+        uses: ./.github/actions/setup
+        with:
+          node: "true"
+          browsers: ${{ matrix.browser }}
+          apt-mirror: ${{ matrix.mirror }}
+      - name: Verify a real browser launch and rendered fonts
+        id: smoke
+        env:
+          BROWSER: ${{ matrix.browser }}
+          MIRROR: ${{ matrix.mirror }}
+          METRICS_PATH: ${{ steps.setup.outputs.metrics-path }}
+        run: |
+          bun - <<'BUN'
+          import { chromium, webkit } from "playwright";
+          import { join } from "node:path";
+          const metrics = await Bun.file(process.env.METRICS_PATH).json();
+          if (process.env.MIRROR === "ubuntu-archive" && metrics.aptMirror.state !== "changed") {
+            throw new Error("Candidate did not replace an Azure URI; this is not a valid changed-mirror sample.");
+          }
+          const engine = process.env.BROWSER === "chromium" ? chromium : webkit;
+          const started = performance.now();
+          const browser = await engine.launch({ headless: true });
+          try {
+            const page = await browser.newPage();
+            await page.setContent('<!doctype html><p id="font-check" style="font: 24px sans-serif">Studio browser setup</p>');
+            await page.evaluate(() => document.fonts.ready);
+            const box = await page.locator("#font-check").boundingBox();
+            if (!box || box.width <= 0 || box.height <= 0) throw new Error("Browser did not render the font fixture.");
+            await page.screenshot({ path: join(process.env.RUNNER_TEMP, "browser-smoke.png") });
+            metrics.browserSmoke = { seconds: (performance.now() - started) / 1000, box };
+            await Bun.write(process.env.METRICS_PATH, `${JSON.stringify(metrics, null, 2)}\n`);
+          } finally { await browser.close(); }
+          BUN
+      - name: Record sample identity and outcomes
+        if: always()
+        env:
+          SAMPLE: ${{ matrix.sample }}
+          BROWSER: ${{ matrix.browser }}
+          MIRROR: ${{ matrix.mirror }}
+          SETUP_OUTCOME: ${{ steps.setup.outcome }}
+          SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+        run: |
+          printf '{"sample":%s,"browser":"%s","mirror":"%s","setupOutcome":"%s","smokeOutcome":"%s","sha":"%s"}\n' \
+            "$SAMPLE" "$BROWSER" "$MIRROR" "$SETUP_OUTCOME" "$SMOKE_OUTCOME" "$GITHUB_SHA" > "$RUNNER_TEMP/sample.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: browser-setup-${{ matrix.browser }}-${{ matrix.mirror }}-${{ matrix.sample }}
+          path: |
+            ${{ steps.setup.outputs.metrics-path }}
+            ${{ runner.temp }}/sample.json
+            ${{ runner.temp }}/browser-smoke.png
+          retention-days: 7

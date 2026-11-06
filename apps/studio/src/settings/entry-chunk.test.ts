@@ -1,7 +1,7 @@
 /**
  * Build check (spec L822): Settings loads in its own chunk, opened on first use, not the entry (contracts
- * §6, this WP's Done-when). Builds the app with plain `bun run build` (`scripts/ci/size.ts`'s own path) into
- * the app's normal `dist/`, then reads what the first load fetches (`<script type="module">` and
+ * §6, this WP's Done-when). Builds the app with its own Vite config into a scratch directory, then reads
+ * what the first load fetches (`<script type="module">` and
  * `<link rel="modulepreload">` only, the same way `scripts/ci/size.ts` classifies "first-load JavaScript")
  * and what the lazy chunks carry, the same way `apps/studio/src/chain/infra/entry-chunk.test.ts` does for the
  * chain module.
@@ -16,24 +16,24 @@
  * imports (not a dynamic `import()`) ever reach `@/ui`, so nothing bundler-side can pull `Button` or `Banner`
  * in ahead of the moment either component is actually needed.
  */
-import { beforeAll, describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { build } from "vite";
 import { parseIndexHtml } from "../../../../scripts/ci/size-logic";
-import { appDir, repoRoot } from "../../local-env";
+import { appDir } from "../../local-env";
 
 /** A string only Settings → Keyboard's UI carries (its "Reset all shortcuts" button). */
 const SETTINGS_MARKER = "Reset all shortcuts";
 
 let firstLoad = "";
 let lazy: string[] = [];
+let out = "";
 
-beforeAll(() => {
-  const result = Bun.spawnSync(["bun", "run", "build"], { cwd: repoRoot });
-  if (result.exitCode !== 0) {
-    throw new Error(`bun run build failed (exit ${result.exitCode}): ${result.stderr.toString()}`);
-  }
-  const out = join(appDir, "dist");
+beforeAll(async () => {
+  out = mkdtempSync(join(tmpdir(), "studio-settings-entry-"));
+  await build({ configFile: join(appDir, "vite.config.ts"), logLevel: "silent", build: { outDir: out, emptyOutDir: true } });
   const html = readFileSync(join(out, "index.html"), "utf8");
   const { entryScripts, modulePreloads } = parseIndexHtml(html);
   const first = [...new Set([...entryScripts, ...modulePreloads])].map((href) => (href.startsWith("/") ? href.slice(1) : href));
@@ -43,6 +43,10 @@ beforeAll(() => {
     .filter((name) => name.endsWith(".js") && !first.includes(`assets/${name}`))
     .map((name) => readFileSync(join(out, "assets", name), "utf8"));
 }, 120_000);
+
+afterAll(() => {
+  if (out) rmSync(out, { recursive: true, force: true });
+});
 
 describe("Settings' chunk", () => {
   test("the entry chunk doesn't carry Settings' UI", () => {

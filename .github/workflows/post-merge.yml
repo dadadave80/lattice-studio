@@ -1,0 +1,37 @@
+name: Merged revision
+
+on:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: post-merge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  artifact:
+    name: Production artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+        with:
+          node: "true"
+      - name: Production build and size budgets
+        run: bun scripts/ci/size.ts --build
+      - name: React Compiler
+        if: success() || failure()
+        run: bun scripts/ci/react-compiler-dist-check.ts
+      - name: Deployment output
+        if: success() || failure()
+        run: bun scripts/ci/deployment-output-check.ts
+      - name: Security and routing contracts
+        if: success() || failure()
+        run: bun test apps/studio/build/headers.test.ts
+      - name: Record revision
+        if: always()
+        run: echo "Production artifact checks for $GITHUB_SHA finished with job status ${{ job.status }}." >> "$GITHUB_STEP_SUMMARY"

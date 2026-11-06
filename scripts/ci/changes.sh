@@ -29,13 +29,27 @@ else
     # falls through to that folder's rule, since packages/tokens/README.md is checked by its own test.
     if [[ "$path" != */* && "$path" == *.md ]]; then continue; fi
     case "$path" in
-      .github/workflows/* | .github/actions/* | bun.lock | package.json | bunfig.toml | tsconfig.base.json | .oxlintrc.json | .gitmodules | scripts/ci/changes.sh)
+      .github/workflows/* | .github/actions/* | bun.lock | package.json | bunfig.toml | tsconfig.base.json | .oxlintrc.json | .gitmodules | scripts/ci/changes.sh | scripts/ci/apt-mirror.ts | scripts/ci/setup-metrics.ts)
         all ;;
       LICENSE | docs/* | skills/* | .github/*.md | .github/ISSUE_TEMPLATE/*)
         ;;
       apps/studio/public/pitch/*)
         code=true size=true ;;
-      apps/studio/* | packages/tokens/* | fixtures/* | scripts/dev/* | scripts/perf/* | scripts/ci/size* | scripts/ci/react-compiler-dist-check*)
+      # Keep the inspection Anvil proofs' value-import dependencies here; register new suites in
+      # e2e-chain/inspection.chain.test.ts too. UI-only edits still use the ordinary app rule below.
+      apps/studio/local-env.ts | apps/studio/src/chain/deploy/viem-port.ts | \
+      apps/studio/src/chain/infra/account.ts | apps/studio/src/chain/infra/probe.ts | \
+      apps/studio/src/chain/inspect/*.anvil.test.ts | \
+      apps/studio/src/chain/inspect/call.ts | apps/studio/src/chain/inspect/engine.ts | \
+      apps/studio/src/chain/inspect/history-codec.ts | apps/studio/src/chain/inspect/history-deployment.ts | \
+      apps/studio/src/chain/inspect/history.ts | apps/studio/src/chain/inspect/reads.ts | \
+      apps/studio/src/chain/inspect/transaction-owner.ts | apps/studio/src/chain/inspect/transaction.ts | \
+      apps/studio/src/chain/inspect/upgrade-authority.ts | apps/studio/src/chain/inspect/upgrade-controller.ts | \
+      apps/studio/src/chain/inspect/upgrade-evidence.ts | apps/studio/src/chain/inspect/upgrade-plan.ts | \
+      apps/studio/src/chain/inspect/upgrade-preflight.ts | apps/studio/src/chain/inspect/upgrade-records.ts | \
+      apps/studio/src/chain/inspect/upgrade-tracking.ts | apps/studio/src/chain/inspect/upgrade-transport.ts)
+        code=true app=true size=true chain=true ;;
+      apps/studio/* | packages/tokens/* | fixtures/* | scripts/dev/* | scripts/perf/* | scripts/ci/size* | scripts/ci/react-compiler-dist-check* | scripts/ci/e2e-summary.ts)
         code=true app=true size=true ;;
       packages/core/* | catalog/*)
         code=true app=true size=true; foundry ;;

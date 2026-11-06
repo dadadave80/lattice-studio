@@ -1,0 +1,108 @@
+# Temporary acceptance fixture. Removed after its retained failure artifacts have been checked on GitHub.
+name: E2E evidence acceptance probe
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    name: Preserve failed E2E attempts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_PORT: "63843"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+        with:
+          node: "true"
+          browsers: chromium
+      - name: Run intentional persistent and recovered failures
+        shell: bash
+        run: |
+          probe_dir=apps/studio/test-results/evidence-probe
+          mkdir -p "$probe_dir"
+          cat > "$probe_dir/playwright.config.ts" <<'TS'
+          import { defineConfig, devices } from "@playwright/test";
+          import { fileURLToPath } from "node:url";
+          import { join } from "node:path";
+          import base from "../../playwright.config.ts";
+          const dir = fileURLToPath(new URL(".", import.meta.url));
+          export default defineConfig({
+            ...base, testDir: dir, testMatch: "evidence.spec.ts", globalSetup: undefined,
+            outputDir: join(dir, "results"),
+            reporter: [
+              ["list"],
+              ["html", { outputFolder: join(dir, "html"), open: "never" }],
+              ["json", { outputFile: join(dir, "results", "report.json") }],
+            ],
+            projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+          });
+          TS
+          cat > "$probe_dir/evidence.spec.ts" <<'TS'
+          import { expect, test } from "@playwright/test";
+          test("intentional recovered attempt", async ({ page }, info) => {
+            await page.goto("data:text/html,<button>evidence</button>");
+            await expect(page.getByRole("button")).toBeVisible();
+            expect(info.retry).toBe(1);
+          });
+          test("intentional persistent failure", async ({ page }) => {
+            await page.goto("data:text/html,<button>evidence</button>");
+            await expect(page.getByRole("button")).toBeVisible();
+            expect(0).toBe(1);
+          });
+          TS
+          set +e
+          bun x playwright test --config "$probe_dir/playwright.config.ts" --workers=1
+          probe_test_status=$?
+          set -e
+          if [ "$probe_test_status" -ne 1 ]; then
+            echo "Intentional failure probe returned $probe_test_status instead of 1." >&2
+            exit 1
+          fi
+      - name: Verify summary and failed-attempt traces
+        shell: bash
+        run: |
+          probe_dir=apps/studio/test-results/evidence-probe
+          set +e
+          bun scripts/ci/e2e-summary.ts "$probe_dir/results/report.json" "$probe_dir/results/summary.json"
+          probe_summary_status=$?
+          set -e
+          test "$probe_summary_status" -eq 1
+          bun - <<'JS'
+          import { strict as assert } from "node:assert";
+          import { existsSync, readFileSync } from "node:fs";
+          const dir = "apps/studio/test-results/evidence-probe";
+          const summary = JSON.parse(readFileSync(`${dir}/results/summary.json`, "utf8"));
+          assert.deepEqual(summary.counts, { total: 2, passed: 0, firstPass: 0, flaky: 1, failed: 1, skipped: 0, interrupted: 0, retries: 2 });
+          assert.equal(summary.errors, 0);
+          const report = JSON.parse(readFileSync(`${dir}/results/report.json`, "utf8"));
+          const results = [];
+          const visit = suite => {
+            for (const spec of suite.specs) for (const test of spec.tests) results.push(...test.results);
+            for (const child of suite.suites ?? []) visit(child);
+          };
+          report.suites.forEach(visit);
+          const traces = results.flatMap(result => result.attachments.filter(attachment => attachment.name === "trace"));
+          assert.equal(traces.length, 3);
+          for (const trace of traces) assert.ok(existsSync(trace.path));
+          const recovered = results.filter(result => result.status === "passed" && result.retry === 1);
+          assert.equal(recovered.length, 1);
+          assert.ok(recovered.every(result => !result.attachments.some(attachment => attachment.name === "trace")));
+          assert.ok(existsSync(`${dir}/html/index.html`));
+          console.log("Verified compact outcome metadata, HTML and three failed-attempt traces; successful retry traces were removed.");
+          JS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-evidence-probe-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            apps/studio/test-results/evidence-probe/results/summary.json
+            apps/studio/test-results/evidence-probe/results/**/trace.zip
+            apps/studio/test-results/evidence-probe/html/
+            !apps/studio/test-results/evidence-probe/results/report.json
+          if-no-files-found: error
+          retention-days: 7

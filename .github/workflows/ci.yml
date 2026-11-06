@@ -5,12 +5,12 @@
 #
 # Each job and step runs only when its inputs changed (#45): the `changes` job diffs the pull request against its
 # base and scripts/ci/changes.sh maps the paths to groups. A job gated off shows as skipped, which GitHub counts as
-# passing. There's no push trigger: a pull request is the only way into dev or main, and it already ran here.
-# nightly.yml dispatches a full run on dev every night, and a manual workflow_dispatch runs everything on any branch.
+# passing. The final CI gate verifies that selected jobs actually succeeded. post-merge.yml checks the exact
+# revision on dev/main; nightly.yml dispatches the full suite, and workflow_dispatch runs it on any branch.
 #
 # Setup is .github/actions/setup, and its caches are warmed on dev and main by warm-cache.yml (a cache saved on a
 # pull request is visible to that pull request only). Related suites share one runner where they'd otherwise each
-# pay for the same install: `static` runs check, bun test and size; `foundry` builds Lattice once for all four
+# pay for the same install: `static` runs units then one production check; `foundry` builds Lattice once for all four
 # Foundry suites.
 name: CI
 
@@ -22,19 +22,24 @@ on:
         description: "Compare browser transport on Ubuntu 24.04 and 26.04 (#60)"
         type: boolean
         default: false
+      browser_setup_benchmark:
+        description: "Measure browser setup on fresh runners (temporary experiment)"
+        type: boolean
+        default: false
 
 # A PR gate never needs write access; release-please and publish-cli (separate workflows) ask for more.
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.browser_diagnostics && 'transport' || inputs.browser_setup_benchmark && 'setup-benchmark' || 'full' }}
   cancel-in-progress: true
 
 jobs:
   changes:
     name: Changed paths
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       code: ${{ steps.groups.outputs.code }}
       app: ${{ steps.groups.outputs.app }}
@@ -64,39 +69,44 @@ jobs:
             bash scripts/ci/changes.sh --all | tee -a "$GITHUB_OUTPUT"
           fi
 
-  # check, bun test and the size budgets: each is a few minutes at most, so one install serves all three. Every step
-  # runs even when an earlier one failed, so one failure doesn't hide another.
+  # Unit builds use scratch output. One production build follows them, and independent checks stay visible after
+  # a unit failure. A size-only change keeps its own build without repeating the code-change production check.
   static:
     name: Check, unit tests and size
     needs: changes
     if: needs.changes.outputs.code == 'true' || needs.changes.outputs.size == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # typecheck.ts runs TypeScript's compiler under Node (contracts §2: TS 7 has no JS API yet).
       - uses: ./.github/actions/setup
         with:
           node: "true"
-      - name: bun run check
-        if: needs.changes.outputs.code == 'true'
-        run: bun run check
       - name: bun test (core logic)
-        if: (success() || failure()) && needs.changes.outputs.code == 'true'
+        if: needs.changes.outputs.code == 'true'
         run: bun test
+      - name: bun run check
+        if: (success() || failure()) && needs.changes.outputs.code == 'true'
+        run: bun run check
       - name: Size budgets
-        if: (success() || failure()) && needs.changes.outputs.size == 'true'
+        if: (success() || failure()) && needs.changes.outputs.size == 'true' && needs.changes.outputs.code != 'true'
         run: bun scripts/ci/size.ts --build
       # Reuses the build size.ts just made (spec L902, §17 audit #14): a config regression that drops the React
       # Compiler preset fails here instead of only being caught by eye.
       - name: React Compiler in the build
-        if: (success() || failure()) && needs.changes.outputs.size == 'true'
+        if: (success() || failure()) && needs.changes.outputs.size == 'true' && needs.changes.outputs.code != 'true'
         run: bun scripts/ci/react-compiler-dist-check.ts
+      - name: Verify deployment output
+        if: (success() || failure()) && (needs.changes.outputs.code == 'true' || needs.changes.outputs.size == 'true')
+        run: bun scripts/ci/deployment-output-check.ts
 
   browser:
     name: Component tests (Vitest Browser Mode)
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
@@ -152,6 +162,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_PORT: "4173"
     # Split by project, so every test runs exactly once: playwright.config.ts's `chromium` project (every spec)
     # across four shards, and its `webkit-smoke` project (the @smoke set, spec "Screen readers, tier 1") on its
     # own runner, the only one that installs WebKit.
@@ -159,11 +172,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "chromium 1/4", browser: chromium, args: "--project=chromium --shard=1/4" }
-          - { name: "chromium 2/4", browser: chromium, args: "--project=chromium --shard=2/4" }
-          - { name: "chromium 3/4", browser: chromium, args: "--project=chromium --shard=3/4" }
-          - { name: "chromium 4/4", browser: chromium, args: "--project=chromium --shard=4/4" }
-          - { name: "WebKit @smoke", browser: webkit, args: "--project=webkit-smoke" }
+          - { id: chromium-1, name: "chromium 1/4", browser: chromium, args: "--project=chromium --shard=1/4" }
+          - { id: chromium-2, name: "chromium 2/4", browser: chromium, args: "--project=chromium --shard=2/4" }
+          - { id: chromium-3, name: "chromium 3/4", browser: chromium, args: "--project=chromium --shard=3/4" }
+          - { id: chromium-4, name: "chromium 4/4", browser: chromium, args: "--project=chromium --shard=4/4" }
+          - { id: webkit-smoke, name: "WebKit @smoke", browser: webkit, args: "--project=webkit-smoke" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Anvil for the deploy flows (12-14) and the kit's smoke tests, and global setup checks for it on every
@@ -174,6 +187,19 @@ jobs:
           foundry: "true"
           browsers: ${{ matrix.browser }}
       - run: bun run e2e ${{ matrix.args }}
+      - name: Summarize test attempts
+        if: always()
+        run: bun scripts/ci/e2e-summary.ts "apps/studio/test-results/$PLAYWRIGHT_PORT/report.json" "apps/studio/test-results/$PLAYWRIGHT_PORT/summary.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-${{ matrix.id }}
+          path: |
+            apps/studio/test-results/4173/summary.json
+            apps/studio/playwright-report/4173/
+            apps/studio/test-results/4173/
+            !apps/studio/test-results/4173/report.json
+          retention-days: 14
 
   perf:
     # `bun scripts/perf/run.ts` builds the app (scripts/ci/size.ts --build), serves it with `vite preview`, runs
@@ -213,6 +239,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.golden == 'true' || needs.changes.outputs.chain == 'true' || needs.changes.outputs.catalog == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     env:
       LATTICE_DIR: ${{ github.workspace }}/lattice
     steps:
@@ -248,3 +275,28 @@ jobs:
           bun run catalog
           # A rebuilt catalog must equal the committed one (contracts §1 "catalog/ CG8, generated, committed").
           git diff --exit-code catalog/
+
+  gate:
+    # Diagnostic-only runs must not publish a passing required CI context for skipped ordinary suites.
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics && 'Diagnostic selection check' || 'CI gate' }}
+    if: always()
+    needs: [changes, static, browser, e2e, perf, foundry]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: Verify selected job results
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: node --experimental-strip-types scripts/ci/gate.ts
+
+  browser-setup-benchmark:
+    if: github.event_name == 'workflow_dispatch' && inputs.browser_setup_benchmark
+    uses: ./.github/workflows/browser-setup-benchmark.yml
+
+  e2e-evidence-probe:
+    if: github.event_name == 'workflow_dispatch' && inputs.browser_setup_benchmark
+    uses: ./.github/workflows/e2e-evidence-probe.yml

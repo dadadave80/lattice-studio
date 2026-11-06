@@ -31,6 +31,51 @@ describe("changes.sh", () => {
     expect(groupsFor(["scripts/perf/run.ts"])).toEqual(["code", "app", "size"]);
   });
 
+  test.each([
+    "apps/studio/local-env.ts",
+    "apps/studio/src/chain/deploy/viem-port.ts",
+    "apps/studio/src/chain/infra/account.ts",
+    "apps/studio/src/chain/infra/probe.ts",
+    "apps/studio/src/chain/inspect/call.ts",
+    "apps/studio/src/chain/inspect/engine.ts",
+    "apps/studio/src/chain/inspect/history-codec.ts",
+    "apps/studio/src/chain/inspect/history-deployment.ts",
+    "apps/studio/src/chain/inspect/history.ts",
+    "apps/studio/src/chain/inspect/reads.ts",
+    "apps/studio/src/chain/inspect/transaction-owner.ts",
+    "apps/studio/src/chain/inspect/transaction.ts",
+    "apps/studio/src/chain/inspect/upgrade-authority.ts",
+    "apps/studio/src/chain/inspect/upgrade-controller.ts",
+    "apps/studio/src/chain/inspect/upgrade-evidence.ts",
+    "apps/studio/src/chain/inspect/upgrade-plan.ts",
+    "apps/studio/src/chain/inspect/upgrade-preflight.ts",
+    "apps/studio/src/chain/inspect/upgrade-records.ts",
+    "apps/studio/src/chain/inspect/upgrade-tracking.ts",
+    "apps/studio/src/chain/inspect/upgrade-transport.ts",
+    "apps/studio/src/chain/inspect/reads.anvil.test.ts",
+    "apps/studio/src/chain/inspect/transaction.anvil.test.ts",
+    "apps/studio/src/chain/inspect/history.anvil.test.ts",
+    "apps/studio/src/chain/inspect/upgrade-runtime.anvil.test.ts",
+    "apps/studio/src/chain/inspect/new-proof.anvil.test.ts",
+  ])("runs the real chain proofs when their input changes: %s", (path) => {
+    expect(groupsFor([path])).toEqual(["code", "app", "size", "chain"]);
+  });
+
+  test.each([
+    "apps/studio/src/chain/inspect/DeployedView.tsx",
+    "apps/studio/src/chain/inspect/HistorySection.tsx",
+    "apps/studio/src/chain/inspect/upgrade/UpgradeReviewDialog.tsx",
+    "apps/studio/src/chain/inspect/DeployedView.module.css",
+    "apps/studio/src/shell/SearchField.tsx",
+  ])("does not select chain for UI-only input: %s", (path) => {
+    expect(groupsFor([path])).toEqual(["code", "app", "size"]);
+  });
+
+  test("combines inspection inputs with docs and preserves the chain wrapper's existing group", () => {
+    expect(groupsFor(["README.md", "apps/studio/src/chain/inspect/reads.ts"])).toEqual(["code", "app", "size", "chain"]);
+    expect(groupsFor(["e2e-chain/inspection.chain.test.ts"])).toEqual(["code", "chain"]);
+  });
+
   test("a lattice pin move runs every Foundry job", () => {
     expect(groupsFor(["lattice"])).toEqual(["code", "golden", "chain", "catalog"]);
   });
@@ -50,6 +95,18 @@ describe("changes.sh", () => {
   test("the CLI and unmapped paths run check and bun test only", () => {
     expect(groupsFor(["packages/cli/src/main.ts"])).toEqual(["code"]);
     expect(groupsFor(["scripts/wp/merge.ts"])).toEqual(["code"]);
+  });
+
+  test.each(["scripts/ci/apt-mirror.ts", "scripts/ci/setup-metrics.ts"])("shared setup runtime %s validates every consumer", (path) => {
+    expect(groupsFor([path])).toEqual([...GROUPS]);
+  });
+
+  test("the E2E result reporter validates its real app consumers", () => {
+    expect(groupsFor(["scripts/ci/e2e-summary.ts"])).toEqual(["code", "app", "size"]);
+  });
+
+  test.each(["scripts/ci/apt-mirror.test.ts", "scripts/ci/setup-metrics.test.ts", "scripts/ci/e2e-summary.test.ts"])("helper-only test %s keeps the pure unit scope", (path) => {
+    expect(groupsFor([path])).toEqual(["code"]);
   });
 
   test("workflows, the lockfile, root configs and the script itself run everything, as does --all", () => {
