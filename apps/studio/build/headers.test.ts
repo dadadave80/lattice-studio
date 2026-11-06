@@ -133,15 +133,22 @@ describe("injectCspMeta", () => {
 
 describe("buildOutputConfig", () => {
   const config = buildOutputConfig("default-src 'self'");
-  const matching = (path: string) => {
-    const routes = [];
+  const responseFor = (path: string) => {
+    const headers: Record<string, string> = {};
+    let status: number | undefined;
     for (const route of config.routes) {
       if ("handle" in route) break;
-      if (new RegExp(route.src).test(path)) routes.push(route);
+      const match = new RegExp(route.src).exec(path);
+      if (!match) continue;
+      if ("headers" in route) {
+        for (const [key, value] of Object.entries(route.headers)) headers[key] = value.replace("$1", () => match[1] ?? "");
+      }
+      if ("status" in route) status = route.status;
+      if (!("continue" in route && route.continue)) break;
     }
-    return routes;
+    return { headers, status };
   };
-  const headersFor = (path: string) => Object.assign({}, ...matching(path).map((r) => ("headers" in r ? r.headers : {})));
+  const headersFor = (path: string) => responseFor(path).headers;
 
   test("sends the CSP and COOP on every path", () => {
     expect(cspOf(config)).toBe("default-src 'self'");
@@ -159,10 +166,33 @@ describe("buildOutputConfig", () => {
     }
   });
 
-  test("redirects a trailing slash before anything else, and leaves the root alone", () => {
-    expect(config.routes[0]).toMatchObject({ status: 308, headers: { Location: "/$1" } });
-    expect(new RegExp((config.routes[0] as { src: string }).src).test("/some/route/")).toBe(true);
-    expect(new RegExp((config.routes[0] as { src: string }).src).test("/")).toBe(false);
+  test("redirects trailing slashes to the equivalent same-origin path and leaves the root alone", () => {
+    const origin = "https://studio.example";
+    for (const path of ["/some/route/", "/assets/chunk/", "/settings/", "/some/$&/"]) {
+      const response = responseFor(path);
+      expect(response.status).toBe(308);
+      expect(response.headers.Location).toBe(path.slice(0, -1));
+      expect(new URL(response.headers.Location ?? "", origin).origin).toBe(origin);
+    }
+    expect(responseFor("/").status).toBeUndefined();
+    expect(headersFor("/").Location).toBeUndefined();
+  });
+
+  test.each(["//evil.example/", "///evil.example/", "/\\evil.example/", "/\\/evil.example/"])(
+    "doesn't redirect a leading extra slash or backslash in %s", (path) => {
+      expect(responseFor(path).status).toBeUndefined();
+      expect(headersFor(path).Location).toBeUndefined();
+    },
+  );
+
+  test("sets security headers before a terminal redirect stops route evaluation", () => {
+    const response = responseFor("/some/route/");
+    expect(response.status).toBe(308);
+    expect(response.headers).toMatchObject({
+      "Content-Security-Policy": "default-src 'self'",
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+      "X-Content-Type-Options": "nosniff",
+    });
   });
 
   test("files win over the rewrite, which leaves missing assets, catalog files and schemas as 404s", () => {

@@ -128,15 +128,16 @@ function headerRoute(src: string, headers: Header[]): VercelRoute {
 
 /**
  * Vercel's Build Output config for this build (`vercel-output.ts` writes it), so the header always carries the
- * hashes of the page it's sent with. Routes run in order: the trailing-slash redirect, the headers, then files,
- * which win over the rewrite. Missing assets, catalog files and schemas stay 404s, never index.html.
+ * hashes of the page it's sent with. Security headers run before the trailing-slash redirect; files win over
+ * the rewrite. Missing assets, catalog files and schemas stay 404s, never index.html.
  */
 export function buildOutputConfig(csp: string): BuildOutputConfig {
   return {
     version: 3,
     routes: [
-      { src: "^/(.*)\\/$", headers: { Location: "/$1" }, status: 308 },
       headerRoute("^/(.*)$", securityHeaders(csp)),
+      // Exclude leading slash/backslash captures so Location stays on this origin.
+      { src: "^/([^/\\\\].*)/$", headers: { Location: "/$1" }, status: 308 },
       headerRoute("^/assets/(.*)$", [{ key: "Cache-Control", value: IMMUTABLE }]),
       headerRoute("^/((?!assets/).*)$", [{ key: "Cache-Control", value: REVALIDATE }]),
       { handle: "filesystem" },
