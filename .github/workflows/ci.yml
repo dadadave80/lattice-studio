@@ -143,6 +143,7 @@ jobs:
           node: "true"
           browsers: chromium
       - name: Capture the unchanged browser suite
+        shell: bash
         run: |
           mkdir -p "$STUDIO_BROWSER_DIAGNOSTICS_DIR"
           bun run test:browser 2>&1 | tee "$STUDIO_BROWSER_DIAGNOSTICS_DIR/vitest.log"

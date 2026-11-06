@@ -10,7 +10,7 @@ const repoRoot = join(import.meta.dir, "..", "..");
 const workflowsDir = join(repoRoot, ".github", "workflows");
 const files = readdirSync(workflowsDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
 
-type StepLike = { run?: unknown; uses?: unknown; if?: unknown; env?: Record<string, unknown>; permissions?: Record<string, unknown> };
+type StepLike = { run?: unknown; shell?: unknown; uses?: unknown; if?: unknown; env?: Record<string, unknown>; permissions?: Record<string, unknown> };
 type JobLike = {
   "runs-on"?: unknown;
   uses?: unknown;
@@ -288,8 +288,16 @@ describe("browser transport diagnostics", () => {
   test("compares fresh runners, retains failures and never updates references", () => {
     expect(diagnostic?.strategy?.matrix).toEqual({ os: ["ubuntu-24.04", "ubuntu-26.04"], sample: [1, 2, 3] });
     const run = diagnostic?.steps?.find((step) => typeof step.run === "string" && step.run.includes("bun run test:browser"));
+    expect(run?.shell).toBe("bash"); // GitHub's explicit bash shell enables pipefail for the tee pipeline.
     expect(run?.run).not.toMatch(/--(?:update|passWithNoTests|retry)/);
     const artifact = diagnostic?.steps?.find((step) => typeof step.uses === "string" && step.uses.startsWith("actions/upload-artifact@"));
     expect(artifact?.if).toBe("always()");
+  });
+
+  test("the explicit GitHub bash shell propagates a failed producer through tee", () => {
+    const result = Bun.spawnSync(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", "(exit 23) | tee /dev/null"], {
+      stdout: "pipe", stderr: "pipe",
+    });
+    expect(result.exitCode).toBe(23);
   });
 });
