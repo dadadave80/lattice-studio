@@ -23,13 +23,14 @@ test.each(["success", "failure"])("CLI distinguishes a %s cache restore and neve
   const root = mkdtempSync(join(tmpdir(), "studio-setup-metrics-")); temporary.push(root);
   const result = Bun.spawnSync([process.execPath, join(import.meta.dir, "setup-metrics.ts")], {
     cwd: join(import.meta.dir, "..", ".."),
-    env: { ...process.env, RUNNER_TEMP: root, GITHUB_OUTPUT: join(root, "outputs"), GITHUB_STEP_SUMMARY: join(root, "summary"), SETUP_BROWSERS: "chromium", SETUP_CACHE_OUTCOME: outcome, SETUP_CACHE_HIT: "true", SETUP_APT_MIRROR: "ubuntu-archive", SETUP_MIRROR_OUTCOME: "failure", SETUP_MIRROR_STATE: "", ImageOS: "ubuntu24", ImageVersion: "20261101.360.1", SECRET_RPC_URL: "https://private.test/?key=never-record-this" },
+    env: { ...process.env, RUNNER_TEMP: root, GITHUB_OUTPUT: join(root, "outputs"), GITHUB_STEP_SUMMARY: join(root, "summary"), SETUP_BROWSERS: "chromium", SETUP_CACHE_OUTCOME: outcome, SETUP_CACHE_HIT: "true", ImageOS: "ubuntu24", ImageVersion: "20261101.360.1", SECRET_RPC_URL: "https://private.test/?key=never-record-this" },
     stdout: "pipe", stderr: "pipe",
   });
   expect(result.exitCode).toBe(0);
   const text = readFileSync(join(root, "studio-setup-metrics.json"), "utf8");
   const data: unknown = JSON.parse(text);
-  expect(data).toMatchObject({ playwright: { cacheHit: outcome === "success" ? true : null }, aptMirror: { state: "not-completed" }, runnerImage: { os: "ubuntu24", version: "20261101.360.1" } });
+  expect(data).toMatchObject({ playwright: { cacheOutcome: outcome, cacheHit: outcome === "success" ? true : null }, runnerImage: { os: "ubuntu24", version: "20261101.360.1" } });
+  expect(data).toHaveProperty("outcomes", { frozenInstall: "skipped", apt: "skipped", browserDownload: "skipped" });
   expect(text).not.toContain("never-record-this");
   expect(result.stdout.toString()).not.toContain("never-record-this");
 });

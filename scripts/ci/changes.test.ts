@@ -97,7 +97,7 @@ describe("changes.sh", () => {
     expect(groupsFor(["scripts/wp/merge.ts"])).toEqual(["code"]);
   });
 
-  test.each(["scripts/ci/apt-mirror.ts", "scripts/ci/setup-metrics.ts"])("shared setup runtime %s validates every consumer", (path) => {
+  test.each(["scripts/ci/setup-metrics.ts"])("shared setup runtime %s validates every consumer", (path) => {
     expect(groupsFor([path])).toEqual([...GROUPS]);
   });
 
@@ -105,7 +105,7 @@ describe("changes.sh", () => {
     expect(groupsFor(["scripts/ci/e2e-summary.ts"])).toEqual(["code", "app", "size"]);
   });
 
-  test.each(["scripts/ci/apt-mirror.test.ts", "scripts/ci/setup-metrics.test.ts", "scripts/ci/e2e-summary.test.ts"])("helper-only test %s keeps the pure unit scope", (path) => {
+  test.each(["scripts/ci/setup-metrics.test.ts", "scripts/ci/e2e-summary.test.ts"])("helper-only test %s keeps the pure unit scope", (path) => {
     expect(groupsFor([path])).toEqual(["code"]);
   });
 

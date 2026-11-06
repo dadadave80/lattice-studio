@@ -23,7 +23,7 @@ import { shortAddress } from "../_support/wallet.ts";
 import { deployOnAnvil, mine, pendingDeploy, predictedAddress, releaseAddress, removeShared } from "./pages/chain.ts";
 import { DeployReview, SettingsDialog, watchReactErrors } from "./pages/dialogs.ts";
 import { expect, test } from "../_support/fixtures.ts";
-import { activate, pressMod, runConsoleLine, runPalette, runPaletteWith, tabTo, type InputMode } from "./pages/keys.ts";
+import { activate, paletteInput, pressMod, runConsoleLine, runPalette, runPaletteWith, tabTo, type InputMode } from "./pages/keys.ts";
 import { ConsoleLog, Inspector, TitleBar, TitleBlock, expectAnnounced, expectDisabledWith } from "./pages/regions.ts";
 import { connectOnAnvil, inflateEstimatedGas, rejectMockSends } from "./pages/wallet.ts";
 
@@ -288,6 +288,12 @@ test.describe("Flow 14. Recover when something goes wrong", () => {
   test("Studio updated while this tab needed a new piece of it: \"Save and reload\" gets it back", async ({ page }) => {
     await seedProject(page, { project: recipeProject("GovernedVault", { filled: true }) });
     await expect(new TitleBlock(page).root).toContainText("12 facets · 122 selectors");
+    // The palette is a prerequisite for Deploy, not the missing piece this recovery flow exercises.
+    await pressMod(page, "k");
+    const palette = paletteInput(page);
+    await expect(palette).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(palette).toBeHidden();
     // The deploy review's chunk is gone from the server, as after a release.
     const gone = (route: import("@playwright/test").Route) => route.abort();
     await page.route("**/assets/**", gone);

@@ -1,7 +1,7 @@
 // Every workflow file must parse as YAML and have the shape a workflow needs (brief Q6 "Done when": "every
 // workflow file parses (a test loads each with Bun.YAML)"). Never runs a workflow, never touches the network:
 // this only reads the committed files and parses them.
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { findPinnedRunners, isLockfilePinned } from "./workflow-lockfile-check.ts";
@@ -44,11 +44,6 @@ describe("GitHub Actions workflows", () => {
         const jobs = Object.entries(doc.jobs ?? {});
         expect(jobs.length).toBeGreaterThan(0);
         for (const [id, job] of jobs) {
-          if (typeof job.uses === "string") {
-            expect(job.uses, `${id} calls a local reviewed workflow`).toMatch(/^\.\/\.github\/workflows\/[\w.-]+\.ya?ml$/);
-            expect(existsSync(join(repoRoot, job.uses)), `${id} reusable workflow exists`).toBe(true);
-            continue;
-          }
           expect(typeof job["runs-on"], `${id} needs runs-on`).toBe("string");
           expect(Array.isArray(job.steps), `${id} needs steps`).toBe(true);
         }
@@ -106,7 +101,7 @@ describe("CI reliability and evidence", () => {
     expect(gate?.name).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics && 'Diagnostic selection check' || 'CI gate' }}");
     expect(gate?.if).toBe("always()");
     expect(gate?.needs).toEqual(["changes", "static", "browser", "e2e", "perf", "foundry"]);
-    const optional = new Set(["gate", "browser-diagnostics", "browser-setup-benchmark", "e2e-evidence-probe", "e2e-balance-benchmark"]);
+    const optional = new Set(["gate", "browser-diagnostics"]);
     expect([...((gate?.needs as string[] | undefined) ?? [])].sort()).toEqual(Object.keys(doc.jobs ?? {}).filter((id) => !optional.has(id)).sort());
     const run = gate?.steps?.find((step) => typeof step.run === "string" && step.run.includes("scripts/ci/gate.ts"));
     expect(run?.env?.CI_NEEDS).toBe("${{ toJSON(needs) }}");
@@ -148,9 +143,30 @@ describe("CI reliability and evidence", () => {
     for (const id of ids) expect(id).toMatch(/^[a-z0-9-]+$/);
   });
 
+  test("component reports survive infrastructure errors as well as assertion failures", () => {
+    const job = doc.jobs?.browser;
+    const run = job?.steps?.find((step) => typeof step.run === "string" && step.run.includes("bun run test:browser"));
+    expect(run?.run).toContain("--reporter=json");
+    expect(run?.run).toContain("--outputFile.json=test-results/63315/vitest.json");
+    const artifact = job?.steps?.find((step) => typeof step.uses === "string" && step.uses.startsWith("actions/upload-artifact@"));
+    expect(artifact?.if).toBe("always()");
+    expect(artifact?.with?.path).toBe("apps/studio/test-results/63315/");
+  });
+
+  test("manual transport diagnosis records lifecycle and resource evidence without changing assertions", () => {
+    const diagnostic = doc.jobs?.["browser-diagnostics"] as (JobLike & { env?: Record<string, unknown> }) | undefined;
+    expect(diagnostic?.env?.DEBUG).toContain("vitest:browser:*");
+    expect(diagnostic?.env?.DEBUG).toContain("pw:browser");
+    expect(diagnostic?.env?.VITEST_BROWSER_DEBUG).toBe("1");
+    const run = diagnostic?.steps?.find((step) => typeof step.run === "string" && step.run.includes("bun run test:browser"));
+    expect(run?.run).toContain("resources.log");
+    expect(run?.run).toContain("df -Pk");
+    expect(run?.run).toContain("/proc/meminfo");
+    expect(run?.run).not.toMatch(/--(?:update|passWithNoTests|retry)/);
+  });
+
   test("normal jobs have bounded timeouts and transport diagnostics cannot cancel ordinary CI", () => {
     for (const [id, job] of Object.entries(doc.jobs ?? {})) {
-      if (job.uses) continue;
       expect(typeof job["timeout-minutes"], id).toBe("number");
       expect(Number(job["timeout-minutes"]), id).toBeGreaterThan(0);
       expect(Number(job["timeout-minutes"]), id).toBeLessThanOrEqual(30);
@@ -236,7 +252,7 @@ describe("ci.yml's Foundry job runs the Sepolia fork suite (§17 audit #76, spec
 describe("ci.yml's jobs share one setup", () => {
   const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike;
   for (const [id, job] of Object.entries(doc.jobs ?? {})) {
-    if (id === "changes" || id === "gate" || job.uses) continue;
+    if (id === "changes" || id === "gate") continue;
     test(`${id} sets up through .github/actions/setup and installs nothing itself`, () => {
       const steps = job.steps ?? [];
       expect(steps.some((s) => s.uses === "./.github/actions/setup")).toBe(true);
@@ -354,7 +370,7 @@ describe("browser transport diagnostics", () => {
     expect(doc.on?.workflow_dispatch?.inputs?.browser_diagnostics).toMatchObject({ type: "boolean", default: false });
     expect(diagnostic?.if).toBe("github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics");
     for (const [id, job] of Object.entries(doc.jobs ?? {})) {
-      if (id !== "browser-diagnostics" && !job.uses) expect(job["runs-on"]).toBe("ubuntu-24.04");
+      if (id !== "browser-diagnostics") expect(job["runs-on"]).toBe("ubuntu-24.04");
     }
   });
 

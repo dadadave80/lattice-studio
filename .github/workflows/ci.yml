@@ -22,21 +22,13 @@ on:
         description: "Compare browser transport on Ubuntu 24.04 and 26.04 (#60)"
         type: boolean
         default: false
-      browser_setup_benchmark:
-        description: "Measure browser setup on fresh runners (temporary experiment)"
-        type: boolean
-        default: false
-      e2e_balance_benchmark:
-        description: "Compare equal-count and workload-grouped Chromium shards (temporary experiment)"
-        type: boolean
-        default: false
 
 # A PR gate never needs write access; release-please and publish-cli (separate workflows) ask for more.
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.browser_diagnostics && 'transport' || inputs.e2e_balance_benchmark && 'e2e-benchmark' || inputs.browser_setup_benchmark && 'setup-benchmark' || 'full' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.browser_diagnostics && 'transport' || 'full' }}
   cancel-in-progress: true
 
 jobs:
@@ -111,20 +103,22 @@ jobs:
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      VITEST_BROWSER_PORT: "63315"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
         with:
           node: "true"
           browsers: chromium
-      - run: bun run test:browser
+      - run: bun run test:browser --reporter=default --reporter=json --outputFile.json=test-results/63315/vitest.json
       # A screenshot with no baseline for this OS leaves the runner's own rendering under attachments/, ready to
       # review and commit as its `-chromium-linux.png`; a mismatch leaves the actual and the diff.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
+        if: always()
         with:
           name: browser-test-results
-          path: apps/studio/test-results/
+          path: apps/studio/test-results/63315/
           retention-days: 14
 
   browser-diagnostics:
@@ -141,7 +135,8 @@ jobs:
     env:
       VITEST_BROWSER_PORT: "63315"
       VITEST_PW_DEBUG: "1"
-      DEBUG: vite:deps,vite:load,vite:transform,vite:time,vitest:browser:playwright
+      VITEST_BROWSER_DEBUG: "1"
+      DEBUG: vite:deps,vitest:browser:*,pw:browser
       STUDIO_BROWSER_DIAGNOSTICS_DIR: ${{ github.workspace }}/apps/studio/test-results/63315/diagnostics
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -153,6 +148,18 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$STUDIO_BROWSER_DIAGNOSTICS_DIR"
+          resources() {
+            while :; do
+              date -u +%FT%TZ
+              df -Pk / /tmp
+              awk '/^(MemTotal|MemAvailable|SwapFree):/' /proc/meminfo
+              ps -eo comm,rss --sort=-rss | sed -n '1,16p'
+              sleep 5
+            done
+          }
+          resources > "$STUDIO_BROWSER_DIAGNOSTICS_DIR/resources.log" &
+          resource_pid=$!
+          trap 'kill "$resource_pid" 2>/dev/null || true' EXIT
           bun run test:browser 2>&1 | tee "$STUDIO_BROWSER_DIAGNOSTICS_DIR/vitest.log"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -296,15 +303,3 @@ jobs:
         env:
           CI_NEEDS: ${{ toJSON(needs) }}
         run: node --experimental-strip-types scripts/ci/gate.ts
-
-  browser-setup-benchmark:
-    if: github.event_name == 'workflow_dispatch' && inputs.browser_setup_benchmark
-    uses: ./.github/workflows/browser-setup-benchmark.yml
-
-  e2e-evidence-probe:
-    if: github.event_name == 'workflow_dispatch' && inputs.browser_setup_benchmark
-    uses: ./.github/workflows/e2e-evidence-probe.yml
-
-  e2e-balance-benchmark:
-    if: github.event_name == 'workflow_dispatch' && inputs.e2e_balance_benchmark
-    uses: ./.github/workflows/e2e-balance-benchmark.yml

@@ -29,7 +29,7 @@ else
     # falls through to that folder's rule, since packages/tokens/README.md is checked by its own test.
     if [[ "$path" != */* && "$path" == *.md ]]; then continue; fi
     case "$path" in
-      .github/workflows/* | .github/actions/* | bun.lock | package.json | bunfig.toml | tsconfig.base.json | .oxlintrc.json | .gitmodules | scripts/ci/changes.sh | scripts/ci/apt-mirror.ts | scripts/ci/setup-metrics.ts)
+      .github/workflows/* | .github/actions/* | bun.lock | package.json | bunfig.toml | tsconfig.base.json | .oxlintrc.json | .gitmodules | scripts/ci/changes.sh | scripts/ci/setup-metrics.ts)
         all ;;
       LICENSE | docs/* | skills/* | .github/*.md | .github/ISSUE_TEMPLATE/*)
         ;;

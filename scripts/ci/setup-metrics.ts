@@ -41,7 +41,7 @@ if (import.meta.main) {
   const metrics = {
     schemaVersion: 1,
     seconds: setupTimings(env, Date.now()),
-    outcomes: { frozenInstall: env.SETUP_INSTALL_OUTCOME ?? "skipped", aptMirror: env.SETUP_MIRROR_OUTCOME ?? "skipped", apt: env.SETUP_APT_OUTCOME ?? "skipped", browserDownload: env.SETUP_BROWSER_OUTCOME ?? "skipped" },
+    outcomes: { frozenInstall: env.SETUP_INSTALL_OUTCOME ?? "skipped", apt: env.SETUP_APT_OUTCOME ?? "skipped", browserDownload: env.SETUP_BROWSER_OUTCOME ?? "skipped" },
     tools: {
       bun: tool("bun", ["bun", "--version"]),
       node: env.SETUP_NODE === "true" ? tool("node", ["node", "--version"]) : null,
@@ -51,7 +51,6 @@ if (import.meta.main) {
     runnerImage: { os: env.ImageOS ?? null, version: env.ImageVersion ?? null },
     browsers: (env.SETUP_BROWSERS ?? "").split(/\s+/).filter(Boolean),
     playwright: { version, cacheKey: env.SETUP_CACHE_KEY ?? "", cacheOutcome: env.SETUP_CACHE_OUTCOME ?? "skipped", cacheHit: env.SETUP_BROWSERS && env.SETUP_CACHE_OUTCOME === "success" ? env.SETUP_CACHE_HIT === "true" : null },
-    aptMirror: { requested: env.SETUP_APT_MIRROR ?? "system", state: env.SETUP_BROWSERS ? env.SETUP_MIRROR_STATE || (env.SETUP_APT_MIRROR === "ubuntu-archive" ? "not-completed" : "system") : "not-requested" },
     fontPackages: fonts?.split("\n").filter((line) => /^ii\s/.test(line)).map((line) => line.replace(/^ii\s+/, "")) ?? [],
   };
   const path = join(env.RUNNER_TEMP ?? process.cwd(), "studio-setup-metrics.json");
@@ -60,6 +59,6 @@ if (import.meta.main) {
   console.log(`setup · ${JSON.stringify(metrics)}`);
   if (env.GITHUB_OUTPUT) appendFileSync(env.GITHUB_OUTPUT, `path=${path}\n`);
   if (env.GITHUB_STEP_SUMMARY) {
-    appendFileSync(env.GITHUB_STEP_SUMMARY, `### Studio setup\n\nOS: ${metrics.os}; Bun: ${metrics.tools.bun.version}; Node: ${metrics.tools.node?.version ?? "not requested"}; Playwright: ${version ?? "not installed"}.\n\n| Stage | Seconds |\n| --- | ---: |\n| Total | ${metrics.seconds.total ?? "unavailable"} |\n| Frozen install | ${metrics.seconds.frozenInstall ?? "not run"} |\n| Playwright apt dependencies | ${metrics.seconds.apt ?? "not run"} |\n| Browser download/check | ${metrics.seconds.browserDownload ?? "not run"} |\n\nBrowser cache hit: ${metrics.playwright.cacheHit ?? "unavailable/not requested"}; apt mirror: ${metrics.aptMirror.state}.\n`);
+    appendFileSync(env.GITHUB_STEP_SUMMARY, `### Studio setup\n\nOS: ${metrics.os}; Bun: ${metrics.tools.bun.version}; Node: ${metrics.tools.node?.version ?? "not requested"}; Playwright: ${version ?? "not installed"}.\n\n| Stage | Seconds |\n| --- | ---: |\n| Total | ${metrics.seconds.total ?? "unavailable"} |\n| Frozen install | ${metrics.seconds.frozenInstall ?? "not run"} |\n| Playwright apt dependencies | ${metrics.seconds.apt ?? "not run"} |\n| Browser download/check | ${metrics.seconds.browserDownload ?? "not run"} |\n\nBrowser cache hit: ${metrics.playwright.cacheHit ?? "unavailable/not requested"}.\n`);
   }
 }
