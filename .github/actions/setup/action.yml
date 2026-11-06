@@ -20,10 +20,17 @@ outputs:
   playwright-key:
     description: "The cache key the browsers were restored under, for warm-cache.yml to save under"
     value: ${{ steps.playwright.outputs.key }}
+  metrics-path:
+    description: "JSON containing setup timings, actual tool versions, browser-cache state and font versions"
+    value: ${{ steps.metrics.outputs.path }}
 
 runs:
   using: composite
   steps:
+    - id: clock
+      shell: bash
+      run: |
+        echo "started-ms=$(date +%s%3N)" >> "$GITHUB_OUTPUT"
     - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       with:
         bun-version: "1.4.2"
@@ -33,32 +40,92 @@ runs:
         node-version: "22"
     # Frozen lockfile, install scripts blocked (root package.json's empty trustedDependencies; spec "Compromised npm
     # dependency"): CI installs exactly what bun.lock pins and runs no lifecycle script.
-    - shell: bash
-      run: bun install --frozen-lockfile
+    - id: install
+      shell: bash
+      run: |
+        started=$SECONDS
+        code=0
+        bun install --frozen-lockfile || code=$?
+        echo "seconds=$((SECONDS - started))" >> "$GITHUB_OUTPUT"
+        exit "$code"
     # No RPC cache: the tests fork nothing through forge, and the action would save an empty entry per job.
     - if: inputs.foundry == 'true'
       uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
       with:
         version: v1.8.3 # contracts.md §2: David chose 1.8.3 over the planned 1.8.1 (2026-09-23, QUESTIONS Q1)
         cache: false
+    - name: Verify requested runtime pins
+      shell: bash
+      env:
+        NEED_NODE: ${{ inputs.node }}
+        NEED_FOUNDRY: ${{ inputs.foundry }}
+      run: |
+        test "$(bun --version)" = "1.4.2"
+        if [ "$NEED_NODE" = true ]; then
+          test "$(node -p 'process.versions.node.split(".")[0]')" = "22"
+        fi
+        if [ "$NEED_FOUNDRY" = true ]; then
+          forge --version | grep -E '^forge Version: 1\.8\.3([-+ ]|$)'
+        fi
     # Browsers are keyed on the installed Playwright's version, so an unrelated lockfile change keeps the hit, and
     # on the OS release: Playwright builds WebKit per Ubuntu release, and one cached on 26.04 won't start on 24.04.
     - if: inputs.browsers != ''
       id: playwright
       shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
       run: |
         version=$(bun -e 'console.log(require("./node_modules/@playwright/test/package.json").version)')
         os=$(. /etc/os-release && echo "$ID-$VERSION_ID")
-        echo "key=playwright-$os-$version-$(echo '${{ inputs.browsers }}' | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+        echo "key=playwright-$os-$version-$(echo "$BROWSERS" | tr ' ' '-')" >> "$GITHUB_OUTPUT"
     - if: inputs.browsers != ''
+      id: browser-cache
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/ms-playwright
         key: ${{ steps.playwright.outputs.key }}
-    # On a hit this only installs the system libraries; the browsers are already in place. Without man-db's
-    # auto-update, apt skips rebuilding the man-page index after the install, which nothing here reads.
+    # Measure apt separately from binary download/check: a browser cache hit does not avoid the system packages.
     - if: inputs.browsers != ''
+      id: browser-deps
       shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
       run: |
+        started=$SECONDS
         sudo rm -f /var/lib/man-db/auto-update
-        bun x playwright install --with-deps ${{ inputs.browsers }}
+        read -r -a browsers <<< "$BROWSERS"
+        code=0
+        bun x playwright install-deps "${browsers[@]}" || code=$?
+        echo "seconds=$((SECONDS - started))" >> "$GITHUB_OUTPUT"
+        exit "$code"
+    - if: inputs.browsers != ''
+      id: browser-download
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: |
+        started=$SECONDS
+        read -r -a browsers <<< "$BROWSERS"
+        code=0
+        bun x playwright install "${browsers[@]}" || code=$?
+        echo "seconds=$((SECONDS - started))" >> "$GITHUB_OUTPUT"
+        exit "$code"
+    - name: Record setup measurements
+      id: metrics
+      if: always()
+      shell: bash
+      env:
+        SETUP_STARTED_MS: ${{ steps.clock.outputs.started-ms }}
+        SETUP_INSTALL_SECONDS: ${{ steps.install.outputs.seconds }}
+        SETUP_INSTALL_OUTCOME: ${{ steps.install.outcome }}
+        SETUP_APT_SECONDS: ${{ steps.browser-deps.outputs.seconds }}
+        SETUP_APT_OUTCOME: ${{ steps.browser-deps.outcome }}
+        SETUP_BROWSER_SECONDS: ${{ steps.browser-download.outputs.seconds }}
+        SETUP_BROWSER_OUTCOME: ${{ steps.browser-download.outcome }}
+        SETUP_NODE: ${{ inputs.node }}
+        SETUP_FOUNDRY: ${{ inputs.foundry }}
+        SETUP_BROWSERS: ${{ inputs.browsers }}
+        SETUP_CACHE_KEY: ${{ steps.playwright.outputs.key }}
+        SETUP_CACHE_HIT: ${{ steps.browser-cache.outputs.cache-hit }}
+        SETUP_CACHE_OUTCOME: ${{ steps.browser-cache.outcome }}
+      run: bun scripts/ci/setup-metrics.ts

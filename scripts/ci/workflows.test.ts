@@ -10,15 +10,19 @@ const repoRoot = join(import.meta.dir, "..", "..");
 const workflowsDir = join(repoRoot, ".github", "workflows");
 const files = readdirSync(workflowsDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
 
-type StepLike = { run?: unknown; shell?: unknown; uses?: unknown; if?: unknown; env?: Record<string, unknown>; permissions?: Record<string, unknown> };
+type StepLike = { name?: unknown; id?: unknown; run?: unknown; shell?: unknown; uses?: unknown; if?: unknown; env?: Record<string, unknown>; permissions?: Record<string, unknown>; with?: Record<string, unknown> };
 type JobLike = {
+  name?: unknown;
+  if?: unknown;
+  needs?: unknown;
   "runs-on"?: unknown;
+  "timeout-minutes"?: unknown;
   uses?: unknown;
   steps?: readonly StepLike[];
   on?: unknown;
   permissions?: Record<string, unknown>;
 };
-type WorkflowLike = { name?: unknown; on?: unknown; permissions?: Record<string, unknown>; env?: Record<string, unknown>; jobs?: Record<string, JobLike> };
+type WorkflowLike = { name?: unknown; on?: unknown; permissions?: Record<string, unknown>; env?: Record<string, unknown>; jobs?: Record<string, JobLike>; concurrency?: { group?: unknown; "cancel-in-progress"?: unknown } };
 
 describe("GitHub Actions workflows", () => {
   test("at least one workflow file exists", () => {
@@ -87,6 +91,91 @@ describe("GitHub Actions workflows", () => {
       });
     });
   }
+});
+
+describe("CI reliability and evidence", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike;
+
+  test("the stable aggregate gate waits for every ordinary job and always checks their results", () => {
+    const gate = doc.jobs?.gate;
+    expect(gate?.name).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics && 'Diagnostic selection check' || 'CI gate' }}");
+    expect(gate?.if).toBe("always()");
+    expect(gate?.needs).toEqual(["changes", "static", "browser", "e2e", "perf", "foundry"]);
+    const optional = new Set(["gate", "browser-diagnostics"]);
+    expect([...((gate?.needs as string[] | undefined) ?? [])].sort()).toEqual(Object.keys(doc.jobs ?? {}).filter((id) => !optional.has(id)).sort());
+    const run = gate?.steps?.find((step) => typeof step.run === "string" && step.run.includes("scripts/ci/gate.ts"));
+    expect(run?.env?.CI_NEEDS).toBe("${{ toJSON(needs) }}");
+    expect(run?.run).toContain("node --experimental-strip-types");
+    expect(gate?.steps?.some((step) => step.uses === "./.github/actions/setup")).toBe(false);
+  });
+
+  test("units finish before the one authoritative production check, with a size-only fallback", () => {
+    const steps = doc.jobs?.static?.steps ?? [];
+    const units = steps.findIndex((step) => step.run === "bun test");
+    const check = steps.findIndex((step) => step.run === "bun run check");
+    expect(units).toBeGreaterThanOrEqual(0);
+    expect(check).toBeGreaterThan(units);
+    expect(steps[check]?.if).toContain("success() || failure()");
+    for (const command of ["bun scripts/ci/size.ts --build", "bun scripts/ci/react-compiler-dist-check.ts"]) {
+      const step = steps.find((entry) => entry.run === command);
+      expect(step?.if).toContain("needs.changes.outputs.size == 'true'");
+      expect(step?.if).toContain("needs.changes.outputs.code != 'true'");
+    }
+    expect(steps.some((step) => step.run === "bun scripts/ci/deployment-output-check.ts")).toBe(true);
+  });
+
+  test("every completed E2E shard retains compact results and failed attempts, including recovered flakes", () => {
+    const job = doc.jobs?.e2e as (JobLike & { strategy?: { matrix?: { include?: { id?: string }[] } } }) | undefined;
+    const summary = job?.steps?.find((step) => typeof step.run === "string" && step.run.includes("scripts/ci/e2e-summary.ts"));
+    expect(summary?.if).toBe("always()");
+    const artifact = job?.steps?.find((step) => typeof step.uses === "string" && step.uses.startsWith("actions/upload-artifact@"));
+    expect(artifact?.if).toBe("always()");
+    expect(artifact?.with?.name).toBe("e2e-${{ matrix.id }}");
+    expect(artifact?.with?.path).toContain("test-results/4173/summary.json");
+    expect(artifact?.with?.path).toContain("playwright-report/");
+    expect(artifact?.with?.path).toContain("test-results/4173/");
+    expect(artifact?.with?.path).toContain("!apps/studio/test-results/4173/report.json");
+    expect(summary?.run).toContain("test-results/$PLAYWRIGHT_PORT/report.json");
+    expect(artifact?.with?.["retention-days"]).toBe(14);
+    const ids = job?.strategy?.matrix?.include?.map((entry) => entry.id) ?? [];
+    expect(ids).toHaveLength(5);
+    expect(new Set(ids).size).toBe(5);
+    for (const id of ids) expect(id).toMatch(/^[a-z0-9-]+$/);
+  });
+
+  test("component reports survive infrastructure errors as well as assertion failures", () => {
+    const job = doc.jobs?.browser;
+    const run = job?.steps?.find((step) => typeof step.run === "string" && step.run.includes("bun run test:browser"));
+    expect(run?.run).toContain("--reporter=json");
+    expect(run?.run).toContain("--outputFile.json=test-results/63315/vitest.json");
+    const artifact = job?.steps?.find((step) => typeof step.uses === "string" && step.uses.startsWith("actions/upload-artifact@"));
+    expect(artifact?.if).toBe("always()");
+    expect(artifact?.with?.path).toBe("apps/studio/test-results/63315/");
+  });
+
+  test("manual transport diagnosis records lifecycle and resource evidence without changing assertions", () => {
+    const diagnostic = doc.jobs?.["browser-diagnostics"] as (JobLike & { env?: Record<string, unknown> }) | undefined;
+    expect(diagnostic?.env?.DEBUG).toContain("vitest:browser:*");
+    expect(diagnostic?.env?.DEBUG).toContain("pw:browser");
+    expect(diagnostic?.env?.VITEST_BROWSER_DEBUG).toBe("1");
+    const run = diagnostic?.steps?.find((step) => typeof step.run === "string" && step.run.includes("bun run test:browser"));
+    expect(run?.run).toContain("resources.log");
+    expect(run?.run).toContain("df -Pk");
+    expect(run?.run).toContain("/proc/meminfo");
+    expect(run?.run).not.toMatch(/--(?:update|passWithNoTests|retry)/);
+  });
+
+  test("normal jobs have bounded timeouts and transport diagnostics cannot cancel ordinary CI", () => {
+    for (const [id, job] of Object.entries(doc.jobs ?? {})) {
+      expect(typeof job["timeout-minutes"], id).toBe("number");
+      expect(Number(job["timeout-minutes"]), id).toBeGreaterThan(0);
+      expect(Number(job["timeout-minutes"]), id).toBeLessThanOrEqual(30);
+    }
+    expect(doc.concurrency?.group).toContain("inputs.browser_diagnostics");
+    expect(doc.concurrency?.group).toContain("transport");
+    expect(doc.concurrency?.group).toContain("full");
+    expect(doc.concurrency?.["cancel-in-progress"]).toBe(true);
+  });
 });
 
 describe("frozen lockfile and blocked install scripts (§16 audit #36, #39, spec L864)", () => {
@@ -163,7 +252,7 @@ describe("ci.yml's Foundry job runs the Sepolia fork suite (§17 audit #76, spec
 describe("ci.yml's jobs share one setup", () => {
   const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike;
   for (const [id, job] of Object.entries(doc.jobs ?? {})) {
-    if (id === "changes") continue;
+    if (id === "changes" || id === "gate") continue;
     test(`${id} sets up through .github/actions/setup and installs nothing itself`, () => {
       const steps = job.steps ?? [];
       expect(steps.some((s) => s.uses === "./.github/actions/setup")).toBe(true);
@@ -299,5 +388,23 @@ describe("browser transport diagnostics", () => {
       stdout: "pipe", stderr: "pipe",
     });
     expect(result.exitCode).toBe(23);
+  });
+});
+
+describe("exact merged revision verification", () => {
+  test("checks only protected-branch pushes with separate cancellation and read-only permissions", () => {
+    const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "post-merge.yml"), "utf8")) as WorkflowLike;
+    expect(doc.on).toEqual({ push: { branches: ["dev", "main"] } });
+    expect(doc.permissions).toEqual({ contents: "read" });
+    expect(doc.concurrency?.group).toBe("post-merge-${{ github.ref }}");
+    expect(doc.concurrency?.["cancel-in-progress"]).toBe(true);
+    const steps = doc.jobs?.artifact?.steps ?? [];
+    const commands = steps.map((step) => String(step.run ?? ""));
+    expect(commands.filter((run) => run === "bun scripts/ci/size.ts --build")).toHaveLength(1);
+    expect(commands).toContain("bun scripts/ci/react-compiler-dist-check.ts");
+    expect(commands).toContain("bun scripts/ci/deployment-output-check.ts");
+    expect(commands).toContain("bun test apps/studio/build/headers.test.ts");
+    expect(commands.some((run) => /bun run (?:e2e|test:chain|golden|test:browser)/.test(run))).toBe(false);
+    expect(commands.some((run) => run.includes("GITHUB_STEP_SUMMARY") && run.includes("GITHUB_SHA"))).toBe(true);
   });
 });
