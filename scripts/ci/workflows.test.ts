@@ -267,3 +267,29 @@ describe("release-please.yml appends the catalog hash (§16 audit #7, spec L855)
     }
   });
 });
+
+// #60's transport investigation is opt-in: regular gates keep the known runner and all assertions.
+describe("browser transport diagnostics", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike & {
+    on?: { workflow_dispatch?: { inputs?: { browser_diagnostics?: { type?: unknown; default?: unknown } } } };
+  };
+  const diagnostic = doc.jobs?.["browser-diagnostics"] as (JobLike & {
+    if?: unknown; strategy?: { matrix?: { os?: unknown; sample?: unknown } };
+  }) | undefined;
+
+  test("is manual-only and preserves the Ubuntu 24.04 gate by default", () => {
+    expect(doc.on?.workflow_dispatch?.inputs?.browser_diagnostics).toMatchObject({ type: "boolean", default: false });
+    expect(diagnostic?.if).toBe("github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics");
+    for (const [id, job] of Object.entries(doc.jobs ?? {})) {
+      if (id !== "browser-diagnostics") expect(job["runs-on"]).toBe("ubuntu-24.04");
+    }
+  });
+
+  test("compares fresh runners, retains failures and never updates references", () => {
+    expect(diagnostic?.strategy?.matrix).toEqual({ os: ["ubuntu-24.04", "ubuntu-26.04"], sample: [1, 2, 3] });
+    const run = diagnostic?.steps?.find((step) => typeof step.run === "string" && step.run.includes("bun run test:browser"));
+    expect(run?.run).not.toMatch(/--(?:update|passWithNoTests|retry)/);
+    const artifact = diagnostic?.steps?.find((step) => typeof step.uses === "string" && step.uses.startsWith("actions/upload-artifact@"));
+    expect(artifact?.if).toBe("always()");
+  });
+});
