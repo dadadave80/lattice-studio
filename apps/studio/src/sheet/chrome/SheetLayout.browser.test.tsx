@@ -15,7 +15,8 @@ import { sheetViewport } from "@/sheet/canvas/sheet-view";
 import { drawn, emptyProject, settled } from "@/sheet/canvas/testing/sheet-harness";
 import { cardProject } from "@/sheet/card/testing/projects";
 import { Shell } from "@/shell";
-import { fixtureCatalog, renderWithStudio } from "../../../test/harness";
+import { fixtureCatalog, onCleanup, renderWithStudio } from "../../../test/harness";
+import { titleBlockSize } from "./title-block-size";
 
 afterEach(async () => {
   await page.viewport(1440, 900);
@@ -58,6 +59,39 @@ async function chromeDrawn(): Promise<void> {
   await expect.poll(() => box("[data-core-cell]") !== null, { timeout: 10_000 }).toBe(true);
   await expect.poll(() => box('[data-chrome="tool-strip"]') !== null, { timeout: 10_000 }).toBe(true);
 }
+
+test("title size changes publish after resize delivery and stop on unmount", async () => {
+  const NativeObserver = globalThis.ResizeObserver;
+  const observed: { notify: (() => void) | null } = { notify: null };
+  class ObservedResize extends NativeObserver {
+    private readonly notifyNow: () => void;
+    constructor(callback: ResizeObserverCallback) {
+      super(callback);
+      this.notifyNow = () => callback([], this);
+    }
+    override observe(target: Element, options?: ResizeObserverOptions): void {
+      if (target.matches(".react-flow__panel") && target.querySelector('[data-chrome="title-block"]')) observed.notify = this.notifyNow;
+      super.observe(target, options);
+    }
+  }
+  globalThis.ResizeObserver = ObservedResize;
+  onCleanup(() => { globalThis.ResizeObserver = NativeObserver; });
+  const screen = await renderWithStudio(<Shell />, { project: emptyProject("title-resize"), settings: { reduceMotion: "on" } });
+  await chromeDrawn();
+  await settled();
+  const panel = document.querySelector<HTMLElement>('[data-chrome="title-block"]')?.closest<HTMLElement>(".react-flow__panel");
+  const before = titleBlockSize();
+  if (!panel || !before || !observed.notify) throw new Error("The title block is not observing its panel.");
+  panel.style.height = `${panel.offsetHeight + 17}px`;
+  observed.notify();
+  expect(titleBlockSize()).toEqual(before);
+  await expect.poll(() => titleBlockSize()?.height).toBe(before.height + 17);
+  panel.style.height = `${panel.offsetHeight + 5}px`;
+  observed.notify();
+  await screen.unmount();
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  expect(titleBlockSize()).toBeNull();
+});
 
 describe("the empty sheet (SH-01)", () => {
   // Whether the tour line shows without scrolling: at 1280 × 720 the 520 px sheet leaves the block about 330 px above
