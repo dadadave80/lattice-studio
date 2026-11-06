@@ -26,13 +26,17 @@ on:
         description: "Measure browser setup on fresh runners (temporary experiment)"
         type: boolean
         default: false
+      e2e_balance_benchmark:
+        description: "Compare equal-count and workload-grouped Chromium shards (temporary experiment)"
+        type: boolean
+        default: false
 
 # A PR gate never needs write access; release-please and publish-cli (separate workflows) ask for more.
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.browser_diagnostics && 'transport' || inputs.browser_setup_benchmark && 'setup-benchmark' || 'full' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.browser_diagnostics && 'transport' || inputs.e2e_balance_benchmark && 'e2e-benchmark' || inputs.browser_setup_benchmark && 'setup-benchmark' || 'full' }}
   cancel-in-progress: true
 
 jobs:
@@ -300,3 +304,7 @@ jobs:
   e2e-evidence-probe:
     if: github.event_name == 'workflow_dispatch' && inputs.browser_setup_benchmark
     uses: ./.github/workflows/e2e-evidence-probe.yml
+
+  e2e-balance-benchmark:
+    if: github.event_name == 'workflow_dispatch' && inputs.e2e_balance_benchmark
+    uses: ./.github/workflows/e2e-balance-benchmark.yml

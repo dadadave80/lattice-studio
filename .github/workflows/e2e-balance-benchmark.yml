@@ -1,0 +1,145 @@
+# Temporary paired experiment; remove after evaluating the candidate on the same checkout.
+name: E2E balance benchmark
+
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    name: ${{ matrix.id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - { id: baseline-1, variant: baseline, bucket: all, shard: "1/4" }
+          - { id: candidate-heavy-1, variant: candidate, bucket: heavy, shard: "1/2" }
+          - { id: baseline-2, variant: baseline, bucket: all, shard: "2/4" }
+          - { id: candidate-heavy-2, variant: candidate, bucket: heavy, shard: "2/2" }
+          - { id: baseline-3, variant: baseline, bucket: all, shard: "3/4" }
+          - { id: candidate-other-1, variant: candidate, bucket: other, shard: "1/2" }
+          - { id: baseline-4, variant: baseline, bucket: all, shard: "4/4" }
+          - { id: candidate-other-2, variant: candidate, bucket: other, shard: "2/2" }
+    env:
+      PLAYWRIGHT_PORT: "4173"
+      ANVIL_PORT_BASE: "8560"
+      E2E_BALANCE_ID: ${{ matrix.id }}
+      E2E_BALANCE_VARIANT: ${{ matrix.variant }}
+      E2E_BALANCE_BUCKET: ${{ matrix.bucket }}
+      E2E_BALANCE_SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: setup
+        uses: ./.github/actions/setup
+        with:
+          node: "true"
+          foundry: "true"
+          browsers: chromium
+      - name: Generate the identical benchmark config
+        run: |
+          mkdir -p apps/studio/test-results/e2e-balance-config
+          cat > apps/studio/test-results/e2e-balance-config/playwright.config.ts <<'TS'
+          import { defineConfig } from "@playwright/test";
+          import { join } from "node:path";
+          import { fileURLToPath } from "node:url";
+          import base from "../../playwright.config.ts";
+
+          const app = fileURLToPath(new URL("../../", import.meta.url));
+          const results = join(app, "test-results", "e2e-balance");
+          export default defineConfig({
+            ...base,
+            testDir: join(app, "e2e"),
+            globalSetup: join(app, "e2e", "_support", "global-setup.ts"),
+            outputDir: join(results, "output"),
+            reporter: [
+              ["list"],
+              ["html", { outputFolder: join(results, "html"), open: "never" }],
+              ["json", { outputFile: join(results, "raw-report.json") }],
+              ["blob", { outputDir: join(results, "blob"), fileName: "report.zip" }],
+            ],
+          });
+          TS
+      - name: Collect and run the selected Chromium tests
+        id: tests
+        shell: bash
+        run: |
+          mkdir -p apps/studio/test-results/e2e-balance
+          args=(--project=chromium --workers=2 "--shard=$E2E_BALANCE_SHARD" --config=test-results/e2e-balance-config/playwright.config.ts)
+          case "$E2E_BALANCE_BUCKET" in
+            all) ;;
+            heavy) args+=(--grep '^chromium (a11y|q1e|v2)/') ;;
+            other) args+=(--grep-invert '^chromium (a11y|q1e|v2)/') ;;
+            *) echo "Unknown E2E benchmark bucket." >&2; exit 1 ;;
+          esac
+          bun run e2e "${args[@]}" --list --reporter=json > apps/studio/test-results/e2e-balance/selected-raw.json
+          bun - <<'BUN'
+          const input = await Bun.file("apps/studio/test-results/e2e-balance/selected-raw.json").json();
+          const selected = [];
+          const visit = (suites) => {
+            for (const suite of suites) {
+              for (const spec of suite.specs ?? []) {
+                for (const test of spec.tests) selected.push({ id: spec.id, project: test.projectName });
+              }
+              visit(suite.suites ?? []);
+            }
+          };
+          visit(input.suites);
+          const ids = selected.map((test) => `${test.project}:${test.id}`);
+          if (input.errors.length || !ids.length || new Set(ids).size !== ids.length) throw new Error("Selected test identities are invalid.");
+          await Bun.write("apps/studio/test-results/e2e-balance/selected-tests.json", `${JSON.stringify(selected, null, 2)}\n`);
+          BUN
+          started=$(date +%s%3N)
+          code=0
+          bun run e2e "${args[@]}" || code=$?
+          echo "duration-ms=$(( $(date +%s%3N) - started ))" >> "$GITHUB_OUTPUT"
+          exit "$code"
+      - name: Summarize outcomes and verify selected coverage
+        if: always() && steps.setup.outcome == 'success'
+        run: |
+          bun scripts/ci/e2e-summary.ts apps/studio/test-results/e2e-balance/raw-report.json apps/studio/test-results/e2e-balance/summary.json
+          bun - <<'BUN'
+          const selected = await Bun.file("apps/studio/test-results/e2e-balance/selected-tests.json").json();
+          const summary = await Bun.file("apps/studio/test-results/e2e-balance/summary.json").json();
+          const ids = (tests) => tests.map((test) => `${test.project}:${test.id}`).sort();
+          if (JSON.stringify(ids(selected)) !== JSON.stringify(ids(summary.tests))) throw new Error("Executed test identities differ from selection.");
+          BUN
+      - name: Record the sample identity and outcomes
+        if: always()
+        env:
+          SETUP_OUTCOME: ${{ steps.setup.outcome }}
+          E2E_OUTCOME: ${{ steps.tests.outcome }}
+          E2E_DURATION_MS: ${{ steps.tests.outputs.duration-ms }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, json, os, subprocess
+          root = Path("apps/studio/test-results/e2e-balance")
+          root.mkdir(parents=True, exist_ok=True)
+          config = Path("apps/studio/test-results/e2e-balance-config/playwright.config.ts")
+          checkout = subprocess.run(["git", "rev-parse", "HEAD"], text=True, capture_output=True)
+          data = {"sample": os.environ["E2E_BALANCE_ID"], "variant": os.environ["E2E_BALANCE_VARIANT"],
+                  "bucket": os.environ["E2E_BALANCE_BUCKET"], "shard": os.environ["E2E_BALANCE_SHARD"],
+                  "sha": os.environ["GITHUB_SHA"], "checkoutSha": checkout.stdout.strip(),
+                  "configSha256": hashlib.sha256(config.read_bytes()).hexdigest() if config.exists() else None,
+                  "setupOutcome": os.environ["SETUP_OUTCOME"], "e2eOutcome": os.environ["E2E_OUTCOME"],
+                  "durationMs": int(os.environ["E2E_DURATION_MS"]) if os.environ["E2E_DURATION_MS"] else None}
+          (root / "sample.json").write_text(json.dumps(data, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-balance-${{ matrix.id }}
+          path: |
+            apps/studio/test-results/e2e-balance/sample.json
+            apps/studio/test-results/e2e-balance/summary.json
+            apps/studio/test-results/e2e-balance/selected-tests.json
+            apps/studio/test-results/e2e-balance/blob/*.zip
+            apps/studio/test-results/e2e-balance/html/
+            apps/studio/test-results/e2e-balance/output/
+            ${{ steps.setup.outputs.metrics-path }}
+          retention-days: 7

@@ -106,7 +106,7 @@ describe("CI reliability and evidence", () => {
     expect(gate?.name).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics && 'Diagnostic selection check' || 'CI gate' }}");
     expect(gate?.if).toBe("always()");
     expect(gate?.needs).toEqual(["changes", "static", "browser", "e2e", "perf", "foundry"]);
-    const optional = new Set(["gate", "browser-diagnostics", "browser-setup-benchmark", "e2e-evidence-probe"]);
+    const optional = new Set(["gate", "browser-diagnostics", "browser-setup-benchmark", "e2e-evidence-probe", "e2e-balance-benchmark"]);
     expect([...((gate?.needs as string[] | undefined) ?? [])].sort()).toEqual(Object.keys(doc.jobs ?? {}).filter((id) => !optional.has(id)).sort());
     const run = gate?.steps?.find((step) => typeof step.run === "string" && step.run.includes("scripts/ci/gate.ts"));
     expect(run?.env?.CI_NEEDS).toBe("${{ toJSON(needs) }}");
