@@ -9,6 +9,7 @@ import { mergeConfig, type UserConfig } from "vite";
 import { defineConfig } from "vitest/config";
 import { join } from "node:path";
 import { appDir, localPort } from "./local-env.ts";
+import { withBrowserTransportDiagnostics } from "../../scripts/dev/browser-transport-diagnostics";
 import viteConfig from "./vite.config.ts";
 
 export default defineConfig(async (env) => {
@@ -47,11 +48,9 @@ export default defineConfig(async (env) => {
         // a looser per-pixel threshold and up to 3% differing pixels absorb that without hiding a real change.
         expect: { toMatchScreenshot: { comparatorOptions: { threshold: 0.3, allowedMismatchedPixelRatio: 0.03 } } },
         headless: true,
-        provider: playwright(diagnostics ? {
-          launchOptions: {
-            args: [`--log-net-log=${join(diagnostics, "chromium-netlog.json")}`, "--net-log-capture-mode=Default"],
-          },
-        } : undefined),
+        provider: diagnostics
+          ? withBrowserTransportDiagnostics(playwright(), diagnostics)
+          : playwright(),
         instances: [{ browser: "chromium" }],
         // The desktop reference (spec L349); tests that need a narrower window set their own.
         viewport: { width: 1440, height: 900 },
