@@ -140,6 +140,12 @@ const OWNERS = {
   "deploy.reviewAgain": "S8c",
   "deploy.discardProposal": "S8c",
   "deploy.showProgress": "S8c",
+  "inspect.open": "S8c",
+  "inspect.close": "S8c",
+  "inspect.refresh": "S8c",
+  "inspect.copyAddress": "S8c",
+  "inspect.exportPassport": "S8c",
+  "inspect.selectFacet": "S8c",
   // S8d
   "deploy.retryVerification": "S8d",
   // S9

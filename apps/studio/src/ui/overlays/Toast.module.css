@@ -8,6 +8,16 @@
   outline-offset: var(--lx-stroke-heavy);
 }
 
+/* Base UI marks the toast portal inert under a modal. Its higher layer must not catch pointer input. */
+.viewport:where([data-base-ui-inert], [data-base-ui-inert] *),
+.viewport:where([data-base-ui-inert], [data-base-ui-inert] *) .toast {
+  pointer-events: none;
+}
+
+.viewport:where([data-base-ui-inert], [data-base-ui-inert] *) [data-toast-control] {
+  pointer-events: auto;
+}
+
 .toast {
   composes: surface from "../shared/controls.module.css";
   border-color: var(--lx-border-strong);

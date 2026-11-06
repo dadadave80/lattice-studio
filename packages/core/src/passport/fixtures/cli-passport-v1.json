@@ -1,0 +1,98 @@
+{
+  "kind": "lattice-passport/v1",
+  "chainId": 10143,
+  "address": "0x00000000000000000000000000000000000000dd",
+  "block": 100,
+  "catalog": {
+    "tag": "dev-6c8db45",
+    "hash": "0x3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "recipeHash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+  "facets": [
+    {
+      "address": "0x00000000000000000000000000000000000000aa",
+      "codehash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+      "selectors": [
+        "0x12345678"
+      ],
+      "kind": "known",
+      "name": "ERC20",
+      "version": "0.2.0",
+      "catalog": "dev-6c8db45"
+    }
+  ],
+  "deployment": {
+    "txHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "block": 10,
+    "from": "0x00000000000000000000000000000000000000bb",
+    "to": "0x00000000000000000000000000000000000000aa",
+    "via": "LatticeFactory"
+  },
+  "history": [
+    {
+      "block": 10,
+      "logIndex": 0,
+      "txHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "init": "0x00000000000000000000000000000000000000aa",
+      "cuts": [
+        {
+          "facet": "0x00000000000000000000000000000000000000aa",
+          "action": "add",
+          "selectors": [
+            "0x12345678"
+          ]
+        }
+      ]
+    }
+  ],
+  "authority": {
+    "owner": "0x00000000000000000000000000000000000000bb"
+  },
+  "claims": [
+    {
+      "id": "PP-01",
+      "status": "pass",
+      "message": "Code is deployed at 0x00000000000000000000000000000000000000dd on Monad Testnet."
+    },
+    {
+      "id": "PP-02",
+      "status": "pass",
+      "message": "The loupe lists 1 facet routing 1 selector."
+    },
+    {
+      "id": "PP-03",
+      "status": "pass",
+      "message": "Every facet is a Lattice release: ERC20@0.2.0."
+    },
+    {
+      "id": "PP-04",
+      "status": "pass",
+      "message": "Routing matches the recipe: 1 selector on 1 facet."
+    },
+    {
+      "id": "PP-05",
+      "status": "pass",
+      "message": "The recipe is pinned to catalog dev-6c8db45, which this CLI bundles."
+    },
+    {
+      "id": "PP-06",
+      "status": "pass",
+      "message": "No cuts since the deployment."
+    },
+    {
+      "id": "PP-07",
+      "status": "pass",
+      "message": "Deployed in 0x1111111111111111111111111111111111111111111111111111111111111111 at block 10 by 0x00000000000000000000000000000000000000bb through LatticeFactory."
+    },
+    {
+      "id": "PP-08",
+      "status": "pass",
+      "message": "owner() is 0x00000000000000000000000000000000000000bb."
+    }
+  ],
+  "source": {
+    "reads": "rpc",
+    "logs": "hyperrpc"
+  },
+  "digest": "0x1519500d19acc847e1ef2f6b9786cdb9427d87f799bba462f7de55d96d0327b8"
+}

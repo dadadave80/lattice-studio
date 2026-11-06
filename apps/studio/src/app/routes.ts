@@ -3,6 +3,7 @@
  *
  * - `#/` or `/`: the composer.
  * - `#s=1.…`: a share link (Flow 10), opened by S13.
+ * - `#d=<chainId>:<address or ENS name>`: a deployed diamond.
  * - `#open=eip155:11155111:0x…`: a live diamond (Flow 15, v2).
  * - `#/__ui`: S0's primitives gallery, in dev builds only.
  * - `#/docs` and `#/docs/problems/SEL-01`: the help index and a problem's page (spec L905, IR L124), in the
@@ -70,6 +71,7 @@ export function routeForPath(path: string): Route {
 /** Which route a location names. The hash wins; an empty hash reads the path when routes live there. */
 export function parseRoute({ hash, pathname }: RouteLocation, options: RouteOptions): Route {
   if (hash.startsWith("#s=")) return { kind: "share", link: hash };
+  if (hash.startsWith("#d=")) return { kind: "open", target: decode(hash.slice("#d=".length)) };
   if (hash.startsWith("#open=")) return { kind: "open", target: decode(hash.slice("#open=".length)) };
   if (hash.startsWith("#/")) return routeForPath(hash.slice(1));
   if (options.paths) return routeForPath(underBase(pathname, options.base));

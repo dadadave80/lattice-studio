@@ -6,7 +6,7 @@ import type { Config } from "@wagmi/core";
 import { doc, provideServices, session, setCatalogStatus, settings, type WalletConnector } from "@/contracts";
 import { bufferedServices } from "@/contracts/services";
 import { isolateContracts } from "@/contracts/test-support";
-import { BaseError, HttpRequestError } from "viem";
+import { BaseError, HttpRequestError, keccak256 } from "viem";
 import { BASE_SEPOLIA, ETHEREUM, SEPOLIA } from "./chains";
 import { createClients } from "./clients";
 import { CHAIN_CHECKS_NEED_CONNECTION } from "./copy";
@@ -29,6 +29,38 @@ let service: ChainRuntime;
 /** Every RPC URL a transport was made for. */
 const urlsCalled = new Set<string>();
 const OVERRIDE_WAIT = 20;
+
+describe("deployed inspection service", () => {
+  test("uses the selected chain client for one canonical snapshot without touching the document", async () => {
+    const mocked = chains[SEPOLIA.id]!;
+    const target = "0x00000000000000000000000000000000000000AA";
+    const facet = "0x00000000000000000000000000000000000000bb";
+    mocked.options.accounts![target.toLowerCase()] = { code: "0x6000", facets: [{ facetAddress: facet, functionSelectors: ["0x12345678"] }] };
+    mocked.options.accounts![facet.toLowerCase()] = { code: "0x6001" };
+    start();
+    const project = doc.get();
+    const observed = await service.inspectDiamond(SEPOLIA.id, target);
+    expect(observed.ok).toBe(true);
+    if (!observed.ok) throw new Error(observed.error.reason);
+    expect(observed.value.facets).toEqual([{ facetAddress: facet, functionSelectors: ["0x12345678"] }]);
+    expect(observed.value.codehashes[facet.toLowerCase()]).toBe(keccak256("0x6001"));
+    expect(observed.value.blockHash).toBe(`0x${"ab".repeat(32)}`);
+    const reads = mocked.calls.filter((call) => call.method === "eth_getCode" || call.method === "eth_call");
+    expect(reads.every((call) => JSON.stringify(call.params).includes('"requireCanonical":true'))).toBe(true);
+    expect(doc.get()).toBe(project);
+  });
+
+  test("offline and unsupported-chain inspection/calls do not reach RPC", async () => {
+    start();
+    setOnline(false);
+    const before = chains[SEPOLIA.id]!.calls.length;
+    expect((await service.inspectDiamond(SEPOLIA.id, SAFE)).ok).toBe(false);
+    expect((await service.call(SEPOLIA.id, SAFE, "0x")).ok).toBe(false);
+    expect((await service.inspectDiamond(1, SAFE)).ok).toBe(false);
+    expect((await service.call(1, SAFE, "0x")).ok).toBe(false);
+    expect(chains[SEPOLIA.id]!.calls.length).toBe(before);
+  });
+});
 
 function setOnline(next: boolean): void {
   online = next;

@@ -17,6 +17,7 @@ export const SEAM_OWNERS: Record<Exclude<ResolvedView["kind"], OwnKind>, WpId> =
   init: "S5d",
   doc: "S12",
   "confirm-addresses": "S13",
+  deployed: "S8a",
 };
 
 export function isOwnKind(kind: ResolvedView["kind"]): kind is OwnKind {
@@ -59,6 +60,8 @@ export function viewKey(view: ResolvedView): string {
       return `doc:${view.code ?? ""}`;
     case "comparison":
       return `comparison:${view.chainId}:${view.address.toLowerCase()}`;
+    case "deployed":
+      return `deployed:${view.chainId}:${view.address.toLowerCase()}`;
     default:
       return view.kind;
   }

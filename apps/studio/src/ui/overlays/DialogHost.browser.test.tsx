@@ -68,10 +68,12 @@ describe("DialogHost", () => {
     expect(session.get().dialogs).toEqual([]);
   });
 
-  test("a v2 dialog names the phase it arrives in", async () => {
+  test("the deployed diamond dialog offers inspection and guarded file opening", async () => {
     await renderWithStudio(<DialogHost />);
     openDialog("open-diamond");
-    await expect.element(page.getByRole("dialog", { name: "Open diamond" }).getByText("Arrives in v2.")).toBeVisible();
+    const dialog = page.getByRole("dialog", { name: "Open", exact: true });
+    await expect.element(dialog.getByRole("button", { name: "Inspect diamond", exact: true })).toBeVisible();
+    await expect.element(dialog.getByRole("button", { name: "Open file…", exact: true })).toBeVisible();
   });
 
   test("renders the registered component and returns focus to the opener after closing", async () => {

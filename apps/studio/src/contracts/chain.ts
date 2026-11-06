@@ -66,6 +66,33 @@ export type ChainReadiness =
   | { status: "ready"; state: ChainState }
   | { status: "error"; reason: string };
 
+/** A contract answer that reverted or could not be decoded, rather than a missing RPC response. */
+export type SnapshotCallFailure = { kind: "reverted" | "invalid-response"; reason: string; data: Hex | null };
+
+/** Every state read belongs to this canonical block. A failing routed owner differs from no owner selector. */
+export type DiamondSnapshot = {
+  block: number;
+  blockHash: Hex;
+  code: Hex | "0x";
+  facets: LoupeFacet[] | null;
+  codehashes: Record<string, Hex>;
+  ownerRouted: boolean;
+  owner: Address | null;
+  loupeError?: SnapshotCallFailure;
+  ownerError?: SnapshotCallFailure;
+};
+
+/** Contains no endpoint URL, credentials or provider exception text. */
+export type SnapshotReadError = { kind: "invalid" | "rpc" | "chain" | "reorg" | "aborted"; reason: string };
+export type ChainCallError = { reason: string; data: Hex | null };
+export type ChainCallOptions = {
+  block?: number;
+  /** An EIP-1898 canonical hash pin. Mutually exclusive with block. */
+  blockHash?: Hex;
+  from?: Address;
+  value?: bigint;
+};
+
 export type ChainService = {
   /** Chains in the picker, in display order. */
   chains(): readonly ChainInfo[];
@@ -79,6 +106,10 @@ export type ChainService = {
   codeAt(chainId: number, address: Address): Promise<Result<Hex | "0x", string>>;
   /** A diamond's `facets()` (the loupe), for the Comparison view and the post-deploy check. */
   readFacets(chainId: number, address: Address): Promise<Result<LoupeFacet[], string>>;
+  /** One canonical block's code, routing and ownership facts, without contract-directed HTTP. */
+  inspectDiamond(chainId: number, address: Address, options?: { signal?: AbortSignal }): Promise<Result<DiamondSnapshot, SnapshotReadError>>;
+  /** Raw eth_call result or revert bytes; never follows contract-directed offchain URLs. */
+  call(chainId: number, to: Address, data: Hex, options?: ChainCallOptions): Promise<Result<Hex, ChainCallError>>;
   /** ENS name → address (mainnet for mainnets, Sepolia for testnets; ENSIP-11 elsewhere). Null: no record. */
   resolveEns(name: string, chainId: number): Promise<Result<Address | null, string>>;
   /** Address → primary name. Null: none set. */

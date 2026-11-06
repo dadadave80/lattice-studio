@@ -40,7 +40,8 @@ export type {
 } from "./services";
 
 export type {
-  AccountKind, ChainInfo, ChainReadiness, ChainService, ProbeOptions, WalletAccount, WalletConnector,
+  AccountKind, ChainCallError, ChainCallOptions, ChainInfo, ChainReadiness, ChainService, DiamondSnapshot,
+  ProbeOptions, SnapshotCallFailure, SnapshotReadError, WalletAccount, WalletConnector,
 } from "./chain";
 
 export { deployController, deployState, provideDeployController, subscribeDeployState, useDeployState } from "./deploy";

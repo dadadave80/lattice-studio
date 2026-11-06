@@ -5,6 +5,7 @@
  */
 import { announce, log, session, toast, type Enablement } from "@/contracts";
 import { openFailureText, showOpenFailure } from "@/persist";
+import { cancelInspectionNavigation } from "@/chain/inspect/navigation";
 
 export const OK: Enablement = { ok: true };
 
@@ -30,7 +31,14 @@ export function sayError(text: string): void {
 
 /** After a project switch (New, Open, an import): selection, focus and modes never carry over (PA #5, #16). */
 export function resetForProjectSwitch(): void {
-  session.set({ selection: [], focus: null, modes: { initOrder: false, moveTo: false, rows: null } });
+  cancelInspectionNavigation();
+  if (typeof location !== "undefined" && (location.hash.startsWith("#d=") || location.hash.startsWith("#open="))) {
+    history.replaceState(history.state, "", `${location.pathname}${location.search}`);
+  }
+  session.set((s) => ({
+    selection: [], focus: null, coreSelected: false, modes: { initOrder: false, moveTo: false, rows: null },
+    panes: { ...s.panes, inspector: { ...s.panes.inspector, view: null } },
+  }));
 }
 
 /**

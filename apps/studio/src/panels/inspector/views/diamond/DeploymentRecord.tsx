@@ -93,6 +93,7 @@ export function DeploymentRecord({ record, currentHash, chainName, explorer, cha
         </div>
       ) : null}
       <div className={sheet.actions}>
+        {record.status === "confirmed" ? <CommandButton command={commandRef("inspect.open", { chainId, target: address })} size="small">Open on chain</CommandButton> : null}
         <Button size="small" onClick={() => void copyText(address)}>
           Copy address
         </Button>

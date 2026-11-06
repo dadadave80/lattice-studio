@@ -1,27 +1,25 @@
-import type { Address, Hex } from "@lattice-studio/core";
+import type { Address, Hex } from "../model/hex";
+import type { LoupeFacet } from "../model/chain";
 
-export type ClaimStatus = "pass" | "fail" | "warn" | "skip";
-export type ClaimId = "PP-01" | "PP-02" | "PP-03" | "PP-04" | "PP-05" | "PP-06" | "PP-07" | "PP-08";
-export type PassportClaim = { id: ClaimId; status: ClaimStatus; message: string };
+export type PassportClaimStatus = "pass" | "fail" | "warn" | "skip";
+export type PassportClaimId = "PP-01" | "PP-02" | "PP-03" | "PP-04" | "PP-05" | "PP-06" | "PP-07" | "PP-08";
+export type PassportClaim = { id: PassportClaimId; status: PassportClaimStatus; message: string };
 
-/** One row of `facets()`, selectors lowercase. */
-export type LoupeFacet = { address: Address; selectors: Hex[] };
-
-export type CutAction = "add" | "replace" | "remove" | "unknown";
+export type PassportCutAction = "add" | "replace" | "remove" | "unknown";
 
 /** One `DiamondCut` event. */
-export type CutEvent = {
+export type PassportCutEvent = {
   block: number;
   logIndex: number;
   txHash: Hex;
   init: Address;
-  cuts: { facet: Address; action: CutAction; selectors: Hex[] }[];
+  cuts: { facet: Address; action: PassportCutAction; selectors: Hex[] }[];
 };
 
-export type Deployment = { txHash: Hex; block: number; from: Address; to: Address | null; via: "LatticeFactory" | "CreateX" | "other" };
+export type PassportDeployment = { txHash: Hex; block: number; from: Address; to: Address | null; via: "LatticeFactory" | "CreateX" | "other" };
 
 /** A facet as `identifyFacets` names it. */
-export type IdentifiedFacet = {
+export type PassportIdentifiedFacet = {
   address: Address;
   codehash: Hex | null;
   selectors: Hex[];
@@ -33,16 +31,16 @@ export type IdentifiedFacet = {
 };
 
 /** Selector-level differences between a plan and `facets()`, selectors lowercase. */
-export type RoutingDiff = {
+export type PassportRoutingDiff = {
   missing: { selector: string; facet: string; expected: Address }[];
   extra: { selector: string; actual: Address }[];
   misrouted: { selector: string; facet: string; expected: Address; actual: Address }[];
 };
 
-export type CatalogPin = { tag: string; hash: Hex };
+export type PassportCatalogPin = { tag: string; hash: Hex };
 
 /** Everything read from the chain, as data. null: not read, or not there. */
-export type ChainFacts = {
+export type PassportChainFacts = {
   chainId: number;
   chainName: string;
   address: Address;
@@ -51,26 +49,26 @@ export type ChainFacts = {
   loupe: LoupeFacet[] | null;
   /** Lowercase facet address to keccak256 of its runtime code. */
   codehashes: Record<string, Hex>;
-  history: CutEvent[] | null;
+  history: PassportCutEvent[] | null;
   historySource: "hyperrpc" | "rpc" | null;
-  deployment: Deployment | null;
+  deployment: PassportDeployment | null;
   ownerRouted: boolean;
   owner: Address | null;
 };
 
 /** What `--recipe` adds. */
-export type RecipeFacts = { recipeHash: Hex; catalog: CatalogPin; diff: RoutingDiff; selectors: number; facets: number };
+export type PassportRecipeFacts = { recipeHash: Hex; catalog: PassportCatalogPin; diff: PassportRoutingDiff; selectors: number; facets: number };
 
 export type Passport = {
   kind: "lattice-passport/v1";
   chainId: number;
   address: Address;
   block: number;
-  catalog: CatalogPin | null;
+  catalog: PassportCatalogPin | null;
   recipeHash: Hex | null;
-  facets: IdentifiedFacet[];
-  deployment: Deployment | null;
-  history: CutEvent[] | null;
+  facets: PassportIdentifiedFacet[];
+  deployment: PassportDeployment | null;
+  history: PassportCutEvent[] | null;
   authority: { owner: Address } | null;
   claims: PassportClaim[];
   source: { reads: "rpc"; logs: "hyperrpc" | "rpc" | null };

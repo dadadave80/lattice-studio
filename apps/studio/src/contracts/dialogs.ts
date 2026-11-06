@@ -40,7 +40,7 @@ export type DialogPropsMap = {
   /** S7b · Save a copy (⌘S with no linked file). */
   "save-copy": { filename?: string };
   /** v2 · Open diamond (App menu). */
-  "open-diamond": { address?: Address; chainId?: number };
+  "open-diamond": { address?: Address; target?: string; chainId?: number };
   /** S10 · Settings. */
   "settings": { group?: SettingsGroup };
   /** S7b · Delete for good (Recently deleted). */
