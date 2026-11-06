@@ -5,20 +5,21 @@
  *   inline critical style, lazy chunks and so an SRI import map, ELK and WalletConnect behind `import()`);
  * - the app itself, Vercel and IPFS variants, as `bun run build` makes them.
  *
- * Each builds into a scratch folder; nothing here touches `apps/studio/dist` or the committed `vercel.json`.
+ * Each builds into a scratch folder; nothing here touches `apps/studio/dist`.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { build } from "vite";
 import { appDir, repoRoot } from "../local-env.ts";
 import { studioCsp } from "./csp.ts";
-import { cspOf, metaCspOf, vercelConfig, type VercelConfig } from "./headers.ts";
+import { cspOf, metaCspOf, type BuildOutputConfig } from "./headers.ts";
 import type { ReleaseManifest } from "./precache.ts";
 import { pwaPlugins } from "./pwa.ts";
-import { verifyIpfs, verifyVercel } from "./verify-headers.ts";
+import { writeBuildOutput } from "./vercel-output.ts";
+import { verifyIpfs } from "./verify-headers.ts";
 
 const TIMEOUT = 120_000;
 const scratch = mkdtempSync(join(tmpdir(), "studio-dist-"));
@@ -46,6 +47,15 @@ function precached(dist: string): string[] {
 
 function readJson<T>(file: string): T {
   return JSON.parse(readFileSync(file, "utf8")) as T;
+}
+
+/** The Build Output `vercel-output.ts` makes of a copy of `dist`, as Vercel's build command runs it. */
+function buildOutputOf(dist: string, name: string): { output: string; config: BuildOutputConfig } {
+  const copy = join(scratch, `${name}-dist`);
+  const output = join(scratch, `${name}-output`);
+  cpSync(dist, copy, { recursive: true });
+  writeBuildOutput(copy, output);
+  return { output, config: readJson<BuildOutputConfig>(join(output, "config.json")) };
 }
 
 const committedSchema = join(appDir, "public", "schema", "recipe.v1.json");
@@ -96,44 +106,35 @@ function writeFixture(root: string): void {
 }
 
 /** Builds the fixture with the app's CSP and PWA plugins, in-process, into `out`. */
-async function buildFixture(out: string, mode: "production" | "ipfs", vercelJson?: string): Promise<void> {
+async function buildFixture(out: string, mode: "production" | "ipfs"): Promise<void> {
   if (!existsSync(join(fixtureRoot, "index.html"))) writeFixture(fixtureRoot);
   const env = { mode, command: "build" as const, isSsrBuild: false, isPreview: false };
-  const previous = process.env.STUDIO_VERCEL_JSON;
-  if (vercelJson) process.env.STUDIO_VERCEL_JSON = vercelJson;
-  try {
-    await build({
-      root: fixtureRoot,
-      configFile: false,
-      logLevel: "silent",
-      publicDir: false,
-      mode,
-      build: { outDir: out, emptyOutDir: true },
-      plugins: [...studioCsp(env), ...pwaPlugins(env, { publicDir: join(fixtureRoot, "public") })],
-    });
-  } finally {
-    if (previous === undefined) delete process.env.STUDIO_VERCEL_JSON;
-    else process.env.STUDIO_VERCEL_JSON = previous;
-  }
+  await build({
+    root: fixtureRoot,
+    configFile: false,
+    logLevel: "silent",
+    publicDir: false,
+    mode,
+    build: { outDir: out, emptyOutDir: true },
+    plugins: [...studioCsp(env), ...pwaPlugins(env, { publicDir: join(fixtureRoot, "public") })],
+  });
 }
 
 describe("fixture app with the same plugins", () => {
   const out = join(fixtureRoot, "dist");
-  const vercelJson = join(scratch, "fixture-vercel.json");
 
-  beforeAll(() => buildFixture(out, "production", vercelJson), TIMEOUT);
+  beforeAll(() => buildFixture(out, "production"), TIMEOUT);
 
   test("the CSP header allows exactly the page's inline style and SRI import map, by hash", () => {
     const html = readFileSync(join(out, "index.html"), "utf8");
     expect(html).toContain('<script type="importmap">');
-    const csp = cspOf(readJson<VercelConfig>(vercelJson)) ?? "";
+    const csp = cspOf(buildOutputOf(out, "fixture").config) ?? "";
     const scripts = hashesIn(html, "script");
     const styles = hashesIn(html, "style");
     expect(scripts).toHaveLength(1);
     expect(styles).toHaveLength(1);
     expect(directive(csp, "script-src")).toEqual(["'self'", ...scripts]);
     expect(directive(csp, "style-src")).toEqual(["'self'", ...styles]);
-    expect(verifyVercel(html, readJson<VercelConfig>(vercelJson)).ok).toBe(true);
   });
 
   test("every chunk carries its integrity, in the import map or on its tag", () => {
@@ -196,27 +197,23 @@ describe("fixture app, IPFS build", () => {
 
 describe("the app, Vercel build", () => {
   const out = join(scratch, "vercel");
-  const vercelJson = join(scratch, "vercel.json");
 
-  beforeAll(() => buildApp(out, "production", { STUDIO_VERCEL_JSON: vercelJson }), TIMEOUT);
+  beforeAll(() => buildApp(out, "production"), TIMEOUT);
 
-  test("the CSP header written for the build matches the hashes recomputed from dist/index.html", () => {
-    const html = readFileSync(join(out, "index.html"), "utf8");
-    const config = readJson<VercelConfig>(vercelJson);
+  test("the Build Output's CSP header matches the hashes recomputed from the page it serves", () => {
+    const { output, config } = buildOutputOf(out, "vercel");
+    const html = readFileSync(join(output, "static", "index.html"), "utf8");
     const csp = cspOf(config) ?? "";
     expect(directive(csp, "script-src")).toEqual(["'self'", ...hashesIn(html, "script")]);
     expect(directive(csp, "style-src")).toEqual(["'self'", ...hashesIn(html, "style")]);
     expect(directive(csp, "frame-ancestors")).toEqual(["'none'"]);
-    expect(verifyVercel(html, config)).toEqual({ ok: true, text: "vercel.json's CSP matches the built index.html." });
     expect(metaCspOf(html)).toBeNull();
   });
 
-  test("the committed vercel.json differs from the generated one only in the CSP's hashes", () => {
-    const committed = readJson<VercelConfig>(join(appDir, "vercel.json"));
-    const generated = readJson<VercelConfig>(vercelJson);
-    const hashless = (c: VercelConfig) => cspOf(c)?.replace(/ 'sha256-[^']+'/g, "") ?? "";
-    expect(hashless(committed)).toBe(hashless(generated));
-    expect(committed).toEqual(vercelConfig(cspOf(committed) ?? ""));
+  test("vercel.json only says how to build: routes and headers come from the Build Output", () => {
+    const committed = readJson<Record<string, unknown>>(join(appDir, "vercel.json"));
+    expect(committed.buildCommand).toContain("vercel-output.ts apps/studio/dist apps/studio/.vercel/output");
+    for (const key of ["headers", "rewrites", "redirects", "routes", "trailingSlash"]) expect(committed[key]).toBeUndefined();
   });
 
   test("the service worker precaches the shell, the entry, the catalog manifest and indexes, but no shards", () => {

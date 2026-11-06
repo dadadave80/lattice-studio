@@ -4,35 +4,23 @@
  *
  * - IPFS build (`--mode ipfs`): sets `base: './'` and writes the policy into `index.html` as a `<meta>`, without
  *   `frame-ancestors`, which a `<meta>` can't carry.
- * - Vercel build: the policy is a header in `vercel.json`. The import map lists every chunk's integrity, so its
- *   hash changes with any code change; an ordinary build therefore never rewrites the committed `vercel.json`.
- *   The release build does, when `STUDIO_VERCEL_JSON` is set: `1` writes `apps/studio/vercel.json`, a path
- *   writes that file. Vercel's build command rebuilds and runs `verify-headers.ts`, which refuses to deploy a
- *   `vercel.json` whose CSP doesn't match the page it would serve.
+ * - Vercel build: the policy is a header. The import map lists every chunk's integrity, so its hash changes with
+ *   any code change; `vercel-output.ts`, the last step of Vercel's build command, writes the header from the
+ *   finished page. Here the build only refuses markup a hash can't allow.
  *
  * `vite preview` sends the same headers, so a preview behaves like the host. The plugin runs before
  * vite-plugin-pwa writes `sw.js` (in `closeBundle`), so the precached `index.html` is the final one.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv, type ConfigEnv, type Plugin, type PluginOption, type ResolvedConfig } from "vite";
 import { isE2EFlag } from "../src/contracts/e2e-flag.ts";
-import {
-  contentSecurityPolicy, formatJson, inlineAttributeProblems, inlineHashes, injectCspMeta, securityHeaders,
-  vercelConfig,
-} from "./headers.ts";
+import { contentSecurityPolicy, inlineAttributeProblems, inlineHashes, injectCspMeta, securityHeaders } from "./headers.ts";
 import { buildVariant, isTestMode, type BuildVariant } from "./variant.ts";
 
 /** `apps/studio/`, where the mode's `.env` files live. */
 const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
-
-/** Where the release build writes `vercel.json`: `1` for the app's own, else a path; null for none. */
-export function vercelJsonTarget(value: string | undefined, appDir: string, cwd: string): string | null {
-  if (value === undefined || value === "" || value === "0") return null;
-  if (value === "1") return join(appDir, "vercel.json");
-  return isAbsolute(value) ? value : resolve(cwd, value);
-}
 
 /**
  * Whether this is the end-to-end build (contracts §5.5): `--mode e2e` with `VITE_STUDIO_E2E` set. Only then does
@@ -87,15 +75,7 @@ export function studioCsp(env: ConfigEnv): PluginOption[] {
         const file = join(outDir(), "index.html");
         if (!existsSync(file)) return;
         const built = secureHtml(readFileSync(file, "utf8"), variant, { e2e });
-        if (variant === "ipfs") {
-          writeFileSync(file, built.html);
-          return;
-        }
-        const target = vercelJsonTarget(process.env.STUDIO_VERCEL_JSON, config?.root ?? process.cwd(), process.cwd());
-        if (target) {
-          writeFileSync(target, formatJson(vercelConfig(built.csp)));
-          config?.logger.info(`Wrote the CSP for this build to ${target}.`);
-        }
+        if (variant === "ipfs") writeFileSync(file, built.html);
       },
     },
     configurePreviewServer(server) {

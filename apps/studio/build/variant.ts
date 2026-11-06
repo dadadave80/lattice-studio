@@ -1,6 +1,6 @@
 /**
  * Which hosting a build targets (spec L834-L837). `vite build` makes the Vercel build: absolute base, CSP and
- * security headers sent by Vercel from `vercel.json`. `vite build --mode ipfs` (run as `bun run build --mode ipfs`)
+ * security headers sent by Vercel from the Build Output. `vite build --mode ipfs` (run as `bun run build --mode ipfs`)
  * makes the IPFS mirror: `base: './'` so it works under any stable origin (an ENS name through eth.limo, or
  * DNSLink), hash routing, and the CSP as a `<meta>` tag, which can't carry `frame-ancestors`.
  */
