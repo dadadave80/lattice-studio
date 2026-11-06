@@ -16,7 +16,12 @@ name: CI
 
 on:
   pull_request:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      browser_diagnostics:
+        description: "Compare browser transport on Ubuntu 24.04 and 26.04 (#60)"
+        type: boolean
+        default: false
 
 # A PR gate never needs write access; release-please and publish-cli (separate workflows) ask for more.
 permissions:
@@ -44,8 +49,12 @@ jobs:
         with:
           fetch-depth: 2
       - id: groups
+        env:
+          BROWSER_DIAGNOSTICS: ${{ github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics || false }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = pull_request ] && git rev-parse -q --verify HEAD^2 >/dev/null; then
+          if [ "$BROWSER_DIAGNOSTICS" = true ]; then
+            bash scripts/ci/changes.sh < /dev/null | tee -a "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = pull_request ] && git rev-parse -q --verify HEAD^2 >/dev/null; then
             git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt"
             echo "$(wc -l < "$RUNNER_TEMP/changed.txt") changed paths:"
             cat "$RUNNER_TEMP/changed.txt"
@@ -110,6 +119,40 @@ jobs:
           name: browser-test-results
           path: apps/studio/test-results/
           retention-days: 14
+
+  browser-diagnostics:
+    name: Browser transport (${{ matrix.os }}, sample ${{ matrix.sample }})
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+        sample: [1, 2, 3]
+    env:
+      VITEST_BROWSER_PORT: "63315"
+      VITEST_PW_DEBUG: "1"
+      DEBUG: vite:deps,vite:load,vite:transform,vite:time,vitest:browser:playwright
+      STUDIO_BROWSER_DIAGNOSTICS_DIR: ${{ github.workspace }}/apps/studio/test-results/63315/diagnostics
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+        with:
+          node: "true"
+          browsers: chromium
+      - name: Capture the unchanged browser suite
+        shell: bash
+        run: |
+          mkdir -p "$STUDIO_BROWSER_DIAGNOSTICS_DIR"
+          bun run test:browser 2>&1 | tee "$STUDIO_BROWSER_DIAGNOSTICS_DIR/vitest.log"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: browser-transport-${{ matrix.os }}-${{ matrix.sample }}
+          path: apps/studio/test-results/63315/
+          retention-days: 7
 
   e2e:
     name: End to end (Playwright, ${{ matrix.name }})
