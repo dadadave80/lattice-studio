@@ -12,12 +12,14 @@ import type { InspectionEngine, ReadyInspection } from "./engine";
 import { useInspection } from "./use-inspection";
 import { useInspectionCatalogs } from "./use-inspection-catalogs";
 import styles from "./DeployedView.module.css";
+import { FacetFunctions } from "./FacetFunctions";
 
 type Props = InspectorViewProps<"deployed"> & { engine?: InspectionEngine };
 
 function FacetDetails({ facet, value }: { facet: PassportIdentifiedFacet; value: ReadyInspection }) {
   const catalogs = useInspectionCatalogs();
   const metadata = facetMetadata(facet, catalogs);
+  const catalog = catalogs.find((item) => item.lattice.tag === facet.catalog && item.facets.includes(metadata!));
   const signature = new Map(metadata?.selectors.map((selector) => [selector.hex.toLowerCase(), selector.signature]));
   return <>
     <Section label="Facet">
@@ -48,6 +50,7 @@ function FacetDetails({ facet, value }: { facet: PassportIdentifiedFacet; value:
       </ul>
       <p className={sheet.muted}>{`Observed on ${value.chainName} at block ${value.snapshot.block}.`}</p>
     </Section>
+    {metadata && catalog ? <FacetFunctions value={value} facet={facet} metadata={metadata} catalog={catalog}    /> : <Section label="Functions"><p className={sheet.muted}>Functions can't be called without a verified ABI.</p></Section>}
   </>;
 }
 
