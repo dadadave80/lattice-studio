@@ -18,6 +18,8 @@ Branch from `dev`. Commits are [Conventional Commits](https://www.conventionalco
 
 Versions and changelogs come from [`release-please`](https://github.com/googleapis/release-please) reading those commit messages — write them as if they'll appear in a changelog, because they will.
 
+When fixing shared core behavior, include a regression test or release note under each affected product in the fix commit. See [shared-core fixes](docs/release.md#shared-core-fixes) for single-product changes and examples.
+
 ## Before opening a pull request
 
 Run `bun run check`, `bun test`, and whichever of `bun run test:browser`, `bun run e2e`, `bun run golden`, or `bun run test:chain` cover what changed. The pull request template asks you to check off:

@@ -16,6 +16,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
     inputs:
       browser_diagnostics:
@@ -44,11 +45,17 @@ jobs:
       chain: ${{ steps.groups.outputs.chain }}
       catalog: ${{ steps.groups.outputs.catalog }}
     steps:
-      # A pull request checks out its merge commit, whose first parent is the base it merges into: two commits of
-      # history are enough for the diff. Anything else (workflow_dispatch) runs every job.
+      # The merge commit's parents are the base and PR head. The release-impact check reads individual
+      # commits between them. Fetch historical blobs only if a diff needs them.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+          filter: blob:none
+      - name: Check shared-core fixes for release impact
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: bash scripts/ci/core-release-impact.sh HEAD^1 HEAD^2
       - id: groups
         env:
           BROWSER_DIAGNOSTICS: ${{ github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics || false }}
