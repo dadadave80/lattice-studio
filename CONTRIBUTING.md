@@ -10,7 +10,7 @@ bun run check   # typecheck, lint, size budgets, schema drift, copy lint
 bun test        # core logic, seconds
 ```
 
-See [README.md](README.md) for the full command table, and `docs/architecture.md` for how the pieces fit together.
+See the [command reference](AGENTS.md#commands) for development commands and the [architecture guide](docs/architecture.md) for how the pieces fit together.
 
 ## Branches and commits
 
@@ -20,7 +20,7 @@ Versions and changelogs come from [`release-please`](https://github.com/googleap
 
 ## Before opening a pull request
 
-Run `bun run check`, `bun test`, and whichever of `bun run test:browser`, `bun run e2e`, `bun run golden`, or `bun run test:chain` cover what changed (README's command table says what each needs). The pull request template asks you to check off:
+Run `bun run check`, `bun test`, and whichever of `bun run test:browser`, `bun run e2e`, `bun run golden`, or `bun run test:chain` cover what changed. The pull request template asks you to check off:
 
 - **Accessibility states.** Every state a change touches that's drawn on the design boards gets a browser test and a screenshot baseline in both themes: keyboard-only reachability, focus visible after every action, an accessible name on every control, `aria-disabled` with a stated reason (never a bare disabled control), both themes rendering correctly, and reduced motion respected.
 - **Budgets.** `bun scripts/ci/size.ts --build` passes, or the pull request explains what grew and why. No new dependency: the project's dependency set is a deliberate, reviewed list, so a pull request that needs one asks for it rather than adding it.
