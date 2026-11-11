@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: 'Type "publish" to publish packages/cli to npm. Only David runs this workflow.'
+        description: 'Type "publish" and dispatch from the matching lattice-studio-vX.Y.Z release tag.'
         required: true
 
 permissions:
@@ -25,6 +25,17 @@ jobs:
     if: github.event.inputs.confirm == 'publish'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify CLI release tag
+        run: |
+          version=$(node -p "require('./packages/cli/package.json').version")
+          if [[ "$GITHUB_REF" != "refs/tags/lattice-studio-v$version" ]]; then
+            echo "::error::Dispatch from the CLI release tag lattice-studio-v$version."
+            exit 1
+          fi
+          echo "Verified CLI release tag lattice-studio-v$version."
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -55,7 +66,7 @@ jobs:
                 if (typeof range === "string" && range.startsWith("workspace:")) delete deps[name];
               }
             }
-            await Bun.write(path, `${JSON.stringify(pkg, null, 2)}\n`);
+            await Bun.write(path, JSON.stringify(pkg, null, 2) + "\n");
           '
 
       - run: npm publish --provenance --access public

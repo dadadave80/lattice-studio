@@ -96,6 +96,16 @@ describe("GitHub Actions workflows", () => {
 describe("CI reliability and evidence", () => {
   const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike;
 
+  test("PR title edits and individual commits go through the release-impact check", () => {
+    const events = doc.on as { pull_request: { types: string[] } };
+    expect(events.pull_request.types).toContain("edited");
+    const steps = doc.jobs?.changes?.steps ?? [];
+    expect(steps.find((s) => s.uses?.toString().startsWith("actions/checkout@"))?.with?.["fetch-depth"]).toBe(0);
+    const guard = steps.find((s) => s.run === "bash scripts/ci/core-release-impact.sh HEAD^1 HEAD^2");
+    expect(guard?.env?.PR_TITLE).toBe("${{ github.event.pull_request.title }}");
+    expect(guard?.if).toBe("github.event_name == 'pull_request'");
+  });
+
   test("the stable aggregate gate waits for every ordinary job and always checks their results", () => {
     const gate = doc.jobs?.gate;
     expect(gate?.name).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics && 'Diagnostic selection check' || 'CI gate' }}");
@@ -202,6 +212,25 @@ describe("publish-cli.yml (§16 audit #40, spec L864 npm provenance)", () => {
   test("publishes with --provenance", () => {
     const publishStep = job?.steps?.find((s) => typeof s.run === "string" && s.run.includes("npm publish"));
     expect(publishStep?.run).toContain("--provenance");
+  });
+
+  test("only the matching CLI release tag can build the dispatched commit for publication", () => {
+    const steps = job?.steps ?? [];
+    expect(steps[0]?.with?.ref).toBe("${{ github.sha }}");
+    const guard = steps[1]?.run;
+    if (typeof guard !== "string") throw new Error("Missing release tag check after checkout");
+    const { version } = JSON.parse(readFileSync(join(repoRoot, "packages/cli/package.json"), "utf8")) as { version: string };
+    const tag = `lattice-studio-v${version}`;
+    for (const [ref, expected] of [
+      [`refs/tags/${tag}`, 0],
+      [`refs/heads/${tag}`, 1],
+      ["refs/heads/main", 1],
+      [`refs/tags/lattice-studio-app-v${version}`, 1],
+      [`refs/tags/${tag}-wrong-version`, 1],
+    ] as const) {
+      const result = Bun.spawnSync(["bash", "-e", "-c", guard], { cwd: repoRoot, env: { ...process.env, GITHUB_REF: ref } });
+      expect(result.exitCode, ref).toBe(expected);
+    }
   });
 });
 

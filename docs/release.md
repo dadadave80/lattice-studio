@@ -4,9 +4,21 @@ This describes how a change becomes a release: versioning, CI, hosting, and the 
 
 ## Versions and changelog
 
-[`release-please`](https://github.com/googleapis/release-please) reads conventional commits and keeps two packages' versions and changelogs in step with them (`.github/workflows/release-please.yml`, configured in `.github/release-please-config.json` and `.github/release-please-manifest.json`): `packages/cli`, the one thing this project ships to a registry, and `apps/studio`, versioned so every export it writes (a Foundry script's header, an agent brief, a Safe batch) carries a real version instead of the placeholder `0.0.0` its `package.json` starts at. On every push to `main`, release-please opens or updates a pull request per package proposing its next version from the commits that touch it since its last release; merging a pull request bumps that package's `package.json`, writes its changelog, and tags its release. The other packages (`core`, `catalog-gen`, `tokens`) aren't independently versioned.
+On a push to `main`, Release Please groups the pending Studio and CLI releases in one PR. It calculates each product’s version from conventional commits that changed files under `apps/studio/` or `packages/cli/` since that product’s last tag. Both started at `0.1.0`. A fix-only release increments the patch number. A feature increments the minor number, as does a declared breaking change while the product is on `0.x`. The largest applicable bump wins for each product. [Release configuration](../.github/release-please-config.json)
 
-The workflow runs on every push to `main` with a token from the lattice-release-please GitHub App (`RELEASE_PLEASE_APP_CLIENT_ID` variable, `RELEASE_PLEASE_APP_PRIVATE_KEY` secret), so the release PR it opens runs CI like any other. **Needs David:** merging that PR cuts the first version; it proposes 0.1.0 for both packages (`initial-version`).
+The lattice-release-please GitHub App opens the release PR so it receives normal CI (`RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`). David merges the reviewed release PR to record the versions, changelogs, and tags. CLI publication remains a separate manual step.
+
+### Shared-core fixes
+
+For a `fix:` or `fix(scope):` commit that changes runtime code under `packages/core/src/`, include a file under each affected product in the same commit. A regression test that exercises the fix through Studio or the CLI counts. When existing tests already cover the behavior, record the user-visible change in the affected product’s `.release-impact` file. This file can contain just the latest fix. Release Please takes the changelog wording from the commit subject.
+
+CI checks both the individual fix commits and the proposed squash title and diff. Use `fix(studio): align facet cards` for a Studio-only fix, or `fix(cli): correct the exported filename` for a CLI-only fix, and include a file under that product. Other fix scopes, such as `fix(export)`, require files under both products. Keep unrelated product changes separate because Release Please counts every product path touched. When squash-merging, retain the reviewed fix title and affected files. Test-only and documentation-only work can use their usual commit types.
+
+### When to ship a fix on its own
+
+Ship a patch on its own when users of the tagged release need the correction before the next feature is ready. An incorrect export that users could deploy is a reason to expedite. A cosmetic correction can usually travel with the next feature.
+
+Land the fix on `dev` as a self-contained commit. If `dev` also contains unreleased features, have David promote just the fix and its required fixes through a PR against `main`, preserving their conventional commit messages. Check the release PR against the last tag for each affected product. From `0.2.0`, a fix-only batch should propose `0.2.1`. If a feature for that product has already landed on `main`, the batch qualifies for a minor release. After a selective promotion, bring the release history back into `dev` before the next full promotion.
 
 ## Hosting
 
@@ -85,7 +97,13 @@ To move to a newer image, roughly once a year when GitHub makes a new Ubuntu LTS
 
 `packages/cli` publishes to npm as `lattice-studio`, with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) from a frozen lockfile and install scripts blocked. Publishing is manual and separate from tagging a release: `.github/workflows/publish-cli.yml` only runs on `workflow_dispatch`, and only does anything if the person dispatching it types `publish` into the `confirm` input.
 
-**Needs David:** after `release-please`'s pull request is merged and the version is tagged, dispatch `publish-cli.yml` by hand with `confirm=publish`. This is the one step that actually sends a package to a public registry, so it's never automatic.
+After the release PR merges, David runs the workflow from the CLI tag printed in the GitHub release. For example, the command for a tagged CLI version of `0.2.1` is
+
+```sh
+gh workflow run publish-cli.yml --ref lattice-studio-v0.2.1 -f confirm=publish
+```
+
+The workflow checks out the dispatched commit and compares its CLI package version with the full tag ref before installing dependencies or building. The first tag containing this workflow enforces the check. GitHub uses the historical workflow definition when dispatching from an older tag.
 
 ## Re-pinning to a tagged Lattice release
 
