@@ -1,13 +1,23 @@
-# Stages `lattice-studio` (packages/cli) on npm with provenance. David dispatches this workflow from a
-# release tag, then reviews and approves the staged package on npm with 2FA.
+# Stages tagged CLI releases on npm, or mirrors an already-approved npm version to GitHub Packages.
+# npm publication still requires David's review and 2FA approval on npm.
 name: Publish CLI
 
 on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: 'Type "publish" to stage the matching lattice-studio-vX.Y.Z release tag for npm approval.'
+        description: 'Type "publish" to stage an npm release or mirror an approved npm version to GitHub Packages.'
         required: true
+      destination:
+        description: "Publication destination"
+        type: choice
+        options: [npm, github]
+        default: npm
+        required: true
+      source_version:
+        description: "Exact published npm version to mirror when destination is github"
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -20,7 +30,7 @@ jobs:
   publish:
     name: npm stage publish --provenance
     runs-on: ubuntu-24.04
-    if: github.event.inputs.confirm == 'publish'
+    if: github.event.inputs.confirm == 'publish' && github.event.inputs.destination != 'github'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -63,3 +73,87 @@ jobs:
         env:
           NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/npm-cli.npmrc
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-github:
+    name: Mirror the approved CLI to GitHub Packages
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.confirm == 'publish' &&
+      github.event.inputs.destination == 'github' &&
+      github.repository == 'dadadave80/lattice-studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: github-cli-package
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install npm for the GitHub mirror
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-cli"
+          bun add --cwd "$RUNNER_TEMP/npm-cli" --no-save --ignore-scripts npm@11.15.0
+
+      - name: Prepare the approved npm package for GitHub
+        id: mirror
+        run: bun scripts/ci/mirror-cli-package.ts prepare
+        env:
+          SOURCE_VERSION: ${{ github.event.inputs.source_version }}
+
+      - name: Prepare GitHub Packages authentication
+        env:
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/github-cli.npmrc
+        run: |
+          cat > "$NPM_CONFIG_USERCONFIG" <<'NPMRC'
+          registry=https://npm.pkg.github.com/
+          @dadadave80:registry=https://npm.pkg.github.com/
+          //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+          NPMRC
+
+      - name: Publish the GitHub CLI package
+        run: bun scripts/ci/mirror-cli-package.ts publish
+        env:
+          SOURCE_VERSION: ${{ github.event.inputs.source_version }}
+          TARBALL: ${{ steps.mirror.outputs.tarball }}
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/github-cli.npmrc
+          NODE_AUTH_TOKEN: ${{ github.token }}
+
+      - name: Verify the linked GitHub package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_VERSION: ${{ steps.mirror.outputs.version }}
+          SOURCE_SHA: ${{ steps.mirror.outputs.source_sha }}
+        run: |
+          metadata=$(gh api "users/dadadave80/packages/npm/lattice-studio")
+          # shellcheck disable=SC2016
+          GH_PACKAGE_JSON="$metadata" bun -e '
+            import { appendFileSync } from "node:fs";
+            const pkg = JSON.parse(process.env.GH_PACKAGE_JSON);
+            if (pkg.package_type !== "npm" || pkg.name !== "lattice-studio" || pkg.repository?.full_name !== process.env.GITHUB_REPOSITORY) {
+              throw new Error("The GitHub package is not linked to dadadave80/lattice-studio.");
+            }
+            if (typeof pkg.html_url !== "string" || !["private", "public", "internal"].includes(pkg.visibility)) {
+              throw new Error("GitHub returned incomplete package visibility metadata.");
+            }
+            const summary = [
+              "## GitHub CLI package",
+              `- Package: [@dadadave80/lattice-studio](${pkg.html_url})`,
+              `- Version: ${process.env.SOURCE_VERSION}`,
+              `- Source commit: ${process.env.SOURCE_SHA}`,
+              `- Visibility: ${pkg.visibility}`,
+              "",
+              "GitHub creates new packages as private. Visibility is managed in Package settings.",
+              "",
+            ].join("\n");
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+            console.log(`Verified ${pkg.html_url} linked to ${pkg.repository.full_name}; visibility ${pkg.visibility}.`);
+          '
