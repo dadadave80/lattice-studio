@@ -151,7 +151,7 @@ jobs:
               `- Source commit: ${process.env.SOURCE_SHA}`,
               `- Visibility: ${pkg.visibility}`,
               "",
-              "GitHub creates new packages as private. Visibility is managed in Package settings.",
+              "Visibility is managed in Package settings.",
               "",
             ].join("\n");
             appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);

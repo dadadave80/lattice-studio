@@ -139,7 +139,7 @@ The mirror verifies the source package's SHA-512 integrity, provenance subject d
 
 The scoped name creates a new package identity and digest. The original npm provenance remains attached to the original npm artifact, and the mirror verifies it as source evidence. GitHub Packages uses direct publication after that approval, authenticated with the job's `GITHUB_TOKEN` and `packages: write`. No personal package-publishing token is required. Repeating a dispatch skips a matching GitHub version and fails if the existing version has different contents.
 
-**Needs David:** GitHub creates new packages with private visibility. Review the reported package link and visibility after the first publication, then use **Package settings → Change visibility** to make the package public if desired. Repository association and package visibility are separate settings. [GitHub package visibility](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)
+**Needs David:** review the reported package link and visibility after publication. If a package is private, use **Package settings → Change visibility** to make it public if desired. Repository association and package visibility are separate settings. The first CLI mirror was verified public and linked to this repository. [GitHub package visibility](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)
 
 ## Re-pinning to a tagged Lattice release
 
