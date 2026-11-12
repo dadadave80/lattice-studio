@@ -69,7 +69,7 @@ Repository settings are separate from these workflow files. After **CI gate** ha
 **Needs David:**
 
 - Add the `SEPOLIA_RPC_URL` repository secret. The Sepolia fork suite runs without it: the fork suite forks a recent finalized Sepolia block from the first public RPC that serves it and uses the secret only when every public one fails, so the secret is a fallback, not a gate. The local Anvil chain tests run either way.
-- Add the `NPM_TOKEN` repository secret, scoped to publish `lattice-studio` with provenance. Needed before `publish-cli.yml` can run at all.
+- Add the `NPM_TOKEN` repository secret with `Read and write (stage only)` access and 2FA bypass unchecked. Select `lattice-studio` for an existing package, or `All packages` for its first publication.
 - Install solc 0.8.36 (Lattice's pin) before the `foundry` job's suites run, so `forge build` inside the pinned Lattice checkout has it available.
 
 ## Linux screenshot baselines
@@ -95,7 +95,7 @@ To move to a newer image, roughly once a year when GitHub makes a new Ubuntu LTS
 
 ## Publishing the CLI
 
-`packages/cli` publishes to npm as `lattice-studio`, with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) from a frozen lockfile and install scripts blocked. Publishing is manual and separate from tagging a release: `.github/workflows/publish-cli.yml` only runs on `workflow_dispatch`, and only does anything if the person dispatching it types `publish` into the `confirm` input.
+`packages/cli` is staged on npm as `lattice-studio`, with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) from a frozen lockfile and install scripts blocked. The workflow installs npm 11.15.0 in a temporary directory and runs its `stage publish` command with the pinned Bun runtime. Staging is manual and separate from tagging a release. `.github/workflows/publish-cli.yml` runs on `workflow_dispatch` with `confirm=publish`.
 
 After the release PR merges, David runs the workflow from the CLI tag printed in the GitHub release. For example, the command for a tagged CLI version of `0.2.1` is
 
@@ -103,7 +103,9 @@ After the release PR merges, David runs the workflow from the CLI tag printed in
 gh workflow run publish-cli.yml --ref lattice-studio-v0.2.1 -f confirm=publish
 ```
 
-The workflow checks out the dispatched commit and compares its CLI package version with the full tag ref before installing dependencies or building. The first tag containing this workflow enforces the check. GitHub uses the historical workflow definition when dispatching from an older tag.
+The workflow checks out the dispatched commit and compares its CLI package version with the full tag ref using Bun before installing npm or project dependencies and building. The staging step reads its token from `NPM_TOKEN` through a temporary npmrc containing the literal token environment-variable placeholder. The first tag containing this workflow enforces the check. GitHub uses the historical workflow definition when dispatching from an older tag.
+
+When the run succeeds, David opens **Staged Packages** on npm, reviews the package name, version, and contents, then chooses **Approve** and completes the 2FA challenge to publish it. The CLI equivalent is `npm stage approve <stage-id>`. Staging the first release creates a public `0.0.0-stage` placeholder. The submitted release contents become public after approval. [npm staged publishing](https://docs.npmjs.com/staged-publishing/)
 
 ## Re-pinning to a tagged Lattice release
 

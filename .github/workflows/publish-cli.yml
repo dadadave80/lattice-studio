@@ -1,14 +1,12 @@
-# Publishes `lattice-studio` (packages/cli) to npm with provenance (spec "CLI on npm", Phasing → v1). Manual
-# only: `workflow_dispatch`, no other trigger, and only David runs it (AGENTS.md: publishing needs him). This
-# workflow itself never runs until he pushes the repo and dispatches it by hand (HANDOFF.md D4); nothing here
-# executes as part of any agent's build.
+# Stages `lattice-studio` (packages/cli) on npm with provenance. David dispatches this workflow from a
+# release tag, then reviews and approves the staged package on npm with 2FA.
 name: Publish CLI
 
 on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: 'Type "publish" and dispatch from the matching lattice-studio-vX.Y.Z release tag.'
+        description: 'Type "publish" to stage the matching lattice-studio-vX.Y.Z release tag for npm approval.'
         required: true
 
 permissions:
@@ -20,7 +18,7 @@ env:
 
 jobs:
   publish:
-    name: npm publish --provenance
+    name: npm stage publish --provenance
     runs-on: ubuntu-24.04
     if: github.event.inputs.confirm == 'publish'
     steps:
@@ -28,23 +26,23 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
       - name: Verify CLI release tag
         run: |
-          version=$(node -p "require('./packages/cli/package.json').version")
+          version=$(bun -p "require('./packages/cli/package.json').version")
           if [[ "$GITHUB_REF" != "refs/tags/lattice-studio-v$version" ]]; then
             echo "::error::Dispatch from the CLI release tag lattice-studio-v$version."
             exit 1
           fi
           echo "Verified CLI release tag lattice-studio-v$version."
 
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "22"
-          registry-url: "https://registry.npmjs.org"
+      - name: Install npm for staged publishing
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-cli"
+          bun add --cwd "$RUNNER_TEMP/npm-cli" --no-save --ignore-scripts npm@11.15.0
 
       - run: bun install --frozen-lockfile
 
@@ -69,7 +67,14 @@ jobs:
             await Bun.write(path, JSON.stringify(pkg, null, 2) + "\n");
           '
 
-      - run: npm publish --provenance --access public
+      - name: Stage CLI package
+        run: |
+          cat > "$NPM_CONFIG_USERCONFIG" <<'NPMRC'
+          registry=https://registry.npmjs.org/
+          //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          NPMRC
+          bun "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" stage publish --provenance --access public
         working-directory: packages/cli
         env:
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/npm-cli.npmrc
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
