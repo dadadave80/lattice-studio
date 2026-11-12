@@ -26,26 +26,23 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
       - name: Verify CLI release tag
         run: |
-          version=$(node -p "require('./packages/cli/package.json').version")
+          version=$(bun -p "require('./packages/cli/package.json').version")
           if [[ "$GITHUB_REF" != "refs/tags/lattice-studio-v$version" ]]; then
             echo "::error::Dispatch from the CLI release tag lattice-studio-v$version."
             exit 1
           fi
           echo "Verified CLI release tag lattice-studio-v$version."
 
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-
       - name: Install npm for staged publishing
-        run: npm install --global npm@11.15.0
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-cli"
+          bun add --cwd "$RUNNER_TEMP/npm-cli" --no-save --ignore-scripts npm@11.15.0
 
       - run: bun install --frozen-lockfile
 
@@ -70,7 +67,14 @@ jobs:
             await Bun.write(path, JSON.stringify(pkg, null, 2) + "\n");
           '
 
-      - run: npm stage publish --provenance --access public
+      - name: Stage CLI package
+        run: |
+          cat > "$NPM_CONFIG_USERCONFIG" <<'NPMRC'
+          registry=https://registry.npmjs.org/
+          //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          NPMRC
+          bun "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" stage publish --provenance --access public
         working-directory: packages/cli
         env:
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/npm-cli.npmrc
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

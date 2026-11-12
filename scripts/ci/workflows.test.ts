@@ -1,8 +1,8 @@
-// Every workflow file must parse as YAML and have the shape a workflow needs (brief Q6 "Done when": "every
-// workflow file parses (a test loads each with Bun.YAML)"). Never runs a workflow, never touches the network:
-// this only reads the committed files and parses them.
-import { readdirSync, readFileSync } from "node:fs";
+// Checks workflow YAML, action pinning, and local guard behavior. The staging-shell check substitutes
+// a fixture CLI and token, so it exercises the shell without registry requests.
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { findPinnedRunners, isLockfilePinned } from "./workflow-lockfile-check.ts";
 
@@ -211,31 +211,68 @@ describe("publish-cli.yml (§16 audit #40, spec L864 npm provenance)", () => {
 
   test("stages the public CLI with provenance and token authentication", () => {
     const steps = job?.steps ?? [];
-    const stage = steps.find((s) => s.run === "npm stage publish --provenance --access public");
+    const stage = steps.find((s) => s.name === "Stage CLI package");
     expect(stage?.["working-directory"]).toBe("packages/cli");
     expect(stage?.env?.NODE_AUTH_TOKEN).toBe("${{ secrets.NPM_TOKEN }}");
+    expect(stage?.env?.NPM_CONFIG_USERCONFIG).toBe("${{ runner.temp }}/npm-cli.npmrc");
     expect(steps.some((s) => typeof s.run === "string" && /\bnpm publish\b/.test(s.run))).toBe(false);
   });
 
-  test("manual staging installs a compatible npm after the release guard and before the build", () => {
+  test("manual staging installs npm for Bun after the release guard and before the build", () => {
     expect(Object.keys(doc.on as object)).toEqual(["workflow_dispatch"]);
     expect(job?.if).toBe("github.event.inputs.confirm == 'publish'");
     const steps = job?.steps ?? [];
-    const node = steps.findIndex((s) => typeof s.uses === "string" && s.uses.startsWith("actions/setup-node@"));
-    expect(node).toBeGreaterThan(1);
-    expect(steps[node]?.with?.["node-version"]).toBe("24");
-    const npm = steps.findIndex((s) => s.run === "npm install --global npm@11.15.0");
+    const bun = steps.findIndex((s) => typeof s.uses === "string" && s.uses.startsWith("oven-sh/setup-bun@"));
+    const guard = steps.findIndex((s) => s.name === "Verify CLI release tag");
+    expect(bun).toBeGreaterThan(0);
+    expect(guard).toBeGreaterThan(bun);
+    expect(steps.some((s) => typeof s.uses === "string" && s.uses.startsWith("actions/setup-node@"))).toBe(false);
+    const npm = steps.findIndex((s) => s.name === "Install npm for staged publishing");
+    expect(steps[npm]?.run).toContain('bun add --cwd "$RUNNER_TEMP/npm-cli" --no-save --ignore-scripts npm@11.15.0');
+    const dependencies = steps.findIndex((s) => s.run === "bun install --frozen-lockfile");
     const build = steps.findIndex((s) => s.run === "bun run --cwd packages/cli build");
-    const stage = steps.findIndex((s) => s.run === "npm stage publish --provenance --access public");
-    expect(npm).toBeGreaterThan(node);
-    expect(build).toBeGreaterThan(npm);
+    const stage = steps.findIndex((s) => s.name === "Stage CLI package");
+    expect(npm).toBeGreaterThan(guard);
+    expect(dependencies).toBeGreaterThan(npm);
+    expect(build).toBeGreaterThan(dependencies);
     expect(stage).toBeGreaterThan(build);
+  });
+
+  test("the staging shell runs npm under Bun and keeps the token as an npmrc placeholder", () => {
+    const run = job?.steps?.find((s) => s.name === "Stage CLI package")?.run;
+    if (typeof run !== "string") throw new Error("Missing staging shell");
+    const directory = mkdtempSync(join(tmpdir(), "studio-stage-shell-"));
+    const npmDirectory = join(directory, "npm-cli/node_modules/npm/bin");
+    const npmrc = join(directory, "npm-cli.npmrc");
+    try {
+      mkdirSync(npmDirectory, { recursive: true });
+      writeFileSync(join(npmDirectory, "npm-cli.js"), `
+        import { readFileSync } from "node:fs";
+        console.log(JSON.stringify({
+          bun: Boolean(process.versions.bun),
+          args: process.argv.slice(2),
+          npmrc: readFileSync(process.env.NPM_CONFIG_USERCONFIG, "utf8"),
+        }));
+      `);
+      const result = Bun.spawnSync(["bash", "-e", "-c", run], {
+        cwd: repoRoot,
+        env: { ...process.env, RUNNER_TEMP: directory, NPM_CONFIG_USERCONFIG: npmrc, NODE_AUTH_TOKEN: "fixture-token" },
+      });
+      expect(result.exitCode, result.stderr.toString()).toBe(0);
+      expect(JSON.parse(result.stdout.toString())).toEqual({
+        bun: true,
+        args: ["stage", "publish", "--provenance", "--access", "public"],
+        npmrc: "registry=https://registry.npmjs.org/\n//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n",
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   test("only the matching CLI release tag can build the dispatched commit for publication", () => {
     const steps = job?.steps ?? [];
     expect(steps[0]?.with?.ref).toBe("${{ github.sha }}");
-    const guard = steps[1]?.run;
+    const guard = steps.find((s) => s.name === "Verify CLI release tag")?.run;
     if (typeof guard !== "string") throw new Error("Missing release tag check after checkout");
     const { version } = JSON.parse(readFileSync(join(repoRoot, "packages/cli/package.json"), "utf8")) as { version: string };
     const tag = `lattice-studio-v${version}`;
