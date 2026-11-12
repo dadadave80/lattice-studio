@@ -82,5 +82,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh workflow run ci.yml --ref dev
-          echo "Dispatched ci.yml on dev."
+          gh workflow run ci.yml --ref dev -f stage_dev_nightly=true
+          echo "Dispatched full CI on dev with npm staging after its successful gate."

@@ -48,24 +48,9 @@ jobs:
 
       - run: bun run --cwd packages/cli build
 
-      # A copy, never the workspace file: the published package.json drops `private` (npm refuses to publish
-      # a private package) and every `workspace:*` dependency (npm doesn't understand that protocol), so the
-      # workspace's own package.json is untouched.
+      # Prepare this disposable checkout after bundling the workspace dependencies.
       - name: Prepare a publishable package.json
-        run: |
-          bun -e '
-            const path = "packages/cli/package.json";
-            const pkg = await Bun.file(path).json();
-            delete pkg.private;
-            for (const field of ["dependencies", "devDependencies", "peerDependencies"]) {
-              const deps = pkg[field];
-              if (!deps) continue;
-              for (const [name, range] of Object.entries(deps)) {
-                if (typeof range === "string" && range.startsWith("workspace:")) delete deps[name];
-              }
-            }
-            await Bun.write(path, JSON.stringify(pkg, null, 2) + "\n");
-          '
+        run: bun scripts/ci/prepare-cli-package.ts
 
       - name: Stage CLI package
         run: |

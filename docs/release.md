@@ -1,6 +1,6 @@
 # Release
 
-This describes how a change becomes a release: versioning, CI, hosting, and the CLI publish. Every step that only David can do (create accounts, add secrets, push the repository, click deploy) is marked **Needs David**. Nothing in this repository's build tooling pushes, publishes, deploys, or sends a transaction to a public network on its own — those actions all wait for one of the steps below.
+This describes how a change becomes a release: versioning, CI, hosting, and the CLI publish. Every step that only David can do (create accounts, add secrets, push the repository, click deploy) is marked **Needs David**. The nightly can submit a CLI package for npm review after full CI passes. Publishing its contents still requires David's approval and 2FA on npm.
 
 ## Versions and changelog
 
@@ -50,7 +50,7 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 
 ## CI
 
-`.github/workflows/` runs on GitHub: `ci.yml` (the pull request gate: typecheck, lint, unit, size, browser, e2e, the performance budgets with the only Lighthouse CI run, and the Foundry suites: chain, the Sepolia fork suite, golden and catalog drift), `warm-cache.yml` (saves the caches CI restores, on `dev` and `main`), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only, plus a nightly dispatch of the full `ci.yml` on Studio's `dev`), `release-please.yml`, `publish-cli.yml`, and `update-screenshots.yml` (manual, `workflow_dispatch` only: regenerates the missing `chromium-linux` screenshot baselines as a downloadable artifact — see "Linux screenshot baselines" below).
+`.github/workflows/` runs on GitHub: `ci.yml` (the pull request gate: typecheck, lint, unit, size, browser, e2e, the performance budgets with the only Lighthouse CI run, and the Foundry suites: chain, the Sepolia fork suite, golden and catalog drift), `warm-cache.yml` (saves the caches CI restores, on `dev` and `main`), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only, plus a nightly dispatch of the full `ci.yml` on Studio's `dev` with CLI staging enabled), `dev-nightly.yml` (called after that full CI gate to stage the tested commit), `release-please.yml`, `publish-cli.yml`, and `update-screenshots.yml` (manual, `workflow_dispatch` only: regenerates the missing `chromium-linux` screenshot baselines as a downloadable artifact — see "Linux screenshot baselines" below).
 
 `ci.yml` runs on pull requests and on `workflow_dispatch`. On a pull request a first `changes` job diffs against the base, and `scripts/ci/changes.sh` selects the suites that read those paths. The aggregate gate verifies their outcomes. A change to Markdown at the root, `docs/` or `skills/` skips the expensive suites and still runs path detection and the aggregate gate; a pitch deck selects check, unit and size; workflows, `.github/actions/`, `bun.lock` and root configs select every suite. An ordinary manual dispatch runs the full suite, as does `nightly.yml` for `dev`; an explicitly selected browser-transport dispatch runs its separate diagnostic matrix. The lightweight `post-merge.yml` checks the exact revision pushed to `dev` or `main`.
 
@@ -95,7 +95,7 @@ To move to a newer image, roughly once a year when GitHub makes a new Ubuntu LTS
 
 ## Publishing the CLI
 
-`packages/cli` is staged on npm as `lattice-studio`, with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) from a frozen lockfile and install scripts blocked. The workflow installs npm 11.15.0 in a temporary directory and runs its `stage publish` command with the pinned Bun runtime. Staging is manual and separate from tagging a release. `.github/workflows/publish-cli.yml` runs on `workflow_dispatch` with `confirm=publish`.
+`packages/cli` is staged on npm as `lattice-studio`, with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) from a frozen lockfile and install scripts blocked. Both publishing workflows install npm 11.15.0 in a temporary directory and run its `stage publish` command with the pinned Bun runtime. Stable releases use the manual `.github/workflows/publish-cli.yml` with `confirm=publish` and require the matching release tag.
 
 After the release PR merges, David runs the workflow from the CLI tag printed in the GitHub release. For example, the command for a tagged CLI version of `0.2.1` is
 
@@ -106,6 +106,24 @@ gh workflow run publish-cli.yml --ref lattice-studio-v0.2.1 -f confirm=publish
 The workflow checks out the dispatched commit and compares its CLI package version with the full tag ref using Bun before installing npm or project dependencies and building. The staging step reads its token from `NPM_TOKEN` through a temporary npmrc containing the literal token environment-variable placeholder. The first tag containing this workflow enforces the check. GitHub uses the historical workflow definition when dispatching from an older tag.
 
 When the run succeeds, David opens **Staged Packages** on npm, reviews the package name, version, and contents, then chooses **Approve** and completes the 2FA challenge to publish it. The CLI equivalent is `npm stage approve <stage-id>`. Staging the first release creates a public `0.0.0-stage` placeholder. The submitted release contents become public after approval. [npm staged publishing](https://docs.npmjs.com/staged-publishing/)
+
+### Dev nightlies
+
+At 03:17 UTC each day, `nightly.yml` dispatches full CI on Studio's `dev` with `stage_dev_nightly=true`. After **CI gate** succeeds, CI calls `dev-nightly.yml` to stage the exact tested SHA under npm's `dev` tag. Pull request checks, browser diagnostics, failed CI, and ordinary manual CI runs do not stage a package.
+
+The reusable workflow inherits the CI run's commit and ref, and checks out that SHA. A change to `dev` while CI runs cannot change the package source or its provenance. The version is `<base>-dev.<commit-timestamp>.g<full-sha>`, for example `0.2.0-dev.1794446400.g0123456789abcdef0123456789abcdef01234567`. The timestamp comes from the commit. The same commit produces the same version on a later retry. This temporary version is set before building so the CLI reports it, while checked-in versions and stable release numbering stay unchanged.
+
+Nightly staging is serialized. A successful `npm/dev-nightly` commit status records that the SHA was staged and prevents another upload even after its npm submission is rejected or expires. Before submitting a package, the workflow also checks npm's pending submissions and published versions. Those checks recover a successful upload whose status could not be recorded. Authentication errors and unrecognized responses stop the run. A pending submission with the matching version and a different tag also stops it.
+
+**Needs David:** use the same stage-only `NPM_TOKEN`, keep 2FA bypass unchecked, and approve each desired nightly in npm's **Staged Packages**. Approval publishes the submitted contents and updates `dev`. Approve the desired newest commit before installing it with `bunx lattice-studio@dev --help`.
+
+GitHub schedules use the workflow on the default branch, `main`. After this change merges into `dev`, promote it to `main` to enable automatic nightly dispatch. Before that promotion, or to request a new run, dispatch full CI on `dev` explicitly
+
+```sh
+gh workflow run ci.yml --ref dev -f stage_dev_nightly=true
+```
+
+The stable publisher continues to require `lattice-studio-v<version>` and uses npm's default release tag. Nightly prereleases use `dev` and remain separate from that release process.
 
 ## Re-pinning to a tagged Lattice release
 

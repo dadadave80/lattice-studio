@@ -23,8 +23,12 @@ on:
         description: "Compare browser transport on Ubuntu 24.04 and 26.04 (#60)"
         type: boolean
         default: false
+      stage_dev_nightly:
+        description: "Stage the tested dev commit for npm approval after full CI passes"
+        type: boolean
+        default: false
 
-# A PR gate never needs write access; release-please and publish-cli (separate workflows) ask for more.
+# PR jobs stay read-only. The opted-in nightly caller grants only its publisher extra permissions.
 permissions:
   contents: read
 
@@ -310,3 +314,21 @@ jobs:
         env:
           CI_NEEDS: ${{ toJSON(needs) }}
         run: node --experimental-strip-types scripts/ci/gate.ts
+
+  # Reusing a workflow preserves this CI run's SHA in npm provenance as well as checkout.
+  dev-nightly:
+    name: Stage dev nightly
+    needs: gate
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/dev' &&
+      inputs.stage_dev_nightly &&
+      !inputs.browser_diagnostics &&
+      needs.gate.result == 'success'
+    permissions:
+      contents: read
+      id-token: write
+      statuses: write
+    uses: ./.github/workflows/dev-nightly.yml
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
