@@ -95,7 +95,7 @@ To move to a newer image, roughly once a year when GitHub makes a new Ubuntu LTS
 
 ## Publishing the CLI
 
-`packages/cli` is staged on npm as `lattice-studio`, with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) from a frozen lockfile and install scripts blocked. Both publishing workflows install npm 11.15.0 in a temporary directory and run its `stage publish` command with the pinned Bun runtime. Stable releases use the manual `.github/workflows/publish-cli.yml` with `confirm=publish` and require the matching release tag.
+`packages/cli` is staged on npm as `lattice-studio`, with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) from a frozen lockfile and install scripts blocked. The npm publishers install npm 11.15.0 in a temporary directory and run its `stage publish` command with the pinned Bun runtime. Stable releases use the manual `.github/workflows/publish-cli.yml` with `confirm=publish` and require the matching release tag. Its default destination is `npm`.
 
 After the release PR merges, David runs the workflow from the CLI tag printed in the GitHub release. For example, the command for a tagged CLI version of `0.2.1` is
 
@@ -124,6 +124,22 @@ gh workflow run ci.yml --ref dev -f stage_dev_nightly=true
 ```
 
 The stable publisher continues to require `lattice-studio-v<version>` and uses npm's default release tag. Nightly prereleases use `dev` and remain separate from that release process.
+
+### GitHub Packages mirror
+
+GitHub's repository **Packages** panel lists packages in GitHub Packages. The CLI's mirror there is `@dadadave80/lattice-studio`, linked to this repository. Publication is a separate, explicit dispatch of `publish-cli.yml` with `destination=github` and the exact version already approved and public on npm.
+
+```sh
+gh workflow run publish-cli.yml --ref dev \
+  -f confirm=publish -f destination=github \
+  -f source_version=0.2.0-dev.1794452361.ga08c041a7397dd20efae60c985150cdbef4d1701
+```
+
+The mirror verifies the source package's SHA-512 integrity, provenance subject digest, repository and source commit, then verifies its Sigstore signature and expected GitHub workflow identity. It retains the published CLI bundle, README and version, changes the disposable package's name and publication registry, and publishes through npm 11.15.0 running under Bun. Nightlies use `dev`; stable versions use `latest`. The existing matching npm release-tag check remains in the npm path.
+
+The scoped name creates a new package identity and digest. The original npm provenance remains attached to the original npm artifact, and the mirror verifies it as source evidence. GitHub Packages uses direct publication after that approval, authenticated with the job's `GITHUB_TOKEN` and `packages: write`. No personal package-publishing token is required. Repeating a dispatch skips a matching GitHub version and fails if the existing version has different contents.
+
+**Needs David:** review the reported package link and visibility after publication. If a package is private, use **Package settings → Change visibility** to make it public if desired. Repository association and package visibility are separate settings. The first CLI mirror was verified public and linked to this repository. [GitHub package visibility](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)
 
 ## Re-pinning to a tagged Lattice release
 

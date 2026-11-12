@@ -22,6 +22,7 @@ type JobLike = {
   on?: unknown;
   permissions?: Record<string, unknown>;
   secrets?: Record<string, unknown>;
+  concurrency?: { group?: unknown; "cancel-in-progress"?: unknown };
 };
 type WorkflowLike = { name?: unknown; on?: unknown; permissions?: Record<string, unknown>; env?: Record<string, unknown>; jobs?: Record<string, JobLike>; concurrency?: { group?: unknown; "cancel-in-progress"?: unknown } };
 
@@ -228,7 +229,7 @@ describe("publish-cli.yml (§16 audit #40, spec L864 npm provenance)", () => {
 
   test("manual staging installs npm for Bun after the release guard and before the build", () => {
     expect(Object.keys(doc.on as object)).toEqual(["workflow_dispatch"]);
-    expect(job?.if).toBe("github.event.inputs.confirm == 'publish'");
+    expect(job?.if).toBe("github.event.inputs.confirm == 'publish' && github.event.inputs.destination != 'github'");
     const steps = job?.steps ?? [];
     const bun = steps.findIndex((s) => typeof s.uses === "string" && s.uses.startsWith("oven-sh/setup-bun@"));
     const guard = steps.findIndex((s) => s.name === "Verify CLI release tag");
@@ -293,6 +294,107 @@ describe("publish-cli.yml (§16 audit #40, spec L864 npm provenance)", () => {
     ] as const) {
       const result = Bun.spawnSync(["bash", "-e", "-c", guard], { cwd: repoRoot, env: { ...process.env, GITHUB_REF: ref } });
       expect(result.exitCode, ref).toBe(expected);
+    }
+  });
+});
+
+describe("manual GitHub Packages mirror", () => {
+  const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "publish-cli.yml"), "utf8")) as WorkflowLike & {
+    on?: { workflow_dispatch?: { inputs?: Record<string, unknown> } };
+  };
+  const job = doc.jobs?.["publish-github"];
+  const step = (name: string) => job?.steps?.find((entry) => entry.name === name);
+
+  test("npm remains the default and GitHub publication requires an explicit manual choice", () => {
+    expect(doc.on?.workflow_dispatch?.inputs?.destination).toEqual({
+      description: "Publication destination",
+      type: "choice",
+      options: ["npm", "github"],
+      default: "npm",
+      required: true,
+    });
+    expect(doc.on?.workflow_dispatch?.inputs?.source_version).toMatchObject({ type: "string", required: false });
+    expect(doc.on?.workflow_dispatch?.inputs?.confirm).toMatchObject({ required: true });
+    expect(job?.if).toContain("github.event_name == 'workflow_dispatch'");
+    expect(job?.if).toContain("github.event.inputs.confirm == 'publish'");
+    expect(job?.if).toContain("github.event.inputs.destination == 'github'");
+    expect(job?.if).toContain("github.repository == 'dadadave80/lattice-studio'");
+  });
+
+  test("only the mirror job gains package publication permissions and serializes its runs", () => {
+    expect(doc.permissions).toEqual({ contents: "read", "id-token": "write" });
+    expect(job?.permissions).toEqual({ contents: "read", packages: "write" });
+    expect(job?.concurrency).toEqual({ group: "github-cli-package", "cancel-in-progress": false });
+    expect(doc.concurrency).toBeUndefined();
+    expect(job?.["runs-on"]).toBe("ubuntu-24.04");
+    expect(job?.["timeout-minutes"]).toBe(20);
+  });
+
+  test("the mirror uses Bun and isolated npm while preserving the approved artifact instead of rebuilding it", () => {
+    const steps = job?.steps ?? [];
+    expect(steps[0]?.with?.ref).toBe("${{ github.sha }}");
+    expect(doc.env?.BUN_VERSION).toBe("1.4.2");
+    expect(steps[1]?.uses).toMatch(/^oven-sh\/setup-bun@/);
+    expect(steps[1]?.with?.["bun-version"]).toBe("${{ env.BUN_VERSION }}");
+    expect(step("Install npm for the GitHub mirror")?.run).toContain('bun add --cwd "$RUNNER_TEMP/npm-cli" --no-save --ignore-scripts npm@11.15.0');
+    expect(steps.some((entry) => typeof entry.uses === "string" && entry.uses.startsWith("actions/setup-node@"))).toBe(false);
+    expect(steps.some((entry) => typeof entry.run === "string" && /bun install --frozen-lockfile|--cwd packages\/cli build/.test(entry.run))).toBe(false);
+    const prepare = step("Prepare the approved npm package for GitHub");
+    const publish = step("Publish the GitHub CLI package");
+    expect(prepare?.id).toBe("mirror");
+    expect(prepare?.run).toBe("bun scripts/ci/mirror-cli-package.ts prepare");
+    expect(prepare?.env?.SOURCE_VERSION).toBe("${{ github.event.inputs.source_version }}");
+    expect(publish?.run).toBe("bun scripts/ci/mirror-cli-package.ts publish");
+    expect(publish?.env?.SOURCE_VERSION).toBe("${{ github.event.inputs.source_version }}");
+    expect(publish?.env?.TARBALL).toBe("${{ steps.mirror.outputs.tarball }}");
+    expect(steps.indexOf(prepare!)).toBeLessThan(steps.indexOf(publish!));
+  });
+
+  test("GitHub credentials stay out of package preparation and npm authentication stays separate", () => {
+    const steps = job?.steps ?? [];
+    expect(steps.filter((entry) => entry.env?.NODE_AUTH_TOKEN !== undefined).map((entry) => entry.name)).toEqual(["Publish the GitHub CLI package"]);
+    expect(step("Publish the GitHub CLI package")?.env?.NODE_AUTH_TOKEN).toBe("${{ github.token }}");
+    expect(step("Publish the GitHub CLI package")?.env?.NPM_CONFIG_USERCONFIG).toBe("${{ runner.temp }}/github-cli.npmrc");
+    expect(steps.filter((entry) => entry.env?.GH_TOKEN !== undefined).map((entry) => entry.name)).toEqual(["Verify the linked GitHub package"]);
+    expect(JSON.stringify(job)).not.toContain("secrets.NPM_TOKEN");
+    expect(JSON.stringify(step("Prepare the approved npm package for GitHub")?.env)).not.toContain("github.token");
+    const run = step("Prepare GitHub Packages authentication")?.run;
+    if (typeof run !== "string") throw new Error("Missing GitHub npmrc shell");
+    const directory = mkdtempSync(join(tmpdir(), "studio-github-npmrc-"));
+    try {
+      const npmrc = join(directory, "github-cli.npmrc");
+      const result = Bun.spawnSync(["bash", "-e", "-c", run], { env: { ...process.env, NPM_CONFIG_USERCONFIG: npmrc, NODE_AUTH_TOKEN: "fixture-secret" } });
+      expect(result.exitCode, result.stderr.toString()).toBe(0);
+      expect(readFileSync(npmrc, "utf8")).toBe("registry=https://npm.pkg.github.com/\n@dadadave80:registry=https://npm.pkg.github.com/\n//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}\n");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("publication verifies repository linkage and reports actual package visibility", () => {
+    const run = step("Verify the linked GitHub package")?.run;
+    if (typeof run !== "string") throw new Error("Missing GitHub package verification shell");
+    const directory = mkdtempSync(join(tmpdir(), "studio-github-package-"));
+    try {
+      writeFileSync(join(directory, "gh"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$FIXTURE_ARGS"\nprintf "%s" "$FIXTURE_PACKAGE"\nexit "$FIXTURE_EXIT"\n', { mode: 0o755 });
+      for (const [repository, apiExit, expected] of [["dadadave80/lattice-studio", "0", 0], ["other/repository", "0", 1], ["dadadave80/lattice-studio", "23", 23]] as const) {
+        const summary = join(directory, "summary");
+        writeFileSync(summary, "");
+        const result = Bun.spawnSync(["bash", "-e", "-c", run], { env: {
+          ...process.env, PATH: `${directory}:${process.env.PATH}`, GITHUB_REPOSITORY: "dadadave80/lattice-studio", GITHUB_STEP_SUMMARY: summary,
+          SOURCE_VERSION: "0.2.0-dev.1.gabc", SOURCE_SHA: "a".repeat(40), FIXTURE_ARGS: join(directory, "args"), FIXTURE_EXIT: apiExit,
+          FIXTURE_PACKAGE: JSON.stringify({ name: "lattice-studio", package_type: "npm", html_url: "https://github.com/users/dadadave80/packages/npm/package/lattice-studio", visibility: "private", repository: { full_name: repository } }),
+        } });
+        expect(result.exitCode, result.stderr.toString()).toBe(expected);
+        expect(readFileSync(join(directory, "args"), "utf8")).toContain("users/dadadave80/packages/npm/lattice-studio");
+        if (expected === 0) {
+          expect(readFileSync(summary, "utf8")).toContain("private");
+          expect(readFileSync(summary, "utf8")).toContain("0.2.0-dev.1.gabc");
+          expect(result.stdout.toString()).toContain("dadadave80/lattice-studio");
+        } else expect(readFileSync(summary, "utf8")).toBe("");
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
     }
   });
 });
