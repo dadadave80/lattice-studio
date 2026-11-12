@@ -1,14 +1,12 @@
-# Publishes `lattice-studio` (packages/cli) to npm with provenance (spec "CLI on npm", Phasing → v1). Manual
-# only: `workflow_dispatch`, no other trigger, and only David runs it (AGENTS.md: publishing needs him). This
-# workflow itself never runs until he pushes the repo and dispatches it by hand (HANDOFF.md D4); nothing here
-# executes as part of any agent's build.
+# Stages `lattice-studio` (packages/cli) on npm with provenance. David dispatches this workflow from a
+# release tag, then reviews and approves the staged package on npm with 2FA.
 name: Publish CLI
 
 on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: 'Type "publish" and dispatch from the matching lattice-studio-vX.Y.Z release tag.'
+        description: 'Type "publish" to stage the matching lattice-studio-vX.Y.Z release tag for npm approval.'
         required: true
 
 permissions:
@@ -20,7 +18,7 @@ env:
 
 jobs:
   publish:
-    name: npm publish --provenance
+    name: npm stage publish --provenance
     runs-on: ubuntu-24.04
     if: github.event.inputs.confirm == 'publish'
     steps:
@@ -43,8 +41,11 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Install npm for staged publishing
+        run: npm install --global npm@11.15.0
 
       - run: bun install --frozen-lockfile
 
@@ -69,7 +70,7 @@ jobs:
             await Bun.write(path, JSON.stringify(pkg, null, 2) + "\n");
           '
 
-      - run: npm publish --provenance --access public
+      - run: npm stage publish --provenance --access public
         working-directory: packages/cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

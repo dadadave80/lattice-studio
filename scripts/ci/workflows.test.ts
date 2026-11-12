@@ -10,7 +10,7 @@ const repoRoot = join(import.meta.dir, "..", "..");
 const workflowsDir = join(repoRoot, ".github", "workflows");
 const files = readdirSync(workflowsDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
 
-type StepLike = { name?: unknown; id?: unknown; run?: unknown; shell?: unknown; uses?: unknown; if?: unknown; env?: Record<string, unknown>; permissions?: Record<string, unknown>; with?: Record<string, unknown> };
+type StepLike = { name?: unknown; id?: unknown; run?: unknown; shell?: unknown; uses?: unknown; if?: unknown; "working-directory"?: unknown; env?: Record<string, unknown>; permissions?: Record<string, unknown>; with?: Record<string, unknown> };
 type JobLike = {
   name?: unknown;
   if?: unknown;
@@ -209,9 +209,27 @@ describe("publish-cli.yml (§16 audit #40, spec L864 npm provenance)", () => {
     expect(doc.permissions?.["id-token"]).toBe("write");
   });
 
-  test("publishes with --provenance", () => {
-    const publishStep = job?.steps?.find((s) => typeof s.run === "string" && s.run.includes("npm publish"));
-    expect(publishStep?.run).toContain("--provenance");
+  test("stages the public CLI with provenance and token authentication", () => {
+    const steps = job?.steps ?? [];
+    const stage = steps.find((s) => s.run === "npm stage publish --provenance --access public");
+    expect(stage?.["working-directory"]).toBe("packages/cli");
+    expect(stage?.env?.NODE_AUTH_TOKEN).toBe("${{ secrets.NPM_TOKEN }}");
+    expect(steps.some((s) => typeof s.run === "string" && /\bnpm publish\b/.test(s.run))).toBe(false);
+  });
+
+  test("manual staging installs a compatible npm after the release guard and before the build", () => {
+    expect(Object.keys(doc.on as object)).toEqual(["workflow_dispatch"]);
+    expect(job?.if).toBe("github.event.inputs.confirm == 'publish'");
+    const steps = job?.steps ?? [];
+    const node = steps.findIndex((s) => typeof s.uses === "string" && s.uses.startsWith("actions/setup-node@"));
+    expect(node).toBeGreaterThan(1);
+    expect(steps[node]?.with?.["node-version"]).toBe("24");
+    const npm = steps.findIndex((s) => s.run === "npm install --global npm@11.15.0");
+    const build = steps.findIndex((s) => s.run === "bun run --cwd packages/cli build");
+    const stage = steps.findIndex((s) => s.run === "npm stage publish --provenance --access public");
+    expect(npm).toBeGreaterThan(node);
+    expect(build).toBeGreaterThan(npm);
+    expect(stage).toBeGreaterThan(build);
   });
 
   test("only the matching CLI release tag can build the dispatched commit for publication", () => {
