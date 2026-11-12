@@ -21,6 +21,7 @@ type JobLike = {
   steps?: readonly StepLike[];
   on?: unknown;
   permissions?: Record<string, unknown>;
+  secrets?: Record<string, unknown>;
 };
 type WorkflowLike = { name?: unknown; on?: unknown; permissions?: Record<string, unknown>; env?: Record<string, unknown>; jobs?: Record<string, JobLike>; concurrency?: { group?: unknown; "cancel-in-progress"?: unknown } };
 
@@ -37,15 +38,21 @@ describe("GitHub Actions workflows", () => {
         expect(() => Bun.YAML.parse(text)).not.toThrow();
       });
 
-      test("has a name and at least one job, each with runs-on and steps", () => {
+      test("has a name and at least one runner job or reusable workflow call", () => {
         const doc = Bun.YAML.parse(text) as WorkflowLike;
         expect(typeof doc.name).toBe("string");
         expect(doc.jobs).toBeDefined();
         const jobs = Object.entries(doc.jobs ?? {});
         expect(jobs.length).toBeGreaterThan(0);
         for (const [id, job] of jobs) {
-          expect(typeof job["runs-on"], `${id} needs runs-on`).toBe("string");
-          expect(Array.isArray(job.steps), `${id} needs steps`).toBe(true);
+          if (typeof job.uses === "string") {
+            expect(job.uses, id).toMatch(/^\.\/\.github\/workflows\/[\w.-]+\.ya?ml$/);
+            expect(job["runs-on"], id).toBeUndefined();
+            expect(job.steps, id).toBeUndefined();
+          } else {
+            expect(typeof job["runs-on"], `${id} needs runs-on`).toBe("string");
+            expect(Array.isArray(job.steps), `${id} needs steps`).toBe(true);
+          }
         }
       });
 
@@ -111,7 +118,7 @@ describe("CI reliability and evidence", () => {
     expect(gate?.name).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics && 'Diagnostic selection check' || 'CI gate' }}");
     expect(gate?.if).toBe("always()");
     expect(gate?.needs).toEqual(["changes", "static", "browser", "e2e", "perf", "foundry"]);
-    const optional = new Set(["gate", "browser-diagnostics"]);
+    const optional = new Set(["gate", "browser-diagnostics", "dev-nightly"]);
     expect([...((gate?.needs as string[] | undefined) ?? [])].sort()).toEqual(Object.keys(doc.jobs ?? {}).filter((id) => !optional.has(id)).sort());
     const run = gate?.steps?.find((step) => typeof step.run === "string" && step.run.includes("scripts/ci/gate.ts"));
     expect(run?.env?.CI_NEEDS).toBe("${{ toJSON(needs) }}");
@@ -177,6 +184,7 @@ describe("CI reliability and evidence", () => {
 
   test("normal jobs have bounded timeouts and transport diagnostics cannot cancel ordinary CI", () => {
     for (const [id, job] of Object.entries(doc.jobs ?? {})) {
+      if (job.uses) continue; // The called workflow bounds its runner job.
       expect(typeof job["timeout-minutes"], id).toBe("number");
       expect(Number(job["timeout-minutes"]), id).toBeGreaterThan(0);
       expect(Number(job["timeout-minutes"]), id).toBeLessThanOrEqual(30);
@@ -299,6 +307,11 @@ describe("nightly.yml (§17 audit #40, spec L914: scheduled, report-only)", () =
     expect(typeof doc.on?.schedule?.[0]?.cron).toBe("string");
   });
 
+  test("the nightly opts full CI on dev into staging after its gate", () => {
+    const dispatch = doc.jobs?.["full-suite-on-dev"]?.steps?.find((step) => typeof step.run === "string");
+    expect(dispatch?.run).toContain("gh workflow run ci.yml --ref dev -f stage_dev_nightly=true");
+  });
+
   test("every step that runs golden or chain tests is report-only (continue-on-error)", () => {
     const job = Object.values(doc.jobs ?? {})[0];
     const reportOnlySteps = (job?.steps ?? []).filter(
@@ -306,6 +319,161 @@ describe("nightly.yml (§17 audit #40, spec L914: scheduled, report-only)", () =
     );
     expect(reportOnlySteps.length).toBeGreaterThan(0);
     for (const s of reportOnlySteps) expect((s as { "continue-on-error"?: unknown })["continue-on-error"]).toBe(true);
+  });
+});
+
+describe("dev nightly staging", () => {
+  const ci = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike & {
+    on?: { workflow_dispatch?: { inputs?: { stage_dev_nightly?: unknown } } };
+  };
+  // Load lazily so a missing workflow is reported by the contract tests.
+  const nightly = () => Bun.YAML.parse(readFileSync(join(workflowsDir, "dev-nightly.yml"), "utf8")) as WorkflowLike;
+  const step = (name: string) => nightly().jobs?.stage?.steps?.find((entry) => entry.name === name);
+  const shell = (name: string) => {
+    const run = step(name)?.run;
+    if (typeof run !== "string") throw new Error(`Missing nightly shell ${name}`);
+    return run;
+  };
+
+  test("only opted-in full CI on dev can call staging after its successful gate", () => {
+    expect(ci.on?.workflow_dispatch?.inputs?.stage_dev_nightly).toMatchObject({ type: "boolean", default: false });
+    const caller = ci.jobs?.["dev-nightly"];
+    expect(caller?.needs).toBe("gate");
+    expect(caller?.uses).toBe("./.github/workflows/dev-nightly.yml");
+    expect(caller?.if).toContain("github.event_name == 'workflow_dispatch'");
+    expect(caller?.if).toContain("github.ref == 'refs/heads/dev'");
+    expect(caller?.if).toContain("inputs.stage_dev_nightly");
+    expect(caller?.if).toContain("!inputs.browser_diagnostics");
+    expect(caller?.if).toContain("needs.gate.result == 'success'");
+    expect(caller?.permissions).toEqual({ contents: "read", "id-token": "write", statuses: "write" });
+    expect(caller?.secrets).toEqual({ NPM_TOKEN: "${{ secrets.NPM_TOKEN }}" });
+  });
+
+  test("the called workflow keeps the CI SHA for checkout and provenance and serializes staging", () => {
+    const doc = nightly();
+    expect(doc.on).toEqual({ workflow_call: { secrets: { NPM_TOKEN: { required: true } } } });
+    expect(doc.permissions).toEqual({ contents: "read", "id-token": "write", statuses: "write" });
+    expect(doc.concurrency).toEqual({ group: "dev-nightly", "cancel-in-progress": false });
+    expect(doc.jobs?.stage?.["timeout-minutes"]).toBe(20);
+    expect(doc.jobs?.stage?.steps?.[0]?.with?.ref).toBe("${{ github.sha }}");
+    expect(doc.env?.BUN_VERSION).toBe("1.4.2");
+    expect(doc.jobs?.stage?.steps?.some((entry) => entry.uses?.toString().startsWith("actions/setup-node@"))).toBe(false);
+  });
+
+  test("the source guard rejects a different branch, event, malformed SHA or checkout", () => {
+    const directory = mkdtempSync(join(tmpdir(), "studio-nightly-source-"));
+    const sha = "a".repeat(40);
+    try {
+      writeFileSync(join(directory, "git"), '#!/bin/sh\nprintf "%s\\n" "$FIXTURE_HEAD"\n', { mode: 0o755 });
+      for (const [event, ref, revision, head, expected] of [
+        ["workflow_dispatch", "refs/heads/dev", sha, sha, 0],
+        ["pull_request", "refs/heads/dev", sha, sha, 1],
+        ["workflow_dispatch", "refs/heads/main", sha, sha, 1],
+        ["workflow_dispatch", "refs/tags/dev", sha, sha, 1],
+        ["workflow_dispatch", "refs/heads/dev", "bad", sha, 1],
+        ["workflow_dispatch", "refs/heads/dev", sha, "b".repeat(40), 1],
+      ] as const) {
+        const result = Bun.spawnSync(["bash", "-e", "-c", shell("Verify tested dev commit")], {
+          cwd: repoRoot,
+          env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, GITHUB_EVENT_NAME: event, GITHUB_REF: ref, GITHUB_SHA: revision, FIXTURE_HEAD: head },
+        });
+        expect(result.exitCode, `${event} ${ref} ${revision} ${head}`).toBe(expected);
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("staging history uses paginated successful commit statuses and fails closed", () => {
+    const directory = mkdtempSync(join(tmpdir(), "studio-nightly-marker-"));
+    try {
+      writeFileSync(join(directory, "gh"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$FIXTURE_ARGS"\nprintf "%s" "$FIXTURE_STATUS"\nexit "$FIXTURE_EXIT"\n', { mode: 0o755 });
+      for (const [status, exit, expected] of [["123\n", "0", "staged=true\n"], ["", "0", "staged=false\n"], ["", "23", ""]] as const) {
+        const output = join(directory, "output");
+        writeFileSync(output, "");
+        const result = Bun.spawnSync(["bash", "-e", "-c", shell("Check staging history")], {
+          cwd: repoRoot,
+          env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, GH_REPO: "owner/repo", GITHUB_SHA: "a".repeat(40), GITHUB_OUTPUT: output, FIXTURE_STATUS: status, FIXTURE_EXIT: exit, FIXTURE_ARGS: join(directory, "args") },
+        });
+        expect(result.exitCode).toBe(Number(exit));
+        expect(readFileSync(output, "utf8")).toBe(expected);
+        const args = readFileSync(join(directory, "args"), "utf8");
+        expect(args).toContain("--paginate");
+        expect(args).toContain(`repos/owner/repo/commits/${"a".repeat(40)}/statuses?per_page=100`);
+        expect(args).toContain('.context == "npm/dev-nightly" and .state == "success"');
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("a recorded commit skips package work while registry presence skips rebuilding and repairs history", () => {
+    const steps = nightly().jobs?.stage?.steps ?? [];
+    const guard = steps.findIndex((entry) => entry.name === "Verify tested dev commit");
+    const history = steps.findIndex((entry) => entry.name === "Check staging history");
+    const npm = steps.findIndex((entry) => entry.name === "Install npm for staged publishing");
+    const check = steps.findIndex((entry) => entry.name === "Check npm for this commit");
+    const dependencies = steps.findIndex((entry) => entry.run === "bun install --frozen-lockfile");
+    const version = steps.findIndex((entry) => entry.name === "Set nightly CLI version");
+    const build = steps.findIndex((entry) => entry.run === "bun run --cwd packages/cli build");
+    const prepare = steps.findIndex((entry) => entry.run === "bun scripts/ci/prepare-cli-package.ts");
+    const stage = steps.findIndex((entry) => entry.run === "bun scripts/ci/dev-nightly.ts stage");
+    const record = steps.findIndex((entry) => entry.name === "Record staged commit");
+    expect(guard).toBeGreaterThan(0);
+    expect(history).toBeGreaterThan(guard);
+    expect(npm).toBeGreaterThan(history);
+    expect(steps[npm]?.run).toContain('bun add --cwd "$RUNNER_TEMP/npm-cli" --no-save --ignore-scripts npm@11.15.0');
+    expect(check).toBeGreaterThan(npm);
+    expect(dependencies).toBeGreaterThan(check);
+    expect(version).toBeGreaterThan(dependencies);
+    expect(build).toBeGreaterThan(version);
+    expect(prepare).toBeGreaterThan(build);
+    expect(stage).toBeGreaterThan(prepare);
+    expect(record).toBeGreaterThan(stage);
+    for (const entry of steps.slice(history + 1)) expect(entry.if).toContain("steps.marker.outputs.staged != 'true'");
+    for (const index of [dependencies, version, build, prepare, stage]) expect(steps[index]?.if).toContain("steps.package.outputs.exists != 'true'");
+    expect(steps[record]?.if).not.toContain("steps.package.outputs.exists");
+    expect(steps[version]?.env?.NIGHTLY_VERSION).toBe("${{ steps.package.outputs.version }}");
+    expect(steps[stage]?.env?.NIGHTLY_VERSION).toBe("${{ steps.package.outputs.version }}");
+    expect(steps[record]?.env?.NIGHTLY_VERSION).toBe("${{ steps.package.outputs.version }}");
+  });
+
+  test("npm credentials are scoped to lookup and staging and npmrc keeps a literal placeholder", () => {
+    const steps = nightly().jobs?.stage?.steps ?? [];
+    expect(steps.filter((entry) => entry.env?.NODE_AUTH_TOKEN !== undefined).map((entry) => entry.name)).toEqual(["Check npm for this commit", "Stage dev CLI package"]);
+    for (const name of ["Check npm for this commit", "Stage dev CLI package"]) {
+      expect(step(name)?.env?.NODE_AUTH_TOKEN).toBe("${{ secrets.NPM_TOKEN }}");
+      expect(step(name)?.env?.NPM_CONFIG_USERCONFIG).toBe("${{ runner.temp }}/npm-cli.npmrc");
+    }
+    const directory = mkdtempSync(join(tmpdir(), "studio-nightly-npmrc-"));
+    try {
+      const npmrc = join(directory, "npmrc");
+      const result = Bun.spawnSync(["bash", "-e", "-c", shell("Prepare npm authentication")], { env: { ...process.env, NPM_CONFIG_USERCONFIG: npmrc, NODE_AUTH_TOKEN: "fixture-secret" } });
+      expect(result.exitCode, result.stderr.toString()).toBe(0);
+      expect(readFileSync(npmrc, "utf8")).toBe("registry=https://registry.npmjs.org/\n//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("a failed history write fails the job and records only the tested commit", () => {
+    const directory = mkdtempSync(join(tmpdir(), "studio-nightly-record-"));
+    try {
+      writeFileSync(join(directory, "gh"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$FIXTURE_ARGS"\nexit "$FIXTURE_EXIT"\n', { mode: 0o755 });
+      for (const exit of [0, 23]) {
+        const result = Bun.spawnSync(["bash", "-e", "-c", shell("Record staged commit")], {
+          env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, GH_REPO: "owner/repo", GITHUB_SHA: "a".repeat(40), GITHUB_SERVER_URL: "https://github.com", GITHUB_RUN_ID: "123", NIGHTLY_VERSION: "0.2.0-dev.1.gabc", FIXTURE_EXIT: String(exit), FIXTURE_ARGS: join(directory, "args") },
+        });
+        expect(result.exitCode).toBe(exit);
+        const args = readFileSync(join(directory, "args"), "utf8");
+        expect(args).toContain(`repos/owner/repo/statuses/${"a".repeat(40)}`);
+        expect(args).toContain("state=success");
+        expect(args).toContain("context=npm/dev-nightly");
+        expect(args).toContain("target_url=https://github.com/owner/repo/actions/runs/123");
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
 
@@ -336,7 +504,7 @@ describe("ci.yml's Foundry job runs the Sepolia fork suite (§17 audit #76, spec
 describe("ci.yml's jobs share one setup", () => {
   const doc = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike;
   for (const [id, job] of Object.entries(doc.jobs ?? {})) {
-    if (id === "changes" || id === "gate") continue;
+    if (id === "changes" || id === "gate" || job.uses) continue;
     test(`${id} sets up through .github/actions/setup and installs nothing itself`, () => {
       const steps = job.steps ?? [];
       expect(steps.some((s) => s.uses === "./.github/actions/setup")).toBe(true);
@@ -454,7 +622,7 @@ describe("browser transport diagnostics", () => {
     expect(doc.on?.workflow_dispatch?.inputs?.browser_diagnostics).toMatchObject({ type: "boolean", default: false });
     expect(diagnostic?.if).toBe("github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics");
     for (const [id, job] of Object.entries(doc.jobs ?? {})) {
-      if (id !== "browser-diagnostics") expect(job["runs-on"]).toBe("ubuntu-24.04");
+      if (id !== "browser-diagnostics" && !job.uses) expect(job["runs-on"]).toBe("ubuntu-24.04");
     }
   });
 
