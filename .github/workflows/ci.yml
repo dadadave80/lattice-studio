@@ -27,14 +27,18 @@ on:
         description: "Stage the tested dev commit for npm approval after full CI passes"
         type: boolean
         default: false
+      release_dev_nightly:
+        description: "Publish the tested dev CLI as a GitHub pre-release after full CI passes"
+        type: boolean
+        default: false
 
 # PR jobs stay read-only. The opted-in nightly caller grants only its publisher extra permissions.
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.browser_diagnostics && 'transport' || 'full' }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.browser_diagnostics && 'transport' || (inputs.stage_dev_nightly || inputs.release_dev_nightly) && 'nightly' || 'full' }}
+  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && !inputs.browser_diagnostics && (inputs.stage_dev_nightly || inputs.release_dev_nightly)) }}
 
 jobs:
   changes:
@@ -332,3 +336,20 @@ jobs:
     uses: ./.github/workflows/dev-nightly.yml
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  github-nightly:
+    name: GitHub dev nightly
+    needs: gate
+    if: >-
+      github.repository == 'dadadave80/lattice-studio' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/dev' &&
+      inputs.release_dev_nightly &&
+      !inputs.browser_diagnostics &&
+      needs.gate.result == 'success'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/github-nightly.yml
+    secrets:
+      RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}

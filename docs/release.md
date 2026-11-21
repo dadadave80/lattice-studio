@@ -1,6 +1,6 @@
 # Release
 
-This describes how a change becomes a release: versioning, CI, hosting, and the CLI publish. Every step that only David can do (create accounts, add secrets, push the repository, click deploy) is marked **Needs David**. The nightly can submit a CLI package for npm review after full CI passes. Publishing its contents still requires David's approval and 2FA on npm.
+This describes how a change becomes a release: versioning, CI, hosting, and the CLI publish. Every step that only David can do (create accounts, add secrets, push the repository, click deploy) is marked **Needs David**. After full CI passes, the nightly can publish a downloadable GitHub CLI pre-release and submit a separate CLI package for npm review. Publishing the npm submission still requires David's approval and 2FA on npm.
 
 ## Versions and changelog
 
@@ -50,7 +50,7 @@ The last command, run with only the `dist` folder and no `vercel.json` path, che
 
 ## CI
 
-`.github/workflows/` runs on GitHub: `ci.yml` (the pull request gate: typecheck, lint, unit, size, browser, e2e, the performance budgets with the only Lighthouse CI run, and the Foundry suites: chain, the Sepolia fork suite, golden and catalog drift), `warm-cache.yml` (saves the caches CI restores, on `dev` and `main`), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only, plus a nightly dispatch of the full `ci.yml` on Studio's `dev` with CLI staging enabled), `dev-nightly.yml` (called after that full CI gate to stage the tested commit), `release-please.yml`, `publish-cli.yml`, and `update-screenshots.yml` (manual, `workflow_dispatch` only: regenerates the missing `chromium-linux` screenshot baselines as a downloadable artifact — see "Linux screenshot baselines" below).
+`.github/workflows/` runs on GitHub: `ci.yml` (the pull request gate: typecheck, lint, unit, size, browser, e2e, the performance budgets with the only Lighthouse CI run, and the Foundry suites: chain, the Sepolia fork suite, golden and catalog drift), `warm-cache.yml` (saves the caches CI restores, on `dev` and `main`), `nightly.yml` (the golden and chain suites against Lattice's `dev`, report-only, plus a nightly dispatch of the full `ci.yml` on Studio's `dev` with npm staging and GitHub pre-release publication enabled), `dev-nightly.yml` (called after that full CI gate to stage the tested commit for npm approval), `github-nightly.yml` (a sibling call that publishes the tested CLI as a GitHub pre-release), `release-please.yml`, `publish-cli.yml`, and `update-screenshots.yml` (manual, `workflow_dispatch` only: regenerates the missing `chromium-linux` screenshot baselines as a downloadable artifact — see "Linux screenshot baselines" below).
 
 `ci.yml` runs on pull requests and on `workflow_dispatch`. On a pull request a first `changes` job diffs against the base, and `scripts/ci/changes.sh` selects the suites that read those paths. The aggregate gate verifies their outcomes. A change to Markdown at the root, `docs/` or `skills/` skips the expensive suites and still runs path detection and the aggregate gate; a pitch deck selects check, unit and size; workflows, `.github/actions/`, `bun.lock` and root configs select every suite. An ordinary manual dispatch runs the full suite, as does `nightly.yml` for `dev`; an explicitly selected browser-transport dispatch runs its separate diagnostic matrix. The lightweight `post-merge.yml` checks the exact revision pushed to `dev` or `main`.
 
@@ -109,7 +109,7 @@ When the run succeeds, David opens **Staged Packages** on npm, reviews the packa
 
 ### Dev nightlies
 
-At 03:17 UTC each day, `nightly.yml` dispatches full CI on Studio's `dev` with `stage_dev_nightly=true`. After **CI gate** succeeds, CI calls `dev-nightly.yml` to stage the exact tested SHA under npm's `dev` tag. Pull request checks, browser diagnostics, failed CI, and ordinary manual CI runs do not stage a package.
+At 03:17 UTC (04:17 Lagos) each day, `nightly.yml` dispatches full CI on Studio's `dev` with `stage_dev_nightly=true` and `release_dev_nightly=true`. After **CI gate** succeeds, CI independently calls `dev-nightly.yml` to stage the exact tested SHA under npm's `dev` tag and `github-nightly.yml` to publish a downloadable GitHub pre-release. Pull request checks, browser diagnostics, failed CI, and ordinary manual CI runs do not invoke either publisher. The schedule starts a release attempt; CI and publication finish afterward, and GitHub can delay scheduled runs.
 
 The reusable workflow inherits the CI run's commit and ref, and checks out that SHA. A change to `dev` while CI runs cannot change the package source or its provenance. The version is `<base>-dev.<commit-timestamp>.g<full-sha>`, for example `0.2.0-dev.1794446400.g0123456789abcdef0123456789abcdef01234567`. The timestamp comes from the commit. The same commit produces the same version on a later retry. This temporary version is set before building so the CLI reports it, while checked-in versions and stable release numbering stay unchanged.
 
@@ -123,7 +123,51 @@ GitHub schedules use the workflow on the default branch, `main`. After this chan
 gh workflow run ci.yml --ref dev -f stage_dev_nightly=true
 ```
 
-The stable publisher continues to require `lattice-studio-v<version>` and uses npm's default release tag. Nightly prereleases use `dev` and remain separate from that release process.
+The stable publisher continues to require `lattice-studio-v<version>` and uses npm's default release tag. Approved npm nightlies use `dev` and remain separate from that release process.
+
+### GitHub nightly pre-releases
+
+Each new passing Studio commit gets a `Nightly (YYYY-MM-DD)` entry on the repository's [Releases page](https://github.com/dadadave80/lattice-studio/releases), marked **Pre-release**. The title uses the original CI run's UTC date, and the permanent tag is `nightly-<full-40-character-sha>`. A rerun keeps the original date and reports an existing valid release rather than creating a duplicate. An unpublished older commit is reported as superseded when a newer, verified descendant nightly already exists. Nightlies do not replace the stable **Latest** release.
+
+The release contains `lattice-studio-<nightly-version>.tgz`, `nightly.json`, and `SHA256SUMS`, alongside GitHub's automatic source archives. The package uses the same deterministic `<base>-dev.<commit-timestamp>.g<full-sha>` version as npm staging. `nightly.json` records the exact Studio commit, package digest, and bundled catalog identity/hash. The release notes link the tested commit and CI run and describe changes since the nearest published ancestor nightly, falling back to an ancestor stable CLI release or an explicitly labeled initial history.
+
+The CLI is built from the captured CI SHA, packed with install scripts disabled, extracted outside the checkout, and smoke-tested with Node 22 before the publisher receives a write token. Studio's pinned Lattice catalog is bundled in the CLI; the report-only job against upstream Lattice's moving `dev` is not a release source. Download the assets for the desired tag, verify their checksums, and install the local package using Node 22 or newer:
+
+```sh
+gh release download nightly-<full-sha> --repo dadadave80/lattice-studio \
+  --pattern '*.tgz' --pattern nightly.json --pattern SHA256SUMS --dir nightly
+cd nightly
+shasum -a 256 --check SHA256SUMS
+npm install --global ./lattice-studio-<nightly-version>.tgz
+lattice-studio --version
+```
+
+Replace the tag and package-version placeholders with the selected release's values. The package retains its declared non-workspace dependencies, so installation can contact npm. The GitHub download is public immediately after publication; `bunx lattice-studio@dev` instead installs whichever version David separately approved on npm. A GitHub release neither approves npm staging nor mirrors a package to GitHub Packages, and its separately built tarball does not inherit npm's provenance statement.
+
+The publisher creates or resumes a draft, uploads only missing assets, verifies the exact asset names, sizes and SHA-256 digests, then publishes with `prerelease=true` and `make_latest=false`. It never moves a permanent tag, overwrites a conflicting asset, or rewrites a published package. Drafts are looked up through the paginated release list with the App token; a public lookup that cannot see a draft is not proof that one does not exist. Ambiguous create, upload, or publish responses are checked against server state before another write.
+
+Nightly CI has its own non-cancelling concurrency group, separate from ordinary full CI and browser diagnostics; the GitHub publisher is serialized as well. A manual cancellation or runner failure can leave a draft. Rerun the original full CI run to resume a matching draft. A wrong tag target, mismatched asset or incomplete `starter` upload fails with a conflict: **Needs David:** inspect and repair or remove the conflicting draft asset explicitly before retrying. Published releases and permanent tags are never automatically deleted or repaired.
+
+**Needs David, before activation:**
+
+1. Approve **Workflows: write** for the existing `lattice-release-please` GitHub App installation on this repository, retaining **Contents: write**. The workflow uses the existing `RELEASE_PLEASE_APP_CLIENT_ID` variable and `RELEASE_PLEASE_APP_PRIVATE_KEY` secret to request a token limited to this repository and those permissions. The token is created after build/smoke tests and automatically revoked after the job. GitHub can require workflow permission when the target commit's workflows differ from the default branch; the regular `GITHUB_TOKEN` cannot provide it. [Release API permissions](https://docs.github.com/en/rest/releases/releases#create-a-release)
+2. To display GitHub's **Immutable** badge, enable immutable releases in the repository settings before the first nightly. The workflow's permanent tag policy alone does not enable the setting. Immutable releases lock tags and assets while allowing title/note edits, so the existing stable release's catalog-note append remains compatible. [Immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
+3. Land the reviewed change on `dev` and promote the updated scheduler to the default branch, `main`. A change present only on `dev` does not activate the scheduled dispatcher.
+4. Dispatch a GitHub-only first run and verify the exact tag/commit, dated pre-release title, downloaded checksums, extracted CLI version, catalog, changelog comparison, observed immutability and unchanged stable **Latest** selection. Rerun the same SHA and verify it skips new uploads and release creation.
+
+```sh
+gh workflow run ci.yml --ref dev -f release_dev_nightly=true
+```
+
+To request both publishers explicitly:
+
+```sh
+gh workflow run ci.yml --ref dev \
+  -f stage_dev_nightly=true \
+  -f release_dev_nightly=true
+```
+
+The default-branch dispatcher only starts the separate full CI run; follow that CI run through its gate and publisher jobs to establish whether a release finished. To stop future GitHub nightly publication, remove only `release_dev_nightly=true` from the scheduled dispatch, keeping nightly full CI and npm staging available.
 
 ### GitHub Packages mirror
 
