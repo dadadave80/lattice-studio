@@ -119,7 +119,7 @@ describe("CI reliability and evidence", () => {
     expect(gate?.name).toBe("${{ github.event_name == 'workflow_dispatch' && inputs.browser_diagnostics && 'Diagnostic selection check' || 'CI gate' }}");
     expect(gate?.if).toBe("always()");
     expect(gate?.needs).toEqual(["changes", "static", "browser", "e2e", "perf", "foundry"]);
-    const optional = new Set(["gate", "browser-diagnostics", "dev-nightly"]);
+    const optional = new Set(["gate", "browser-diagnostics", "dev-nightly", "github-nightly"]);
     expect([...((gate?.needs as string[] | undefined) ?? [])].sort()).toEqual(Object.keys(doc.jobs ?? {}).filter((id) => !optional.has(id)).sort());
     const run = gate?.steps?.find((step) => typeof step.run === "string" && step.run.includes("scripts/ci/gate.ts"));
     expect(run?.env?.CI_NEEDS).toBe("${{ toJSON(needs) }}");
@@ -193,7 +193,7 @@ describe("CI reliability and evidence", () => {
     expect(doc.concurrency?.group).toContain("inputs.browser_diagnostics");
     expect(doc.concurrency?.group).toContain("transport");
     expect(doc.concurrency?.group).toContain("full");
-    expect(doc.concurrency?.["cancel-in-progress"]).toBe(true);
+    expect(typeof doc.concurrency?.["cancel-in-progress"]).toBe("string");
   });
 });
 
@@ -409,9 +409,23 @@ describe("nightly.yml (§17 audit #40, spec L914: scheduled, report-only)", () =
     expect(typeof doc.on?.schedule?.[0]?.cron).toBe("string");
   });
 
-  test("the nightly opts full CI on dev into staging after its gate", () => {
-    const dispatch = doc.jobs?.["full-suite-on-dev"]?.steps?.find((step) => typeof step.run === "string");
-    expect(dispatch?.run).toContain("gh workflow run ci.yml --ref dev -f stage_dev_nightly=true");
+  test("the nightly dispatches full CI on dev with both independent publishers enabled", () => {
+    const run = doc.jobs?.["full-suite-on-dev"]?.steps?.find((step) => typeof step.run === "string")?.run;
+    if (typeof run !== "string") throw new Error("Missing nightly dispatch shell");
+    const directory = mkdtempSync(join(tmpdir(), "studio-nightly-dispatch-"));
+    try {
+      writeFileSync(join(directory, "gh"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$FIXTURE_ARGS"\n', { mode: 0o755 });
+      const args = join(directory, "args");
+      const result = Bun.spawnSync(["bash", "-e", "-c", run], {
+        env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, FIXTURE_ARGS: args },
+      });
+      expect(result.exitCode, result.stderr.toString()).toBe(0);
+      expect(readFileSync(args, "utf8").trim().split("\n")).toEqual([
+        "workflow", "run", "ci.yml", "--ref", "dev", "-f", "stage_dev_nightly=true", "-f", "release_dev_nightly=true",
+      ]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   test("every step that runs golden or chain tests is report-only (continue-on-error)", () => {
@@ -421,6 +435,123 @@ describe("nightly.yml (§17 audit #40, spec L914: scheduled, report-only)", () =
     );
     expect(reportOnlySteps.length).toBeGreaterThan(0);
     for (const s of reportOnlySteps) expect((s as { "continue-on-error"?: unknown })["continue-on-error"]).toBe(true);
+  });
+});
+
+describe("GitHub dev nightly releases", () => {
+  const ci = Bun.YAML.parse(readFileSync(join(workflowsDir, "ci.yml"), "utf8")) as WorkflowLike & {
+    on?: { workflow_dispatch?: { inputs?: { release_dev_nightly?: unknown } } };
+  };
+  const nightly = () => Bun.YAML.parse(readFileSync(join(workflowsDir, "github-nightly.yml"), "utf8")) as WorkflowLike;
+  const evaluate = (value: unknown, context: Record<string, unknown>): unknown => {
+    if (typeof value !== "string") throw new Error("Missing workflow expression");
+    const expression = value.replace(/^\$\{\{\s*/, "").replace(/\s*\}\}$/, "");
+    // These checked-in expressions use the JavaScript-compatible boolean subset of Actions syntax.
+    return new Function(...Object.keys(context), `return (${expression});`)(...Object.values(context)) as unknown;
+  };
+  const context = (diagnostics = false, stage = false, release = false) => ({
+    github: { workflow: "CI", event_name: "workflow_dispatch", repository: "dadadave80/lattice-studio", ref: "refs/heads/dev" },
+    inputs: { browser_diagnostics: diagnostics, stage_dev_nightly: stage, release_dev_nightly: release },
+    needs: { gate: { result: "success" } },
+  });
+
+  test("only opted-in full CI for the canonical dev branch can publish after a successful gate", () => {
+    expect(ci.on?.workflow_dispatch?.inputs?.release_dev_nightly).toMatchObject({ type: "boolean", default: false });
+    const caller = ci.jobs?.["github-nightly"];
+    expect(caller?.needs).toBe("gate");
+    expect(caller?.uses).toBe("./.github/workflows/github-nightly.yml");
+    expect(caller?.permissions).toEqual({ contents: "read", actions: "read" });
+    expect(caller?.secrets).toEqual({ RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}" });
+    expect(evaluate(caller?.if, context(false, false, true))).toBe(true);
+    expect(evaluate(caller?.if, context(false, true, false))).toBe(false);
+    expect(evaluate(caller?.if, context(true, false, true))).toBe(false);
+    for (const [key, value] of [
+      ["event_name", "pull_request"], ["event_name", "push"], ["repository", "someone/fork"],
+      ["ref", "refs/heads/main"], ["ref", "refs/tags/nightly-abc"],
+    ] as const) {
+      const invalid = context(false, false, true);
+      invalid.github[key] = value;
+      expect(evaluate(caller?.if, invalid), `${key}=${value}`).toBe(false);
+    }
+    for (const result of ["failure", "cancelled", "skipped"]) {
+      const invalid = context(false, false, true);
+      invalid.needs.gate.result = result;
+      expect(evaluate(caller?.if, invalid), result).toBe(false);
+    }
+    expect(ci.jobs?.["dev-nightly"]?.needs).toBe("gate");
+  });
+
+  test("nightly runs have a separate non-cancelling parent lane while diagnostics and ordinary CI remain cancellable", () => {
+    const group = ci.concurrency?.group;
+    if (typeof group !== "string") throw new Error("Missing CI concurrency group");
+    const lane = (fixture: ReturnType<typeof context>) => group.replace(/\$\{\{([\s\S]*?)\}\}/g,
+      (_match: string, expression: string) => String(evaluate(expression, fixture)));
+    const lanes = new Set<string>();
+    for (const diagnostics of [false, true]) {
+      for (const stage of [false, true]) {
+        for (const release of [false, true]) {
+          const fixture = context(diagnostics, stage, release);
+          const expected = diagnostics ? "transport" : stage || release ? "nightly" : "full";
+          const actual = lane(fixture);
+          expect(actual).toBe(`ci-CI-refs/heads/dev-${expected}`);
+          expect(evaluate(ci.concurrency?.["cancel-in-progress"], fixture)).toBe(expected !== "nightly");
+          lanes.add(actual);
+        }
+      }
+    }
+    expect(lanes.size).toBe(3);
+    const pr = context();
+    pr.github.event_name = "pull_request";
+    expect(evaluate(ci.concurrency?.["cancel-in-progress"], pr)).toBe(true);
+  });
+
+  test("the reusable workflow inherits the exact SHA and keeps the regular Actions token read-only", () => {
+    const doc = nightly();
+    expect(doc.on).toEqual({ workflow_call: { secrets: { RELEASE_PLEASE_APP_PRIVATE_KEY: { required: true } } } });
+    expect(doc.permissions).toEqual({ contents: "read", actions: "read" });
+    expect(doc.concurrency).toEqual({ group: "github-dev-nightly-release", "cancel-in-progress": false });
+    const job = doc.jobs?.release;
+    expect(job?.["runs-on"]).toBe("ubuntu-24.04");
+    expect(job?.["timeout-minutes"]).toBe(20);
+    expect(job?.if).toBe("github.repository == 'dadadave80/lattice-studio'");
+    expect(job?.steps?.[0]?.with).toMatchObject({ ref: "${{ github.sha }}", "fetch-depth": 0, "persist-credentials": false });
+    expect(doc.env?.BUN_VERSION).toBe("1.4.2");
+    expect(JSON.stringify(doc)).not.toContain("NPM_TOKEN");
+    expect(JSON.stringify(doc)).not.toContain("id-token");
+  });
+
+  test("only the final publisher receives the scoped App token, after packing and smoke testing", () => {
+    const steps = nightly().jobs?.release?.steps ?? [];
+    const inspect = steps.findIndex((step) => step.run === "bun scripts/ci/github-nightly.ts inspect");
+    const install = steps.findIndex((step) => step.run === "bun install --frozen-lockfile");
+    const build = steps.findIndex((step) => step.run === "bun scripts/ci/github-nightly-assets.ts build");
+    const token = steps.findIndex((step) => String(step.uses).startsWith("actions/create-github-app-token@"));
+    const publish = steps.findIndex((step) => step.run === "bun scripts/ci/github-nightly.ts publish");
+    expect(inspect).toBeGreaterThanOrEqual(0);
+    expect(install).toBeGreaterThan(inspect);
+    expect(build).toBeGreaterThan(install);
+    expect(token).toBeGreaterThan(build);
+    expect(publish).toBeGreaterThan(token);
+    expect(steps[inspect]?.env?.GH_TOKEN).toBe("${{ github.token }}");
+    expect(steps[token]?.with).toEqual({
+      "client-id": "${{ vars.RELEASE_PLEASE_APP_CLIENT_ID }}",
+      "private-key": "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}",
+      repositories: "${{ github.event.repository.name }}",
+      "permission-contents": "write", "permission-workflows": "write",
+    });
+    expect(steps[token]?.with?.["skip-token-revoke"]).toBeUndefined();
+    expect(steps[publish]?.env?.GH_TOKEN).toBe("${{ steps.app-token.outputs.token }}");
+    const publisher = steps[publish];
+    if (!publisher) throw new Error("Missing nightly publisher step");
+    expect(steps.filter((step) => JSON.stringify(step.env ?? {}).includes("app-token.outputs.token"))).toEqual([publisher]);
+    for (const step of steps.slice(inspect + 1)) {
+      for (const [published, superseded, expected] of [["false", "false", true], ["true", "false", false], ["false", "true", false], ["", "", false]] as const) {
+        expect(evaluate(step.if, { steps: { nightly: { outputs: { published, superseded } } } })).toBe(expected);
+      }
+    }
+    for (const step of steps.slice(0, token)) {
+      expect(JSON.stringify(step.env ?? {})).not.toMatch(/APP_PRIVATE_KEY|app-token\.outputs\.token|NODE_AUTH_TOKEN/);
+    }
   });
 });
 
