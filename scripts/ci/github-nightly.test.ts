@@ -95,6 +95,13 @@ describe("nightly source boundary", () => {
       expect(() => validateRunMetadata({ ...run, ...patch }, "42", sha)).toThrow();
     }
   });
+  test("shallow history blocks inspection and publication before any write", () => {
+    const state = fixture();
+    const github = new NightlyGithub(state.run, (args) => args[0] === "rev-parse" && args[1] === "--is-shallow-repository" ? "true" : state.git(args));
+    expect(() => github.inspect(identity)).toThrow("complete Git history");
+    expect(() => github.publish(identity, files, "/assets", "42")).toThrow("complete Git history");
+    expect(state.calls.every(({ argv }) => argv[0] === "api" && argv[argv.indexOf("--method") + 1] === "GET")).toBe(true);
+  });
 });
 
 describe("nightly publication state", () => {
@@ -281,6 +288,8 @@ test("CLI inspection saves verified context and publication rejects a tampered h
   const directory = mkdtempSync(join(tmpdir(), "studio-nightly-inspect-"));
   const root = join(import.meta.dir, "..", "..");
   try {
+    const realGit = Bun.which("git");
+    if (!realGit) throw new Error("The CLI fixture requires Git.");
     const revision = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: root, stdout: "pipe", stderr: "pipe" }).stdout.toString().trim();
     const eventPath = join(directory, "event.json");
     const output = join(directory, "output");
@@ -290,6 +299,8 @@ test("CLI inspection saves verified context and publication rejects a tampered h
     writeFileSync(output, "");
     writeFileSync(trace, "");
     writeFileSync(join(directory, "gh"), '#!/bin/sh\nexec "$FIXTURE_BUN" "$FIXTURE_API" "$@"\n', { mode: 0o755 });
+    // Model the release workflow's full checkout, independently of unit CI's shallow checkout.
+    writeFileSync(join(directory, "git"), '#!/bin/sh\nif [ "$1" = rev-parse ] && [ "$2" = --is-shallow-repository ]; then\n  printf "false\\n"\nelse\n  exec "$FIXTURE_GIT" "$@"\nfi\n', { mode: 0o755 });
     writeFileSync(fakeApi, `
       import { appendFileSync } from "node:fs";
       const args = process.argv.slice(2);
@@ -305,7 +316,7 @@ test("CLI inspection saves verified context and publication rejects a tampered h
     const env = { ...process.env, PATH: `${directory}:${process.env.PATH}`, GH_TOKEN: "fixture-token", GH_REPO: repo,
       GITHUB_REPOSITORY: repo, GITHUB_EVENT_NAME: "workflow_dispatch", GITHUB_REF: "refs/heads/dev", GITHUB_SHA: revision, GITHUB_RUN_ID: "42",
       GITHUB_EVENT_PATH: eventPath, GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: join(directory, "summary"), RUNNER_TEMP: directory,
-      FIXTURE_BUN: process.execPath, FIXTURE_API: fakeApi, FIXTURE_SHA: revision, FIXTURE_TRACE: trace };
+      FIXTURE_BUN: process.execPath, FIXTURE_API: fakeApi, FIXTURE_SHA: revision, FIXTURE_TRACE: trace, FIXTURE_GIT: realGit };
     const result = Bun.spawnSync([process.execPath, join(import.meta.dir, "github-nightly.ts"), "inspect"], { cwd: root, env, stdout: "pipe", stderr: "pipe" });
     expect(result.exitCode, result.stderr.toString()).toBe(0);
     expect(readFileSync(output, "utf8")).toContain("published=false\nsuperseded=false\nversion=");
